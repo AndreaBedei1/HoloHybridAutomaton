@@ -1,0 +1,2 @@
+run_id,scenario,seed,status,sim_time_s,n_drones,comms,min_pair_distance_m,P1_holds,P1_violations,P2_holds,P2_max_occupancy,P3_holds,P3_episodes,P3_max_recovery_s,final_form_err_m,max_drift_m_s,inside_envelope,determinism_violations,decisions
+gate_arena_s0,gate_arena,0,completed_early_stop,220.7,3,0,2.391,True,0,True,1,True,1,4.899951000000016,0.0947,0.1,True,0,"{""FORMATION_LOST"": 2, ""FORMATION_RECOVERED"": 5, ""APPROACH"": 6, ""PASS"": 2, ""EXITED"": 6, ""YIELD"": 5, ""RETRY_PASS"": 4}"

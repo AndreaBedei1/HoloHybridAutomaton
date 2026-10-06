@@ -18,7 +18,9 @@ from holo_fleet.config import DEFAULT, FleetConfig
 from holo_fleet.mission import MissionPlan, Path, Slot
 from holo_fleet.sim.currents import CurrentComponent, CurrentField
 
-TRIANGLE = [Slot(0.0, +1.75), Slot(0.0, -1.75), Slot(-2.5, 0.0)]
+# Lateral lane spacing (2.5 m) is larger than d_warning (2.3 m): drones re-ordering along the survey line
+# (e.g. after a gate) can overtake each other on their own lanes without entering SEPARATION_WARNING.
+TRIANGLE = [Slot(0.0, +2.5), Slot(0.0, -2.5), Slot(-2.5, 0.0)]
 FAILSAFE_LAYERS = [0.0, -1.3, +1.3]
 
 CURRENT_LEVELS = {"none": 0.0, "low": 0.10, "medium": 0.25, "high": 0.40}
@@ -121,9 +123,11 @@ def _gate_path(gates_by_id) -> Path:
     x6 = g6.center[:2] + 2.0 * a6
     e7 = g7.center[:2] - 2.0 * a7
     x7 = g7.center[:2] + 3.0 * a7
-    h0 = math.radians(-25.0)
+    # Approach (-45 deg) and exit (+45 deg) headings chosen numerically so that every lane and every
+    # transition to a queue point keeps >= 3 m from the bars of the arena's other gates (G05, G08).
+    h0 = math.radians(-45.0)
     w0 = e6 - 14.0 * np.array([math.cos(h0), math.sin(h0)])
-    h1 = math.radians(35.0)
+    h1 = math.radians(45.0)
     w_end = x7 + 17.0 * np.array([math.cos(h1), math.sin(h1)])
     depth = float((g6.center[2] + g7.center[2]) / 2.0)
     return Path(np.array([w0, e6, g6.center[:2], x6, e7, g7.center[:2], x7, w_end]), depth)

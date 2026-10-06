@@ -105,16 +105,20 @@ def run(cfg: FleetConfig = DEFAULT, verbose: bool = True) -> Report:
     ebnd = [z3.And(x >= -eps, x <= eps) for x in e0 + e1]
     j_meas_t0 = [sj0 - si0 + e0[0], lj0 - li0 + e0[1], zj0 - zi0 + e0[2]]
     i_meas_t1 = [si1 - sj1 + e1[0], li1 - lj1 + e1[1], zi1 - zj1 + e1[2]]
+    # A_hold is needed only for a queued drone that was ALONG-TIED with the committing drone at t0
+    # (i.e. both at the queue line): a drone arriving from behind is decided by the along level, where
+    # A_mono alone preserves the priority whatever its lateral/vertical motion.
+    tied = zabs(sj0 - si0) <= G.mu_s_lo + eps
     hyp = [
         decisions(G, eps, j_meas_t0)["COMMIT"],            # j committed over i at t0 ...
         sj0 >= G.s_queue - G.commit_window,                 # ... from the queue line (commit window)
         si0 <= G.s_queue + G.hold_tol_s, si1 <= G.s_queue + G.hold_tol_s,   # i queued (A_hold)
         sj1 - sj0 >= si1 - si0 - G.mono_tol,                # A_mono: j progresses at least as i
-        zabs(li1 - li0) <= 2 * G.hold_tol_lat, zabs(lj1 - lj0) <= 2 * G.hold_tol_lat,
-        zabs(zi1 - zi0) <= 2 * G.hold_tol_z, zabs(zj1 - zj0) <= 2 * G.hold_tol_z,
+        z3.Implies(tied, z3.And(zabs(li1 - li0) <= 2 * G.hold_tol_lat, zabs(lj1 - lj0) <= 2 * G.hold_tol_lat,
+                                zabs(zi1 - zi0) <= 2 * G.hold_tol_z, zabs(zj1 - zj0) <= 2 * G.hold_tol_z)),
     ]
     rep.add(check("M3 priority persistence during the transit window",
-                  "COMMIT_j(t0) & A_hold & A_mono -> not COMMIT_i(t)", ENC,
+                  "COMMIT_j(t0) & A_mono & (along-tied at t0 -> A_hold) -> not COMMIT_i(t)", ENC,
                   ebnd + hyp + [decisions(G, eps, i_meas_t1)["COMMIT"]]), verbose)
 
     # ---------------------------------------------------------------- M3b late arrivals (timing)
@@ -202,8 +206,9 @@ def run(cfg: FleetConfig = DEFAULT, verbose: bool = True) -> Report:
                   ebnd + [decisions(Gbad, eps, j_meas_t0)["COMMIT"], sj0 >= Gbad.s_queue - Gbad.commit_window,
                           si0 <= Gbad.s_queue + Gbad.hold_tol_s, si1 <= Gbad.s_queue + Gbad.hold_tol_s,
                           sj1 - sj0 >= si1 - si0 - Gbad.mono_tol,
-                          zabs(li1 - li0) <= 2 * Gbad.hold_tol_lat, zabs(lj1 - lj0) <= 2 * Gbad.hold_tol_lat,
-                          zabs(zi1 - zi0) <= 2 * Gbad.hold_tol_z, zabs(zj1 - zj0) <= 2 * Gbad.hold_tol_z,
+                          z3.Implies(zabs(sj0 - si0) <= Gbad.mu_s_lo + eps,
+                                     z3.And(zabs(li1 - li0) <= 2 * Gbad.hold_tol_lat, zabs(lj1 - lj0) <= 2 * Gbad.hold_tol_lat,
+                                            zabs(zi1 - zi0) <= 2 * Gbad.hold_tol_z, zabs(zj1 - zj0) <= 2 * Gbad.hold_tol_z)),
                           decisions(Gbad, eps, i_meas_t1)["COMMIT"]], expect="sat"), verbose)
     Gbad2 = ExactNamespace(replace(cfg.gate, mu_s_hi=0.4, mu_s_lo=0.2))
     Pi2, Pj2 = decisions(Gbad2, eps, mi), decisions(Gbad2, eps, mj)

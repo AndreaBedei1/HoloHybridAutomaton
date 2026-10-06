@@ -41,7 +41,7 @@ class Envelope:
                                      # (measured inside the warning band: max 0.32 m; probe: -0.19..+0.09 m)
     v_max_nominal: float = 0.40      # speed cap in every non-avoidance mode [m/s]
     v_escape: float = 0.50           # escape speed in COLLISION_AVOIDANCE [m/s]
-    a_brake: float = 0.50            # closing-speed reduction per drone [m/s^2] (calibrated: 0.51)
+    a_brake: float = 0.50            # closing-speed reduction per drone [m/s^2] (calibrated: >= 0.74)
     w_rel_max: float = 0.15          # unrejected differential drift between two drones [m/s]
     v_open: float = 0.20             # guaranteed opening speed of the SW safety filter [m/s]
     v_filter_cap: float = 0.60       # speed cap of the SW safety-filter solution [m/s]

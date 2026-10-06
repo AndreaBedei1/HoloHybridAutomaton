@@ -1,0 +1,12 @@
+{"t":0.0,"type":"sim_started","gate_spawn":{"physically_spawned":true,"spawned_bar_count":1488,"method":"runtime_spawn_prop_hybrid_micro_top_bottom","message":"Gate visuals spawned with HoloOcean env.spawn_prop('box', ...) using dense micro-blocks for top/bottom bars and uniform side pillars.","export_path":null},"wall_setup_s":29.5}
+{"t":0.0,"type":"released","drone":"drone_0"}
+{"t":0.0,"drone":"drone_0","type":"decision","decision":"FORMATION_LOST","edge":"formation_lost","from":"FORMATION_FOLLOW","to":"FORMATION_RECOVERY","gate":null,"gate_frame":null}
+{"t":0.0,"type":"released","drone":"drone_1"}
+{"t":0.0,"drone":"drone_1","type":"decision","decision":"FORMATION_LOST","edge":"formation_lost","from":"FORMATION_FOLLOW","to":"FORMATION_RECOVERY","gate":null,"gate_frame":null}
+{"t":0.0,"type":"released","drone":"drone_2"}
+{"t":1.99998,"drone":"drone_0","type":"decision","decision":"FORMATION_RECOVERED","edge":"formation_recovered","from":"FORMATION_RECOVERY","to":"FORMATION_FOLLOW","gate":null,"gate_frame":null}
+{"t":1.99998,"drone":"drone_1","type":"decision","decision":"FORMATION_RECOVERED","edge":"formation_recovered","from":"FORMATION_RECOVERY","to":"FORMATION_FOLLOW","gate":null,"gate_frame":null}
+{"t":91.899081,"drone":"drone_0","type":"survey_line_complete"}
+{"t":91.899081,"drone":"drone_1","type":"survey_line_complete"}
+{"t":92.599074,"drone":"drone_2","type":"survey_line_complete"}
+{"t":100.798992,"type":"run_finished","status":"completed_early_stop"}

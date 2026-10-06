@@ -1,0 +1,7 @@
+﻿[15:20:00] Exp 2 - gate mutual exclusion in the marine arena: simulating gate_arena_s0 ...
+    exit=0 in 976s
+# Demonstrative runs - referee verdicts (ground truth)
+
+| experiment | run | P1 holds (min d) | P2 holds (max occ) | P3 holds (max recovery after perturbation) | inside envelope (max drift) | determinism violations |
+|---|---|---|---|---|---|---|
+| Exp 2 - gate mutual exclusion in the marine arena | `gate_arena_s0` | True (2.391 m) | True (1) | True (4.899951000000016 s) | True (0.1 m/s) | 0 |

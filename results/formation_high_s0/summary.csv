@@ -1,0 +1,2 @@
+run_id,scenario,seed,status,sim_time_s,n_drones,comms,min_pair_distance_m,P1_holds,P1_violations,P2_holds,P2_max_occupancy,P3_holds,P3_episodes,P3_max_recovery_s,final_form_err_m,max_drift_m_s,inside_envelope,determinism_violations,decisions
+formation_high_s0,formation_current_high,0,completed_early_stop,100.8,3,0,3.4258,True,0,,,True,0,,0.0692,0.4,True,0,"{""FORMATION_LOST"": 2, ""FORMATION_RECOVERED"": 2}"

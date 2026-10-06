@@ -1,0 +1,82 @@
+{
+  "P1_separation": {
+    "formula": "G( forall i!=j : d_ij >= d_safe )",
+    "d_safe": 1.0,
+    "d_warning": 2.3,
+    "d_collision": 0.6,
+    "min_distance_overall": 3.5131,
+    "min_distance_per_pair": {
+      "drone_0-drone_1": {
+        "d_min": 4.9237,
+        "t": 63.499365
+      },
+      "drone_0-drone_2": {
+        "d_min": 3.5367,
+        "t": 0.099999
+      },
+      "drone_1-drone_2": {
+        "d_min": 3.5131,
+        "t": 94.599054
+      }
+    },
+    "violations_d_lt_d_safe": 0,
+    "first_violation": null,
+    "physical_contacts_d_lt_d_collision": 0,
+    "collision_sensor_rising_edges": [],
+    "holds": true
+  },
+  "P2_mutual_exclusion": {
+    "formula": "G( sum_i inside_CR_i <= 1 )",
+    "gates": [],
+    "max_occupancy": {},
+    "entry_order": {},
+    "violations": 0,
+    "first_violation": null,
+    "all_drones_traversed": {},
+    "holds": null
+  },
+  "P3_formation_recovery": {
+    "formula": "G( formation_lost -> F_[0,T] formation_recovered )",
+    "T_s": 75.0,
+    "e_lost": 1.2,
+    "e_ok": 0.6,
+    "t_ok_hold": 2.0,
+    "enabled": true,
+    "episodes": [],
+    "n_episodes": 0,
+    "max_recovery_time_s": null,
+    "max_episode_duration_s": null,
+    "unrecovered_at_end": 0,
+    "late_recoveries": 0,
+    "final_form_err": 0.0501,
+    "holds": true
+  },
+  "envelope": {
+    "current_drift_max_claimed": 0.6,
+    "max_effective_drift_applied": 0.25,
+    "out_of_envelope_flags": [],
+    "inside_envelope": true
+  },
+  "kinematics": {
+    "max_true_speed_m_s": 0.336
+  },
+  "run": {
+    "status": "completed_early_stop",
+    "sim_time_s": 99.9,
+    "steps": 999,
+    "wall_time_s": 469.8,
+    "determinism_monitor_violations": {
+      "drone_0": 0,
+      "drone_1": 0,
+      "drone_2": 0
+    },
+    "mission_complete": {
+      "drone_0": true,
+      "drone_1": true,
+      "drone_2": true
+    },
+    "comms_enabled": false,
+    "inter_agent_messages_sent": 0,
+    "inter_agent_messages_delivered": 0
+  }
+}

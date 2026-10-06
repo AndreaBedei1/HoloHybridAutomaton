@@ -253,15 +253,18 @@ class Flows:
 
     # ---------------------------------------------------------------- safety flows
     def separation_warning(self, base: FlowOutput, obs: LocalObservation) -> FlowOutput:
-        """Soft avoidance: never close on a threat; convert closing intent into a right-hand sidestep.
+        """Soft avoidance: never close on a threat; convert closing intent into a sidestep.
 
-        The sidestep is to the RIGHT of the line of sight in each drone's own view.  The rule is
-        antisymmetric (u_ji = -u_ij), so two drones meeting head-on move to opposite sides and
-        pass port-to-port instead of stopping nose to nose.  When the threat is at a different
-        depth the vertical gap is also widened (again antisymmetric through sign(rel_z)).
+        Head-on (mission velocity within ~20 deg of the line of sight) the sidestep is to the RIGHT of
+        the line of sight in each drone's own view; the rule is antisymmetric (u_ji = -u_ij), so two
+        drones meeting head-on pass port-to-port instead of stopping nose to nose.  Otherwise (e.g.
+        overtaking) the drone passes on the side its mission velocity already points to.  When the
+        threat is at a different depth the vertical gap is also widened.  The sidestep only shapes the
+        target velocity: the safety guarantee comes from the half-space constraints of the QP filter.
         """
         sep, env = self.cfg.sep, self.cfg.env
         v_t = base.v.copy()
+        vb = np.array([base.v[0], base.v[1], 0.0])
         A, b = [], []
         for u, d in zip(obs.threats, obs.threat_dists):
             if d >= sep.d_warning_exit:
@@ -271,8 +274,14 @@ class Flows:
             if closing > 0:
                 uh = np.array([u[0], u[1], 0.0])
                 if np.linalg.norm(uh) > 1e-3:
-                    right = np.array([uh[1], -uh[0], 0.0]) / np.linalg.norm(uh)
-                    v_t += (closing + 0.08) * right                      # sidestep intent (right-hand rule)
+                    uh /= np.linalg.norm(uh)
+                    right = np.array([uh[1], -uh[0], 0.0])
+                    nb_ = float(np.linalg.norm(vb))
+                    if nb_ < 1e-3 or float(vb @ uh) / nb_ > 0.94:
+                        side = right                    # (near) head-on: antisymmetric right-hand rule
+                    else:
+                        side = right if float(vb @ right) >= 0 else -right   # pass on the side we head to
+                    v_t += (closing + 0.08) * side      # sidestep intent; safety comes from the QP below
             if abs(u[2]) * d > 0.3:
                 v_t[2] -= 0.08 * np.sign(u[2])                            # widen an existing depth gap
             A.append(u)

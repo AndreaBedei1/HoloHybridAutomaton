@@ -63,8 +63,8 @@ formal/                  Z3 encodings + check_properties.py (results in formal/r
 scripts/                 run_experiment, run_all, analyze_results, render_report, calibrate_plant, validate_assumptions
 tests/                   isolation, no-comms default, runtime/Z3 conformance, rule properties, geometry, artifacts
 probe/                   Phase-0 HoloOcean probes (sensor conventions, plant and current calibration, cameras)
-results/                 demonstrative runs (metrics, logs, figures, GIFs) + SUMMARY / ASSUMPTIONS
-figures/                 copies of the key figures
+results/                 demonstrative runs (verdicts, events, per-drone states, referee time series) + SUMMARY / ASSUMPTIONS
+figures/                 key figures and GIFs of every demonstrative run (versioned copies)
 ```
 
 ## 2. Drones and onboard sensors
@@ -100,10 +100,10 @@ formation recovery > mission following**. Guards use abstract observations compu
 
 | mode | flow (desired velocity) |
 |---|---|
-| FORMATION_FOLLOW / RECOVERY | slot tracking on the survey line: along-track **consensus** on perceived relative positions (`v = v_nom + k * mean residual`), lane keeping + relative lateral consensus, depth keeping |
-| SEPARATION_WARNING (d < 2.3 m) | **QP safety filter**: smallest change of the mission velocity that never closes on any threat and opens at >= 0.2 m/s; closing intent becomes a right-hand sidestep (antisymmetric, so drones meeting head-on pass port to port) |
+| FORMATION_FOLLOW / RECOVERY | slot tracking on the survey line (triangle: lanes at +/-2.5 m, centre slot 2.5 m behind; lane spacing > d_warning so re-ordering never needs to enter the warning band): along-track **consensus** on perceived relative positions (`v = v_nom + k * mean residual`), lane keeping + relative lateral consensus, depth keeping |
+| SEPARATION_WARNING (d < 2.3 m) | **QP safety filter**: smallest change of the mission velocity that never closes on any threat and opens at >= 0.2 m/s; closing intent becomes a sidestep: right-hand when head-on (antisymmetric, so drones meeting head-on pass port to port), otherwise on the side the mission already heads to |
 | COLLISION_AVOIDANCE (d < 1.6 m) | escape at 0.5 m/s along the bisector away from the threats, **plus a vertical component** when all threats are above (or all below): the 3D escape |
-| GATE_APPROACH / GATE_YIELD | go to / hold the queue point (side slots at +/-2.6 m lateral, centre slot 2.3 m back), retreat when the priority rule says so |
+| GATE_APPROACH / GATE_YIELD | go to / hold the queue point (side slots at +/-2.6 m lateral, centre slot 2.6 m back), retreat when the priority rule says so |
 | GATE_PASS | leave the queue line straight, merge onto the gate axis, traverse the critical region |
 | FAILSAFE | blind (sonar data older than 0.2 s): hold position and move to a pre-assigned depth layer; out of envelope: hold and return to the depth band |
 | every mode | **structure safety filter**: never close on gate bars nearer than 0.7 m (sonar returns matched to the arena map) |
@@ -114,8 +114,8 @@ Each drone evaluates every neighbour it perceives in the gate's approach corrido
 measurement** of the relative gate-frame position (along `s`, lateral `l`, vertical `z`), with the shared
 rule in `holo_fleet/ha/gate_rule.py`. The result is one of six exclusive classes:
 
-* `COMMIT`: closer to the gate (by more than 1.5 m), or along-tie and more to the left (by more than
-  2.3 m), or both ties and higher (by more than 0.6 m). Each level is decisive only beyond a margin
+* `COMMIT`: closer to the gate (by more than 1.7 m), or along-tie and more to the left (by more than
+  2.4 m), or both ties and higher (by more than 0.75 m). Each level is decisive only beyond a margin
   larger than twice the measurement error, and the next level is consulted only inside a strictly
   narrower tie band.
 * `WAIT_ROBUST`: the other drone wins even under worst-case errors.
@@ -147,7 +147,7 @@ The marine arena is imported from `~/Desktop/HoloDroneCompetition` (override wit
 ```bash
 conda activate holo_fleet_ha
 python formal/check_properties.py                       # all Z3 checks -> formal/results/SUMMARY.md
-python formal/check_properties.py --quick               # skip the slowest suite (P1, ~90 s)
+python formal/check_properties.py --quick               # skip the slowest suite (P1, ~5 min)
 python scripts/run_experiment.py --scenario pair_crossing
 python scripts/run_experiment.py --scenario formation_current --current medium --n-drones 3
 python scripts/run_experiment.py --scenario formation_current --current medium --no-jet
@@ -179,12 +179,33 @@ Add `--viewport` to `run_experiment.py` to watch the HoloOcean window.
 | `figures/` | trajectories, distances, occupancy, formation error, modes, depth, perception error, sensors, scene |
 | `chasecamera.gif`, `sidecamera.gif`, `RUN_REPORT.md` | visual checks and per-run report |
 
-Bulky per-step logs (`*_observations.jsonl`, `*_actions.jsonl`) and raw camera frames stay on disk and
-are not versioned (see `.gitignore`); `scripts/run_all.py` regenerates them.
+The repository versions the verdicts, events, run configs, per-drone states and referee time series of
+every run, plus the key figures and GIFs in `figures/`. Bulky per-run artifacts (`*_observations.jsonl`,
+`*_actions.jsonl`, raw camera frames, sensor dumps, per-run `figures/` and GIFs) stay on disk and are not
+versioned (see `.gitignore`); `scripts/run_all.py` regenerates them.
 
 ## 7. Results
 
-See [REPORT.md](REPORT.md) (metrics, figures, formal results, assumption validation) and
+Formal: **102 Z3 checks, all with the expected verdict** (UNSAT for the properties, SAT for the mutation
+tests): local determinism and priority 66/66, P1 9/9 (k-induction, unbounded), P2 17/17, P3 10/10
+(worst-case recovery 60 s). Details in [formal/results/SUMMARY.md](formal/results/SUMMARY.md).
+
+HoloOcean, ground-truth referee (seed 0, communication OFF unless stated):
+
+| run | P1 min distance [m] (d_safe 1.0) | P2 max CR occupancy | P3 recovery after perturbation [s] (T 75) | current envelope |
+|---|---|---|---|---|
+| `pair_crossing_s0` (2 drones head-on) | 2.11 | - | - | inside |
+| `formation_medium_s0` (0.25 m/s) | 3.51 | - | never lost | inside |
+| `formation_high_s0` (0.40 m/s) | 3.43 | - | never lost | inside |
+| `formation_medium_gust_s0` (+0.8 m/s gust) | 2.45 | - | 4.9 | exceeded on purpose (flagged) |
+| `gate_arena_s0` (gates G06, G07) | 2.39 | 1 | 4.9 | inside |
+| `stress_s0` (variable current, dropout, blackouts) | 2.41 | 1 | re-formed while still perturbed | inside |
+| `gate_arena_comms_s0` (optional comms ON) | 2.45 | 1 | 18.7 (same absolute recovery time as without comms) | inside |
+
+Collision-sensor contacts and determinism-monitor violations: 0 in every run. The formal assumptions,
+measured back on the logs, hold in every in-envelope run except the stress run, which exceeds the
+perception-error bound on purpose ([results/ASSUMPTIONS.md](results/ASSUMPTIONS.md)). The full
+discussion, figures, acceptance criteria and limits are in [REPORT.md](REPORT.md); per-run verdicts in
 [results/SUMMARY.md](results/SUMMARY.md).
 
 ## 8. What is proved, what is validated, what is not claimed

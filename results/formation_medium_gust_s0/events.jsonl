@@ -1,0 +1,24 @@
+{"t":0.0,"type":"sim_started","gate_spawn":{"physically_spawned":true,"spawned_bar_count":1488,"method":"runtime_spawn_prop_hybrid_micro_top_bottom","message":"Gate visuals spawned with HoloOcean env.spawn_prop('box', ...) using dense micro-blocks for top/bottom bars and uniform side pillars.","export_path":null},"wall_setup_s":30.2}
+{"t":0.0,"type":"released","drone":"drone_0"}
+{"t":0.0,"drone":"drone_0","type":"decision","decision":"FORMATION_LOST","edge":"formation_lost","from":"FORMATION_FOLLOW","to":"FORMATION_RECOVERY","gate":null,"gate_frame":null}
+{"t":0.0,"type":"released","drone":"drone_1"}
+{"t":0.0,"drone":"drone_1","type":"decision","decision":"FORMATION_LOST","edge":"formation_lost","from":"FORMATION_FOLLOW","to":"FORMATION_RECOVERY","gate":null,"gate_frame":null}
+{"t":0.0,"type":"released","drone":"drone_2"}
+{"t":1.99998,"drone":"drone_0","type":"decision","decision":"FORMATION_RECOVERED","edge":"formation_recovered","from":"FORMATION_RECOVERY","to":"FORMATION_FOLLOW","gate":null,"gate_frame":null}
+{"t":1.99998,"drone":"drone_1","type":"decision","decision":"FORMATION_RECOVERED","edge":"formation_recovered","from":"FORMATION_RECOVERY","to":"FORMATION_FOLLOW","gate":null,"gate_frame":null}
+{"t":40.599594,"drone":"drone_0","type":"decision","decision":"FORMATION_LOST","edge":"formation_lost","from":"FORMATION_FOLLOW","to":"FORMATION_RECOVERY","gate":null,"gate_frame":null}
+{"t":40.699593,"drone":"drone_2","type":"decision","decision":"FORMATION_LOST","edge":"formation_lost","from":"FORMATION_FOLLOW","to":"FORMATION_RECOVERY","gate":null,"gate_frame":null}
+{"t":40.799592,"drone":"drone_1","type":"decision","decision":"FORMATION_LOST","edge":"formation_lost","from":"FORMATION_FOLLOW","to":"FORMATION_RECOVERY","gate":null,"gate_frame":null}
+{"t":41.299587,"drone":"drone_1","type":"ENVELOPE_VIOLATION","tracking_error":0.726,"authority":"nominal"}
+{"t":41.399586,"drone":"drone_1","type":"mode_change","edge":"fault","from":"FORMATION_RECOVERY","to":"FAILSAFE_HOLD_OR_RETREAT"}
+{"t":41.899581,"drone":"drone_2","type":"mode_change","edge":"separation_warning","from":"FORMATION_RECOVERY","to":"SEPARATION_WARNING"}
+{"t":45.299547,"drone":"drone_1","type":"ENVELOPE_RESTORED","tracking_error":0.183,"authority":"escape"}
+{"t":45.399546,"drone":"drone_1","type":"mode_change","edge":"recover","from":"FAILSAFE_HOLD_OR_RETREAT","to":"FORMATION_RECOVERY"}
+{"t":47.099529,"drone":"drone_2","type":"mode_change","edge":"recover","from":"SEPARATION_WARNING","to":"FORMATION_RECOVERY"}
+{"t":55.199448,"drone":"drone_1","type":"decision","decision":"FORMATION_RECOVERED","edge":"formation_recovered","from":"FORMATION_RECOVERY","to":"FORMATION_FOLLOW","gate":null,"gate_frame":null}
+{"t":55.199448,"drone":"drone_2","type":"decision","decision":"FORMATION_RECOVERED","edge":"formation_recovered","from":"FORMATION_RECOVERY","to":"FORMATION_FOLLOW","gate":null,"gate_frame":null}
+{"t":55.599444,"drone":"drone_0","type":"decision","decision":"FORMATION_RECOVERED","edge":"formation_recovered","from":"FORMATION_RECOVERY","to":"FORMATION_FOLLOW","gate":null,"gate_frame":null}
+{"t":97.799022,"drone":"drone_0","type":"survey_line_complete"}
+{"t":98.299017,"drone":"drone_1","type":"survey_line_complete"}
+{"t":98.299017,"drone":"drone_2","type":"survey_line_complete"}
+{"t":106.498935,"type":"run_finished","status":"completed_early_stop"}

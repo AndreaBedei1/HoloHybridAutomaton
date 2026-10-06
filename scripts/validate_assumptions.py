@@ -82,33 +82,40 @@ def run_stats(run_dir: Path) -> dict:
                                                                    for k in range(rd.n) for o in rd.obs[k]
                                                                    if o["abstract"]["sense_ok"]], default=0.0)),
                     "tau_max": cfg["env"]["tau_max"]}
-    # hold tolerances at queue points (true positions, gate frame) while yielding
+    # A_hold exactly as used by lemma M3: during each transit window (a drone commits -> it becomes
+    # visible in the occupied zone), every OTHER drone that is queued (s <= s_queue + hold_tol_s region,
+    # inside the approach zone) keeps its lateral / vertical position within 2*hold_tol of its value at
+    # the commit time, and does not pass s_queue + hold_tol_s.
     _, mg = mission_gates(rd)
     gates = {g.gate_id: g for g in mg}
-    lat_dev, z_dev, s_over = [], [], []
-    for k in range(rd.n):
-        slot_lat = rd.config["drones"][k]["slot_offset"]["lateral"]
-        l_q = np.copysign(G["queue_lateral"], slot_lat) if abs(slot_lat) > 0.5 else 0.0
-        for s, o in zip(rd.states[k], rd.obs[k]):
-            if s["mode"] != "GATE_YIELD":
-                continue
-            gid = o["local"]["gate"]["gate_id"]
-            if gid not in gates:
-                continue
-            i = _truth_at(rd, s["t"])
-            sg, lg, zg = gates[gid].to_gate_frame(P[k, i])
-            if o["local"]["gate"]["backoff"] == "none":
-                lat_dev.append(abs(lg - l_q))
-                z_dev.append(abs(zg))
-            s_over.append(sg - G["s_queue"])
-    out["A_hold"] = {"n_samples": len(lat_dev),
-                     "lateral_dev_p99": float(np.percentile(lat_dev, 99)) if lat_dev else None,
-                     "lateral_dev_max": float(max(lat_dev)) if lat_dev else None,
-                     "vertical_dev_max": float(max(z_dev)) if z_dev else None,
-                     "s_beyond_queue_line_max": float(max(s_over)) if s_over else None,
-                     "hold_tol_lat": G["hold_tol_lat"], "hold_tol_z": G["hold_tol_z"], "hold_tol_s": G["hold_tol_s"]}
-    # monotone progress during transit windows (commit -> visible in the occupied zone)
     commits = [e for e in rd.events if e.get("type") == "decision" and e.get("decision") in ("PASS", "RETRY_PASS")]
+    lat_dev, z_dev, s_over = [], [], []
+    for e in commits:
+        k = int(e["drone"].split("_")[1])
+        g = gates.get(e.get("gate"))
+        if g is None:
+            continue
+        i0 = _truth_at(rd, e["t"])
+        ref = {m: g.to_gate_frame(P[m, i0]) for m in range(rd.n) if m != k}
+        sk0 = g.to_gate_frame(P[k, i0])[0]
+        # lemma M3 needs A_hold only for queued drones ALONG-TIED with the committing drone at t0
+        queued = [m for m, (s0, l0, z0) in ref.items()
+                  if G["s_queue"] - G["approach_len"] - 1.0 <= s0 <= G["s_queue"] + G["hold_tol_s"]
+                  and abs(s0 - sk0) <= G["mu_s_lo"] + cfg["env"]["eps_rel"]]
+        i = i0
+        while i < len(rd.ts["t"]) - 1 and g.to_gate_frame(P[k, i])[0] < G["s_queue"] + G["occ_gamma"] + cfg["env"]["eps_rel"]:
+            i += 1
+            for m in queued:
+                s1, l1, z1 = g.to_gate_frame(P[m, i])
+                lat_dev.append(abs(l1 - ref[m][1]))
+                z_dev.append(abs(z1 - ref[m][2]))
+                s_over.append(s1 - G["s_queue"])
+    out["A_hold"] = {"n_samples": len(lat_dev),
+                     "lateral_change_max": float(max(lat_dev)) if lat_dev else None,
+                     "vertical_change_max": float(max(z_dev)) if z_dev else None,
+                     "s_beyond_queue_line_max": float(max(s_over)) if s_over else None,
+                     "bound_lat": 2 * G["hold_tol_lat"], "bound_z": 2 * G["hold_tol_z"], "hold_tol_s": G["hold_tol_s"]}
+    # monotone progress during transit windows (commit -> visible in the occupied zone)
     worst = None
     for e in commits:
         k = int(e["drone"].split("_")[1])
@@ -168,12 +175,14 @@ def verdicts(s: dict) -> dict:
     # P1 needs the bound inside the warning band (hard: max); P2 inside the gate corridor (p99 reported)
     b1 = e.get("band_le_2.8m")
     v["A_eps"] = b1 is None or max(b1["max_abs_xyz"]) <= env.eps_rel
-    cov = [x for k, x in e.items() if k.startswith("coverage")]
-    v["A_cov"] = bool(cov and cov[0] is not None and cov[0] >= 0.99)
+    # detection is required by P1 inside the warning band (hard) and by P2 in the gate corridor
+    c1 = e.get("coverage_le_2.8m")
+    v["A_cov"] = c1 is None or c1 >= 0.999
     v["A_sym"] = s["A_sym"]["fraction_symmetric"] is None or s["A_sym"]["fraction_symmetric"] >= 0.98
     v["A_tau"] = s["A_tau"]["prox_sonar_age_max_when_sense_ok"] <= env.tau_max + 1e-6
     h = s["A_hold"]
-    v["A_hold"] = h["n_samples"] == 0 or (h["lateral_dev_max"] <= G.hold_tol_lat and h["vertical_dev_max"] <= G.hold_tol_z
+    v["A_hold"] = h["n_samples"] == 0 or (h["lateral_change_max"] <= 2 * G.hold_tol_lat
+                                          and h["vertical_change_max"] <= 2 * G.hold_tol_z
                                           and h["s_beyond_queue_line_max"] <= G.hold_tol_s)
     m = s["A_mono"]
     v["A_mono"] = m["worst_margin"] is None or m["worst_margin"] >= -G.mono_tol
@@ -196,25 +205,31 @@ def main(argv=None) -> int:
     lines = ["# Empirical validation of the formal assumptions", "",
              "Measured offline on the HoloOcean runs (ground truth vs onboard logs). 'VIOLATED' means the run left "
              "the assumption set, so the formal guarantee does not cover that run (its referee verdict is still empirical evidence).", "",
-             "| run | A_eps max abs err xyz, d <= 2.8 m (P1) | p99 abs err xyz, 2.8-8 m (P2 corridor) | A_cov | A_sym | A_tau max (s) | A_hold (lat/z/s max, m) | A_mono worst (m) | A_cmax (m/s) |",
+             "| run | A_eps: max abs err xyz, d <= 2.8 m (P1) | p99 abs err xyz, 2.8-8 m | A_cov: detection d <= 2.8 m / 2.8-8 m | A_sym | A_tau max [s] | A_hold: max lateral / vertical change of along-tied queued drones in transit windows, max s past queue line [m] | A_mono worst margin [m] | A_cmax [m/s] |",
              "|---|---|---|---|---|---|---|---|---|"]
+    r3 = lambda x: "-" if x is None else (f"{x:.2f}" if isinstance(x, float) else str(x))  # noqa: E731
     for s in allres:
         e, h, vv = s["A_eps"], s["A_hold"], s["verdicts"]
-        cov = [x for k, x in e.items() if k.startswith("coverage")][0]
-        cov_s = f"{cov * 100:.1f}%" if cov is not None else "n/a"
+        c1, c2 = e.get("coverage_le_2.8m"), e.get("coverage_2.8_to_8m")
+        cov_s = f"{'-' if c1 is None else f'{c1 * 100:.1f}%'} / {'-' if c2 is None else f'{c2 * 100:.1f}%'}"
         f = lambda ok: "" if ok else " **(!)**"  # noqa: E731
         b1 = e.get("band_le_2.8m", {}).get("max_abs_xyz", "-")
         b2 = e.get("band_2.8_to_8m", {}).get("p99_abs_xyz", "-")
         lines.append(
             f"| {s['run']} | {b1}{f(vv['A_eps'])} | {b2} | {cov_s}{f(vv['A_cov'])} | "
             f"{(s['A_sym']['fraction_symmetric'] or 1.0) * 100:.1f}%{f(vv['A_sym'])} | {s['A_tau']['prox_sonar_age_max_when_sense_ok']:.2f}{f(vv['A_tau'])} | "
-            f"{h['lateral_dev_max'] if h['lateral_dev_max'] is not None else '-'} / {h['vertical_dev_max'] if h['vertical_dev_max'] is not None else '-'} / "
-            f"{h['s_beyond_queue_line_max'] if h['s_beyond_queue_line_max'] is not None else '-'}{f(vv['A_hold'])} | "
-            f"{s['A_mono']['worst_margin'] if s['A_mono']['worst_margin'] is not None else '-'}{f(vv['A_mono'])} | "
+            + ("not invoked (no along-tied queued drone at any commit)" if h["n_samples"] == 0 and s["A_mono"]["n_commits"]
+               else "-" if h["n_samples"] == 0 else
+               f"{r3(h['lateral_change_max'])} / {r3(h['vertical_change_max'])} / {r3(h['s_beyond_queue_line_max'])}{f(vv['A_hold'])}")
+            + " | "
+            f"{r3(s['A_mono']['worst_margin'])}{f(vv['A_mono'])} | "
             f"{s['A_cmax']['max_true_closing_speed']}{f(vv['A_cmax'])} |")
     lines += ["", f"Formal parameters: eps_rel={DEFAULT.env.eps_rel} m, tau_max={DEFAULT.env.tau_max} s, "
-                  f"hold_tol lat/z/s = {DEFAULT.gate.hold_tol_lat}/{DEFAULT.gate.hold_tol_z}/{DEFAULT.gate.hold_tol_s} m, "
-                  f"mono_tol={DEFAULT.gate.mono_tol} m, c_max={DEFAULT.env.c_max} m/s."]
+                  f"hold bounds lat/z = {2 * DEFAULT.gate.hold_tol_lat:.2f}/{2 * DEFAULT.gate.hold_tol_z:.2f} m (2 x hold_tol), "
+                  f"hold_tol_s = {DEFAULT.gate.hold_tol_s} m, mono_tol={DEFAULT.gate.mono_tol} m, c_max={DEFAULT.env.c_max} m/s.",
+              "Errors are measured against the truth at the acquisition time of the sonar data (data age is checked "
+              "separately as A_tau, as in the P1 model).  Detection coverage is a hard requirement inside the warning "
+              "band; at 2.8-8 m it is reported for the gate corridor."]
     (ROOT / "results" / "ASSUMPTIONS.md").write_text("\n".join(lines) + "\n")
     print("-> results/ASSUMPTIONS.md")
     return 0

@@ -9,7 +9,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 14.524,
+      "seconds": 14.296,
       "counterexample": null,
       "note": ""
     },
@@ -20,7 +20,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 0.012,
+      "seconds": 0.01,
       "counterexample": null,
       "note": " min verified d_warning ~ 2.215 m"
     },
@@ -31,7 +31,7 @@
       "expect": "sat",
       "verdict": "sat",
       "passed": true,
-      "seconds": 0.116,
+      "seconds": 0.117,
       "counterexample": {
         "c_0": 1.05,
         "c_1": 1.05,
@@ -405,7 +405,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 14.062,
+      "seconds": 14.056,
       "counterexample": null,
       "note": ""
     },
@@ -416,7 +416,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 0.769,
+      "seconds": 0.803,
       "counterexample": null,
       "note": ""
     },
@@ -427,7 +427,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 1.453,
+      "seconds": 1.463,
       "counterexample": null,
       "note": ""
     },
@@ -438,7 +438,7 @@
       "expect": "sat",
       "verdict": "sat",
       "passed": true,
-      "seconds": 0.004,
+      "seconds": 0.003,
       "counterexample": {
         "alpha": 1.0,
         "beta": 0.0,
@@ -457,7 +457,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 50.232,
+      "seconds": 50.246,
       "counterexample": null,
       "note": ""
     },
@@ -468,7 +468,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 0.007,
+      "seconds": 0.006,
       "counterexample": null,
       "note": "d_blackout = 2.08 m (blackouts closer than this are covered empirically only)"
     }

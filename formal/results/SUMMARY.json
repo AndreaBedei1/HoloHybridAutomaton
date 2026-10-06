@@ -1,5 +1,5 @@
 {
-  "started": "2026-10-06 14:17:25",
+  "started": "2026-10-06 17:02:34",
   "suites": [
     {
       "title": "Local determinism & priority hierarchy",
@@ -23,7 +23,7 @@
           "expect": "unsat",
           "verdict": "unsat",
           "passed": true,
-          "seconds": 0.0,
+          "seconds": 0.001,
           "note": "",
           "counterexample": null
         },
@@ -33,7 +33,7 @@
           "expect": "unsat",
           "verdict": "unsat",
           "passed": true,
-          "seconds": 0.001,
+          "seconds": 0.002,
           "note": "",
           "counterexample": null
         },
@@ -63,7 +63,7 @@
           "expect": "unsat",
           "verdict": "unsat",
           "passed": true,
-          "seconds": 0.0,
+          "seconds": 0.002,
           "note": "",
           "counterexample": null
         },
@@ -73,7 +73,7 @@
           "expect": "unsat",
           "verdict": "unsat",
           "passed": true,
-          "seconds": 0.001,
+          "seconds": 0.0,
           "note": "",
           "counterexample": null
         },
@@ -83,7 +83,7 @@
           "expect": "unsat",
           "verdict": "unsat",
           "passed": true,
-          "seconds": 0.001,
+          "seconds": 0.0,
           "note": "",
           "counterexample": null
         },
@@ -93,7 +93,7 @@
           "expect": "unsat",
           "verdict": "unsat",
           "passed": true,
-          "seconds": 0.001,
+          "seconds": 0.002,
           "note": "",
           "counterexample": null
         },
@@ -103,7 +103,7 @@
           "expect": "unsat",
           "verdict": "unsat",
           "passed": true,
-          "seconds": 0.001,
+          "seconds": 0.0,
           "note": "",
           "counterexample": null
         },
@@ -123,7 +123,7 @@
           "expect": "unsat",
           "verdict": "unsat",
           "passed": true,
-          "seconds": 0.001,
+          "seconds": 0.0,
           "note": "",
           "counterexample": null
         },
@@ -143,7 +143,7 @@
           "expect": "unsat",
           "verdict": "unsat",
           "passed": true,
-          "seconds": 0.001,
+          "seconds": 0.0,
           "note": "",
           "counterexample": null
         },
@@ -163,7 +163,7 @@
           "expect": "unsat",
           "verdict": "unsat",
           "passed": true,
-          "seconds": 0.001,
+          "seconds": 0.0,
           "note": "",
           "counterexample": null
         },
@@ -183,7 +183,7 @@
           "expect": "unsat",
           "verdict": "unsat",
           "passed": true,
-          "seconds": 0.0,
+          "seconds": 0.001,
           "note": "",
           "counterexample": null
         },
@@ -193,7 +193,7 @@
           "expect": "unsat",
           "verdict": "unsat",
           "passed": true,
-          "seconds": 0.001,
+          "seconds": 0.0,
           "note": "",
           "counterexample": null
         },
@@ -203,7 +203,7 @@
           "expect": "unsat",
           "verdict": "unsat",
           "passed": true,
-          "seconds": 0.0,
+          "seconds": 0.001,
           "note": "",
           "counterexample": null
         },
@@ -223,7 +223,7 @@
           "expect": "unsat",
           "verdict": "unsat",
           "passed": true,
-          "seconds": 0.0,
+          "seconds": 0.001,
           "note": "",
           "counterexample": null
         },
@@ -233,7 +233,7 @@
           "expect": "unsat",
           "verdict": "unsat",
           "passed": true,
-          "seconds": 0.0,
+          "seconds": 0.001,
           "note": "",
           "counterexample": null
         },
@@ -243,7 +243,7 @@
           "expect": "unsat",
           "verdict": "unsat",
           "passed": true,
-          "seconds": 0.002,
+          "seconds": 0.001,
           "note": "",
           "counterexample": null
         },
@@ -253,7 +253,7 @@
           "expect": "unsat",
           "verdict": "unsat",
           "passed": true,
-          "seconds": 0.0,
+          "seconds": 0.002,
           "note": "",
           "counterexample": null
         },
@@ -263,7 +263,7 @@
           "expect": "unsat",
           "verdict": "unsat",
           "passed": true,
-          "seconds": 0.001,
+          "seconds": 0.002,
           "note": "",
           "counterexample": null
         },
@@ -293,7 +293,7 @@
           "expect": "unsat",
           "verdict": "unsat",
           "passed": true,
-          "seconds": 0.0,
+          "seconds": 0.002,
           "note": "",
           "counterexample": null
         },
@@ -333,7 +333,7 @@
           "expect": "unsat",
           "verdict": "unsat",
           "passed": true,
-          "seconds": 0.002,
+          "seconds": 0.001,
           "note": "",
           "counterexample": null
         },
@@ -343,7 +343,7 @@
           "expect": "unsat",
           "verdict": "unsat",
           "passed": true,
-          "seconds": 0.0,
+          "seconds": 0.002,
           "note": "",
           "counterexample": null
         },
@@ -353,7 +353,7 @@
           "expect": "unsat",
           "verdict": "unsat",
           "passed": true,
-          "seconds": 0.0,
+          "seconds": 0.001,
           "note": "",
           "counterexample": null
         },
@@ -363,7 +363,7 @@
           "expect": "unsat",
           "verdict": "unsat",
           "passed": true,
-          "seconds": 0.002,
+          "seconds": 0.0,
           "note": "",
           "counterexample": null
         },
@@ -373,7 +373,7 @@
           "expect": "unsat",
           "verdict": "unsat",
           "passed": true,
-          "seconds": 0.0,
+          "seconds": 0.001,
           "note": "",
           "counterexample": null
         },
@@ -393,7 +393,7 @@
           "expect": "unsat",
           "verdict": "unsat",
           "passed": true,
-          "seconds": 0.002,
+          "seconds": 0.0,
           "note": "",
           "counterexample": null
         },
@@ -413,7 +413,7 @@
           "expect": "unsat",
           "verdict": "unsat",
           "passed": true,
-          "seconds": 0.002,
+          "seconds": 0.001,
           "note": "",
           "counterexample": null
         },
@@ -423,7 +423,7 @@
           "expect": "unsat",
           "verdict": "unsat",
           "passed": true,
-          "seconds": 0.002,
+          "seconds": 0.001,
           "note": "",
           "counterexample": null
         },
@@ -453,7 +453,7 @@
           "expect": "unsat",
           "verdict": "unsat",
           "passed": true,
-          "seconds": 0.0,
+          "seconds": 0.002,
           "note": "",
           "counterexample": null
         },
@@ -463,7 +463,7 @@
           "expect": "unsat",
           "verdict": "unsat",
           "passed": true,
-          "seconds": 0.002,
+          "seconds": 0.0,
           "note": "",
           "counterexample": null
         },
@@ -503,7 +503,7 @@
           "expect": "unsat",
           "verdict": "unsat",
           "passed": true,
-          "seconds": 0.002,
+          "seconds": 0.001,
           "note": "",
           "counterexample": null
         },
@@ -513,7 +513,7 @@
           "expect": "unsat",
           "verdict": "unsat",
           "passed": true,
-          "seconds": 0.002,
+          "seconds": 0.001,
           "note": "",
           "counterexample": null
         },
@@ -523,7 +523,7 @@
           "expect": "unsat",
           "verdict": "unsat",
           "passed": true,
-          "seconds": 0.002,
+          "seconds": 0.0,
           "note": "",
           "counterexample": null
         },
@@ -533,7 +533,7 @@
           "expect": "unsat",
           "verdict": "unsat",
           "passed": true,
-          "seconds": 0.002,
+          "seconds": 0.001,
           "note": "",
           "counterexample": null
         },
@@ -553,7 +553,7 @@
           "expect": "unsat",
           "verdict": "unsat",
           "passed": true,
-          "seconds": 0.001,
+          "seconds": 0.0,
           "note": "",
           "counterexample": null
         },
@@ -563,7 +563,7 @@
           "expect": "unsat",
           "verdict": "unsat",
           "passed": true,
-          "seconds": 0.001,
+          "seconds": 0.0,
           "note": "",
           "counterexample": null
         },
@@ -583,7 +583,7 @@
           "expect": "unsat",
           "verdict": "unsat",
           "passed": true,
-          "seconds": 0.0,
+          "seconds": 0.001,
           "note": "",
           "counterexample": null
         },
@@ -603,7 +603,7 @@
           "expect": "unsat",
           "verdict": "unsat",
           "passed": true,
-          "seconds": 0.0,
+          "seconds": 0.001,
           "note": "",
           "counterexample": null
         },
@@ -613,7 +613,7 @@
           "expect": "unsat",
           "verdict": "unsat",
           "passed": true,
-          "seconds": 0.002,
+          "seconds": 0.0,
           "note": "",
           "counterexample": null
         },
@@ -623,7 +623,7 @@
           "expect": "unsat",
           "verdict": "unsat",
           "passed": true,
-          "seconds": 0.0,
+          "seconds": 0.001,
           "note": "",
           "counterexample": null
         },
@@ -633,7 +633,7 @@
           "expect": "unsat",
           "verdict": "unsat",
           "passed": true,
-          "seconds": 0.0,
+          "seconds": 0.001,
           "note": "",
           "counterexample": null
         },
@@ -643,7 +643,7 @@
           "expect": "unsat",
           "verdict": "unsat",
           "passed": true,
-          "seconds": 0.0,
+          "seconds": 0.001,
           "note": "",
           "counterexample": null
         },
@@ -675,7 +675,7 @@
           "expect": "sat",
           "verdict": "sat",
           "passed": true,
-          "seconds": 0.0,
+          "seconds": 0.001,
           "note": "",
           "counterexample": {
             "at_queue": false,
@@ -694,7 +694,7 @@
     {
       "title": "P1 inter-vehicle separation",
       "encoding": "formal/check_separation.py",
-      "seconds": 288.8,
+      "seconds": 288.1,
       "all_passed": true,
       "checks": [
         {
@@ -703,7 +703,7 @@
           "expect": "unsat",
           "verdict": "unsat",
           "passed": true,
-          "seconds": 14.524,
+          "seconds": 14.296,
           "note": "",
           "counterexample": null
         },
@@ -713,7 +713,7 @@
           "expect": "unsat",
           "verdict": "unsat",
           "passed": true,
-          "seconds": 0.012,
+          "seconds": 0.01,
           "note": " min verified d_warning ~ 2.215 m",
           "counterexample": null
         },
@@ -723,7 +723,7 @@
           "expect": "sat",
           "verdict": "sat",
           "passed": true,
-          "seconds": 0.116,
+          "seconds": 0.117,
           "note": "",
           "counterexample": {
             "c_0": 1.05,
@@ -1096,7 +1096,7 @@
           "expect": "unsat",
           "verdict": "unsat",
           "passed": true,
-          "seconds": 14.062,
+          "seconds": 14.056,
           "note": "",
           "counterexample": null
         },
@@ -1106,7 +1106,7 @@
           "expect": "unsat",
           "verdict": "unsat",
           "passed": true,
-          "seconds": 0.769,
+          "seconds": 0.803,
           "note": "",
           "counterexample": null
         },
@@ -1116,7 +1116,7 @@
           "expect": "unsat",
           "verdict": "unsat",
           "passed": true,
-          "seconds": 1.453,
+          "seconds": 1.463,
           "note": "",
           "counterexample": null
         },
@@ -1126,7 +1126,7 @@
           "expect": "sat",
           "verdict": "sat",
           "passed": true,
-          "seconds": 0.004,
+          "seconds": 0.003,
           "note": "vertical weight 1.5 without the 'away from every threat' condition",
           "counterexample": {
             "alpha": 1.0,
@@ -1144,7 +1144,7 @@
           "expect": "unsat",
           "verdict": "unsat",
           "passed": true,
-          "seconds": 50.232,
+          "seconds": 50.246,
           "note": "",
           "counterexample": null
         },
@@ -1154,7 +1154,7 @@
           "expect": "unsat",
           "verdict": "unsat",
           "passed": true,
-          "seconds": 0.007,
+          "seconds": 0.006,
           "note": "d_blackout = 2.08 m (blackouts closer than this are covered empirically only)",
           "counterexample": null
         }
@@ -1172,7 +1172,7 @@
           "expect": "unsat",
           "verdict": "unsat",
           "passed": true,
-          "seconds": 0.002,
+          "seconds": 0.0,
           "note": "",
           "counterexample": null
         },
@@ -1182,7 +1182,7 @@
           "expect": "unsat",
           "verdict": "unsat",
           "passed": true,
-          "seconds": 0.0,
+          "seconds": 0.001,
           "note": "",
           "counterexample": null
         },
@@ -1192,7 +1192,7 @@
           "expect": "unsat",
           "verdict": "unsat",
           "passed": true,
-          "seconds": 0.002,
+          "seconds": 0.001,
           "note": "",
           "counterexample": null
         },
@@ -1202,7 +1202,7 @@
           "expect": "unsat",
           "verdict": "unsat",
           "passed": true,
-          "seconds": 0.002,
+          "seconds": 0.0,
           "note": "",
           "counterexample": null
         },
@@ -1212,7 +1212,7 @@
           "expect": "unsat",
           "verdict": "unsat",
           "passed": true,
-          "seconds": 0.002,
+          "seconds": 0.0,
           "note": "",
           "counterexample": null
         },
@@ -1222,13 +1222,13 @@
           "expect": "unsat",
           "verdict": "unsat",
           "passed": true,
-          "seconds": 0.002,
+          "seconds": 0.0,
           "note": "",
           "counterexample": null
         },
         {
           "prop": "M3 priority persistence during the transit window",
-          "formula": "COMMIT_j(t0) & A_hold & A_mono -> not COMMIT_i(t)",
+          "formula": "COMMIT_j(t0) & A_mono & (along-tied at t0 -> A_hold) -> not COMMIT_i(t)",
           "expect": "unsat",
           "verdict": "unsat",
           "passed": true,
@@ -1302,7 +1302,7 @@
           "expect": "unsat",
           "verdict": "unsat",
           "passed": true,
-          "seconds": 0.0,
+          "seconds": 0.002,
           "note": "",
           "counterexample": null
         },
@@ -1316,23 +1316,23 @@
           "note": "",
           "counterexample": {
             "e0l": 0.35,
-            "e0s": 0.35,
-            "e0z": 0.0,
+            "e0s": 0.3,
+            "e0z": 0.35,
             "e1l": 0.35,
             "e1s": 0.35,
             "e1z": 0.35,
-            "li0": 0.1,
-            "li1": 0.0,
-            "lj0": 1.35,
-            "lj1": 0.75,
+            "li0": -2.125,
+            "li1": -2.8,
+            "lj0": 0.0,
+            "lj1": -2.85,
             "si0": -3.7,
             "si1": -3.7,
-            "sj0": -2.55,
-            "sj1": -2.7,
-            "zi0": 0.6,
-            "zi1": 0.5,
-            "zj0": 0.1,
-            "zj1": 0.0
+            "sj0": -2.525,
+            "sj1": -2.675,
+            "zi0": 0.0,
+            "zi1": -0.375,
+            "zj0": 0.475,
+            "zj1": -0.85
           }
         },
         {
@@ -1344,15 +1344,15 @@
           "seconds": 0.002,
           "note": "",
           "counterexample": {
-            "dl_mm": 0.125,
-            "ds_mm": -0.125,
-            "dz_mm": 0.475,
-            "eil_mm": -0.2,
-            "eis_mm": 0.05,
+            "dl_mm": -0.075,
+            "ds_mm": 0.075,
+            "dz_mm": -0.425,
+            "eil_mm": -0.35,
+            "eis_mm": 0.35,
             "eiz_mm": 0.35,
-            "ejl_mm": -0.35,
-            "ejs_mm": 0.35,
-            "ejz_mm": 0.0
+            "ejl_mm": -0.1,
+            "ejs_mm": 0.275,
+            "ejz_mm": 0.35
           }
         },
         {
@@ -1361,7 +1361,7 @@
           "expect": "sat",
           "verdict": "sat",
           "passed": true,
-          "seconds": 0.002,
+          "seconds": 0.0,
           "note": "",
           "counterexample": {
             "dl_mm": 0.2,
@@ -1380,7 +1380,7 @@
     {
       "title": "P3 bounded formation recovery",
       "encoding": "formal/check_formation.py",
-      "seconds": 6.1,
+      "seconds": 6.3,
       "all_passed": true,
       "checks": [
         {
@@ -1399,7 +1399,7 @@
           "expect": "unsat",
           "verdict": "unsat",
           "passed": true,
-          "seconds": 0.008,
+          "seconds": 0.012,
           "note": "",
           "counterexample": null
         },
@@ -1409,7 +1409,7 @@
           "expect": "unsat",
           "verdict": "unsat",
           "passed": true,
-          "seconds": 0.005,
+          "seconds": 0.007,
           "note": "",
           "counterexample": null
         },
@@ -1419,7 +1419,7 @@
           "expect": "unsat",
           "verdict": "unsat",
           "passed": true,
-          "seconds": 0.006,
+          "seconds": 0.005,
           "note": "",
           "counterexample": null
         },
@@ -1449,7 +1449,7 @@
           "expect": "unsat",
           "verdict": "unsat",
           "passed": true,
-          "seconds": 2.2,
+          "seconds": 2.3,
           "note": "[1.60,2.00] delta=160.0 mm/step -> 1.5s; [1.28,1.60] delta=160.0 mm/step -> 1.5s; [1.02,1.28] delta=160.0 mm/step -> 1.0s; [0.82,1.02] delta=146.0 mm/step -> 1.0s; [0.74,0.82] delta=126.0 mm/step -> 0.5s; [0.66,0.74] delta=106.0 mm/step -> 0.5s; [0.58,0.66] delta=86.0 mm/step -> 0.5s; [0.50,0.58] delta=66.0 mm/step -> 1.0s; [0.42,0.50] delta=46.0 mm/step -> 1.0s; [0.34,0.42] delta=26.0 mm/step -> 2.0s; [0.28,0.34] delta=10.0 mm/step -> 3.5s | total 14.0s",
           "counterexample": null
         },
@@ -1486,15 +1486,15 @@
             "eta0": 0.0,
             "eta1": 0.0,
             "eta2": 0.0,
-            "om0": 0.03,
-            "om1": -0.03,
-            "om2": 0.03,
-            "x0": 4.4,
-            "x0n": 4.565,
-            "x1": -4.4,
-            "x1n": -4.265,
+            "om0": -0.03,
+            "om1": 0.03,
+            "om2": -0.03,
+            "x0": -4.4,
+            "x0n": -4.265,
+            "x1": 4.4,
+            "x1n": 4.565,
             "x2": 0.0,
-            "x2n": 0.165
+            "x2n": 0.135
           }
         }
       ]

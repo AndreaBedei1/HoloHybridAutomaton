@@ -1,0 +1,11 @@
+# Demonstrative runs - referee verdicts (ground truth)
+
+| experiment | run | P1 holds (min d) | P2 holds (max occ) | P3 holds (max recovery after perturbation) | inside envelope (max drift) | determinism violations |
+|---|---|---|---|---|---|---|
+| Exp 0 - two drones head-on (separation sanity check) | `pair_crossing_s0` | True (2.1111 m) | n/a | n/a | True (0.0 m/s) | 0 |
+| Exp 1a - formation under lateral current 0.25 m/s (inside envelope) | `formation_medium_s0` | True (3.5131 m) | n/a | True (- s) | True (0.25 m/s) | 0 |
+| Exp 1b - formation under lateral current 0.40 m/s (inside envelope) | `formation_high_s0` | True (3.4258 m) | n/a | True (- s) | True (0.4 m/s) | 0 |
+| Exp 1c - medium current + 0.8 m/s gust (beyond nominal authority): disturbance and recovery | `formation_medium_gust_s0` | True (2.4479 m) | n/a | True (4.899950999999994 s) | False (1.026 m/s) | 0 |
+| Exp 2 - gate mutual exclusion in the marine arena | `gate_arena_s0` | True (2.391 m) | True (1) | True (4.899951000000016 s) | True (0.1 m/s) | 0 |
+| Exp 3 - no-communication stress test | `stress_s0` | True (2.4084 m) | True (1) | True (- s) | True (0.488 m/s) | 0 |
+| Exp 4 - optional intermittent communication (comparison) | `gate_arena_comms_s0` | True (2.4534 m) | True (1) | True (18.699813000000006 s) | True (0.1 m/s) | 0 |

@@ -1,0 +1,18 @@
+{"t":0.0,"type":"sim_started","gate_spawn":{"physically_spawned":true,"spawned_bar_count":1488,"method":"runtime_spawn_prop_hybrid_micro_top_bottom","message":"Gate visuals spawned with HoloOcean env.spawn_prop('box', ...) using dense micro-blocks for top/bottom bars and uniform side pillars.","export_path":null},"wall_setup_s":22.9}
+{"t":0.0,"type":"released","drone":"drone_0"}
+{"t":0.0,"type":"released","drone":"drone_1"}
+{"t":29.099709,"drone":"drone_0","type":"mode_change","edge":"separation_warning","from":"FORMATION_FOLLOW","to":"SEPARATION_WARNING"}
+{"t":29.099709,"drone":"drone_1","type":"mode_change","edge":"separation_warning","from":"FORMATION_FOLLOW","to":"SEPARATION_WARNING"}
+{"t":30.599694,"drone":"drone_1","type":"decision","decision":"RESUME_FOLLOW","edge":"formation_recovered","from":"SEPARATION_WARNING","to":"FORMATION_FOLLOW","gate":null,"gate_frame":null}
+{"t":30.99969,"drone":"drone_0","type":"decision","decision":"RESUME_FOLLOW","edge":"formation_recovered","from":"SEPARATION_WARNING","to":"FORMATION_FOLLOW","gate":null,"gate_frame":null}
+{"t":31.599684,"drone":"drone_0","type":"mode_change","edge":"separation_warning","from":"FORMATION_FOLLOW","to":"SEPARATION_WARNING"}
+{"t":31.699683,"drone":"drone_1","type":"mode_change","edge":"separation_warning","from":"FORMATION_FOLLOW","to":"SEPARATION_WARNING"}
+{"t":33.199668,"drone":"drone_1","type":"decision","decision":"RESUME_FOLLOW","edge":"formation_recovered","from":"SEPARATION_WARNING","to":"FORMATION_FOLLOW","gate":null,"gate_frame":null}
+{"t":33.299667,"drone":"drone_0","type":"decision","decision":"RESUME_FOLLOW","edge":"formation_recovered","from":"SEPARATION_WARNING","to":"FORMATION_FOLLOW","gate":null,"gate_frame":null}
+{"t":34.099659,"drone":"drone_0","type":"mode_change","edge":"separation_warning","from":"FORMATION_FOLLOW","to":"SEPARATION_WARNING"}
+{"t":34.199658,"drone":"drone_1","type":"mode_change","edge":"separation_warning","from":"FORMATION_FOLLOW","to":"SEPARATION_WARNING"}
+{"t":35.899641,"drone":"drone_1","type":"decision","decision":"RESUME_FOLLOW","edge":"formation_recovered","from":"SEPARATION_WARNING","to":"FORMATION_FOLLOW","gate":null,"gate_frame":null}
+{"t":35.99964,"drone":"drone_0","type":"decision","decision":"RESUME_FOLLOW","edge":"formation_recovered","from":"SEPARATION_WARNING","to":"FORMATION_FOLLOW","gate":null,"gate_frame":null}
+{"t":67.399326,"drone":"drone_1","type":"survey_line_complete"}
+{"t":67.599324,"drone":"drone_0","type":"survey_line_complete"}
+{"t":75.799242,"type":"run_finished","status":"completed_early_stop"}

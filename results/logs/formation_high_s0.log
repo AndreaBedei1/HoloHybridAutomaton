@@ -1,4 +1,0 @@
-2026-10-06 13:45:01,001 INFO holo_fleet.sim.holo_env: HoloOcean ready in 26.3s
-2026-10-06 13:45:45,465 INFO holo_fleet.runner: t=10.0 wall=71s modes=['FORMATION_FOLLOW', 'FORMATION_FOLLOW', 'FORMATION_FOLLOW']
-2026-10-06 13:46:27,440 INFO holo_fleet.runner: t=20.0 wall=113s modes=['FORMATION_FOLLOW', 'FORMATION_FOLLOW', 'FORMATION_FOLLOW']
-2026-10-06 13:47:09,833 INFO holo_fleet.runner: t=30.0 wall=156s modes=['FORMATION_FOLLOW', 'FORMATION_FOLLOW', 'FORMATION_FOLLOW']

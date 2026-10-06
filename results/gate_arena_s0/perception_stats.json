@@ -1,0 +1,53 @@
+{
+  "n_samples": 11917,
+  "eps_rel": 0.35,
+  "coverage_within_8m": 0.9814979541006938,
+  "abs_err_p95_xyz": [
+    0.269,
+    0.256,
+    0.093
+  ],
+  "abs_err_p99_xyz": [
+    0.406,
+    0.397,
+    0.117
+  ],
+  "abs_err_max_xyz": [
+    0.96,
+    0.999,
+    0.226
+  ],
+  "frac_component_err_le_eps": 0.9678610388520601,
+  "dist_err_mean": -0.05065935955034025,
+  "dist_err_p99_abs": 0.33810570601383133,
+  "staleness_p99": 1.2,
+  "staleness_max": 2.0,
+  "band_le_2.8m": {
+    "n": 564,
+    "max_abs_xyz": [
+      0.309,
+      0.254,
+      0.085
+    ],
+    "p99_abs_xyz": [
+      0.251,
+      0.241,
+      0.039
+    ],
+    "share_within_eps": 1.0
+  },
+  "band_2.8_to_8m": {
+    "n": 10485,
+    "max_abs_xyz": [
+      0.602,
+      0.999,
+      0.206
+    ],
+    "p99_abs_xyz": [
+      0.373,
+      0.356,
+      0.109
+    ],
+    "share_within_eps": 0.9769194086790653
+  }
+}

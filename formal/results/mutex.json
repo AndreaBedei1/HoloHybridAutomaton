@@ -9,7 +9,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 0.002,
+      "seconds": 0.0,
       "counterexample": null,
       "note": ""
     },
@@ -20,7 +20,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 0.0,
+      "seconds": 0.001,
       "counterexample": null,
       "note": ""
     },
@@ -31,7 +31,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 0.002,
+      "seconds": 0.001,
       "counterexample": null,
       "note": ""
     },
@@ -42,7 +42,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 0.002,
+      "seconds": 0.0,
       "counterexample": null,
       "note": ""
     },
@@ -53,7 +53,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 0.002,
+      "seconds": 0.0,
       "counterexample": null,
       "note": ""
     },
@@ -64,13 +64,13 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 0.002,
+      "seconds": 0.0,
       "counterexample": null,
       "note": ""
     },
     {
       "prop": "M3 priority persistence during the transit window",
-      "formula": "COMMIT_j(t0) & A_hold & A_mono -> not COMMIT_i(t)",
+      "formula": "COMMIT_j(t0) & A_mono & (along-tied at t0 -> A_hold) -> not COMMIT_i(t)",
       "encoding": "holo_fleet/ha/gate_rule.py (shared rule) + formal/check_mutex.py",
       "expect": "unsat",
       "verdict": "unsat",
@@ -152,7 +152,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 0.0,
+      "seconds": 0.002,
       "counterexample": null,
       "note": ""
     },
@@ -166,23 +166,23 @@
       "seconds": 0.002,
       "counterexample": {
         "e0l": 0.35,
-        "e0s": 0.35,
-        "e0z": 0.0,
+        "e0s": 0.3,
+        "e0z": 0.35,
         "e1l": 0.35,
         "e1s": 0.35,
         "e1z": 0.35,
-        "li0": 0.1,
-        "li1": 0.0,
-        "lj0": 1.35,
-        "lj1": 0.75,
+        "li0": -2.125,
+        "li1": -2.8,
+        "lj0": 0.0,
+        "lj1": -2.85,
         "si0": -3.7,
         "si1": -3.7,
-        "sj0": -2.55,
-        "sj1": -2.7,
-        "zi0": 0.6,
-        "zi1": 0.5,
-        "zj0": 0.1,
-        "zj1": 0.0
+        "sj0": -2.525,
+        "sj1": -2.675,
+        "zi0": 0.0,
+        "zi1": -0.375,
+        "zj0": 0.475,
+        "zj1": -0.85
       },
       "note": ""
     },
@@ -195,15 +195,15 @@
       "passed": true,
       "seconds": 0.002,
       "counterexample": {
-        "dl_mm": 0.125,
-        "ds_mm": -0.125,
-        "dz_mm": 0.475,
-        "eil_mm": -0.2,
-        "eis_mm": 0.05,
+        "dl_mm": -0.075,
+        "ds_mm": 0.075,
+        "dz_mm": -0.425,
+        "eil_mm": -0.35,
+        "eis_mm": 0.35,
         "eiz_mm": 0.35,
-        "ejl_mm": -0.35,
-        "ejs_mm": 0.35,
-        "ejz_mm": 0.0
+        "ejl_mm": -0.1,
+        "ejs_mm": 0.275,
+        "ejz_mm": 0.35
       },
       "note": ""
     },
@@ -214,7 +214,7 @@
       "expect": "sat",
       "verdict": "sat",
       "passed": true,
-      "seconds": 0.002,
+      "seconds": 0.0,
       "counterexample": {
         "dl_mm": 0.2,
         "ds_mm": 0.55,

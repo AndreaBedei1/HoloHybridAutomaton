@@ -52,6 +52,17 @@ def main() -> int:
         print(f"| {label} (`{run_id}`) | {m['run']['sim_time_s']} | {p1['min_distance_overall']:.2f} ({'holds' if p1['holds'] else 'VIOLATED'}) | "
               f"{sw} / {ca} | {p2s} | {json.dumps(dec) if dec else '-'} | {p3s} | {envs} | {selfdecl} |")
     print()
+    from holo_fleet.analysis import load_run, structure_clearance
+
+    print("| run | collision-sensor contacts | min clearance to arena structures [m] (where) |")
+    print("|---|---|---|")
+    for run_id, scenario, extra, label in EXPERIMENTS:
+        if load(run_id) is None:
+            continue
+        sc = structure_clearance(load_run(ROOT / "results" / run_id))
+        worst = min((v for k, v in sc.items() if k.startswith("drone_")), key=lambda v: v["min_clearance_m"])
+        print(f"| `{run_id}` | {sc['collision_sensor_contacts']} | {worst['min_clearance_m']:.2f} ({worst['gate']}) |")
+    print()
     print("| run | neighbour estimates | coverage <= 8 m | p99 abs error x/y/z [m] | max abs error x/y/z [m] | share within eps | messages sent / delivered |")
     print("|---|---|---|---|---|---|---|")
     for run_id, scenario, extra, label in EXPERIMENTS:

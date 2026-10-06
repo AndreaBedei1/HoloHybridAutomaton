@@ -20,7 +20,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 0.008,
+      "seconds": 0.012,
       "counterexample": null,
       "note": ""
     },
@@ -31,7 +31,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 0.005,
+      "seconds": 0.007,
       "counterexample": null,
       "note": ""
     },
@@ -42,7 +42,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 0.006,
+      "seconds": 0.005,
       "counterexample": null,
       "note": ""
     },
@@ -75,7 +75,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 2.2,
+      "seconds": 2.3,
       "counterexample": null,
       "note": "[1.60,2.00] delta=160.0 mm/step -> 1.5s; [1.28,1.60] delta=160.0 mm/step -> 1.5s; [1.02,1.28] delta=160.0 mm/step -> 1.0s; [0.82,1.02] delta=146.0 mm/step -> 1.0s; [0.74,0.82] delta=126.0 mm/step -> 0.5s; [0.66,0.74] delta=106.0 mm/step -> 0.5s; [0.58,0.66] delta=86.0 mm/step -> 0.5s; [0.50,0.58] delta=66.0 mm/step -> 1.0s; [0.42,0.50] delta=46.0 mm/step -> 1.0s; [0.34,0.42] delta=26.0 mm/step -> 2.0s; [0.28,0.34] delta=10.0 mm/step -> 3.5s | total 14.0s"
     },
@@ -114,15 +114,15 @@
         "eta0": 0.0,
         "eta1": 0.0,
         "eta2": 0.0,
-        "om0": 0.03,
-        "om1": -0.03,
-        "om2": 0.03,
-        "x0": 4.4,
-        "x0n": 4.565,
-        "x1": -4.4,
-        "x1n": -4.265,
+        "om0": -0.03,
+        "om1": 0.03,
+        "om2": -0.03,
+        "x0": -4.4,
+        "x0n": -4.265,
+        "x1": 4.4,
+        "x1n": 4.565,
         "x2": 0.0,
-        "x2n": 0.165
+        "x2n": 0.135
       },
       "note": ""
     }

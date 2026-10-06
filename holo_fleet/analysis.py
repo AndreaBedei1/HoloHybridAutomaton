@@ -105,6 +105,7 @@ def perception_errors(rd: RunData, max_range: float = 8.0) -> Dict:
     P = np.stack([np.stack([rd.ts[f"x_{k}"], rd.ts[f"y_{k}"], rd.ts[f"z_{k}"]], axis=1) for k in range(rd.n)])
     comp_err, dist_err, stale, true_rng = [], [], [], []
     detected, eligible = 0, 0
+    band_cnt = {"le_2.8m": [0, 0], "2.8_to_8m": [0, 0]}     # [detected, eligible]
     for k in range(rd.n):
         for o in rd.obs[k]:
             t = o["t"]
@@ -125,19 +126,26 @@ def perception_errors(rd: RunData, max_range: float = 8.0) -> Dict:
                 stale.append(nb["staleness"])
                 true_rng.append(float(np.linalg.norm(trues[m_best])))
             for m in range(rd.n):
-                if m != k and np.linalg.norm(Pt[m] - Pt[k]) <= max_range:
+                dist_true = float(np.linalg.norm(Pt[m] - Pt[k])) if m != k else 1e9
+                if dist_true <= max_range:
                     eligible += 1
                     detected += int(m in used)
+                    band = "le_2.8m" if dist_true <= 2.8 else "2.8_to_8m"
+                    band_cnt[band][1] += 1
+                    band_cnt[band][0] += int(m in used)
     comp_err = np.array(comp_err) if comp_err else np.zeros((0, 3))
-    out = {"n_samples": int(len(comp_err)),
+    eps = float(rd.config["fleet_config"]["env"]["eps_rel"])
+    out = {"n_samples": int(len(comp_err)), "eps_rel": eps,
            "coverage_within_%.0fm" % max_range: (detected / eligible) if eligible else None}
+    for band, (dct, elg) in band_cnt.items():
+        out[f"coverage_{band}"] = (dct / elg) if elg else None
     if len(comp_err):
         a = np.abs(comp_err)
         out.update({
             "abs_err_p95_xyz": np.percentile(a, 95, axis=0).round(3).tolist(),
             "abs_err_p99_xyz": np.percentile(a, 99, axis=0).round(3).tolist(),
             "abs_err_max_xyz": a.max(axis=0).round(3).tolist(),
-            "frac_component_err_le_eps": float(np.mean(np.all(a <= 0.25, axis=1))),
+            "frac_component_err_le_eps": float(np.mean(np.all(a <= eps, axis=1))),
             "dist_err_mean": float(np.mean(dist_err)), "dist_err_p99_abs": float(np.percentile(np.abs(dist_err), 99)),
             "staleness_p99": float(np.percentile(stale, 99)), "staleness_max": float(np.max(stale)),
         })
@@ -147,9 +155,29 @@ def perception_errors(rd: RunData, max_range: float = 8.0) -> Dict:
             if len(sel):
                 out[f"band_{name}"] = {"n": int(len(sel)), "max_abs_xyz": sel.max(axis=0).round(3).tolist(),
                                        "p99_abs_xyz": np.percentile(sel, 99, axis=0).round(3).tolist(),
-                                       "share_within_eps": float(np.mean(np.all(sel <= 0.30, axis=1)))}
+                                       "share_within_eps": float(np.mean(np.all(sel <= eps, axis=1)))}
     out["_comp_err"] = comp_err
     out["_dist_err"] = np.array(dist_err)
+    return out
+
+
+def structure_clearance(rd: RunData, step: int = 5) -> Dict:
+    """Minimum true distance from each drone's reference point to any arena gate bar (offline)."""
+    all_g, _ = mission_gates(rd)
+    boxes = [(g.gate_id, b) for g in all_g for b in g.bars]
+    out = {}
+    for k in range(rd.n):
+        P = np.stack([rd.ts[f"x_{k}"], rd.ts[f"y_{k}"], rd.ts[f"z_{k}"]], axis=1)[::step]
+        best, best_gate = 1e9, None
+        for gid, b in boxes:
+            local = (P - b.center) @ b.axes
+            d = np.linalg.norm(np.maximum(np.abs(local) - b.half, 0.0), axis=1)
+            j = int(np.argmin(d))
+            if d[j] < best:
+                best, best_gate = float(d[j]), gid
+        out[f"drone_{k}"] = {"min_clearance_m": round(best, 3), "gate": best_gate}
+    edges = rd.metrics["P1_separation"].get("collision_sensor_rising_edges", [])
+    out["collision_sensor_contacts"] = len(edges)
     return out
 
 
@@ -285,13 +313,14 @@ def fig_distances(rd: RunData, out: Path) -> Path:
     fig, ax = plt.subplots(figsize=(9.5, 4.0))
     t = rd.ts["t"]
     _shade_modes(ax, rd)
-    for key in [k for k in rd.ts if k.startswith("d_")]:
+    for n_pair, key in enumerate([k for k in rd.ts if k.startswith("d_")]):
         pair = key[2:]
         ax.plot(t, rd.ts[key], color=PAIR_COLORS.get(pair, INK["secondary"]), lw=1.5, label=f"drone_{pair[0]} - drone_{pair[1]}")
         i = int(np.nanargmin(rd.ts[key]))
         ax.plot(t[i], rd.ts[key][i], "o", color=PAIR_COLORS.get(pair, INK["secondary"]), ms=5, zorder=5)
-        ax.annotate(f"min {rd.ts[key][i]:.2f} m", (t[i], rd.ts[key][i]), xytext=(4, -12), textcoords="offset points",
-                    fontsize=7, color=INK["secondary"])
+        ax.annotate(f"min {rd.ts[key][i]:.2f} m ({pair[0]}-{pair[1]})", (t[i], rd.ts[key][i]),
+                    xytext=(6, -12 - 11 * n_pair), textcoords="offset points", fontsize=7, color=INK["secondary"],
+                    arrowprops=dict(arrowstyle="-", color=INK["axis"], lw=0.6))
     for name, val, col in (("d_warning", sep["d_warning"], STATUS["warning"]), ("d_ca", sep["d_ca"], STATUS["serious"]),
                            ("d_safe (P1)", sep["d_safe"], STATUS["critical"]), ("d_collision", sep["d_collision"], INK["primary"])):
         ax.axhline(val, color=col, lw=1.0, ls="--", zorder=1)

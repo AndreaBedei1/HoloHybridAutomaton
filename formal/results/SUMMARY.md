@@ -1,6 +1,6 @@
 # Formal verification summary
 
-Generated 2026-10-06 14:17:25 by `formal/check_properties.py`.
+Generated 2026-10-06 17:02:34 by `formal/check_properties.py`.
 
 UNSAT = the negated property has no model in the abstraction, i.e. the property HOLDS for the model; SAT is expected only for the mutation tests (deliberately broken designs must yield a counterexample).
 
@@ -77,7 +77,7 @@ Encoding: `holo_fleet/ha/spec.py`
 | M1 mutation: commit without priority must violate G1 | expect counterexample | SAT | SAT | yes |
 | M2 mutation: gate pass ignoring collision risk must violate H2 | expect counterexample | SAT | SAT | yes |
 
-## P1 inter-vehicle separation  (9/9 as expected, 288.8 s)
+## P1 inter-vehicle separation  (9/9 as expected, 288.1 s)
 
 Encoding: `formal/check_separation.py`
 
@@ -105,7 +105,7 @@ Encoding: `holo_fleet/ha/gate_rule.py + formal/check_mutex.py`
 | M2a no mutual waiting (deadlock freedom of the pairwise rule) | never (WAIT_i & WAIT_j): at least one commits or retreats | UNSAT | UNSAT | yes |
 | M2b robust wait is justified | WAIT_ROBUST_i -> COMMIT_j | UNSAT | UNSAT | yes |
 | M2c retreat targets are consistent (never both BACKOFF_REAR) | BACKOFF_REAR_i & BACKOFF_REAR_j impossible (sign of ds is robust) | UNSAT | UNSAT | yes |
-| M3 priority persistence during the transit window | COMMIT_j(t0) & A_hold & A_mono -> not COMMIT_i(t) | UNSAT | UNSAT | yes |
+| M3 priority persistence during the transit window | COMMIT_j(t0) & A_mono & (along-tied at t0 -> A_hold) -> not COMMIT_i(t) | UNSAT | UNSAT | yes |
 | M3b late arrivals cannot commit before the committed drone is visible | t_arrival(i) >= (approach_len - commit_window)/v_approach > t_visible(j) | UNSAT | UNSAT | yes |
 | M4 committed drone past occ_gamma+eps is perceived in the occupied zone | s_j in [s_q+gamma+eps, exit-eps], /l_j/ <= W-eps -> occ_busy_i | UNSAT | UNSAT | yes |
 | M5a queued drones are outside the critical region | s <= s_q + hold_tol_s -> not in CR | UNSAT | UNSAT | yes |
@@ -117,7 +117,7 @@ Encoding: `holo_fleet/ha/gate_rule.py + formal/check_mutex.py`
 | Mm2 mutation: margins below eps (mu_s_hi=0.4) allow a double commit | expect counterexample | SAT | SAT | yes |
 | Mm3 mutation: 'commit or wait' (no retreat classes) allows mutual waiting | expect counterexample | SAT | SAT | yes |
 
-## P3 bounded formation recovery  (10/10 as expected, 6.1 s)
+## P3 bounded formation recovery  (10/10 as expected, 6.3 s)
 
 Encoding: `formal/check_formation.py`
 

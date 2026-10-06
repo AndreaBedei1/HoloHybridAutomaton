@@ -1,0 +1,2 @@
+run_id,scenario,seed,status,sim_time_s,n_drones,comms,min_pair_distance_m,P1_holds,P1_violations,P2_holds,P2_max_occupancy,P3_holds,P3_episodes,P3_max_recovery_s,final_form_err_m,max_drift_m_s,inside_envelope,determinism_violations,decisions
+pair_crossing_s0,pair_crossing,0,completed_early_stop,75.8,2,0,2.1111,True,0,,,,0,,,0.0,True,0,"{""RESUME_FOLLOW"": 6}"
