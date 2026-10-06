@@ -170,9 +170,19 @@ def stress(seed: int = 0, n_drones: int = 3, cfg: FleetConfig = DEFAULT, **_) ->
     return spec
 
 
+def gate_arena_comms(seed: int = 0, n_drones: int = 3, cfg: FleetConfig = DEFAULT, **kw) -> ScenarioSpec:
+    """Exp 4 (optional): Scenario B with the intermittent acoustic channel ON (50% loss, 0.3 s latency).
+    Messages feed only the formation hint; safety guards are unchanged."""
+    kw.pop("comms", None)
+    spec = gate_arena(seed=seed, n_drones=n_drones, cfg=cfg, comms=True, name="gate_arena_comms", **kw)
+    spec.description += " + intermittent acoustic heartbeat channel (50% loss, 0.3 s latency; formation hint only)"
+    return spec
+
+
 SCENARIOS = {
     "pair_crossing": pair_crossing,
     "formation_current": formation_current,
     "gate_arena": gate_arena,
     "stress": stress,
+    "gate_arena_comms": gate_arena_comms,
 }

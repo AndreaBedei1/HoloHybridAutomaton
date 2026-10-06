@@ -104,10 +104,11 @@ class GateRule:
 class FormationRule:
     """P3 formation parameters."""
 
-    e_lost: float = 0.9              # formation error above which formation is lost [m]
-    e_ok: float = 0.45               # formation error below which it is recovered [m]
+    e_lost: float = 1.1              # formation error above which formation is lost [m]
+    e_ok: float = 0.55               # formation error below which it is recovered [m]
+                                     # (>= the formally guaranteed steady tolerance, formal/check_formation.py)
     t_ok_hold: float = 2.0           # e < e_ok must hold this long to declare recovery [s]
-    t_recovery_max: float = 45.0     # P3 deadline T used by the referee [s]
+    t_recovery_max: float = 60.0     # P3 deadline T used by the referee [s] (>= formal worst case)
     k_along: float = 0.18            # along-track consensus gain [1/s]
     k_lat_lane: float = 0.5          # lane-keeping gain [1/s]
     k_lat_rel: float = 0.25          # relative lateral consensus gain [1/s]
@@ -131,7 +132,8 @@ class PerceptionConfig:
     track_gate_m: float = 1.0
     track_drop_s: float = 2.0
     structure_mask_m: float = 0.45       # returns closer than this to a mapped gate bar are structure
-    fls_threshold: float = 0.08
+    fls_threshold: float = 0.15          # FLS speckle max ~0.09, vehicle echoes ~0.4 (measured)
+    fls_min_blob_px: int = 6
     fls_hz: int = 5
     camera_hz: int = 5
 

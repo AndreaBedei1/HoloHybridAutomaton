@@ -14,3 +14,4 @@ include = ["holo_fleet*"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+markers = ["slow: Z3 suites that take more than a few seconds (deselect with -m 'not slow')"]

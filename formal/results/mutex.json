@@ -1,0 +1,232 @@
+{
+  "check": "mutex",
+  "all_passed": true,
+  "results": [
+    {
+      "prop": "X0a decision classes mutually exclusive",
+      "formula": "no measurement satisfies two classes",
+      "encoding": "holo_fleet/ha/gate_rule.py (shared rule) + formal/check_mutex.py",
+      "expect": "unsat",
+      "verdict": "unsat",
+      "passed": true,
+      "seconds": 0.003,
+      "counterexample": null,
+      "note": ""
+    },
+    {
+      "prop": "X0b decision classes exhaustive",
+      "formula": "every measurement satisfies some class",
+      "encoding": "holo_fleet/ha/gate_rule.py (shared rule) + formal/check_mutex.py",
+      "expect": "unsat",
+      "verdict": "unsat",
+      "passed": true,
+      "seconds": 0.001,
+      "counterexample": null,
+      "note": ""
+    },
+    {
+      "prop": "M1 no simultaneous commit (independent errors <= eps)",
+      "formula": "COMMIT_i(meas_i) & COMMIT_j(meas_j) is impossible",
+      "encoding": "holo_fleet/ha/gate_rule.py (shared rule) + formal/check_mutex.py",
+      "expect": "unsat",
+      "verdict": "unsat",
+      "passed": true,
+      "seconds": 0.001,
+      "counterexample": null,
+      "note": ""
+    },
+    {
+      "prop": "M2a no mutual waiting (deadlock freedom of the pairwise rule)",
+      "formula": "never (WAIT_i & WAIT_j): at least one commits or retreats",
+      "encoding": "holo_fleet/ha/gate_rule.py (shared rule) + formal/check_mutex.py",
+      "expect": "unsat",
+      "verdict": "unsat",
+      "passed": true,
+      "seconds": 0.002,
+      "counterexample": null,
+      "note": ""
+    },
+    {
+      "prop": "M2b robust wait is justified",
+      "formula": "WAIT_ROBUST_i -> COMMIT_j",
+      "encoding": "holo_fleet/ha/gate_rule.py (shared rule) + formal/check_mutex.py",
+      "expect": "unsat",
+      "verdict": "unsat",
+      "passed": true,
+      "seconds": 0.001,
+      "counterexample": null,
+      "note": ""
+    },
+    {
+      "prop": "M2c retreat targets are consistent (never both BACKOFF_REAR)",
+      "formula": "BACKOFF_REAR_i & BACKOFF_REAR_j impossible (sign of ds is robust)",
+      "encoding": "holo_fleet/ha/gate_rule.py (shared rule) + formal/check_mutex.py",
+      "expect": "unsat",
+      "verdict": "unsat",
+      "passed": true,
+      "seconds": 0.002,
+      "counterexample": null,
+      "note": ""
+    },
+    {
+      "prop": "M3 priority persistence during the transit window",
+      "formula": "COMMIT_j(t0) & A_hold & A_mono -> not COMMIT_i(t)",
+      "encoding": "holo_fleet/ha/gate_rule.py (shared rule) + formal/check_mutex.py",
+      "expect": "unsat",
+      "verdict": "unsat",
+      "passed": true,
+      "seconds": 0.002,
+      "counterexample": null,
+      "note": ""
+    },
+    {
+      "prop": "M3b late arrivals cannot commit before the committed drone is visible",
+      "formula": "t_arrival(i) >= (approach_len - commit_window)/v_approach > t_visible(j)",
+      "encoding": "holo_fleet/ha/gate_rule.py (shared rule) + formal/check_mutex.py",
+      "expect": "unsat",
+      "verdict": "unsat",
+      "passed": true,
+      "seconds": 0.0,
+      "counterexample": null,
+      "note": "t_arrival >= 15.5s, t_visible <= 12.0s"
+    },
+    {
+      "prop": "M4 committed drone past occ_gamma+eps is perceived in the occupied zone",
+      "formula": "s_j in [s_q+gamma+eps, exit-eps], |l_j| <= W-eps -> occ_busy_i",
+      "encoding": "holo_fleet/ha/gate_rule.py (shared rule) + formal/check_mutex.py",
+      "expect": "unsat",
+      "verdict": "unsat",
+      "passed": true,
+      "seconds": 0.001,
+      "counterexample": null,
+      "note": ""
+    },
+    {
+      "prop": "M5a queued drones are outside the critical region",
+      "formula": "s <= s_q + hold_tol_s -> not in CR",
+      "encoding": "holo_fleet/ha/gate_rule.py (shared rule) + formal/check_mutex.py",
+      "expect": "unsat",
+      "verdict": "unsat",
+      "passed": true,
+      "seconds": 0.001,
+      "counterexample": null,
+      "note": ""
+    },
+    {
+      "prop": "M5b exited drones are outside the critical region",
+      "formula": "s > cr_half_len + occ_exit_margin - eps -> not in CR",
+      "encoding": "holo_fleet/ha/gate_rule.py (shared rule) + formal/check_mutex.py",
+      "expect": "unsat",
+      "verdict": "unsat",
+      "passed": true,
+      "seconds": 0.001,
+      "counterexample": null,
+      "note": ""
+    },
+    {
+      "prop": "M6a invariant 'at most one drone committed' is inductive",
+      "formula": "Inv & T -> Inv'  (T constrained by M1, M3, M4)",
+      "encoding": "holo_fleet/ha/gate_rule.py (shared rule) + formal/check_mutex.py",
+      "expect": "unsat",
+      "verdict": "unsat",
+      "passed": true,
+      "seconds": 0.002,
+      "counterexample": null,
+      "note": ""
+    },
+    {
+      "prop": "M6b initial state satisfies the invariant",
+      "formula": "all queued -> Inv",
+      "encoding": "holo_fleet/ha/gate_rule.py (shared rule) + formal/check_mutex.py",
+      "expect": "unsat",
+      "verdict": "unsat",
+      "passed": true,
+      "seconds": 0.001,
+      "counterexample": null,
+      "note": ""
+    },
+    {
+      "prop": "M6c invariant + M5 implies G(occupancy_CR <= 1)",
+      "formula": "only committed drones can be inside the CR (M5), at most one is committed",
+      "encoding": "holo_fleet/ha/gate_rule.py (shared rule) + formal/check_mutex.py",
+      "expect": "unsat",
+      "verdict": "unsat",
+      "passed": true,
+      "seconds": 0.0,
+      "counterexample": null,
+      "note": ""
+    },
+    {
+      "prop": "Mm1 mutation: gap band mu_s_hi-mu_s_lo=0.55 <= 2eps breaks M3",
+      "formula": "expect counterexample",
+      "encoding": "holo_fleet/ha/gate_rule.py (shared rule) + formal/check_mutex.py",
+      "expect": "sat",
+      "verdict": "sat",
+      "passed": true,
+      "seconds": 0.002,
+      "counterexample": {
+        "e0l": -0.3,
+        "e0s": 0.3,
+        "e0z": 0.3,
+        "e1l": 0.3,
+        "e1s": 0.3,
+        "e1z": 0.3,
+        "li0": 0.6,
+        "li1": 0.0,
+        "lj0": 0.875,
+        "lj1": 0.3,
+        "si0": -3.7,
+        "si1": -3.7,
+        "sj0": -4.525,
+        "sj1": -4.675,
+        "zi0": -0.02500000000000005,
+        "zi1": -0.0500000000000001,
+        "zj0": 0.3,
+        "zj1": 0.0
+      },
+      "note": ""
+    },
+    {
+      "prop": "Mm2 mutation: margins below eps (mu_s_hi=0.4) allow a double commit",
+      "formula": "expect counterexample",
+      "encoding": "holo_fleet/ha/gate_rule.py (shared rule) + formal/check_mutex.py",
+      "expect": "sat",
+      "verdict": "sat",
+      "passed": true,
+      "seconds": 0.0,
+      "counterexample": {
+        "dl_mm": -2.05,
+        "ds_mm": 0.15,
+        "dz_mm": 0.35,
+        "eil_mm": 0.0,
+        "eis_mm": 0.3,
+        "eiz_mm": 0.3,
+        "ejl_mm": 0.3,
+        "ejs_mm": 0.1,
+        "ejz_mm": 0.0
+      },
+      "note": ""
+    },
+    {
+      "prop": "Mm3 mutation: 'commit or wait' (no retreat classes) allows mutual waiting",
+      "formula": "expect counterexample",
+      "encoding": "holo_fleet/ha/gate_rule.py (shared rule) + formal/check_mutex.py",
+      "expect": "sat",
+      "verdict": "sat",
+      "passed": true,
+      "seconds": 0.002,
+      "counterexample": {
+        "dl_mm": -0.1125,
+        "ds_mm": -0.2375,
+        "dz_mm": -0.3,
+        "eil_mm": -0.3,
+        "eis_mm": -0.3,
+        "eiz_mm": 0.0,
+        "ejl_mm": -0.3,
+        "ejs_mm": -0.3,
+        "ejz_mm": 0.3
+      },
+      "note": ""
+    }
+  ]
+}

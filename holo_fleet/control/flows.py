@@ -9,7 +9,7 @@ from __future__ import annotations
 import itertools
 import math
 from dataclasses import dataclass
-from typing import List, Optional, Tuple
+from typing import Dict, List, Optional, Tuple
 
 import numpy as np
 
@@ -161,6 +161,7 @@ class Flows:
         self.plan = plan
         self.cfg = cfg
         self._rally_s = {}
+        self.comms_hints: Dict[int, List[float]] = {}   # optional channel only (formation, never safety)
 
     # ---------------------------------------------------------------- helpers
     def _gate_to_world(self, gate: GateSpec, vs: float, vl: float, vz: float) -> np.ndarray:
@@ -182,11 +183,16 @@ class Flows:
         s_i, l_i, _ = plan.path.project(p[:2])
         _, tan, nrm = plan.path.frame_at(s_i)
         fo = obs.formation
-        has_neighbors = bool(fo.assigned)
+        along_terms = [fo.residuals[k][0] for k in fo.assigned if k in fo.residuals]
+        lat_terms = [fo.residuals[k][1] for k in fo.assigned if k in fo.residuals]
+        for k, (ds, dl) in self.comms_hints.items():        # only with the optional channel ON
+            along_terms.append(ds)
+            lat_terms.append(dl)
+        has_neighbors = bool(along_terms)
         if not plan.formation_enabled:
             v_s = F.v_nominal
         elif has_neighbors:
-            v_s = F.v_nominal + F.k_along * fo.along_consensus
+            v_s = F.v_nominal + F.k_along * float(np.mean(along_terms))
         else:
             v_s = 0.0 if mode == Mode.FORMATION_RECOVERY else F.v_nominal * 0.5
         # passed drones clear the gate exit before waiting for the others
@@ -198,7 +204,7 @@ class Flows:
         v_s = float(np.clip(v_s, 0.0, self.cfg.env.v_max_nominal))
         v_l = -F.k_lat_lane * (l_i - me.lateral)
         if has_neighbors:
-            v_l += F.k_lat_rel * fo.lat_consensus
+            v_l += F.k_lat_rel * float(np.mean(lat_terms))
         v_l = float(np.clip(v_l, -F.v_lat_max, F.v_lat_max))
         v_z = float(np.clip(-F.k_depth * (p[2] - (plan.path.depth_z + me.dz)), -F.v_z_max, F.v_z_max))
         v = np.array([v_s * tan[0] + v_l * nrm[0], v_s * tan[1] + v_l * nrm[1], v_z])

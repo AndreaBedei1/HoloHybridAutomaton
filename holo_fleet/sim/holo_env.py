@@ -67,15 +67,18 @@ class HoloFleetSim:
             {"sensor_type": "VelocitySensor", "sensor_name": "VelocitySensor", "socket": "IMUSocket", "Hz": 30},
             {"sensor_type": "CollisionSensor", "sensor_name": "CollisionSensor", "Hz": 30},
         ]
-        if k == 0 and self.chase_camera:
-            # visualisation only (never delivered to a controller)
+        # Visualisation cameras (never delivered to a controller) on the rear drone of the formation.
+        # Conventions measured with probe/probe_cameras.py: pitch is positive DOWNWARD, yaw and
+        # lateral offsets are standard (CCW / +y left).  Looking straight down into deep water is black,
+        # so both cameras look almost horizontally against the bright mid-water background.
+        if k == self.spec.n - 1 and self.chase_camera:
             sensors.append({"sensor_type": "RGBCamera", "sensor_name": "ChaseCamera", "socket": "IMUSocket",
-                            "location": [-7.0, 0.0, 4.0], "rotation": [0.0, -25.0, 0.0], "Hz": 5,
+                            "location": [-4.5, 0.0, 0.9], "rotation": [0.0, 8.0, 0.0], "Hz": 5,
+                            "configuration": {"CaptureWidth": 640, "CaptureHeight": 400, "FovAngle": 75}})
+        if k == self.spec.n - 1 and self.top_camera:
+            sensors.append({"sensor_type": "RGBCamera", "sensor_name": "SideCamera", "socket": "IMUSocket",
+                            "location": [1.0, 7.0, 0.7], "rotation": [0.0, 5.0, -90.0], "Hz": 5,
                             "configuration": {"CaptureWidth": 640, "CaptureHeight": 400, "FovAngle": 80}})
-        if k == 0 and self.top_camera:
-            sensors.append({"sensor_type": "RGBCamera", "sensor_name": "TopCamera", "socket": "IMUSocket",
-                            "location": [0.0, 0.0, 9.0], "rotation": [0.0, -89.0, 0.0], "Hz": 5,
-                            "configuration": {"CaptureWidth": 512, "CaptureHeight": 512, "FovAngle": 90}})
         pos = self.spec.spawn_positions[k]
         return {"agent_name": name, "agent_type": "BlueROV2", "location": [float(v) for v in pos],
                 "rotation": [0.0, 0.0, float(self.spec.spawn_yaw_deg[k])], "control_scheme": 0, "sensors": sensors}
@@ -186,7 +189,7 @@ class HoloFleetSim:
             self._tick()
 
     def debug_image(self, key: str):
-        return self.latest[self.names[0]].get(key)
+        return self.latest[self.names[-1]].get(key)
 
     def close(self) -> None:
         if self.env is not None:

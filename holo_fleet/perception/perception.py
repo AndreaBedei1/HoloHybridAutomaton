@@ -125,6 +125,7 @@ class Perception:
         self.ring_names = [ring_name(e) for e in cfg.perc.ring_elevations_deg]
         self.env_violation_timer = 0.0
         self.env_ok_flag = True
+        self._zone_latch: Dict[str, bool] = {}
 
     # ------------------------------------------------------------------
     def current_gate(self) -> Optional[GateSpec]:
@@ -274,7 +275,15 @@ class Perception:
         obs.alignment_deg = round(math.degrees((nav.yaw - gate_yaw + math.pi) % (2 * math.pi) - math.pi), 2)
         exit_s = G.cr_half_len + G.occ_exit_margin
         obs.passed = bool(s_i > exit_s)
-        obs.inside_approach_corridor = bool(G.s_queue - G.approach_len <= s_i <= exit_s and abs(l_i) <= G.corridor_half_width + 3.0)
+        # approach-zone membership with hysteresis (enter at s_queue - approach_len, leave 1 m behind it)
+        enter_s = G.s_queue - G.approach_len
+        in_corridor = abs(l_i) <= G.corridor_half_width + 3.0 and s_i <= exit_s
+        if self._zone_latch.get(gate.gate_id):
+            inside = in_corridor and s_i >= enter_s - 1.0
+        else:
+            inside = in_corridor and s_i >= enter_s
+        self._zone_latch[gate.gate_id] = inside
+        obs.inside_approach_corridor = bool(inside)
         obs.inside_cr_estimate = bool(abs(s_i) <= G.cr_half_len and abs(l_i) <= G.cr_half_width and abs(z_i) <= G.cr_half_height)
         obs.at_queue = bool(s_i >= G.s_queue - G.commit_window)
         obs.structure_returns = int(scan.structure_hits.get(gate.gate_id, 0))
@@ -297,13 +306,16 @@ class Perception:
             if occ_lo <= s_j <= occ_hi:
                 obs.occupant_neighbors.append(info)
                 continue
-            if G.s_queue - G.approach_len <= s_j < occ_lo:
+            if G.s_queue - G.approach_len - 1.0 <= s_j < occ_lo:
                 obs.queue_neighbors.append(info)
                 ds, dl, dz = float(s_i - s_j), float(l_i - l_j), float(z_i - z_j)
                 dec = gate_rule.decide(ds, dl, dz, G, cfg_eps)
                 info["decision"] = dec
                 if dec != "COMMIT":
                     has_prio = False
+                if tr.staleness(t) > 0.5:
+                    has_prio = False          # missing data -> conservative: never commit on a stale track
+                    info["stale"] = True
                 if dec in ("BACKOFF_REAR", "BACKOFF_RIGHT"):
                     target = s_j - gate_rule.backoff_clearance(G, cfg_eps)
                     backoff_target = target if backoff_target is None else min(backoff_target, target)

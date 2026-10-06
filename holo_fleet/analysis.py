@@ -188,13 +188,16 @@ def fig_trajectories(rd: RunData, out: Path) -> Path:
             ax.add_patch(Polygon(corners, closed=True, facecolor="#f0efec", edgecolor=INK["axis"], lw=0.8, zorder=1))
             ql = [g.from_gate_frame([G["s_queue"], l, 0])[:2] for l in (-3.5, 3.5)]
             ax.plot([ql[0][0], ql[1][0]], [ql[0][1], ql[1][1]], color=INK["axis"], lw=0.8, zorder=1)
-    # formation snapshots (true positions) every ~20 s, drawn as hairline triangles
+    # formation snapshots (true positions) every ~20 s while the formation is intact, hairline triangles
     t = rd.ts["t"]
+    e_lost = rd.config["fleet_config"]["form"]["e_lost"]
     if rd.n == 3:
         for ts_snap in np.arange(10.0, t[-1], 20.0):
             i = int(np.searchsorted(t, ts_snap))
             if i >= len(t):
                 break
+            if "form_err" in rd.ts and not (rd.ts["form_err"][i] < e_lost):
+                continue
             pts = np.array([[rd.ts[f"x_{k}"][i], rd.ts[f"y_{k}"][i]] for k in range(3)])
             ax.add_patch(Polygon(pts, closed=True, fill=False, edgecolor=INK["muted"], lw=0.6, zorder=2))
     for k in range(rd.n):

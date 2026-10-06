@@ -1,0 +1,71 @@
+[
+  {
+    "run": "dev_form_02",
+    "scenario": "formation_current_medium_gust",
+    "A_eps": {
+      "n_samples": 6510,
+      "coverage_within_8m": 1.0,
+      "abs_err_p95_xyz": [
+        0.212,
+        0.097,
+        0.014
+      ],
+      "abs_err_p99_xyz": [
+        0.232,
+        0.122,
+        0.069
+      ],
+      "abs_err_max_xyz": [
+        0.28,
+        0.178,
+        0.101
+      ],
+      "frac_component_err_le_eps": 0.9973886328725038,
+      "dist_err_mean": 0.01890085407353193,
+      "dist_err_p99_abs": 0.23273052081182555,
+      "staleness_p99": 0.0,
+      "staleness_max": 0.0
+    },
+    "A_sym": {
+      "pair_samples_within_d_warning": 53,
+      "fraction_symmetric": 1.0
+    },
+    "A_tau": {
+      "prox_sonar_age_p99": 0.067,
+      "prox_sonar_age_max_when_sense_ok": 0.067,
+      "tau_max": 0.2
+    },
+    "A_hold": {
+      "n_samples": 0,
+      "lateral_dev_p99": null,
+      "lateral_dev_max": null,
+      "vertical_dev_max": null,
+      "s_beyond_queue_line_max": null,
+      "hold_tol_lat": 0.3,
+      "hold_tol_z": 0.15,
+      "hold_tol_s": 0.3
+    },
+    "A_mono": {
+      "n_commits": 0,
+      "worst_margin": null,
+      "mono_tol": 0.15
+    },
+    "A_cmax": {
+      "max_true_closing_speed": 0.505,
+      "c_max": 1.05
+    },
+    "A_track": {
+      "median": 0.009219544457293359,
+      "p95": 0.09087039581979608
+    },
+    "verdicts": {
+      "A_eps": true,
+      "A_cov": true,
+      "A_sym": true,
+      "A_tau": true,
+      "A_hold": true,
+      "A_mono": true,
+      "A_cmax": true
+    }
+  }
+]

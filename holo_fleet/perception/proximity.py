@@ -152,7 +152,7 @@ class ProximityProcessor:
         lab, n = ndimage.label(img > self.cfg.perc.fls_threshold)
         for k in range(1, n + 1):
             rr, aa = np.nonzero(lab == k)
-            if len(rr) < 3:
+            if len(rr) < self.cfg.perc.fls_min_blob_px:
                 continue
             rng = g["range_min"] + (rr.min() + 0.5) * (g["range_max"] - g["range_min"]) / g["range_bins"]
             az = -g["azimuth_deg"] / 2 + (aa.mean() + 0.5) * g["azimuth_deg"] / g["azimuth_bins"]

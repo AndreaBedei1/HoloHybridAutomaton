@@ -1,0 +1,56 @@
+{
+  "authority_levels": {
+    "nominal": 0.3,
+    "brake": 0.45,
+    "escape": 0.6
+  },
+  "braking": {
+    "nominal": {
+      "v0": 0.454,
+      "stop_distance_m": 0.099,
+      "stop_time_s": 0.6,
+      "a_eff_from_distance": 1.036,
+      "a_eff_from_time": 0.756
+    },
+    "brake": {
+      "v0": 0.451,
+      "stop_distance_m": 0.1,
+      "stop_time_s": 0.6,
+      "a_eff_from_distance": 1.015,
+      "a_eff_from_time": 0.752
+    },
+    "escape": {
+      "v0": 0.456,
+      "stop_distance_m": 0.103,
+      "stop_time_s": 0.6,
+      "a_eff_from_distance": 1.01,
+      "a_eff_from_time": 0.76
+    }
+  },
+  "reversal": {
+    "overshoot_m": 0.042,
+    "time_to_minus_0.3_m_s": 0.5
+  },
+  "station_keeping": {
+    "0.25": {
+      "residual_drift_m_s": 0.0014,
+      "net_displacement_m": 0.285,
+      "max_abs_vy": 0.099
+    },
+    "0.40": {
+      "residual_drift_m_s": 0.0009,
+      "net_displacement_m": 0.552,
+      "max_abs_vy": 0.179
+    },
+    "0.60": {
+      "residual_drift_m_s": 0.0598,
+      "net_displacement_m": 1.829,
+      "max_abs_vy": 0.27
+    },
+    "0.80": {
+      "residual_drift_m_s": 0.2795,
+      "net_displacement_m": 6.483,
+      "max_abs_vy": 0.371
+    }
+  }
+}

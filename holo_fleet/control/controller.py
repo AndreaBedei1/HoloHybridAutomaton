@@ -54,8 +54,36 @@ class DroneController:
         self.low = LowLevelController(cfg)
         self.mission_mode = Mode.FORMATION_FOLLOW
         self.comms_inbox = comms_inbox            # optional, None by default (no communication)
+        self._latest_msgs: Dict[str, Dict[str, Any]] = {}
         self.events: List[Dict[str, Any]] = []
         self.mission_complete = False
+
+    def heartbeat(self) -> Dict[str, Any]:
+        """Payload for the optional channel: own onboard estimate only."""
+        return {"nav_p": self.perception.nav.state.p.round(3).tolist(), "mode": self.ha.mode.value,
+                "slot": self.plan.slot_index}
+
+    def _formation_hints(self, t: float, local) -> Dict[int, List[float]]:
+        """Path-frame relative offsets of slots that sensing does not currently see, from received
+        heartbeats (<= 3 s old).  Empty when communication is off (the default)."""
+        if self.comms_inbox is None:
+            return {}
+        for msg in self.comms_inbox:
+            self._latest_msgs[msg["sender"]] = msg
+        self.comms_inbox.clear()
+        hints: Dict[int, List[float]] = {}
+        p = self.perception.nav.state.p
+        s_i, _, _ = self.plan.path.project(p[:2])
+        _, tan, nrm = self.plan.path.frame_at(s_i)
+        for msg in self._latest_msgs.values():
+            k = int(msg["slot"])
+            if k == self.plan.slot_index or k in local.formation.assigned or t - msg["t_tx"] > 3.0:
+                continue
+            rel = np.asarray(msg["nav_p"]) - p
+            exp_s = self.plan.slots[k].along - self.plan.my_slot.along
+            exp_l = self.plan.slots[k].lateral - self.plan.my_slot.lateral
+            hints[k] = [float(rel[:2] @ tan - exp_s), float(rel[:2] @ nrm - exp_l)]
+        return hints
 
     def step(self, frame: SensorFrame, dt: float) -> Dict[str, Any]:
         t = frame.t
@@ -83,6 +111,7 @@ class DroneController:
 
         nav = self.perception.nav.state
         p = nav.p.copy()
+        self.flows.comms_hints = self._formation_hints(t, local)   # {} unless the optional channel is on
         flow = self._flow(mode, local, p, nav.yaw)
         v_f, active = structure_filter(flow.v, local.structure_close, self.cfg)
         if active:

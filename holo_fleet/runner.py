@@ -113,6 +113,13 @@ def run(scenario: str, out_root: str = "results", seed: int = 0, headless: bool 
     mission_gates = [g for g in spec.plans[0].structures if g.gate_id in spec.mission_gate_ids]
     referee = Referee(spec.plans, mission_gates, cfg)
     controllers: Dict[str, DroneController] = {}
+    channel = None
+    inboxes: Dict[str, List[Dict[str, Any]]] = {}
+    if spec.comms_enabled:                       # optional comparison experiment only (OFF by default)
+        from holo_fleet.comms.intermittent import IntermittentChannel
+
+        channel = IntermittentChannel(seed=seed)
+        inboxes = {p.drone_id: [] for p in spec.plans}
     w_state = {p.drone_id: JsonlWriter(run_dir / f"{p.drone_id}_state.jsonl") for p in spec.plans}
     w_obs = {p.drone_id: JsonlWriter(run_dir / f"{p.drone_id}_observations.jsonl") for p in spec.plans}
     w_act = {p.drone_id: JsonlWriter(run_dir / f"{p.drone_id}_actions.jsonl") for p in spec.plans}
@@ -138,7 +145,8 @@ def run(scenario: str, out_root: str = "results", seed: int = 0, headless: bool 
                     modes.append("NOT_RELEASED")
                     continue
                 if name not in controllers:
-                    controllers[name] = DroneController(plan, cfg, nav_init_offset=nav_offsets[k])
+                    controllers[name] = DroneController(plan, cfg, nav_init_offset=nav_offsets[k],
+                                                        comms_inbox=inboxes.get(name) if channel else None)
                     w_ev.write({"t": sim.t, "type": "released", "drone": name})
                 out = controllers[name].step(frames[name], dt)
                 commands[name] = out["command"]
@@ -157,13 +165,18 @@ def run(scenario: str, out_root: str = "results", seed: int = 0, headless: bool 
             sim.step(commands, dt)
             n_steps += 1
             truth = sim.truth()
+            if channel is not None:
+                true_pos = {n: truth.positions[k] for k, n in enumerate(sim.names)}
+                for n, c in controllers.items():
+                    channel.broadcast(sim.t, n, c.heartbeat(), true_pos)
+                channel.deliver(sim.t, inboxes)
             pert = any(m in PERTURBING_MODES or m == "NOT_RELEASED" for m in modes) or \
                 localized_disturbance(spec, truth.positions, truth.t)
             referee.update(truth, modes, perturbation=pert)
             # imagery
             if sim.t - last_frame_t >= frame_every_s - 1e-9:
                 last_frame_t = sim.t
-                for key in ("ChaseCamera", "TopCamera"):
+                for key in ("ChaseCamera", "SideCamera"):
                     img = sim.debug_image(key)
                     if img is not None:
                         _save_png(img, run_dir / "frames" / f"{key}_{int(round(sim.t * 10)):05d}.jpg")
@@ -204,7 +217,8 @@ def run(scenario: str, out_root: str = "results", seed: int = 0, headless: bool 
                           "determinism_monitor_violations": det,
                           "mission_complete": {n: c.mission_complete for n, c in controllers.items()},
                           "comms_enabled": bool(spec.comms_enabled),
-                          "inter_agent_messages_sent": 0 if not spec.comms_enabled else None}
+                          "inter_agent_messages_sent": channel.sent if channel else 0,
+                          "inter_agent_messages_delivered": channel.delivered if channel else 0}
         (run_dir / "referee_metrics.json").write_text(json.dumps(metrics, indent=2, default=float))
         if referee.rows:
             keys = list(dict.fromkeys(k for r in referee.rows for k in r.keys()))

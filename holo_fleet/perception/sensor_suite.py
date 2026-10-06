@@ -26,7 +26,7 @@ from holo_fleet.config import DEFAULT, FleetConfig
 ONBOARD_PREFIXES = ("ProxSonar_", )
 ONBOARD_NAMES = ("DepthSensor", "IMUSensor", "DVLSensor", "Compass", "AltimeterUp", "AltimeterDown",
                  "FrontSonar", "FrontCamera")
-PRIVILEGED_NAMES = ("PoseSensor", "VelocitySensor", "CollisionSensor", "ChaseCamera", "TopCamera")
+PRIVILEGED_NAMES = ("PoseSensor", "VelocitySensor", "CollisionSensor", "ChaseCamera", "SideCamera")
 
 
 def ring_name(elev_deg: int) -> str:
