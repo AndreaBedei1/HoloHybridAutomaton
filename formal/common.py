@@ -39,6 +39,23 @@ class Z3Logic(Logic):
 Z3L = Z3Logic()
 
 
+def exact(x: float) -> z3.ArithRef:
+    """Exact rational for a configuration constant (shortest decimal repr, e.g. 0.35 -> 7/20).
+
+    Never let Python pre-compute float arithmetic on thresholds that Z3 then compares exactly: float
+    rounding (2*0.35 + 2.4 = 3.0999999999999996) can open a spurious 1e-16 gap between two classes.
+    """
+    return z3.RealVal(repr(float(x)))
+
+
+class ExactNamespace:
+    """Copy of a config dataclass whose float fields are exact Z3 rationals."""
+
+    def __init__(self, dc):
+        for k, v in dc.__dict__.items():
+            setattr(self, k, exact(v) if isinstance(v, float) else v)
+
+
 class Obs:
     """Symbolic abstract observation (same attribute names as the runtime dataclass)."""
 

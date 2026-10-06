@@ -47,6 +47,9 @@ def main(argv=None) -> int:
     todo = [e for e in EXPERIMENTS if args.only is None or e[0] in args.only]
     logs = ROOT / "results" / "logs"
     logs.mkdir(parents=True, exist_ok=True)
+    if not args.skip_sim and args.only is None:
+        print(f"[{time.strftime('%H:%M:%S')}] plant calibration with the deployed low-level controller ...", flush=True)
+        sh(["scripts/calibrate_plant.py"], logs / "calibrate_plant.log")
     for run_id, scenario, extra, label in todo:
         run_dir = ROOT / "results" / run_id
         if not args.skip_sim:

@@ -1,0 +1,10 @@
+2026-10-06 13:49:09,650 INFO holo_fleet.sim.holo_env: HoloOcean ready in 21.4s
+2026-10-06 13:49:40,273 INFO holo_fleet.runner: t=10.0 wall=53s modes=['FORMATION_FOLLOW', 'FORMATION_FOLLOW']
+2026-10-06 13:50:09,348 INFO holo_fleet.runner: t=20.0 wall=82s modes=['FORMATION_FOLLOW', 'FORMATION_FOLLOW']
+2026-10-06 13:50:38,099 INFO holo_fleet.runner: t=30.0 wall=111s modes=['SEPARATION_WARNING', 'SEPARATION_WARNING']
+2026-10-06 13:51:06,926 INFO holo_fleet.runner: t=40.0 wall=139s modes=['FORMATION_FOLLOW', 'FORMATION_FOLLOW']
+2026-10-06 13:51:35,639 INFO holo_fleet.runner: t=50.0 wall=168s modes=['FORMATION_FOLLOW', 'FORMATION_FOLLOW']
+2026-10-06 13:52:04,145 INFO holo_fleet.runner: t=60.0 wall=197s modes=['FORMATION_FOLLOW', 'FORMATION_FOLLOW']
+2026-10-06 13:52:32,539 INFO holo_fleet.runner: t=70.0 wall=225s modes=['FORMATION_FOLLOW', 'FORMATION_FOLLOW']
+2026-10-06 13:52:53,110 INFO holo_fleet.runner: run pair_crossing_s0 finished: {"run_id": "pair_crossing_s0", "scenario": "pair_crossing", "seed": 0, "status": "completed_early_stop", "sim_time_s": 76.5, "n_drones": 2, "comms": 0, "min_pair_distance_m": 2.0921, "P1_holds": true, "P1_violations": 0, "P2_holds": null, "P2_max_occupancy": null, "P3_holds": null, "P3_episodes": 0, "P3_max_recovery_s": null, "final_form_err_m": null, "max_drift_m_s": 0.0, "inside_envelope": true, "determinism_violations": 0, "decisions": "{\"RESUME_FOLLOW\": 8}"}
+RUN_DIR results\pair_crossing_s0

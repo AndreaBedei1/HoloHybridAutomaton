@@ -131,7 +131,8 @@ class ProximityProcessor:
             dist = np.linalg.norm(cpts, axis=1)
             centroid = cpts.mean(axis=0)
             u = centroid / max(np.linalg.norm(centroid), 1e-6)
-            centre = centroid + pc.hull_radius_correction_m * u
+            # direction from the centroid (robust), range from the NEAREST return (the near face)
+            centre = u * (float(dist.min()) + pc.near_face_offset_m)
             b = np.linalg.solve(R_bw, centre)      # back to body for bearing
             res.detections.append(Detection(
                 t=t, rel=centre, range_m=float(dist.min()),
@@ -157,7 +158,7 @@ class ProximityProcessor:
             rng = g["range_min"] + (rr.min() + 0.5) * (g["range_max"] - g["range_min"]) / g["range_bins"]
             az = -g["azimuth_deg"] / 2 + (aa.mean() + 0.5) * g["azimuth_deg"] / g["azimuth_bins"]
             b = np.array([math.cos(math.radians(az)), math.sin(math.radians(az)), 0.0]) * (
-                rng + self.cfg.perc.hull_radius_correction_m)
+                rng + self.cfg.perc.near_face_offset_m)
             rel = R_bw @ b
             fused = False
             for det in res.detections:

@@ -35,7 +35,7 @@ from dataclasses import replace
 
 import z3
 
-from common import Report, Z3L, check  # noqa: E402
+from common import ExactNamespace, Report, Z3L, check, exact  # noqa: E402
 
 from holo_fleet.config import DEFAULT, FleetConfig, GateRule
 from holo_fleet.ha import gate_rule
@@ -64,7 +64,8 @@ def pair_vars(tag: str, eps: float):
 
 def run(cfg: FleetConfig = DEFAULT, verbose: bool = True) -> Report:
     rep = Report("mutex")
-    G, eps = cfg.gate, cfg.env.eps_rel
+    # exact rationals for every threshold (see common.exact)
+    G, eps = ExactNamespace(cfg.gate), exact(cfg.env.eps_rel)
 
     # ---------------------------------------------------------------- X0
     m = z3.Reals("ms ml mz")
@@ -123,14 +124,15 @@ def run(cfg: FleetConfig = DEFAULT, verbose: bool = True) -> Report:
     # >= v_pass_min = v_pass - w_drift, becomes visible in the occupied zone (M4) after at most
     # (commit_window + occ_gamma + eps + hold_tol_s) / v_pass_min.
     t_arr, t_vis, d_i, d_j = z3.Reals("t_arrival t_visible dist_i dist_j")
-    v_pass_min = G.v_pass - cfg.env.w_drift_max
+    v_pass_min = G.v_pass - exact(cfg.env.w_drift_max)
+    gf, ef = cfg.gate, cfg.env
     rep.add(check("M3b late arrivals cannot commit before the committed drone is visible",
                   "t_arrival(i) >= (approach_len - commit_window)/v_approach > t_visible(j)", ENC,
                   [d_i >= G.approach_len - G.commit_window, t_arr * G.v_approach >= d_i,
                    d_j <= G.commit_window + G.occ_gamma + eps + G.hold_tol_s, t_vis * v_pass_min <= d_j,
                    t_arr <= t_vis],
-                  note=f"t_arrival >= {(G.approach_len - G.commit_window) / G.v_approach:.1f}s, "
-                       f"t_visible <= {(G.commit_window + G.occ_gamma + eps + G.hold_tol_s) / v_pass_min:.1f}s"), verbose)
+                  note=f"t_arrival >= {(gf.approach_len - gf.commit_window) / gf.v_approach:.1f}s, "
+                       f"t_visible <= {(gf.commit_window + gf.occ_gamma + ef.eps_rel + gf.hold_tol_s) / (gf.v_pass - ef.w_drift_max):.1f}s"), verbose)
 
     # ---------------------------------------------------------------- M4 occupancy visibility
     sj, lj, zj, es, el, ez = z3.Reals("sj lj zj es el ez")
@@ -193,9 +195,9 @@ def run(cfg: FleetConfig = DEFAULT, verbose: bool = True) -> Report:
                   one_phase + [inv(0), z3.Not(occupancy_ok(0))]), verbose)
 
     # ---------------------------------------------------------------- mutations
-    Gbad = replace(G, mu_s_hi=G.mu_s_lo + 2 * eps - 0.05)
+    Gbad = ExactNamespace(replace(cfg.gate, mu_s_hi=cfg.gate.mu_s_lo + 2 * cfg.env.eps_rel - 0.05))
     D, mi, mj, bnd = pair_vars("mm", eps)
-    rep.add(check(f"Mm1 mutation: gap band mu_s_hi-mu_s_lo={Gbad.mu_s_hi - Gbad.mu_s_lo:.2f} <= 2eps breaks M3",
+    rep.add(check(f"Mm1 mutation: gap band mu_s_hi-mu_s_lo={2 * cfg.env.eps_rel - 0.05:.2f} <= 2eps breaks M3",
                   "expect counterexample", ENC,
                   ebnd + [decisions(Gbad, eps, j_meas_t0)["COMMIT"], sj0 >= Gbad.s_queue - Gbad.commit_window,
                           si0 <= Gbad.s_queue + Gbad.hold_tol_s, si1 <= Gbad.s_queue + Gbad.hold_tol_s,
@@ -203,7 +205,7 @@ def run(cfg: FleetConfig = DEFAULT, verbose: bool = True) -> Report:
                           zabs(li1 - li0) <= 2 * Gbad.hold_tol_lat, zabs(lj1 - lj0) <= 2 * Gbad.hold_tol_lat,
                           zabs(zi1 - zi0) <= 2 * Gbad.hold_tol_z, zabs(zj1 - zj0) <= 2 * Gbad.hold_tol_z,
                           decisions(Gbad, eps, i_meas_t1)["COMMIT"]], expect="sat"), verbose)
-    Gbad2 = replace(G, mu_s_hi=0.4, mu_s_lo=0.2)
+    Gbad2 = ExactNamespace(replace(cfg.gate, mu_s_hi=0.4, mu_s_lo=0.2))
     Pi2, Pj2 = decisions(Gbad2, eps, mi), decisions(Gbad2, eps, mj)
     rep.add(check("Mm2 mutation: margins below eps (mu_s_hi=0.4) allow a double commit",
                   "expect counterexample", ENC, bnd + [Pi2["COMMIT"], Pj2["COMMIT"]], expect="sat"), verbose)

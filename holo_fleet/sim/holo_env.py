@@ -93,8 +93,25 @@ class HoloFleetSim:
             "agents": [self._agent_cfg(k) for k in range(self.spec.n)],
         }
         t0 = time.time()
-        self.env = holoocean.make(scenario_cfg=scenario, show_viewport=not self.headless,
-                                  ticks_per_sec=TICKS_PER_SEC, frames_per_sec=False)
+        # HoloOcean occasionally fails the engine handshake ("OpenSemaphore ... file not found"), a known
+        # startup race also handled by the marine arena adapter: retry with a fresh engine UUID.
+        last_exc = None
+        for attempt, delay in enumerate((0.0, 3.0, 6.0, 12.0, 20.0), start=1):
+            if delay:
+                time.sleep(delay)
+            try:
+                self.env = holoocean.make(scenario_cfg=scenario, show_viewport=not self.headless,
+                                          ticks_per_sec=TICKS_PER_SEC, frames_per_sec=False)
+                break
+            except Exception as exc:  # pragma: no cover - engine start race
+                last_exc = exc
+                text = f"{type(exc).__name__}: {exc}".lower()
+                LOG.warning("HoloOcean start attempt %d failed: %s", attempt, exc)
+                self._kill_own_engines()
+                if not any(s in text for s in ("semaphore", "timed out", "file not found", "impossibile trovare")):
+                    raise
+        else:
+            raise RuntimeError(f"HoloOcean could not start after retries: {last_exc}")
         self.env.reset()
         LOG.info("HoloOcean ready in %.1fs", time.time() - t0)
         if self.spec.use_arena_gates:
@@ -109,6 +126,21 @@ class HoloFleetSim:
             self._tick()
         self.t = 0.0
         self.wall_start = time.time()
+
+    @staticmethod
+    def _kill_own_engines() -> None:
+        """Terminate Holodeck engines launched by THIS process (orphans of a failed handshake)."""
+        try:
+            import os
+
+            import psutil
+
+            me = os.getpid()
+            for p in psutil.process_iter(["pid", "ppid", "name"]):
+                if str(p.info.get("name") or "").lower() == "holodeck.exe" and p.info.get("ppid") == me:
+                    p.kill()
+        except Exception:  # pragma: no cover
+            pass
 
     def _plan_blackouts(self) -> None:
         st = self.spec.stress

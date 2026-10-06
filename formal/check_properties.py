@@ -1,7 +1,7 @@
 """Run every formal check and write formal/results/SUMMARY.{json,md}.
 
     python formal/check_properties.py            # all suites
-    python formal/check_properties.py --quick    # skip the slow P3 bounded-model-checking suite
+    python formal/check_properties.py --quick    # skip the slowest suite (P1, ~90 s of nonlinear arithmetic)
 
 Exit status 0 iff every check returned its expected verdict.
 """
@@ -39,7 +39,7 @@ def main(argv=None) -> int:
     summary = {"started": time.strftime("%Y-%m-%d %H:%M:%S"), "suites": []}
     all_ok = True
     for title, mod, enc in SUITES:
-        if args.quick and mod is check_formation:
+        if args.quick and mod is check_separation:
             print(f"== {title}: skipped (--quick)")
             continue
         print(f"== {title}")

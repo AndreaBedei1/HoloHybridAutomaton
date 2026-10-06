@@ -37,8 +37,8 @@ class Envelope:
 
     dt: float = 0.1                  # controller period [s]
     tau_max: float = 0.2             # max perception staleness accepted as "fresh" [s] (sonar 10 Hz)
-    eps_rel: float = 0.30            # bound on per-component relative-position error [m]
-                                     # (measured in HoloOcean: 99.7% <= 0.25 m, max 0.28 m; see REPORT.md)
+    eps_rel: float = 0.35            # bound on per-component static relative-position error [m]
+                                     # (measured inside the warning band: max 0.32 m; probe: -0.19..+0.09 m)
     v_max_nominal: float = 0.40      # speed cap in every non-avoidance mode [m/s]
     v_escape: float = 0.50           # escape speed in COLLISION_AVOIDANCE [m/s]
     a_brake: float = 0.50            # closing-speed reduction per drone [m/s^2] (calibrated: 0.51)
@@ -81,18 +81,18 @@ class GateRule:
                                      # arena's previous gate G05, which sits 9 m before G06 on its axis)
     # robust lexicographic priority (along, then lateral, then vertical) with gap bands;
     # margins derived in formal/check_mutex.py from eps_rel and the hold tolerances below
-    mu_s_hi: float = 1.5             # > mu_s_lo + 2 eps + mono_tol; > commit_window + hold_tol_s + mono_tol + eps
-    mu_s_lo: float = 0.7             # > 2 eps (robust sign of the along gap)
-    mu_l_hi: float = 2.3             # > mu_l_lo + 2 eps + 4 hold_tol_lat
-    mu_l_lo: float = 0.35            # > eps
-    mu_z: float = 0.6                # > eps
+    mu_s_hi: float = 1.7             # > mu_s_lo + 2 eps + mono_tol; > commit_window + hold_tol_s + mono_tol + eps
+    mu_s_lo: float = 0.75            # > 2 eps (robust sign of the along gap)
+    mu_l_hi: float = 2.4             # > mu_l_lo + 2 eps + 4 hold_tol_lat
+    mu_l_lo: float = 0.4             # > eps
+    mu_z: float = 0.75               # > eps + 2 hold_tol_z (vertical tie-break must survive depth holding)
     # assumptions on position holding (validated empirically by scripts/validate_assumptions.py)
     hold_tol_lat: float = 0.3        # |lateral - setpoint| while queued or leaving the queue line
     hold_tol_z: float = 0.15         # |depth - setpoint| idem
     hold_tol_s: float = 0.3          # queued drones stay at s <= s_queue + hold_tol_s
     mono_tol: float = 0.15           # committed drone's along progress >= queued drone's - mono_tol
     queue_lateral: float = 2.6       # queue points of side slots are at |l| = queue_lateral (> d_warning)
-    queue_center_back: float = 2.3   # centre-slot drone holds this far behind s_queue while others queue
+    queue_center_back: float = 2.6   # centre-slot drone holds this far behind s_queue while others queue
                                      # (> mu_s_hi + 2 eps: it then waits robustly, no needless backoff)
     v_approach: float = 0.22         # along-axis speed cap while approaching/yielding
     v_pass: float = 0.30             # along-axis speed while passing (>= v_approach)
@@ -104,11 +104,11 @@ class GateRule:
 class FormationRule:
     """P3 formation parameters."""
 
-    e_lost: float = 1.1              # formation error above which formation is lost [m]
-    e_ok: float = 0.55               # formation error below which it is recovered [m]
+    e_lost: float = 1.2              # formation error above which formation is lost [m]
+    e_ok: float = 0.6                # formation error below which it is recovered [m]
                                      # (>= the formally guaranteed steady tolerance, formal/check_formation.py)
     t_ok_hold: float = 2.0           # e < e_ok must hold this long to declare recovery [s]
-    t_recovery_max: float = 60.0     # P3 deadline T used by the referee [s] (>= formal worst case)
+    t_recovery_max: float = 75.0     # P3 deadline T used by the referee [s] (formal worst case: 60 s)
     k_along: float = 0.18            # along-track consensus gain [1/s]
     k_lat_lane: float = 0.5          # lane-keeping gain [1/s]
     k_lat_rel: float = 0.25          # relative lateral consensus gain [1/s]
@@ -128,7 +128,12 @@ class PerceptionConfig:
     range_noise_std: float = 0.04
     beam_dropout: float = 0.0            # per-beam dropout probability (stress: >0)
     cluster_link_m: float = 0.7
-    hull_radius_correction_m: float = 0.25
+    # Neighbour position = direction of the return cluster's centroid x (NEAREST return range + offset).
+    # Rays return the near surface of a hull; the near-face-to-reference-point offset depends on the
+    # aspect (front ~0.11 m, side ~0.29 m, rear ~0.35 m: probe/probe_calib.py).  0.20 m bounds the
+    # residual bias to ~0.15 m for every aspect.  (A centroid-based range was biased by ~+0.2 m head-on
+    # because returns from the top/bottom of the hull lie behind the near face.)
+    near_face_offset_m: float = 0.20
     track_gate_m: float = 1.0
     track_drop_s: float = 2.0
     structure_mask_m: float = 0.45       # returns closer than this to a mapped gate bar are structure

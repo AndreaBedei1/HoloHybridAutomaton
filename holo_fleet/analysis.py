@@ -88,23 +88,33 @@ def mission_gates(rd: RunData):
 
 
 # --------------------------------------------------------------------------- perception statistics
+def _truth_interp(t_ts: np.ndarray, P: np.ndarray, t: float) -> np.ndarray:
+    """Ground-truth positions of all drones at time t (linear interpolation between referee rows)."""
+    j = int(np.clip(np.searchsorted(t_ts, t), 1, len(t_ts) - 1))
+    t0, t1 = t_ts[j - 1], t_ts[j]
+    w = float(np.clip((t - t0) / max(t1 - t0, 1e-9), 0.0, 1.0))
+    return (1 - w) * P[:, j - 1] + w * P[:, j]
+
+
 def perception_errors(rd: RunData, max_range: float = 8.0) -> Dict:
-    """Compare every perceived neighbour (relative position) with the true relative position."""
+    """Compare every perceived neighbour (relative position) with the true relative position AT THE TIME
+    THE SONAR DATA WAS ACQUIRED (decision time minus the logged data age).  This isolates the static
+    error bound eps_rel of the formal model; the effect of the data age is covered separately by
+    tau_max (checked as A_tau) through the term c_max * tau in the P1 model."""
     t_ts = rd.ts["t"]
     P = np.stack([np.stack([rd.ts[f"x_{k}"], rd.ts[f"y_{k}"], rd.ts[f"z_{k}"]], axis=1) for k in range(rd.n)])
-    comp_err, dist_err, stale = [], [], []
+    comp_err, dist_err, stale, true_rng = [], [], [], []
     detected, eligible = 0, 0
     for k in range(rd.n):
         for o in rd.obs[k]:
             t = o["t"]
-            idx = int(np.clip(np.searchsorted(t_ts, t + 1e-6), 0, len(t_ts) - 1))
-            if idx > 0 and abs(t_ts[idx - 1] - t) < abs(t_ts[idx] - t):
-                idx -= 1
-            own = P[k, idx]
-            trues = {m: P[m, idx] - own for m in range(rd.n) if m != k}
+            age = float(o["local"]["sensor_age"].get("ProxSonar", 0.0) or 0.0)
+            Pt = _truth_interp(t_ts, P, t)              # for coverage (who is near now)
             used = set()
             for nb in o["local"]["neighbors"]:
                 rel = np.asarray(nb["rel"])
+                Pa = _truth_interp(t_ts, P, t - age)   # stale tracks are velocity-extrapolated to t - age
+                trues = {m: Pa[m] - Pa[k] for m in range(rd.n) if m != k}
                 m_best = min(trues, key=lambda m: np.linalg.norm(trues[m] - rel))
                 err = rel - trues[m_best]
                 if np.linalg.norm(err) > 2.0:
@@ -113,8 +123,9 @@ def perception_errors(rd: RunData, max_range: float = 8.0) -> Dict:
                 comp_err.append(err)
                 dist_err.append(nb["distance"] - float(np.linalg.norm(trues[m_best])))
                 stale.append(nb["staleness"])
-            for m, rel in trues.items():
-                if np.linalg.norm(rel) <= max_range:
+                true_rng.append(float(np.linalg.norm(trues[m_best])))
+            for m in range(rd.n):
+                if m != k and np.linalg.norm(Pt[m] - Pt[k]) <= max_range:
                     eligible += 1
                     detected += int(m in used)
     comp_err = np.array(comp_err) if comp_err else np.zeros((0, 3))
@@ -130,6 +141,13 @@ def perception_errors(rd: RunData, max_range: float = 8.0) -> Dict:
             "dist_err_mean": float(np.mean(dist_err)), "dist_err_p99_abs": float(np.percentile(np.abs(dist_err), 99)),
             "staleness_p99": float(np.percentile(stale, 99)), "staleness_max": float(np.max(stale)),
         })
+        rng = np.array(true_rng)
+        for name, lo, hi in (("le_2.8m", 0.0, 2.8), ("2.8_to_8m", 2.8, 8.0)):
+            sel = a[(rng >= lo) & (rng < hi)]
+            if len(sel):
+                out[f"band_{name}"] = {"n": int(len(sel)), "max_abs_xyz": sel.max(axis=0).round(3).tolist(),
+                                       "p99_abs_xyz": np.percentile(sel, 99, axis=0).round(3).tolist(),
+                                       "share_within_eps": float(np.mean(np.all(sel <= 0.30, axis=1)))}
     out["_comp_err"] = comp_err
     out["_dist_err"] = np.array(dist_err)
     return out
@@ -208,7 +226,10 @@ def fig_trajectories(rd: RunData, out: Path) -> Path:
             ax.plot(nav[:, 0], nav[:, 1], color=c, lw=0.8, ls=":", zorder=3)
         ax.plot(rd.ts[f"x_{k}"][0], rd.ts[f"y_{k}"][0], "o", color=c, ms=7, mec=INK["surface"], mew=1.5, zorder=5)
         ax.plot(rd.ts[f"x_{k}"][-1], rd.ts[f"y_{k}"][-1], "s", color=c, ms=7, mec=INK["surface"], mew=1.5, zorder=5)
-        ax.annotate(f"drone_{k}", (rd.ts[f"x_{k}"][-1], rd.ts[f"y_{k}"][-1]), xytext=(6, -3),
+        xk, yk = rd.ts[f"x_{k}"], rd.ts[f"y_{k}"]
+        j0 = max(0, len(xk) - 30)
+        dx = float(np.sign(xk[-1] - xk[j0])) if abs(xk[-1] - xk[j0]) > 0.05 else 1.0
+        ax.annotate(f"drone_{k}", (xk[-1], yk[-1]), xytext=(8 * dx, 6 + 8 * k), ha="left" if dx > 0 else "right",
                     textcoords="offset points", fontsize=8, color=INK["primary"])
     # current arrows (field at peak time) on a coarse grid
     comps = rd.config.get("current_components", [])
@@ -234,7 +255,7 @@ def fig_trajectories(rd: RunData, out: Path) -> Path:
             U.flat[i], V.flat[i] = w[0], w[1]
         if np.any(np.hypot(U, V) > 1e-3):
             q = ax.quiver(gx, gy, U, V, color=INK["axis"], alpha=0.8, scale=8, width=0.002, zorder=0)
-            ax.quiverkey(q, 0.97, 0.05, 0.4, f"current: 0.4 m/s drift (field at t={best[1]:.0f} s)",
+            ax.quiverkey(q, 0.97, 0.05, 0.4, f"current field at t={best[1]:.0f} s (key arrow = 0.4 m/s)",
                          labelpos="W", coordinates="axes", fontproperties={"size": 7}, color=INK["axis"])
     ax.set_xlim(*xlim)
     ax.set_ylim(*ylim)

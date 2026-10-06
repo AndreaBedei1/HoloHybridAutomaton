@@ -24,12 +24,13 @@ def test_never_double_commit_and_never_mutual_wait():
 
 
 def test_planned_queue_geometry_has_no_needless_backoff():
-    # side slots at the queue line (lateral +-2.6), centre slot 2.3 m behind
-    assert decide(0.0, 5.2, 0.0, G, EPS) == "COMMIT"          # left side drone goes first
-    assert decide(0.0, -5.2, 0.0, G, EPS) == "WAIT_ROBUST"
-    assert decide(2.3, 2.6, 0.0, G, EPS) == "COMMIT"
-    assert decide(-2.3, -2.6, 0.0, G, EPS) == "WAIT_ROBUST"   # centre drone waits, no retreat
-    assert decide(-2.3, 2.6, 0.0, G, EPS) == "WAIT_ROBUST"
+    # side slots at the queue line (lateral +-queue_lateral), centre slot queue_center_back behind
+    lat, back = G.queue_lateral, G.queue_center_back
+    assert decide(0.0, 2 * lat, 0.0, G, EPS) == "COMMIT"          # left side drone goes first
+    assert decide(0.0, -2 * lat, 0.0, G, EPS) == "WAIT_ROBUST"
+    assert decide(back, lat, 0.0, G, EPS) == "COMMIT"
+    assert decide(-back, -lat, 0.0, G, EPS) == "WAIT_ROBUST"     # centre drone waits, no retreat
+    assert decide(-back, lat, 0.0, G, EPS) == "WAIT_ROBUST"
 
 
 def test_some_drone_acts_in_every_sampled_tie():

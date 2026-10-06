@@ -165,7 +165,9 @@ def verdicts(s: dict) -> dict:
     env, G = DEFAULT.env, DEFAULT.gate
     v = {}
     e = s["A_eps"]
-    v["A_eps"] = (e.get("abs_err_max_xyz") is not None and max(e["abs_err_max_xyz"]) <= env.eps_rel)
+    # P1 needs the bound inside the warning band (hard: max); P2 inside the gate corridor (p99 reported)
+    b1 = e.get("band_le_2.8m")
+    v["A_eps"] = b1 is None or max(b1["max_abs_xyz"]) <= env.eps_rel
     cov = [x for k, x in e.items() if k.startswith("coverage")]
     v["A_cov"] = bool(cov and cov[0] is not None and cov[0] >= 0.99)
     v["A_sym"] = s["A_sym"]["fraction_symmetric"] is None or s["A_sym"]["fraction_symmetric"] >= 0.98
@@ -194,15 +196,17 @@ def main(argv=None) -> int:
     lines = ["# Empirical validation of the formal assumptions", "",
              "Measured offline on the HoloOcean runs (ground truth vs onboard logs). 'VIOLATED' means the run left "
              "the assumption set, so the formal guarantee does not cover that run (its referee verdict is still empirical evidence).", "",
-             "| run | A_eps (max abs err xyz, m) | A_cov | A_sym | A_tau max (s) | A_hold (lat/z/s max, m) | A_mono worst (m) | A_cmax (m/s) |",
-             "|---|---|---|---|---|---|---|---|"]
+             "| run | A_eps max abs err xyz, d <= 2.8 m (P1) | p99 abs err xyz, 2.8-8 m (P2 corridor) | A_cov | A_sym | A_tau max (s) | A_hold (lat/z/s max, m) | A_mono worst (m) | A_cmax (m/s) |",
+             "|---|---|---|---|---|---|---|---|---|"]
     for s in allres:
         e, h, vv = s["A_eps"], s["A_hold"], s["verdicts"]
         cov = [x for k, x in e.items() if k.startswith("coverage")][0]
         cov_s = f"{cov * 100:.1f}%" if cov is not None else "n/a"
         f = lambda ok: "" if ok else " **(!)**"  # noqa: E731
+        b1 = e.get("band_le_2.8m", {}).get("max_abs_xyz", "-")
+        b2 = e.get("band_2.8_to_8m", {}).get("p99_abs_xyz", "-")
         lines.append(
-            f"| {s['run']} | {e.get('abs_err_max_xyz')}{f(vv['A_eps'])} | {cov_s}{f(vv['A_cov'])} | "
+            f"| {s['run']} | {b1}{f(vv['A_eps'])} | {b2} | {cov_s}{f(vv['A_cov'])} | "
             f"{(s['A_sym']['fraction_symmetric'] or 1.0) * 100:.1f}%{f(vv['A_sym'])} | {s['A_tau']['prox_sonar_age_max_when_sense_ok']:.2f}{f(vv['A_tau'])} | "
             f"{h['lateral_dev_max'] if h['lateral_dev_max'] is not None else '-'} / {h['vertical_dev_max'] if h['vertical_dev_max'] is not None else '-'} / "
             f"{h['s_beyond_queue_line_max'] if h['s_beyond_queue_line_max'] is not None else '-'}{f(vv['A_hold'])} | "

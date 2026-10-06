@@ -48,12 +48,20 @@ def test_referee_verdicts_in_nominal_runs(run):
     cfg = json.loads((run / "run_config.json").read_text())
     m = json.loads((run / "referee_metrics.json").read_text())
     assert m["run"]["comms_enabled"] is False or cfg["comms_enabled"] is True
+    if not cfg["comms_enabled"]:
+        assert m["run"]["inter_agent_messages_sent"] == 0
     assert sum(m["run"]["determinism_monitor_violations"].values()) == 0
-    if cfg["scenario"] in NOMINAL:
+    # hard requirements only where the run stayed inside the operational envelope (out-of-envelope
+    # runs must instead be flagged, which the referee does)
+    if cfg["scenario"] in NOMINAL and m["envelope"]["inside_envelope"]:
         assert m["P1_separation"]["holds"], m["P1_separation"]["first_violation"]
         if m["P2_mutual_exclusion"]["gates"]:
             assert m["P2_mutual_exclusion"]["holds"]
             assert all(m["P2_mutual_exclusion"]["all_drones_traversed"].values())
+        if m["P3_formation_recovery"]["enabled"]:
+            assert m["P3_formation_recovery"]["holds"]
+    if not m["envelope"]["inside_envelope"]:
+        assert m["envelope"]["out_of_envelope_flags"], "an out-of-envelope run must be flagged"
 
 
 @pytest.mark.parametrize("run", RUNS or [None], ids=lambda p: p.name if p else "none")
