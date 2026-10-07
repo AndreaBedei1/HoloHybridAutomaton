@@ -1,0 +1,147 @@
+== Local determinism & priority hierarchy
+[PASS] D1 determinism [FORMATION_FOLLOW]: UNSAT (expected UNSAT) in 0.002s
+[PASS] D2 completeness [FORMATION_FOLLOW]: UNSAT (expected UNSAT) in 0.0s
+[PASS] H1 fault=>FAILSAFE [FORMATION_FOLLOW]: UNSAT (expected UNSAT) in 0.002s
+[PASS] H2 d<d_ca=>COLLISION_AVOIDANCE [FORMATION_FOLLOW]: UNSAT (expected UNSAT) in 0.0s
+[PASS] H3 warning band=>SEPARATION_WARNING [FORMATION_FOLLOW]: UNSAT (expected UNSAT) in 0.0s
+[PASS] G1 GATE_PASS entry condition [FORMATION_FOLLOW]: UNSAT (expected UNSAT) in 0.002s
+[PASS] G2 no PASS->YIELD fallback [FORMATION_FOLLOW]: UNSAT (expected UNSAT) in 0.0s
+[PASS] G3 no commit under hazard [FORMATION_FOLLOW]: UNSAT (expected UNSAT) in 0.002s
+[PASS] D1 determinism [SEPARATION_WARNING]: UNSAT (expected UNSAT) in 0.0s
+[PASS] D2 completeness [SEPARATION_WARNING]: UNSAT (expected UNSAT) in 0.002s
+[PASS] H1 fault=>FAILSAFE [SEPARATION_WARNING]: UNSAT (expected UNSAT) in 0.0s
+[PASS] H2 d<d_ca=>COLLISION_AVOIDANCE [SEPARATION_WARNING]: UNSAT (expected UNSAT) in 0.0s
+[PASS] H3 warning band=>SEPARATION_WARNING [SEPARATION_WARNING]: UNSAT (expected UNSAT) in 0.002s
+[PASS] G1 GATE_PASS entry condition [SEPARATION_WARNING]: UNSAT (expected UNSAT) in 0.0s
+[PASS] G2 no PASS->YIELD fallback [SEPARATION_WARNING]: UNSAT (expected UNSAT) in 0.0s
+[PASS] G3 no commit under hazard [SEPARATION_WARNING]: UNSAT (expected UNSAT) in 0.002s
+[PASS] D1 determinism [COLLISION_AVOIDANCE]: UNSAT (expected UNSAT) in 0.002s
+[PASS] D2 completeness [COLLISION_AVOIDANCE]: UNSAT (expected UNSAT) in 0.0s
+[PASS] H1 fault=>FAILSAFE [COLLISION_AVOIDANCE]: UNSAT (expected UNSAT) in 0.002s
+[PASS] H2 d<d_ca=>COLLISION_AVOIDANCE [COLLISION_AVOIDANCE]: UNSAT (expected UNSAT) in 0.0s
+[PASS] H3 warning band=>SEPARATION_WARNING [COLLISION_AVOIDANCE]: UNSAT (expected UNSAT) in 0.003s
+[PASS] G1 GATE_PASS entry condition [COLLISION_AVOIDANCE]: UNSAT (expected UNSAT) in 0.0s
+[PASS] G2 no PASS->YIELD fallback [COLLISION_AVOIDANCE]: UNSAT (expected UNSAT) in 0.0s
+[PASS] G3 no commit under hazard [COLLISION_AVOIDANCE]: UNSAT (expected UNSAT) in 0.0s
+[PASS] D1 determinism [GATE_APPROACH]: UNSAT (expected UNSAT) in 0.002s
+[PASS] D2 completeness [GATE_APPROACH]: UNSAT (expected UNSAT) in 0.0s
+[PASS] H1 fault=>FAILSAFE [GATE_APPROACH]: UNSAT (expected UNSAT) in 0.0s
+[PASS] H2 d<d_ca=>COLLISION_AVOIDANCE [GATE_APPROACH]: UNSAT (expected UNSAT) in 0.0s
+[PASS] H3 warning band=>SEPARATION_WARNING [GATE_APPROACH]: UNSAT (expected UNSAT) in 0.0s
+[PASS] G1 GATE_PASS entry condition [GATE_APPROACH]: UNSAT (expected UNSAT) in 0.0s
+[PASS] G2 no PASS->YIELD fallback [GATE_APPROACH]: UNSAT (expected UNSAT) in 0.001s
+[PASS] G3 no commit under hazard [GATE_APPROACH]: UNSAT (expected UNSAT) in 0.001s
+[PASS] D1 determinism [GATE_YIELD]: UNSAT (expected UNSAT) in 0.0s
+[PASS] D2 completeness [GATE_YIELD]: UNSAT (expected UNSAT) in 0.0s
+[PASS] H1 fault=>FAILSAFE [GATE_YIELD]: UNSAT (expected UNSAT) in 0.0s
+[PASS] H2 d<d_ca=>COLLISION_AVOIDANCE [GATE_YIELD]: UNSAT (expected UNSAT) in 0.002s
+[PASS] H3 warning band=>SEPARATION_WARNING [GATE_YIELD]: UNSAT (expected UNSAT) in 0.002s
+[PASS] G1 GATE_PASS entry condition [GATE_YIELD]: UNSAT (expected UNSAT) in 0.0s
+[PASS] G2 no PASS->YIELD fallback [GATE_YIELD]: UNSAT (expected UNSAT) in 0.002s
+[PASS] G3 no commit under hazard [GATE_YIELD]: UNSAT (expected UNSAT) in 0.0s
+[PASS] D1 determinism [GATE_PASS]: UNSAT (expected UNSAT) in 0.002s
+[PASS] D2 completeness [GATE_PASS]: UNSAT (expected UNSAT) in 0.002s
+[PASS] H1 fault=>FAILSAFE [GATE_PASS]: UNSAT (expected UNSAT) in 0.0s
+[PASS] H2 d<d_ca=>COLLISION_AVOIDANCE [GATE_PASS]: UNSAT (expected UNSAT) in 0.0s
+[PASS] H3 warning band=>SEPARATION_WARNING [GATE_PASS]: UNSAT (expected UNSAT) in 0.0s
+[PASS] G1 GATE_PASS entry condition [GATE_PASS]: UNSAT (expected UNSAT) in 0.002s
+[PASS] G2 no PASS->YIELD fallback [GATE_PASS]: UNSAT (expected UNSAT) in 0.0s
+[PASS] G3 no commit under hazard [GATE_PASS]: UNSAT (expected UNSAT) in 0.0s
+[PASS] D1 determinism [FORMATION_RECOVERY]: UNSAT (expected UNSAT) in 0.0s
+[PASS] D2 completeness [FORMATION_RECOVERY]: UNSAT (expected UNSAT) in 0.0s
+[PASS] H1 fault=>FAILSAFE [FORMATION_RECOVERY]: UNSAT (expected UNSAT) in 0.002s
+[PASS] H2 d<d_ca=>COLLISION_AVOIDANCE [FORMATION_RECOVERY]: UNSAT (expected UNSAT) in 0.0s
+[PASS] H3 warning band=>SEPARATION_WARNING [FORMATION_RECOVERY]: UNSAT (expected UNSAT) in 0.0s
+[PASS] G1 GATE_PASS entry condition [FORMATION_RECOVERY]: UNSAT (expected UNSAT) in 0.001s
+[PASS] G2 no PASS->YIELD fallback [FORMATION_RECOVERY]: UNSAT (expected UNSAT) in 0.0s
+[PASS] G3 no commit under hazard [FORMATION_RECOVERY]: UNSAT (expected UNSAT) in 0.001s
+[PASS] D1 determinism [FAILSAFE_HOLD_OR_RETREAT]: UNSAT (expected UNSAT) in 0.001s
+[PASS] D2 completeness [FAILSAFE_HOLD_OR_RETREAT]: UNSAT (expected UNSAT) in 0.001s
+[PASS] H1 fault=>FAILSAFE [FAILSAFE_HOLD_OR_RETREAT]: UNSAT (expected UNSAT) in 0.001s
+[PASS] H2 d<d_ca=>COLLISION_AVOIDANCE [FAILSAFE_HOLD_OR_RETREAT]: UNSAT (expected UNSAT) in 0.001s
+[PASS] H3 warning band=>SEPARATION_WARNING [FAILSAFE_HOLD_OR_RETREAT]: UNSAT (expected UNSAT) in 0.0s
+[PASS] G1 GATE_PASS entry condition [FAILSAFE_HOLD_OR_RETREAT]: UNSAT (expected UNSAT) in 0.0s
+[PASS] G2 no PASS->YIELD fallback [FAILSAFE_HOLD_OR_RETREAT]: UNSAT (expected UNSAT) in 0.001s
+[PASS] G3 no commit under hazard [FAILSAFE_HOLD_OR_RETREAT]: UNSAT (expected UNSAT) in 0.001s
+[PASS] M1 mutation: commit without priority must violate G1: SAT (expected SAT) in 0.0s
+       counterexample: at_queue=True; committed=False; d_min=2.3; env_ok=True; form_err=2.3; gate_zone=True; has_prio=False; occ_busy=False; passed=False; sense_ok=True; t_ok=2.3
+[PASS] M2 mutation: gate pass ignoring collision risk must violate H2: SAT (expected SAT) in 0.001s
+       counterexample: at_queue=False; committed=True; d_min=0.0; env_ok=True; form_err=0.0; gate_zone=False; passed=False; sense_ok=True; t_ok=0.0
+== P1 inter-vehicle separation
+S1 parameters: {'dt': 0.1, 'c_max': 1.05, 'eps_p': 0.56, 'a_pair': 1.0, 'w_rel': 0.15, 'v_open': 0.2, 'd_warning': 2.3, 'd_safe': 1.0}
+[PASS] S1a BMC: no violation within 12 s from any admissible start: UNSAT (expected UNSAT) in 14.956s
+[PASS] S1b k-induction: G(d >= d_safe) for all time (k=11): UNSAT (expected UNSAT) in 0.01s
+    sensitivity: smallest d_warning verified by BMC = 2.215 m (configured 2.3)
+[PASS] S1m mutation: d_warning=1.97 must violate P1: SAT (expected SAT) in 0.137s
+       counterexample: c[0..120]=[1.05, 1.05, 0.048, 1.05, 0.048, 0.048, 0.048, 0.048, 0.048, 1.05, 0.048, 0.048, 1.05, 1.05, 1.05, 1.05, 1.05, 0.95, 0.048, 1.025, 0.05, -1.05, 0.048, 0.05, 0.05, 0.048, 1.05, 0.048, 0.048, 1.05, 1.05, 0.95, 0.85, 0.596, 0.496, -0.792, -1.05, -1.05, -1.05, -1.05] ...; d[0..120]=[2.625, 2.52, 2.465, 2.41, 2.355, 2.351, 2.346, 2.341, 2.336, 2.281, 2.226, 2.222, 2.167, 2.062, 1.957, 1.852, 1.747, 1.647, 1.597, 1.543, 1.489, 1.539, 1.59, 1.585, 1.58, 1.575, 1.52, 1.465, 1.46, 1.405, 1.3, 1.2, 1.11, 1.038, 0.983, 0.998, 1.09, 1.195, 1.3, 1.405] ...; dh[0..119]=[2.065, 1.96, 1.965, 1.965, 1.965, 1.965, 1.965, 1.965, 1.965, 1.965, 1.965, 1.965, 1.965, 1.965, 1.965, 1.965, 1.187, 1.965, 2.157, 1.965, 1.965, 1.965, 2.15, 1.965, 1.965, 2.135, 1.965, 1.965, 1.965, 1.965, 1.86, 1.76, 1.67, 1.598, 0.423, 0.438, 0.53, 0.635, 1.86, 1.965] ...
+[PASS] S2a SW filter feasible with v_open when threats <= 90 deg apart: UNSAT (expected UNSAT) in 14.065s
+[PASS] S2b CA escape opens every threat at >= v_open/v_escape when <= 90 deg apart: UNSAT (expected UNSAT) in 0.838s
+[PASS] S2c CA escape opens a single threat at >= v_open/v_escape: UNSAT (expected UNSAT) in 1.603s
+[PASS] S2m mutation: strong vertical escape regardless of threat geometry must break S2b: SAT (expected SAT) in 0.005s
+       counterexample: alpha=1.0; beta=0.0; bh=0.0; bz=-1.0; cphi=0.0; sphi=-1.0; vz=1.0
+[PASS] S3 at most one vertex angle >= 90 deg (pairwise d >= d_safe): UNSAT (expected UNSAT) in 50.192s
+[PASS] S4 blackout <= 0.8s starting at d >= 2.08 m keeps d >= d_safe: UNSAT (expected UNSAT) in 0.008s
+== P2 critical-region mutual exclusion
+[PASS] X0a decision classes mutually exclusive: UNSAT (expected UNSAT) in 0.001s
+[PASS] X0b decision classes exhaustive: UNSAT (expected UNSAT) in 0.001s
+[PASS] M1 no simultaneous commit (independent errors <= eps): UNSAT (expected UNSAT) in 0.001s
+[PASS] M2a no mutual waiting (deadlock freedom of the pairwise rule): UNSAT (expected UNSAT) in 0.001s
+[PASS] M2b robust wait is justified: UNSAT (expected UNSAT) in 0.001s
+[PASS] M2c retreat targets are consistent (never both BACKOFF_REAR): UNSAT (expected UNSAT) in 0.001s
+[PASS] M3 priority persistence during the transit window: UNSAT (expected UNSAT) in 0.003s
+[PASS] M3b late arrivals cannot commit before the committed drone is visible: UNSAT (expected UNSAT) in 0.0s
+[PASS] M4 committed drone past occ_gamma+eps is perceived in the occupied zone: UNSAT (expected UNSAT) in 0.002s
+[PASS] M5a queued drones are outside the critical region: UNSAT (expected UNSAT) in 0.001s
+[PASS] M5b exited drones are outside the critical region: UNSAT (expected UNSAT) in 0.001s
+[PASS] M6a invariant 'at most one drone committed' is inductive: UNSAT (expected UNSAT) in 0.002s
+[PASS] M6b initial state satisfies the invariant: UNSAT (expected UNSAT) in 0.002s
+[PASS] M6c invariant + M5 implies G(occupancy_CR <= 1): UNSAT (expected UNSAT) in 0.0s
+[PASS] Mm1 mutation: gap band mu_s_hi-mu_s_lo=0.65 <= 2eps breaks M3: SAT (expected SAT) in 0.002s
+       counterexample: e0l=0.35; e0s=0.3; e0z=0.35; e1l=0.35; e1s=0.35; e1z=0.35; li0=-2.125; li1=-2.8; lj0=0.0; lj1=-2.85; si0=-3.7; si1=-3.7; sj0=-2.525; sj1=-2.675; zi0=0.0; zi1=-0.375; zj0=0.475; zj1=-0.85
+[PASS] Mm2 mutation: margins below eps (mu_s_hi=0.4) allow a double commit: SAT (expected SAT) in 0.002s
+       counterexample: dl_mm=-0.075; ds_mm=0.075; dz_mm=-0.425; eil_mm=-0.35; eis_mm=0.35; eiz_mm=0.35; ejl_mm=-0.1; ejs_mm=0.275; ejz_mm=0.35
+[PASS] Mm3 mutation: 'commit or wait' (no retreat classes) allows mutual waiting: SAT (expected SAT) in 0.001s
+       counterexample: dl_mm=0.2; ds_mm=0.55; dz_mm=0.55; eil_mm=-0.35; eis_mm=0.35; eiz_mm=0.35; ejl_mm=-0.35; ejs_mm=-0.35; ejz_mm=0.0
+== P3 bounded formation recovery
+linear-regime steady bounds: along 0.459 m, lateral 0.179 m; tolerances 0.519 / 0.229 m; norm 0.567 + depth 0.03 vs e_ok 0.6
+[PASS] B invariance of the along tolerance box (E <= 0.519 m): UNSAT (expected UNSAT) in 0.011s
+[PASS] B invariance of the lateral tolerance box (E <= 0.229 m, within |y| <= 0.275 m): UNSAT (expected UNSAT) in 0.015s
+[PASS] L lane-error box |y_i| <= 2.0 m is invariant: UNSAT (expected UNSAT) in 0.006s
+[PASS] L1 lane-error box |y_i| <= 0.275 m is invariant: UNSAT (expected UNSAT) in 0.007s
+[PASS] F3 tolerances fit the recovered threshold e_ok: UNSAT (expected UNSAT) in 0.0s
+[PASS] R ranking lemmas - along: decrease >= delta_k per step in every band down to 0.519 m: UNSAT (expected UNSAT) in 4.3s
+       [4.40,5.50] delta=52.8 mm/step -> 10.5s
+       [3.52,4.40] delta=52.8 mm/step -> 8.5s
+       [2.82,3.52] delta=52.8 mm/step -> 7.0s
+       [2.25,2.82] delta=52.8 mm/step -> 5.5s
+       [1.80,2.25] delta=52.8 mm/step -> 4.5s
+       [1.44,1.80] delta=52.8 mm/step -> 3.5s
+       [1.15,1.44] delta=44.2 mm/step -> 3.5s
+       [0.92,1.15] delta=33.9 mm/step -> 3.5s
+       [0.84,0.92] delta=30.3 mm/step -> 1.5s
+       [0.76,0.84] delta=26.7 mm/step -> 2.0s
+       [0.68,0.76] delta=23.1 mm/step -> 2.0s
+       [0.60,0.68] delta=19.4 mm/step -> 2.5s
+       [0.52,0.60] delta=8.6 mm/step -> 5.0s
+       [0.52,0.52] delta=8.1 mm/step -> 0.5s
+[PASS] R ranking lemmas - lateral phase 1 (lane error, saturated regime): decrease >= delta_k per step in every band down to 0.275 m: UNSAT (expected UNSAT) in 2.5s
+       [1.60,2.00] delta=160.0 mm/step -> 1.5s
+       [1.28,1.60] delta=160.0 mm/step -> 1.5s
+       [1.02,1.28] delta=160.0 mm/step -> 1.0s
+       [0.82,1.02] delta=146.0 mm/step -> 1.0s
+       [0.74,0.82] delta=126.0 mm/step -> 0.5s
+       [0.66,0.74] delta=106.0 mm/step -> 0.5s
+       [0.58,0.66] delta=86.0 mm/step -> 0.5s
+       [0.50,0.58] delta=66.0 mm/step -> 1.0s
+       [0.42,0.50] delta=46.0 mm/step -> 1.0s
+       [0.34,0.42] delta=26.0 mm/step -> 2.0s
+       [0.28,0.34] delta=10.0 mm/step -> 3.5s
+[PASS] R ranking lemmas - lateral phase 2 (formation error inside |y| <= A1): decrease >= delta_k per step in every band down to 0.229 m: UNSAT (expected UNSAT) in 0.4s
+       [0.29,0.37] delta=47.1 mm/step -> 1.0s
+       [0.23,0.29] delta=21.9 mm/step -> 1.5s
+[PASS] F4 worst-case recovery bound T=60.0 s <= referee deadline 75.0 s: UNSAT (expected UNSAT) in 0.0s
+[PASS] Fm mutation: without along-track consensus the error does not decrease: SAT (expected SAT) in 0.002s
+       counterexample: E=4.4; eta0=0.0; eta1=0.0; eta2=0.0; om0=-0.03; om1=0.03; om2=-0.03; x0=-4.4; x0n=-4.265; x1=4.4; x1n=4.565; x2=0.0; x2n=0.135
+
+OVERALL: PASS -> F:\Andrea\HoloHybridAutomaton\formal\results\SUMMARY.md
+FORMAL_EXIT=0 (305 s)

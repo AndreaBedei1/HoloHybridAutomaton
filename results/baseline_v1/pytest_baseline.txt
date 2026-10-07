@@ -1,0 +1,53 @@
+....................................................F.......F.......s... [ 98%]
+.                                                                        [100%]
+================================== FAILURES ===================================
+____________ test_required_logs[pair_crossing_s0_20261007_211903] _____________
+
+run = WindowsPath('F:/Andrea/HoloHybridAutomaton/results/pair_crossing_s0_20261007_211903')
+
+    @pytest.mark.parametrize("run", RUNS or [None], ids=lambda p: p.name if p else "none")
+    def test_required_logs(run):
+        if run is None:
+            pytest.skip("no runs")
+        for f in REQUIRED:
+>           assert (run / f).exists(), f
+E           AssertionError: referee_metrics.json
+E           assert False
+E            +  where False = exists()
+E            +    where exists = (WindowsPath('F:/Andrea/HoloHybridAutomaton/results/pair_crossing_s0_20261007_211903') / 'referee_metrics.json').exists
+
+tests\test_run_artifacts.py:28: AssertionError
+___ test_referee_verdicts_in_nominal_runs[pair_crossing_s0_20261007_211903] ___
+
+run = WindowsPath('F:/Andrea/HoloHybridAutomaton/results/pair_crossing_s0_20261007_211903')
+
+    @pytest.mark.parametrize("run", RUNS or [None], ids=lambda p: p.name if p else "none")
+    def test_referee_verdicts_in_nominal_runs(run):
+        if run is None:
+            pytest.skip("no runs")
+        cfg = json.loads((run / "run_config.json").read_text())
+>       m = json.loads((run / "referee_metrics.json").read_text())
+
+tests\test_run_artifacts.py:49: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+C:\Users\andrea.bedei3\.conda\envs\holo_fleet_ha\lib\pathlib.py:1194: in read_text
+    with self.open(mode='r', encoding=encoding, errors=errors) as f:
+C:\Users\andrea.bedei3\.conda\envs\holo_fleet_ha\lib\pathlib.py:1180: in open
+    return io.open(self, mode, buffering, encoding, errors, newline,
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = WindowsPath('F:/Andrea/HoloHybridAutomaton/results/pair_crossing_s0_20261007_211903/referee_metrics.json')
+name = 'F:\\Andrea\\HoloHybridAutomaton\\results\\pair_crossing_s0_20261007_211903\\referee_metrics.json'
+flags = 32896, mode = 438
+
+    def _opener(self, name, flags, mode=0o666):
+        # A stub for the opener argument to built-in open()
+>       return self._accessor.open(self, flags, mode)
+E       FileNotFoundError: [Errno 2] No such file or directory: 'F:\\Andrea\\HoloHybridAutomaton\\results\\pair_crossing_s0_20261007_211903\\referee_metrics.json'
+
+C:\Users\andrea.bedei3\.conda\envs\holo_fleet_ha\lib\pathlib.py:1038: FileNotFoundError
+=========================== short test summary info ===========================
+FAILED tests/test_run_artifacts.py::test_required_logs[pair_crossing_s0_20261007_211903]
+FAILED tests/test_run_artifacts.py::test_referee_verdicts_in_nominal_runs[pair_crossing_s0_20261007_211903]
+2 failed, 70 passed, 1 skipped in 273.23s (0:04:33)
+PYTEST_EXIT=1 (277 s)
