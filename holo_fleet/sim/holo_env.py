@@ -43,6 +43,7 @@ class Truth:
     released: np.ndarray                  # (n,) bool
     current_drift: np.ndarray             # (n,3) effective drift applied at each drone
     current_cmd: np.ndarray               # (n,3) HoloOcean command actually sent
+    intruders: Optional[np.ndarray] = None  # (m,3) scripted non-fleet vehicles (referee only)
 
 
 def agent_origin_from_pose(pose: np.ndarray) -> np.ndarray:
@@ -61,10 +62,12 @@ class HoloFleetSim:
         self.headless = headless
         self.view_region = view_region
         self.names: List[str] = list(spec.names)
+        self.intruders: List[Dict[str, Any]] = [dict(d) for d in (getattr(spec, "intruders", ()) or ())]
+        self.intruder_names: List[str] = [d["name"] for d in self.intruders]
         self.env = None
         self.t = 0.0
-        self.latest: Dict[str, Dict[str, Any]] = {n: {} for n in self.names}
-        self.stamp: Dict[str, Dict[str, float]] = {n: {} for n in self.names}
+        self.latest: Dict[str, Dict[str, Any]] = {n: {} for n in self.names + self.intruder_names}
+        self.stamp: Dict[str, Dict[str, float]] = {n: {} for n in self.names + self.intruder_names}
         self.rng = np.random.default_rng(spec.seed + 12345)
         self.blackouts: Dict[str, List[tuple]] = {}
         self.pins: Dict[str, tuple] = {}
@@ -96,6 +99,19 @@ class HoloFleetSim:
         return {"agent_name": name, "agent_type": "BlueROV2", "location": [float(v) for v in pos],
                 "rotation": [0.0, 0.0, float(self.spec.spawn_yaw_deg[k])], "control_scheme": 0, "sensors": sensors}
 
+    def _intruder_cfg(self, d: Dict[str, Any]) -> Dict[str, Any]:
+        return {"agent_name": d["name"], "agent_type": "BlueROV2", "location": [float(v) for v in d["start"]],
+                "rotation": [0.0, 0.0, float(d.get("yaw_deg", 0.0))], "control_scheme": 0,
+                "sensors": [{"sensor_type": "PoseSensor", "sensor_name": "PoseSensor", "socket": "IMUSocket", "Hz": 30}]}
+
+    @staticmethod
+    def intruder_position(d: Dict[str, Any], t: float) -> np.ndarray:
+        """Scripted position: piecewise-linear ``waypoints`` [[t, x, y, z], ...] or start + velocity * t."""
+        if d.get("waypoints"):
+            W = np.asarray(d["waypoints"], float)
+            return np.array([np.interp(t, W[:, 0], W[:, k]) for k in (1, 2, 3)])
+        return np.asarray(d["start"], float) + np.asarray(d["velocity"], float) * max(0.0, t - float(d.get("t_start", 0.0)))
+
     def start(self) -> None:
         self.setup_report["holoocean"] = hs.use_patched_holoocean()
         import holoocean
@@ -108,7 +124,7 @@ class HoloFleetSim:
             "main_agent": self.names[0], "ticks_per_sec": TICKS_PER_SEC, "frames_per_sec": False,
             "window_width": 1280, "window_height": 720, "octree_min": hs.OCTREE_MIN, "octree_max": hs.OCTREE_MAX,
             "env_min": list(env_min), "env_max": list(env_max),
-            "agents": [self._agent_cfg(k) for k in range(len(self.names))],
+            "agents": [self._agent_cfg(k) for k in range(len(self.names))] + [self._intruder_cfg(d) for d in self.intruders],
         }
         t0 = time.time()
         last_exc = None
@@ -162,7 +178,7 @@ class HoloFleetSim:
 
     def _settle(self, ticks: int) -> None:
         for _ in range(ticks):
-            for n in self.names:
+            for n in self.names + self.intruder_names:
                 self.env.act(n, np.zeros(8))
             self._tick(record=False)
 
@@ -198,14 +214,19 @@ class HoloFleetSim:
     def _tick(self, record: bool = True) -> None:
         for name, (loc, rot) in self.pins.items():
             self.env.agents[name].set_physics_state(list(loc), list(rot), [0, 0, 0], [0, 0, 0])
+        for d in self.intruders:                     # scripted kinematic motion, no reaction to anything
+            loc = self.intruder_position(d, self.t)
+            vel = (self.intruder_position(d, self.t + 0.1) - loc) / 0.1
+            self.env.agents[d["name"]].set_physics_state([float(v) for v in loc], [0.0, 0.0, float(d.get("yaw_deg", 0.0))],
+                                                         [float(v) for v in vel], [0, 0, 0])
         w0 = time.perf_counter()
         raw = self.env.tick()
         if record:
             self.tick_wall_ms.append(1000.0 * (time.perf_counter() - w0))
         tick_t = self.t
         st = self.spec.stress
-        for n in self.names:
-            data = raw.get(n, raw if len(self.names) == 1 else {})
+        for n in self.names + self.intruder_names:
+            data = raw.get(n, raw if len(self.names) + len(self.intruder_names) == 1 else {})
             for key, val in data.items():
                 if key in SONAR_NAMES:
                     self.sonar_captures += 1
@@ -237,7 +258,12 @@ class HoloFleetSim:
         released = np.array([self.t >= r for r in self.spec.release_s])
         drift = np.array([self.spec.current.drift_at(P[k], self.t) for k in range(n)])
         cmd = np.array([self.spec.current.command_at(P[k], self.t) for k in range(n)])
-        return Truth(self.t, P, R, Y, V, C, released, drift, cmd)
+        intr = None
+        if self.intruder_names:
+            intr = np.array([agent_origin_from_pose(np.asarray(self.latest[nm]["PoseSensor"], float))
+                             if self.latest[nm].get("PoseSensor") is not None else self.intruder_position(d, self.t)
+                             for nm, d in zip(self.intruder_names, self.intruders)])
+        return Truth(self.t, P, R, Y, V, C, released, drift, cmd, intr)
 
     def frames(self) -> Dict[str, SensorFrame]:
         out = {}
@@ -261,6 +287,8 @@ class HoloFleetSim:
                 self.env.act(name, np.zeros(8))
             else:
                 self.env.act(name, np.zeros(8) if cmd is None else np.asarray(cmd, dtype=float))
+        for name in self.intruder_names:
+            self.env.act(name, np.zeros(8))
         for _ in range(n_ticks):
             self.t = round(self.t + 1.0 / TICKS_PER_SEC, 6)
             self._tick()

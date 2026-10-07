@@ -1,217 +1,219 @@
-"""Ground-truth referee / validator.
+"""Ground-truth referee / validator (v2, generic N).
 
-The referee is the ONLY component that reads simulator ground truth.  It is
-fed by the simulation runner and never returns anything to the controllers.
-It computes the empirical verdicts for P1 (separation), P2 (critical-region
-mutual exclusion) and P3 (bounded formation recovery).
+The referee is the ONLY component that reads simulator ground truth.  It is fed by the runner and
+never returns anything to a controller.  It judges, on agent-origin (hull-centre) positions:
+
+* P1  G(forall i != j: d_ij >= d_safe)          - minimum distance per pair, violations, contacts;
+* P2  G(sum_i inside_CR_i <= 1)                  - occupancy of every critical region, entry order;
+* P3  G(formation_lost -> F formation_recovered) - episodes of formation loss with their recovery
+  times.  A finite run cannot falsify a liveness property: an episode still open at the end of a
+  run is reported as "not recovered within the run", never as a counterexample.
 """
 
 from __future__ import annotations
 
 import itertools
-import json
-import math
-from dataclasses import dataclass, field
-from typing import Dict, List, Optional
+from dataclasses import dataclass
+from typing import Dict, List, Optional, Sequence
 
 import numpy as np
 
 from holo_fleet.config import DEFAULT, FleetConfig
-from holo_fleet.mission import GateSpec, MissionPlan
+from holo_fleet.mission import GateSpec
+
+PERTURBING_MODES = ("SEPARATION_WARNING", "COLLISION_AVOIDANCE", "FAILSAFE_HOLD_OR_RETREAT",
+                    "GATE_APPROACH", "GATE_YIELD", "GATE_PASS")
 
 
 @dataclass
 class Episode:
     t_lost: float
     t_recovered: Optional[float] = None
-    cause: str = ""
-    t_calm: Optional[float] = None          # start of the last perturbation-free interval
+    t_perturbation_end: Optional[float] = None
+    modes_at_loss: str = ""
 
     @property
-    def duration(self) -> Optional[float]:
+    def recovery_time(self) -> Optional[float]:
         return None if self.t_recovered is None else self.t_recovered - self.t_lost
 
     @property
     def recovery_after_perturbation(self) -> Optional[float]:
-        if self.t_recovered is None or self.t_calm is None:
+        if self.t_recovered is None or self.t_perturbation_end is None:
             return None
-        return self.t_recovered - self.t_calm
+        return max(0.0, self.t_recovered - self.t_perturbation_end)
 
 
 class Referee:
-    def __init__(self, plans: List[MissionPlan], gates: List[GateSpec], cfg: FleetConfig = DEFAULT):
+    def __init__(self, names: Sequence[str], template_offsets: Optional[np.ndarray], path, gates: Sequence[GateSpec],
+                 cfg: FleetConfig = DEFAULT, formation_enabled: bool = True):
         self.cfg = cfg
-        self.plans = plans
-        self.names = [p.drone_id for p in plans]
-        self.gates = gates
-        self.rows: List[Dict] = []
-        self.pairs = list(itertools.combinations(range(len(plans)), 2))
+        self.names = list(names)
+        self.n = len(self.names)
+        self.tmpl = None if template_offsets is None else np.asarray(template_offsets, float)
+        self.path = path
+        self.gates = list(gates)
+        self.formation_enabled = formation_enabled and self.tmpl is not None and self.n > 1
+        self.pairs = list(itertools.combinations(range(self.n), 2))
         self.min_d = {p: 1e9 for p in self.pairs}
         self.min_d_t = {p: None for p in self.pairs}
         self.p1_violations: List[Dict] = []
-        self.p1_collisions: List[Dict] = []
+        self.contacts: List[Dict] = []
+        self.collision_edges: List[Dict] = []
+        self._coll_prev = np.zeros(self.n, dtype=bool)
         self.p2_violations: List[Dict] = []
-        self.occupancy_log: Dict[str, List[str]] = {g.gate_id: [] for g in gates}   # entry order
-        self._inside_prev: Dict[str, set] = {g.gate_id: set() for g in gates}
-        self.collision_sensor_events: List[Dict] = []
-        self._coll_prev = np.zeros(len(plans), dtype=bool)
+        self.entry_order: Dict[str, List[str]] = {g.gate_id: [] for g in self.gates}
+        self.max_occ: Dict[str, int] = {g.gate_id: 0 for g in self.gates}
+        self._inside_prev: Dict[str, set] = {g.gate_id: set() for g in self.gates}
         self.episodes: List[Episode] = []
         self._lost = False
         self._ok_since: Optional[float] = None
-        self.envelope_flags: List[Dict] = []
+        self._last_perturbation = -1e9
         self.max_drift = 0.0
-        self.formation_enabled = all(p.formation_enabled for p in plans) and len(plans) > 1
-        self._prev_pos = None
+        self.max_vertical_drift = 0.0
         self.max_speed = 0.0
+        self.rows: List[Dict] = []
+        self.intruder_min_d = 1e9                  # fleet drone <-> scripted non-fleet vehicle
+        self.intruder_min_t: Optional[float] = None
+        self.intruder_contacts: List[Dict] = []
 
-    # ------------------------------------------------------------------
+    # ------------------------------------------------------------------ formation error
     def formation_error(self, P: np.ndarray) -> float:
-        """Max deviation of each drone from the best-translated formation template (path frame)."""
-        plan = self.plans[0]
-        slots = plan.slots
-        centroid = P.mean(axis=0)
-        s_c, _, _ = plan.path.project(centroid[:2])
-        _, tan, nrm = plan.path.frame_at(s_c)
-        rel = P - centroid
-        rel_pf = np.stack([rel[:, :2] @ tan, rel[:, :2] @ nrm, rel[:, 2]], axis=1)
-        tmpl = np.array([[s.along, s.lateral, s.dz] for s in slots])
-        tmpl = tmpl - tmpl.mean(axis=0)
-        return float(np.max(np.linalg.norm(rel_pf - tmpl, axis=1)))
+        """Max deviation of a drone from the template after the best translation (formation frame)."""
+        if self.tmpl is None:
+            return 0.0
+        c = P.mean(axis=0)
+        s_c, _lat, _k = self.path.project(c[:2])
+        _p, tan, nrm = self.path.frame_at(s_c)
+        rel = P - c
+        rel_f = np.stack([rel[:, :2] @ tan, rel[:, :2] @ nrm, rel[:, 2]], axis=1)
+        tm = self.tmpl - self.tmpl.mean(axis=0)
+        return float(np.max(np.linalg.norm(rel_f - tm, axis=1)))
 
-    def update(self, truth, modes: Optional[List[str]] = None, perturbation: bool = False) -> Dict:
-        """``perturbation`` = some drone is in a gate/avoidance/failsafe mode or inside a localized
-        current disturbance.  P3 is a bounded-recovery property *after* the perturbation ends."""
-        sep, F = self.cfg.sep, self.cfg.form
-        t = truth.t
-        P = truth.positions
-        row: Dict = {"t": round(t, 3)}
+    def cr_inside(self, g: GateSpec, p: np.ndarray) -> bool:
+        G = self.cfg.gate
+        s, l, dz = g.to_gate_frame(p)
+        return abs(s) <= G.cr_half_len and abs(l) <= G.cr_half_width and abs(dz) <= G.cr_half_height
+
+    # ------------------------------------------------------------------ update
+    def update(self, truth, modes: Sequence[str], disturbance_active: bool = False) -> Dict:
+        t, P = truth.t, truth.positions
+        sep = self.cfg.sep
+        row = {"t": round(t, 3)}
         for (i, j) in self.pairs:
             d = float(np.linalg.norm(P[i] - P[j]))
-            row[f"d_{i}{j}"] = round(d, 4)
+            row[f"d_{i}_{j}"] = round(d, 4)
             if d < self.min_d[(i, j)]:
                 self.min_d[(i, j)], self.min_d_t[(i, j)] = d, t
-            if truth.released[i] and truth.released[j]:
-                if d < sep.d_safe:
-                    self.p1_violations.append({"t": t, "pair": [self.names[i], self.names[j]], "d": d})
-                if d < sep.d_collision:
-                    self.p1_collisions.append({"t": t, "pair": [self.names[i], self.names[j]], "d": d})
-        # collision sensor rising edges
-        for k in range(len(self.names)):
-            if truth.collision[k] and not self._coll_prev[k]:
-                self.collision_sensor_events.append({"t": t, "drone": self.names[k],
-                                                     "nearest_drone_d": float(min(
-                                                         [np.linalg.norm(P[k] - P[m]) for m in range(len(P)) if m != k] or [1e9]))})
-        self._coll_prev = truth.collision.copy()
-        # critical-region occupancy (true positions)
+            if d < sep.d_safe:
+                self.p1_violations.append({"t": t, "pair": [self.names[i], self.names[j]], "d": round(d, 3)})
+            if d < sep.d_collision:
+                self.contacts.append({"t": t, "pair": [self.names[i], self.names[j]], "d": round(d, 3)})
+        intr = getattr(truth, "intruders", None)
+        if intr is not None and len(intr):
+            for m, q in enumerate(np.asarray(intr, float)):
+                row[f"ix{m}"], row[f"iy{m}"], row[f"iz{m}"] = (round(float(v), 3) for v in q)
+                for k in range(self.n):
+                    d = float(np.linalg.norm(P[k] - q))
+                    if d < self.intruder_min_d:
+                        self.intruder_min_d, self.intruder_min_t = d, t
+                    if d < sep.d_collision:
+                        self.intruder_contacts.append({"t": t, "drone": self.names[k], "d": round(d, 3)})
+            row["d_intruder"] = round(float(min(np.linalg.norm(P[k] - q) for k in range(self.n) for q in intr)), 4)
+        col = np.asarray(truth.collision, dtype=bool)
+        for k in np.flatnonzero(col & ~self._coll_prev):
+            self.collision_edges.append({"t": t, "drone": self.names[int(k)]})
+        self._coll_prev = col.copy()
         for g in self.gates:
-            G = self.cfg.gate
-            inside = set()
-            for k in range(len(self.names)):
-                s, l, dz = g.to_gate_frame(P[k])
-                if abs(s) <= G.cr_half_len and abs(l) <= G.cr_half_width and abs(dz) <= G.cr_half_height:
-                    inside.add(k)
-            row[f"occ_{g.gate_id}"] = len(inside)
-            for k in sorted(inside - self._inside_prev[g.gate_id]):
-                self.occupancy_log[g.gate_id].append(self.names[k])
-            if len(inside) > 1:
-                self.p2_violations.append({"t": t, "gate": g.gate_id, "inside": [self.names[k] for k in sorted(inside)]})
+            inside = {self.names[k] for k in range(self.n) if self.cr_inside(g, P[k])}
+            occ = len(inside)
+            row[f"occ_{g.gate_id}"] = occ
+            self.max_occ[g.gate_id] = max(self.max_occ[g.gate_id], occ)
+            for nm in sorted(inside - self._inside_prev[g.gate_id]):
+                if nm not in self.entry_order[g.gate_id]:
+                    self.entry_order[g.gate_id].append(nm)
+            if occ > 1:
+                self.p2_violations.append({"t": t, "gate": g.gate_id, "inside": sorted(inside)})
             self._inside_prev[g.gate_id] = inside
-        # formation (P3)
-        if self.formation_enabled and all(truth.released):
-            fe = self.formation_error(P)
-            row["form_err"] = round(fe, 4)
-            row["perturbation"] = int(perturbation)
-            if not self._lost and fe > F.e_lost:
+        if any(m in PERTURBING_MODES for m in modes) or disturbance_active:
+            self._last_perturbation = t
+        if self.formation_enabled:
+            e = self.formation_error(P)
+            row["form_err"] = round(e, 4)
+            rc = self.cfg.ref
+            if not self._lost and e > rc.e_lost:
                 self._lost = True
+                self.episodes.append(Episode(t_lost=t, modes_at_loss=",".join(sorted(set(modes)))))
                 self._ok_since = None
-                self.episodes.append(Episode(t_lost=t, cause=",".join(sorted(set(modes or [])))))
-            if self._lost:
-                ep = self.episodes[-1]
-                if perturbation:
-                    ep.t_calm = None
-                elif ep.t_calm is None:
-                    ep.t_calm = t
-                if fe < F.e_ok:
+            elif self._lost:
+                if e < rc.e_ok:
                     self._ok_since = t if self._ok_since is None else self._ok_since
-                    if t - self._ok_since >= F.t_ok_hold:
-                        self.episodes[-1].t_recovered = t
+                    if t - self._ok_since >= rc.t_ok_hold:
+                        ep = self.episodes[-1]
+                        ep.t_recovered = self._ok_since
+                        ep.t_perturbation_end = min(self._last_perturbation, self._ok_since)
                         self._lost = False
                 else:
                     self._ok_since = None
-        # currents / envelope
-        for k in range(len(self.names)):
-            w = float(np.linalg.norm(truth.current_drift[k]))
-            row[f"drift_{k}"] = round(w, 3)
-            self.max_drift = max(self.max_drift, w)
-            if w > self.cfg.env.current_drift_max + 1e-9:
-                if not self.envelope_flags or t - self.envelope_flags[-1]["t"] > 5.0:
-                    self.envelope_flags.append({"t": t, "drone": self.names[k], "drift": w,
-                                                "limit": self.cfg.env.current_drift_max})
-        for k in range(len(self.names)):
-            row[f"x_{k}"], row[f"y_{k}"], row[f"z_{k}"] = (round(float(v), 4) for v in P[k])
-            row[f"yaw_{k}"] = round(float(truth.yaw_deg[k]), 2)
-        if self._prev_pos is not None:
-            sp = np.linalg.norm(P - self._prev_pos, axis=1) / max(t - self._prev_t, 1e-6)
-            self.max_speed = max(self.max_speed, float(sp.max()))
-        self._prev_pos, self._prev_t = P.copy(), t
+        drift = np.asarray(truth.current_drift, float)
+        self.max_drift = max(self.max_drift, float(np.max(np.linalg.norm(drift[:, :2], axis=1))))
+        self.max_vertical_drift = max(self.max_vertical_drift, float(np.max(np.abs(drift[:, 2]))))
+        self.max_speed = max(self.max_speed, float(np.max(np.linalg.norm(truth.velocities, axis=1))))
+        row["max_drift"] = round(float(np.max(np.linalg.norm(drift, axis=1))), 3)
+        for k in range(self.n):
+            row[f"x{k}"], row[f"y{k}"], row[f"z{k}"] = (round(float(v), 3) for v in P[k])
         self.rows.append(row)
         return row
 
-    # ------------------------------------------------------------------
+    def live(self) -> Dict:
+        """Compact status for the UI (REFEREE / ground truth)."""
+        last = self.rows[-1] if self.rows else {}
+        dmin = min((last.get(f"d_{i}_{j}", 1e9) for i, j in self.pairs), default=None)
+        return {"d_min_true": dmin, "p1_ok": not self.p1_violations,
+                "occupancy": {g.gate_id: last.get(f"occ_{g.gate_id}", 0) for g in self.gates},
+                "p2_ok": not self.p2_violations, "form_err": last.get("form_err"),
+                "formation": ("LOST" if self._lost and self._ok_since is None else
+                              "RECOVERING" if self._lost else "OK") if self.formation_enabled else None,
+                "episodes": len(self.episodes)}
+
+    # ------------------------------------------------------------------ verdicts
     def metrics(self) -> Dict:
-        sep, F = self.cfg.sep, self.cfg.form
-        rec_times = [e.recovery_after_perturbation for e in self.episodes if e.recovery_after_perturbation is not None]
-        unrecovered = [e for e in self.episodes if e.t_recovered is None]
-        p3_late = [e for e in self.episodes
-                   if e.recovery_after_perturbation is not None and e.recovery_after_perturbation > F.t_recovery_max]
-        min_overall = min(self.min_d.values()) if self.min_d else None
-        out = {
-            "P1_separation": {
-                "formula": "G( forall i!=j : d_ij >= d_safe )",
-                "d_safe": sep.d_safe, "d_warning": sep.d_warning, "d_collision": sep.d_collision,
-                "min_distance_overall": None if min_overall is None else round(min_overall, 4),
-                "min_distance_per_pair": {f"{self.names[i]}-{self.names[j]}": {"d_min": round(v, 4), "t": self.min_d_t[(i, j)]}
-                                          for (i, j), v in self.min_d.items()},
-                "violations_d_lt_d_safe": len(self.p1_violations),
-                "first_violation": self.p1_violations[0] if self.p1_violations else None,
-                "physical_contacts_d_lt_d_collision": len(self.p1_collisions),
-                "collision_sensor_rising_edges": self.collision_sensor_events,
-                "holds": len(self.p1_violations) == 0,
-            },
-            "P2_mutual_exclusion": {
-                "formula": "G( sum_i inside_CR_i <= 1 )",
-                "gates": [g.gate_id for g in self.gates],
-                "max_occupancy": {g.gate_id: int(max([r.get(f"occ_{g.gate_id}", 0) for r in self.rows] or [0]))
-                                  for g in self.gates},
-                "entry_order": self.occupancy_log,
-                "violations": len(self.p2_violations),
-                "first_violation": self.p2_violations[0] if self.p2_violations else None,
-                "all_drones_traversed": {g.gate_id: sorted(set(self.occupancy_log[g.gate_id])) == sorted(self.names)
-                                         for g in self.gates},
-                "holds": len(self.p2_violations) == 0 if self.gates else None,
-            },
-            "P3_formation_recovery": {
-                "formula": "G( formation_lost -> F_[0,T] formation_recovered )",
-                "T_s": F.t_recovery_max, "e_lost": F.e_lost, "e_ok": F.e_ok, "t_ok_hold": F.t_ok_hold,
-                "enabled": self.formation_enabled,
-                "episodes": [{"t_lost": e.t_lost, "t_perturbation_end": e.t_calm, "t_recovered": e.t_recovered,
-                              "episode_duration": e.duration, "recovery_after_perturbation": e.recovery_after_perturbation,
-                              "modes_at_loss": e.cause}
-                             for e in self.episodes],
-                "n_episodes": len(self.episodes),
-                "max_recovery_time_s": max(rec_times) if rec_times else None,
-                "max_episode_duration_s": max([e.duration for e in self.episodes if e.duration is not None], default=None),
-                "unrecovered_at_end": len(unrecovered),
-                "late_recoveries": len(p3_late),
-                "final_form_err": self.rows[-1].get("form_err") if self.rows else None,
-                "holds": (len(p3_late) == 0 and len(unrecovered) == 0) if self.formation_enabled else None,
-            },
-            "envelope": {
-                "current_drift_max_claimed": self.cfg.env.current_drift_max,
-                "max_effective_drift_applied": round(self.max_drift, 3),
-                "out_of_envelope_flags": self.envelope_flags,
-                "inside_envelope": len(self.envelope_flags) == 0,
-            },
+        sep, env = self.cfg.sep, self.cfg.env
+        dmin = min(self.min_d.values()) if self.min_d else None
+        eps = [{"t_lost": round(e.t_lost, 2),
+                "t_recovered": None if e.t_recovered is None else round(e.t_recovered, 2),
+                "recovery_time_s": None if e.recovery_time is None else round(e.recovery_time, 2),
+                "t_perturbation_end": None if e.t_perturbation_end is None else round(e.t_perturbation_end, 2),
+                "recovery_after_perturbation_s": None if e.recovery_after_perturbation is None
+                else round(e.recovery_after_perturbation, 2),
+                "modes_at_loss": e.modes_at_loss} for e in self.episodes]
+        return {
+            "P1_separation": {"formula": "G(forall i!=j: d_ij >= d_safe)", "d_safe": sep.d_safe,
+                              "min_distance": None if dmin is None else round(dmin, 3),
+                              "min_per_pair": {f"{self.names[i]}-{self.names[j]}": {"d": round(d, 3), "t": self.min_d_t[(i, j)]}
+                                               for (i, j), d in self.min_d.items()},
+                              "violations": len(self.p1_violations), "first_violation": self.p1_violations[:1],
+                              "physical_contacts": len(self.contacts), "collision_sensor_edges": self.collision_edges,
+                              "holds": not self.p1_violations,
+                              "intruder": None if self.intruder_min_t is None else {
+                                  "note": "scripted vehicle outside the fleet (no controller); not part of P1 among drones",
+                                  "min_distance": round(self.intruder_min_d, 3), "t": self.intruder_min_t,
+                                  "below_d_safe": self.intruder_min_d < sep.d_safe,
+                                  "contacts": len(self.intruder_contacts)}},
+            "P2_mutual_exclusion": {"formula": "G(sum_i inside_CR_i <= 1)", "gates": [g.gate_id for g in self.gates],
+                                    "max_occupancy": self.max_occ, "entry_order": self.entry_order,
+                                    "violations": len(self.p2_violations), "first_violation": self.p2_violations[:1],
+                                    "holds": not self.p2_violations},
+            "P3_formation_recovery": {"formula": "G(formation_lost -> F formation_recovered)",
+                                      "enabled": self.formation_enabled, "e_lost": self.cfg.ref.e_lost,
+                                      "e_ok": self.cfg.ref.e_ok, "t_ok_hold": self.cfg.ref.t_ok_hold,
+                                      "episodes": eps, "n_episodes": len(eps),
+                                      "open_at_end": int(self._lost),
+                                      "all_recovered_within_run": not self._lost,
+                                      "final_form_err": self.rows[-1].get("form_err") if self.rows else None},
+            "envelope": {"current_drift_max_claimed": env.current_drift_max,
+                         "max_horizontal_drift": round(self.max_drift, 3),
+                         "max_vertical_drift": round(self.max_vertical_drift, 3),
+                         "inside_envelope": self.max_drift <= env.current_drift_max + 1e-9
+                         and self.max_vertical_drift <= env.current_vertical_max + 1e-9},
             "kinematics": {"max_true_speed_m_s": round(self.max_speed, 3)},
         }
-        return out

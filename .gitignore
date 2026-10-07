@@ -5,6 +5,7 @@ __pycache__/
 
 # development runs and probes output
 results/dev/
+results/v2/dev/
 probe/out/
 formal/results_*.log
 
@@ -12,6 +13,8 @@ formal/results_*.log
 # metrics, summaries, events, run configs, per-drone states and referee time series are versioned,
 # key figures and GIFs are versioned as copies in figures/
 results/**/frames/
+results/**/dashboard/
+results/**/dashboard_replay/
 results/**/sensors/
 results/**/figures/
 results/**/*.gif

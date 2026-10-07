@@ -1,79 +1,125 @@
-"""Every demonstrative run in results/ has the required logs, sane referee verdicts and non-empty figures."""
+"""Demonstration runs (results/v2/demos): only COMPLETED runs are judged; an interrupted run never fails
+these tests but stays recognisable (run_status.json says INCOMPLETE and it is excluded)."""
 
 import csv
 import json
 from pathlib import Path
 
-import numpy as np
 import pytest
 
 ROOT = Path(__file__).resolve().parents[1]
-RUNS = sorted(p for p in (ROOT / "results").glob("*") if p.is_dir() and (p / "run_config.json").exists())
-REQUIRED = ["run_config.json", "events.jsonl", "referee_metrics.json", "referee_timeseries.csv", "summary.csv"]
-PER_DRONE = ["state", "observations", "actions"]
-NOMINAL = ("pair_crossing", "formation_current", "gate_arena")
+DEMOS = ROOT / "results" / "v2" / "demos"
 
 
-def _runs():
-    if not RUNS:
-        pytest.skip("no demonstrative runs in results/ yet")
-    return RUNS
+def _status(run: Path) -> str:
+    try:
+        return json.loads((run / "run_status.json").read_text(encoding="utf-8")).get("status", "INCOMPLETE")
+    except (OSError, ValueError):
+        return "INCOMPLETE"
 
 
-@pytest.mark.parametrize("run", RUNS or [None], ids=lambda p: p.name if p else "none")
-def test_required_logs(run):
+ALL = sorted(p for p in DEMOS.glob("*") if p.is_dir() and (p / "run_config.json").exists()) if DEMOS.exists() else []
+COMPLETE = [p for p in ALL if _status(p) == "COMPLETE"]
+REQUIRED = ["run_status.json", "run_config.json", "events.jsonl", "referee_metrics.json", "referee_timeseries.csv",
+            "summary.csv", "perf.json"]
+
+
+def complete_runs():
+    return COMPLETE or [None]
+
+
+def test_incomplete_runs_are_excluded_and_labelled():
+    for run in ALL:
+        if run not in COMPLETE:
+            assert _status(run) == "INCOMPLETE"
+            assert run not in COMPLETE
+
+
+def test_selection_logic_on_a_synthetic_interrupted_run(tmp_path):
+    run = tmp_path / "interrupted"
+    run.mkdir()
+    (run / "run_config.json").write_text("{}")
+    (run / "run_status.json").write_text(json.dumps({"status": "INCOMPLETE", "reason": "interrupted by the user"}))
+    assert _status(run) == "INCOMPLETE"
+    (run / "run_status.json").unlink()
+    assert _status(run) == "INCOMPLETE"                      # no status file: never treated as complete
+
+
+@pytest.mark.parametrize("run", complete_runs(), ids=lambda p: p.name if p else "none")
+def test_required_artifacts(run):
     if run is None:
-        pytest.skip("no runs")
+        pytest.skip("no completed demonstration run yet (python scripts/run_all_demos.py)")
     for f in REQUIRED:
         assert (run / f).exists(), f
-    cfg = json.loads((run / "run_config.json").read_text())
-    for k in range(cfg["n_drones"]):
-        for kind in PER_DRONE:
-            p = run / f"drone_{k}_{kind}.jsonl"
-            if not p.exists() and kind in ("observations", "actions"):
-                pytest.skip(f"{p.name} not on disk (bulky logs are not versioned)")
-            assert p.exists(), p.name
-            with open(p) as fh:
-                json.loads(fh.readline())
-    for line in open(run / "events.jsonl"):
+    for line in open(run / "events.jsonl", encoding="utf-8"):
         json.loads(line)
-    rows = list(csv.DictReader(open(run / "referee_timeseries.csv")))
-    assert len(rows) > 50
+    rows = list(csv.DictReader(open(run / "referee_timeseries.csv", encoding="utf-8")))
+    cfg = json.loads((run / "run_config.json").read_text(encoding="utf-8"))
+    assert rows and float(rows[-1]["t"]) >= cfg["duration_s"] - 0.2
 
 
-@pytest.mark.parametrize("run", RUNS or [None], ids=lambda p: p.name if p else "none")
-def test_referee_verdicts_in_nominal_runs(run):
+@pytest.mark.parametrize("run", complete_runs(), ids=lambda p: p.name if p else "none")
+def test_referee_verdicts(run):
     if run is None:
-        pytest.skip("no runs")
-    cfg = json.loads((run / "run_config.json").read_text())
-    m = json.loads((run / "referee_metrics.json").read_text())
-    assert m["run"]["comms_enabled"] is False or cfg["comms_enabled"] is True
-    if not cfg["comms_enabled"]:
-        assert m["run"]["inter_agent_messages_sent"] == 0
-    assert sum(m["run"]["determinism_monitor_violations"].values()) == 0
-    # hard requirements only where the run stayed inside the operational envelope (out-of-envelope
-    # runs must instead be flagged, which the referee does)
-    if cfg["scenario"] in NOMINAL and m["envelope"]["inside_envelope"]:
-        assert m["P1_separation"]["holds"], m["P1_separation"]["first_violation"]
-        if m["P2_mutual_exclusion"]["gates"]:
-            assert m["P2_mutual_exclusion"]["holds"]
-            assert all(m["P2_mutual_exclusion"]["all_drones_traversed"].values())
-        if m["P3_formation_recovery"]["enabled"]:
-            assert m["P3_formation_recovery"]["holds"]
-    if not m["envelope"]["inside_envelope"]:
-        assert m["envelope"]["out_of_envelope_flags"], "an out-of-envelope run must be flagged"
+        pytest.skip("no completed demonstration run yet")
+    m = json.loads((run / "referee_metrics.json").read_text(encoding="utf-8"))
+    r = m["run"]
+    assert r["inter_agent_messages"] == 0 and r["comms_enabled"] is False
+    assert r["ground_truth_used_by_controllers"] is False
+    assert all(v == 0 for v in r["determinism_violations"].values())
+    p1 = m["P1_separation"]
+    assert p1["holds"] and p1["physical_contacts"] == 0 and not p1["collision_sensor_edges"]
+    if m["P2_mutual_exclusion"]["gates"]:
+        p2 = m["P2_mutual_exclusion"]
+        assert p2["holds"] and max(p2["max_occupancy"].values()) == 1
+        cfg = json.loads((run / "run_config.json").read_text(encoding="utf-8"))
+        assert len(p2["entry_order"][p2["gates"][0]]) == cfg["n_drones"]
+    p3 = m["P3_formation_recovery"]
+    if p3["enabled"]:
+        assert p3["all_recovered_within_run"], p3["episodes"]
 
 
-@pytest.mark.parametrize("run", RUNS or [None], ids=lambda p: p.name if p else "none")
-def test_figures_not_empty(run):
-    if run is None:
-        pytest.skip("no runs")
-    figs = sorted((run / "figures").glob("*.png"))
-    if not figs:
-        pytest.skip("figures not generated (python scripts/analyze_results.py --run ...)")
-    import matplotlib.image as mpimg
+def _states(run, k):
+    return [json.loads(l) for l in open(run / f"drone_{k}_state.jsonl", encoding="utf-8")]
 
-    for f in figs:
-        img = mpimg.imread(f)
-        assert img.shape[0] > 200 and img.shape[1] > 400, f.name
-        assert float(np.std(img[..., :3])) > 0.02, f"{f.name} looks blank"
+
+def _run(name):
+    p = DEMOS / name
+    if p not in COMPLETE:
+        pytest.skip(f"{name}: no completed run")
+    return p
+
+
+def test_vertical_escape_has_an_up_or_down_component():
+    run = _run("p1_vertical_escape")
+    if not (run / "drone_1_state.jsonl").exists():
+        pytest.skip("per-drone logs not on disk")
+    dirs = [r["escape"]["dir"] for k in range(4) for r in _states(run, k) if r.get("escape")]
+    assert any("UP" in d or "DOWN" in d for d in dirs)
+    m = json.loads((run / "referee_metrics.json").read_text(encoding="utf-8"))
+    assert not m["P1_separation"]["intruder"]["below_d_safe"]
+
+
+@pytest.mark.parametrize("name,n", [("formation_triangle", 3), ("formation_square", 4), ("formation_six", 6)])
+def test_formation_scenarios(name, n):
+    run = _run(name)
+    cfg = json.loads((run / "run_config.json").read_text(encoding="utf-8"))
+    m = json.loads((run / "referee_metrics.json").read_text(encoding="utf-8"))
+    assert cfg["n_drones"] == n and m["envelope"]["inside_envelope"]
+    assert m["P3_formation_recovery"]["final_form_err"] < DEFAULT_E_OK
+
+
+DEFAULT_E_OK = 0.5
+
+
+def test_gust_formation_is_lost_and_recovered():
+    run = _run("formation_gust")
+    p3 = json.loads((run / "referee_metrics.json").read_text(encoding="utf-8"))["P3_formation_recovery"]
+    assert p3["n_episodes"] >= 1 and p3["all_recovered_within_run"]
+
+
+@pytest.mark.parametrize("name", ["gate_single", "integrated_short"])
+def test_gate_scenarios_use_the_static_rank_never(name):
+    run = _run(name)
+    m = json.loads((run / "referee_metrics.json").read_text(encoding="utf-8"))
+    assert m["run"]["static_rank_uses"] == 0 and m["run"]["occupancy_timeouts"] == 0

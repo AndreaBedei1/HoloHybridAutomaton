@@ -1,9 +1,12 @@
-"""Inter-agent communication is absent by default."""
+"""There is no inter-agent communication: no channel exists, the configuration disables it, runs log 0 messages."""
 
 import inspect
+from pathlib import Path
 
 from holo_fleet.config import DEFAULT, FleetConfig
 from holo_fleet.sim.scenarios import SCENARIOS
+
+ROOT = Path(__file__).resolve().parents[1]
 
 
 def test_config_default_has_no_comms():
@@ -11,29 +14,25 @@ def test_config_default_has_no_comms():
     assert FleetConfig().comms_enabled is False
 
 
-def test_every_scenario_defaults_to_no_comms():
+def test_no_scenario_enables_comms():
     for name, factory in SCENARIOS.items():
-        spec = factory(seed=0)
-        if name == "gate_arena_comms":           # the explicit, optional comparison experiment
-            assert spec.comms_enabled is True
-            continue
-        assert spec.comms_enabled is False, name
+        sc = factory(DEFAULT)
+        assert "comms_enabled" not in sc.cfg_patch, name
 
 
-def test_controller_has_no_message_channel_by_default():
+def test_controller_has_no_message_channel():
     from holo_fleet.control.controller import DroneController
 
     sig = inspect.signature(DroneController.__init__)
-    assert sig.parameters["comms_inbox"].default is None
-    plan = SCENARIOS["gate_arena"](seed=0).plans[0]
-    ctrl = DroneController(plan)
-    assert ctrl.comms_inbox is None
+    assert set(sig.parameters) == {"self", "plan", "cfg", "nav_init_err"}
+    assert not (ROOT / "holo_fleet" / "comms").exists()
 
 
-def test_safety_guards_never_read_messages():
-    """Messages may only become a formation hint; the abstract observation used by every guard is
-    produced by the perception layer from onboard sensors only."""
+def test_perception_and_guards_never_read_messages():
+    from holo_fleet.control import controller, flows
     from holo_fleet.perception import perception
 
-    src = inspect.getsource(perception)
-    assert "comms" not in src and "inbox" not in src and "heartbeat" not in src
+    for mod in (perception, controller, flows):
+        src = inspect.getsource(mod)
+        for word in ("inbox", "heartbeat", "broadcast", "socket", "message"):
+            assert word not in src, (mod.__name__, word)

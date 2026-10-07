@@ -35,6 +35,9 @@ class SimSpec:
     env_box: Optional[Tuple[Sequence[float], Sequence[float]]] = None
     chase_offset: Tuple[float, float, float] = (-5.5, 0.0, 1.6)
     side_offset: Tuple[float, float, float] = (1.0, 8.5, 1.2)
+    # scripted vehicles that are NOT part of the fleet (no controller, no reaction): each dict has
+    # name, start [x,y,z], velocity [vx,vy,vz], yaw_deg, t_start.  Seen by the sonars like any hull.
+    intruders: Tuple[Dict[str, Any], ...] = ()
 
     def __post_init__(self) -> None:
         if self.release_s is None:

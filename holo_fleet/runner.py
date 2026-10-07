@@ -1,258 +1,196 @@
-"""Run one scenario in HoloOcean and write every artifact of a run directory."""
+"""Run one scenario in HoloOcean (v2): controllers (onboard only) + referee (ground truth only).
+
+Writes results/<run_id>/: run_config.json, events.jsonl, drone_<k>_state.jsonl,
+referee_timeseries.csv, referee_metrics.json, summary.csv, perf.json and (optionally) camera /
+dashboard frames for GIFs.  A run that does not reach its end writes ``status: INCOMPLETE``.
+"""
 
 from __future__ import annotations
 
 import csv
-import datetime as _dt
+import dataclasses
 import json
-import logging
-import math
-import os
-import platform
 import time
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Callable, Dict, Optional
 
 import numpy as np
 
 from holo_fleet.config import DEFAULT, FleetConfig
 from holo_fleet.control.controller import DroneController
 from holo_fleet.referee.referee import Referee
-from holo_fleet.sim.scenarios import SCENARIOS, ScenarioSpec
+from holo_fleet.sim.holo_env import HoloFleetSim
+from holo_fleet.sim.scenarios import SCENARIOS, Scenario
 
-LOG = logging.getLogger("holo_fleet.runner")
-
-PERTURBING_MODES = {"SEPARATION_WARNING", "COLLISION_AVOIDANCE", "GATE_APPROACH", "GATE_YIELD", "GATE_PASS",
-                    "FAILSAFE_HOLD_OR_RETREAT"}
+DT = 0.1
 
 
-class JsonlWriter:
-    def __init__(self, path: Path):
-        self.f = open(path, "w", encoding="utf-8")
-
-    def write(self, obj: Dict[str, Any]) -> None:
-        self.f.write(json.dumps(obj, separators=(",", ":")) + "\n")
-
-    def close(self) -> None:
-        self.f.close()
-
-
-def _save_png(img, path: Path) -> None:
-    """Save a camera frame (JPEG for the periodic frames to keep run folders small)."""
-    import cv2
-
-    a = np.asarray(img)
-    if a.ndim == 3 and a.shape[2] == 4:
-        a = a[:, :, :3]
-    if path.suffix.lower() in (".jpg", ".jpeg"):
-        cv2.imwrite(str(path), a, [int(cv2.IMWRITE_JPEG_QUALITY), 85])
-    else:
-        cv2.imwrite(str(path), a)
+def _jsonable(x):
+    if isinstance(x, (np.floating, np.integer)):
+        return x.item()
+    if isinstance(x, np.ndarray):
+        return x.tolist()
+    if isinstance(x, (set, frozenset)):
+        return sorted(x)
+    return str(x)
 
 
-def _save_sonar(img, path: Path) -> None:
-    import cv2
-
-    a = np.asarray(img, dtype=float)
-    a = np.clip(a / max(a.max(), 1e-6), 0, 1)
-    a = (255 * a).astype(np.uint8)[::-1, :]          # far range at the top
-    a = cv2.applyColorMap(a, cv2.COLORMAP_INFERNO)
-    a = cv2.resize(a, (384, 384), interpolation=cv2.INTER_NEAREST)
-    cv2.imwrite(str(path), a)
-
-
-def localized_disturbance(spec: ScenarioSpec, P: np.ndarray, t: float) -> bool:
-    for c in spec.current.components:
-        if c.kind == "uniform":
-            continue
-        for k in range(len(P)):
-            if np.linalg.norm(c.at(P[k], t)) > 0.05:
-                return True
-    return False
-
-
-def run(scenario: str, out_root: str = "results", seed: int = 0, headless: bool = True, cfg: FleetConfig = DEFAULT,
-        run_id: Optional[str] = None, duration: Optional[float] = None, frame_every_s: float = 1.0,
-        early_stop: bool = True, **scenario_kwargs) -> Path:
-    from holo_fleet.sim.holo_env import HoloFleetSim
-
-    spec: ScenarioSpec = SCENARIOS[scenario](seed=seed, cfg=cfg, **scenario_kwargs)
-    if duration is not None:
-        spec.duration_s = duration
-    run_id = run_id or f"{spec.name}_s{seed}_{_dt.datetime.now().strftime('%Y%m%d_%H%M%S')}"
-    run_dir = Path(out_root) / run_id
-    (run_dir / "frames").mkdir(parents=True, exist_ok=True)
-    (run_dir / "sensors").mkdir(parents=True, exist_ok=True)
-    dt = cfg.env.dt
-
-    rng = np.random.default_rng(seed + 777)
-    nav_offsets = []
-    for _ in spec.plans:
-        e = rng.normal(size=3) * np.array([1, 1, 0])
-        n = np.linalg.norm(e)
-        nav_offsets.append(e / n * spec.stress.nav_init_error_m if n > 0 and spec.stress.nav_init_error_m > 0 else np.zeros(3))
-
-    run_config = {
-        "run_id": run_id, "scenario": scenario, "spec_name": spec.name, "description": spec.description,
-        "seed": seed, "n_drones": spec.n, "duration_s": spec.duration_s, "dt": dt,
-        "comms_enabled": bool(spec.comms_enabled), "release_s": spec.release_s,
-        "current_components": spec.current.describe(), "stress": spec.stress.__dict__,
-        "mission_gates": spec.mission_gate_ids, "params": spec.params,
-        "drones": [{"id": p.drone_id, "slot": p.slot_index, "slot_offset": p.my_slot.__dict__,
-                    "launch_position": p.launch_position.tolist(), "launch_yaw_deg": p.launch_yaw_deg,
-                    "static_rank": p.static_rank, "failsafe_layer_dz": p.failsafe_layer_dz,
-                    "nav_init_offset": nav_offsets[k].tolist()} for k, p in enumerate(spec.plans)],
-        "path_waypoints": spec.plans[0].path.waypoints.tolist(), "path_depth_z": spec.plans[0].path.depth_z,
-        "fleet_config": cfg.to_dict(),
-        "host": platform.node(), "started": _dt.datetime.now().isoformat(),
-        "holoocean_world": "OpenWater (package Ocean)", "arena": "marine_race_arena / Horseshoe Bay (reused)",
-    }
-    (run_dir / "run_config.json").write_text(json.dumps(run_config, indent=2))
-
-    sim = HoloFleetSim(spec, cfg, headless=headless)
-    mission_gates = [g for g in spec.plans[0].structures if g.gate_id in spec.mission_gate_ids]
-    referee = Referee(spec.plans, mission_gates, cfg)
-    controllers: Dict[str, DroneController] = {}
-    channel = None
-    inboxes: Dict[str, List[Dict[str, Any]]] = {}
-    if spec.comms_enabled:                       # optional comparison experiment only (OFF by default)
-        from holo_fleet.comms.intermittent import IntermittentChannel
-
-        channel = IntermittentChannel(seed=seed)
-        inboxes = {p.drone_id: [] for p in spec.plans}
-    w_state = {p.drone_id: JsonlWriter(run_dir / f"{p.drone_id}_state.jsonl") for p in spec.plans}
-    w_obs = {p.drone_id: JsonlWriter(run_dir / f"{p.drone_id}_observations.jsonl") for p in spec.plans}
-    w_act = {p.drone_id: JsonlWriter(run_dir / f"{p.drone_id}_actions.jsonl") for p in spec.plans}
-    w_ev = JsonlWriter(run_dir / "events.jsonl")
+def run(name: str, out_root: Path, headless: bool = True, run_id: Optional[str] = None,
+        duration: Optional[float] = None, ui: Optional[Callable] = None, frame_every_s: float = 0.5,
+        cfg: FleetConfig = DEFAULT) -> Dict:
+    sc: Scenario = SCENARIOS[name](cfg)
+    if sc.cfg_patch:
+        cfg = dataclasses.replace(cfg, **sc.cfg_patch)
+    run_id = run_id or name
+    out = Path(out_root) / run_id
+    (out / "frames").mkdir(parents=True, exist_ok=True)
+    T = float(duration or sc.duration_s)
+    status = {"status": "INCOMPLETE", "reason": "started"}
+    (out / "run_status.json").write_text(json.dumps(status), encoding="utf-8")
+    sim = HoloFleetSim(sc.sim, cfg, headless=headless)
     wall0 = time.time()
+    sim.start()
+    ctrls = {p.drone_id: DroneController(p, cfg) for p in sc.plans}
+    tmpl = sc.template.offsets() if sc.template is not None else None
+    ref = Referee(sim.names, tmpl, sc.path, sc.judged_gates, cfg, sc.formation_enabled)
+    cfg_dump = {"scenario": name, "title": sc.title, "description": sc.description, "focus": sc.focus,
+                "duration_s": T, "n_drones": len(sim.names), "template": None if sc.template is None else sc.template.name,
+                "gates": [g.gate_id for g in sc.judged_gates], "current": sc.sim.current.describe(),
+                "intruders": list(getattr(sc.sim, "intruders", ())), "cfg_patch": sc.cfg_patch,
+                "disturbance_windows": sc.disturbance_windows, "stress": sc.sim.stress.__dict__,
+                "setup": sim.setup_report, "comms_enabled": cfg.comms_enabled, "fleet_config": cfg.to_dict(),
+                "plans": [{"drone": p.drone_id, "slot": p.slot_index, "queue_lateral": p.queue_lateral,
+                           "static_rank": p.static_rank, "launch": np.round(p.launch_position, 3).tolist()}
+                          for p in sc.plans]}
+    (out / "run_config.json").write_text(json.dumps(cfg_dump, indent=1, default=_jsonable), encoding="utf-8")
+    ev_f = open(out / "events.jsonl", "w", encoding="utf-8")
+    st_f = {n: open(out / f"{n}_state.jsonl", "w", encoding="utf-8") for n in sim.names}
+    ev_f.write(json.dumps({"t": 0.0, "type": "sim_started", "setup": sim.setup_report}, default=_jsonable) + "\n")
+    rows = []
+    n_steps = int(round(T / DT))
     last_frame_t = -1e9
-    last_sensor_t = -1e9
-    calm_done_since: Optional[float] = None
-    n_steps = 0
-    status = "completed"
+    ctrl_ms = []
     try:
-        sim.start()
-        w_ev.write({"t": 0.0, "type": "sim_started", "gate_spawn": sim.gate_spawn_report,
-                    "wall_setup_s": round(time.time() - wall0, 1)})
-        while sim.t < spec.duration_s:
+        for step in range(n_steps):
             frames = sim.frames()
-            commands: Dict[str, Any] = {}
-            modes = []
-            for k, plan in enumerate(spec.plans):
-                name = plan.drone_id
-                if sim.t + 1e-9 < spec.release_s[k]:
-                    commands[name] = None
-                    modes.append("NOT_RELEASED")
-                    continue
-                if name not in controllers:
-                    controllers[name] = DroneController(plan, cfg, nav_init_offset=nav_offsets[k],
-                                                        comms_inbox=inboxes.get(name) if channel else None)
-                    w_ev.write({"t": sim.t, "type": "released", "drone": name})
-                out = controllers[name].step(frames[name], dt)
-                commands[name] = out["command"]
-                modes.append(out["mode"])
-                obs = out["observation"]
-                w_state[name].write({"t": round(sim.t, 3), "mode": out["mode"], "committed": out["committed"],
-                                     "gate_index": out["gate_index"], "nav_p": obs["nav"]["p"],
-                                     "nav_yaw_deg": obs["nav"]["yaw_deg"], "edge": out["transition"]["edge"],
-                                     "enabled_edges": out["transition"]["enabled_edges"],
-                                     "determinism_violations": controllers[name].ha.determinism_violations})
-                w_obs[name].write({"t": round(sim.t, 3), "abstract": out["abstract"], "local": obs})
-                w_act[name].write({"t": round(sim.t, 3), "mode": out["mode"], "flow": out["flow"],
-                                   "command": {k2: round(v, 4) for k2, v in out["command"].items()}})
-                for ev in out["events"]:
-                    w_ev.write(ev)
-            sim.step(commands, dt)
-            n_steps += 1
+            cmds = {}
+            c0 = time.perf_counter()
+            for nm, c in ctrls.items():
+                cmds[nm] = c.step(frames[nm], DT)
+            ctrl_ms.append(1000.0 * (time.perf_counter() - c0))
+            sim.step(cmds, DT)
             truth = sim.truth()
-            if channel is not None:
-                true_pos = {n: truth.positions[k] for k, n in enumerate(sim.names)}
-                for n, c in controllers.items():
-                    channel.broadcast(sim.t, n, c.heartbeat(), true_pos)
-                channel.deliver(sim.t, inboxes)
-            pert = any(m in PERTURBING_MODES or m == "NOT_RELEASED" for m in modes) or \
-                localized_disturbance(spec, truth.positions, truth.t)
-            referee.update(truth, modes, perturbation=pert)
-            # imagery
-            if sim.t - last_frame_t >= frame_every_s - 1e-9:
+            modes = [ctrls[nm].ha.mode.value for nm in sim.names]
+            row = ref.update(truth, modes, sc.disturbance_active(sim.t))
+            for nm, c in ctrls.items():
+                rec = dict(c.last_record)
+                st_f[nm].write(json.dumps(rec, default=_jsonable) + "\n")
+                for e in c.events:
+                    ev_f.write(json.dumps({"drone": nm, **e}, default=_jsonable) + "\n")
+                c.events.clear()
+            row["modes"] = "|".join(modes)
+            live = ref.live()
+            row["p1_ok"], row["p2_ok"] = int(live["p1_ok"]), int(live["p2_ok"])
+            row["formation_state"], row["episodes"] = live["formation"] or "", live["episodes"]
+            row["cur_x"], row["cur_y"], row["cur_z"] = (round(float(v), 3) for v in truth.current_drift[0])
+            rows.append(row)
+            want_frame = sim.t - last_frame_t >= frame_every_s
+            if ui is not None:
+                ui(sim=sim, scenario=sc, ctrls=ctrls, referee=ref, truth=truth, t=sim.t, out=out,
+                   save_frame=want_frame)
+            if want_frame:
                 last_frame_t = sim.t
-                for key in ("ChaseCamera", "SideCamera"):
-                    img = sim.debug_image(key)
-                    if img is not None:
-                        _save_png(img, run_dir / "frames" / f"{key}_{int(round(sim.t * 10)):05d}.jpg")
-            if sim.t - last_sensor_t >= 10.0:
-                last_sensor_t = sim.t
-                for name in sim.names:
-                    cam = sim.latest[name].get("FrontCamera")
-                    if cam is not None:
-                        _save_png(cam, run_dir / "sensors" / f"{name}_FrontCamera_{int(sim.t):04d}.png")
-                    son = sim.latest[name].get("FrontSonar")
-                    if son is not None:
-                        _save_sonar(son, run_dir / "sensors" / f"{name}_FrontSonar_{int(sim.t):04d}.png")
-                        np.save(run_dir / "sensors" / f"{name}_FrontSonar_{int(sim.t):04d}.npy", np.asarray(son))
-            if n_steps % 100 == 0:
-                LOG.info("t=%.1f wall=%.0fs modes=%s", sim.t, time.time() - wall0, modes)
-            # early stop: everybody done and (formation recovered or no formation) for 8 s
-            if early_stop and controllers and len(controllers) == spec.n and \
-                    all(c.mission_complete for c in controllers.values()) and \
-                    all(m in ("FORMATION_FOLLOW",) for m in modes):
-                calm_done_since = sim.t if calm_done_since is None else calm_done_since
-                if sim.t - calm_done_since >= 8.0:
-                    status = "completed_early_stop"
-                    break
-            else:
-                calm_done_since = None
-    except Exception as exc:
-        status = f"error: {type(exc).__name__}: {exc}"
-        LOG.exception("run failed")
-        raise
+                img = sim.image("ChaseCamera")
+                if img is not None:
+                    import cv2
+
+                    cv2.imwrite(str(out / "frames" / f"chase_{int(round(sim.t * 10)):05d}.jpg"),
+                                np.asarray(img)[:, :, :3], [cv2.IMWRITE_JPEG_QUALITY, 85])
+        status = {"status": "COMPLETE"}
+    except KeyboardInterrupt:
+        status = {"status": "INCOMPLETE", "reason": "interrupted by the user", "t": sim.t}
     finally:
+        ev_f.write(json.dumps({"t": sim.t, "type": "run_finished", **status}) + "\n")
+        ev_f.close()
+        for f in st_f.values():
+            f.close()
+        perf = {**sim.perf(), "controller_ms_mean_all_drones": round(float(np.mean(ctrl_ms)), 2) if ctrl_ms else None,
+                "controller_hz": round(1.0 / DT, 1), "sonar_hz": cfg.perc.sonar.hz,
+                "wall_s": round(time.time() - wall0, 1), "sim_s": round(sim.t, 2)}
         sim.close()
-        for w in list(w_state.values()) + list(w_obs.values()) + list(w_act.values()):
-            w.close()
-        metrics = referee.metrics()
-        det = {n: c.ha.determinism_violations for n, c in controllers.items()}
-        metrics["run"] = {"status": status, "sim_time_s": round(sim.t, 2), "steps": n_steps,
-                          "wall_time_s": round(time.time() - wall0, 1),
-                          "determinism_monitor_violations": det,
-                          "mission_complete": {n: c.mission_complete for n, c in controllers.items()},
-                          "comms_enabled": bool(spec.comms_enabled),
-                          "inter_agent_messages_sent": channel.sent if channel else 0,
-                          "inter_agent_messages_delivered": channel.delivered if channel else 0}
-        (run_dir / "referee_metrics.json").write_text(json.dumps(metrics, indent=2, default=float))
-        if referee.rows:
-            keys = list(dict.fromkeys(k for r in referee.rows for k in r.keys()))
-            with open(run_dir / "referee_timeseries.csv", "w", newline="") as f:
-                wr = csv.DictWriter(f, fieldnames=keys)
-                wr.writeheader()
-                wr.writerows(referee.rows)
-        decisions = {}
-        for c in controllers.values():
-            for e in c.events:
-                if e.get("type") == "decision":
-                    decisions[e["decision"]] = decisions.get(e["decision"], 0) + 1
-        summary = {
-            "run_id": run_id, "scenario": spec.name, "seed": seed, "status": status, "sim_time_s": round(sim.t, 1),
-            "n_drones": spec.n, "comms": int(bool(spec.comms_enabled)),
-            "min_pair_distance_m": metrics["P1_separation"]["min_distance_overall"],
-            "P1_holds": metrics["P1_separation"]["holds"],
-            "P1_violations": metrics["P1_separation"]["violations_d_lt_d_safe"],
-            "P2_holds": metrics["P2_mutual_exclusion"]["holds"],
-            "P2_max_occupancy": max(metrics["P2_mutual_exclusion"]["max_occupancy"].values(), default=None),
-            "P3_holds": metrics["P3_formation_recovery"]["holds"],
-            "P3_episodes": metrics["P3_formation_recovery"]["n_episodes"],
-            "P3_max_recovery_s": metrics["P3_formation_recovery"]["max_recovery_time_s"],
-            "final_form_err_m": metrics["P3_formation_recovery"]["final_form_err"],
-            "max_drift_m_s": metrics["envelope"]["max_effective_drift_applied"],
-            "inside_envelope": metrics["envelope"]["inside_envelope"],
-            "determinism_violations": sum(det.values()),
-            "decisions": json.dumps(decisions),
-        }
-        with open(run_dir / "summary.csv", "w", newline="") as f:
-            wr = csv.DictWriter(f, fieldnames=list(summary.keys()))
-            wr.writeheader()
-            wr.writerow(summary)
-        w_ev.write({"t": sim.t, "type": "run_finished", "status": status})
-        w_ev.close()
-        LOG.info("run %s finished: %s", run_id, json.dumps(summary))
-    return run_dir
+    if rows:
+        keys = sorted({k for r in rows for k in r})
+        with open(out / "referee_timeseries.csv", "w", newline="", encoding="utf-8") as f:
+            w = csv.DictWriter(f, fieldnames=keys)
+            w.writeheader()
+            w.writerows(rows)
+    metrics = ref.metrics()
+    det = {nm: c.ha.determinism_violations for nm, c in ctrls.items()}
+    rank_uses = sum(c.perception.gp.rank_uses for c in ctrls.values())
+    occ_timeouts = sum(c.perception.gp.occ_timeouts for c in ctrls.values())
+    env_violations = 0
+    with open(out / "events.jsonl", encoding="utf-8") as f:
+        for line in f:
+            if '"ENVELOPE_VIOLATION"' in line:
+                env_violations += 1
+    metrics["run"] = {**status, "scenario": name, "sim_time_s": round(sim.t, 2), "determinism_violations": det,
+                      "comms_enabled": cfg.comms_enabled, "inter_agent_messages": 0,
+                      "ground_truth_used_by_controllers": any(c.uses_ground_truth for c in ctrls.values()),
+                      "static_rank_uses": rank_uses, "occupancy_timeouts": occ_timeouts,
+                      "self_declared_envelope_violations": env_violations, "perf": perf}
+    (out / "referee_metrics.json").write_text(json.dumps(metrics, indent=1, default=_jsonable), encoding="utf-8")
+    (out / "perf.json").write_text(json.dumps(perf, indent=1), encoding="utf-8")
+    (out / "run_status.json").write_text(json.dumps(status), encoding="utf-8")
+    summ = summary_row(name, metrics)
+    with open(out / "summary.csv", "w", newline="", encoding="utf-8") as f:
+        w = csv.DictWriter(f, fieldnames=list(summ))
+        w.writeheader()
+        w.writerow(summ)
+    return metrics
+
+
+def summary_row(name: str, m: Dict) -> Dict:
+    p3 = m["P3_formation_recovery"]
+    rec = [e["recovery_time_s"] for e in p3["episodes"] if e["recovery_time_s"] is not None]
+    return {"scenario": name, "status": m["run"]["status"], "sim_time_s": m["run"]["sim_time_s"],
+            "P1_holds": m["P1_separation"]["holds"], "min_distance": m["P1_separation"]["min_distance"],
+            "P2_holds": m["P2_mutual_exclusion"]["holds"],
+            "max_occupancy": max(m["P2_mutual_exclusion"]["max_occupancy"].values(), default=None),
+            "P3_episodes": p3["n_episodes"], "P3_all_recovered": p3["all_recovered_within_run"],
+            "max_recovery_time_s": max(rec) if rec else None,
+            "collisions": m["P1_separation"]["physical_contacts"] + len(m["P1_separation"]["collision_sensor_edges"]),
+            "messages": m["run"]["inter_agent_messages"], "inside_envelope": m["envelope"]["inside_envelope"],
+            "static_rank_uses": m["run"]["static_rank_uses"]}
+
+
+def print_summary(name: str, m: Dict, assumptions: Optional[str] = None) -> str:
+    p1, p2, p3 = m["P1_separation"], m["P2_mutual_exclusion"], m["P3_formation_recovery"]
+    bar = "=" * 49
+    lines = [bar, "SCENARIO COMPLETE" if m["run"]["status"] == "COMPLETE" else f"SCENARIO {m['run']['status']}", bar, "",
+             "P1 INTER-VEHICLE SEPARATION", "PASS" if p1["holds"] else "FAIL",
+             f"minimum distance: {p1['min_distance']} m", f"required: {p1['d_safe']} m", ""]
+    if p2["gates"]:
+        lines += ["P2 CRITICAL REGION", "PASS" if p2["holds"] else "FAIL",
+                  f"maximum occupancy: {max(p2['max_occupancy'].values())}",
+                  f"entry order: {p2['entry_order']}", f"static rank used: {m['run']['static_rank_uses']} times", ""]
+    else:
+        lines += ["P2 CRITICAL REGION", "n/a (no gate in this scenario)", ""]
+    if p3["enabled"]:
+        lines += ["P3 FORMATION RECOVERY",
+                  ("PASS" if p3["all_recovered_within_run"] else "NOT RECOVERED WITHIN THE RUN") +
+                  ("" if p3["n_episodes"] else " (formation never lost)")]
+        for e in p3["episodes"]:
+            lines += [f"formation lost at: {e['t_lost']} s", f"formation recovered at: {e['t_recovered']} s",
+                      f"recovery time: {e['recovery_time_s']} s"]
+        lines.append("")
+    else:
+        lines += ["P3 FORMATION RECOVERY", "n/a (no formation judged in this scenario)", ""]
+    coll = p1["physical_contacts"] + len(p1["collision_sensor_edges"])
+    lines += ["COLLISIONS", str(coll), "", "COMMUNICATION", f"{m['run']['inter_agent_messages']} messages", "",
+              "GROUND TRUTH USED BY CONTROLLERS", "YES" if m["run"]["ground_truth_used_by_controllers"] else "NO", "",
+              "FORMAL ASSUMPTIONS",
+              assumptions or ("PASS (inside envelope)" if m["envelope"]["inside_envelope"] else "OUT OF ENVELOPE"),
+              "", bar]
+    text = "\n".join(lines)
+    print(text)
+    return text
