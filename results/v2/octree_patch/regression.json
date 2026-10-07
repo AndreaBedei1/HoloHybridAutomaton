@@ -1,0 +1,214 @@
+{
+ "patch": {
+  "patched": true,
+  "root": "F:\\Andrea\\holoocean_patched_root",
+  "unreal": "5.3.2",
+  "source": "F:\\Andrea\\holoocean-octree-patch (branch sonar-octree-rebuild)",
+  "holoocean": "2.3.0",
+  "exe_sha256": "EE76E89687FB3AE5DDB2A428C9B1E0FE918B25AF666103606208B7B6BBB14D5F",
+  "patch": "sonar-octree-rebuild",
+  "built": "2026-10-07T23:06:50",
+  "source_commit": "1934564"
+ },
+ "checks": {
+  "agent_visible_initially": true,
+  "C_box_invisible_before_rebuild": true,
+  "C_gate_invisible_before_rebuild": true,
+  "E_box_visible_after_full_rebuild": true,
+  "E_gate_visible_after_full_rebuild": true,
+  "E_agent_still_visible": true,
+  "box2_invisible_before_region_rebuild": true,
+  "box2_visible_after_region_rebuild": true,
+  "box1_still_visible_after_region_rebuild": true,
+  "late_agent_invisible_before_rebuild": true,
+  "late_agent_visible_after_rebuild": true,
+  "H_no_ghost_box_after_rebuild": true,
+  "H_no_ghost_gate_after_rebuild": true,
+  "H_no_ghost_box2_after_rebuild": true,
+  "H_moved_box_visible_at_new_place": true,
+  "H_old_place_silent": true,
+  "official_installation_cache_untouched": true
+ },
+ "costs": {
+  "initial_rebuild": {
+   "ticks": 15,
+   "wall_s": 0.21
+  },
+  "full_rebuild": {
+   "ticks": 15,
+   "wall_s": 0.29
+  },
+  "region_rebuild": {
+   "ticks": 15,
+   "wall_s": 0.42
+  },
+  "agent_rebuild": {
+   "ticks": 15,
+   "wall_s": 0.45
+  },
+  "rebuild_after_reset": {
+   "ticks": 15,
+   "wall_s": 0.21
+  },
+  "region_rebuild_moved_box": {
+   "ticks": 15,
+   "wall_s": 0.36
+  },
+  "tick_ms_median": 14.3,
+  "tick_ms_max": 214.4
+ },
+ "ghosts_after_reset_before_rebuild": {
+  "box": true,
+  "gate": false
+ },
+ "looks": [
+  {
+   "label": "agent initial",
+   "first": 3.775,
+   "n_echo_bins": 2,
+   "echo_ranges": [
+    3.775,
+    3.825
+   ]
+  },
+  {
+   "label": "box1 before rebuild",
+   "first": null,
+   "n_echo_bins": 0,
+   "echo_ranges": []
+  },
+  {
+   "label": "gate before rebuild",
+   "first": null,
+   "n_echo_bins": 0,
+   "echo_ranges": []
+  },
+  {
+   "label": "box1 after full rebuild",
+   "first": 2.9749999999999996,
+   "n_echo_bins": 1,
+   "echo_ranges": [
+    2.975
+   ]
+  },
+  {
+   "label": "gate after full rebuild",
+   "first": 2.8749999999999996,
+   "n_echo_bins": 16,
+   "echo_ranges": [
+    2.875,
+    2.925,
+    2.975,
+    3.025,
+    3.075,
+    3.125,
+    "..."
+   ]
+  },
+  {
+   "label": "agent after rebuild",
+   "first": 3.775,
+   "n_echo_bins": 2,
+   "echo_ranges": [
+    3.775,
+    3.825
+   ]
+  },
+  {
+   "label": "box2 before region rebuild",
+   "first": 6.675,
+   "n_echo_bins": 2,
+   "echo_ranges": [
+    6.675,
+    6.725
+   ]
+  },
+  {
+   "label": "box2 after region rebuild",
+   "first": 3.9749999999999996,
+   "n_echo_bins": 4,
+   "echo_ranges": [
+    3.975,
+    4.025,
+    6.675,
+    6.725
+   ]
+  },
+  {
+   "label": "box1 after region rebuild",
+   "first": 2.9749999999999996,
+   "n_echo_bins": 13,
+   "echo_ranges": [
+    2.975,
+    3.275,
+    3.325,
+    6.975,
+    7.025,
+    7.075,
+    "..."
+   ]
+  },
+  {
+   "label": "late agent before rebuild",
+   "first": null,
+   "n_echo_bins": 0,
+   "echo_ranges": []
+  },
+  {
+   "label": "late agent after rebuild",
+   "first": 4.7749999999999995,
+   "n_echo_bins": 2,
+   "echo_ranges": [
+    4.775,
+    4.825
+   ]
+  },
+  {
+   "label": "box1 place after reset, before rebuild",
+   "first": 2.9749999999999996,
+   "n_echo_bins": 11,
+   "echo_ranges": [
+    2.975,
+    6.975,
+    7.025,
+    7.075,
+    7.125,
+    7.175,
+    "..."
+   ]
+  },
+  {
+   "label": "gate place after reset, before rebuild",
+   "first": null,
+   "n_echo_bins": 0,
+   "echo_ranges": []
+  },
+  {
+   "label": "box1 place after reset+rebuild",
+   "first": null,
+   "n_echo_bins": 0,
+   "echo_ranges": []
+  },
+  {
+   "label": "gate place after reset+rebuild",
+   "first": null,
+   "n_echo_bins": 0,
+   "echo_ranges": []
+  },
+  {
+   "label": "box2 place after reset+rebuild",
+   "first": null,
+   "n_echo_bins": 0,
+   "echo_ranges": []
+  },
+  {
+   "label": "moved box (5 m) after region rebuild",
+   "first": 5.0249999999999995,
+   "n_echo_bins": 1,
+   "echo_ranges": [
+    5.025
+   ]
+  }
+ ],
+ "all_passed": true
+}

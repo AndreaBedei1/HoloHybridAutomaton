@@ -1,0 +1,429 @@
+diff --git a/client/src/holoocean/command.py b/client/src/holoocean/command.py
+index 671261b..f15d225 100644
+--- a/client/src/holoocean/command.py
++++ b/client/src/holoocean/command.py
+@@ -354,6 +354,24 @@ class OceanCurrentsCommand(Command):
+         self.add_number_parameters(vehicle_debugging)
+ 
+ 
++class RebuildSonarOctreeCommand(Command):
++    """Invalidate the sonar octree cache and rebuild every sonar's octrees.
++
++    Args:
++        region (:obj:`tuple` of two ``[x, y, z]``, optional): axis-aligned box (metres, client
++            coordinates) whose cached cells must be recomputed. ``None`` invalidates the whole
++            cache of the current level and octree size.
++    """
++
++    def __init__(self, region=None):
++        Command.__init__(self)
++        self._command_type = "RebuildSonarOctree"
++        if region is not None:
++            lo, hi = region
++            for value in list(lo) + list(hi):
++                self.add_number_parameters(float(value))
++
++
+ class RemoveSensorCommand(Command):
+     """Remove a sensor from an agent
+ 
+diff --git a/client/src/holoocean/environments.py b/client/src/holoocean/environments.py
+index 15df338..b4676a3 100644
+--- a/client/src/holoocean/environments.py
++++ b/client/src/holoocean/environments.py
+@@ -36,6 +36,7 @@ from holoocean.command import (
+     AirFogCommand,
+     WaterFogCommand,
+     OceanCurrentsCommand,
++    RebuildSonarOctreeCommand,
+ )
+ 
+ from holoocean.exceptions import HoloOceanException
+@@ -1089,6 +1090,36 @@ class HoloOceanEnvironment:
+         )
+         self._enqueue_command(command_to_send)
+ 
++    def rebuild_sonar_octree(self, region=None):
++        """Tell the sonars that the static scene changed and rebuild their octrees.
++
++        HoloOcean sonars see the static scene through an octree that is built when the first
++        sonar initialises and cached on disk per level and octree size.  Props spawned after
++        that (or removed by a reset) are therefore missing from, or still present in, the
++        octree.  This invalidates the cached cells (all of them, or only those touching
++        ``region``) and makes every sonar rebuild its octrees from the current scene, without
++        restarting the engine.  Caches of other levels and octree sizes are not touched.
++
++        Sonar outputs are not meaningful until each sonar has re-initialised and captured
++        again; the returned number of ticks is an upper bound for that.
++
++        Args:
++            region (:obj:`tuple` of two ``[x, y, z]``, optional): axis-aligned box (metres)
++                around the geometry that changed.  ``None`` invalidates the whole level cache.
++
++        Returns:
++            :obj:`int`: ticks after which every sonar has produced data from the new octree.
++        """
++        self._has_sonar = True  # octree construction may exceed the handshake timeout
++        self._enqueue_command(RebuildSonarOctreeCommand(region))
++        ticks_per_capture = [
++            getattr(sensor, "tick_every", None) or 1
++            for agent in self.agents.values()
++            for sensor in agent.sensors.values()
++            if sensor.sensor_type in SensorDefinition._sonar_sensors
++        ]
++        return 8 + 2 * max(ticks_per_capture, default=1) + 1
++
+     def centered_range(self, num_points, spacing=1.0):
+         """
+         Creates a symmetric range around 0, such that 0 is exactly included,
+diff --git a/engine/Source/Holodeck/ClientCommands/Private/CommandFactory.cpp b/engine/Source/Holodeck/ClientCommands/Private/CommandFactory.cpp
+index 35123e0..25c2bd6 100644
+--- a/engine/Source/Holodeck/ClientCommands/Private/CommandFactory.cpp
++++ b/engine/Source/Holodeck/ClientCommands/Private/CommandFactory.cpp
+@@ -35,6 +35,7 @@ UCommand* UCommandFactory::MakeCommand(
+ 		{ "SetRainParameters", &CreateInstance<USetRainParametersCommand> },
+ 		{ "AirFog", &CreateInstance<UAirFogCommand> },
+ 		{ "WaterFog", &CreateInstance<UWaterFogCommand> },
++		{ "RebuildSonarOctree", &CreateInstance<URebuildSonarOctreeCommand> },
+ 	};
+ 
+ 	UCommand* (*CreateCommandFunction)() = CommandMap[Name];
+diff --git a/engine/Source/Holodeck/ClientCommands/Private/RebuildSonarOctreeCommand.cpp b/engine/Source/Holodeck/ClientCommands/Private/RebuildSonarOctreeCommand.cpp
+new file mode 100644
+index 0000000..355ca91
+--- /dev/null
++++ b/engine/Source/Holodeck/ClientCommands/Private/RebuildSonarOctreeCommand.cpp
+@@ -0,0 +1,52 @@
++// MIT License (c) 2019 BYU PCCL see LICENSE file
++
++#include "RebuildSonarOctreeCommand.h"
++#include "Holodeck.h"
++#include "HolodeckGameMode.h"
++#include "HolodeckSonar.h"
++#include "Octree.h"
++#include "UObject/UObjectIterator.h"
++
++void URebuildSonarOctreeCommand::Execute() {
++	UE_LOG(LogHolodeck, Log, TEXT("URebuildSonarOctreeCommand::Execute"));
++
++	if (NumberParams.size() != 0 && NumberParams.size() != 6) {
++		UE_LOG(
++			LogHolodeck,
++			Error,
++			TEXT("RebuildSonarOctree expects 0 or 6 number parameters. Command not executed."));
++		return;
++	}
++	UWorld* World = Target ? Target->GetWorld() : nullptr;
++	if (World == nullptr) {
++		UE_LOG(
++			LogHolodeck, Warning, TEXT("RebuildSonarOctree: world is nullptr. Command not executed."));
++		return;
++	}
++
++	int deleted = 0;
++	if (NumberParams.size() == 6) {
++		FVector a = ConvertLinearVector(
++			FVector(NumberParams[0], NumberParams[1], NumberParams[2]), ClientToUE);
++		FVector b = ConvertLinearVector(
++			FVector(NumberParams[3], NumberParams[4], NumberParams[5]), ClientToUE);
++		FBox region(a.ComponentMin(b), a.ComponentMax(b));
++		deleted = Octree::invalidateCache(&region);
++	} else {
++		deleted = Octree::invalidateCache(nullptr);
++	}
++
++	int sonars = 0;
++	for (TObjectIterator<UHolodeckSonar> It; It; ++It) {
++		if (It->GetWorld() == World && It->IsRegistered()) {
++			It->ResetOctree();
++			++sonars;
++		}
++	}
++	UE_LOG(
++		LogHolodeck,
++		Log,
++		TEXT("RebuildSonarOctree: %d cache files invalidated, %d sonars reset"),
++		deleted,
++		sonars);
++}
+diff --git a/engine/Source/Holodeck/ClientCommands/Public/CommandFactory.h b/engine/Source/Holodeck/ClientCommands/Public/CommandFactory.h
+index 000d65a..1333f19 100644
+--- a/engine/Source/Holodeck/ClientCommands/Public/CommandFactory.h
++++ b/engine/Source/Holodeck/ClientCommands/Public/CommandFactory.h
+@@ -17,6 +17,7 @@
+ #include "DebugDrawCommand.h"
+ #include "OceanCurrentsCommand.h"
+ #include "RGBCameraRateCommand.h"
++#include "RebuildSonarOctreeCommand.h"
+ #include "RemoveSensorCommand.h"
+ #include "RenderViewportCommand.h"
+ #include "RotateSensorCommand.h"
+diff --git a/engine/Source/Holodeck/ClientCommands/Public/RebuildSonarOctreeCommand.h b/engine/Source/Holodeck/ClientCommands/Public/RebuildSonarOctreeCommand.h
+new file mode 100644
+index 0000000..af967b3
+--- /dev/null
++++ b/engine/Source/Holodeck/ClientCommands/Public/RebuildSonarOctreeCommand.h
+@@ -0,0 +1,27 @@
++#pragma once
++
++#include "Holodeck.h"
++#include "Command.h"
++
++#include "RebuildSonarOctreeCommand.generated.h"
++
++/**
++ * RebuildSonarOctreeCommand
++ * Tells every sonar in the world that the static scene changed: the on-disk octree cache of
++ * the current level and octree size is invalidated (whole folder, or only the cells touching
++ * a region) and every sonar rebuilds its octrees from the current scene.  Without it, props
++ * spawned after the first sonar initialised are invisible, and a cache written in another
++ * scene produces ghost echoes.
++ *
++ * NumberParameters: empty (invalidate the whole level cache), or six values
++ * [x_min, y_min, z_min, x_max, y_max, z_max] in client coordinates (metres) delimiting the
++ * region whose cells must be recomputed.
++ */
++UCLASS()
++class HOLODECK_API URebuildSonarOctreeCommand : public UCommand {
++	GENERATED_BODY()
++
++public:
++	// See UCommand for the documentation of this overridden function.
++	void Execute() override;
++};
+diff --git a/engine/Source/Holodeck/General/Private/Octree.cpp b/engine/Source/Holodeck/General/Private/Octree.cpp
+index c3cdaca..3c4fb76 100644
+--- a/engine/Source/Holodeck/General/Private/Octree.cpp
++++ b/engine/Source/Holodeck/General/Private/Octree.cpp
+@@ -20,6 +20,11 @@ TArray<FVector> Octree::sides = { FVector(0, 0, 1), // clang-format off
+ 								  FVector(1, 0, 0), 
+ 								  FVector(-1, 0, 0) }; // clang-format on
+ float Octree::cornerSize = 0.01;
++// Occupancy tests use a box slightly larger than the cell (UE units): a cell whose boundary
++// coincides with a surface (e.g. an axis-aligned prop face at a multiple of OctreeMin) is then
++// counted as occupied.  Without it the cells behind such a face are "full" (dropped) and the
++// cells in front only touch it (not occupied), so the face vanishes from the sonar octree.
++static const float OccupancyMargin = 0.5f;
+ 
+ FCollisionQueryParams Octree::params = Octree::init_params();
+ 
+@@ -124,11 +129,54 @@ void Octree::initOctree(UWorld* w) {
+ 	}
+ }
+ 
+-Octree* Octree::makeEnvOctreeRoot() {
+-	// Get caching/loading location
++FString Octree::cacheFolder() {
+ 	FString filePath = FPaths::ProjectDir() + "Octrees/" + World->GetMapName();
+ 	filePath +=
+ 		"/min" + FString::FromInt(OctreeMin) + "_max" + FString::FromInt(OctreeMax);
++	return filePath;
++}
++
++int Octree::invalidateCache(const FBox* region) {
++	FString		  folder = cacheFolder();
++	IFileManager& fm = IFileManager::Get();
++	if (!fm.DirectoryExists(*folder)) {
++		return 0;
++	}
++	if (region == nullptr) {
++		TArray<FString> files;
++		fm.FindFiles(files, *(folder / TEXT("*.json")), true, false);
++		fm.DeleteDirectory(*folder, false, true);
++		UE_LOG(LogHolodeck, Log, TEXT("Octree::invalidateCache deleted %s"), *folder);
++		return files.Num();
++	}
++
++	// roots.json lists the occupied OctreeMax cells of the whole level: always rebuilt.
++	int n = fm.Delete(*(folder / TEXT("roots.json")), false, true, true) ? 1 : 0;
++	// Cell files are named after the cell centre (see makeEnvOctreeRoot): walk the same
++	// subdivision from the root down to OctreeMax and delete the cells touching the region.
++	std::function<void(FVector, float)> walk = [&](FVector c, float size) {
++		FBox cell(c - FVector(size / 2), c + FVector(size / 2));
++		if (!cell.Intersect(*region)) {
++			return;
++		}
++		if (size <= OctreeMax) {
++			FString f = folder + "/" + FString::FromInt((int)c.X) + "_"
++				+ FString::FromInt((int)c.Y) + "_" + FString::FromInt((int)c.Z) + ".json";
++			n += fm.Delete(*f, false, true, true) ? 1 : 0;
++			return;
++		}
++		for (FVector off : corners) {
++			walk(c + (off * size / 4), size / 2);
++		}
++	};
++	walk(EnvCenter, OctreeRoot);
++	UE_LOG(LogHolodeck, Log, TEXT("Octree::invalidateCache deleted %d files in %s"), n, *folder);
++	return n;
++}
++
++Octree* Octree::makeEnvOctreeRoot() {
++	// Get caching/loading location
++	FString filePath = cacheFolder();
+ 	FString rootFile = filePath + "/" + "roots.json";
+ 
+ 	// load
+@@ -172,14 +220,14 @@ Octree* Octree::makeOctree(
+ 			center + FVector(0.01, 0.01, 0.01),
+ 			FQuat::Identity,
+ 			ECollisionChannel::ECC_WorldStatic,
+-			FCollisionShape::MakeBox(FVector(octreeSize / 2)),
++			FCollisionShape::MakeBox(FVector(octreeSize / 2 + OccupancyMargin)),
+ 			params);
+ 	} else {
+ 		occup = World->OverlapBlockingTestByChannel(
+ 			center,
+ 			FQuat::Identity,
+ 			ECollisionChannel::ECC_WorldStatic,
+-			FCollisionShape::MakeBox(FVector(octreeSize / 2)),
++			FCollisionShape::MakeBox(FVector(octreeSize / 2 + OccupancyMargin)),
+ 			params);
+ 	}
+ 
+diff --git a/engine/Source/Holodeck/General/Public/Octree.h b/engine/Source/Holodeck/General/Public/Octree.h
+index f73ecf0..e963c35 100644
+--- a/engine/Source/Holodeck/General/Public/Octree.h
++++ b/engine/Source/Holodeck/General/Public/Octree.h
+@@ -71,6 +71,17 @@ public:
+ 	// Used to setup octree globals
+ 	static void initOctree(UWorld* w);
+ 
++	// Folder where makeEnvOctreeRoot() caches this level's octree for the current
++	// OctreeMin/OctreeMax ("<ProjectDir>/Octrees/<map>/min<cm>_max<cm>").
++	static FString cacheFolder();
++
++	// Invalidate the on-disk octree cache of this level and octree size after the static
++	// scene changed (e.g. props spawned at runtime).  With region == nullptr the whole folder
++	// of the current level/size is deleted; otherwise roots.json and every OctreeMax cell
++	// intersecting the region (UE units) are deleted.  Caches of other levels or octree sizes
++	// are never touched.  Returns the number of cache files deleted.
++	static int invalidateCache(const FBox* region);
++
+ 	// Figures out where octree roots are
+ 	static Octree* makeEnvOctreeRoot();
+ 
+diff --git a/engine/Source/Holodeck/HolodeckCore/Private/HolodeckAgent.cpp b/engine/Source/Holodeck/HolodeckCore/Private/HolodeckAgent.cpp
+index 4c83fb3..2a7b63f 100644
+--- a/engine/Source/Holodeck/HolodeckCore/Private/HolodeckAgent.cpp
++++ b/engine/Source/Holodeck/HolodeckCore/Private/HolodeckAgent.cpp
+@@ -67,6 +67,16 @@ void AHolodeckAgent::Tick(float DeltaSeconds) {
+ 	Super::Tick(DeltaSeconds);
+ }
+ 
++void AHolodeckAgent::EndPlay(const EEndPlayReason::Type EndPlayReason) {
++	if (Server != nullptr) {
++		AHolodeckAgent** Entry = Server->AgentMap.Find(AgentName);
++		if (Entry != nullptr && *Entry == this) {
++			Server->AgentMap.Remove(AgentName);
++		}
++	}
++	Super::EndPlay(EndPlayReason);
++}
++
+ bool AHolodeckAgent::Teleport(const FVector& NewLocation, const FRotator& NewRotation) {
+ 	UE_LOG(
+ 		LogHolodeck, Log, TEXT("Attempting to teleport HolodeckAgent %s"), *AgentName);
+diff --git a/engine/Source/Holodeck/HolodeckCore/Private/HolodeckSonar.cpp b/engine/Source/Holodeck/HolodeckCore/Private/HolodeckSonar.cpp
+index 964c398..29276a4 100644
+--- a/engine/Source/Holodeck/HolodeckCore/Private/HolodeckSonar.cpp
++++ b/engine/Source/Holodeck/HolodeckCore/Private/HolodeckSonar.cpp
+@@ -114,6 +114,22 @@ void UHolodeckSonar::BeginDestroy() {
+ 	delete octree;
+ }
+ 
++void UHolodeckSonar::ResetOctree() {
++	// Forget every pointer into the old trees before freeing them.
++	bigLeaves.Reset();
++	for (auto& fl : foundLeaves) {
++		fl.Reset();
++	}
++	for (auto& sl : sortedLeaves) {
++		sl.Reset();
++	}
++	toMake.Reset();
++	agents.Reset(); // per-agent octrees are owned by the agents and shared by all sonars
++	delete octree;
++	octree = nullptr;
++	TickCounter = 0; // initOctree() runs again after a few ticks, as at startup
++}
++
+ void UHolodeckSonar::initOctree() {
+ 	// We delay making trees till the message has been printed to the screen
+ 	if (toMake.Num() != 0 && TickCounter >= 8) {
+@@ -131,11 +147,11 @@ void UHolodeckSonar::initOctree() {
+ 	if (octree == nullptr && TickCounter >= 5) {
+ 		// initialize small octree for each agent
+ 		for (auto& agent : Controller->GetServer()->AgentMap) {
+-			// skip ourselves
+-			if (agent.Value == this->GetAttachmentRootActor())
+-				continue;
+ 			AHolodeckBuoyantAgent* bouyantActor =
+-				static_cast<AHolodeckBuoyantAgent*>(agent.Value);
++				Cast<AHolodeckBuoyantAgent>(agent.Value);
++			// skip ourselves and anything that is not a live buoyant agent
++			if (!IsValid(bouyantActor) || bouyantActor == this->GetAttachmentRootActor())
++				continue;
+ 			Octree* l = bouyantActor->makeOctree();
+ 			if (l)
+ 				agents.Add(l);
+@@ -143,8 +159,9 @@ void UHolodeckSonar::initOctree() {
+ 
+ 		// Ignore necessary agents to make world one
+ 		for (auto& agent : Controller->GetServer()->AgentMap) {
+-			AActor* actor = static_cast<AActor*>(agent.Value);
+-			Octree::ignoreActor(actor);
++			if (IsValid(agent.Value)) {
++				Octree::ignoreActor(agent.Value);
++			}
+ 		}
+ 		// make/load octree
+ 		octree = Octree::makeEnvOctreeRoot();
+diff --git a/engine/Source/Holodeck/HolodeckCore/Public/HolodeckAgent.h b/engine/Source/Holodeck/HolodeckCore/Public/HolodeckAgent.h
+index a414610..de3f89a 100644
+--- a/engine/Source/Holodeck/HolodeckCore/Public/HolodeckAgent.h
++++ b/engine/Source/Holodeck/HolodeckCore/Public/HolodeckAgent.h
+@@ -56,6 +56,14 @@ public:
+ 	 */
+ 	virtual void Tick(float DeltaSeconds) override;
+ 
++	/**
++	 * EndPlay
++	 * Removes the agent from the server's AgentMap, so that no dangling pointer survives a
++	 * level reset or the destruction of a runtime-spawned agent (sonars iterate the map when
++	 * they build their octrees).
++	 */
++	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
++
+ 	/**
+ 	 * Teleport
+ 	 * Instantly moves the agent to target location, with the orientation that was
+@@ -138,7 +146,7 @@ public:
+ 	int*   OceanCurrentFieldsCountPtr;
+ 	bool*  ShowVectorFieldNamePtr;
+ 
+-	UHolodeckServer* Server;
++	UHolodeckServer* Server = nullptr;
+ 
+ private:
+ 	UHolodeckGameInstance* Instance;
+diff --git a/engine/Source/Holodeck/HolodeckCore/Public/HolodeckSonar.h b/engine/Source/Holodeck/HolodeckCore/Public/HolodeckSonar.h
+index 1c7b77c..c421266 100644
+--- a/engine/Source/Holodeck/HolodeckCore/Public/HolodeckSonar.h
++++ b/engine/Source/Holodeck/HolodeckCore/Public/HolodeckSonar.h
+@@ -36,6 +36,15 @@ public:
+ 	 */
+ 	virtual void BeginDestroy() override;
+ 
++	/**
++	 * Drop this sonar's in-memory octrees so that they are rebuilt from the current scene
++	 * (static octree loaded or recomputed from the cache, per-agent octrees re-collected),
++	 * exactly as at startup.  Used after the static scene changed at runtime.  The sensor
++	 * output is not meaningful again until the sonar has re-initialised and captured
++	 * (about 8 ticks plus one capture period).
++	 */
++	void ResetOctree();
++
+ protected:
+ 	void TickSensorComponent(
+ 		float						 DeltaTime,
