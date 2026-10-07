@@ -156,10 +156,11 @@ def classify_case(sim, clf, obs, yaw_deg, captures=3):
         out = clf.classify(profiles, ages, own, Rwb, seabed_z)
     res = {s_: [{"r0": round(e.r0, 3), "r1": round(e.r1, 3), "cls": e.cls, "why": e.why} for e in rd.echoes]
            for s_, rd in out.items() if rd.echoes}
+    blind = {s_: (None if rd.blind_from is None else round(rd.blind_from, 2)) for s_, rd in out.items()}
     truth = {nm: np.round(agent_origin_from_pose(sim.latest[nm]["PoseSensor"]), 2).tolist() for nm in sim.names}
     prof = {s_: np.round(np.asarray(sim.latest[obs].get(sg.sonar_sensor_name(s_)), float), 4).tolist()
             for s_ in sg.SECTORS}
-    return res, prof, {"seabed_z_est": None if seabed_z is None else round(seabed_z, 2), "truth": truth}
+    return res, prof, {"seabed_z_est": None if seabed_z is None else round(seabed_z, 2), "truth": truth, "blind_from": blind}
 
 
 def mode_classify():

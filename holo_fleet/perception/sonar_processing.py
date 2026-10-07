@@ -4,10 +4,16 @@ An echo is NOT a drone.  Every echo segment of a profile is classified as
 
 * ``STRUCTURE`` - explained by the mission map (arena gates) seen from the own *estimated* pose;
 * ``SEABED``    - explained by the seabed seen from the own depth, attitude and DVL altitude;
-* ``DYNAMIC``   - unexplained, compact (one hull deep), confirmed in at least 2 of the last 3 captures;
-* ``UNKNOWN``   - anything else that could still be an obstacle: an unexplained echo not yet
-                  confirmed, too extended to be one hull, or inside the seabed clutter where a vehicle
-                  cannot be told apart from the bottom.  The safety layer treats it like DYNAMIC.
+* ``DYNAMIC``   - unexplained, compact (one hull deep): a possible vehicle;
+* ``UNKNOWN``   - anything else that could still be an obstacle: too extended to be one hull, or
+                  inside the seabed clutter where a vehicle cannot be told apart from the bottom.
+                  The safety layer treats it like DYNAMIC.
+
+M-of-N confirmation: an unexplained echo becomes DYNAMIC/UNKNOWN only once an unexplained echo has
+been seen within 0.5 m of it in at least 2 of the last 3 captures; before that it is
+``UNCONFIRMED`` (logged, not used by the guards).  Single-capture echoes (noise, grazing returns
+of a structure at the cone edge) therefore never trigger a mode change; the confirmation latency
+(one capture period) is part of the staleness budget of the P1 derivation.
 
 Inputs: echo profile (234 bins), which sensor produced it, own estimated position/attitude
 (dead reckoning), own depth, DVL beam ranges, and the static gate map.  No ground truth.
@@ -22,9 +28,10 @@ from typing import Deque, Dict, List, Optional, Sequence, Tuple
 import numpy as np
 
 from holo_fleet.config import DEFAULT, FleetConfig
-from holo_fleet.perception.sonar_geometry import AXES, MOUNTS, SECTORS, SonarModel, fibonacci_sphere
+from holo_fleet.perception.sonar_geometry import AXES, MOUNTS, NEAR_FIELD_WIDEN_M, SECTORS, SonarModel, fibonacci_sphere
 
 STRUCTURE, SEABED, DYNAMIC, UNKNOWN = "STRUCTURE", "SEABED", "DYNAMIC", "UNKNOWN"
+UNCONFIRMED = "UNCONFIRMED"
 OBSTACLE_CLASSES = (DYNAMIC, UNKNOWN)
 
 
@@ -124,8 +131,13 @@ class EchoClassifier:
             return None
         d = self.struct_pts - sonar_pos
         r = np.linalg.norm(d, axis=1)
-        cosang = (d @ boresight) / np.maximum(r, 1e-9)
-        sel = (cosang >= np.cos(np.radians(self.model.half_angle_deg))) & (r >= self.model.range_min) & \
+        ang = np.arccos(np.clip((d @ boresight) / np.maximum(r, 1e-9), -1.0, 1.0))
+        # near-field widening (DI-12): strong reflectors close to the sonar are detected beyond the nominal
+        # cone (seen in HoloOcean: a gate post at 0.63 m and 78 deg off-axis; a real wide beam does the
+        # same through its side lobes), so the predicted structure window uses a cone widened by
+        # atan(NEAR_FIELD_WIDEN_M / r): 22 deg at 0.6 m, 5 deg at 3 m, 2 deg at 7 m
+        widen = np.arctan2(NEAR_FIELD_WIDEN_M, np.maximum(r, 1e-6))
+        sel = (ang <= np.radians(self.model.half_angle_deg) + widen) & (r >= self.model.range_min) & \
               (r <= self.model.range_max)
         if not sel.any():
             return None
@@ -170,7 +182,7 @@ class EchoClassifier:
                 e = Echo(s, r0, r1, pk)
                 tol_s, tol_b = pc.structure_tol_m, pc.seabed_tol_m
                 sw, sb = rd.structure_window, rd.seabed_onset
-                in_struct = sw is not None and (sw[0] - tol_s) <= r0 and r1 <= (sw[1] + tol_s)
+                in_struct = sw is not None and (sw[0] - tol_s) <= r0 and r1 <= (sw[1] + pc.structure_tol_far_m)
                 if sb is not None and r0 >= sb - tol_b:
                     if r0 <= sb + 0.6 or seabed_seen:
                         e.cls, e.why = SEABED, f"seabed onset {sb:.2f} m"
@@ -189,20 +201,21 @@ class EchoClassifier:
         return out
 
     def _confirm(self, readings: Dict[str, SectorReading]) -> None:
-        """DYNAMIC needs the echo (within 0.5 m) in >= confirm_captures of the last 3 captures."""
+        """An unexplained echo (DYNAMIC or UNKNOWN) needs an unexplained echo within 0.5 m in >= confirm_captures
+        of the last 3 captures (this one included); otherwise it is UNCONFIRMED."""
         need = self.cfg.perc.confirm_captures
         for s, rd in readings.items():
             if not rd.healthy:
                 continue
-            dyn = [e.r0 for e in rd.echoes if e.cls == DYNAMIC]
+            cand = [e.r0 for e in rd.echoes if e.cls in OBSTACLE_CLASSES]
             hist = self.history[s]
-            hist.append(dyn)
+            hist.append(cand)
             for e in rd.echoes:
-                if e.cls != DYNAMIC:
+                if e.cls not in OBSTACLE_CLASSES:
                     continue
                 hits = sum(any(abs(r - e.r0) <= 0.5 for r in past) for past in hist)
                 if hits < need:
-                    e.cls, e.why = UNKNOWN, "dynamic echo not yet confirmed"
+                    e.cls, e.why = UNCONFIRMED, f"{e.cls.lower()} echo not yet confirmed ({e.why})"
 
 
 def dvl_altitude(dvl: Optional[np.ndarray], elevation_deg: float = 22.5, max_range: float = 50.0) -> Optional[float]:

@@ -5,9 +5,9 @@ UNKNOWN) with its age and a filtered closing rate; echoes of adjacent sectors at
 are associated into one *target* whose sector pattern P (e.g. FRONT+LEFT) narrows its direction
 to ``sonar_geometry.regions()[P]``.
 
-Conservative distance: the true centre distance d to an obstacle seen at echo range r by the
-sonar mounted at m_k satisfies d >= r - eps_far + R_IN - |m_k| (Envelope.d_lower_offset); the
-guards also subtract c_max * age, so a stale reading can only make the drone more cautious.
+Conservative distance: ``sonar_geometry.centre_distance_lower`` lower-bounds the true centre
+distance from the echo range, the mounting and the hull geometry; the guards also subtract
+c_max * age, so a stale reading can only make the drone more cautious.
 """
 
 from __future__ import annotations
@@ -18,7 +18,7 @@ from typing import Dict, FrozenSet, List, Optional
 import numpy as np
 
 from holo_fleet.config import DEFAULT, FleetConfig
-from holo_fleet.perception.sonar_geometry import MIRROR, MOUNTS, SECTORS
+from holo_fleet.perception.sonar_geometry import MIRROR, SECTORS, target_distance_lower
 from holo_fleet.perception.sonar_processing import DYNAMIC, OBSTACLE_CLASSES, SectorReading
 
 ADJACENT = {s: frozenset(x for x in SECTORS if x != s and x != MIRROR[s]) for s in SECTORS}
@@ -41,6 +41,8 @@ class Target:
     closing_rate: float               # >= 0 when closing [m/s]
     cls: str                          # DYNAMIC if any member is confirmed, else UNKNOWN
     ranges: Dict[str, float] = field(default_factory=dict)
+    expected_neighbour: bool = False  # matched to a formation neighbour expected by the template
+    possible_neighbour: bool = False  # in an expected neighbour's sectors within 3 m of its expected distance
 
 
 class SectorTracker:
@@ -102,8 +104,9 @@ def build_targets(t: float, readings: Dict[str, SectorReading], tracks: Dict[str
             if all(s2 in ADJACENT[m] for m in members):
                 members[s2] = (r2, c2, a2)
                 used[j] = True
-        d_lower = min(rr - env.eps_range_far + cfg_offset(sec) - cfg.perc.v_close_staleness * aa
-                      for sec, (rr, _c, aa) in members.items())
+        d_lower = (target_distance_lower({sec: rr for sec, (rr, _c, _a) in members.items()}, env.eps_range_far,
+                                         cfg.perc.sonar)
+                   - cfg.perc.v_close_staleness * max(aa for (_r, _c, aa) in members.values()))
         rates = [tracks[sec].rate for sec in members if tracks.get(sec) is not None]
         closing = max([-x for x in rates] + [0.0])
         targets.append(Target(pattern=frozenset(members), r_min=min(v[0] for v in members.values()),
@@ -112,10 +115,3 @@ def build_targets(t: float, readings: Dict[str, SectorReading], tracks: Dict[str
                               cls=DYNAMIC if any(v[1] == DYNAMIC for v in members.values()) else "UNKNOWN",
                               ranges={sec: v[0] for sec, v in members.items()}))
     return targets
-
-
-def cfg_offset(sector: str) -> float:
-    """R_IN - |mount| : echo range + this (+ eps) lower-bounds the centre distance."""
-    from holo_fleet.perception.sonar_geometry import R_IN
-
-    return R_IN - float(np.linalg.norm(MOUNTS[sector]))
