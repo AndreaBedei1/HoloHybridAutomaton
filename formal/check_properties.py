@@ -1,7 +1,7 @@
 """Run every formal check and write formal/results/SUMMARY.{json,md}.
 
     python formal/check_properties.py            # all suites
-    python formal/check_properties.py --quick    # skip the slowest suite (P1, ~90 s of nonlinear arithmetic)
+    python formal/check_properties.py --quick    # skip the slowest suite (P1: triangle lemma, ~60 s)
 
 Exit status 0 iff every check returned its expected verdict.
 """
@@ -28,7 +28,7 @@ SUITES = [
     ("Local determinism & priority hierarchy", check_determinism, "holo_fleet/ha/spec.py"),
     ("P1 inter-vehicle separation", check_separation, "formal/check_separation.py"),
     ("P2 critical-region mutual exclusion", check_mutex, "holo_fleet/ha/gate_rule.py + formal/check_mutex.py"),
-    ("P3 bounded formation recovery", check_formation, "formal/check_formation.py"),
+    ("P3 formation recovery (liveness, ranking functions)", check_formation, "formal/check_formation.py"),
 ]
 
 

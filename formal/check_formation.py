@@ -1,50 +1,53 @@
-"""P3 - bounded formation recovery:  G( formation_lost -> F_[0,T] formation_recovered ).
+"""P3 - formation recovery (liveness):  G( formation_lost -> F formation_recovered ).
 
-Abstraction of the deployed formation law (holo_fleet.control.flows.Flows.formation) for 3 drones,
-one step of dt_f = 0.5 s (controller at 10 Hz; gain * dt_f << 1 keeps Euler faithful).  Along-track
-and lateral laws are decoupled, so each axis is analysed separately:
+No time bound is claimed.  Eventual recovery is proved by RANKING FUNCTIONS on an abstraction of the
+deployed formation law (holo_fleet.control.flows.Flows.formation), under explicit fairness and
+environment assumptions; every lemma is a one-step, universally quantified Z3 query, hence valid for
+unbounded time.
 
-  along  : x_i' = x_i + (clip(v_nom + k_along*(mean_j (x_j - x_i) + eta_i), 0, v_max) + omega_i) dt_f
-  lateral: y_i' = y_i + (clip(-k_lane*y_i + k_rel*(mean_j (y_j - y_i) + eta_i), -v_lat, v_lat) + omega_i) dt_f
-  |eta| <= eps_rel   (relative-measurement error, adversarial, re-chosen at every step)
-  |omega| <= w_res   (residual velocity-tracking error, adversarial)
+Abstraction (per drone, per axis, dt = 0.1 s).  The slot moves with the shared FormationClock at
+v_clock plus the drift of the local progress offset sigma (|sigma_dot| <= s_rate: sigma is driven by
+the along-track sonar residual, capped by range_gate, plus a leak); the drone commands
+v = v_clock t + k_slot e (+ the capped lateral sonar correction), saturated at v_recovery (along)
+and sqrt(v_recovery^2 - v_clock^2) (lateral); the unrejected disturbance after the low-level
+integrator has converged is |w| <= w_res.
 
-Error measure (as the referee): E = max_i |x_i - mean x| (resp. y).  Proof by RANKING FUNCTION,
-every lemma is a one-step, universally quantified Z3 query (hence valid for unbounded time):
+  along   e' = e + dt (v_clock + sigma_dot - clip(v_clock + k_slot e, -V, V) - w)
+  lateral e' = e + dt (- clip(k_slot e + corr, -V_lat, V_lat) - w),   |corr| <= v_corr_max
 
-  R_k   for every band [lo_k, hi_k] of E down to the tolerance: E' <= E - delta_k  (delta_k > 0
-        found by bisection, the largest value Z3 can certify);
-  B     the tolerance box {E <= tol} is invariant (once recovered, stays recovered);
-  L     lateral: the lane-error box |y_i| <= L0 is invariant (keeps the saturation analysis valid);
-  F3    tol_along, tol_lateral and the depth allowance fit inside e_ok (the referee's threshold);
-  F4    recovery bound T = sum_k (hi_k - lo_k)/delta_k * dt_f  <=  referee deadline;
-  Fm    mutation: without along-track consensus the ranking lemma cannot be certified.
+F1  far band (saturated): |e| decreases by >= eps_far per step whenever |e| >= e1  (ranking R1);
+F2  near band (linear):   |e| decreases by >= eps_near per step whenever e* <= |e| <= e1 (ranking R2);
+F3  the ball |e| <= e* is invariant (once recovered, the slot error stays recovered);
+F4  automaton: in FORMATION_RECOVERY, calm, no gate, the guard `recovered` enables exactly the edge to
+    FORMATION_FOLLOW; in FORMATION_FOLLOW `lost` enables exactly the edge to FORMATION_RECOVERY
+    (the same spec functions as the runtime);
+Fm  mutations: no catch-up margin (v_recovery = v_clock) must break F1; k_slot = 0 must break F2.
 
-The bound T is a worst case over adversarial noise; the measured recoveries are much faster.
-Assumptions (validated empirically in scripts/validate_assumptions.py): no new perturbation during
-recovery, neighbours perceived and correctly associated, |eta| <= eps_rel, |omega| <= w_res.
+Fairness / environment assumptions (eventual recovery holds under them, and only under them):
+  A1  every perturbation ends: currents return inside the envelope, encounters (SEPARATION_WARNING /
+      COLLISION_AVOIDANCE) and gate passages are finitely many;
+  A2  after a perturbation the residual disturbance is |w| <= w_res (the integrator has converged);
+  A3  the sensors stay healthy (no FAILSAFE) and the expected neighbours become visible
+      (neighbors_ok), so the onboard estimate form_err follows the slot errors;
+  A4  slot errors inside the ball give form_err < e_ok (sonar residual = own + neighbour slot error +
+      range/hull ambiguity): checked on the logs, not proved.
 """
 
 from __future__ import annotations
 
 import math
 import sys
-import time
 
 import z3
 
-from common import CheckResult, Report, check  # noqa: E402
+from common import CheckResult, Obs, Report, Z3L, check  # noqa: E402
 
 from holo_fleet.config import DEFAULT, FleetConfig
+from holo_fleet.ha.spec import Mode, Predicates, build_edges
 
-ENC = "formal/check_formation.py (abstraction of Flows.formation)"
-DT_F = 0.5
-N = 3
-A0 = 5.5          # max initial |x_i - mean| [m] (an ~8 m along spread, e.g. the column after a gate)
-L0 = 2.0          # max initial lateral lane error [m]
-A1 = 0.275        # lateral phase-2 set |y_i| <= A1: no lateral saturation possible inside it
-W_RES = 0.03      # residual tracking error [m/s] (measured p95 ~0.027 m/s over 0.5 s windows)
-Z_ERR = 0.03      # depth deviation allowance [m] (measured depth hold within +-0.02 m)
+ENC = "formal/check_formation.py (abstraction of Flows.formation) + holo_fleet/ha/spec.py"
+DT = 0.1
+W_RES = 0.05
 
 
 def clip(v, lo, hi):
@@ -55,150 +58,100 @@ def zabs(x):
     return z3.If(x >= 0, x, -x)
 
 
-def equilibrium_bounds(cfg: FleetConfig):
-    """Linear-regime steady bounds of max |e_i| under constant adversarial noise (3-drone complete graph)."""
-    F, eps = cfg.form, cfg.env.eps_rel
-    e_a = (4.0 / 3.0) * (F.k_along * eps + W_RES) / (1.5 * F.k_along)
-    e_l = (4.0 / 3.0) * (F.k_lat_rel * eps + W_RES) / (F.k_lat_lane + 1.5 * F.k_lat_rel)
-    return e_a, e_l
+def model(cfg: FleetConfig, v_rec=None, k=None):
+    F = cfg.form
+    V = F.v_recovery_max if v_rec is None else v_rec
+    kk = F.k_slot if k is None else k
+    s_rate = F.k_progress * F.range_gate_m + 0.02 * F.progress_max       # |sigma_dot| bound
+    return {"V": V, "V_lat": math.sqrt(max(V * V - F.v_nominal ** 2, 0.0)), "k": kk, "v_clock": F.v_nominal,
+            "s_rate": s_rate, "w": W_RES, "corr": F.v_corr_max}
 
 
-def tolerances(cfg: FleetConfig):
-    e_a, e_l = equilibrium_bounds(cfg)
-    return round(e_a + 0.06, 3), round(e_l + 0.05, 3)
+def along_step(p, e):
+    sd, w = z3.Reals("sigma_dot w")
+    e1 = e + DT * (p["v_clock"] + sd - clip(p["v_clock"] + p["k"] * e, -p["V"], p["V"]) - w)
+    return e1, [zabs(sd) <= p["s_rate"], zabs(w) <= p["w"]]
 
 
-def one_step(cfg, kind: str, k_a=None, lat_box: float = L0):
-    F, env, eps = cfg.form, cfg.env, cfg.env.eps_rel
-    x = [z3.Real(f"{kind}{i}") for i in range(N)]
-    xn = [z3.Real(f"{kind}{i}n") for i in range(N)]
-    cons = []
-    for i in range(N):
-        eta, om = z3.Reals(f"eta{i} om{i}")
-        cons += [eta >= -eps, eta <= eps, om >= -W_RES, om <= W_RES]
-        res = sum(x[j] - x[i] for j in range(N) if j != i) / (N - 1) + eta
-        if kind == "x":
-            ka = F.k_along if k_a is None else k_a
-            v = clip(F.v_nominal + ka * res, 0.0, env.v_max_nominal)
-        else:
-            v = clip(-F.k_lat_lane * x[i] + F.k_lat_rel * res, -F.v_lat_max, F.v_lat_max)
-        cons.append(xn[i] == x[i] + (v + om) * DT_F)
-    if kind == "x":
-        cons.append(sum(x) == 0)                       # translation invariance: centroid at 0 (WLOG)
-    else:
-        cons += [zabs(xi) <= lat_box for xi in x]      # lane-error box (invariant, lemmas L/L1)
-    return x, xn, cons
+def lateral_step(p, e):
+    c, w = z3.Reals("corr w")
+    e1 = e + DT * (-clip(p["k"] * e + c, -p["V_lat"], p["V_lat"]) - w)
+    return e1, [zabs(c) <= p["corr"], zabs(w) <= p["w"]]
 
 
-def dev(v):
-    m = sum(v) / N
-    return [vi - m for vi in v]
+def certify(step, p, lo, hi, eps):
+    """UNSAT  <=>  for every e with lo <= |e| <= hi and every disturbance: |e'| <= |e| - eps."""
+    e = z3.Real("e")
+    e1, dist = step(p, e)
+    return [zabs(e) >= lo, zabs(e) <= hi] + dist + [zabs(e1) > zabs(e) - eps]
 
 
-def E_constraints(E, e):
-    return [z3.And(E >= ei, E >= -ei) for ei in e] + [z3.Or(*[z3.Or(E == ei, E == -ei) for ei in e])]
-
-
-def band_query(cfg, kind, lo, hi, delta, k_a=None, measure="dev", lat_box=L0):
-    """measure = 'dev': E = max |v_i - mean v| (formation error);  'abs': E = max |v_i| (lane error)."""
-    x, xn, cons = one_step(cfg, kind, k_a, lat_box)
-    E = z3.Real("E")
-    e, en = (dev(x), dev(xn)) if measure == "dev" else (x, xn)
-    q = cons + E_constraints(E, e) + [E >= lo, E <= hi]
-    q.append(z3.Or(*[z3.Or(ei > E - delta, -ei > E - delta) for ei in en]))
-    return q
-
-
-def certify_band(cfg, kind, lo, hi, k_a=None, measure="dev", lat_box=L0):
-    """Largest delta (bisection) such that E' <= E - delta for every state with E in [lo, hi]."""
-    kw = dict(k_a=k_a, measure=measure, lat_box=lat_box)
-    if check("", "", ENC, band_query(cfg, kind, lo, hi, 1e-5, **kw), timeout_ms=60000).verdict != "unsat":
-        return None
-    a, b = 1e-5, 0.3
+def best_eps(step, p, lo, hi):
+    """Largest decrease per step Z3 certifies on the band (bisection), or 0."""
+    a, b = 0.0, 0.2
+    if check("", "", ENC, certify(step, p, lo, hi, 1e-6)).verdict != "unsat":
+        return 0.0
     for _ in range(18):
-        mid = (a + b) / 2
-        if check("", "", ENC, band_query(cfg, kind, lo, hi, mid, **kw), timeout_ms=60000).verdict == "unsat":
-            a = mid
+        m = (a + b) / 2
+        if check("", "", ENC, certify(step, p, lo, hi, m)).verdict == "unsat":
+            a = m
         else:
-            b = mid
+            b = m
     return a
-
-
-def bands(top: float, tol: float):
-    edges = [top]
-    while edges[-1] > tol + 1e-9:
-        nxt = max(tol, edges[-1] * 0.8 if edges[-1] > 1.0 else edges[-1] - 0.08)
-        edges.append(round(nxt, 4))
-    return list(zip(edges[1:], edges[:-1]))
 
 
 def run(cfg: FleetConfig = DEFAULT, verbose: bool = True) -> Report:
     rep = Report("formation")
-    F = cfg.form
-    e_a, e_l = equilibrium_bounds(cfg)
-    tol_a, tol_l = tolerances(cfg)
+    p = model(cfg)
     if verbose:
-        print(f"linear-regime steady bounds: along {e_a:.3f} m, lateral {e_l:.3f} m; tolerances {tol_a} / {tol_l} m; "
-              f"norm {math.hypot(tol_a, tol_l):.3f} + depth {Z_ERR} vs e_ok {F.e_ok}")
-    # B: invariance of the tolerance boxes (lateral box inside the no-saturation set |y| <= A1)
-    x, xn, cons = one_step(cfg, "x")
-    e, en = dev(x), dev(xn)
-    rep.add(check(f"B invariance of the along tolerance box (E <= {tol_a} m)", "E <= tol -> E' <= tol", ENC,
-                  cons + [zabs(ei) <= tol_a for ei in e] + [z3.Or(*[zabs(ei) > tol_a for ei in en])]), verbose)
-    x, xn, cons = one_step(cfg, "y", lat_box=A1)
-    e, en = dev(x), dev(xn)
-    rep.add(check(f"B invariance of the lateral tolerance box (E <= {tol_l} m, within |y| <= {A1} m)",
-                  "|y| <= A1 & E <= tol -> E' <= tol", ENC,
-                  cons + [zabs(ei) <= tol_l for ei in e] + [z3.Or(*[zabs(ei) > tol_l for ei in en])]), verbose)
-    # L / L1: lane-error boxes are invariant
-    for box, name in ((L0, "L"), (A1, "L1")):
-        x, xn, cons = one_step(cfg, "y", lat_box=box)
-        rep.add(check(f"{name} lane-error box |y_i| <= {box} m is invariant", "|y| <= box -> |y'| <= box", ENC,
-                      cons + [z3.Or(*[zabs(v) > box for v in xn])]), verbose)
-    # F3
-    rep.add(check("F3 tolerances fit the recovered threshold e_ok",
-                  f"sqrt({tol_a}^2 + {tol_l}^2) + {Z_ERR} <= e_ok = {F.e_ok}", ENC,
-                  [z3.BoolVal(math.hypot(tol_a, tol_l) + Z_ERR > F.e_ok)]), verbose)
-    # R: ranking lemmas per band
-    phases = [("along", "x", "dev", A0, tol_a, L0),
-              ("lateral phase 1 (lane error, saturated regime)", "y", "abs", L0, A1, L0),
-              ("lateral phase 2 (formation error inside |y| <= A1)", "y", "dev", round(4 * A1 / 3, 4), tol_l, A1)]
-    T_phase = {}
-    for name, kind, measure, top, tol, box in phases:
-        total, ok, t0 = 0.0, True, time.time()
-        details = []
-        for lo, hi in bands(top, tol):
-            d = certify_band(cfg, kind, lo, hi, measure=measure, lat_box=box)
-            if d is None:
-                ok = False
-                details.append(f"[{lo},{hi}]: not certified")
-                break
-            steps = math.ceil((hi - lo) / d)
-            total += steps * DT_F
-            details.append(f"[{lo:.2f},{hi:.2f}] delta={d * 1000:.1f} mm/step -> {steps * DT_F:.1f}s")
-        res = CheckResult(prop=f"R ranking lemmas - {name}: decrease >= delta_k per step in every band down to {tol} m",
-                          formula="E in [lo_k, hi_k] -> E' <= E - delta_k  (one step, all noise, all saturations)",
-                          encoding=ENC, expect="unsat", verdict="unsat" if ok else "unknown", passed=ok,
-                          seconds=round(time.time() - t0, 1), note="; ".join(details) + f" | total {total:.1f}s")
-        rep.add(res, verbose)
-        if verbose:
-            for d_ in details:
-                print("       " + d_)
-        if ok:
-            T_phase[name] = total
-    if len(T_phase) == 3:
-        t_along = T_phase[phases[0][0]]
-        t_lat = T_phase[phases[1][0]] + T_phase[phases[2][0]]
-        T = max(t_along, t_lat)
-        rep.add(check(f"F4 worst-case recovery bound T={T:.1f} s <= referee deadline {F.t_recovery_max} s",
-                      "sum_k ceil(width_k/delta_k) dt_f <= T_deadline (axes recover concurrently)", ENC,
-                      [z3.BoolVal(T > F.t_recovery_max)],
-                      note=f"along {t_along:.1f}s from {A0} m, lateral {t_lat:.1f}s from {L0} m"), verbose)
-    # mutation: no along-track consensus -> the first band cannot be certified
-    lo, hi = bands(A0, tol_a)[0]
-    q = band_query(cfg, "x", lo, hi, 1e-5, k_a=0.0)
-    rep.add(check("Fm mutation: without along-track consensus the error does not decrease",
-                  "expect counterexample", ENC, q, expect="sat"), verbose)
+        print("P3 abstraction:", {k: round(v, 4) for k, v in p.items()})
+    E_MAX = 8.0
+    for axis, step, sat_rate in (("along", along_step, p["V"] - p["v_clock"] - p["s_rate"] - p["w"]),
+                                 ("lateral", lateral_step, p["V_lat"] - p["corr"] - p["w"])):
+        noise = (p["s_rate"] + p["w"]) if axis == "along" else (p["corr"] + p["w"])
+        e_star = noise / p["k"] * 1.05 + 0.005                       # linear-regime ball (with a small margin)
+        e1 = max((p["V"] if axis == "along" else p["V_lat"]) / p["k"], e_star + 0.05)
+        eps_far = best_eps(step, p, e1, E_MAX)
+        rep.add(CheckResult(f"F1 {axis}: ranking decrease in the saturated band [{e1:.2f}, {E_MAX}] m",
+                            "lo <= |e| <= hi -> |e'| <= |e| - eps_far", ENC, "unsat",
+                            verdict="unsat" if eps_far > 0 else "sat", passed=eps_far > 0,
+                            note=f"eps_far = {eps_far * 10:.4f} m/s certified (analytic margin {sat_rate:.3f} m/s)"), verbose)
+        eps_near = best_eps(step, p, e_star, e1)
+        rep.add(CheckResult(f"F2 {axis}: ranking decrease in the linear band [{e_star:.2f}, {e1:.2f}] m",
+                            "lo <= |e| <= hi -> |e'| <= |e| - eps_near", ENC, "unsat",
+                            verdict="unsat" if eps_near > 0 else "sat", passed=eps_near > 0,
+                            note=f"eps_near = {eps_near * 10:.4f} m/s; ball e* = {e_star:.2f} m"), verbose)
+        e = z3.Real("e")
+        e_n, dist = step(p, e)
+        rep.add(check(f"F3 {axis}: the ball |e| <= {e_star:.2f} m is invariant", "|e| <= e* -> |e'| <= e*", ENC,
+                      [zabs(e) <= e_star] + dist + [zabs(e_n) > e_star]), verbose)
+        rep.results[-1].note = f"e* = {e_star:.3f} m (A4 needs the onboard form_err below e_ok = {cfg.form.e_ok} m)"
+    # ---------------------------------------------------------------- F4 automaton
+    edges = build_edges(cfg)
+    P = Predicates(cfg)
+    o = Obs()
+    gs = [(e, e.guard(o, Z3L)) for e in edges[Mode.FORMATION_RECOVERY]]
+    calm = P.calm(o, Z3L, Mode.FORMATION_RECOVERY)
+    rep.add(check("F4a RECOVERY & calm & no gate & recovered -> only the edge to FORMATION_FOLLOW",
+                  "guard(e) & target(e) != FOLLOW is unsatisfiable", ENC,
+                  [o.legal(cfg), calm, z3.Not(o.gate_zone), z3.Not(o.committed), P.recovered(o, Z3L),
+                   z3.Or(*[g for e, g in gs if e.target != Mode.FORMATION_FOLLOW])]), verbose)
+    rep.add(check("F4b ... and that edge is enabled", "recovered -> guard(formation_recovered)", ENC,
+                  [o.legal(cfg), calm, z3.Not(o.gate_zone), z3.Not(o.committed), P.recovered(o, Z3L),
+                   z3.Not(z3.Or(*[g for e, g in gs if e.target == Mode.FORMATION_FOLLOW]))]), verbose)
+    gs = [(e, e.guard(o, Z3L)) for e in edges[Mode.FORMATION_FOLLOW]]
+    calm_f = P.calm(o, Z3L, Mode.FORMATION_FOLLOW)
+    rep.add(check("F4c FOLLOW & calm & no gate & lost -> FORMATION_RECOVERY", "lost -> target = RECOVERY", ENC,
+                  [o.legal(cfg), calm_f, z3.Not(o.gate_zone), z3.Not(o.committed), P.lost(o, Z3L),
+                   z3.Or(*[g for e, g in gs if e.target != Mode.FORMATION_RECOVERY])]), verbose)
+    # ---------------------------------------------------------------- mutations
+    pm = model(cfg, v_rec=cfg.form.v_nominal)
+    e1m = max(pm["V"] / pm["k"], 0.5)
+    rep.add(check("Fm1 mutation: no catch-up margin (v_recovery = v_clock) must break F1 (along)",
+                  "expect counterexample", ENC, certify(along_step, pm, e1m, E_MAX, 1e-6), expect="sat"), verbose)
+    pk = model(cfg, k=0.0)
+    rep.add(check("Fm2 mutation: k_slot = 0 must break F2 (lateral)", "expect counterexample", ENC,
+                  certify(lateral_step, pk, 0.4, 2.0, 1e-6), expect="sat"), verbose)
     return rep
 
 

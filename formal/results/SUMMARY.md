@@ -1,6 +1,6 @@
 # Formal verification summary
 
-Generated 2026-10-06 17:02:34 by `formal/check_properties.py`.
+Generated 2026-10-08 01:45:43 by `formal/check_properties.py`.
 
 UNSAT = the negated property has no model in the abstraction, i.e. the property HOLDS for the model; SAT is expected only for the mutation tests (deliberately broken designs must yield a counterexample).
 
@@ -77,61 +77,68 @@ Encoding: `holo_fleet/ha/spec.py`
 | M1 mutation: commit without priority must violate G1 | expect counterexample | SAT | SAT | yes |
 | M2 mutation: gate pass ignoring collision risk must violate H2 | expect counterexample | SAT | SAT | yes |
 
-## P1 inter-vehicle separation  (9/9 as expected, 288.1 s)
+## P1 inter-vehicle separation  (13/13 as expected, 86.5 s)
 
 Encoding: `formal/check_separation.py`
 
 | check | formula | expected | verdict | ok |
 |---|---|---|---|---|
-| S1a BMC: no violation within 12 s from any admissible start | Init & T^K -> G_[0,K] d >= d_safe | UNSAT | UNSAT | yes |
-| S1b k-induction: G(d >= d_safe) for all time (k=11) | P(s_0..s_{k-1}) & T -> P(s_k), with base case covered by S1a (K >= k) | UNSAT | UNSAT | yes |
-| S1m mutation: d_warning=1.97 must violate P1 | expect counterexample (trace of d_i, c_i) | SAT | SAT | yes |
-| S2a SW filter feasible with v_open when threats <= 90 deg apart | u1.u2 >= 0 -> exists v, /v/ <= cap: v.u_j <= -v_open (witness -0.4 (u1+u2)//u1+u2/) | UNSAT | UNSAT | yes |
-| S2b CA escape opens every threat at >= v_open/v_escape when <= 90 deg apart | theta <= 90 & vertical term away from threats -> e.u_j <= -(v_open/v_escape)/e/ | UNSAT | UNSAT | yes |
-| S2c CA escape opens a single threat at >= v_open/v_escape | e = normalise(-u + w vz z), vz.u_z <= 0 -> e.u <= -v_open/v_escape | UNSAT | UNSAT | yes |
-| S2m mutation: strong vertical escape regardless of threat geometry must break S2b | expect counterexample | SAT | SAT | yes |
+| S0 onboard distance never above the true centre distance (numeric) | forall sampled poses/errors: d_hat <= d | HOLDS | HOLDS | yes |
+| S0m mutation: uncertified bound (centre assumed inside every member cone) must overestimate | expect: some sample with d_hat > d | VIOLATED | VIOLATED | yes |
+| S1a BMC: no violation within 4 s from any start with d_hat >= d_warning | Init & T^K -> G_[0,K] d >= d_safe | UNSAT | UNSAT | yes |
+| S1b k-induction: G(d >= d_safe) for all time (k=13) | P(s_0..s_{k-1}) & T -> P(s_k), base case covered by S1a (K >= k) | UNSAT | UNSAT | yes |
+| S1c configured d_warning above the smallest verified one | d_warning >= d_warning_min | HOLDS | HOLDS | yes |
+| S1m mutation: d_warning=1.59 must violate P1 | expect counterexample (trace of d_i, c_i) | SAT | SAT | yes |
+| S2a CA escape, one threat: guaranteed opening per unit speed >= g_min (all patterns) | forall P: certified G(P, e*(P)) >= g_min | HOLDS | HOLDS | yes |
+| S2b SW filter, one threat: velocity <= v_max with guaranteed opening >= v_open (all patterns) | forall P: exists v: min_u -v.u >= v_open | HOLDS | HOLDS | yes |
+| S2c CA escape, two threats within 90 deg: positive guarantee | forall P1,P2 with all region directions <= 90 deg apart: max_e min G > 0 | HOLDS | HOLDS | yes |
+| S2d vertical escapes: FRONT+DOWN -> up component, FRONT+UP -> down component | e*(F+D).z > 0.35 and e*(F+U).z < -0.35 | HOLDS | HOLDS | yes |
+| S2m mutation: 'always reverse' escape must fail S2a for some pattern | expect: some P with G(P, REAR) < g_min | VIOLATED | VIOLATED | yes |
 | S3 at most one vertex angle >= 90 deg (pairwise d >= d_safe) | d_ij >= d_safe -> not(angle_i >= 90 and angle_j >= 90) | UNSAT | UNSAT | yes |
-| S4 blackout <= 0.8s starting at d >= 2.08 m keeps d >= d_safe | FAILSAFE hold with unrejected drift w_rel | UNSAT | UNSAT | yes |
+| S4 blackout <= 0.8s starting at d >= 2.34 m keeps d >= d_safe | FAILSAFE hold with unrejected drift w_rel | UNSAT | UNSAT | yes |
 
-## P2 critical-region mutual exclusion  (17/17 as expected, 0.1 s)
+## P2 critical-region mutual exclusion  (19/19 as expected, 63.8 s)
 
 Encoding: `holo_fleet/ha/gate_rule.py + formal/check_mutex.py`
 
 | check | formula | expected | verdict | ok |
 |---|---|---|---|---|
-| X0a decision classes mutually exclusive | no measurement satisfies two classes | UNSAT | UNSAT | yes |
-| X0b decision classes exhaustive | every measurement satisfies some class | UNSAT | UNSAT | yes |
-| M1 no simultaneous commit (independent errors <= eps) | COMMIT_i(meas_i) & COMMIT_j(meas_j) is impossible | UNSAT | UNSAT | yes |
-| M2a no mutual waiting (deadlock freedom of the pairwise rule) | never (WAIT_i & WAIT_j): at least one commits or retreats | UNSAT | UNSAT | yes |
-| M2b robust wait is justified | WAIT_ROBUST_i -> COMMIT_j | UNSAT | UNSAT | yes |
-| M2c retreat targets are consistent (never both BACKOFF_REAR) | BACKOFF_REAR_i & BACKOFF_REAR_j impossible (sign of ds is robust) | UNSAT | UNSAT | yes |
-| M3 priority persistence during the transit window | COMMIT_j(t0) & A_mono & (along-tied at t0 -> A_hold) -> not COMMIT_i(t) | UNSAT | UNSAT | yes |
-| M3b late arrivals cannot commit before the committed drone is visible | t_arrival(i) >= (approach_len - commit_window)/v_approach > t_visible(j) | UNSAT | UNSAT | yes |
-| M4 committed drone past occ_gamma+eps is perceived in the occupied zone | s_j in [s_q+gamma+eps, exit-eps], /l_j/ <= W-eps -> occ_busy_i | UNSAT | UNSAT | yes |
-| M5a queued drones are outside the critical region | s <= s_q + hold_tol_s -> not in CR | UNSAT | UNSAT | yes |
-| M5b exited drones are outside the critical region | s > cr_half_len + occ_exit_margin - eps -> not in CR | UNSAT | UNSAT | yes |
-| M6a invariant 'at most one drone committed' is inductive | Inv & T -> Inv'  (T constrained by M1, M3, M4) | UNSAT | UNSAT | yes |
-| M6b initial state satisfies the invariant | all queued -> Inv | UNSAT | UNSAT | yes |
-| M6c invariant + M5 implies G(occupancy_CR <= 1) | only committed drones can be inside the CR (M5), at most one is committed | UNSAT | UNSAT | yes |
-| Mm1 mutation: gap band mu_s_hi-mu_s_lo=0.65 <= 2eps breaks M3 | expect counterexample | SAT | SAT | yes |
-| Mm2 mutation: margins below eps (mu_s_hi=0.4) allow a double commit | expect counterexample | SAT | SAT | yes |
-| Mm3 mutation: 'commit or wait' (no retreat classes) allows mutual waiting | expect counterexample | SAT | SAT | yes |
+| M1 never both PRIORITY (|delta| <= 12 deg, fuzz 9 deg) | /delta/ + 2 fuzz <= 30 -> not(PRIORITY_i and PRIORITY_j) | UNSAT | UNSAT | yes |
+| M1m mutation: fuzz 11 deg (|delta| + 2 fuzz > 30) must allow double PRIORITY | expect counterexample (beta, delta) | SAT | SAT | yes |
+| M1m2 mutation: yield only to FRONT (LEFT ignored) must allow double PRIORITY | expect counterexample | SAT | SAT | yes |
+| M2 abreast queue n=2: exactly the leftmost queued drone has PRIORITY | queue_tol, heading_tol -> PRIORITY_0 and not PRIORITY_k (k > 0) | UNSAT | UNSAT | yes |
+| M2 abreast queue n=3: exactly the leftmost queued drone has PRIORITY | queue_tol, heading_tol -> PRIORITY_0 and not PRIORITY_k (k > 0) | UNSAT | UNSAT | yes |
+| M2 abreast queue n=4: exactly the leftmost queued drone has PRIORITY | queue_tol, heading_tol -> PRIORITY_0 and not PRIORITY_k (k > 0) | UNSAT | UNSAT | yes |
+| M2 abreast queue n=5: exactly the leftmost queued drone has PRIORITY | queue_tol, heading_tol -> PRIORITY_0 and not PRIORITY_k (k > 0) | UNSAT | UNSAT | yes |
+| M2 abreast queue n=6: exactly the leftmost queued drone has PRIORITY | queue_tol, heading_tol -> PRIORITY_0 and not PRIORITY_k (k > 0) | UNSAT | UNSAT | yes |
+| M4a CR inside the FRONT cone of every queue point (n = 2..6) | max CR bearing + heading_tol + fuzz <= 60 deg | HOLDS | HOLDS | yes |
+| M4b merge path keeps merge_clearance from the next queue point (n = 2..6) | min distance >= merge_clearance | HOLDS | HOLDS | yes |
+| M4c queued neighbours outside the warning band (holding error <= 0.1 m) | d_lower(neighbour) >= d_warning_exit | HOLDS | HOLDS | yes |
+| M4d a crossing drone is seen unmasked in the corridor for >= 3 captures | exposure / v_pass >= 0.3 s | HOLDS | HOLDS | yes |
+| M4e masking interval is bounded and starts after the corridor is entered | corridor_from < mask_from and visible_again <= cr_half_len + 2 m | HOLDS | HOLDS | yes |
+| M4m mutation: n=4 queue line at s = -4 m must violate M4a | expect violation | VIOLATED | VIOLATED | yes |
+| M3 occupancy latch, n=3, observer at l=+3.50: never both in the CR (42 s BMC) | latch + persistence + exit + t_clear + t_occ_max -> not(A in CR and B in CR) | UNSAT | UNSAT | yes |
+| M3 occupancy latch, n=3, observer at l=+0.00: never both in the CR (42 s BMC) | latch + persistence + exit + t_clear + t_occ_max -> not(A in CR and B in CR) | UNSAT | UNSAT | yes |
+| M3 occupancy latch, n=4, observer at l=+5.25: never both in the CR (42 s BMC) | latch + persistence + exit + t_clear + t_occ_max -> not(A in CR and B in CR) | UNSAT | UNSAT | yes |
+| M3 occupancy latch, n=4, observer at l=+1.75: never both in the CR (42 s BMC) | latch + persistence + exit + t_clear + t_occ_max -> not(A in CR and B in CR) | UNSAT | UNSAT | yes |
+| M3m mutation: belief without latch (FREE when nothing is seen) must violate P2 | expect counterexample | SAT | SAT | yes |
 
-## P3 bounded formation recovery  (10/10 as expected, 6.3 s)
+## P3 formation recovery (liveness, ranking functions)  (11/11 as expected, 0.5 s)
 
 Encoding: `formal/check_formation.py`
 
 | check | formula | expected | verdict | ok |
 |---|---|---|---|---|
-| B invariance of the along tolerance box (E <= 0.519 m) | E <= tol -> E' <= tol | UNSAT | UNSAT | yes |
-| B invariance of the lateral tolerance box (E <= 0.229 m, within |y| <= 0.275 m) | /y/ <= A1 & E <= tol -> E' <= tol | UNSAT | UNSAT | yes |
-| L lane-error box |y_i| <= 2.0 m is invariant | /y/ <= box -> /y'/ <= box | UNSAT | UNSAT | yes |
-| L1 lane-error box |y_i| <= 0.275 m is invariant | /y/ <= box -> /y'/ <= box | UNSAT | UNSAT | yes |
-| F3 tolerances fit the recovered threshold e_ok | sqrt(0.519^2 + 0.229^2) + 0.03 <= e_ok = 0.6 | UNSAT | UNSAT | yes |
-| R ranking lemmas - along: decrease >= delta_k per step in every band down to 0.519 m | E in [lo_k, hi_k] -> E' <= E - delta_k  (one step, all noise, all saturations) | UNSAT | UNSAT | yes |
-| R ranking lemmas - lateral phase 1 (lane error, saturated regime): decrease >= delta_k per step in every band down to 0.275 m | E in [lo_k, hi_k] -> E' <= E - delta_k  (one step, all noise, all saturations) | UNSAT | UNSAT | yes |
-| R ranking lemmas - lateral phase 2 (formation error inside |y| <= A1): decrease >= delta_k per step in every band down to 0.229 m | E in [lo_k, hi_k] -> E' <= E - delta_k  (one step, all noise, all saturations) | UNSAT | UNSAT | yes |
-| F4 worst-case recovery bound T=60.0 s <= referee deadline 75.0 s | sum_k ceil(width_k/delta_k) dt_f <= T_deadline (axes recover concurrently) | UNSAT | UNSAT | yes |
-| Fm mutation: without along-track consensus the error does not decrease | expect counterexample | SAT | SAT | yes |
+| F1 along: ranking decrease in the saturated band [1.11, 8.0] m | lo <= /e/ <= hi -> /e'/ <= /e/ - eps_far | UNSAT | UNSAT | yes |
+| F2 along: ranking decrease in the linear band [0.44, 1.11] m | lo <= /e/ <= hi -> /e'/ <= /e/ - eps_near | UNSAT | UNSAT | yes |
+| F3 along: the ball |e| <= 0.44 m is invariant | /e/ <= e* -> /e'/ <= e* | UNSAT | UNSAT | yes |
+| F1 lateral: ranking decrease in the saturated band [0.89, 8.0] m | lo <= /e/ <= hi -> /e'/ <= /e/ - eps_far | UNSAT | UNSAT | yes |
+| F2 lateral: ranking decrease in the linear band [0.36, 0.89] m | lo <= /e/ <= hi -> /e'/ <= /e/ - eps_near | UNSAT | UNSAT | yes |
+| F3 lateral: the ball |e| <= 0.36 m is invariant | /e/ <= e* -> /e'/ <= e* | UNSAT | UNSAT | yes |
+| F4a RECOVERY & calm & no gate & recovered -> only the edge to FORMATION_FOLLOW | guard(e) & target(e) != FOLLOW is unsatisfiable | UNSAT | UNSAT | yes |
+| F4b ... and that edge is enabled | recovered -> guard(formation_recovered) | UNSAT | UNSAT | yes |
+| F4c FOLLOW & calm & no gate & lost -> FORMATION_RECOVERY | lost -> target = RECOVERY | UNSAT | UNSAT | yes |
+| Fm1 mutation: no catch-up margin (v_recovery = v_clock) must break F1 (along) | expect counterexample | SAT | SAT | yes |
+| Fm2 mutation: k_slot = 0 must break F2 (lateral) | expect counterexample | SAT | SAT | yes |
 
 **Overall: ALL CHECKS AS EXPECTED**

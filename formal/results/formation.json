@@ -3,126 +3,131 @@
   "all_passed": true,
   "results": [
     {
-      "prop": "B invariance of the along tolerance box (E <= 0.519 m)",
-      "formula": "E <= tol -> E' <= tol",
-      "encoding": "formal/check_formation.py (abstraction of Flows.formation)",
-      "expect": "unsat",
-      "verdict": "unsat",
-      "passed": true,
-      "seconds": 0.01,
-      "counterexample": null,
-      "note": ""
-    },
-    {
-      "prop": "B invariance of the lateral tolerance box (E <= 0.229 m, within |y| <= 0.275 m)",
-      "formula": "|y| <= A1 & E <= tol -> E' <= tol",
-      "encoding": "formal/check_formation.py (abstraction of Flows.formation)",
-      "expect": "unsat",
-      "verdict": "unsat",
-      "passed": true,
-      "seconds": 0.012,
-      "counterexample": null,
-      "note": ""
-    },
-    {
-      "prop": "L lane-error box |y_i| <= 2.0 m is invariant",
-      "formula": "|y| <= box -> |y'| <= box",
-      "encoding": "formal/check_formation.py (abstraction of Flows.formation)",
-      "expect": "unsat",
-      "verdict": "unsat",
-      "passed": true,
-      "seconds": 0.007,
-      "counterexample": null,
-      "note": ""
-    },
-    {
-      "prop": "L1 lane-error box |y_i| <= 0.275 m is invariant",
-      "formula": "|y| <= box -> |y'| <= box",
-      "encoding": "formal/check_formation.py (abstraction of Flows.formation)",
-      "expect": "unsat",
-      "verdict": "unsat",
-      "passed": true,
-      "seconds": 0.005,
-      "counterexample": null,
-      "note": ""
-    },
-    {
-      "prop": "F3 tolerances fit the recovered threshold e_ok",
-      "formula": "sqrt(0.519^2 + 0.229^2) + 0.03 <= e_ok = 0.6",
-      "encoding": "formal/check_formation.py (abstraction of Flows.formation)",
+      "prop": "F1 along: ranking decrease in the saturated band [1.11, 8.0] m",
+      "formula": "lo <= |e| <= hi -> |e'| <= |e| - eps_far",
+      "encoding": "formal/check_formation.py (abstraction of Flows.formation) + holo_fleet/ha/spec.py",
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
       "seconds": 0.0,
       "counterexample": null,
-      "note": ""
+      "note": "eps_far = 0.0140 m/s certified (analytic margin 0.014 m/s)"
     },
     {
-      "prop": "R ranking lemmas - along: decrease >= delta_k per step in every band down to 0.519 m",
-      "formula": "E in [lo_k, hi_k] -> E' <= E - delta_k  (one step, all noise, all saturations)",
-      "encoding": "formal/check_formation.py (abstraction of Flows.formation)",
-      "expect": "unsat",
-      "verdict": "unsat",
-      "passed": true,
-      "seconds": 3.5,
-      "counterexample": null,
-      "note": "[4.40,5.50] delta=52.8 mm/step -> 10.5s; [3.52,4.40] delta=52.8 mm/step -> 8.5s; [2.82,3.52] delta=52.8 mm/step -> 7.0s; [2.25,2.82] delta=52.8 mm/step -> 5.5s; [1.80,2.25] delta=52.8 mm/step -> 4.5s; [1.44,1.80] delta=52.8 mm/step -> 3.5s; [1.15,1.44] delta=44.2 mm/step -> 3.5s; [0.92,1.15] delta=33.9 mm/step -> 3.5s; [0.84,0.92] delta=30.3 mm/step -> 1.5s; [0.76,0.84] delta=26.7 mm/step -> 2.0s; [0.68,0.76] delta=23.1 mm/step -> 2.0s; [0.60,0.68] delta=19.4 mm/step -> 2.5s; [0.52,0.60] delta=8.6 mm/step -> 5.0s; [0.52,0.52] delta=8.1 mm/step -> 0.5s | total 60.0s"
-    },
-    {
-      "prop": "R ranking lemmas - lateral phase 1 (lane error, saturated regime): decrease >= delta_k per step in every band down to 0.275 m",
-      "formula": "E in [lo_k, hi_k] -> E' <= E - delta_k  (one step, all noise, all saturations)",
-      "encoding": "formal/check_formation.py (abstraction of Flows.formation)",
-      "expect": "unsat",
-      "verdict": "unsat",
-      "passed": true,
-      "seconds": 2.3,
-      "counterexample": null,
-      "note": "[1.60,2.00] delta=160.0 mm/step -> 1.5s; [1.28,1.60] delta=160.0 mm/step -> 1.5s; [1.02,1.28] delta=160.0 mm/step -> 1.0s; [0.82,1.02] delta=146.0 mm/step -> 1.0s; [0.74,0.82] delta=126.0 mm/step -> 0.5s; [0.66,0.74] delta=106.0 mm/step -> 0.5s; [0.58,0.66] delta=86.0 mm/step -> 0.5s; [0.50,0.58] delta=66.0 mm/step -> 1.0s; [0.42,0.50] delta=46.0 mm/step -> 1.0s; [0.34,0.42] delta=26.0 mm/step -> 2.0s; [0.28,0.34] delta=10.0 mm/step -> 3.5s | total 14.0s"
-    },
-    {
-      "prop": "R ranking lemmas - lateral phase 2 (formation error inside |y| <= A1): decrease >= delta_k per step in every band down to 0.229 m",
-      "formula": "E in [lo_k, hi_k] -> E' <= E - delta_k  (one step, all noise, all saturations)",
-      "encoding": "formal/check_formation.py (abstraction of Flows.formation)",
-      "expect": "unsat",
-      "verdict": "unsat",
-      "passed": true,
-      "seconds": 0.4,
-      "counterexample": null,
-      "note": "[0.29,0.37] delta=47.1 mm/step -> 1.0s; [0.23,0.29] delta=21.9 mm/step -> 1.5s | total 2.5s"
-    },
-    {
-      "prop": "F4 worst-case recovery bound T=60.0 s <= referee deadline 75.0 s",
-      "formula": "sum_k ceil(width_k/delta_k) dt_f <= T_deadline (axes recover concurrently)",
-      "encoding": "formal/check_formation.py (abstraction of Flows.formation)",
+      "prop": "F2 along: ranking decrease in the linear band [0.44, 1.11] m",
+      "formula": "lo <= |e| <= hi -> |e'| <= |e| - eps_near",
+      "encoding": "formal/check_formation.py (abstraction of Flows.formation) + holo_fleet/ha/spec.py",
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
       "seconds": 0.0,
       "counterexample": null,
-      "note": "along 60.0s from 5.5 m, lateral 16.5s from 2.0 m"
+      "note": "eps_near = 0.0115 m/s; ball e* = 0.44 m"
     },
     {
-      "prop": "Fm mutation: without along-track consensus the error does not decrease",
+      "prop": "F3 along: the ball |e| <= 0.44 m is invariant",
+      "formula": "|e| <= e* -> |e'| <= e*",
+      "encoding": "formal/check_formation.py (abstraction of Flows.formation) + holo_fleet/ha/spec.py",
+      "expect": "unsat",
+      "verdict": "unsat",
+      "passed": true,
+      "seconds": 0.004,
+      "counterexample": null,
+      "note": "e* = 0.439 m (A4 needs the onboard form_err below e_ok = 0.5 m)"
+    },
+    {
+      "prop": "F1 lateral: ranking decrease in the saturated band [0.89, 8.0] m",
+      "formula": "lo <= |e| <= hi -> |e'| <= |e| - eps_far",
+      "encoding": "formal/check_formation.py (abstraction of Flows.formation) + holo_fleet/ha/spec.py",
+      "expect": "unsat",
+      "verdict": "unsat",
+      "passed": true,
+      "seconds": 0.0,
+      "counterexample": null,
+      "note": "eps_far = 0.2500 m/s certified (analytic margin 0.250 m/s)"
+    },
+    {
+      "prop": "F2 lateral: ranking decrease in the linear band [0.36, 0.89] m",
+      "formula": "lo <= |e| <= hi -> |e'| <= |e| - eps_near",
+      "encoding": "formal/check_formation.py (abstraction of Flows.formation) + holo_fleet/ha/spec.py",
+      "expect": "unsat",
+      "verdict": "unsat",
+      "passed": true,
+      "seconds": 0.0,
+      "counterexample": null,
+      "note": "eps_near = 0.0097 m/s; ball e* = 0.36 m"
+    },
+    {
+      "prop": "F3 lateral: the ball |e| <= 0.36 m is invariant",
+      "formula": "|e| <= e* -> |e'| <= e*",
+      "encoding": "formal/check_formation.py (abstraction of Flows.formation) + holo_fleet/ha/spec.py",
+      "expect": "unsat",
+      "verdict": "unsat",
+      "passed": true,
+      "seconds": 0.004,
+      "counterexample": null,
+      "note": "e* = 0.355 m (A4 needs the onboard form_err below e_ok = 0.5 m)"
+    },
+    {
+      "prop": "F4a RECOVERY & calm & no gate & recovered -> only the edge to FORMATION_FOLLOW",
+      "formula": "guard(e) & target(e) != FOLLOW is unsatisfiable",
+      "encoding": "formal/check_formation.py (abstraction of Flows.formation) + holo_fleet/ha/spec.py",
+      "expect": "unsat",
+      "verdict": "unsat",
+      "passed": true,
+      "seconds": 0.004,
+      "counterexample": null,
+      "note": ""
+    },
+    {
+      "prop": "F4b ... and that edge is enabled",
+      "formula": "recovered -> guard(formation_recovered)",
+      "encoding": "formal/check_formation.py (abstraction of Flows.formation) + holo_fleet/ha/spec.py",
+      "expect": "unsat",
+      "verdict": "unsat",
+      "passed": true,
+      "seconds": 0.003,
+      "counterexample": null,
+      "note": ""
+    },
+    {
+      "prop": "F4c FOLLOW & calm & no gate & lost -> FORMATION_RECOVERY",
+      "formula": "lost -> target = RECOVERY",
+      "encoding": "formal/check_formation.py (abstraction of Flows.formation) + holo_fleet/ha/spec.py",
+      "expect": "unsat",
+      "verdict": "unsat",
+      "passed": true,
+      "seconds": 0.002,
+      "counterexample": null,
+      "note": ""
+    },
+    {
+      "prop": "Fm1 mutation: no catch-up margin (v_recovery = v_clock) must break F1 (along)",
       "formula": "expect counterexample",
-      "encoding": "formal/check_formation.py (abstraction of Flows.formation)",
+      "encoding": "formal/check_formation.py (abstraction of Flows.formation) + holo_fleet/ha/spec.py",
       "expect": "sat",
       "verdict": "sat",
       "passed": true,
-      "seconds": 0.002,
+      "seconds": 0.004,
       "counterexample": {
-        "E": 4.4,
-        "eta0": 0.0,
-        "eta1": 0.0,
-        "eta2": 0.0,
-        "om0": -0.03,
-        "om1": 0.03,
-        "om2": -0.03,
-        "x0": -4.4,
-        "x0n": -4.265,
-        "x1": 4.4,
-        "x1n": 4.565,
-        "x2": 0.0,
-        "x2n": 0.135
+        "e": 0.6666666666666666,
+        "sigma_dot": -0.004546363636363637,
+        "w": -0.05
+      },
+      "note": ""
+    },
+    {
+      "prop": "Fm2 mutation: k_slot = 0 must break F2 (lateral)",
+      "formula": "expect counterexample",
+      "encoding": "formal/check_formation.py (abstraction of Flows.formation) + holo_fleet/ha/spec.py",
+      "expect": "sat",
+      "verdict": "sat",
+      "passed": true,
+      "seconds": 0.004,
+      "counterexample": {
+        "corr": -4.1666666666666667e-07,
+        "e": -0.4,
+        "w": -5.416666666666667e-06
       },
       "note": ""
     }
