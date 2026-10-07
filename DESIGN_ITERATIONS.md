@@ -138,3 +138,21 @@ v1 iterations are summarised in REPORT.md section 6.
   after the static scene is spawned.
 * **Why the fix is principled.** The octree state is established explicitly instead of being inherited.
 * **Result.** The regression passes from any cache state.
+
+## DI-8 - Coverage bench: "blind" directions that were a placement artifact
+
+* **Problem.** In the first coverage bench every direction with no forward component (pure lateral,
+  pure vertical, lateral-vertical) looked blind. The same positions were detected in a plain azimuth
+  sweep.
+* **Cause.** `set_physics_state` moves an agent with a *sweep*. When the straight path from the previous
+  test pose crossed the observer, the target stopped at contact, stuck to the observer's hull
+  (0.46 m behind it). It then stayed stuck for the following placements. The sensors were fine.
+* **Fix.** The bench places the target with a detour: the path is checked against the observer and
+  re-routed through a waypoint 10 m out, the target comes in radially, and every case records the
+  target's true position. Cases where the target is not where it was put are marked invalid.
+* **Why the fix is principled.** The measurement is validated against ground truth instead of being
+  trusted. The sensor model was never touched.
+* **Result.** `scripts/sonar_bench.py coverage` covers 204 cases (6 axes, 12 edges, 8 diagonals x 2
+  target yaws, centre distance 1-5 m). All 204 are valid and detected, and the observed sector pattern
+  is always within the geometric prediction (must <= seen <= maybe). The worst-case diagonals are
+  covered at every distance.

@@ -1,1 +1,1 @@
-from holo_fleet.perception.perception import LocalObservation, Perception, SensorFrame  # noqa: F401
+"""Onboard perception: sonar geometry and processing, navigation, observations (no simulator state)."""
