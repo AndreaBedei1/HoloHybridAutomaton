@@ -1,164 +1,137 @@
-"""DroneController: perception -> local hybrid automaton -> flow -> low-level command.
+"""One drone's controller (v2): perception -> hybrid automaton -> mode flow -> low-level -> thrusters.
 
-Every drone runs an identical instance.  The only per-drone inputs are its
-MissionPlan (own slot, own launch pose, pre-assigned static rank/layer) and its
-own onboard SensorFrame.  There is no access to simulator state and, by
-default, no inter-agent message of any kind.
+Identical code on every drone; inputs are only the drone's own SensorFrame (six sonars, DVL,
+IMU, compass, depth) and its mission plan.  ``uses_ground_truth`` is checked by the tests.
 """
 
 from __future__ import annotations
 
-import math
-from dataclasses import asdict
 from typing import Any, Dict, List, Optional
 
 import numpy as np
 
+from holo_fleet.arena_bridge import thruster_command
 from holo_fleet.config import DEFAULT, FleetConfig
-from holo_fleet.control.flows import FlowOutput, Flows, structure_filter
+from holo_fleet.control.flows import Flows
 from holo_fleet.control.lowlevel import LowLevelController
 from holo_fleet.ha.automaton import LocalHybridAutomaton
 from holo_fleet.ha.spec import Mode
 from holo_fleet.mission import MissionPlan
-from holo_fleet.perception.perception import LocalObservation, Perception, SensorFrame
+from holo_fleet.perception.frame import SensorFrame
+from holo_fleet.perception.perception import LocalObservation, Perception
 
-MISSION_MODES = {Mode.FORMATION_FOLLOW, Mode.FORMATION_RECOVERY, Mode.GATE_APPROACH, Mode.GATE_YIELD, Mode.GATE_PASS}
+AVOIDANCE = (Mode.SEPARATION_WARNING, Mode.COLLISION_AVOIDANCE)
 
 
-def _jsonable(x: Any) -> Any:
-    if isinstance(x, dict):
-        return {str(k): _jsonable(v) for k, v in x.items()}
-    if isinstance(x, (list, tuple)):
-        return [_jsonable(v) for v in x]
-    if isinstance(x, np.ndarray):
-        return x.tolist()
-    if isinstance(x, (np.floating,)):
-        return float(x)
-    if isinstance(x, (np.integer,)):
-        return int(x)
-    if isinstance(x, (np.bool_,)):
-        return bool(x)
-    return x
+class EnvelopeMonitor:
+    """The drone declares itself out of envelope when it cannot hold its commanded velocity for a while
+    (persistent actuator saturation): its own, onboard, view of 'the current is stronger than me'."""
+
+    def __init__(self, t_enter: float = 4.0, t_exit: float = 4.0):
+        self.t_enter, self.t_exit = t_enter, t_exit
+        self.sat_time = 0.0
+        self.ok_time = 0.0
+        self.ok = True
+
+    def update(self, saturated: bool, dt: float) -> bool:
+        if saturated:
+            self.sat_time += dt
+            self.ok_time = 0.0
+        else:
+            self.ok_time += dt
+            self.sat_time = max(0.0, self.sat_time - dt)
+        if self.ok and self.sat_time >= self.t_enter:
+            self.ok = False
+        elif not self.ok and self.ok_time >= self.t_exit:
+            self.ok = True
+        return self.ok
 
 
 class DroneController:
     uses_ground_truth = False
 
-    def __init__(self, plan: MissionPlan, cfg: FleetConfig = DEFAULT, nav_init_offset: Optional[np.ndarray] = None,
-                 comms_inbox: Optional[Any] = None):
+    def __init__(self, plan: MissionPlan, cfg: FleetConfig = DEFAULT, nav_init_err: Optional[np.ndarray] = None):
         self.plan = plan
         self.cfg = cfg
-        self.perception = Perception(plan, cfg, nav_init_offset)
+        self.perception = Perception(plan, cfg, nav_init_err)
         self.ha = LocalHybridAutomaton(cfg)
         self.flows = Flows(plan, cfg)
-        self.low = LowLevelController(cfg)
-        self.mission_mode = Mode.FORMATION_FOLLOW
-        self.comms_inbox = comms_inbox            # optional, None by default (no communication)
-        self._latest_msgs: Dict[str, Dict[str, Any]] = {}
+        self.ll = LowLevelController(cfg)
+        self.envmon = EnvelopeMonitor()
         self.events: List[Dict[str, Any]] = []
-        self.mission_complete = False
+        self.last_obs: Optional[LocalObservation] = None
+        self.last_record: Dict[str, Any] = {}
 
-    def heartbeat(self) -> Dict[str, Any]:
-        """Payload for the optional channel: own onboard estimate only."""
-        return {"nav_p": self.perception.nav.state.p.round(3).tolist(), "mode": self.ha.mode.value,
-                "slot": self.plan.slot_index}
-
-    def _formation_hints(self, t: float, local) -> Dict[int, List[float]]:
-        """Path-frame relative offsets of slots that sensing does not currently see, from received
-        heartbeats (<= 3 s old).  Empty when communication is off (the default)."""
-        if self.comms_inbox is None:
-            return {}
-        for msg in self.comms_inbox:
-            self._latest_msgs[msg["sender"]] = msg
-        self.comms_inbox.clear()
-        hints: Dict[int, List[float]] = {}
-        p = self.perception.nav.state.p
-        s_i, _, _ = self.plan.path.project(p[:2])
-        _, tan, nrm = self.plan.path.frame_at(s_i)
-        for msg in self._latest_msgs.values():
-            k = int(msg["slot"])
-            if k == self.plan.slot_index or k in local.formation.assigned or t - msg["t_tx"] > 3.0:
-                continue
-            rel = np.asarray(msg["nav_p"]) - p
-            exp_s = self.plan.slots[k].along - self.plan.my_slot.along
-            exp_l = self.plan.slots[k].lateral - self.plan.my_slot.lateral
-            hints[k] = [float(rel[:2] @ tan - exp_s), float(rel[:2] @ nrm - exp_l)]
-        return hints
-
-    def step(self, frame: SensorFrame, dt: float) -> Dict[str, Any]:
+    def step(self, frame: SensorFrame, dt: float) -> np.ndarray:
         t = frame.t
-        local, abstract = self.perception.update(frame, dt)
-        rec = self.ha.step(abstract, t, dt)
+        obs = self.perception.update(frame, dt, sigma=self.flows.sigma, env_ok=self.envmon.ok,
+                                     offset=self.flows.offset)
+        prev = self.ha.mode
+        rec = self.ha.step(obs.ab, t, dt)
         mode = self.ha.mode
-        gate = self.perception.current_gate()
-
-        events: List[Dict[str, Any]] = []
         if rec.decision:
-            events.append({"t": t, "drone": self.plan.drone_id, "type": "decision", "decision": rec.decision,
-                           "edge": rec.edge, "from": rec.source, "to": rec.target,
-                           "gate": local.gate.gate_id, "gate_frame": local.gate.own_gate_frame})
-        elif rec.source != rec.target:
-            events.append({"t": t, "drone": self.plan.drone_id, "type": "mode_change", "edge": rec.edge,
-                           "from": rec.source, "to": rec.target})
-        if rec.edge == "pass_done":
-            self.perception.advance_gate()
-        elif (gate is not None and not self.ha.committed and local.gate.passed):
-            events.append({"t": t, "drone": self.plan.drone_id, "type": "gate_skipped_uncommitted",
-                           "gate": gate.gate_id})
-            self.perception.advance_gate()
-        if mode in MISSION_MODES:
-            self.mission_mode = mode
-
-        nav = self.perception.nav.state
-        p = nav.p.copy()
-        self.flows.comms_hints = self._formation_hints(t, local)   # {} unless the optional channel is on
-        flow = self._flow(mode, local, p, nav.yaw)
-        v_f, active = structure_filter(flow.v, local.structure_close, self.cfg)
-        if active:
-            flow = FlowOutput(v=v_f, yaw_d=flow.yaw_d, authority=flow.authority, note=flow.note + " [structure filter]")
-        cmd = self.low.command(nav, flow.v, flow.yaw_d, flow.authority, dt)
-        track_err = float(np.linalg.norm(flow.v[:2] - nav.v_world[:2]))
-        env_before = self.perception.env_ok_flag
-        self.perception.report_tracking_error(track_err, self.low.saturated, dt)
-        if env_before != self.perception.env_ok_flag:
-            events.append({"t": t, "drone": self.plan.drone_id,
-                           "type": "ENVELOPE_VIOLATION" if env_before else "ENVELOPE_RESTORED",
-                           "tracking_error": round(track_err, 3), "authority": flow.authority})
-
-        s_path, _, _ = self.plan.path.project(p[:2])
-        if not self.mission_complete and s_path - self.plan.my_slot.along >= self.plan.s_end \
-                and self.perception.gate_index >= len(self.plan.gates):
-            self.mission_complete = True
-            events.append({"t": t, "drone": self.plan.drone_id, "type": "survey_line_complete"})
-        self.events.extend(events)
-        return {
-            "command": cmd,
-            "mode": mode.value,
-            "committed": self.ha.committed,
-            "transition": asdict(rec),
-            "flow": {"v_d": flow.v.round(3).tolist(), "yaw_d_deg": round(math.degrees(flow.yaw_d), 2),
-                     "authority": flow.authority, "note": flow.note},
-            "observation": _jsonable(asdict(local)),
-            "abstract": abstract.as_dict(),
-            "events": events,
-            "gate_index": self.perception.gate_index,
-        }
-
-    def _flow(self, mode: Mode, obs: LocalObservation, p: np.ndarray, yaw: float) -> FlowOutput:
-        gate = self.perception.current_gate()
-        if mode == Mode.FAILSAFE_HOLD_OR_RETREAT:
-            return self.flows.failsafe(obs, p, yaw)
-        if mode == Mode.COLLISION_AVOIDANCE:
-            return self.flows.collision_avoidance(obs, p, yaw)
-        base_mode = self.mission_mode if mode == Mode.SEPARATION_WARNING else mode
-        base = self._mission_flow(base_mode, obs, p, gate)
+            self.events.append({"t": t, "type": "decision", "decision": rec.decision, "edge": rec.edge,
+                                "from": rec.source, "to": rec.target,
+                                "gate": obs.gate.gate_id, "gate_decision": obs.gate.decision,
+                                "relations": obs.gate.relations})
+        if rec.decision == "EXITED" or (obs.gate.passed and not self.ha.committed and obs.gate.gate_id is not None):
+            self.perception.gp.advance()
+        if prev == Mode.FAILSAFE_HOLD_OR_RETREAT and mode != prev:
+            self.flows.clear_failsafe()
+        # ---------------------------------------------------------------- mission velocity of the calm mode
+        if obs.gate.in_zone or self.ha.committed:
+            gmode = mode.value if mode in (Mode.GATE_APPROACH, Mode.GATE_YIELD, Mode.GATE_PASS) else (
+                "GATE_PASS" if self.ha.committed else "GATE_APPROACH")
+            v_mis, yaw_d = self.flows.gate(obs, gmode)
+        else:
+            v_mis, yaw_d = self.flows.formation(obs, dt, recovering=(mode == Mode.FORMATION_RECOVERY))
+        authority = "nominal"
+        if mode not in AVOIDANCE:
+            self.flows.last_choice = None
+            self.flows.escape.reset()
         if mode == Mode.SEPARATION_WARNING:
-            return self.flows.separation_warning(base, obs)
-        return base
-
-    def _mission_flow(self, mode: Mode, obs: LocalObservation, p: np.ndarray, gate) -> FlowOutput:
-        if mode == Mode.GATE_PASS and gate is not None:
-            return self.flows.gate_pass(obs, gate, p)
-        if mode in (Mode.GATE_APPROACH, Mode.GATE_YIELD) and gate is not None:
-            return self.flows.gate_queue(obs, gate, p, yielding=(mode == Mode.GATE_YIELD))
-        return self.flows.formation(obs, mode, p, self.perception.gate_index)
+            v = self.flows.separation_warning(obs, v_mis)
+            authority = "brake"
+        elif mode == Mode.COLLISION_AVOIDANCE:
+            v = self.flows.collision_avoidance(obs, self.ll.current_estimate(), v_mis)
+            authority = "escape"
+        elif mode == Mode.FAILSAFE_HOLD_OR_RETREAT:
+            v = self.flows.failsafe(obs)
+            authority = "brake"
+        else:
+            v = v_mis
+        v = self.flows.structure_filter(obs, v)
+        cmd = self.ll.command(self.perception.nav.state, v, yaw_d, authority, dt)
+        was_ok = self.envmon.ok
+        ok = self.envmon.update(self.ll.saturated and mode not in AVOIDANCE, dt)
+        if was_ok and not ok:
+            self.events.append({"t": t, "type": "ENVELOPE_VIOLATION", "reason": "persistent saturation"})
+        elif ok and not was_ok:
+            self.events.append({"t": t, "type": "ENVELOPE_RESTORED"})
+        self.last_obs = obs
+        ch = self.flows.last_choice
+        self.last_record = {
+            "t": round(t, 3), "mode": mode.value, "committed": self.ha.committed,
+            "nav_p": np.round(obs.p, 3).tolist(), "nav_yaw_deg": round(float(np.degrees(obs.yaw)), 1),
+            "v_cmd": np.round(v, 3).tolist(), "giveway": self.flows.giveway,
+            "offset": np.round(self.flows.offset, 2).tolist(), "d_min": round(obs.d_min, 3) if obs.d_min < 1e8 else None,
+            "sense_ok": obs.sense_ok, "env_ok": self.envmon.ok,
+            "sectors": {s: {"echoes": [(round(e.r0, 2), e.cls) for e in rd.echoes[:4]],
+                            "age": round(min(rd.age, 9.99), 2), "healthy": rd.healthy,
+                            "blind_from": None if rd.blind_from is None else round(rd.blind_from, 2)}
+                        for s, rd in obs.readings.items()},
+            "targets": [{"pattern": "+".join(sorted(tg.pattern)), "r": round(tg.r_min, 2), "d_lower": round(tg.d_lower, 2),
+                         "cls": tg.cls, "closing": round(tg.closing_rate, 2)} for tg in obs.targets],
+            "escape": None if ch is None else {"dir": ch.label, "guarantee": round(ch.guarantee, 2),
+                                               "feasible": ch.feasible},
+            "current_est": np.round(self.ll.current_estimate(), 3).tolist(),
+            "gate": {"id": obs.gate.gate_id, "s": round(obs.gate.s, 2), "l": round(obs.gate.l, 2),
+                     "at_queue": obs.gate.at_queue, "decision": obs.gate.decision, "has_prio": obs.gate.has_prio,
+                     "occ": obs.gate.occ_state, "relations": obs.gate.relations, "rank_used": obs.gate.rank_used},
+            "form": {"form_err": round(obs.form.form_err, 3), "slot_err": round(obs.form.slot_err_norm, 3),
+                     "neighbors_ok": obs.form.neighbors_ok, "sigma": round(self.flows.sigma, 3),
+                     "checks": [(c.slot, round(c.expected_d, 2), None if not c.seen else round(c.residual, 2))
+                                for c in obs.form.checks]},
+            "determinism_violations": self.ha.determinism_violations,
+        }
+        return thruster_command(cmd["surge"], cmd["sway"], cmd["heave"], cmd["yaw"], self.cfg.plant.thruster_limit)

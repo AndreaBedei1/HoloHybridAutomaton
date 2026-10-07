@@ -100,6 +100,45 @@ class Path:
         return math.atan2(d[1], d[0])
 
 
+@dataclass(frozen=True)
+class FormationClock:
+    """Planned along-track progress of the formation reference, identical on every drone.
+
+    s(t) = s0 + v (t - t_start), holding still for ``dwell`` seconds when it reaches each
+    ``hold_s`` and jumping from ``s_from`` to ``s_to`` (rendezvous beyond a gate: the reference
+    is re-established beyond the gate while the drones pass it one at a time).  Part of the
+    mission plan uploaded before the dive: no communication is involved.
+    """
+
+    s0: float
+    v: float
+    t_start: float = 0.0
+    holds: Tuple[Tuple[float, float], ...] = ()      # (hold_s, dwell_s)
+    s_end: float = 1e9
+    jumps: Tuple[Tuple[float, float], ...] = ()      # (s_from, s_to), s_to > s_from
+
+    def s(self, t: float) -> float:
+        tau = max(0.0, t - self.t_start)
+        events = sorted([(h, 1, d) for h, d in self.holds] + [(a, 0, b) for a, b in self.jumps])
+        s, t_cur = self.s0, 0.0
+        for at, kind, par in events:
+            if at < s - 1e-9:
+                continue                                  # behind the reference (skipped by a jump)
+            t_reach = t_cur + (at - s) / max(self.v, 1e-9)
+            if tau <= t_reach:
+                return min(s + self.v * (tau - t_cur), self.s_end)
+            if kind == 1:                                 # hold
+                if tau <= t_reach + par:
+                    return min(at, self.s_end)
+                s, t_cur = at, t_reach + par
+            else:                                         # jump
+                s, t_cur = par, t_reach
+        return min(s + self.v * (tau - t_cur), self.s_end)
+
+    def moving(self, t: float, dt: float = 0.1) -> bool:
+        return self.s(t + dt) > self.s(t) + 1e-9
+
+
 @dataclass
 class MissionPlan:
     drone_id: str
@@ -115,6 +154,10 @@ class MissionPlan:
     failsafe_layer_dz: float = 0.0    # pre-assigned vertical layer used when blind
     formation_enabled: bool = True
     mission_name: str = ""
+    template_name: str = ""
+    queue_lateral: float = 0.0                # own queue point lateral offset (lateral order of the slots)
+    queue_s: float = -4.6                     # queue line (gate frame), from GateRule.queue_s(n)
+    clock: Optional["FormationClock"] = None
     extra: dict = field(default_factory=dict)
 
     @property

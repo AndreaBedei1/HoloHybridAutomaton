@@ -63,17 +63,16 @@ def _t(name: str, slots: List[Tuple[float, float, float]], purpose: str, swath: 
 
 
 TEMPLATES: Dict[str, FormationTemplate] = {
-    # 3 drones: two outer lanes and a centre lane staggered 2.5 m behind (staggering keeps every pair
-    # >= 3.5 m apart while the three swaths still tile a 9.6 m strip)
-    "triangle": _t("triangle", [(0.0, 2.6, 0.0), (0.0, -2.6, 0.0), (-2.6, 0.0, 0.0)],
-                   "3 parallel swaths (lanes -2.6 / 0 / +2.6 m); centre lane staggered behind"),
+    # 3 drones: two outer lanes and a centre lane leading by 3 m (every pair >= 4.6 m apart)
+    "triangle": _t("triangle", [(0.0, 3.5, 0.0), (0.0, -3.5, 0.0), (3.0, 0.0, 0.0)],
+                   "3 parallel swaths (lanes -3.5 / 0 / +3.5 m); centre lane leading by 3 m", swath=3.6),
     # 4 drones: 2 x 2 box, two lanes surveyed twice (front pass + rear pass, change detection)
-    "square": _t("square", [(1.6, 1.6, 0.0), (1.6, -1.6, 0.0), (-1.6, 1.6, 0.0), (-1.6, -1.6, 0.0)],
-                 "2 lanes 3.2 m apart, each surveyed by a front and a rear drone"),
-    # 6 drones: survey line abreast, 6 contiguous swaths = 19.2 m strip in one pass
-    "line6": _t("line6", [(0.0, 8.0, 0.0), (0.0, 4.8, 0.0), (0.0, 1.6, 0.0), (0.0, -1.6, 0.0),
-                          (0.0, -4.8, 0.0), (0.0, -8.0, 0.0)],
-                "6 contiguous swaths (3.2 m lane spacing): one pass covers a 19.2 m strip"),
+    "square": _t("square", [(1.75, 1.75, 0.0), (1.75, -1.75, 0.0), (-1.75, 1.75, 0.0), (-1.75, -1.75, 0.0)],
+                 "2 lanes 3.5 m apart, each surveyed by a front and a rear drone", swath=3.6),
+    # 6 drones: survey line abreast, 6 contiguous swaths = 21 m strip in one pass
+    "line6": _t("line6", [(0.0, 8.75, 0.0), (0.0, 5.25, 0.0), (0.0, 1.75, 0.0), (0.0, -1.75, 0.0),
+                          (0.0, -5.25, 0.0), (0.0, -8.75, 0.0)],
+                "6 contiguous swaths (3.5 m lane spacing): one pass covers a 21 m strip", swath=3.6),
     # 2 drones on one lane (pair tests)
     "pair_column": _t("pair_column", [(0.0, 0.0, 0.0), (-4.0, 0.0, 0.0)], "two drones on one lane"),
 }

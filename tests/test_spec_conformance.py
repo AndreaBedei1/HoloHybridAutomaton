@@ -1,17 +1,16 @@
 """The guards executed at runtime and the guards verified in Z3 are the same functions and agree."""
 
+import itertools
 import random
+import sys
+from pathlib import Path
 
-import pytest
 import z3
 
 from holo_fleet.config import DEFAULT
 from holo_fleet.ha import gate_rule
 from holo_fleet.ha.automaton import AbstractObservation, LocalHybridAutomaton
 from holo_fleet.ha.spec import BOOL_VARS, MODES, PY_LOGIC, REAL_VARS, build_edges
-
-import sys
-from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "formal"))
 from common import Obs, Z3L  # noqa: E402
@@ -53,15 +52,11 @@ def test_python_and_z3_evaluations_agree():
             assert py == zv, (src, e.name, o)
 
 
-def test_gate_rule_python_and_z3_agree():
-    rng = random.Random(3)
-    G, eps = DEFAULT.gate, DEFAULT.env.eps_rel
-    ms, ml, mz = z3.Reals("ms ml mz")
-    zabs = lambda x: z3.If(x >= 0, x, -x)  # noqa: E731
-    P = gate_rule.decision_predicates(ms, ml, mz, G, eps, Z3L, zabs)
-    for _ in range(500):
-        ds, dl, dz = rng.uniform(-4, 4), rng.uniform(-5, 5), rng.uniform(-1.5, 1.5)
-        py = gate_rule.decide(ds, dl, dz, G, eps)
-        subs = [(ms, z3.RealVal(str(ds))), (ml, z3.RealVal(str(dl))), (mz, z3.RealVal(str(dz)))]
-        zt = [k for k, v in P.items() if z3.is_true(z3.simplify(z3.substitute(v, *subs)))]
-        assert zt == [py], (ds, dl, dz, zt, py)
+def test_gate_rule_python_and_z3_agree_on_every_pattern():
+    names = ("FRONT", "REAR", "LEFT", "RIGHT", "UP", "DOWN")
+    for flags in itertools.product((False, True), repeat=6):
+        pattern = {n for n, f in zip(names, flags) if f}
+        py = gate_rule.classify_pattern(pattern)
+        rel = gate_rule.relation(*[z3.BoolVal(f) for f in flags], Z3L)
+        zt = [k for k in (gate_rule.WAIT, gate_rule.PRIORITY, gate_rule.RANK, "NONE") if z3.is_true(z3.simplify(rel[k]))]
+        assert zt == [py], (pattern, zt, py)

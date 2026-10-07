@@ -24,7 +24,10 @@ class LowLevelController:
         self.cfg = cfg
         self.k_v, self.k_i, self.k_vz, self.k_psi, self.k_r = k_v, k_i, k_vz, k_psi, k_r
         self.i_xy = np.zeros(2)
+        self.i_z = 0.0
+        self.k_iz = 0.3
         self.saturated = False                     # last horizontal command hit the authority limit
+        self.yaw = 0.0
 
     def command(self, nav: NavState, v_d: np.ndarray, yaw_d: float, authority: str, dt: float) -> Dict[str, float]:
         pl = self.cfg.plant
@@ -42,7 +45,24 @@ class LowLevelController:
             # conditional integration (anti-windup): integrate only while not saturated;
             # the integral term is what rejects a steady current measured through the DVL
             self.i_xy = np.clip(self.i_xy + err * dt, -0.75, 0.75)
-        heave = v_d[2] / pl.heave_speed_per_cmd + self.k_vz * (v_d[2] - float(nav.v_body[2]))
+        ez = float(v_d[2] - float(nav.v_body[2]))
+        heave = v_d[2] / pl.heave_speed_per_cmd + self.k_vz * ez + self.k_iz * self.i_z
+        if abs(heave) < 0.35:
+            self.i_z = float(np.clip(self.i_z + ez * dt, -0.6, 0.6))     # rejects a vertical current
         heave = float(np.clip(heave, -0.35, 0.35))
+        self.yaw = nav.yaw
         yaw = float(np.clip(self.k_psi * wrap(yaw_d - nav.yaw) - self.k_r * nav.yaw_rate, -0.12, 0.12))
         return {"surge": float(u[0]), "sway": float(u[1]), "heave": heave, "yaw": yaw}
+
+    def current_estimate(self) -> np.ndarray:
+        """Onboard estimate of the effective current drift (world frame) from the integral actions.
+
+        In steady state the integral term is the thrust that cancels the drift; converted with the
+        calibrated command->speed slopes it is an estimate of the drift itself (sign: the current
+        pushes opposite to the compensating thrust).  Used only as a preference by the escape
+        planner and shown in the UI; never compared with the true current by the controller.
+        """
+        pl = self.cfg.plant
+        cb = -self.k_i * self.i_xy * pl.surge_speed_per_cmd
+        c, s = math.cos(self.yaw), math.sin(self.yaw)
+        return np.array([c * cb[0] - s * cb[1], s * cb[0] + c * cb[1], -self.k_iz * self.i_z * pl.heave_speed_per_cmd])
