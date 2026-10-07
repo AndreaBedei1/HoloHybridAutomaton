@@ -192,7 +192,7 @@ index 0000000..af967b3
 +	void Execute() override;
 +};
 diff --git a/engine/Source/Holodeck/General/Private/Octree.cpp b/engine/Source/Holodeck/General/Private/Octree.cpp
-index c3cdaca..3c4fb76 100644
+index c3cdaca..c0d1c28 100644
 --- a/engine/Source/Holodeck/General/Private/Octree.cpp
 +++ b/engine/Source/Holodeck/General/Private/Octree.cpp
 @@ -20,6 +20,11 @@ TArray<FVector> Octree::sides = { FVector(0, 0, 1), // clang-format off
@@ -264,23 +264,56 @@ index c3cdaca..3c4fb76 100644
  	FString rootFile = filePath + "/" + "roots.json";
  
  	// load
-@@ -172,14 +220,14 @@ Octree* Octree::makeOctree(
+@@ -165,6 +213,11 @@ Octree* Octree::makeOctree(
+ 	FString actorName) {
+ 	FHitResult hit = FHitResult();
+ 	bool	   occup;
++	// The shared query params ignore every agent (they serve the static world octree).  An agent's
++	// own octree must see that agent, so it is built with a clean query: without this, every agent
++	// whose octree is built after the first sonar initialised is invisible to all sonars.
++	static const FCollisionQueryParams agentParams = Octree::init_params();
++	const FCollisionQueryParams&	   query = (actorName != "") ? agentParams : params;
+ 	if (octreeSize == Octree::OctreeMin || actorName != "") {
+ 		occup = World->SweepSingleByChannel(
+ 			hit,
+@@ -172,15 +225,15 @@ Octree* Octree::makeOctree(
  			center + FVector(0.01, 0.01, 0.01),
  			FQuat::Identity,
  			ECollisionChannel::ECC_WorldStatic,
 -			FCollisionShape::MakeBox(FVector(octreeSize / 2)),
+-			params);
 +			FCollisionShape::MakeBox(FVector(octreeSize / 2 + OccupancyMargin)),
- 			params);
++			query);
  	} else {
  		occup = World->OverlapBlockingTestByChannel(
  			center,
  			FQuat::Identity,
  			ECollisionChannel::ECC_WorldStatic,
 -			FCollisionShape::MakeBox(FVector(octreeSize / 2)),
+-			params);
 +			FCollisionShape::MakeBox(FVector(octreeSize / 2 + OccupancyMargin)),
- 			params);
++			query);
  	}
  
+ 	// if we're making for an actor, make sure we're hitting it and not something
+@@ -203,7 +256,7 @@ Octree* Octree::makeOctree(
+ 				FQuat::Identity,
+ 				ECollisionChannel::ECC_WorldStatic,
+ 				FCollisionShape::MakeBox(FVector(cornerSize)),
+-				params);
++				query);
+ 		}
+ 		for (FVector corner : corners) {
+ 			if (!full)
+@@ -213,7 +266,7 @@ Octree* Octree::makeOctree(
+ 				FQuat::Identity,
+ 				ECollisionChannel::ECC_WorldStatic,
+ 				FCollisionShape::MakeBox(FVector(cornerSize)),
+-				params);
++				query);
+ 		}
+ 
+ 		if (!full) {
 diff --git a/engine/Source/Holodeck/General/Public/Octree.h b/engine/Source/Holodeck/General/Public/Octree.h
 index f73ecf0..e963c35 100644
 --- a/engine/Source/Holodeck/General/Public/Octree.h
