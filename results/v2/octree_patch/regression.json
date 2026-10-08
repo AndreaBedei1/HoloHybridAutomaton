@@ -32,30 +32,30 @@
  "costs": {
   "initial_rebuild": {
    "ticks": 15,
-   "wall_s": 0.34
+   "wall_s": 0.26
   },
   "full_rebuild": {
    "ticks": 15,
-   "wall_s": 0.68
+   "wall_s": 0.32
   },
   "region_rebuild": {
    "ticks": 15,
-   "wall_s": 0.7
+   "wall_s": 0.47
   },
   "agent_rebuild": {
    "ticks": 15,
-   "wall_s": 3.48
+   "wall_s": 0.53
   },
   "rebuild_after_reset": {
    "ticks": 15,
-   "wall_s": 0.22
+   "wall_s": 0.3
   },
   "region_rebuild_moved_box": {
    "ticks": 15,
-   "wall_s": 0.32
+   "wall_s": 0.43
   },
-  "tick_ms_median": 21.1,
-  "tick_ms_max": 3163.7
+  "tick_ms_median": 18.3,
+  "tick_ms_max": 241.6
  },
  "ghosts_after_reset_before_rebuild": {
   "box": true,

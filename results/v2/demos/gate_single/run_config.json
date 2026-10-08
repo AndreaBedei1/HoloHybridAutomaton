@@ -55,7 +55,7 @@
    "built": "2026-10-07T23:52:04",
    "source_commit": "a8d3070"
   },
-  "engine_start_s": 21.5,
+  "engine_start_s": 9.4,
   "gate_spawn": {
    "physically_spawned": true,
    "spawned_bar_count": 124,
@@ -67,7 +67,7 @@
    "mode": "patched_rebuild",
    "ticks": 18
   },
-  "static_scene_s": 1.4,
+  "static_scene_s": 0.9,
   "gate_ids": [
    "G06"
   ]

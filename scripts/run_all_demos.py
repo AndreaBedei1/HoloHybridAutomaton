@@ -26,8 +26,9 @@ from holo_fleet.ui.gif import make_gif  # noqa: E402
 from holo_fleet.ui.live import DemoUI  # noqa: E402
 
 OUT = ROOT / "results" / "v2" / "demos"
-ORDER = ["p1_head_on", "p1_vertical_escape", "p1_two_lines", "formation_triangle", "formation_square",
-         "formation_six", "formation_gust", "gate_single", "integrated_short"]
+ORDER = ["p1_head_on", "p1_vertical_escape", "p1_two_lines", "p1_close_encounter", "formation_triangle",
+         "formation_square", "formation_six", "formation_recovery_head_current", "formation_gust", "gate_single",
+         "integrated_short"]
 
 
 def onboard_summary(run: Path) -> dict:
@@ -68,6 +69,9 @@ def summary_table() -> None:
         if not p.exists():
             continue
         onboard_summary(OUT / name)
+        from experiment_metrics import summarize
+
+        summarize(OUT / name)
         m = json.loads(p.read_text(encoding="utf-8"))
         r = summary_row(name, m)
         perf = m["run"].get("perf", {})
@@ -78,6 +82,10 @@ def summary_table() -> None:
         r["recovery_after_perturbation_s"] = max([e["recovery_after_perturbation_s"] or 0 for e in rec], default=None)
         intr = m["P1_separation"].get("intruder")
         r["intruder_clearance"] = None if not intr else intr["min_distance"]
+        r["self_declared_envelope_violations"] = m["run"]["self_declared_envelope_violations"]
+        r["determinism_violations"] = sum(m["run"]["determinism_violations"].values())
+        inc = m["run"].get("observation_consistency_violations")
+        r["observation_consistency_violations"] = None if inc is None else sum(inc.values())
         rows.append(r)
     if not rows:
         return
@@ -87,13 +95,16 @@ def summary_table() -> None:
         w.writeheader()
         w.writerows(rows)
     lines = ["| scenario | drones | status | P1 min d [m] | P2 max occ | P3 episodes / max recovery [s] | collisions | messages | "
-             "envelope | static rank | mean tick [ms] | RTF |", "|" + "---|" * 12]
+             "drift envelope | self-declared envelope violations | determinism viol. | observation consistency viol. | "
+             "static rank | mean tick [ms] | RTF |", "|" + "---|" * 15]
     for r in rows:
         p3 = "-" if r["P3_episodes"] is None else f"{r['P3_episodes']} / {r['max_recovery_time_s'] if r['max_recovery_time_s'] is not None else '-'}"
         lines.append(f"| {r['scenario']} | {r['n_drones']} | {r['status']} | {r['min_distance']} | "
                      f"{r['max_occupancy'] if r['max_occupancy'] is not None else '-'} | {p3} | {r['collisions']} | "
-                     f"{r['messages']} | {'inside' if r['inside_envelope'] else 'OUT'} | {r['static_rank_uses']} | "
-                     f"{r['mean_tick_ms']} | {r['rtf']} |")
+                     f"{r['messages']} | {'inside' if r['inside_envelope'] else 'OUT'} | "
+                     f"{r['self_declared_envelope_violations']} | {r['determinism_violations']} | "
+                     f"{'-' if r['observation_consistency_violations'] is None else r['observation_consistency_violations']} | "
+                     f"{r['static_rank_uses']} | {r['mean_tick_ms']} | {r['rtf']} |")
     (OUT / "SUMMARY.md").write_text("\n".join(lines) + "\n", encoding="utf-8")
 
 

@@ -1,20 +1,20 @@
 {
  "drone_0": {
   "time_in_mode_s": {
-   "FORMATION_RECOVERY": 22.5,
-   "FORMATION_FOLLOW": 22.5
+   "FORMATION_RECOVERY": 12.3,
+   "FORMATION_FOLLOW": 32.7
   },
   "escape_directions": [],
   "giveway": [],
-  "depth_span_m": 0.16,
-  "min_onboard_distance_m": 3.046
+  "depth_span_m": 0.15,
+  "min_onboard_distance_m": 2.956
  },
  "drone_1": {
   "time_in_mode_s": {
-   "FORMATION_RECOVERY": 19.8,
-   "FORMATION_FOLLOW": 10.5,
-   "SEPARATION_WARNING": 9.7,
-   "COLLISION_AVOIDANCE": 5.0
+   "FORMATION_RECOVERY": 17.9,
+   "FORMATION_FOLLOW": 17.3,
+   "SEPARATION_WARNING": 6.9,
+   "COLLISION_AVOIDANCE": 2.9
   },
   "escape_directions": [
    "DOWN",
@@ -29,31 +29,34 @@
    "UP"
   ],
   "giveway": [],
-  "depth_span_m": 1.15,
-  "min_onboard_distance_m": 1.57
+  "depth_span_m": 1.89,
+  "min_onboard_distance_m": 1.469
  },
  "drone_2": {
   "time_in_mode_s": {
-   "FORMATION_RECOVERY": 22.8,
-   "FORMATION_FOLLOW": 22.2
+   "FORMATION_RECOVERY": 12.4,
+   "FORMATION_FOLLOW": 32.6
   },
   "escape_directions": [],
   "giveway": [],
-  "depth_span_m": 0.14,
-  "min_onboard_distance_m": 2.755
+  "depth_span_m": 0.15,
+  "min_onboard_distance_m": 2.691
  },
  "drone_3": {
   "time_in_mode_s": {
-   "FORMATION_RECOVERY": 22.6,
-   "FORMATION_FOLLOW": 13.9,
-   "SEPARATION_WARNING": 5.8,
-   "COLLISION_AVOIDANCE": 2.7
+   "FORMATION_RECOVERY": 17.8,
+   "FORMATION_FOLLOW": 19.4,
+   "SEPARATION_WARNING": 7.8
   },
   "escape_directions": [
-   "REAR"
+   "DOWN",
+   "REAR",
+   "REAR+DOWN",
+   "REAR+UP",
+   "UP"
   ],
   "giveway": [],
-  "depth_span_m": 0.15,
-  "min_onboard_distance_m": 1.62
+  "depth_span_m": 0.78,
+  "min_onboard_distance_m": 1.771
  }
 }

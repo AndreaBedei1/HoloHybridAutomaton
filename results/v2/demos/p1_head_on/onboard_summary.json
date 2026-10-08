@@ -7,8 +7,8 @@
   "giveway": [
    "RIGHT"
   ],
-  "depth_span_m": 0.14,
-  "min_onboard_distance_m": 3.157
+  "depth_span_m": 0.13,
+  "min_onboard_distance_m": 3.106
  },
  "drone_1": {
   "time_in_mode_s": {
@@ -18,7 +18,7 @@
   "giveway": [
    "RIGHT"
   ],
-  "depth_span_m": 0.16,
+  "depth_span_m": 0.14,
   "min_onboard_distance_m": 3.106
  }
 }

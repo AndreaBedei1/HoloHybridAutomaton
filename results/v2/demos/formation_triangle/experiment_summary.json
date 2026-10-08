@@ -1,0 +1,186 @@
+{
+ "scenario": "formation_triangle",
+ "p1": {
+  "thresholds_m": {
+   "d_warning": 2.4,
+   "d_warning_exit": 2.7,
+   "d_ca": 1.7,
+   "d_ca_exit": 2.0,
+   "d_safe": 1.0
+  },
+  "min_true_pair_distance_m": 4.597,
+  "at_s": 4.7,
+  "closest_pair": [
+   "drone_0",
+   "drone_2"
+  ],
+  "first_intervention_s": null,
+  "true_distance_at_first_intervention_m": null,
+  "max_closing_speed_before_intervention_m_s": 0.012,
+  "closing_speed_at_first_intervention_m_s": null,
+  "max_opening_speed_5s_after_closest_m_s": 0.014,
+  "max_true_current_m_s": 0.25,
+  "drones": {
+   "drone_0": {
+    "SW_entries": 0,
+    "SW_entry_times_s": [],
+    "CA_entries": 0,
+    "CA_entry_times_s": [],
+    "time_in_SW_s": 0,
+    "time_in_CA_s": 0,
+    "min_onboard_conservative_distance_m": 3.658,
+    "at_s": 0.3,
+    "escape_directions": [],
+    "giveway": [],
+    "sonar_patterns_within_4m_in_SW_CA": [],
+    "sonar_sectors_involved": [],
+    "max_onboard_current_estimate_m_s": 0.296,
+    "mode_sequence": [
+     "FORMATION_RECOVERY",
+     "FORMATION_FOLLOW"
+    ]
+   },
+   "drone_1": {
+    "SW_entries": 0,
+    "SW_entry_times_s": [],
+    "CA_entries": 0,
+    "CA_entry_times_s": [],
+    "time_in_SW_s": 0,
+    "time_in_CA_s": 0,
+    "min_onboard_conservative_distance_m": 3.658,
+    "at_s": 0.3,
+    "escape_directions": [],
+    "giveway": [],
+    "sonar_patterns_within_4m_in_SW_CA": [],
+    "sonar_sectors_involved": [],
+    "max_onboard_current_estimate_m_s": 0.297,
+    "mode_sequence": [
+     "FORMATION_RECOVERY",
+     "FORMATION_FOLLOW"
+    ]
+   },
+   "drone_2": {
+    "SW_entries": 0,
+    "SW_entry_times_s": [],
+    "CA_entries": 0,
+    "CA_entry_times_s": [],
+    "time_in_SW_s": 0,
+    "time_in_CA_s": 0,
+    "min_onboard_conservative_distance_m": 3.658,
+    "at_s": 1.1,
+    "escape_directions": [],
+    "giveway": [],
+    "sonar_patterns_within_4m_in_SW_CA": [],
+    "sonar_sectors_involved": [],
+    "max_onboard_current_estimate_m_s": 0.297,
+    "mode_sequence": [
+     "FORMATION_RECOVERY",
+     "FORMATION_FOLLOW"
+    ]
+   }
+  },
+  "collisions": 0,
+  "messages": 0,
+  "envelope": {
+   "current_drift_max_claimed": 0.6,
+   "max_horizontal_drift": 0.25,
+   "max_vertical_drift": 0.0,
+   "inside_envelope": true,
+   "self_declared_envelope_violations": 0,
+   "self_declared_events": []
+  },
+  "determinism_violations": 0,
+  "observation_consistency_violations": 0
+ },
+ "p3": {
+  "e_lost_m": 1.2,
+  "e_ok_m": 0.5,
+  "t_ok_hold_s": 2.0,
+  "disturbance_windows_s": [],
+  "max_true_formation_error_m": 0.057,
+  "at_s": 43.0,
+  "episodes": [],
+  "all_recovered_within_run": true,
+  "min_P1_distance_m": 4.598,
+  "drones": {
+   "drone_0": {
+    "max_true_current_at_drone_m_s": 0.25,
+    "max_onboard_form_err_m": 0.154,
+    "at_s": 3.0,
+    "nav_error_max_m": 0.133,
+    "sonar_age_max_s": 0.0,
+    "saturated_time_s": 0.0,
+    "longest_saturation_s": 0.0,
+    "max_onboard_current_estimate_m_s": 0.296,
+    "mode_episodes": [
+     {
+      "mode": "FORMATION_RECOVERY",
+      "t0": 0.0,
+      "t1": 2.1
+     },
+     {
+      "mode": "FORMATION_FOLLOW",
+      "t0": 2.2,
+      "t1": 44.9
+     }
+    ]
+   },
+   "drone_1": {
+    "max_true_current_at_drone_m_s": 0.25,
+    "max_onboard_form_err_m": 0.118,
+    "at_s": 38.7,
+    "nav_error_max_m": 0.149,
+    "sonar_age_max_s": 0.0,
+    "saturated_time_s": 0.0,
+    "longest_saturation_s": 0.0,
+    "max_onboard_current_estimate_m_s": 0.297,
+    "mode_episodes": [
+     {
+      "mode": "FORMATION_RECOVERY",
+      "t0": 0.0,
+      "t1": 2.1
+     },
+     {
+      "mode": "FORMATION_FOLLOW",
+      "t0": 2.2,
+      "t1": 44.9
+     }
+    ]
+   },
+   "drone_2": {
+    "max_true_current_at_drone_m_s": 0.25,
+    "max_onboard_form_err_m": 0.127,
+    "at_s": 3.0,
+    "nav_error_max_m": 0.126,
+    "sonar_age_max_s": 0.0,
+    "saturated_time_s": 0.0,
+    "longest_saturation_s": 0.0,
+    "max_onboard_current_estimate_m_s": 0.297,
+    "mode_episodes": [
+     {
+      "mode": "FORMATION_RECOVERY",
+      "t0": 0.0,
+      "t1": 2.1
+     },
+     {
+      "mode": "FORMATION_FOLLOW",
+      "t0": 2.2,
+      "t1": 44.9
+     }
+    ]
+   }
+  },
+  "collisions": 0,
+  "messages": 0,
+  "envelope": {
+   "current_drift_max_claimed": 0.6,
+   "max_horizontal_drift": 0.25,
+   "max_vertical_drift": 0.0,
+   "inside_envelope": true,
+   "self_declared_envelope_violations": 0,
+   "self_declared_events": []
+  },
+  "determinism_violations": 0,
+  "observation_consistency_violations": 0
+ }
+}

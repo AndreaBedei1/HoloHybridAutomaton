@@ -438,3 +438,160 @@ v1 iterations are summarised in REPORT.md section 6.
   this map". Nothing changes for P1: a masked hull is a documented limitation, covered for the gate by
   the occupancy latch.
 * **Result.** See the final `gate_single` and `integrated_short` runs in the README table.
+
+## DI-22 - The formal observation domain still carried a v1 relation
+
+* **Problem.** `formal/common.Obs.legal`, the set of observations over which the determinism and P3
+  checks quantify, contained `passed -> at_queue`. In v2 `passed` means s > exit_s (beyond the gate)
+  and `at_queue` means "within 0.35 m of the own queue point" (s < 0), so the two are never true
+  together. Every reachable observation with `passed` was outside the domain.
+* **Cause.** In v1 `at_queue` was the half-line "s beyond the commit window start", which `passed`
+  implied. v2 redefined `at_queue` and nobody re-checked the domain. Nothing tested that the domain
+  still contained the observations the perception produces.
+* **Fix.**
+  * The domain is now the conjunction of the observation invariants of
+    `holo_fleet/ha/observation_invariants.py` (DI-26), the same predicate as the runtime check.
+  * `formal/check_observations.py` checks that the domain is satisfiable and that each invariant
+    excludes something. It also checks that every edge of every mode is enabled on some consistent
+    observation (non-vacuity).
+  * Mutation Om2 puts the v1 relation back: `pass_done` becomes unreachable (expected UNSAT).
+* **Why the fix is principled.** The domain of a proof must contain every reachable observation.
+  Writing it once and monitoring it at runtime makes any relation the code does not guarantee
+  visible.
+* **Result.**
+  * Determinism (66/66) and P3 (11/11) hold over the corrected domain.
+  * The guards are deterministic over every Boolean combination anyway (formal O5), so the v1
+    conclusion was right. Its proof was vacuous for the exit edge.
+
+## DI-23 - For five or more drones the outer queue points lay outside the approach zone
+
+* **Problem.** Found while writing the invariants.
+  * `at_queue -> gate_zone` should hold, but `gate_zone` required |l| <= corridor_half_width = 6.5 m.
+  * The abreast queue points are at ((n - 1)/2 - r) x 3.5 m, i.e. ±7.0 m for n = 5 and ±8.75 m for
+    n = 6.
+* **Consequence.** A drone holding an outer queue point would have `at_queue & !gate_zone`. The
+  automaton would then take a formation edge instead of yield or commit (formal Q1; mutation Om1
+  shows the counterexample). The defect was latent: the gate scenarios use three drones.
+* **Fix.** The lateral bound of the approach zone is max(corridor_half_width, |queue_l| + 1.0).
+* **Why the fix is principled.** The approach zone is where the gate protocol applies, so it must
+  contain the drone's own queue point. The 1.0 m margin covers queue_tol (0.35 m). Nothing changes
+  for n <= 4.
+* **Result.** I2 holds by construction. A unit test checks it for n = 3..6 over every queue point and
+  its tolerance box.
+
+## DI-24 - No current inside every assumption breaks the formation; against the motion the claimed drift bound is not met
+
+* **Problem.** The closing brief asked for a P3 experiment with three conditions:
+  * a current that stays inside the envelope (drift <= 0.6 m/s horizontal, <= 0.25 m/s vertical, all
+    other assumptions valid);
+  * the formation truly lost (true error > e_lost = 1.2 m);
+  * the formation then recovered.
+* **What was measured.** One run each, square formation, a Gaussian jet of radius 3 m, no tuning
+  between probes (`results/v2/design_probes.json`).
+
+  | probe | current | max true formation error | onboard | self-declared envelope violations |
+  |---|---|---|---|---|
+  | lateral jet on the left lane | 0.6 m/s, t = 12-24 s | 0.47 m | onboard error <= 0.94 m | 0 |
+  | lateral jet reversing | +0.6 then -0.6 m/s, 6 s each | 0.44 m | <= 0.85 m | 0 |
+  | head-on jet on the front-left drone | 0.6 m/s against the motion | 0.74 m | 1.40 m: FOLLOW -> RECOVERY -> FOLLOW | 0 |
+  | head-on jet on the rear-left drone | 0.6 m/s against the motion | 1.83 m: lost, recovered in 8 s | 2.60 m | 1 (after 7 s, at 0.76 m true error) |
+
+* **Analysis.**
+  1. **Lateral and following currents up to 0.6 m/s are rejected.**
+     * The DVL velocity loop rejects about 55 % of the current at once; the integrator rejects the
+       rest within about 2.3 s.
+     * With k_slot = 0.45 the transient slot error stays near 0.6 m.
+     * A single displaced drone counts 0.75 x in the translation-invariant error.
+  2. **Against the motion, the authority is the limit.**
+     * Under a 0.59 m/s head drift, with the nominal authority saturated, the drone made 0.12 m/s over
+       ground. That is about 0.71 m/s through the water, not the 0.96 m/s that the small-signal slope
+       of 2.4 m/s per unit command predicts.
+     * At the 0.30 m/s survey speed a drone therefore follows its slot only against head currents up
+       to about 0.4 m/s (0.71 - 0.30).
+     * Beyond that it saturates persistently. Its own EnvelopeMonitor declares ENVELOPE_VIOLATION
+       after 4 s, and FAILSAFE holds position.
+  3. **A formation loss requires persistent saturation.**
+     * Persistent saturation violates the P1 assumption w_drift_max (unrejected drift <= 0.15 m/s) and
+       P3's A3 (no FAILSAFE). Inside every assumption the formation is not lost.
+     * With an unrejected drift <= 0.15 m/s, the slot loop bounds the steady error near
+       0.15 / 0.45 = 0.33 m, plus the integrator transient.
+  4. **Front-drone case.**
+     * The front drone was pushed back towards its rear neighbour, and the warning filter moved that
+       neighbour back too, so the lane moved as a block.
+     * The onboard guard, which sees the absolute slot error of 1.4 m, went FOLLOW -> RECOVERY ->
+       FOLLOW.
+     * The true translation-invariant error stayed at 0.74 m.
+* **Decision.**
+  * No scenario is labelled "in envelope" for a loss it cannot produce. The P3 scenario is
+    `formation_recovery_head_current`: the principled worst case at the claimed drift limit.
+    * Direction: against the motion, the one with the smallest margin.
+    * Intensity: the claimed 0.6 m/s.
+    * Shape: a localized jet, since a uniform current only translates the formation.
+    * Target: the rear drone, so that the warning filter does not move a neighbour with it.
+    * Timing: 12 s, about five integrator time constants, with formation_gust's ramps.
+  * Its outcome is reported together with the vehicle's own verdict.
+  * No parameter was changed: authority, gains and envelope numbers are as before.
+* **Consequence for the claims.**
+  * The 0.6 m/s drift bound holds for lateral and following currents and for station keeping.
+  * Against the motion, at survey speed, the effective bound is about 0.4 m/s.
+  * This is now a documented limit (REPORT section 6). ASSUMPTIONS.md reports the vehicle's own view
+    (E2) next to the referee's drift (E1).
+
+## DI-25 - A right-angle crossing is not a head-on encounter
+
+* **Problem.** The P1 close-encounter experiment had to meet four conditions:
+  * fleet drones only, with no scripted vehicle;
+  * the traffic rule and the whole safety layer on;
+  * an inevitable conflict;
+  * the drones inside the warning band, and collision avoidance only if it happens naturally.
+* **Analysis.**
+  * Head-on encounters are removed by the traffic rule before d_warning (`p1_head_on`,
+    `p1_two_lines`).
+  * A right-angle crossing at survey speed closes at 0.30 x sqrt(2) = 0.42 m/s. That is below the
+    rule's 0.45 m/s threshold for a FRONT target; the noisy closing estimate occasionally exceeds it.
+  * Even then, giving way to the right does not resolve a crossing: both drones shift right and the
+    conflict point moves with them.
+* **Probes** (`results/v2/design_probes.json`).
+  * Two drones crossing at 90 deg, arriving together: both entered SEPARATION_WARNING twice. The
+    onboard bound reached 1.92 m, the true minimum was 2.89 m, and there was no collision avoidance.
+  * A third drone crossing through the 3.5 m gap of a two-drone line: repeated SEPARATION_WARNING,
+    true minimum 2.82 m, no collision avoidance, not resolved within 40 s. Less readable, so not used.
+* **Decision.** `p1_close_encounter` is the two-drone crossing.
+  * Collision avoidance is not forced and no parameter was changed. The warning filter, which demands
+    an opening of 0.2 m/s, stops the closing within about 0.2 m of the trigger.
+  * The conservative bound triggers SEPARATION_WARNING at a true distance of about 2.9 m. For the
+    FRONT+LEFT pattern the bound's looseness is 0.5-0.9 m.
+* **Result.** README table and `figures/v2/p1/p1_close_encounter.png`.
+
+## DI-26 - Observation consistency between perception and automaton
+
+* **Problem.** The guards assume that their abstract observation was produced by the perception code.
+  Nothing checked this, neither at runtime nor in the proofs' domain. DI-22 and DI-23 are two such
+  inconsistencies.
+* **Fix.**
+  * **Invariants.** `holo_fleet/ha/observation_invariants.py` defines:
+    * N0: well-formed values;
+    * N1: ranges;
+    * I1: has_prio -> at_queue;
+    * I2: at_queue -> gate_zone;
+    * I3: passed -> !gate_zone;
+    * I4: t_ok > 0 -> (form_err < e_ok & neighbors_ok).
+
+    Each invariant documents its meaning, why the code guarantees it, and which states it excludes.
+    Latched beliefs (occ_busy, committed) are deliberately not constrained.
+  * **Runtime check.** It runs in the controller between perception and automaton. A violation is
+    logged as OBSERVATION_INCONSISTENT (drone, time, violated invariants, observation values). The
+    observation then goes to the automaton with sense_ok = False, so the existing fault edge leads to
+    FAILSAFE_HOLD_OR_RETREAT; no new mode is added.
+  * **Reporting.** The counters appear in the run metrics, the printed summary and the dashboard.
+  * **Formal checks** (`formal/check_observations.py`, 27 checks):
+    * O1-O3: satisfiability, independence, non-vacuity;
+    * O4: exactly one edge enabled;
+    * O5: the monitored observation leads to FAILSAFE;
+    * Q1: queued drones stay in the gate protocol;
+    * mutations Om1-Om3.
+* **Why the fix is principled.** The invariants are the perception code's own guarantees. They are
+  written once and used both as the proof domain and as a runtime monitor. A violation is a perception
+  defect, which is exactly what a sensing fault means.
+* **Result.** 0 violations in every final run; the formal suite gives every check its expected
+  verdict.

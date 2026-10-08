@@ -2,19 +2,19 @@
  "P1_separation": {
   "formula": "G(forall i!=j: d_ij >= d_safe)",
   "d_safe": 1.0,
-  "min_distance": 3.308,
+  "min_distance": 3.342,
   "min_per_pair": {
    "drone_0-drone_1": {
-    "d": 5.353,
-    "t": 18.599814
+    "d": 5.409,
+    "t": 18.499815
    },
    "drone_0-drone_2": {
-    "d": 3.308,
-    "t": 12.399876
+    "d": 3.342,
+    "t": 11.699883
    },
    "drone_1-drone_2": {
-    "d": 3.38,
-    "t": 13.499865
+    "d": 3.431,
+    "t": 12.799872
    }
   },
   "violations": 0,
@@ -52,9 +52,9 @@
   "episodes": [
    {
     "t_lost": 4.5,
-    "t_recovered": 67.7,
-    "recovery_time_s": 63.2,
-    "t_perturbation_end": 62.7,
+    "t_recovered": 73.3,
+    "recovery_time_s": 68.8,
+    "t_perturbation_end": 68.3,
     "recovery_after_perturbation_s": 5.0,
     "modes_at_loss": "GATE_APPROACH,GATE_YIELD"
    }
@@ -62,7 +62,7 @@
   "n_episodes": 1,
   "open_at_end": 0,
   "all_recovered_within_run": true,
-  "final_form_err": 0.1081
+  "final_form_err": 0.125
  },
  "envelope": {
   "current_drift_max_claimed": 0.6,
@@ -71,13 +71,18 @@
   "inside_envelope": true
  },
  "kinematics": {
-  "max_true_speed_m_s": 0.544
+  "max_true_speed_m_s": 0.552
  },
  "run": {
   "status": "COMPLETE",
   "scenario": "gate_single",
   "sim_time_s": 80.0,
   "determinism_violations": {
+   "drone_0": 0,
+   "drone_1": 0,
+   "drone_2": 0
+  },
+  "observation_consistency_violations": {
    "drone_0": 0,
    "drone_1": 0,
    "drone_2": 0
@@ -90,13 +95,13 @@
   "self_declared_envelope_violations": 0,
   "perf": {
    "ticks": 2400,
-   "mean_tick_ms": 56.3,
-   "p95_tick_ms": 160.71,
-   "real_time_factor": 0.592,
-   "controller_ms_mean_all_drones": 7.92,
+   "mean_tick_ms": 31.21,
+   "p95_tick_ms": 58.19,
+   "real_time_factor": 1.068,
+   "controller_ms_mean_all_drones": 7.06,
    "controller_hz": 10.0,
    "sonar_hz": 10.0,
-   "wall_s": 169.1,
+   "wall_s": 94.4,
    "sim_s": 80.0
   }
  }

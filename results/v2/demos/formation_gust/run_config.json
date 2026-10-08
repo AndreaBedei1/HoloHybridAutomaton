@@ -81,12 +81,12 @@
    "built": "2026-10-07T23:52:04",
    "source_commit": "a8d3070"
   },
-  "engine_start_s": 10.6,
+  "engine_start_s": 9.6,
   "octree": {
    "mode": "patched_rebuild",
    "ticks": 18
   },
-  "static_scene_s": 1.2,
+  "static_scene_s": 0.8,
   "gate_ids": []
  },
  "comms_enabled": false,

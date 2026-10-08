@@ -261,6 +261,77 @@ def fig_p1():
         save(fig, FIG / "p1" / "p1_two_lines.png")
 
 
+def avoidance_spans(run):
+    """[(t0, t1, mode)] of SEPARATION_WARNING / COLLISION_AVOIDANCE, any drone (onboard logs)."""
+    out = []
+    for st in run["states"]:
+        start, cur = None, None
+        for r in st + [{"t": st[-1]["t"] + 0.1, "mode": ""}]:
+            m = r["mode"] if r["mode"] in ("SEPARATION_WARNING", "COLLISION_AVOIDANCE") else None
+            if m != cur:
+                if cur is not None:
+                    out.append((start, r["t"], cur))
+                start, cur = r["t"], m
+    return out
+
+
+def fig_p1_close():
+    run = load("p1_close_encounter")
+    if not run:
+        return
+    ts = run["ts"]
+    sep = DEFAULT.sep
+    summ = json.loads((DEMOS / "p1_close_encounter" / "experiment_summary.json").read_text(encoding="utf-8"))["p1"] \
+        if (DEMOS / "p1_close_encounter" / "experiment_summary.json").exists() else None
+    fig = plt.figure(figsize=(12.5, 6.4))
+    gs = fig.add_gridspec(2, 2, width_ratios=[1.55, 1.0], height_ratios=[1.6, 0.75])
+    ax = fig.add_subplot(gs[0, 0])
+    for a, b, m in avoidance_spans(run):
+        ax.axvspan(a, b, color=MODE_COLOR[m], alpha=0.16 if m == "SEPARATION_WARNING" else 0.3, lw=0)
+    ax.plot(ts["t"], ts["d_0_1"], color=SERIES[0], lw=2.0, label="true centre distance (referee)")
+    for k, st in enumerate(run["states"]):
+        t_k = np.array([r["t"] for r in st])
+        d_k = np.array([np.nan if r.get("d_min") is None else r["d_min"] for r in st])
+        ax.plot(t_k, d_k, color=SERIES[1 + k], lw=1.1, label=f"drone {k}: onboard conservative distance (guard input)")
+    for v, c, lab, ls in ((sep.d_warning, STATUS["serious"], "d_warning 2.4 (enter SEPARATION_WARNING)", "--"),
+                          (sep.d_ca, STATUS["critical"], "d_ca 1.7 (enter COLLISION_AVOIDANCE)", "--"),
+                          (sep.d_safe, INK["primary"], "d_safe 1.0 (P1, true distance)", "-")):
+        ax.axhline(v, color=c, lw=1.0, ls=ls)
+        ax.annotate(lab, (0.0, v), xycoords=("axes fraction", "data"), xytext=(4, 3), textcoords="offset points",
+                    fontsize=8, color=INK["secondary"])
+    ax.set_ylim(0, 8.5)
+    ax.set_xlim(ts["t"][0], ts["t"][-1])
+    ax.set_ylabel("distance [m]")
+    title = "p1_close_encounter: right-angle crossing, fleet drones only, traffic rule on"
+    if summ:
+        title += (f"\nclosest true {summ['min_true_pair_distance_m']:.2f} m; onboard bound down to "
+                  f"{min(v['min_onboard_conservative_distance_m'] for v in summ['drones'].values()):.2f} m "
+                  f"(shaded: SEPARATION_WARNING{', COLLISION_AVOIDANCE' if any(v['CA_entries'] for v in summ['drones'].values()) else ''})")
+    ax.set_title(title)
+    ax.legend(fontsize=8, loc="upper right")
+    mode_timeline(fig.add_subplot(gs[1, 0], sharex=ax), run)
+    ax = fig.add_subplot(gs[:, 1])
+    sc = SCENARIOS["p1_close_encounter"](DEFAULT)
+    for k, pl in enumerate(sc.plans):
+        w = pl.path.waypoints
+        ax.plot(w[:, 0], w[:, 1], color=INK["grid"], lw=6, solid_capstyle="round", zorder=0)
+        ax.plot(ts[f"x{k}"], ts[f"y{k}"], color=SERIES[1 + k], lw=1.6, label=f"drone {k}")
+        ax.plot(ts[f"x{k}"][0], ts[f"y{k}"][0], "o", color=SERIES[1 + k], ms=5)
+    i = int(np.nanargmin(ts["d_0_1"]))
+    ax.plot([ts["x0"][i], ts["x1"][i]], [ts["y0"][i], ts["y1"][i]], color=STATUS["serious"], lw=1.0, ls=":")
+    ax.annotate(f"closest {ts['d_0_1'][i]:.2f} m at t = {ts['t'][i]:.1f} s", ((ts["x0"][i] + ts["x1"][i]) / 2,
+                (ts["y0"][i] + ts["y1"][i]) / 2), xytext=(8, -14), textcoords="offset points", fontsize=8)
+    ax.plot([0.0], [-31.0], "+", color=INK["primary"], ms=10)
+    ax.annotate("planned crossing", (0.0, -31.0), xytext=(6, 6), textcoords="offset points", fontsize=8)
+    ax.set_aspect("equal")
+    ax.set_xlim(-9, 8); ax.set_ylim(-40, -24)
+    ax.set_xlabel("x [m]"); ax.set_ylabel("y [m]")
+    ax.set_title("top view (grey: planned legs)")
+    ax.legend(fontsize=8, loc="lower right")
+    fig.tight_layout()
+    save(fig, FIG / "p1" / "p1_close_encounter.png")
+
+
 # ---------------------------------------------------------------------------------------------- P2
 def fig_p2(name):
     run = load(name)
@@ -364,6 +435,101 @@ def fig_p3_gust():
     save(fig, FIG / "p3" / "formation_gust.png")
 
 
+def fig_p3_head_current():
+    name = "formation_recovery_head_current"
+    run = load(name)
+    if not run:
+        return
+    ts = run["ts"]
+    rc = DEFAULT.ref
+    hit = 2
+    summ_p = DEMOS / name / "experiment_summary.json"
+    summ = json.loads(summ_p.read_text(encoding="utf-8"))["p3"] if summ_p.exists() else None
+    fig = plt.figure(figsize=(13, 8.6))
+    gs = fig.add_gridspec(3, 2, width_ratios=[1.6, 1.0], height_ratios=[1.3, 0.9, 0.75])
+    ax = fig.add_subplot(gs[0, 0])
+    for a, b in run["cfg"]["disturbance_windows"]:
+        ax.axvspan(a, b, color=STATUS["warning"], alpha=0.14, lw=0)
+        ax.annotate("0.6 m/s jet against the motion (claimed drift limit)", (a, 1.0), xycoords=("data", "axes fraction"),
+                    xytext=(3, -12), textcoords="offset points", fontsize=8, color=INK["secondary"])
+    ev = [e for e in (summ or {}).get("envelope", {}).get("self_declared_events", [])]
+    for e in ev:
+        if e["type"] == "ENVELOPE_VIOLATION":
+            t_end = next((x["t"] for x in ev if x["type"] == "ENVELOPE_RESTORED" and x["t"] > e["t"]), ts["t"][-1])
+            ax.axvspan(e["t"], t_end, ymin=0.0, ymax=0.06, color=MODE_COLOR["FAILSAFE_HOLD_OR_RETREAT"], lw=0)
+            ax.annotate(f"{e['drone']}: ENVELOPE_VIOLATION (own monitor)", (e["t"], 0.07),
+                        xycoords=("data", "axes fraction"), xytext=(2, 2), textcoords="offset points", fontsize=8,
+                        color=MODE_COLOR["FAILSAFE_HOLD_OR_RETREAT"])
+    for e in run["met"]["P3_formation_recovery"]["episodes"]:
+        t1 = e["t_recovered"] if e["t_recovered"] is not None else ts["t"][-1]
+        ax.axvspan(e["t_lost"], t1, color=STATUS["critical"], alpha=0.08, lw=0)
+        ax.axvline(e["t_lost"], color=STATUS["critical"], lw=0.8)
+        if e["t_recovered"] is not None:
+            ax.axvline(e["t_recovered"], color=STATUS["good"], lw=0.8)
+            ax.annotate(f"recovered {e['recovery_time_s']:.1f} s after the loss,\n"
+                        f"{e['t_recovered'] - max(b for _a, b in run['cfg']['disturbance_windows']):.1f} s after the jet",
+                        (e["t_recovered"], 0.62), xycoords=("data", "axes fraction"), xytext=(4, 0),
+                        textcoords="offset points", fontsize=8)
+    ax.plot(ts["t"], ts["form_err"], color=SERIES[0], lw=2.0, label="formation error, true (referee, translation-invariant)")
+    st = run["states"][hit]
+    t_s = np.array([r["t"] for r in st])
+    ax.plot(t_s, [r["form"]["form_err"] for r in st], color=SERIES[2], lw=1.1,
+            label=f"drone {hit}: onboard formation error estimate (guard input)")
+    ax.axhline(rc.e_lost, color=STATUS["critical"], ls="--", lw=1.0)
+    ax.axhline(rc.e_ok, color=STATUS["good"], ls="--", lw=1.0)
+    ax.annotate("e_lost 1.2: lost above", (1.0, rc.e_lost), xycoords=("axes fraction", "data"), xytext=(-4, 3),
+                textcoords="offset points", ha="right", fontsize=8, color=STATUS["critical"])
+    ax.annotate("e_ok 0.5: recovered below (2 s)", (1.0, rc.e_ok), xycoords=("axes fraction", "data"), xytext=(-4, 3),
+                textcoords="offset points", ha="right", fontsize=8, color=STATUS["good"])
+    ax.set_xlim(ts["t"][0], ts["t"][-1])
+    ax.set_ylabel("error [m]")
+    ax.set_title(f"{name}: a 0.6 m/s head current on the rear-left drone (drone {hit})", pad=26)
+    ax.legend(fontsize=8, loc="lower left", bbox_to_anchor=(0.0, 1.0), ncol=2)
+    ax = fig.add_subplot(gs[1, 0], sharex=ax)
+    from holo_fleet.sim.currents import CurrentComponent, CurrentField
+
+    field = CurrentField([CurrentComponent(**c) for c in run["cfg"]["current"]])
+    P_hit = np.stack([ts[f"x{hit}"], ts[f"y{hit}"], ts[f"z{hit}"]], axis=1)
+    w = np.array([field.drift_at(p, t) for p, t in zip(P_hit, ts["t"])])
+    ax.plot(ts["t"], np.linalg.norm(w[:, :2], axis=1), color=INK["secondary"], lw=1.6, label=f"true current at drone {hit}")
+    ce = np.array([r["current_est"] for r in st])
+    ax.plot(t_s, np.linalg.norm(ce[:, :2], axis=1), color=SERIES[2], lw=1.1, label=f"drone {hit}: onboard current estimate")
+    sat = np.array([bool(r.get("saturated")) for r in st])
+    if sat.any():
+        ax.fill_between(t_s, 0, 0.05, where=sat, color=STATUS["critical"], lw=0, step="mid",
+                        label=f"drone {hit}: thrust saturated (nominal authority)")
+    ax.axhline(DEFAULT.env.current_drift_max, color=INK["muted"], ls=":", lw=1.0)
+    ax.annotate("claimed drift limit 0.6 m/s", (0.0, DEFAULT.env.current_drift_max), xycoords=("axes fraction", "data"),
+                xytext=(4, 3), textcoords="offset points", fontsize=8, color=INK["muted"])
+    ax.set_ylim(0, 0.8)
+    ax.set_ylabel("|current| [m/s]")
+    ax.legend(fontsize=8, loc="center right")
+    mode_timeline(fig.add_subplot(gs[2, 0], sharex=ax), run)
+    ax = fig.add_subplot(gs[:, 1])
+    jet = run["cfg"]["current"][0]
+    ax.add_patch(plt.Circle(jet["center"], jet["radius"] / 2.0, color=STATUS["warning"], alpha=0.25, lw=0))
+    ax.add_patch(plt.Circle(jet["center"], jet["radius"], color=STATUS["warning"], alpha=0.10, lw=0))
+    ax.annotate("jet: sigma and radius", (jet["center"][0], jet["center"][1] + jet["radius"]), xytext=(0, 6),
+                textcoords="offset points", fontsize=8, ha="center", color=INK["secondary"])
+    for k in range(run["n"]):
+        ax.plot(ts[f"x{k}"], ts[f"y{k}"], color=SERIES[k], lw=1.4, label=f"drone {k}" + (" (hit)" if k == hit else ""))
+        ax.plot(ts[f"x{k}"][0], ts[f"y{k}"][0], "o", color=SERIES[k], ms=4)
+    for tt in (12.0, 24.0):
+        i = int(np.argmin(np.abs(ts["t"] - tt)))
+        xs = [ts[f"x{k}"][i] for k in (0, 1, 3, 2, 0)]
+        ys = [ts[f"y{k}"][i] for k in (0, 1, 3, 2, 0)]
+        ax.plot(xs, ys, color=INK["muted"], lw=0.8, ls="--")
+        ax.annotate(f"t = {tt:.0f} s", (xs[0], ys[0]), xytext=(4, 4), textcoords="offset points", fontsize=8,
+                    color=INK["muted"])
+    ax.set_aspect("equal")
+    ax.set_xlabel("x [m]"); ax.set_ylabel("y [m]")
+    ax.set_ylim(-38.5, -28.0)
+    ax.set_title("top view (dashed: formation at jet on / off)")
+    ax.legend(fontsize=8, loc="upper center", bbox_to_anchor=(0.5, -0.16), ncol=4)
+    fig.tight_layout()
+    save(fig, FIG / "p3" / f"{name}.png")
+
+
 def fig_p3_overview():
     runs = [r for r in (load("formation_triangle"), load("formation_square"), load("formation_six")) if r]
     if not runs:
@@ -414,10 +580,12 @@ def main(argv) -> int:
         fig_sensor()
     if "p1" in what:
         fig_p1()
+        fig_p1_close()
     if "p2" in what:
         fig_p2("gate_single")
         fig_p2("integrated_short")
     if "p3" in what:
+        fig_p3_head_current()
         fig_p3_gust()
         fig_p3_overview()
     if "gifs" in what:

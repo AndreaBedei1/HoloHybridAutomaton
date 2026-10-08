@@ -6,7 +6,7 @@
   },
   "escape_directions": [],
   "giveway": [],
-  "depth_span_m": 0.15,
+  "depth_span_m": 0.14,
   "min_onboard_distance_m": 3.658
  },
  "drone_1": {
@@ -16,7 +16,7 @@
   },
   "escape_directions": [],
   "giveway": [],
-  "depth_span_m": 0.13,
+  "depth_span_m": 0.15,
   "min_onboard_distance_m": 3.658
  },
  "drone_2": {
@@ -26,7 +26,7 @@
   },
   "escape_directions": [],
   "giveway": [],
-  "depth_span_m": 0.14,
-  "min_onboard_distance_m": 3.708
+  "depth_span_m": 0.16,
+  "min_onboard_distance_m": 3.658
  }
 }

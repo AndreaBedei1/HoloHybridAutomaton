@@ -21,7 +21,7 @@ def _status(run: Path) -> str:
 ALL = sorted(p for p in DEMOS.glob("*") if p.is_dir() and (p / "run_config.json").exists()) if DEMOS.exists() else []
 COMPLETE = [p for p in ALL if _status(p) == "COMPLETE"]
 REQUIRED = ["run_status.json", "run_config.json", "events.jsonl", "referee_metrics.json", "referee_timeseries.csv",
-            "summary.csv", "perf.json", "onboard_summary.json"]
+            "summary.csv", "perf.json", "onboard_summary.json", "experiment_summary.json"]
 
 
 def complete_runs():
@@ -67,6 +67,9 @@ def test_referee_verdicts(run):
     assert r["inter_agent_messages"] == 0 and r["comms_enabled"] is False
     assert r["ground_truth_used_by_controllers"] is False
     assert all(v == 0 for v in r["determinism_violations"].values())
+    # no false alarm of the observation consistency check on any final run (the field must exist)
+    assert r["observation_consistency_violations"] and all(v == 0 for v in r["observation_consistency_violations"].values())
+    assert not any('"OBSERVATION_INCONSISTENT"' in line for line in open(run / "events.jsonl", encoding="utf-8"))
     p1 = m["P1_separation"]
     assert p1["holds"] and p1["physical_contacts"] == 0 and not p1["collision_sensor_edges"]
     if m["P2_mutual_exclusion"]["gates"]:
@@ -126,3 +129,17 @@ def test_gate_scenarios_use_the_static_rank_never(name):
     run = _run(name)
     m = json.loads((run / "referee_metrics.json").read_text(encoding="utf-8"))
     assert m["run"]["static_rank_uses"] == 0 and m["run"]["occupancy_timeouts"] == 0
+
+
+def test_close_encounter_reaches_the_warning_band_without_breaking_p1():
+    run = _run("p1_close_encounter")
+    e = json.loads((run / "experiment_summary.json").read_text(encoding="utf-8"))["p1"]
+    for v in e["drones"].values():               # both drones' conservative distance went below d_warning
+        assert v["SW_entries"] >= 1 and v["min_onboard_conservative_distance_m"] < e["thresholds_m"]["d_warning"]
+    assert e["min_true_pair_distance_m"] >= e["thresholds_m"]["d_safe"] and e["collisions"] == 0 and e["messages"] == 0
+
+
+def test_head_current_stays_inside_the_claimed_drift_bound():
+    run = _run("formation_recovery_head_current")
+    m = json.loads((run / "referee_metrics.json").read_text(encoding="utf-8"))
+    assert m["envelope"]["max_horizontal_drift"] <= 0.6 + 1e-9 and m["envelope"]["max_vertical_drift"] <= 0.25 + 1e-9

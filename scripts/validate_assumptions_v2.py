@@ -24,8 +24,9 @@ from holo_fleet.sim.scenarios import SCENARIOS  # noqa: E402
 
 DEMOS = ROOT / "results" / "v2" / "demos"
 OUT = ROOT / "results" / "v2"
-ORDER = ["p1_head_on", "p1_vertical_escape", "p1_two_lines", "formation_triangle", "formation_square",
-         "formation_six", "formation_gust", "gate_single", "integrated_short"]
+ORDER = ["p1_head_on", "p1_vertical_escape", "p1_two_lines", "p1_close_encounter", "formation_triangle",
+         "formation_square", "formation_six", "formation_recovery_head_current", "formation_gust", "gate_single",
+         "integrated_short"]
 
 
 def _f(v):
@@ -48,7 +49,13 @@ def load(name):
     if "ix0" in rows[0]:
         I = np.array([[_f(r["ix0"]), _f(r["iy0"]), _f(r["iz0"])] for r in rows])
     states = [[json.loads(l) for l in open(d / f"drone_{k}_state.jsonl", encoding="utf-8")] for k in range(n)]
-    return {"name": name, "n": n, "t": t, "P": P, "I": I, "states": states, "cfg": cfg}
+    met = json.loads((d / "referee_metrics.json").read_text(encoding="utf-8"))
+    return {"name": name, "n": n, "t": t, "P": P, "I": I, "states": states, "cfg": cfg, "met": met}
+
+
+# stress tests that are OUT of the claimed envelope by design (declared in the scenario description)
+DECLARED_OUT = {"formation_gust"}
+T_EXIT = 4.0       # EnvelopeMonitor.t_exit: a drone leaves a self-declared violation after 4 s unsaturated
 
 
 R_SAFETY = 5.0     # the guards can only be affected below d_warning_exit + max looseness of the bound (2.7 + 1.2 m)
@@ -126,6 +133,24 @@ def check_run(run) -> dict:
     if sc.formation_enabled and sc.template is not None and not sc.judged_gates:
         fe = [r["form"]["form_err"] for k in range(n) for r in run["states"][k] if r.get("form")]
         res["formation_err_onboard_p95_m"] = round(float(np.percentile(fe, 95)), 3) if fe else None
+    # envelope: E1 the current (referee), E2 the vehicle's own view (persistent actuator saturation, i.e. the
+    # current is stronger than the drone: onboard proxy of the unrejected-drift bound w_drift_max of P1)
+    m, r = run["met"], run["met"]["run"]
+    res["E1_drift"] = {"max_horizontal_m_s": m["envelope"]["max_horizontal_drift"],
+                       "max_vertical_m_s": m["envelope"]["max_vertical_drift"],
+                       "inside": m["envelope"]["inside_envelope"], "declared_out_of_envelope": run["name"] in DECLARED_OUT}
+    res["E2_self_declared_envelope_violations"] = r["self_declared_envelope_violations"]
+    res["saturated_time_max_s"] = round(max(0.1 * sum(bool(x.get("saturated")) for x in st) for st in run["states"]), 1)
+    res["determinism_violations"] = sum(r["determinism_violations"].values())
+    inc = r.get("observation_consistency_violations")
+    res["observation_consistency_violations"] = None if inc is None else sum(inc.values())
+    fs = [x["t"] for st in run["states"] for x in st if x["mode"] == "FAILSAFE_HOLD_OR_RETREAT"]
+    res["failsafe_steps"] = len(fs)
+    # P3 A1 (every perturbation ends) and A3 (no FAILSAFE once it has ended, after the monitor's t_exit)
+    if sc.formation_enabled and sc.template is not None:
+        t_end = max((b for _a, b in run["cfg"].get("disturbance_windows") or []), default=0.0)
+        res["P3_A1_perturbations_end_s"] = t_end if run["cfg"].get("disturbance_windows") else None
+        res["P3_A3_failsafe_steps_after_perturbation"] = sum(1 for x in fs if x > t_end + T_EXIT)
     return res
 
 
@@ -146,12 +171,24 @@ def main() -> int:
         "A4 queued neighbours >= spacing - 2 x 0.10 m apart (formal M4c)": all(
             (v.get("A4_queued_pair_min_distance_m") or 9.0) >= DEFAULT.gate.queue_spacing - 0.2 - 1e-9 for v in out.values()),
         "A5 a committed drone crosses the CR at >= 0.12 m/s (formal M3)": all((v.get("A5_speed_inside_CR_min_m_s") or 1.0) >= 0.12 for v in out.values()),
+        f"E1 current drift <= {env.current_drift_max} m/s horizontal, <= {env.current_vertical_max} m/s vertical "
+        f"(every run except the declared stress test {', '.join(sorted(DECLARED_OUT))})": all(
+            v["E1_drift"]["inside"] for v in out.values() if not v["E1_drift"]["declared_out_of_envelope"]),
+        "E2 no persistent actuator saturation: no self-declared ENVELOPE_VIOLATION (the vehicle rejects the current; "
+        "onboard proxy of w_drift_max)": all(v["E2_self_declared_envelope_violations"] == 0 for v in out.values()
+                                             if not v["E1_drift"]["declared_out_of_envelope"]),
+        "P3 A3 no FAILSAFE once the perturbation has ended (formation runs)": all(
+            v.get("P3_A3_failsafe_steps_after_perturbation", 0) == 0 for v in out.values()),
+        "automaton determinism violations = 0": all(v["determinism_violations"] == 0 for v in out.values()),
+        "observation consistency violations = 0": all(v["observation_consistency_violations"] == 0 for v in out.values()),
     }
+    failing_e2 = [n for n, v in out.items() if v["E2_self_declared_envelope_violations"] and not v["E1_drift"]["declared_out_of_envelope"]]
     (OUT / "ASSUMPTIONS.json").write_text(json.dumps({"claims": claims, "runs": out}, indent=1), encoding="utf-8")
     lines = ["# Assumptions of the formal proofs, measured on the demonstration runs (v2)", "",
              "Generated by `scripts/validate_assumptions_v2.py` from `results/v2/demos/` (one seed per scenario).", "",
              "| assumption | holds on every run |", "|---|---|"]
-    lines += [f"| {k} | {'yes' if v else '**no**'} |" for k, v in claims.items()]
+    lines += [f"| {k} | {'yes' if v else '**no**' + (' (' + ', '.join(failing_e2) + ')' if k.startswith('E2') else '')} |"
+              for k, v in claims.items()]
     lines += ["", "| scenario | A1 samples (<= 5 m) / violations / no target / min margin [m] | misses 5-8 m | A2 max age [s] | "
               "A3 max closing [m/s] | A4 queued pair min [m] | A5 min speed in CR [m/s] | nav error max [m] | onboard form err p95 [m] |",
               "|" + "---|" * 9]
@@ -167,7 +204,25 @@ def main() -> int:
               "those cases are counted separately and do not concern P1.", "",
               "A2: the age of the sonar data used by the guards (0 when every capture arrives; tau_max covers one dropped capture). "
               "A4: the closest pair of drones that are both holding their queue points. "
-              "A5: the along-axis speed of the drone inside the critical region (formal M3 needs >= 0.12 m/s)."]
+              "A5: the along-axis speed of the drone inside the critical region (formal M3 needs >= 0.12 m/s).", "",
+              "## Envelope and monitors", "",
+              "| scenario | max drift horizontal / vertical [m/s] | drift envelope (E1) | self-declared envelope violations (E2) | "
+              "longest-saturated drone: time saturated [s] | FAILSAFE steps (all drones) | P3: perturbation ends at [s] / "
+              "FAILSAFE steps after it (A3) | determinism viol. | observation consistency viol. |", "|" + "---|" * 9]
+    for name, v in out.items():
+        e1 = v["E1_drift"]
+        lab = ("inside" if e1["inside"] else "OUT") + (" (declared stress test)" if e1["declared_out_of_envelope"] else "")
+        p3 = "-" if "P3_A3_failsafe_steps_after_perturbation" not in v else \
+            f"{v['P3_A1_perturbations_end_s'] if v['P3_A1_perturbations_end_s'] is not None else 'no current window'} / " \
+            f"{v['P3_A3_failsafe_steps_after_perturbation']}"
+        lines.append(f"| {name} | {e1['max_horizontal_m_s']} / {e1['max_vertical_m_s']} | {lab} | "
+                     f"{v['E2_self_declared_envelope_violations']} | {v['saturated_time_max_s']} | {v['failsafe_steps']} | "
+                     f"{p3} | {v['determinism_violations']} | {v['observation_consistency_violations']} |")
+    lines += ["", "E1 is the current measured by the referee at the true drone positions against the claimed drift bound. "
+              "E2 is the drone's own view: its EnvelopeMonitor declares ENVELOPE_VIOLATION after 4 s of persistent "
+              "thrust saturation (the current is stronger than the drone at the commanded speed) and the automaton "
+              "takes the fault edge to FAILSAFE; a drift inside E1 is not enough when the current opposes the motion "
+              "(see DESIGN_ITERATIONS.md, DI-24). FAILSAFE steps include the ones caused by such a declaration."]
     (OUT / "ASSUMPTIONS.md").write_text("\n".join(lines) + "\n", encoding="utf-8")
     print(json.dumps(claims, indent=1))
     return 0 if all(claims.values()) else 1

@@ -2,67 +2,67 @@
  "P1_separation": {
   "formula": "G(forall i!=j: d_ij >= d_safe)",
   "d_safe": 1.0,
-  "min_distance": 3.209,
+  "min_distance": 3.188,
   "min_per_pair": {
    "drone_0-drone_1": {
-    "d": 3.356,
-    "t": 30.399696
+    "d": 3.39,
+    "t": 30.599694
    },
    "drone_0-drone_2": {
-    "d": 7.0,
-    "t": 14.699853
+    "d": 6.995,
+    "t": 14.199858
    },
    "drone_0-drone_3": {
-    "d": 7.373,
+    "d": 7.037,
     "t": 35.99964
    },
    "drone_0-drone_4": {
-    "d": 4.607,
+    "d": 4.411,
     "t": 35.99964
    },
    "drone_0-drone_5": {
-    "d": 3.209,
+    "d": 3.188,
     "t": 29.499705
    },
    "drone_1-drone_2": {
-    "d": 3.476,
-    "t": 17.099829
+    "d": 3.464,
+    "t": 14.299857
    },
    "drone_1-drone_3": {
-    "d": 4.673,
-    "t": 30.699693
+    "d": 4.19,
+    "t": 35.99964
    },
    "drone_1-drone_4": {
-    "d": 3.253,
+    "d": 3.246,
     "t": 30.99969
    },
    "drone_1-drone_5": {
-    "d": 6.242,
-    "t": 35.99964
+    "d": 6.196,
+    "t": 35.699643
    },
    "drone_2-drone_3": {
-    "d": 3.259,
-    "t": 30.099699
+    "d": 3.28,
+    "t": 29.399706
    },
    "drone_2-drone_4": {
-    "d": 6.229,
-    "t": 35.99964
+    "d": 6.3,
+    "t": 35.799642
    },
    "drone_2-drone_5": {
-    "d": 10.184,
-    "t": 20.699793
+    "d": 10.216,
+    "t": 20.799792
    },
    "drone_3-drone_4": {
-    "d": 3.389,
-    "t": 30.699693
+    "d": 3.434,
+    "t": 30.099699
    },
    "drone_3-drone_5": {
-    "d": 6.999,
-    "t": 17.199828
+    "d": 7.001,
+    "t": 0.099999
    },
    "drone_4-drone_5": {
-    "d": 3.48,
-    "t": 17.199828
+    "d": 3.5,
+    "t": 0.099999
    }
   },
   "violations": 0,
@@ -100,13 +100,21 @@
   "inside_envelope": true
  },
  "kinematics": {
-  "max_true_speed_m_s": 0.561
+  "max_true_speed_m_s": 0.526
  },
  "run": {
   "status": "COMPLETE",
   "scenario": "p1_two_lines",
   "sim_time_s": 36.0,
   "determinism_violations": {
+   "drone_0": 0,
+   "drone_1": 0,
+   "drone_2": 0,
+   "drone_3": 0,
+   "drone_4": 0,
+   "drone_5": 0
+  },
+  "observation_consistency_violations": {
    "drone_0": 0,
    "drone_1": 0,
    "drone_2": 0,
@@ -122,13 +130,13 @@
   "self_declared_envelope_violations": 0,
   "perf": {
    "ticks": 1080,
-   "mean_tick_ms": 53.14,
-   "p95_tick_ms": 104.99,
-   "real_time_factor": 0.627,
-   "controller_ms_mean_all_drones": 8.59,
+   "mean_tick_ms": 32.59,
+   "p95_tick_ms": 61.61,
+   "real_time_factor": 1.023,
+   "controller_ms_mean_all_drones": 7.52,
    "controller_hz": 10.0,
    "sonar_hz": 10.0,
-   "wall_s": 74.9,
+   "wall_s": 51.5,
    "sim_s": 36.0
   }
  }

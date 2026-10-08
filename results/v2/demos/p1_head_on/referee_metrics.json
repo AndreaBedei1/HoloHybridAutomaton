@@ -2,11 +2,11 @@
  "P1_separation": {
   "formula": "G(forall i!=j: d_ij >= d_safe)",
   "d_safe": 1.0,
-  "min_distance": 4.054,
+  "min_distance": 4.044,
   "min_per_pair": {
    "drone_0-drone_1": {
-    "d": 4.054,
-    "t": 24.299757
+    "d": 4.044,
+    "t": 24.199758
    }
   },
   "violations": 0,
@@ -44,13 +44,17 @@
   "inside_envelope": true
  },
  "kinematics": {
-  "max_true_speed_m_s": 0.43
+  "max_true_speed_m_s": 0.425
  },
  "run": {
   "status": "COMPLETE",
   "scenario": "p1_head_on",
   "sim_time_s": 30.0,
   "determinism_violations": {
+   "drone_0": 0,
+   "drone_1": 0
+  },
+  "observation_consistency_violations": {
    "drone_0": 0,
    "drone_1": 0
   },
@@ -62,13 +66,13 @@
   "self_declared_envelope_violations": 0,
   "perf": {
    "ticks": 900,
-   "mean_tick_ms": 52.21,
-   "p95_tick_ms": 110.46,
-   "real_time_factor": 0.638,
-   "controller_ms_mean_all_drones": 2.5,
+   "mean_tick_ms": 32.53,
+   "p95_tick_ms": 57.12,
+   "real_time_factor": 1.025,
+   "controller_ms_mean_all_drones": 2.13,
    "controller_hz": 10.0,
    "sonar_hz": 10.0,
-   "wall_s": 61.0,
+   "wall_s": 41.4,
    "sim_s": 30.0
   }
  }

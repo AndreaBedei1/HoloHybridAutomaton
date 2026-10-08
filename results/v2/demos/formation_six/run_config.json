@@ -76,7 +76,7 @@
    "built": "2026-10-07T23:52:04",
    "source_commit": "a8d3070"
   },
-  "engine_start_s": 10.5,
+  "engine_start_s": 10.7,
   "octree": {
    "mode": "patched_rebuild",
    "ticks": 18

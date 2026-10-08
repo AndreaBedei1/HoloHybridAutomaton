@@ -1,2 +1,2 @@
 scenario,status,sim_time_s,P1_holds,min_distance,P2_holds,max_occupancy,P3_episodes,P3_all_recovered,max_recovery_time_s,collisions,messages,inside_envelope,static_rank_uses
-gate_single,COMPLETE,80.0,True,3.308,True,1,1,True,63.2,0,0,True,0
+gate_single,COMPLETE,80.0,True,3.342,True,1,1,True,68.8,0,0,True,0
