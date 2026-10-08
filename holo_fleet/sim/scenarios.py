@@ -7,6 +7,9 @@
                                                               boxed-in drone escapes upwards (safety layer)
   p1_two_lines           6 drones, no current                 two survey lines meet head-on; flanked
                                                               drones give way vertically (traffic rule)
+  p1_close_encounter     2 drones, no current                 right-angle crossing, simultaneous arrival:
+                                                              the warning filter keeps them apart (traffic
+                                                              rule on, no intruder, full safety layer)
   formation_triangle     3 drones, lateral current 0.25       triangle survey under a constant current
   formation_square       4 drones, diagonal current 0.30      2 x 2 box under a diagonal current
   formation_six          6 drones, lateral + vertical current survey line (6 swaths), current with w_z
@@ -143,6 +146,35 @@ def p1_vertical_escape(cfg: FleetConfig = DEFAULT) -> Scenario:
                     cfg_patch={"traffic_rule": False})
 
 
+def p1_close_encounter(cfg: FleetConfig = DEFAULT) -> Scenario:
+    """Two fleet drones on perpendicular survey legs reach the crossing point at the same time: without
+    the safety layer they would meet there.  A right-angle crossing at the survey speed closes at
+    0.30 * sqrt(2) = 0.42 m/s and is not a head-on encounter: the traffic rule (head-on, FRONT, closing
+    >= 0.45 m/s) may shift a drone to its right on a noisy closing estimate but cannot resolve a crossing,
+    so the warning filter, and the escape if the conservative distance fell below d_ca, keep the drones
+    apart.  Real fleet BlueROV2s only: no scripted vehicle, traffic rule ON, full automaton, no current."""
+    single = FormationTemplate("single", (Slot(0.0, 0.0, 0.0),), "one drone")
+    plans, spawns, yaws = [], [], []
+    cx, cy, lead = 0.0, -31.0, 7.5                     # crossing point; both legs start 7.5 m before it
+    legs = (((cx - lead, cy), (cx + 14.0, cy)), ((cx, cy - lead), (cx, cy + 12.0)))
+    for k, (a, b) in enumerate(legs):
+        path = Path(np.array([a, b]), DEPTH)
+        clock = FormationClock(0.0, cfg.form.v_nominal, 1.0, s_end=path.length)
+        pl, sp, yw = _fleet("p1_close_encounter", single, path, clock, (), (), cfg, formation=False)
+        pl[0].drone_id, pl[0].static_rank, pl[0].failsafe_layer_dz = f"drone_{k}", k, FAILSAFE_LAYERS[k]
+        plans += pl
+        spawns += sp
+        yaws += yw
+    sim = _sim("p1_close_encounter", plans, spawns, yaws, 40.0, camera=0)
+    sim.chase_offset, sim.side_offset = (-6.0, 0.0, 2.2), (6.0, -6.0, 6.0)
+    return Scenario("p1_close_encounter", "P1 close encounter: right-angle crossing",
+                    "Two drones on perpendicular legs, 7.5 m from the crossing point, arrive there together "
+                    "(closing 0.42 m/s). Fleet drones only, traffic rule ON, no current, no communication.",
+                    sim, plans, None, plans[0].path, [], formation_enabled=False,
+                    focus="conservative onboard distance below d_warning -> SEPARATION_WARNING; true pair distance "
+                          "against d_warning / d_ca / d_safe; collision avoidance only if the bound fell below d_ca")
+
+
 def p1_two_lines(cfg: FleetConfig = DEFAULT) -> Scenario:
     """Two survey lines of three drones (3.5 m apart) meet head-on: the middle drones have a
     neighbour on each side, so the traffic rule shifts them vertically instead of to the right."""
@@ -275,6 +307,7 @@ SCENARIOS: Dict[str, Callable[..., Scenario]] = {
     "p1_head_on": p1_head_on,
     "p1_vertical_escape": p1_vertical_escape,
     "p1_two_lines": p1_two_lines,
+    "p1_close_encounter": p1_close_encounter,
     "formation_triangle": formation_triangle,
     "formation_square": formation_square,
     "formation_six": formation_six,

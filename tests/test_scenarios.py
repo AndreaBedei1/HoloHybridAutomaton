@@ -5,8 +5,9 @@ import numpy as np
 from holo_fleet.config import DEFAULT
 from holo_fleet.sim.scenarios import SCENARIOS
 
-EXPECTED = {"p1_head_on": 2, "p1_vertical_escape": 4, "p1_two_lines": 6, "formation_triangle": 3,
-            "formation_square": 4, "formation_six": 6, "formation_gust": 4, "gate_single": 3, "integrated_short": 3}
+EXPECTED = {"p1_head_on": 2, "p1_vertical_escape": 4, "p1_two_lines": 6, "p1_close_encounter": 2,
+            "formation_triangle": 3, "formation_square": 4, "formation_six": 6, "formation_gust": 4,
+            "gate_single": 3, "integrated_short": 3}
 
 
 def test_catalogue_is_small_and_short():
@@ -48,3 +49,15 @@ def test_only_the_safety_layer_demo_switches_the_traffic_rule_off():
         sc = SCENARIOS[name](DEFAULT)
         assert sc.cfg_patch == ({"traffic_rule": False} if name == "p1_vertical_escape" else {}), name
         assert bool(getattr(sc.sim, "intruders", ())) == (name == "p1_vertical_escape")
+
+
+def test_close_encounter_is_a_simultaneous_right_angle_crossing():
+    sc = SCENARIOS["p1_close_encounter"](DEFAULT)
+    (a0, b0), (a1, b1) = [(p.path.waypoints[0], p.path.waypoints[-1]) for p in sc.plans]
+    d0, d1 = (b0 - a0) / np.linalg.norm(b0 - a0), (b1 - a1) / np.linalg.norm(b1 - a1)
+    assert abs(float(d0 @ d1)) < 1e-9                                  # perpendicular legs
+    cross = np.array([0.0, -31.0])
+    assert np.isclose(np.linalg.norm(cross - a0), np.linalg.norm(cross - a1))     # same lead: same arrival
+    assert all(p.clock.v == DEFAULT.form.v_nominal for p in sc.plans)  # survey speed on both clocks
+    assert not sc.sim.current.components and not getattr(sc.sim, "intruders", ())
+
