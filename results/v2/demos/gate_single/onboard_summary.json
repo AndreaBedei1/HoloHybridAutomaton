@@ -1,0 +1,49 @@
+{
+ "drone_0": {
+  "time_in_mode_s": {
+   "GATE_APPROACH": 6.5,
+   "GATE_YIELD": 1.1,
+   "GATE_PASS": 21.2,
+   "SEPARATION_WARNING": 1.3,
+   "FORMATION_RECOVERY": 23.8,
+   "FORMATION_FOLLOW": 26.1
+  },
+  "escape_directions": [
+   "FWD",
+   "FWD+LEFT"
+  ],
+  "giveway": [],
+  "depth_span_m": 0.15,
+  "min_onboard_distance_m": 2.354
+ },
+ "drone_1": {
+  "time_in_mode_s": {
+   "GATE_APPROACH": 6.5,
+   "GATE_YIELD": 34.8,
+   "GATE_PASS": 21.4,
+   "FORMATION_RECOVERY": 7.9,
+   "FORMATION_FOLLOW": 9.4
+  },
+  "escape_directions": [],
+  "giveway": [],
+  "depth_span_m": 0.15,
+  "min_onboard_distance_m": 2.894
+ },
+ "drone_2": {
+  "time_in_mode_s": {
+   "GATE_APPROACH": 1.7,
+   "GATE_YIELD": 18.4,
+   "SEPARATION_WARNING": 5.6,
+   "GATE_PASS": 17.9,
+   "FORMATION_RECOVERY": 24.8,
+   "FORMATION_FOLLOW": 11.6
+  },
+  "escape_directions": [
+   "REAR+RIGHT",
+   "REAR+UP"
+  ],
+  "giveway": [],
+  "depth_span_m": 0.56,
+  "min_onboard_distance_m": 2.354
+ }
+}

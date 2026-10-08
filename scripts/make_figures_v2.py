@@ -396,11 +396,15 @@ def fig_p3_overview():
 
 
 def copy_gifs():
-    for gif in DEMOS.glob("*/*.gif"):
-        dst = FIG / "gifs" / gif.name
-        dst.parent.mkdir(parents=True, exist_ok=True)
-        shutil.copy2(gif, dst)
-        print("  ", dst.relative_to(ROOT), f"{gif.stat().st_size / 1e6:.1f} MB")
+    """Small repository copies of the dashboard GIFs (720 px, every second frame)."""
+    sys.path.insert(0, str(ROOT / "scripts"))
+    from run_all_demos import small_gif
+
+    for d in sorted(p for p in DEMOS.glob("*") if (p / "dashboard").is_dir()):
+        small_gif(d.name)
+        g = FIG / "gifs" / f"{d.name}.gif"
+        if g.exists():
+            print("  ", g.relative_to(ROOT), f"{g.stat().st_size / 1e6:.1f} MB")
 
 
 def main(argv) -> int:

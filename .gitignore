@@ -6,6 +6,7 @@ __pycache__/
 # development runs and probes output
 results/dev/
 results/v2/dev/
+results/v2/demos/*/drone_*_state.jsonl
 probe/out/
 formal/results_*.log
 

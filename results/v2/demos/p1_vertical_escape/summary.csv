@@ -1,0 +1,2 @@
+scenario,status,sim_time_s,P1_holds,min_distance,P2_holds,max_occupancy,P3_episodes,P3_all_recovered,max_recovery_time_s,collisions,messages,inside_envelope,static_rank_uses
+p1_vertical_escape,COMPLETE,45.0,True,2.489,True,,1,True,25.2,0,0,True,0

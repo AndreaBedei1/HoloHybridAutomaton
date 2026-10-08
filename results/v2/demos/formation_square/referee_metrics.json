@@ -1,0 +1,97 @@
+{
+ "P1_separation": {
+  "formula": "G(forall i!=j: d_ij >= d_safe)",
+  "d_safe": 1.0,
+  "min_distance": 3.459,
+  "min_per_pair": {
+   "drone_0-drone_1": {
+    "d": 3.465,
+    "t": 18.499815
+   },
+   "drone_0-drone_2": {
+    "d": 3.492,
+    "t": 40.99959
+   },
+   "drone_0-drone_3": {
+    "d": 4.932,
+    "t": 42.399576
+   },
+   "drone_1-drone_2": {
+    "d": 4.95,
+    "t": 0.099999
+   },
+   "drone_1-drone_3": {
+    "d": 3.459,
+    "t": 37.499625
+   },
+   "drone_2-drone_3": {
+    "d": 3.5,
+    "t": 0.199998
+   }
+  },
+  "violations": 0,
+  "first_violation": [],
+  "physical_contacts": 0,
+  "collision_sensor_edges": [],
+  "holds": true,
+  "intruder": null
+ },
+ "P2_mutual_exclusion": {
+  "formula": "G(sum_i inside_CR_i <= 1)",
+  "gates": [],
+  "max_occupancy": {},
+  "entry_order": {},
+  "violations": 0,
+  "first_violation": [],
+  "holds": true
+ },
+ "P3_formation_recovery": {
+  "formula": "G(formation_lost -> F formation_recovered)",
+  "enabled": true,
+  "e_lost": 1.2,
+  "e_ok": 0.5,
+  "t_ok_hold": 2.0,
+  "episodes": [],
+  "n_episodes": 0,
+  "open_at_end": 0,
+  "all_recovered_within_run": true,
+  "final_form_err": 0.0694
+ },
+ "envelope": {
+  "current_drift_max_claimed": 0.6,
+  "max_horizontal_drift": 0.297,
+  "max_vertical_drift": 0.0,
+  "inside_envelope": true
+ },
+ "kinematics": {
+  "max_true_speed_m_s": 0.349
+ },
+ "run": {
+  "status": "COMPLETE",
+  "scenario": "formation_square",
+  "sim_time_s": 45.0,
+  "determinism_violations": {
+   "drone_0": 0,
+   "drone_1": 0,
+   "drone_2": 0,
+   "drone_3": 0
+  },
+  "comms_enabled": false,
+  "inter_agent_messages": 0,
+  "ground_truth_used_by_controllers": false,
+  "static_rank_uses": 0,
+  "occupancy_timeouts": 0,
+  "self_declared_envelope_violations": 0,
+  "perf": {
+   "ticks": 1350,
+   "mean_tick_ms": 57.73,
+   "p95_tick_ms": 162.09,
+   "real_time_factor": 0.577,
+   "controller_ms_mean_all_drones": 4.83,
+   "controller_hz": 10.0,
+   "sonar_hz": 10.0,
+   "wall_s": 101.1,
+   "sim_s": 45.0
+  }
+ }
+}

@@ -21,7 +21,7 @@ def _status(run: Path) -> str:
 ALL = sorted(p for p in DEMOS.glob("*") if p.is_dir() and (p / "run_config.json").exists()) if DEMOS.exists() else []
 COMPLETE = [p for p in ALL if _status(p) == "COMPLETE"]
 REQUIRED = ["run_status.json", "run_config.json", "events.jsonl", "referee_metrics.json", "referee_timeseries.csv",
-            "summary.csv", "perf.json"]
+            "summary.csv", "perf.json", "onboard_summary.json"]
 
 
 def complete_runs():
@@ -92,10 +92,10 @@ def _run(name):
 
 def test_vertical_escape_has_an_up_or_down_component():
     run = _run("p1_vertical_escape")
-    if not (run / "drone_1_state.jsonl").exists():
-        pytest.skip("per-drone logs not on disk")
-    dirs = [r["escape"]["dir"] for k in range(4) for r in _states(run, k) if r.get("escape")]
+    summ = json.loads((run / "onboard_summary.json").read_text(encoding="utf-8"))
+    dirs = [d for v in summ.values() for d in v["escape_directions"]]
     assert any("UP" in d or "DOWN" in d for d in dirs)
+    assert max(v["depth_span_m"] for v in summ.values()) > 0.8               # a real vertical manoeuvre
     m = json.loads((run / "referee_metrics.json").read_text(encoding="utf-8"))
     assert not m["P1_separation"]["intruder"]["below_d_safe"]
 
@@ -107,6 +107,9 @@ def test_formation_scenarios(name, n):
     m = json.loads((run / "referee_metrics.json").read_text(encoding="utf-8"))
     assert cfg["n_drones"] == n and m["envelope"]["inside_envelope"]
     assert m["P3_formation_recovery"]["final_form_err"] < DEFAULT_E_OK
+    summ = json.loads((run / "onboard_summary.json").read_text(encoding="utf-8"))
+    for v in summ.values():                       # the drones themselves declare the formation recovered
+        assert v["time_in_mode_s"].get("FORMATION_FOLLOW", 0.0) > 0.5 * cfg["duration_s"]
 
 
 DEFAULT_E_OK = 0.5

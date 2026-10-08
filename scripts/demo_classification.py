@@ -61,19 +61,24 @@ def _profile_panel(img, x, y, w, h, sector, prof, rd):
         pts = np.stack([px0 + (px1 - px0) * (RANGES - 0.0) / 12.0, py0 - (py0 - py1) * p / ymax], axis=1).astype(np.int32)
         cv2.polylines(img, [pts], False, D.INK2, 1, cv2.LINE_AA)
     if rd is not None:
+        last_label, n_labels = -9.0, 0
         for e in rd.echoes:
             u0 = int(px0 + (px1 - px0) * e.r0 / 12.0)
             u1 = max(u0 + 3, int(px0 + (px1 - px0) * e.r1 / 12.0))
             col = D.CLS_COLOR.get(e.cls, D.INK2)
             cv2.rectangle(img, (u0, py1 - 4), (u1, py0 - 1), col, 2)
-            D._text(img, f"{D.CLS_SHORT.get(e.cls, e.cls)} {e.r0:.1f}", u0, py1 - 8, 0.42, col)
+            if e.r0 - last_label >= 1.6 and n_labels < 3:          # no overlapping labels
+                D._text(img, f"{D.CLS_SHORT.get(e.cls, e.cls)} {e.r0:.1f}", u0, py1 - 8, 0.42, col)
+                last_label, n_labels = e.r0, n_labels + 1
         if rd.structure_window is not None:
             a, b = rd.structure_window
             cv2.line(img, (int(px0 + (px1 - px0) * a / 12.0), py0 + 2), (int(px0 + (px1 - px0) * b / 12.0), py0 + 2),
                      D.CLS_COLOR["STRUCTURE"], 3)
         if rd.blind_from is not None:
             u = int(px0 + (px1 - px0) * rd.blind_from / 12.0)
-            cv2.line(img, (u, py1), (u, py0), D.CLS_COLOR["SEABED"], 1)
+            cv2.line(img, (u, py1), (u, py0), D.CLS_COLOR["SEABED"], 2)
+            if rd.blind_from <= 4.0:
+                D._text(img, f"clutter from {rd.blind_from:.1f} m: UNKNOWN target", x + 70, y + 18, 0.4, D.WARN)
 
 
 def _frame(title, caption, t, profiles, readings, truth_lines, top_pts, cam):
@@ -92,33 +97,46 @@ def _frame(title, caption, t, profiles, readings, truth_lines, top_pts, cam):
                  "brown line: seabed clutter onset", 16, H - 46, 0.4, D.MUTED)
     cv2.rectangle(img, (D.SPLIT + 4, 58), (W - 8, 82), D.REFEREE_HDR, -1)
     D._text(img, "REFEREE / GROUND TRUTH - never given to the observer", D.SPLIT + 12, 76, 0.5, (16, 16, 16))
-    # top view of observer / target / gate
+    # top view of observer / target / gate, drawn on its own canvas (clipped to the panel)
     mx, my, mw, mh = D.SPLIT + 4, 90, W - D.SPLIT - 12, 330
-    cv2.rectangle(img, (mx, my), (mx + mw, my + mh), D.PANEL, -1)
+    pan = np.full((mh, mw, 3), D.PANEL, np.uint8)
     c = top_pts["center"]
-    s = min(mw, mh) / 16.0
+    s_ = min(mw, mh) / 16.0
 
     def tx(q):
-        return int(mx + mw / 2 + (q[0] - c[0]) * s), int(my + mh / 2 - (q[1] - c[1]) * s)
+        return int(mw / 2 + (q[0] - c[0]) * s_), int(mh / 2 - (q[1] - c[1]) * s_)
 
     for poly in top_pts.get("bars", []):
-        cv2.fillPoly(img, [np.array([tx(q) for q in poly], np.int32)], D.INK2)
+        cv2.fillPoly(pan, [np.array([tx(q) for q in poly], np.int32)], D.INK2)
     o, yaw = top_pts["observer"], top_pts["observer_yaw"]
     R = _rot(yaw)
-    for sct, col in (("FRONT", (70, 70, 66)), ("LEFT", (60, 60, 56)), ("RIGHT", (60, 60, 56))):
+    for sct, col in (("FRONT", (90, 90, 84)), ("LEFT", (70, 70, 66)), ("RIGHT", (70, 70, 66))):
         a = R @ sg.AXES[sct]
         ang = math.atan2(a[1], a[0])
-        poly = [tx(o)] + [tx(o + 12.0 * np.array([math.cos(ang + d), math.sin(ang + d), 0.0]))
+        poly = [tx(o)] + [tx(o + 6.0 * np.array([math.cos(ang + d), math.sin(ang + d), 0.0]))
                           for d in np.radians(np.linspace(-60, 60, 13))]
-        cv2.polylines(img, [np.array(poly, np.int32)], True, col, 1)
-    cv2.circle(img, tx(o), 7, D.DRONE[0], -1)
-    D._text(img, "observer", tx(o)[0] + 9, tx(o)[1] + 18, 0.45, D.INK)
+        cv2.polylines(pan, [np.array(poly, np.int32)], True, col, 1, cv2.LINE_AA)
+        q = tx(o + 6.4 * np.array([math.cos(ang), math.sin(ang), 0.0]))
+        D._text(pan, sct.lower(), q[0] - 14, q[1], 0.4, D.MUTED)
+    cv2.circle(pan, tx(o), 7, D.DRONE[0], -1)
+    D._text(pan, "observer", tx(o)[0] + 9, tx(o)[1] + 18, 0.45, D.INK)
     for q in top_pts.get("targets", []):
-        cv2.circle(img, tx(q), 7, D.DRONE[1], -1)
-        D._text(img, "drone", tx(q)[0] + 9, tx(q)[1] - 6, 0.45, D.INK)
-    D._text(img, "top view (ground truth); outlines: FRONT / LEFT / RIGHT cones", mx + 8, my + 18, 0.42, D.MUTED)
+        cv2.circle(pan, tx(q), 7, D.DRONE[1], -1)
+        D._text(pan, "drone", tx(q)[0] + 9, tx(q)[1] - 6, 0.45, D.INK)
+    D._text(pan, "top view (ground truth); outlines: FRONT / LEFT / RIGHT cones to 6 m", 8, 18, 0.42, D.MUTED)
+    img[my:my + mh, mx:mx + mw] = pan
     yy = my + mh + 30
-    D._text(img, caption, D.SPLIT + 12, yy, 0.5, D.INK)
+    words, cap_lines, cur = caption.split(), [], ""
+    for w_ in words:                                       # wrap the caption to the panel width
+        if len(cur) + len(w_) + 1 > 62:
+            cap_lines.append(cur)
+            cur = w_
+        else:
+            cur = (cur + " " + w_).strip()
+    cap_lines.append(cur)
+    for i, line in enumerate(cap_lines):
+        D._text(img, line, D.SPLIT + 12, yy + 24 * i, 0.5, D.INK)
+    yy += 24 * (len(cap_lines) - 1)
     for i, line in enumerate(truth_lines):
         D._text(img, line, D.SPLIT + 12, yy + 26 + 22 * i, 0.45, D.INK2)
     if cam is not None:

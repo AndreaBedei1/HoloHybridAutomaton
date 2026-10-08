@@ -1,0 +1,13508 @@
+[
+{
+"t": 0.1,
+"part": "gate",
+"caption": "1) only the gate in the FRONT cone -> STRUCTURE",
+"true_distance": 14.0,
+"echoes": {
+"FRONT": [
+[
+4.17,
+"STRUCTURE"
+]
+]
+}
+},
+{
+"t": 0.2,
+"part": "gate",
+"caption": "1) only the gate in the FRONT cone -> STRUCTURE",
+"true_distance": 14.0,
+"echoes": {
+"FRONT": [
+[
+4.17,
+"STRUCTURE"
+],
+[
+4.72,
+"STRUCTURE"
+]
+]
+}
+},
+{
+"t": 0.3,
+"part": "gate",
+"caption": "1) only the gate in the FRONT cone -> STRUCTURE",
+"true_distance": 14.0,
+"echoes": {
+"FRONT": [
+[
+4.17,
+"STRUCTURE"
+]
+]
+}
+},
+{
+"t": 0.4,
+"part": "gate",
+"caption": "1) only the gate in the FRONT cone -> STRUCTURE",
+"true_distance": 14.0,
+"echoes": {
+"FRONT": [
+[
+4.22,
+"STRUCTURE"
+]
+]
+}
+},
+{
+"t": 0.5,
+"part": "gate",
+"caption": "1) only the gate in the FRONT cone -> STRUCTURE",
+"true_distance": 14.0,
+"echoes": {
+"FRONT": [
+[
+4.17,
+"STRUCTURE"
+]
+]
+}
+},
+{
+"t": 0.6,
+"part": "gate",
+"caption": "1) only the gate in the FRONT cone -> STRUCTURE",
+"true_distance": 14.0,
+"echoes": {
+"FRONT": [
+[
+4.17,
+"STRUCTURE"
+]
+]
+}
+},
+{
+"t": 0.7,
+"part": "gate",
+"caption": "1) only the gate in the FRONT cone -> STRUCTURE",
+"true_distance": 14.0,
+"echoes": {
+"FRONT": [
+[
+4.22,
+"STRUCTURE"
+]
+]
+}
+},
+{
+"t": 0.8,
+"part": "gate",
+"caption": "1) only the gate in the FRONT cone -> STRUCTURE",
+"true_distance": 14.0,
+"echoes": {
+"FRONT": [
+[
+4.17,
+"STRUCTURE"
+]
+]
+}
+},
+{
+"t": 0.9,
+"part": "gate",
+"caption": "1) only the gate in the FRONT cone -> STRUCTURE",
+"true_distance": 14.0,
+"echoes": {
+"FRONT": [
+[
+4.17,
+"STRUCTURE"
+],
+[
+4.67,
+"STRUCTURE"
+]
+]
+}
+},
+{
+"t": 1.0,
+"part": "gate",
+"caption": "1) only the gate in the FRONT cone -> STRUCTURE",
+"true_distance": 14.0,
+"echoes": {
+"FRONT": [
+[
+4.17,
+"STRUCTURE"
+],
+[
+4.67,
+"STRUCTURE"
+]
+]
+}
+},
+{
+"t": 1.1,
+"part": "gate",
+"caption": "1) only the gate in the FRONT cone -> STRUCTURE",
+"true_distance": 14.0,
+"echoes": {
+"FRONT": [
+[
+4.22,
+"STRUCTURE"
+]
+]
+}
+},
+{
+"t": 1.2,
+"part": "gate",
+"caption": "1) only the gate in the FRONT cone -> STRUCTURE",
+"true_distance": 14.0,
+"echoes": {
+"FRONT": [
+[
+4.22,
+"STRUCTURE"
+]
+]
+}
+},
+{
+"t": 1.3,
+"part": "gate",
+"caption": "1) only the gate in the FRONT cone -> STRUCTURE",
+"true_distance": 14.0,
+"echoes": {
+"FRONT": [
+[
+4.17,
+"STRUCTURE"
+],
+[
+4.72,
+"STRUCTURE"
+]
+]
+}
+},
+{
+"t": 1.4,
+"part": "gate",
+"caption": "1) only the gate in the FRONT cone -> STRUCTURE",
+"true_distance": 14.0,
+"echoes": {
+"FRONT": [
+[
+4.17,
+"STRUCTURE"
+]
+]
+}
+},
+{
+"t": 1.5,
+"part": "gate",
+"caption": "1) only the gate in the FRONT cone -> STRUCTURE",
+"true_distance": 14.0,
+"echoes": {
+"FRONT": [
+[
+4.17,
+"STRUCTURE"
+]
+]
+}
+},
+{
+"t": 1.6,
+"part": "gate",
+"caption": "2) a drone enters the FRONT cone between observer and gate -> DYNAMIC + STRUCTURE",
+"true_distance": 7.338,
+"echoes": {
+"FRONT": [
+[
+4.17,
+"STRUCTURE"
+],
+[
+4.62,
+"STRUCTURE"
+]
+],
+"LEFT": [
+[
+6.77,
+"UNCONFIRMED"
+]
+]
+}
+},
+{
+"t": 1.7,
+"part": "gate",
+"caption": "2) a drone enters the FRONT cone between observer and gate -> DYNAMIC + STRUCTURE",
+"true_distance": 7.182,
+"echoes": {
+"FRONT": [
+[
+4.22,
+"STRUCTURE"
+]
+],
+"LEFT": [
+[
+6.62,
+"DYNAMIC"
+],
+[
+7.22,
+"DYNAMIC"
+]
+]
+}
+},
+{
+"t": 1.8,
+"part": "gate",
+"caption": "2) a drone enters the FRONT cone between observer and gate -> DYNAMIC + STRUCTURE",
+"true_distance": 7.026,
+"echoes": {
+"FRONT": [
+[
+4.17,
+"STRUCTURE"
+]
+],
+"LEFT": [
+[
+6.47,
+"DYNAMIC"
+]
+]
+}
+},
+{
+"t": 1.9,
+"part": "gate",
+"caption": "2) a drone enters the FRONT cone between observer and gate -> DYNAMIC + STRUCTURE",
+"true_distance": 6.871,
+"echoes": {
+"FRONT": [
+[
+4.17,
+"STRUCTURE"
+],
+[
+4.62,
+"STRUCTURE"
+]
+],
+"LEFT": [
+[
+6.27,
+"DYNAMIC"
+]
+]
+}
+},
+{
+"t": 2.0,
+"part": "gate",
+"caption": "2) a drone enters the FRONT cone between observer and gate -> DYNAMIC + STRUCTURE",
+"true_distance": 6.717,
+"echoes": {
+"FRONT": [
+[
+4.17,
+"STRUCTURE"
+]
+],
+"LEFT": [
+[
+6.17,
+"DYNAMIC"
+]
+]
+}
+},
+{
+"t": 2.1,
+"part": "gate",
+"caption": "2) a drone enters the FRONT cone between observer and gate -> DYNAMIC + STRUCTURE",
+"true_distance": 6.563,
+"echoes": {
+"FRONT": [
+[
+4.17,
+"STRUCTURE"
+]
+],
+"LEFT": [
+[
+5.97,
+"DYNAMIC"
+],
+[
+6.52,
+"DYNAMIC"
+]
+]
+}
+},
+{
+"t": 2.2,
+"part": "gate",
+"caption": "2) a drone enters the FRONT cone between observer and gate -> DYNAMIC + STRUCTURE",
+"true_distance": 6.409,
+"echoes": {
+"FRONT": [
+[
+4.17,
+"STRUCTURE"
+]
+],
+"LEFT": [
+[
+5.82,
+"DYNAMIC"
+]
+]
+}
+},
+{
+"t": 2.3,
+"part": "gate",
+"caption": "2) a drone enters the FRONT cone between observer and gate -> DYNAMIC + STRUCTURE",
+"true_distance": 6.256,
+"echoes": {
+"FRONT": [
+[
+4.17,
+"STRUCTURE"
+]
+],
+"LEFT": [
+[
+5.67,
+"DYNAMIC"
+]
+]
+}
+},
+{
+"t": 2.4,
+"part": "gate",
+"caption": "2) a drone enters the FRONT cone between observer and gate -> DYNAMIC + STRUCTURE",
+"true_distance": 6.103,
+"echoes": {
+"FRONT": [
+[
+4.17,
+"STRUCTURE"
+],
+[
+4.67,
+"STRUCTURE"
+]
+],
+"LEFT": [
+[
+5.52,
+"DYNAMIC"
+]
+]
+}
+},
+{
+"t": 2.5,
+"part": "gate",
+"caption": "2) a drone enters the FRONT cone between observer and gate -> DYNAMIC + STRUCTURE",
+"true_distance": 5.951,
+"echoes": {
+"FRONT": [
+[
+4.17,
+"STRUCTURE"
+]
+],
+"LEFT": [
+[
+5.37,
+"DYNAMIC"
+]
+]
+}
+},
+{
+"t": 2.6,
+"part": "gate",
+"caption": "2) a drone enters the FRONT cone between observer and gate -> DYNAMIC + STRUCTURE",
+"true_distance": 5.799,
+"echoes": {
+"FRONT": [
+[
+4.17,
+"STRUCTURE"
+]
+],
+"LEFT": [
+[
+5.22,
+"DYNAMIC"
+]
+]
+}
+},
+{
+"t": 2.7,
+"part": "gate",
+"caption": "2) a drone enters the FRONT cone between observer and gate -> DYNAMIC + STRUCTURE",
+"true_distance": 5.648,
+"echoes": {
+"FRONT": [
+[
+4.17,
+"STRUCTURE"
+],
+[
+4.77,
+"STRUCTURE"
+]
+],
+"LEFT": [
+[
+5.07,
+"DYNAMIC"
+]
+]
+}
+},
+{
+"t": 2.8,
+"part": "gate",
+"caption": "2) a drone enters the FRONT cone between observer and gate -> DYNAMIC + STRUCTURE",
+"true_distance": 5.498,
+"echoes": {
+"FRONT": [
+[
+4.17,
+"STRUCTURE"
+]
+],
+"LEFT": [
+[
+4.92,
+"DYNAMIC"
+]
+]
+}
+},
+{
+"t": 2.9,
+"part": "gate",
+"caption": "2) a drone enters the FRONT cone between observer and gate -> DYNAMIC + STRUCTURE",
+"true_distance": 5.349,
+"echoes": {
+"FRONT": [
+[
+4.17,
+"STRUCTURE"
+]
+],
+"LEFT": [
+[
+4.77,
+"DYNAMIC"
+]
+]
+}
+},
+{
+"t": 3.0,
+"part": "gate",
+"caption": "2) a drone enters the FRONT cone between observer and gate -> DYNAMIC + STRUCTURE",
+"true_distance": 5.2,
+"echoes": {
+"FRONT": [
+[
+4.17,
+"STRUCTURE"
+]
+],
+"LEFT": [
+[
+4.62,
+"DYNAMIC"
+]
+]
+}
+},
+{
+"t": 3.1,
+"part": "gate",
+"caption": "2) a drone enters the FRONT cone between observer and gate -> DYNAMIC + STRUCTURE",
+"true_distance": 5.053,
+"echoes": {
+"FRONT": [
+[
+4.17,
+"STRUCTURE"
+]
+],
+"LEFT": [
+[
+4.47,
+"DYNAMIC"
+]
+]
+}
+},
+{
+"t": 3.2,
+"part": "gate",
+"caption": "2) a drone enters the FRONT cone between observer and gate -> DYNAMIC + STRUCTURE",
+"true_distance": 4.906,
+"echoes": {
+"FRONT": [
+[
+4.17,
+"STRUCTURE"
+]
+],
+"LEFT": [
+[
+4.32,
+"DYNAMIC"
+]
+]
+}
+},
+{
+"t": 3.3,
+"part": "gate",
+"caption": "2) a drone enters the FRONT cone between observer and gate -> DYNAMIC + STRUCTURE",
+"true_distance": 4.761,
+"echoes": {
+"FRONT": [
+[
+4.17,
+"STRUCTURE"
+]
+],
+"LEFT": [
+[
+4.17,
+"DYNAMIC"
+]
+]
+}
+},
+{
+"t": 3.4,
+"part": "gate",
+"caption": "2) a drone enters the FRONT cone between observer and gate -> DYNAMIC + STRUCTURE",
+"true_distance": 4.616,
+"echoes": {
+"FRONT": [
+[
+4.17,
+"STRUCTURE"
+],
+[
+4.62,
+"STRUCTURE"
+]
+],
+"LEFT": [
+[
+4.02,
+"DYNAMIC"
+]
+]
+}
+},
+{
+"t": 3.5,
+"part": "gate",
+"caption": "2) a drone enters the FRONT cone between observer and gate -> DYNAMIC + STRUCTURE",
+"true_distance": 4.473,
+"echoes": {
+"FRONT": [
+[
+4.17,
+"STRUCTURE"
+],
+[
+4.67,
+"STRUCTURE"
+]
+],
+"LEFT": [
+[
+3.92,
+"DYNAMIC"
+]
+]
+}
+},
+{
+"t": 3.6,
+"part": "gate",
+"caption": "2) a drone enters the FRONT cone between observer and gate -> DYNAMIC + STRUCTURE",
+"true_distance": 4.332,
+"echoes": {
+"FRONT": [
+[
+4.12,
+"STRUCTURE"
+]
+],
+"LEFT": [
+[
+3.77,
+"DYNAMIC"
+]
+]
+}
+},
+{
+"t": 3.7,
+"part": "gate",
+"caption": "2) a drone enters the FRONT cone between observer and gate -> DYNAMIC + STRUCTURE",
+"true_distance": 4.192,
+"echoes": {
+"FRONT": [
+[
+3.87,
+"STRUCTURE"
+],
+[
+4.77,
+"STRUCTURE"
+]
+],
+"LEFT": [
+[
+3.62,
+"DYNAMIC"
+]
+]
+}
+},
+{
+"t": 3.8,
+"part": "gate",
+"caption": "2) a drone enters the FRONT cone between observer and gate -> DYNAMIC + STRUCTURE",
+"true_distance": 4.054,
+"echoes": {
+"FRONT": [
+[
+3.67,
+"UNCONFIRMED"
+]
+],
+"LEFT": [
+[
+3.47,
+"DYNAMIC"
+]
+]
+}
+},
+{
+"t": 3.9,
+"part": "gate",
+"caption": "2) a drone enters the FRONT cone between observer and gate -> DYNAMIC + STRUCTURE",
+"true_distance": 3.918,
+"echoes": {
+"FRONT": [
+[
+3.47,
+"DYNAMIC"
+],
+[
+4.17,
+"STRUCTURE"
+],
+[
+4.62,
+"STRUCTURE"
+]
+],
+"LEFT": [
+[
+3.32,
+"DYNAMIC"
+]
+]
+}
+},
+{
+"t": 4.0,
+"part": "gate",
+"caption": "2) a drone enters the FRONT cone between observer and gate -> DYNAMIC + STRUCTURE",
+"true_distance": 3.783,
+"echoes": {
+"FRONT": [
+[
+3.32,
+"DYNAMIC"
+],
+[
+4.17,
+"STRUCTURE"
+],
+[
+4.67,
+"STRUCTURE"
+]
+],
+"LEFT": [
+[
+3.22,
+"DYNAMIC"
+]
+]
+}
+},
+{
+"t": 4.1,
+"part": "gate",
+"caption": "2) a drone enters the FRONT cone between observer and gate -> DYNAMIC + STRUCTURE",
+"true_distance": 3.652,
+"echoes": {
+"FRONT": [
+[
+3.17,
+"DYNAMIC"
+],
+[
+4.17,
+"STRUCTURE"
+],
+[
+4.67,
+"STRUCTURE"
+]
+],
+"LEFT": [
+[
+3.07,
+"DYNAMIC"
+]
+]
+}
+},
+{
+"t": 4.2,
+"part": "gate",
+"caption": "2) a drone enters the FRONT cone between observer and gate -> DYNAMIC + STRUCTURE",
+"true_distance": 3.523,
+"echoes": {
+"FRONT": [
+[
+3.07,
+"DYNAMIC"
+],
+[
+4.17,
+"STRUCTURE"
+]
+],
+"LEFT": [
+[
+2.97,
+"DYNAMIC"
+]
+]
+}
+},
+{
+"t": 4.3,
+"part": "gate",
+"caption": "2) a drone enters the FRONT cone between observer and gate -> DYNAMIC + STRUCTURE",
+"true_distance": 3.397,
+"echoes": {
+"FRONT": [
+[
+2.92,
+"DYNAMIC"
+],
+[
+4.17,
+"STRUCTURE"
+]
+],
+"LEFT": [
+[
+2.82,
+"DYNAMIC"
+],
+[
+3.47,
+"DYNAMIC"
+]
+]
+}
+},
+{
+"t": 4.4,
+"part": "gate",
+"caption": "2) a drone enters the FRONT cone between observer and gate -> DYNAMIC + STRUCTURE",
+"true_distance": 3.274,
+"echoes": {
+"FRONT": [
+[
+2.82,
+"DYNAMIC"
+],
+[
+4.17,
+"STRUCTURE"
+],
+[
+4.72,
+"STRUCTURE"
+]
+],
+"LEFT": [
+[
+2.72,
+"DYNAMIC"
+]
+]
+}
+},
+{
+"t": 4.5,
+"part": "gate",
+"caption": "2) a drone enters the FRONT cone between observer and gate -> DYNAMIC + STRUCTURE",
+"true_distance": 3.155,
+"echoes": {
+"FRONT": [
+[
+2.67,
+"DYNAMIC"
+],
+[
+4.17,
+"STRUCTURE"
+]
+],
+"LEFT": [
+[
+2.62,
+"DYNAMIC"
+]
+]
+}
+},
+{
+"t": 4.6,
+"part": "gate",
+"caption": "2) a drone enters the FRONT cone between observer and gate -> DYNAMIC + STRUCTURE",
+"true_distance": 3.04,
+"echoes": {
+"FRONT": [
+[
+2.57,
+"DYNAMIC"
+],
+[
+4.17,
+"STRUCTURE"
+],
+[
+4.82,
+"STRUCTURE"
+]
+],
+"LEFT": [
+[
+2.52,
+"DYNAMIC"
+]
+]
+}
+},
+{
+"t": 4.7,
+"part": "gate",
+"caption": "2) a drone enters the FRONT cone between observer and gate -> DYNAMIC + STRUCTURE",
+"true_distance": 2.929,
+"echoes": {
+"FRONT": [
+[
+2.42,
+"DYNAMIC"
+],
+[
+4.17,
+"STRUCTURE"
+]
+],
+"LEFT": [
+[
+2.42,
+"DYNAMIC"
+]
+]
+}
+},
+{
+"t": 4.8,
+"part": "gate",
+"caption": "2) a drone enters the FRONT cone between observer and gate -> DYNAMIC + STRUCTURE",
+"true_distance": 2.824,
+"echoes": {
+"FRONT": [
+[
+2.32,
+"DYNAMIC"
+],
+[
+4.17,
+"STRUCTURE"
+]
+],
+"LEFT": [
+[
+2.32,
+"DYNAMIC"
+]
+]
+}
+},
+{
+"t": 4.9,
+"part": "gate",
+"caption": "2) a drone enters the FRONT cone between observer and gate -> DYNAMIC + STRUCTURE",
+"true_distance": 2.725,
+"echoes": {
+"FRONT": [
+[
+2.22,
+"DYNAMIC"
+],
+[
+4.17,
+"STRUCTURE"
+],
+[
+4.67,
+"STRUCTURE"
+]
+],
+"LEFT": [
+[
+2.22,
+"DYNAMIC"
+]
+]
+}
+},
+{
+"t": 5.0,
+"part": "gate",
+"caption": "2) a drone enters the FRONT cone between observer and gate -> DYNAMIC + STRUCTURE",
+"true_distance": 2.632,
+"echoes": {
+"FRONT": [
+[
+2.12,
+"DYNAMIC"
+],
+[
+4.17,
+"STRUCTURE"
+]
+],
+"LEFT": [
+[
+2.22,
+"DYNAMIC"
+]
+]
+}
+},
+{
+"t": 5.1,
+"part": "gate",
+"caption": "2) a drone enters the FRONT cone between observer and gate -> DYNAMIC + STRUCTURE",
+"true_distance": 2.546,
+"echoes": {
+"FRONT": [
+[
+2.02,
+"DYNAMIC"
+],
+[
+4.17,
+"STRUCTURE"
+]
+],
+"LEFT": [
+[
+2.22,
+"DYNAMIC"
+]
+]
+}
+},
+{
+"t": 5.2,
+"part": "gate",
+"caption": "2) a drone enters the FRONT cone between observer and gate -> DYNAMIC + STRUCTURE",
+"true_distance": 2.467,
+"echoes": {
+"FRONT": [
+[
+1.92,
+"DYNAMIC"
+],
+[
+4.17,
+"STRUCTURE"
+],
+[
+4.72,
+"STRUCTURE"
+]
+]
+}
+},
+{
+"t": 5.3,
+"part": "gate",
+"caption": "2) a drone enters the FRONT cone between observer and gate -> DYNAMIC + STRUCTURE",
+"true_distance": 2.398,
+"echoes": {
+"FRONT": [
+[
+1.82,
+"DYNAMIC"
+],
+[
+4.17,
+"STRUCTURE"
+]
+]
+}
+},
+{
+"t": 5.4,
+"part": "gate",
+"caption": "2) a drone enters the FRONT cone between observer and gate -> DYNAMIC + STRUCTURE",
+"true_distance": 2.338,
+"echoes": {
+"FRONT": [
+[
+1.77,
+"DYNAMIC"
+],
+[
+4.17,
+"STRUCTURE"
+]
+]
+}
+},
+{
+"t": 5.5,
+"part": "gate",
+"caption": "2) a drone enters the FRONT cone between observer and gate -> DYNAMIC + STRUCTURE",
+"true_distance": 2.288,
+"echoes": {
+"FRONT": [
+[
+1.72,
+"DYNAMIC"
+],
+[
+4.22,
+"STRUCTURE"
+]
+]
+}
+},
+{
+"t": 5.6,
+"part": "gate",
+"caption": "2) a drone enters the FRONT cone between observer and gate -> DYNAMIC + STRUCTURE",
+"true_distance": 2.248,
+"echoes": {
+"FRONT": [
+[
+1.72,
+"DYNAMIC"
+],
+[
+4.22,
+"STRUCTURE"
+],
+[
+4.67,
+"STRUCTURE"
+]
+]
+}
+},
+{
+"t": 5.7,
+"part": "gate",
+"caption": "2) a drone enters the FRONT cone between observer and gate -> DYNAMIC + STRUCTURE",
+"true_distance": 2.22,
+"echoes": {
+"FRONT": [
+[
+1.67,
+"DYNAMIC"
+],
+[
+4.22,
+"STRUCTURE"
+]
+]
+}
+},
+{
+"t": 5.8,
+"part": "gate",
+"caption": "2) a drone enters the FRONT cone between observer and gate -> DYNAMIC + STRUCTURE",
+"true_distance": 2.204,
+"echoes": {
+"FRONT": [
+[
+1.67,
+"DYNAMIC"
+],
+[
+4.22,
+"STRUCTURE"
+]
+]
+}
+},
+{
+"t": 5.9,
+"part": "gate",
+"caption": "2) a drone enters the FRONT cone between observer and gate -> DYNAMIC + STRUCTURE",
+"true_distance": 2.2,
+"echoes": {
+"FRONT": [
+[
+1.67,
+"DYNAMIC"
+],
+[
+4.22,
+"STRUCTURE"
+]
+]
+}
+},
+{
+"t": 6.0,
+"part": "gate",
+"caption": "2) a drone enters the FRONT cone between observer and gate -> DYNAMIC + STRUCTURE",
+"true_distance": 2.209,
+"echoes": {
+"FRONT": [
+[
+1.67,
+"DYNAMIC"
+],
+[
+4.17,
+"STRUCTURE"
+]
+]
+}
+},
+{
+"t": 6.1,
+"part": "gate",
+"caption": "2) a drone enters the FRONT cone between observer and gate -> DYNAMIC + STRUCTURE",
+"true_distance": 2.23,
+"echoes": {
+"FRONT": [
+[
+1.67,
+"DYNAMIC"
+],
+[
+2.07,
+"DYNAMIC"
+],
+[
+4.17,
+"STRUCTURE"
+]
+]
+}
+},
+{
+"t": 6.2,
+"part": "gate",
+"caption": "2) a drone enters the FRONT cone between observer and gate -> DYNAMIC + STRUCTURE",
+"true_distance": 2.264,
+"echoes": {
+"FRONT": [
+[
+1.67,
+"DYNAMIC"
+],
+[
+2.17,
+"DYNAMIC"
+],
+[
+4.22,
+"STRUCTURE"
+]
+]
+}
+},
+{
+"t": 6.3,
+"part": "gate",
+"caption": "2) a drone enters the FRONT cone between observer and gate -> DYNAMIC + STRUCTURE",
+"true_distance": 2.309,
+"echoes": {
+"FRONT": [
+[
+1.77,
+"DYNAMIC"
+],
+[
+4.22,
+"STRUCTURE"
+]
+]
+}
+},
+{
+"t": 6.4,
+"part": "gate",
+"caption": "2) a drone enters the FRONT cone between observer and gate -> DYNAMIC + STRUCTURE",
+"true_distance": 2.365,
+"echoes": {
+"FRONT": [
+[
+1.82,
+"DYNAMIC"
+],
+[
+2.27,
+"DYNAMIC"
+],
+[
+4.17,
+"STRUCTURE"
+],
+[
+4.62,
+"STRUCTURE"
+]
+]
+}
+},
+{
+"t": 6.5,
+"part": "gate",
+"caption": "2) a drone enters the FRONT cone between observer and gate -> DYNAMIC + STRUCTURE",
+"true_distance": 2.431,
+"echoes": {
+"FRONT": [
+[
+1.88,
+"DYNAMIC"
+],
+[
+4.17,
+"STRUCTURE"
+],
+[
+4.67,
+"STRUCTURE"
+]
+]
+}
+},
+{
+"t": 6.6,
+"part": "gate",
+"caption": "2) a drone enters the FRONT cone between observer and gate -> DYNAMIC + STRUCTURE",
+"true_distance": 2.506,
+"echoes": {
+"FRONT": [
+[
+1.97,
+"DYNAMIC"
+],
+[
+4.17,
+"STRUCTURE"
+],
+[
+4.67,
+"STRUCTURE"
+]
+],
+"RIGHT": [
+[
+2.27,
+"UNCONFIRMED"
+],
+[
+2.52,
+"UNCONFIRMED"
+]
+]
+}
+},
+{
+"t": 6.7,
+"part": "gate",
+"caption": "2) a drone enters the FRONT cone between observer and gate -> DYNAMIC + STRUCTURE",
+"true_distance": 2.506,
+"echoes": {
+"FRONT": [
+[
+1.97,
+"DYNAMIC"
+],
+[
+4.17,
+"STRUCTURE"
+]
+]
+}
+},
+{
+"t": 6.8,
+"part": "gate",
+"caption": "2) a drone enters the FRONT cone between observer and gate -> DYNAMIC + STRUCTURE",
+"true_distance": 2.506,
+"echoes": {
+"FRONT": [
+[
+1.97,
+"DYNAMIC"
+],
+[
+4.17,
+"STRUCTURE"
+]
+]
+}
+},
+{
+"t": 6.9,
+"part": "gate",
+"caption": "2) a drone enters the FRONT cone between observer and gate -> DYNAMIC + STRUCTURE",
+"true_distance": 2.506,
+"echoes": {
+"FRONT": [
+[
+1.97,
+"DYNAMIC"
+],
+[
+4.17,
+"STRUCTURE"
+],
+[
+4.67,
+"STRUCTURE"
+]
+],
+"RIGHT": [
+[
+2.27,
+"UNCONFIRMED"
+]
+]
+}
+},
+{
+"t": 7.0,
+"part": "gate",
+"caption": "2) a drone enters the FRONT cone between observer and gate -> DYNAMIC + STRUCTURE",
+"true_distance": 2.506,
+"echoes": {
+"FRONT": [
+[
+1.97,
+"DYNAMIC"
+],
+[
+4.17,
+"STRUCTURE"
+]
+],
+"RIGHT": [
+[
+2.32,
+"DYNAMIC"
+]
+]
+}
+},
+{
+"t": 7.1,
+"part": "gate",
+"caption": "2) a drone enters the FRONT cone between observer and gate -> DYNAMIC + STRUCTURE",
+"true_distance": 2.506,
+"echoes": {
+"FRONT": [
+[
+1.97,
+"DYNAMIC"
+],
+[
+4.17,
+"STRUCTURE"
+],
+[
+4.62,
+"STRUCTURE"
+]
+],
+"RIGHT": [
+[
+2.37,
+"DYNAMIC"
+]
+]
+}
+},
+{
+"t": 7.2,
+"part": "gate",
+"caption": "2) a drone enters the FRONT cone between observer and gate -> DYNAMIC + STRUCTURE",
+"true_distance": 2.506,
+"echoes": {
+"FRONT": [
+[
+1.97,
+"DYNAMIC"
+],
+[
+4.22,
+"STRUCTURE"
+]
+],
+"RIGHT": [
+[
+2.27,
+"DYNAMIC"
+]
+]
+}
+},
+{
+"t": 7.3,
+"part": "gate",
+"caption": "2) a drone enters the FRONT cone between observer and gate -> DYNAMIC + STRUCTURE",
+"true_distance": 2.506,
+"echoes": {
+"FRONT": [
+[
+1.97,
+"DYNAMIC"
+],
+[
+4.17,
+"STRUCTURE"
+]
+],
+"RIGHT": [
+[
+2.37,
+"DYNAMIC"
+]
+]
+}
+},
+{
+"t": 7.4,
+"part": "gate",
+"caption": "2) a drone enters the FRONT cone between observer and gate -> DYNAMIC + STRUCTURE",
+"true_distance": 2.506,
+"echoes": {
+"FRONT": [
+[
+1.97,
+"DYNAMIC"
+],
+[
+4.22,
+"STRUCTURE"
+],
+[
+4.67,
+"STRUCTURE"
+]
+]
+}
+},
+{
+"t": 7.5,
+"part": "gate",
+"caption": "2) a drone enters the FRONT cone between observer and gate -> DYNAMIC + STRUCTURE",
+"true_distance": 2.506,
+"echoes": {
+"FRONT": [
+[
+1.97,
+"DYNAMIC"
+],
+[
+4.17,
+"STRUCTURE"
+]
+],
+"RIGHT": [
+[
+2.27,
+"DYNAMIC"
+]
+]
+}
+},
+{
+"t": 7.6,
+"part": "gate",
+"caption": "2) a drone enters the FRONT cone between observer and gate -> DYNAMIC + STRUCTURE",
+"true_distance": 2.506,
+"echoes": {
+"FRONT": [
+[
+1.97,
+"DYNAMIC"
+],
+[
+4.17,
+"STRUCTURE"
+],
+[
+4.77,
+"STRUCTURE"
+]
+],
+"RIGHT": [
+[
+2.27,
+"DYNAMIC"
+]
+]
+}
+},
+{
+"t": 7.7,
+"part": "gate",
+"caption": "3) the drone moves behind the gate: STRUCTURE first, the drone beyond it",
+"true_distance": 3.72,
+"echoes": {
+"FRONT": [
+[
+3.22,
+"UNCONFIRMED"
+],
+[
+4.17,
+"STRUCTURE"
+]
+],
+"RIGHT": [
+[
+3.12,
+"UNCONFIRMED"
+]
+]
+}
+},
+{
+"t": 7.8,
+"part": "gate",
+"caption": "3) the drone moves behind the gate: STRUCTURE first, the drone beyond it",
+"true_distance": 3.817,
+"echoes": {
+"FRONT": [
+[
+3.32,
+"DYNAMIC"
+],
+[
+4.17,
+"STRUCTURE"
+]
+],
+"RIGHT": [
+[
+3.22,
+"DYNAMIC"
+]
+]
+}
+},
+{
+"t": 7.9,
+"part": "gate",
+"caption": "3) the drone moves behind the gate: STRUCTURE first, the drone beyond it",
+"true_distance": 3.919,
+"echoes": {
+"FRONT": [
+[
+3.42,
+"DYNAMIC"
+],
+[
+4.17,
+"STRUCTURE"
+]
+],
+"RIGHT": [
+[
+3.37,
+"DYNAMIC"
+],
+[
+3.97,
+"UNCONFIRMED"
+]
+]
+}
+},
+{
+"t": 8.0,
+"part": "gate",
+"caption": "3) the drone moves behind the gate: STRUCTURE first, the drone beyond it",
+"true_distance": 4.024,
+"echoes": {
+"FRONT": [
+[
+3.52,
+"DYNAMIC"
+],
+[
+4.17,
+"STRUCTURE"
+],
+[
+4.82,
+"STRUCTURE"
+]
+],
+"RIGHT": [
+[
+3.47,
+"DYNAMIC"
+]
+]
+}
+},
+{
+"t": 8.1,
+"part": "gate",
+"caption": "3) the drone moves behind the gate: STRUCTURE first, the drone beyond it",
+"true_distance": 4.133,
+"echoes": {
+"FRONT": [
+[
+3.62,
+"DYNAMIC"
+],
+[
+4.62,
+"STRUCTURE"
+]
+],
+"RIGHT": [
+[
+3.57,
+"DYNAMIC"
+]
+]
+}
+},
+{
+"t": 8.2,
+"part": "gate",
+"caption": "3) the drone moves behind the gate: STRUCTURE first, the drone beyond it",
+"true_distance": 4.245,
+"echoes": {
+"FRONT": [
+[
+3.72,
+"DYNAMIC"
+],
+[
+4.62,
+"STRUCTURE"
+]
+],
+"RIGHT": [
+[
+3.72,
+"DYNAMIC"
+]
+]
+}
+},
+{
+"t": 8.3,
+"part": "gate",
+"caption": "3) the drone moves behind the gate: STRUCTURE first, the drone beyond it",
+"true_distance": 4.36,
+"echoes": {
+"FRONT": [
+[
+3.82,
+"STRUCTURE"
+]
+],
+"RIGHT": [
+[
+3.82,
+"DYNAMIC"
+]
+]
+}
+},
+{
+"t": 8.4,
+"part": "gate",
+"caption": "3) the drone moves behind the gate: STRUCTURE first, the drone beyond it",
+"true_distance": 4.478,
+"echoes": {
+"FRONT": [
+[
+3.97,
+"STRUCTURE"
+],
+[
+4.62,
+"STRUCTURE"
+]
+],
+"RIGHT": [
+[
+3.92,
+"DYNAMIC"
+]
+]
+}
+},
+{
+"t": 8.5,
+"part": "gate",
+"caption": "3) the drone moves behind the gate: STRUCTURE first, the drone beyond it",
+"true_distance": 4.598,
+"echoes": {
+"FRONT": [
+[
+4.07,
+"STRUCTURE"
+],
+[
+4.57,
+"STRUCTURE"
+]
+],
+"RIGHT": [
+[
+4.07,
+"DYNAMIC"
+]
+]
+}
+},
+{
+"t": 8.6,
+"part": "gate",
+"caption": "3) the drone moves behind the gate: STRUCTURE first, the drone beyond it",
+"true_distance": 4.721,
+"echoes": {
+"FRONT": [
+[
+4.17,
+"STRUCTURE"
+]
+],
+"RIGHT": [
+[
+4.17,
+"DYNAMIC"
+]
+]
+}
+},
+{
+"t": 8.7,
+"part": "gate",
+"caption": "3) the drone moves behind the gate: STRUCTURE first, the drone beyond it",
+"true_distance": 4.846,
+"echoes": {
+"FRONT": [
+[
+4.17,
+"STRUCTURE"
+]
+],
+"RIGHT": [
+[
+4.32,
+"DYNAMIC"
+]
+]
+}
+},
+{
+"t": 8.8,
+"part": "gate",
+"caption": "3) the drone moves behind the gate: STRUCTURE first, the drone beyond it",
+"true_distance": 4.973,
+"echoes": {
+"FRONT": [
+[
+4.22,
+"STRUCTURE"
+]
+],
+"RIGHT": [
+[
+4.47,
+"DYNAMIC"
+]
+]
+}
+},
+{
+"t": 8.9,
+"part": "gate",
+"caption": "3) the drone moves behind the gate: STRUCTURE first, the drone beyond it",
+"true_distance": 5.102,
+"echoes": {
+"FRONT": [
+[
+4.22,
+"STRUCTURE"
+]
+],
+"RIGHT": [
+[
+4.57,
+"DYNAMIC"
+]
+]
+}
+},
+{
+"t": 9.0,
+"part": "gate",
+"caption": "3) the drone moves behind the gate: STRUCTURE first, the drone beyond it",
+"true_distance": 5.233,
+"echoes": {
+"FRONT": [
+[
+4.17,
+"UNCONFIRMED"
+]
+],
+"RIGHT": [
+[
+4.72,
+"DYNAMIC"
+]
+]
+}
+},
+{
+"t": 9.1,
+"part": "gate",
+"caption": "3) the drone moves behind the gate: STRUCTURE first, the drone beyond it",
+"true_distance": 5.366,
+"echoes": {
+"FRONT": [
+[
+4.17,
+"STRUCTURE"
+],
+[
+4.82,
+"UNCONFIRMED"
+]
+],
+"RIGHT": [
+[
+4.87,
+"DYNAMIC"
+]
+]
+}
+},
+{
+"t": 9.2,
+"part": "gate",
+"caption": "3) the drone moves behind the gate: STRUCTURE first, the drone beyond it",
+"true_distance": 5.499,
+"echoes": {
+"FRONT": [
+[
+4.17,
+"STRUCTURE"
+],
+[
+4.97,
+"DYNAMIC"
+]
+],
+"RIGHT": [
+[
+5.02,
+"DYNAMIC"
+]
+]
+}
+},
+{
+"t": 9.3,
+"part": "gate",
+"caption": "3) the drone moves behind the gate: STRUCTURE first, the drone beyond it",
+"true_distance": 5.635,
+"echoes": {
+"FRONT": [
+[
+4.17,
+"STRUCTURE"
+],
+[
+4.72,
+"STRUCTURE"
+],
+[
+5.12,
+"DYNAMIC"
+]
+],
+"RIGHT": [
+[
+5.17,
+"DYNAMIC"
+]
+]
+}
+},
+{
+"t": 9.4,
+"part": "gate",
+"caption": "3) the drone moves behind the gate: STRUCTURE first, the drone beyond it",
+"true_distance": 5.771,
+"echoes": {
+"FRONT": [
+[
+4.17,
+"STRUCTURE"
+],
+[
+5.22,
+"DYNAMIC"
+]
+],
+"RIGHT": [
+[
+5.37,
+"DYNAMIC"
+]
+]
+}
+},
+{
+"t": 9.5,
+"part": "gate",
+"caption": "3) the drone moves behind the gate: STRUCTURE first, the drone beyond it",
+"true_distance": 5.909,
+"echoes": {
+"FRONT": [
+[
+4.17,
+"STRUCTURE"
+],
+[
+5.37,
+"DYNAMIC"
+]
+],
+"RIGHT": [
+[
+5.57,
+"DYNAMIC"
+]
+]
+}
+},
+{
+"t": 9.6,
+"part": "gate",
+"caption": "3) the drone moves behind the gate: STRUCTURE first, the drone beyond it",
+"true_distance": 6.048,
+"echoes": {
+"FRONT": [
+[
+4.17,
+"STRUCTURE"
+],
+[
+4.97,
+"STRUCTURE"
+],
+[
+5.52,
+"DYNAMIC"
+]
+],
+"RIGHT": [
+[
+5.82,
+"DYNAMIC"
+]
+]
+}
+},
+{
+"t": 9.7,
+"part": "gate",
+"caption": "3) the drone moves behind the gate: STRUCTURE first, the drone beyond it",
+"true_distance": 6.188,
+"echoes": {
+"FRONT": [
+[
+4.17,
+"STRUCTURE"
+],
+[
+4.72,
+"STRUCTURE"
+],
+[
+5.67,
+"DYNAMIC"
+]
+]
+}
+},
+{
+"t": 9.8,
+"part": "gate",
+"caption": "3) the drone moves behind the gate: STRUCTURE first, the drone beyond it",
+"true_distance": 6.329,
+"echoes": {
+"FRONT": [
+[
+4.17,
+"STRUCTURE"
+],
+[
+5.77,
+"DYNAMIC"
+]
+]
+}
+},
+{
+"t": 9.9,
+"part": "gate",
+"caption": "3) the drone moves behind the gate: STRUCTURE first, the drone beyond it",
+"true_distance": 6.471,
+"echoes": {
+"FRONT": [
+[
+4.17,
+"STRUCTURE"
+],
+[
+5.92,
+"DYNAMIC"
+]
+]
+}
+},
+{
+"t": 10.0,
+"part": "gate",
+"caption": "3) the drone moves behind the gate: STRUCTURE first, the drone beyond it",
+"true_distance": 6.614,
+"echoes": {
+"FRONT": [
+[
+4.17,
+"STRUCTURE"
+],
+[
+6.07,
+"DYNAMIC"
+]
+]
+}
+},
+{
+"t": 10.1,
+"part": "gate",
+"caption": "3) the drone moves behind the gate: STRUCTURE first, the drone beyond it",
+"true_distance": 6.757,
+"echoes": {
+"FRONT": [
+[
+4.17,
+"STRUCTURE"
+],
+[
+6.22,
+"DYNAMIC"
+]
+]
+}
+},
+{
+"t": 10.2,
+"part": "gate",
+"caption": "3) the drone moves behind the gate: STRUCTURE first, the drone beyond it",
+"true_distance": 6.901,
+"echoes": {
+"FRONT": [
+[
+4.17,
+"STRUCTURE"
+],
+[
+6.32,
+"DYNAMIC"
+]
+]
+}
+},
+{
+"t": 10.3,
+"part": "gate",
+"caption": "3) the drone moves behind the gate: STRUCTURE first, the drone beyond it",
+"true_distance": 7.046,
+"echoes": {
+"FRONT": [
+[
+4.17,
+"STRUCTURE"
+],
+[
+6.52,
+"DYNAMIC"
+]
+]
+}
+},
+{
+"t": 10.4,
+"part": "gate",
+"caption": "3) the drone moves behind the gate: STRUCTURE first, the drone beyond it",
+"true_distance": 7.192,
+"echoes": {
+"FRONT": [
+[
+4.17,
+"STRUCTURE"
+],
+[
+4.77,
+"STRUCTURE"
+],
+[
+6.67,
+"DYNAMIC"
+]
+]
+}
+},
+{
+"t": 10.5,
+"part": "gate",
+"caption": "3) the drone moves behind the gate: STRUCTURE first, the drone beyond it",
+"true_distance": 7.338,
+"echoes": {
+"FRONT": [
+[
+4.17,
+"STRUCTURE"
+],
+[
+6.77,
+"DYNAMIC"
+]
+]
+}
+},
+{
+"t": 10.6,
+"part": "gate",
+"caption": "3) the drone moves behind the gate: STRUCTURE first, the drone beyond it",
+"true_distance": 7.485,
+"echoes": {
+"FRONT": [
+[
+4.17,
+"STRUCTURE"
+],
+[
+6.92,
+"DYNAMIC"
+]
+]
+}
+},
+{
+"t": 10.7,
+"part": "gate",
+"caption": "3) the drone moves behind the gate: STRUCTURE first, the drone beyond it",
+"true_distance": 7.632,
+"echoes": {
+"FRONT": [
+[
+4.17,
+"STRUCTURE"
+],
+[
+4.67,
+"STRUCTURE"
+],
+[
+7.07,
+"DYNAMIC"
+]
+]
+}
+},
+{
+"t": 10.8,
+"part": "gate",
+"caption": "3) the drone moves behind the gate: STRUCTURE first, the drone beyond it",
+"true_distance": 7.78,
+"echoes": {
+"FRONT": [
+[
+4.17,
+"STRUCTURE"
+],
+[
+4.82,
+"STRUCTURE"
+],
+[
+7.22,
+"DYNAMIC"
+]
+]
+}
+},
+{
+"t": 10.9,
+"part": "gate",
+"caption": "3) the drone moves behind the gate: STRUCTURE first, the drone beyond it",
+"true_distance": 7.929,
+"echoes": {
+"FRONT": [
+[
+4.22,
+"STRUCTURE"
+],
+[
+7.37,
+"DYNAMIC"
+]
+]
+}
+},
+{
+"t": 11.0,
+"part": "gate",
+"caption": "3) the drone moves behind the gate: STRUCTURE first, the drone beyond it",
+"true_distance": 8.078,
+"echoes": {
+"FRONT": [
+[
+4.17,
+"STRUCTURE"
+],
+[
+4.67,
+"STRUCTURE"
+],
+[
+7.52,
+"DYNAMIC"
+],
+[
+8.12,
+"UNCONFIRMED"
+]
+]
+}
+},
+{
+"t": 11.1,
+"part": "gate",
+"caption": "3) the drone moves behind the gate: STRUCTURE first, the drone beyond it",
+"true_distance": 8.017,
+"echoes": {
+"FRONT": [
+[
+4.17,
+"STRUCTURE"
+],
+[
+7.47,
+"DYNAMIC"
+],
+[
+8.07,
+"DYNAMIC"
+]
+]
+}
+},
+{
+"t": 11.2,
+"part": "gate",
+"caption": "3) the drone moves behind the gate: STRUCTURE first, the drone beyond it",
+"true_distance": 7.96,
+"echoes": {
+"FRONT": [
+[
+4.17,
+"STRUCTURE"
+],
+[
+7.42,
+"DYNAMIC"
+]
+]
+}
+},
+{
+"t": 11.3,
+"part": "gate",
+"caption": "3) the drone moves behind the gate: STRUCTURE first, the drone beyond it",
+"true_distance": 7.906,
+"echoes": {
+"FRONT": [
+[
+4.22,
+"STRUCTURE"
+],
+[
+4.62,
+"STRUCTURE"
+],
+[
+7.32,
+"DYNAMIC"
+]
+]
+}
+},
+{
+"t": 11.4,
+"part": "gate",
+"caption": "3) the drone moves behind the gate: STRUCTURE first, the drone beyond it",
+"true_distance": 7.855,
+"echoes": {
+"FRONT": [
+[
+4.17,
+"STRUCTURE"
+],
+[
+7.27,
+"DYNAMIC"
+]
+]
+}
+},
+{
+"t": 11.5,
+"part": "gate",
+"caption": "3) the drone moves behind the gate: STRUCTURE first, the drone beyond it",
+"true_distance": 7.807,
+"echoes": {
+"FRONT": [
+[
+4.22,
+"STRUCTURE"
+],
+[
+4.62,
+"STRUCTURE"
+],
+[
+7.22,
+"DYNAMIC"
+]
+]
+}
+},
+{
+"t": 11.6,
+"part": "gate",
+"caption": "3) the drone moves behind the gate: STRUCTURE first, the drone beyond it",
+"true_distance": 7.762,
+"echoes": {
+"FRONT": [
+[
+4.17,
+"STRUCTURE"
+],
+[
+4.62,
+"STRUCTURE"
+],
+[
+7.22,
+"DYNAMIC"
+]
+]
+}
+},
+{
+"t": 11.7,
+"part": "gate",
+"caption": "3) the drone moves behind the gate: STRUCTURE first, the drone beyond it",
+"true_distance": 7.721,
+"echoes": {
+"FRONT": [
+[
+4.17,
+"STRUCTURE"
+],
+[
+4.62,
+"STRUCTURE"
+],
+[
+7.17,
+"DYNAMIC"
+]
+]
+}
+},
+{
+"t": 11.8,
+"part": "gate",
+"caption": "3) the drone moves behind the gate: STRUCTURE first, the drone beyond it",
+"true_distance": 7.683,
+"echoes": {
+"FRONT": [
+[
+4.17,
+"STRUCTURE"
+],
+[
+7.12,
+"DYNAMIC"
+]
+]
+}
+},
+{
+"t": 11.9,
+"part": "gate",
+"caption": "3) the drone moves behind the gate: STRUCTURE first, the drone beyond it",
+"true_distance": 7.649,
+"echoes": {
+"FRONT": [
+[
+4.17,
+"STRUCTURE"
+],
+[
+7.17,
+"DYNAMIC"
+]
+]
+}
+},
+{
+"t": 12.0,
+"part": "gate",
+"caption": "3) the drone moves behind the gate: STRUCTURE first, the drone beyond it",
+"true_distance": 7.618,
+"echoes": {
+"FRONT": [
+[
+4.17,
+"STRUCTURE"
+],
+[
+4.62,
+"STRUCTURE"
+],
+[
+7.17,
+"DYNAMIC"
+]
+]
+}
+},
+{
+"t": 12.1,
+"part": "gate",
+"caption": "3) the drone moves behind the gate: STRUCTURE first, the drone beyond it",
+"true_distance": 7.59,
+"echoes": {
+"FRONT": [
+[
+4.17,
+"STRUCTURE"
+]
+]
+}
+},
+{
+"t": 12.2,
+"part": "gate",
+"caption": "3) the drone moves behind the gate: STRUCTURE first, the drone beyond it",
+"true_distance": 7.566,
+"echoes": {
+"FRONT": [
+[
+4.17,
+"STRUCTURE"
+]
+]
+}
+},
+{
+"t": 12.3,
+"part": "gate",
+"caption": "3) the drone moves behind the gate: STRUCTURE first, the drone beyond it",
+"true_distance": 7.546,
+"echoes": {
+"FRONT": [
+[
+4.17,
+"STRUCTURE"
+]
+]
+}
+},
+{
+"t": 12.4,
+"part": "gate",
+"caption": "3) the drone moves behind the gate: STRUCTURE first, the drone beyond it",
+"true_distance": 7.53,
+"echoes": {
+"FRONT": [
+[
+4.17,
+"STRUCTURE"
+],
+[
+4.72,
+"STRUCTURE"
+]
+]
+}
+},
+{
+"t": 12.5,
+"part": "gate",
+"caption": "3) the drone moves behind the gate: STRUCTURE first, the drone beyond it",
+"true_distance": 7.517,
+"echoes": {
+"FRONT": [
+[
+4.17,
+"STRUCTURE"
+]
+]
+}
+},
+{
+"t": 12.6,
+"part": "gate",
+"caption": "3) the drone moves behind the gate: STRUCTURE first, the drone beyond it",
+"true_distance": 7.507,
+"echoes": {
+"FRONT": [
+[
+4.17,
+"STRUCTURE"
+],
+[
+7.07,
+"UNCONFIRMED"
+]
+]
+}
+},
+{
+"t": 12.7,
+"part": "gate",
+"caption": "3) the drone moves behind the gate: STRUCTURE first, the drone beyond it",
+"true_distance": 7.502,
+"echoes": {
+"FRONT": [
+[
+4.17,
+"STRUCTURE"
+],
+[
+7.02,
+"DYNAMIC"
+]
+]
+}
+},
+{
+"t": 12.8,
+"part": "gate",
+"caption": "3) the drone moves behind the gate: STRUCTURE first, the drone beyond it",
+"true_distance": 7.5,
+"echoes": {
+"FRONT": [
+[
+4.17,
+"STRUCTURE"
+],
+[
+7.02,
+"DYNAMIC"
+]
+]
+}
+},
+{
+"t": 12.9,
+"part": "gate",
+"caption": "4) the drone comes abeam on the left: LEFT sees a DYNAMIC echo, FRONT only the gate",
+"true_distance": 8.276,
+"echoes": {
+"FRONT": [
+[
+4.17,
+"STRUCTURE"
+],
+[
+7.72,
+"UNCONFIRMED"
+]
+]
+}
+},
+{
+"t": 13.0,
+"part": "gate",
+"caption": "4) the drone comes abeam on the left: LEFT sees a DYNAMIC echo, FRONT only the gate",
+"true_distance": 8.124,
+"echoes": {
+"FRONT": [
+[
+4.17,
+"STRUCTURE"
+],
+[
+4.67,
+"STRUCTURE"
+],
+[
+7.57,
+"DYNAMIC"
+]
+]
+}
+},
+{
+"t": 13.1,
+"part": "gate",
+"caption": "4) the drone comes abeam on the left: LEFT sees a DYNAMIC echo, FRONT only the gate",
+"true_distance": 7.972,
+"echoes": {
+"FRONT": [
+[
+4.17,
+"STRUCTURE"
+],
+[
+7.42,
+"DYNAMIC"
+]
+]
+}
+},
+{
+"t": 13.2,
+"part": "gate",
+"caption": "4) the drone comes abeam on the left: LEFT sees a DYNAMIC echo, FRONT only the gate",
+"true_distance": 7.821,
+"echoes": {
+"FRONT": [
+[
+4.22,
+"STRUCTURE"
+],
+[
+7.27,
+"DYNAMIC"
+]
+]
+}
+},
+{
+"t": 13.3,
+"part": "gate",
+"caption": "4) the drone comes abeam on the left: LEFT sees a DYNAMIC echo, FRONT only the gate",
+"true_distance": 7.67,
+"echoes": {
+"FRONT": [
+[
+4.17,
+"STRUCTURE"
+],
+[
+7.12,
+"DYNAMIC"
+]
+]
+}
+},
+{
+"t": 13.4,
+"part": "gate",
+"caption": "4) the drone comes abeam on the left: LEFT sees a DYNAMIC echo, FRONT only the gate",
+"true_distance": 7.52,
+"echoes": {
+"FRONT": [
+[
+4.17,
+"STRUCTURE"
+],
+[
+4.72,
+"STRUCTURE"
+],
+[
+6.97,
+"DYNAMIC"
+]
+]
+}
+},
+{
+"t": 13.5,
+"part": "gate",
+"caption": "4) the drone comes abeam on the left: LEFT sees a DYNAMIC echo, FRONT only the gate",
+"true_distance": 7.37,
+"echoes": {
+"FRONT": [
+[
+4.17,
+"STRUCTURE"
+],
+[
+6.82,
+"DYNAMIC"
+]
+]
+}
+},
+{
+"t": 13.6,
+"part": "gate",
+"caption": "4) the drone comes abeam on the left: LEFT sees a DYNAMIC echo, FRONT only the gate",
+"true_distance": 7.221,
+"echoes": {
+"FRONT": [
+[
+4.17,
+"STRUCTURE"
+],
+[
+4.77,
+"STRUCTURE"
+],
+[
+6.67,
+"DYNAMIC"
+]
+]
+}
+},
+{
+"t": 13.7,
+"part": "gate",
+"caption": "4) the drone comes abeam on the left: LEFT sees a DYNAMIC echo, FRONT only the gate",
+"true_distance": 7.072,
+"echoes": {
+"FRONT": [
+[
+4.17,
+"STRUCTURE"
+],
+[
+6.52,
+"DYNAMIC"
+]
+]
+}
+},
+{
+"t": 13.8,
+"part": "gate",
+"caption": "4) the drone comes abeam on the left: LEFT sees a DYNAMIC echo, FRONT only the gate",
+"true_distance": 6.924,
+"echoes": {
+"FRONT": [
+[
+4.17,
+"STRUCTURE"
+],
+[
+6.37,
+"DYNAMIC"
+]
+],
+"LEFT": [
+[
+6.72,
+"UNCONFIRMED"
+]
+]
+}
+},
+{
+"t": 13.9,
+"part": "gate",
+"caption": "4) the drone comes abeam on the left: LEFT sees a DYNAMIC echo, FRONT only the gate",
+"true_distance": 6.777,
+"echoes": {
+"FRONT": [
+[
+4.17,
+"STRUCTURE"
+],
+[
+4.77,
+"STRUCTURE"
+],
+[
+6.22,
+"DYNAMIC"
+]
+],
+"LEFT": [
+[
+6.42,
+"DYNAMIC"
+]
+]
+}
+},
+{
+"t": 14.0,
+"part": "gate",
+"caption": "4) the drone comes abeam on the left: LEFT sees a DYNAMIC echo, FRONT only the gate",
+"true_distance": 6.631,
+"echoes": {
+"FRONT": [
+[
+4.17,
+"STRUCTURE"
+],
+[
+6.07,
+"DYNAMIC"
+]
+],
+"LEFT": [
+[
+6.27,
+"DYNAMIC"
+]
+]
+}
+},
+{
+"t": 14.1,
+"part": "gate",
+"caption": "4) the drone comes abeam on the left: LEFT sees a DYNAMIC echo, FRONT only the gate",
+"true_distance": 6.485,
+"echoes": {
+"FRONT": [
+[
+4.17,
+"STRUCTURE"
+],
+[
+5.92,
+"DYNAMIC"
+]
+],
+"LEFT": [
+[
+6.12,
+"DYNAMIC"
+]
+]
+}
+},
+{
+"t": 14.2,
+"part": "gate",
+"caption": "4) the drone comes abeam on the left: LEFT sees a DYNAMIC echo, FRONT only the gate",
+"true_distance": 6.34,
+"echoes": {
+"FRONT": [
+[
+4.17,
+"STRUCTURE"
+],
+[
+5.82,
+"DYNAMIC"
+]
+],
+"LEFT": [
+[
+5.92,
+"DYNAMIC"
+]
+]
+}
+},
+{
+"t": 14.3,
+"part": "gate",
+"caption": "4) the drone comes abeam on the left: LEFT sees a DYNAMIC echo, FRONT only the gate",
+"true_distance": 6.196,
+"echoes": {
+"FRONT": [
+[
+4.17,
+"STRUCTURE"
+],
+[
+5.67,
+"DYNAMIC"
+],
+[
+6.32,
+"DYNAMIC"
+]
+],
+"LEFT": [
+[
+5.72,
+"DYNAMIC"
+]
+]
+}
+},
+{
+"t": 14.4,
+"part": "gate",
+"caption": "4) the drone comes abeam on the left: LEFT sees a DYNAMIC echo, FRONT only the gate",
+"true_distance": 6.053,
+"echoes": {
+"FRONT": [
+[
+4.17,
+"STRUCTURE"
+],
+[
+5.52,
+"DYNAMIC"
+]
+],
+"LEFT": [
+[
+5.57,
+"DYNAMIC"
+]
+]
+}
+},
+{
+"t": 14.5,
+"part": "gate",
+"caption": "4) the drone comes abeam on the left: LEFT sees a DYNAMIC echo, FRONT only the gate",
+"true_distance": 5.912,
+"echoes": {
+"FRONT": [
+[
+4.17,
+"STRUCTURE"
+],
+[
+4.67,
+"STRUCTURE"
+],
+[
+5.42,
+"DYNAMIC"
+]
+],
+"LEFT": [
+[
+5.42,
+"DYNAMIC"
+]
+]
+}
+},
+{
+"t": 14.6,
+"part": "gate",
+"caption": "4) the drone comes abeam on the left: LEFT sees a DYNAMIC echo, FRONT only the gate",
+"true_distance": 5.771,
+"echoes": {
+"FRONT": [
+[
+4.17,
+"STRUCTURE"
+],
+[
+4.67,
+"STRUCTURE"
+],
+[
+5.22,
+"DYNAMIC"
+]
+],
+"LEFT": [
+[
+5.27,
+"DYNAMIC"
+]
+]
+}
+},
+{
+"t": 14.7,
+"part": "gate",
+"caption": "4) the drone comes abeam on the left: LEFT sees a DYNAMIC echo, FRONT only the gate",
+"true_distance": 5.631,
+"echoes": {
+"FRONT": [
+[
+4.22,
+"STRUCTURE"
+],
+[
+5.12,
+"DYNAMIC"
+],
+[
+5.82,
+"DYNAMIC"
+]
+],
+"LEFT": [
+[
+5.12,
+"DYNAMIC"
+]
+]
+}
+},
+{
+"t": 14.8,
+"part": "gate",
+"caption": "4) the drone comes abeam on the left: LEFT sees a DYNAMIC echo, FRONT only the gate",
+"true_distance": 5.493,
+"echoes": {
+"FRONT": [
+[
+4.17,
+"STRUCTURE"
+],
+[
+4.67,
+"STRUCTURE"
+],
+[
+4.97,
+"DYNAMIC"
+]
+],
+"LEFT": [
+[
+4.97,
+"DYNAMIC"
+]
+]
+}
+},
+{
+"t": 14.9,
+"part": "gate",
+"caption": "4) the drone comes abeam on the left: LEFT sees a DYNAMIC echo, FRONT only the gate",
+"true_distance": 5.356,
+"echoes": {
+"FRONT": [
+[
+4.17,
+"STRUCTURE"
+],
+[
+4.87,
+"DYNAMIC"
+]
+],
+"LEFT": [
+[
+4.87,
+"DYNAMIC"
+]
+]
+}
+},
+{
+"t": 15.0,
+"part": "gate",
+"caption": "4) the drone comes abeam on the left: LEFT sees a DYNAMIC echo, FRONT only the gate",
+"true_distance": 5.221,
+"echoes": {
+"FRONT": [
+[
+4.17,
+"STRUCTURE"
+]
+],
+"LEFT": [
+[
+4.72,
+"DYNAMIC"
+]
+]
+}
+},
+{
+"t": 15.1,
+"part": "gate",
+"caption": "4) the drone comes abeam on the left: LEFT sees a DYNAMIC echo, FRONT only the gate",
+"true_distance": 5.087,
+"echoes": {
+"FRONT": [
+[
+4.22,
+"STRUCTURE"
+]
+],
+"LEFT": [
+[
+4.57,
+"DYNAMIC"
+]
+]
+}
+},
+{
+"t": 15.2,
+"part": "gate",
+"caption": "4) the drone comes abeam on the left: LEFT sees a DYNAMIC echo, FRONT only the gate",
+"true_distance": 4.955,
+"echoes": {
+"FRONT": [
+[
+4.17,
+"STRUCTURE"
+]
+],
+"LEFT": [
+[
+4.42,
+"DYNAMIC"
+]
+]
+}
+},
+{
+"t": 15.3,
+"part": "gate",
+"caption": "4) the drone comes abeam on the left: LEFT sees a DYNAMIC echo, FRONT only the gate",
+"true_distance": 4.825,
+"echoes": {
+"FRONT": [
+[
+4.17,
+"STRUCTURE"
+]
+],
+"LEFT": [
+[
+4.32,
+"DYNAMIC"
+]
+]
+}
+},
+{
+"t": 15.4,
+"part": "gate",
+"caption": "4) the drone comes abeam on the left: LEFT sees a DYNAMIC echo, FRONT only the gate",
+"true_distance": 4.697,
+"echoes": {
+"FRONT": [
+[
+4.17,
+"STRUCTURE"
+]
+],
+"LEFT": [
+[
+4.17,
+"DYNAMIC"
+]
+]
+}
+},
+{
+"t": 15.5,
+"part": "gate",
+"caption": "4) the drone comes abeam on the left: LEFT sees a DYNAMIC echo, FRONT only the gate",
+"true_distance": 4.572,
+"echoes": {
+"FRONT": [
+[
+4.07,
+"STRUCTURE"
+],
+[
+4.62,
+"STRUCTURE"
+]
+],
+"LEFT": [
+[
+4.02,
+"DYNAMIC"
+]
+]
+}
+},
+{
+"t": 15.6,
+"part": "gate",
+"caption": "4) the drone comes abeam on the left: LEFT sees a DYNAMIC echo, FRONT only the gate",
+"true_distance": 4.449,
+"echoes": {
+"FRONT": [
+[
+3.97,
+"STRUCTURE"
+],
+[
+4.67,
+"STRUCTURE"
+]
+],
+"LEFT": [
+[
+3.92,
+"DYNAMIC"
+]
+]
+}
+},
+{
+"t": 15.7,
+"part": "gate",
+"caption": "4) the drone comes abeam on the left: LEFT sees a DYNAMIC echo, FRONT only the gate",
+"true_distance": 4.328,
+"echoes": {
+"FRONT": [
+[
+3.82,
+"STRUCTURE"
+]
+],
+"LEFT": [
+[
+3.77,
+"DYNAMIC"
+]
+]
+}
+},
+{
+"t": 15.8,
+"part": "gate",
+"caption": "4) the drone comes abeam on the left: LEFT sees a DYNAMIC echo, FRONT only the gate",
+"true_distance": 4.21,
+"echoes": {
+"FRONT": [
+[
+3.72,
+"UNCONFIRMED"
+]
+],
+"LEFT": [
+[
+3.67,
+"DYNAMIC"
+]
+]
+}
+},
+{
+"t": 15.9,
+"part": "gate",
+"caption": "4) the drone comes abeam on the left: LEFT sees a DYNAMIC echo, FRONT only the gate",
+"true_distance": 4.096,
+"echoes": {
+"FRONT": [
+[
+3.62,
+"DYNAMIC"
+],
+[
+4.67,
+"STRUCTURE"
+]
+],
+"LEFT": [
+[
+3.52,
+"DYNAMIC"
+]
+]
+}
+},
+{
+"t": 16.0,
+"part": "gate",
+"caption": "4) the drone comes abeam on the left: LEFT sees a DYNAMIC echo, FRONT only the gate",
+"true_distance": 3.985,
+"echoes": {
+"FRONT": [
+[
+3.52,
+"DYNAMIC"
+],
+[
+4.17,
+"STRUCTURE"
+]
+],
+"LEFT": [
+[
+3.42,
+"DYNAMIC"
+]
+]
+}
+},
+{
+"t": 16.1,
+"part": "gate",
+"caption": "4) the drone comes abeam on the left: LEFT sees a DYNAMIC echo, FRONT only the gate",
+"true_distance": 3.877,
+"echoes": {
+"FRONT": [
+[
+3.42,
+"DYNAMIC"
+],
+[
+4.17,
+"STRUCTURE"
+]
+],
+"LEFT": [
+[
+3.32,
+"DYNAMIC"
+]
+]
+}
+},
+{
+"t": 16.2,
+"part": "gate",
+"caption": "4) the drone comes abeam on the left: LEFT sees a DYNAMIC echo, FRONT only the gate",
+"true_distance": 3.773,
+"echoes": {
+"FRONT": [
+[
+3.37,
+"DYNAMIC"
+],
+[
+4.17,
+"STRUCTURE"
+]
+],
+"LEFT": [
+[
+3.22,
+"DYNAMIC"
+]
+]
+}
+},
+{
+"t": 16.3,
+"part": "gate",
+"caption": "4) the drone comes abeam on the left: LEFT sees a DYNAMIC echo, FRONT only the gate",
+"true_distance": 3.674,
+"echoes": {
+"FRONT": [
+[
+3.32,
+"DYNAMIC"
+],
+[
+4.17,
+"STRUCTURE"
+]
+],
+"LEFT": [
+[
+3.12,
+"DYNAMIC"
+]
+]
+}
+},
+{
+"t": 16.4,
+"part": "gate",
+"caption": "4) the drone comes abeam on the left: LEFT sees a DYNAMIC echo, FRONT only the gate",
+"true_distance": 3.58,
+"echoes": {
+"FRONT": [
+[
+3.37,
+"DYNAMIC"
+],
+[
+4.17,
+"STRUCTURE"
+]
+],
+"LEFT": [
+[
+3.02,
+"DYNAMIC"
+]
+]
+}
+},
+{
+"t": 16.5,
+"part": "gate",
+"caption": "4) the drone comes abeam on the left: LEFT sees a DYNAMIC echo, FRONT only the gate",
+"true_distance": 3.49,
+"echoes": {
+"FRONT": [
+[
+3.27,
+"DYNAMIC"
+],
+[
+4.17,
+"STRUCTURE"
+],
+[
+4.62,
+"STRUCTURE"
+]
+],
+"LEFT": [
+[
+2.92,
+"DYNAMIC"
+]
+]
+}
+},
+{
+"t": 16.6,
+"part": "gate",
+"caption": "4) the drone comes abeam on the left: LEFT sees a DYNAMIC echo, FRONT only the gate",
+"true_distance": 3.407,
+"echoes": {
+"FRONT": [
+[
+4.17,
+"STRUCTURE"
+],
+[
+4.62,
+"STRUCTURE"
+]
+],
+"LEFT": [
+[
+2.82,
+"DYNAMIC"
+]
+]
+}
+},
+{
+"t": 16.7,
+"part": "gate",
+"caption": "4) the drone comes abeam on the left: LEFT sees a DYNAMIC echo, FRONT only the gate",
+"true_distance": 3.328,
+"echoes": {
+"FRONT": [
+[
+4.17,
+"STRUCTURE"
+],
+[
+4.67,
+"STRUCTURE"
+]
+],
+"LEFT": [
+[
+2.72,
+"DYNAMIC"
+]
+]
+}
+},
+{
+"t": 16.8,
+"part": "gate",
+"caption": "4) the drone comes abeam on the left: LEFT sees a DYNAMIC echo, FRONT only the gate",
+"true_distance": 3.257,
+"echoes": {
+"FRONT": [
+[
+4.17,
+"STRUCTURE"
+]
+],
+"LEFT": [
+[
+2.67,
+"DYNAMIC"
+]
+]
+}
+},
+{
+"t": 16.9,
+"part": "gate",
+"caption": "4) the drone comes abeam on the left: LEFT sees a DYNAMIC echo, FRONT only the gate",
+"true_distance": 3.192,
+"echoes": {
+"FRONT": [
+[
+4.22,
+"STRUCTURE"
+],
+[
+4.67,
+"STRUCTURE"
+]
+],
+"LEFT": [
+[
+2.62,
+"DYNAMIC"
+]
+]
+}
+},
+{
+"t": 17.0,
+"part": "gate",
+"caption": "4) the drone comes abeam on the left: LEFT sees a DYNAMIC echo, FRONT only the gate",
+"true_distance": 3.134,
+"echoes": {
+"FRONT": [
+[
+4.17,
+"STRUCTURE"
+]
+],
+"LEFT": [
+[
+2.57,
+"DYNAMIC"
+]
+]
+}
+},
+{
+"t": 17.1,
+"part": "gate",
+"caption": "4) the drone comes abeam on the left: LEFT sees a DYNAMIC echo, FRONT only the gate",
+"true_distance": 3.084,
+"echoes": {
+"FRONT": [
+[
+4.17,
+"STRUCTURE"
+],
+[
+4.67,
+"STRUCTURE"
+]
+],
+"LEFT": [
+[
+2.52,
+"DYNAMIC"
+]
+]
+}
+},
+{
+"t": 17.2,
+"part": "gate",
+"caption": "4) the drone comes abeam on the left: LEFT sees a DYNAMIC echo, FRONT only the gate",
+"true_distance": 3.041,
+"echoes": {
+"FRONT": [
+[
+4.17,
+"STRUCTURE"
+]
+],
+"LEFT": [
+[
+2.47,
+"DYNAMIC"
+]
+]
+}
+},
+{
+"t": 17.3,
+"part": "gate",
+"caption": "4) the drone comes abeam on the left: LEFT sees a DYNAMIC echo, FRONT only the gate",
+"true_distance": 3.041,
+"echoes": {
+"FRONT": [
+[
+4.17,
+"STRUCTURE"
+],
+[
+4.72,
+"STRUCTURE"
+]
+],
+"LEFT": [
+[
+2.47,
+"DYNAMIC"
+]
+]
+}
+},
+{
+"t": 17.4,
+"part": "gate",
+"caption": "4) the drone comes abeam on the left: LEFT sees a DYNAMIC echo, FRONT only the gate",
+"true_distance": 3.041,
+"echoes": {
+"FRONT": [
+[
+4.17,
+"STRUCTURE"
+],
+[
+4.62,
+"STRUCTURE"
+]
+],
+"LEFT": [
+[
+2.47,
+"DYNAMIC"
+]
+]
+}
+},
+{
+"t": 17.5,
+"part": "gate",
+"caption": "4) the drone comes abeam on the left: LEFT sees a DYNAMIC echo, FRONT only the gate",
+"true_distance": 3.041,
+"echoes": {
+"FRONT": [
+[
+4.17,
+"STRUCTURE"
+]
+],
+"LEFT": [
+[
+2.47,
+"DYNAMIC"
+]
+]
+}
+},
+{
+"t": 17.6,
+"part": "gate",
+"caption": "4) the drone comes abeam on the left: LEFT sees a DYNAMIC echo, FRONT only the gate",
+"true_distance": 3.041,
+"echoes": {
+"FRONT": [
+[
+4.22,
+"STRUCTURE"
+],
+[
+4.82,
+"STRUCTURE"
+]
+],
+"LEFT": [
+[
+2.47,
+"DYNAMIC"
+]
+]
+}
+},
+{
+"t": 17.7,
+"part": "gate",
+"caption": "4) the drone comes abeam on the left: LEFT sees a DYNAMIC echo, FRONT only the gate",
+"true_distance": 3.041,
+"echoes": {
+"FRONT": [
+[
+4.17,
+"STRUCTURE"
+]
+],
+"LEFT": [
+[
+2.47,
+"DYNAMIC"
+]
+]
+}
+},
+{
+"t": 17.8,
+"part": "gate",
+"caption": "4) the drone comes abeam on the left: LEFT sees a DYNAMIC echo, FRONT only the gate",
+"true_distance": 3.041,
+"echoes": {
+"FRONT": [
+[
+4.17,
+"STRUCTURE"
+],
+[
+4.62,
+"STRUCTURE"
+]
+],
+"LEFT": [
+[
+2.47,
+"DYNAMIC"
+]
+]
+}
+},
+{
+"t": 17.9,
+"part": "gate",
+"caption": "4) the drone comes abeam on the left: LEFT sees a DYNAMIC echo, FRONT only the gate",
+"true_distance": 3.041,
+"echoes": {
+"FRONT": [
+[
+4.22,
+"STRUCTURE"
+]
+],
+"LEFT": [
+[
+2.47,
+"DYNAMIC"
+]
+]
+}
+},
+{
+"t": 18.0,
+"part": "gate",
+"caption": "4) the drone comes abeam on the left: LEFT sees a DYNAMIC echo, FRONT only the gate",
+"true_distance": 3.041,
+"echoes": {
+"FRONT": [
+[
+4.17,
+"STRUCTURE"
+],
+[
+4.67,
+"STRUCTURE"
+]
+],
+"LEFT": [
+[
+2.47,
+"DYNAMIC"
+]
+]
+}
+},
+{
+"t": 18.1,
+"part": "gate",
+"caption": "4) the drone comes abeam on the left: LEFT sees a DYNAMIC echo, FRONT only the gate",
+"true_distance": 3.041,
+"echoes": {
+"FRONT": [
+[
+4.17,
+"STRUCTURE"
+]
+],
+"LEFT": [
+[
+2.47,
+"DYNAMIC"
+]
+]
+}
+},
+{
+"t": 18.2,
+"part": "gate",
+"caption": "4) the drone comes abeam on the left: LEFT sees a DYNAMIC echo, FRONT only the gate",
+"true_distance": 3.041,
+"echoes": {
+"FRONT": [
+[
+4.17,
+"STRUCTURE"
+],
+[
+4.77,
+"STRUCTURE"
+]
+],
+"LEFT": [
+[
+2.47,
+"DYNAMIC"
+]
+]
+}
+},
+{
+"t": 18.3,
+"part": "gate",
+"caption": "4) the drone comes abeam on the left: LEFT sees a DYNAMIC echo, FRONT only the gate",
+"true_distance": 3.041,
+"echoes": {
+"FRONT": [
+[
+4.22,
+"STRUCTURE"
+]
+],
+"LEFT": [
+[
+2.47,
+"DYNAMIC"
+]
+]
+}
+},
+{
+"t": 18.4,
+"part": "gate",
+"caption": "4) the drone comes abeam on the left: LEFT sees a DYNAMIC echo, FRONT only the gate",
+"true_distance": 3.041,
+"echoes": {
+"FRONT": [
+[
+4.17,
+"STRUCTURE"
+]
+],
+"LEFT": [
+[
+2.47,
+"DYNAMIC"
+]
+]
+}
+},
+{
+"t": 18.5,
+"part": "gate",
+"caption": "4) the drone comes abeam on the left: LEFT sees a DYNAMIC echo, FRONT only the gate",
+"true_distance": 3.041,
+"echoes": {
+"FRONT": [
+[
+4.17,
+"STRUCTURE"
+]
+],
+"LEFT": [
+[
+2.47,
+"DYNAMIC"
+]
+]
+}
+},
+{
+"t": 18.6,
+"part": "gate",
+"caption": "4) the drone comes abeam on the left: LEFT sees a DYNAMIC echo, FRONT only the gate",
+"true_distance": 3.041,
+"echoes": {
+"FRONT": [
+[
+4.17,
+"STRUCTURE"
+]
+],
+"LEFT": [
+[
+2.47,
+"DYNAMIC"
+]
+]
+}
+},
+{
+"t": 18.7,
+"part": "gate",
+"caption": "4) the drone comes abeam on the left: LEFT sees a DYNAMIC echo, FRONT only the gate",
+"true_distance": 3.041,
+"echoes": {
+"FRONT": [
+[
+4.17,
+"STRUCTURE"
+]
+],
+"LEFT": [
+[
+2.47,
+"DYNAMIC"
+]
+]
+}
+},
+{
+"t": 18.8,
+"part": "seabed",
+"caption": "5) near the seabed: the lower part of every cone hits the bottom -> SEABED (DVL altitude + cone)",
+"true_distance": 7.0,
+"echoes": {
+"FRONT": [
+[
+2.57,
+"SEABED"
+],
+[
+10.72,
+"SEABED"
+]
+],
+"REAR": [
+[
+1.77,
+"SEABED"
+],
+[
+5.27,
+"SEABED"
+],
+[
+5.57,
+"SEABED"
+]
+],
+"LEFT": [
+[
+1.72,
+"SEABED"
+],
+[
+5.37,
+"SEABED"
+],
+[
+5.82,
+"SEABED"
+],
+[
+6.37,
+"SEABED"
+],
+[
+6.67,
+"SEABED"
+],
+[
+7.27,
+"SEABED"
+],
+[
+7.52,
+"SEABED"
+],
+[
+7.82,
+"SEABED"
+]
+],
+"RIGHT": [
+[
+2.57,
+"SEABED"
+],
+[
+5.97,
+"SEABED"
+],
+[
+6.37,
+"SEABED"
+],
+[
+7.22,
+"SEABED"
+],
+[
+7.47,
+"SEABED"
+],
+[
+8.22,
+"SEABED"
+],
+[
+8.47,
+"SEABED"
+],
+[
+8.88,
+"SEABED"
+],
+[
+9.47,
+"SEABED"
+],
+[
+11.47,
+"SEABED"
+],
+[
+11.92,
+"SEABED"
+]
+]
+}
+},
+{
+"t": 18.9,
+"part": "seabed",
+"caption": "5) near the seabed: the lower part of every cone hits the bottom -> SEABED (DVL altitude + cone)",
+"true_distance": 7.0,
+"echoes": {
+"FRONT": [
+[
+2.57,
+"SEABED"
+],
+[
+5.52,
+"SEABED"
+],
+[
+6.57,
+"SEABED"
+],
+[
+10.72,
+"SEABED"
+]
+],
+"REAR": [
+[
+1.77,
+"SEABED"
+],
+[
+5.27,
+"SEABED"
+],
+[
+5.62,
+"SEABED"
+],
+[
+5.92,
+"SEABED"
+],
+[
+7.12,
+"SEABED"
+]
+],
+"LEFT": [
+[
+1.72,
+"SEABED"
+],
+[
+5.82,
+"SEABED"
+],
+[
+6.52,
+"SEABED"
+],
+[
+6.82,
+"SEABED"
+],
+[
+7.02,
+"SEABED"
+],
+[
+7.47,
+"SEABED"
+],
+[
+7.72,
+"SEABED"
+],
+[
+7.92,
+"SEABED"
+]
+],
+"RIGHT": [
+[
+2.57,
+"SEABED"
+],
+[
+5.72,
+"SEABED"
+],
+[
+6.07,
+"SEABED"
+],
+[
+7.52,
+"SEABED"
+],
+[
+7.87,
+"SEABED"
+],
+[
+8.53,
+"SEABED"
+],
+[
+8.93,
+"SEABED"
+],
+[
+9.47,
+"SEABED"
+],
+[
+11.72,
+"SEABED"
+],
+[
+11.92,
+"SEABED"
+]
+]
+}
+},
+{
+"t": 19.0,
+"part": "seabed",
+"caption": "5) near the seabed: the lower part of every cone hits the bottom -> SEABED (DVL altitude + cone)",
+"true_distance": 7.0,
+"echoes": {
+"FRONT": [
+[
+2.62,
+"SEABED"
+],
+[
+6.62,
+"SEABED"
+],
+[
+10.72,
+"SEABED"
+]
+],
+"REAR": [
+[
+1.77,
+"SEABED"
+],
+[
+5.52,
+"SEABED"
+],
+[
+5.92,
+"SEABED"
+]
+],
+"LEFT": [
+[
+1.72,
+"SEABED"
+],
+[
+5.92,
+"SEABED"
+],
+[
+6.47,
+"SEABED"
+],
+[
+6.72,
+"SEABED"
+],
+[
+7.22,
+"SEABED"
+],
+[
+7.67,
+"SEABED"
+],
+[
+7.87,
+"SEABED"
+]
+],
+"RIGHT": [
+[
+2.57,
+"SEABED"
+],
+[
+6.22,
+"SEABED"
+],
+[
+7.62,
+"SEABED"
+],
+[
+8.62,
+"SEABED"
+],
+[
+8.82,
+"SEABED"
+],
+[
+9.47,
+"SEABED"
+],
+[
+11.32,
+"SEABED"
+],
+[
+11.72,
+"SEABED"
+]
+]
+}
+},
+{
+"t": 19.1,
+"part": "seabed",
+"caption": "5) near the seabed: the lower part of every cone hits the bottom -> SEABED (DVL altitude + cone)",
+"true_distance": 7.0,
+"echoes": {
+"FRONT": [
+[
+2.62,
+"SEABED"
+],
+[
+10.68,
+"SEABED"
+]
+],
+"REAR": [
+[
+1.77,
+"SEABED"
+],
+[
+5.47,
+"SEABED"
+],
+[
+6.02,
+"SEABED"
+]
+],
+"LEFT": [
+[
+1.72,
+"SEABED"
+],
+[
+6.12,
+"SEABED"
+],
+[
+6.42,
+"SEABED"
+],
+[
+6.87,
+"SEABED"
+],
+[
+7.22,
+"SEABED"
+],
+[
+7.52,
+"SEABED"
+]
+],
+"RIGHT": [
+[
+2.57,
+"SEABED"
+],
+[
+5.92,
+"SEABED"
+],
+[
+6.52,
+"SEABED"
+],
+[
+7.42,
+"SEABED"
+],
+[
+8.28,
+"SEABED"
+],
+[
+8.93,
+"SEABED"
+],
+[
+9.47,
+"SEABED"
+],
+[
+10.88,
+"SEABED"
+]
+]
+}
+},
+{
+"t": 19.2,
+"part": "seabed",
+"caption": "5) near the seabed: the lower part of every cone hits the bottom -> SEABED (DVL altitude + cone)",
+"true_distance": 7.0,
+"echoes": {
+"FRONT": [
+[
+2.62,
+"SEABED"
+],
+[
+5.37,
+"SEABED"
+],
+[
+6.57,
+"SEABED"
+],
+[
+10.68,
+"SEABED"
+]
+],
+"REAR": [
+[
+1.77,
+"SEABED"
+],
+[
+5.32,
+"SEABED"
+],
+[
+5.82,
+"SEABED"
+],
+[
+6.07,
+"SEABED"
+]
+],
+"LEFT": [
+[
+1.72,
+"SEABED"
+],
+[
+5.72,
+"SEABED"
+],
+[
+6.37,
+"SEABED"
+],
+[
+7.22,
+"SEABED"
+],
+[
+7.77,
+"SEABED"
+]
+],
+"RIGHT": [
+[
+2.62,
+"SEABED"
+],
+[
+7.47,
+"SEABED"
+],
+[
+8.38,
+"SEABED"
+],
+[
+8.62,
+"SEABED"
+],
+[
+8.93,
+"SEABED"
+],
+[
+9.53,
+"SEABED"
+]
+]
+}
+},
+{
+"t": 19.3,
+"part": "seabed",
+"caption": "5) near the seabed: the lower part of every cone hits the bottom -> SEABED (DVL altitude + cone)",
+"true_distance": 7.0,
+"echoes": {
+"FRONT": [
+[
+2.62,
+"SEABED"
+],
+[
+10.68,
+"SEABED"
+]
+],
+"REAR": [
+[
+1.77,
+"SEABED"
+],
+[
+5.57,
+"SEABED"
+],
+[
+6.27,
+"SEABED"
+]
+],
+"LEFT": [
+[
+1.72,
+"SEABED"
+],
+[
+6.22,
+"SEABED"
+],
+[
+6.77,
+"SEABED"
+],
+[
+7.17,
+"SEABED"
+],
+[
+7.72,
+"SEABED"
+]
+],
+"RIGHT": [
+[
+2.62,
+"SEABED"
+],
+[
+5.47,
+"SEABED"
+],
+[
+7.57,
+"SEABED"
+],
+[
+7.82,
+"SEABED"
+],
+[
+8.03,
+"SEABED"
+],
+[
+8.72,
+"SEABED"
+],
+[
+9.28,
+"SEABED"
+],
+[
+9.47,
+"SEABED"
+]
+]
+}
+},
+{
+"t": 19.4,
+"part": "seabed",
+"caption": "5) near the seabed: the lower part of every cone hits the bottom -> SEABED (DVL altitude + cone)",
+"true_distance": 7.0,
+"echoes": {
+"FRONT": [
+[
+2.67,
+"SEABED"
+],
+[
+6.57,
+"SEABED"
+],
+[
+10.82,
+"SEABED"
+]
+],
+"REAR": [
+[
+1.77,
+"SEABED"
+],
+[
+5.62,
+"SEABED"
+],
+[
+7.02,
+"SEABED"
+],
+[
+9.22,
+"SEABED"
+]
+],
+"LEFT": [
+[
+1.72,
+"SEABED"
+],
+[
+6.02,
+"SEABED"
+],
+[
+6.52,
+"SEABED"
+],
+[
+6.77,
+"SEABED"
+],
+[
+6.97,
+"SEABED"
+],
+[
+7.47,
+"SEABED"
+],
+[
+7.67,
+"SEABED"
+],
+[
+7.87,
+"SEABED"
+]
+],
+"RIGHT": [
+[
+2.57,
+"SEABED"
+],
+[
+5.82,
+"SEABED"
+],
+[
+6.02,
+"SEABED"
+],
+[
+7.62,
+"SEABED"
+],
+[
+7.82,
+"SEABED"
+],
+[
+8.22,
+"SEABED"
+],
+[
+8.72,
+"SEABED"
+],
+[
+9.43,
+"SEABED"
+],
+[
+11.92,
+"SEABED"
+]
+]
+}
+},
+{
+"t": 19.5,
+"part": "seabed",
+"caption": "5) near the seabed: the lower part of every cone hits the bottom -> SEABED (DVL altitude + cone)",
+"true_distance": 7.0,
+"echoes": {
+"FRONT": [
+[
+2.62,
+"SEABED"
+],
+[
+10.72,
+"SEABED"
+]
+],
+"REAR": [
+[
+1.77,
+"SEABED"
+],
+[
+5.27,
+"SEABED"
+],
+[
+5.72,
+"SEABED"
+]
+],
+"LEFT": [
+[
+1.72,
+"SEABED"
+],
+[
+5.52,
+"SEABED"
+],
+[
+6.07,
+"SEABED"
+],
+[
+6.82,
+"SEABED"
+],
+[
+7.17,
+"SEABED"
+],
+[
+7.42,
+"SEABED"
+],
+[
+7.87,
+"SEABED"
+]
+],
+"RIGHT": [
+[
+2.62,
+"SEABED"
+],
+[
+6.42,
+"SEABED"
+],
+[
+7.47,
+"SEABED"
+],
+[
+8.28,
+"SEABED"
+],
+[
+8.53,
+"SEABED"
+],
+[
+9.47,
+"SEABED"
+],
+[
+11.53,
+"SEABED"
+],
+[
+11.82,
+"SEABED"
+]
+]
+}
+},
+{
+"t": 19.6,
+"part": "seabed",
+"caption": "5) near the seabed: the lower part of every cone hits the bottom -> SEABED (DVL altitude + cone)",
+"true_distance": 7.0,
+"echoes": {
+"FRONT": [
+[
+2.62,
+"SEABED"
+],
+[
+10.72,
+"SEABED"
+]
+],
+"REAR": [
+[
+1.77,
+"SEABED"
+],
+[
+5.77,
+"SEABED"
+]
+],
+"LEFT": [
+[
+1.72,
+"SEABED"
+],
+[
+5.47,
+"SEABED"
+],
+[
+6.07,
+"SEABED"
+],
+[
+6.62,
+"SEABED"
+],
+[
+7.02,
+"SEABED"
+],
+[
+7.27,
+"SEABED"
+],
+[
+7.57,
+"SEABED"
+],
+[
+7.82,
+"SEABED"
+]
+],
+"RIGHT": [
+[
+2.57,
+"SEABED"
+],
+[
+7.52,
+"SEABED"
+],
+[
+7.97,
+"SEABED"
+],
+[
+8.57,
+"SEABED"
+],
+[
+9.03,
+"SEABED"
+],
+[
+9.47,
+"SEABED"
+],
+[
+11.92,
+"SEABED"
+]
+]
+}
+},
+{
+"t": 19.7,
+"part": "seabed",
+"caption": "5) near the seabed: the lower part of every cone hits the bottom -> SEABED (DVL altitude + cone)",
+"true_distance": 7.0,
+"echoes": {
+"FRONT": [
+[
+2.62,
+"SEABED"
+],
+[
+6.57,
+"SEABED"
+],
+[
+10.78,
+"SEABED"
+]
+],
+"REAR": [
+[
+1.77,
+"SEABED"
+],
+[
+5.62,
+"SEABED"
+],
+[
+5.92,
+"SEABED"
+],
+[
+6.17,
+"SEABED"
+],
+[
+6.52,
+"SEABED"
+]
+],
+"LEFT": [
+[
+1.72,
+"SEABED"
+],
+[
+5.62,
+"SEABED"
+],
+[
+5.82,
+"SEABED"
+],
+[
+6.07,
+"SEABED"
+],
+[
+6.37,
+"SEABED"
+],
+[
+6.67,
+"SEABED"
+],
+[
+7.57,
+"SEABED"
+]
+],
+"RIGHT": [
+[
+2.62,
+"SEABED"
+],
+[
+5.92,
+"SEABED"
+],
+[
+6.52,
+"SEABED"
+],
+[
+7.62,
+"SEABED"
+],
+[
+8.53,
+"SEABED"
+],
+[
+8.72,
+"SEABED"
+],
+[
+9.12,
+"SEABED"
+],
+[
+9.47,
+"SEABED"
+],
+[
+11.03,
+"SEABED"
+],
+[
+11.82,
+"SEABED"
+]
+]
+}
+},
+{
+"t": 19.8,
+"part": "seabed",
+"caption": "5) near the seabed: the lower part of every cone hits the bottom -> SEABED (DVL altitude + cone)",
+"true_distance": 7.0,
+"echoes": {
+"FRONT": [
+[
+2.62,
+"SEABED"
+],
+[
+10.72,
+"SEABED"
+]
+],
+"REAR": [
+[
+1.77,
+"SEABED"
+],
+[
+5.32,
+"SEABED"
+]
+],
+"LEFT": [
+[
+1.72,
+"SEABED"
+],
+[
+5.82,
+"SEABED"
+],
+[
+6.37,
+"SEABED"
+],
+[
+6.62,
+"SEABED"
+],
+[
+7.57,
+"SEABED"
+],
+[
+7.87,
+"SEABED"
+]
+],
+"RIGHT": [
+[
+2.57,
+"SEABED"
+],
+[
+7.77,
+"SEABED"
+],
+[
+8.53,
+"SEABED"
+],
+[
+9.47,
+"SEABED"
+]
+]
+}
+},
+{
+"t": 19.9,
+"part": "seabed",
+"caption": "5) near the seabed: the lower part of every cone hits the bottom -> SEABED (DVL altitude + cone)",
+"true_distance": 7.0,
+"echoes": {
+"FRONT": [
+[
+2.62,
+"SEABED"
+],
+[
+10.78,
+"SEABED"
+]
+],
+"REAR": [
+[
+1.77,
+"SEABED"
+],
+[
+6.32,
+"SEABED"
+],
+[
+7.92,
+"SEABED"
+]
+],
+"LEFT": [
+[
+1.72,
+"SEABED"
+],
+[
+5.32,
+"SEABED"
+],
+[
+5.87,
+"SEABED"
+],
+[
+6.92,
+"SEABED"
+],
+[
+7.82,
+"SEABED"
+]
+],
+"RIGHT": [
+[
+2.57,
+"SEABED"
+],
+[
+6.07,
+"SEABED"
+],
+[
+7.52,
+"SEABED"
+],
+[
+8.32,
+"SEABED"
+],
+[
+8.62,
+"SEABED"
+],
+[
+8.93,
+"SEABED"
+],
+[
+9.47,
+"SEABED"
+],
+[
+11.97,
+"SEABED"
+]
+]
+}
+},
+{
+"t": 20.0,
+"part": "seabed",
+"caption": "5) near the seabed: the lower part of every cone hits the bottom -> SEABED (DVL altitude + cone)",
+"true_distance": 7.0,
+"echoes": {
+"FRONT": [
+[
+2.62,
+"SEABED"
+],
+[
+6.57,
+"SEABED"
+],
+[
+10.82,
+"SEABED"
+]
+],
+"REAR": [
+[
+1.77,
+"SEABED"
+],
+[
+5.72,
+"SEABED"
+],
+[
+5.92,
+"SEABED"
+],
+[
+6.27,
+"SEABED"
+]
+],
+"LEFT": [
+[
+1.72,
+"SEABED"
+],
+[
+6.12,
+"SEABED"
+],
+[
+6.67,
+"SEABED"
+],
+[
+6.92,
+"SEABED"
+],
+[
+7.52,
+"SEABED"
+],
+[
+7.82,
+"SEABED"
+]
+],
+"RIGHT": [
+[
+2.62,
+"SEABED"
+],
+[
+5.82,
+"SEABED"
+],
+[
+7.47,
+"SEABED"
+],
+[
+8.07,
+"SEABED"
+],
+[
+8.53,
+"SEABED"
+],
+[
+8.72,
+"SEABED"
+],
+[
+9.47,
+"SEABED"
+],
+[
+11.07,
+"SEABED"
+]
+]
+}
+},
+{
+"t": 20.1,
+"part": "seabed",
+"caption": "5) near the seabed: the lower part of every cone hits the bottom -> SEABED (DVL altitude + cone)",
+"true_distance": 7.0,
+"echoes": {
+"FRONT": [
+[
+2.62,
+"SEABED"
+],
+[
+10.78,
+"SEABED"
+]
+],
+"REAR": [
+[
+1.82,
+"SEABED"
+]
+],
+"LEFT": [
+[
+1.72,
+"SEABED"
+],
+[
+5.62,
+"SEABED"
+],
+[
+5.92,
+"SEABED"
+],
+[
+6.42,
+"SEABED"
+],
+[
+6.82,
+"SEABED"
+],
+[
+7.22,
+"SEABED"
+],
+[
+7.62,
+"SEABED"
+]
+],
+"RIGHT": [
+[
+2.57,
+"SEABED"
+],
+[
+5.57,
+"SEABED"
+],
+[
+5.87,
+"SEABED"
+],
+[
+6.07,
+"SEABED"
+],
+[
+7.47,
+"SEABED"
+],
+[
+8.28,
+"SEABED"
+],
+[
+8.78,
+"SEABED"
+],
+[
+8.97,
+"SEABED"
+],
+[
+9.47,
+"SEABED"
+],
+[
+11.07,
+"SEABED"
+],
+[
+11.38,
+"SEABED"
+]
+]
+}
+},
+{
+"t": 20.2,
+"part": "seabed",
+"caption": "5) near the seabed: the lower part of every cone hits the bottom -> SEABED (DVL altitude + cone)",
+"true_distance": 7.0,
+"echoes": {
+"FRONT": [
+[
+2.62,
+"SEABED"
+],
+[
+10.72,
+"SEABED"
+]
+],
+"REAR": [
+[
+1.77,
+"SEABED"
+],
+[
+5.72,
+"SEABED"
+]
+],
+"LEFT": [
+[
+1.72,
+"SEABED"
+],
+[
+5.67,
+"SEABED"
+],
+[
+6.07,
+"SEABED"
+],
+[
+6.77,
+"SEABED"
+],
+[
+7.47,
+"SEABED"
+],
+[
+7.92,
+"SEABED"
+]
+],
+"RIGHT": [
+[
+2.57,
+"SEABED"
+],
+[
+5.37,
+"SEABED"
+],
+[
+6.22,
+"SEABED"
+],
+[
+6.62,
+"SEABED"
+],
+[
+7.52,
+"SEABED"
+],
+[
+8.03,
+"SEABED"
+],
+[
+8.22,
+"SEABED"
+],
+[
+8.62,
+"SEABED"
+],
+[
+8.82,
+"SEABED"
+],
+[
+9.43,
+"SEABED"
+],
+[
+10.78,
+"SEABED"
+],
+[
+10.97,
+"SEABED"
+],
+[
+11.62,
+"SEABED"
+]
+]
+}
+},
+{
+"t": 20.3,
+"part": "seabed",
+"caption": "6) a drone inside the seabed clutter cannot be separated from the bottom -> UNKNOWN (conservative)",
+"true_distance": 7.0,
+"echoes": {
+"FRONT": [
+[
+2.62,
+"SEABED"
+],
+[
+10.72,
+"SEABED"
+]
+],
+"REAR": [
+[
+1.77,
+"SEABED"
+],
+[
+5.17,
+"SEABED"
+]
+],
+"LEFT": [
+[
+1.72,
+"SEABED"
+],
+[
+5.87,
+"SEABED"
+],
+[
+6.52,
+"SEABED"
+],
+[
+7.12,
+"SEABED"
+],
+[
+7.37,
+"SEABED"
+],
+[
+7.92,
+"SEABED"
+]
+],
+"RIGHT": [
+[
+2.57,
+"SEABED"
+],
+[
+6.27,
+"SEABED"
+],
+[
+7.57,
+"SEABED"
+],
+[
+8.22,
+"SEABED"
+],
+[
+8.72,
+"SEABED"
+],
+[
+9.47,
+"SEABED"
+],
+[
+10.47,
+"SEABED"
+]
+]
+}
+},
+{
+"t": 20.4,
+"part": "seabed",
+"caption": "6) a drone inside the seabed clutter cannot be separated from the bottom -> UNKNOWN (conservative)",
+"true_distance": 6.9,
+"echoes": {
+"FRONT": [
+[
+2.67,
+"SEABED"
+],
+[
+10.72,
+"SEABED"
+]
+],
+"REAR": [
+[
+1.77,
+"SEABED"
+],
+[
+5.57,
+"SEABED"
+],
+[
+6.02,
+"SEABED"
+],
+[
+6.87,
+"SEABED"
+]
+],
+"LEFT": [
+[
+1.72,
+"SEABED"
+],
+[
+5.67,
+"SEABED"
+],
+[
+6.57,
+"SEABED"
+],
+[
+7.52,
+"SEABED"
+]
+],
+"RIGHT": [
+[
+2.57,
+"SEABED"
+],
+[
+6.17,
+"SEABED"
+],
+[
+7.57,
+"SEABED"
+],
+[
+8.32,
+"SEABED"
+],
+[
+8.78,
+"SEABED"
+],
+[
+9.47,
+"SEABED"
+],
+[
+11.53,
+"SEABED"
+]
+]
+}
+},
+{
+"t": 20.5,
+"part": "seabed",
+"caption": "6) a drone inside the seabed clutter cannot be separated from the bottom -> UNKNOWN (conservative)",
+"true_distance": 6.8,
+"echoes": {
+"FRONT": [
+[
+2.57,
+"SEABED"
+],
+[
+10.78,
+"SEABED"
+]
+],
+"REAR": [
+[
+1.77,
+"SEABED"
+],
+[
+5.47,
+"SEABED"
+]
+],
+"LEFT": [
+[
+1.72,
+"SEABED"
+],
+[
+5.77,
+"SEABED"
+],
+[
+6.22,
+"SEABED"
+],
+[
+6.42,
+"SEABED"
+],
+[
+6.77,
+"SEABED"
+],
+[
+7.47,
+"SEABED"
+],
+[
+7.87,
+"SEABED"
+]
+],
+"RIGHT": [
+[
+2.57,
+"SEABED"
+],
+[
+7.62,
+"SEABED"
+],
+[
+7.82,
+"SEABED"
+],
+[
+8.12,
+"SEABED"
+],
+[
+9.47,
+"SEABED"
+],
+[
+11.22,
+"SEABED"
+]
+]
+}
+},
+{
+"t": 20.6,
+"part": "seabed",
+"caption": "6) a drone inside the seabed clutter cannot be separated from the bottom -> UNKNOWN (conservative)",
+"true_distance": 6.7,
+"echoes": {
+"FRONT": [
+[
+2.62,
+"SEABED"
+],
+[
+10.68,
+"SEABED"
+]
+],
+"REAR": [
+[
+1.77,
+"SEABED"
+],
+[
+5.42,
+"SEABED"
+],
+[
+5.82,
+"SEABED"
+]
+],
+"LEFT": [
+[
+1.72,
+"SEABED"
+],
+[
+5.72,
+"SEABED"
+],
+[
+6.12,
+"SEABED"
+],
+[
+6.47,
+"SEABED"
+],
+[
+7.17,
+"SEABED"
+],
+[
+7.77,
+"SEABED"
+]
+],
+"RIGHT": [
+[
+2.62,
+"SEABED"
+],
+[
+6.27,
+"SEABED"
+],
+[
+7.67,
+"SEABED"
+],
+[
+8.22,
+"SEABED"
+],
+[
+8.47,
+"SEABED"
+],
+[
+9.47,
+"SEABED"
+],
+[
+10.72,
+"SEABED"
+],
+[
+11.92,
+"SEABED"
+]
+]
+}
+},
+{
+"t": 20.7,
+"part": "seabed",
+"caption": "6) a drone inside the seabed clutter cannot be separated from the bottom -> UNKNOWN (conservative)",
+"true_distance": 6.6,
+"echoes": {
+"FRONT": [
+[
+2.57,
+"SEABED"
+],
+[
+10.78,
+"SEABED"
+]
+],
+"REAR": [
+[
+1.77,
+"SEABED"
+],
+[
+5.32,
+"SEABED"
+]
+],
+"LEFT": [
+[
+1.72,
+"SEABED"
+],
+[
+5.67,
+"SEABED"
+],
+[
+7.22,
+"SEABED"
+],
+[
+7.87,
+"SEABED"
+]
+],
+"RIGHT": [
+[
+2.57,
+"SEABED"
+],
+[
+6.32,
+"SEABED"
+],
+[
+6.87,
+"SEABED"
+],
+[
+7.52,
+"SEABED"
+],
+[
+8.03,
+"SEABED"
+],
+[
+8.57,
+"SEABED"
+],
+[
+8.97,
+"SEABED"
+],
+[
+9.43,
+"SEABED"
+],
+[
+11.88,
+"SEABED"
+]
+]
+}
+},
+{
+"t": 20.8,
+"part": "seabed",
+"caption": "6) a drone inside the seabed clutter cannot be separated from the bottom -> UNKNOWN (conservative)",
+"true_distance": 6.5,
+"echoes": {
+"FRONT": [
+[
+2.67,
+"SEABED"
+],
+[
+6.07,
+"SEABED"
+],
+[
+10.78,
+"SEABED"
+]
+],
+"REAR": [
+[
+1.77,
+"SEABED"
+],
+[
+5.42,
+"SEABED"
+],
+[
+5.62,
+"SEABED"
+]
+],
+"LEFT": [
+[
+1.72,
+"SEABED"
+],
+[
+5.77,
+"SEABED"
+],
+[
+6.17,
+"SEABED"
+],
+[
+6.42,
+"SEABED"
+],
+[
+6.97,
+"SEABED"
+],
+[
+7.22,
+"SEABED"
+],
+[
+7.42,
+"SEABED"
+],
+[
+7.67,
+"SEABED"
+]
+],
+"RIGHT": [
+[
+2.57,
+"SEABED"
+],
+[
+6.62,
+"SEABED"
+],
+[
+7.62,
+"SEABED"
+],
+[
+7.92,
+"SEABED"
+],
+[
+8.17,
+"SEABED"
+],
+[
+8.53,
+"SEABED"
+],
+[
+8.97,
+"SEABED"
+],
+[
+9.47,
+"SEABED"
+],
+[
+11.82,
+"SEABED"
+]
+]
+}
+},
+{
+"t": 20.9,
+"part": "seabed",
+"caption": "6) a drone inside the seabed clutter cannot be separated from the bottom -> UNKNOWN (conservative)",
+"true_distance": 6.4,
+"echoes": {
+"FRONT": [
+[
+2.62,
+"SEABED"
+],
+[
+5.97,
+"SEABED"
+],
+[
+10.78,
+"SEABED"
+]
+],
+"REAR": [
+[
+1.77,
+"SEABED"
+],
+[
+5.62,
+"SEABED"
+],
+[
+5.82,
+"SEABED"
+]
+],
+"LEFT": [
+[
+1.72,
+"SEABED"
+],
+[
+5.92,
+"SEABED"
+],
+[
+6.12,
+"SEABED"
+],
+[
+6.32,
+"SEABED"
+],
+[
+6.57,
+"SEABED"
+],
+[
+6.87,
+"SEABED"
+],
+[
+7.77,
+"SEABED"
+]
+],
+"RIGHT": [
+[
+2.57,
+"SEABED"
+],
+[
+5.37,
+"SEABED"
+],
+[
+7.42,
+"SEABED"
+],
+[
+8.53,
+"SEABED"
+],
+[
+9.12,
+"SEABED"
+],
+[
+9.47,
+"SEABED"
+],
+[
+11.17,
+"SEABED"
+],
+[
+11.62,
+"SEABED"
+]
+]
+}
+},
+{
+"t": 21.0,
+"part": "seabed",
+"caption": "6) a drone inside the seabed clutter cannot be separated from the bottom -> UNKNOWN (conservative)",
+"true_distance": 6.3,
+"echoes": {
+"FRONT": [
+[
+2.62,
+"SEABED"
+],
+[
+10.72,
+"SEABED"
+]
+],
+"REAR": [
+[
+1.77,
+"SEABED"
+],
+[
+5.82,
+"SEABED"
+]
+],
+"LEFT": [
+[
+1.72,
+"SEABED"
+],
+[
+6.07,
+"SEABED"
+],
+[
+6.62,
+"SEABED"
+],
+[
+7.07,
+"SEABED"
+],
+[
+7.42,
+"SEABED"
+],
+[
+7.92,
+"SEABED"
+]
+],
+"RIGHT": [
+[
+2.57,
+"SEABED"
+],
+[
+6.97,
+"SEABED"
+],
+[
+7.62,
+"SEABED"
+],
+[
+8.07,
+"SEABED"
+],
+[
+8.53,
+"SEABED"
+],
+[
+8.97,
+"SEABED"
+],
+[
+9.47,
+"SEABED"
+],
+[
+10.93,
+"SEABED"
+]
+]
+}
+},
+{
+"t": 21.1,
+"part": "seabed",
+"caption": "6) a drone inside the seabed clutter cannot be separated from the bottom -> UNKNOWN (conservative)",
+"true_distance": 6.2,
+"echoes": {
+"FRONT": [
+[
+2.62,
+"SEABED"
+],
+[
+10.78,
+"SEABED"
+]
+],
+"REAR": [
+[
+1.77,
+"SEABED"
+],
+[
+5.37,
+"SEABED"
+],
+[
+5.62,
+"SEABED"
+],
+[
+5.92,
+"SEABED"
+]
+],
+"LEFT": [
+[
+1.72,
+"SEABED"
+],
+[
+5.97,
+"SEABED"
+],
+[
+6.22,
+"SEABED"
+],
+[
+6.52,
+"SEABED"
+],
+[
+6.82,
+"SEABED"
+],
+[
+7.07,
+"SEABED"
+],
+[
+7.32,
+"SEABED"
+],
+[
+7.72,
+"SEABED"
+],
+[
+7.92,
+"SEABED"
+]
+],
+"RIGHT": [
+[
+2.57,
+"SEABED"
+],
+[
+7.67,
+"SEABED"
+],
+[
+8.12,
+"SEABED"
+],
+[
+8.53,
+"SEABED"
+],
+[
+8.78,
+"SEABED"
+],
+[
+9.47,
+"SEABED"
+],
+[
+11.28,
+"SEABED"
+]
+]
+}
+},
+{
+"t": 21.2,
+"part": "seabed",
+"caption": "6) a drone inside the seabed clutter cannot be separated from the bottom -> UNKNOWN (conservative)",
+"true_distance": 6.1,
+"echoes": {
+"FRONT": [
+[
+2.67,
+"SEABED"
+],
+[
+5.67,
+"SEABED"
+],
+[
+10.78,
+"SEABED"
+]
+],
+"REAR": [
+[
+1.82,
+"SEABED"
+],
+[
+5.67,
+"SEABED"
+],
+[
+7.07,
+"SEABED"
+]
+],
+"LEFT": [
+[
+1.72,
+"SEABED"
+],
+[
+5.82,
+"SEABED"
+],
+[
+6.27,
+"SEABED"
+],
+[
+7.22,
+"SEABED"
+],
+[
+7.47,
+"SEABED"
+],
+[
+7.82,
+"SEABED"
+]
+],
+"RIGHT": [
+[
+2.57,
+"SEABED"
+],
+[
+6.02,
+"SEABED"
+],
+[
+7.67,
+"SEABED"
+],
+[
+8.12,
+"SEABED"
+],
+[
+8.93,
+"SEABED"
+],
+[
+9.47,
+"SEABED"
+]
+]
+}
+},
+{
+"t": 21.3,
+"part": "seabed",
+"caption": "6) a drone inside the seabed clutter cannot be separated from the bottom -> UNKNOWN (conservative)",
+"true_distance": 6.0,
+"echoes": {
+"FRONT": [
+[
+2.62,
+"SEABED"
+],
+[
+5.57,
+"SEABED"
+],
+[
+10.78,
+"SEABED"
+]
+],
+"REAR": [
+[
+1.77,
+"SEABED"
+],
+[
+5.42,
+"SEABED"
+],
+[
+5.92,
+"SEABED"
+]
+],
+"LEFT": [
+[
+1.72,
+"SEABED"
+],
+[
+5.87,
+"SEABED"
+],
+[
+6.32,
+"SEABED"
+],
+[
+6.67,
+"SEABED"
+],
+[
+7.22,
+"SEABED"
+],
+[
+7.82,
+"SEABED"
+]
+],
+"RIGHT": [
+[
+2.57,
+"SEABED"
+],
+[
+5.27,
+"SEABED"
+],
+[
+6.27,
+"SEABED"
+],
+[
+7.52,
+"SEABED"
+],
+[
+8.22,
+"SEABED"
+],
+[
+8.62,
+"SEABED"
+],
+[
+8.82,
+"SEABED"
+],
+[
+9.47,
+"SEABED"
+]
+]
+}
+},
+{
+"t": 21.4,
+"part": "seabed",
+"caption": "6) a drone inside the seabed clutter cannot be separated from the bottom -> UNKNOWN (conservative)",
+"true_distance": 5.9,
+"echoes": {
+"FRONT": [
+[
+2.62,
+"SEABED"
+],
+[
+5.47,
+"SEABED"
+],
+[
+10.72,
+"SEABED"
+]
+],
+"REAR": [
+[
+1.77,
+"SEABED"
+],
+[
+5.82,
+"SEABED"
+],
+[
+6.12,
+"SEABED"
+]
+],
+"LEFT": [
+[
+1.72,
+"SEABED"
+],
+[
+5.67,
+"SEABED"
+],
+[
+6.72,
+"SEABED"
+],
+[
+7.02,
+"SEABED"
+],
+[
+7.77,
+"SEABED"
+]
+],
+"RIGHT": [
+[
+2.62,
+"SEABED"
+],
+[
+5.52,
+"SEABED"
+],
+[
+6.92,
+"SEABED"
+],
+[
+7.52,
+"SEABED"
+],
+[
+7.87,
+"SEABED"
+],
+[
+9.47,
+"SEABED"
+],
+[
+11.17,
+"SEABED"
+],
+[
+11.97,
+"SEABED"
+]
+]
+}
+},
+{
+"t": 21.5,
+"part": "seabed",
+"caption": "6) a drone inside the seabed clutter cannot be separated from the bottom -> UNKNOWN (conservative)",
+"true_distance": 5.8,
+"echoes": {
+"FRONT": [
+[
+2.62,
+"SEABED"
+],
+[
+10.82,
+"SEABED"
+]
+],
+"REAR": [
+[
+1.77,
+"SEABED"
+],
+[
+5.37,
+"SEABED"
+]
+],
+"LEFT": [
+[
+1.72,
+"SEABED"
+],
+[
+5.62,
+"SEABED"
+],
+[
+6.32,
+"SEABED"
+],
+[
+6.57,
+"SEABED"
+],
+[
+7.27,
+"SEABED"
+],
+[
+7.87,
+"SEABED"
+]
+],
+"RIGHT": [
+[
+2.62,
+"SEABED"
+],
+[
+7.62,
+"SEABED"
+],
+[
+8.22,
+"SEABED"
+],
+[
+9.12,
+"SEABED"
+],
+[
+9.47,
+"SEABED"
+]
+]
+}
+},
+{
+"t": 21.6,
+"part": "seabed",
+"caption": "6) a drone inside the seabed clutter cannot be separated from the bottom -> UNKNOWN (conservative)",
+"true_distance": 5.7,
+"echoes": {
+"FRONT": [
+[
+2.62,
+"SEABED"
+],
+[
+10.72,
+"SEABED"
+]
+],
+"REAR": [
+[
+1.77,
+"SEABED"
+],
+[
+6.02,
+"SEABED"
+]
+],
+"LEFT": [
+[
+1.72,
+"SEABED"
+],
+[
+5.72,
+"SEABED"
+],
+[
+5.92,
+"SEABED"
+],
+[
+6.17,
+"SEABED"
+],
+[
+7.27,
+"SEABED"
+],
+[
+7.47,
+"SEABED"
+],
+[
+7.77,
+"SEABED"
+]
+],
+"RIGHT": [
+[
+2.57,
+"SEABED"
+],
+[
+5.32,
+"SEABED"
+],
+[
+5.67,
+"SEABED"
+],
+[
+6.12,
+"SEABED"
+],
+[
+7.57,
+"SEABED"
+],
+[
+8.38,
+"SEABED"
+],
+[
+8.72,
+"SEABED"
+],
+[
+9.07,
+"SEABED"
+],
+[
+9.47,
+"SEABED"
+],
+[
+11.28,
+"SEABED"
+],
+[
+11.57,
+"SEABED"
+]
+]
+}
+},
+{
+"t": 21.7,
+"part": "seabed",
+"caption": "6) a drone inside the seabed clutter cannot be separated from the bottom -> UNKNOWN (conservative)",
+"true_distance": 5.6,
+"echoes": {
+"FRONT": [
+[
+2.62,
+"SEABED"
+],
+[
+5.47,
+"SEABED"
+],
+[
+10.68,
+"SEABED"
+]
+],
+"REAR": [
+[
+1.77,
+"SEABED"
+],
+[
+5.82,
+"SEABED"
+],
+[
+7.57,
+"SEABED"
+],
+[
+8.62,
+"SEABED"
+]
+],
+"LEFT": [
+[
+1.72,
+"SEABED"
+],
+[
+5.82,
+"SEABED"
+],
+[
+6.07,
+"SEABED"
+],
+[
+6.37,
+"SEABED"
+],
+[
+6.87,
+"SEABED"
+],
+[
+7.42,
+"SEABED"
+]
+],
+"RIGHT": [
+[
+2.62,
+"SEABED"
+],
+[
+5.87,
+"SEABED"
+],
+[
+7.67,
+"SEABED"
+],
+[
+8.03,
+"SEABED"
+],
+[
+8.28,
+"SEABED"
+],
+[
+8.93,
+"SEABED"
+],
+[
+9.18,
+"SEABED"
+],
+[
+9.47,
+"SEABED"
+],
+[
+11.38,
+"SEABED"
+],
+[
+11.78,
+"SEABED"
+]
+]
+}
+},
+{
+"t": 21.8,
+"part": "seabed",
+"caption": "6) a drone inside the seabed clutter cannot be separated from the bottom -> UNKNOWN (conservative)",
+"true_distance": 5.5,
+"echoes": {
+"FRONT": [
+[
+2.62,
+"SEABED"
+],
+[
+10.78,
+"SEABED"
+]
+],
+"REAR": [
+[
+1.77,
+"SEABED"
+],
+[
+5.32,
+"SEABED"
+],
+[
+6.82,
+"SEABED"
+]
+],
+"LEFT": [
+[
+1.72,
+"SEABED"
+],
+[
+6.37,
+"SEABED"
+],
+[
+6.92,
+"SEABED"
+],
+[
+7.47,
+"SEABED"
+],
+[
+7.72,
+"SEABED"
+]
+],
+"RIGHT": [
+[
+2.57,
+"SEABED"
+],
+[
+5.67,
+"SEABED"
+],
+[
+6.27,
+"SEABED"
+],
+[
+7.62,
+"SEABED"
+],
+[
+8.03,
+"SEABED"
+],
+[
+8.62,
+"SEABED"
+],
+[
+8.93,
+"SEABED"
+],
+[
+9.53,
+"SEABED"
+],
+[
+11.12,
+"SEABED"
+]
+]
+}
+},
+{
+"t": 21.9,
+"part": "seabed",
+"caption": "6) a drone inside the seabed clutter cannot be separated from the bottom -> UNKNOWN (conservative)",
+"true_distance": 5.4,
+"echoes": {
+"FRONT": [
+[
+2.62,
+"SEABED"
+],
+[
+10.72,
+"SEABED"
+]
+],
+"REAR": [
+[
+1.77,
+"SEABED"
+],
+[
+5.62,
+"SEABED"
+]
+],
+"LEFT": [
+[
+1.72,
+"SEABED"
+],
+[
+5.62,
+"SEABED"
+],
+[
+6.02,
+"SEABED"
+],
+[
+6.22,
+"SEABED"
+],
+[
+6.42,
+"SEABED"
+],
+[
+6.87,
+"SEABED"
+],
+[
+7.37,
+"SEABED"
+],
+[
+7.82,
+"SEABED"
+]
+],
+"RIGHT": [
+[
+2.62,
+"SEABED"
+],
+[
+5.67,
+"SEABED"
+],
+[
+5.97,
+"SEABED"
+],
+[
+6.67,
+"SEABED"
+],
+[
+7.57,
+"SEABED"
+],
+[
+7.77,
+"SEABED"
+],
+[
+8.32,
+"SEABED"
+],
+[
+9.47,
+"SEABED"
+],
+[
+10.88,
+"SEABED"
+],
+[
+11.47,
+"SEABED"
+]
+]
+}
+},
+{
+"t": 22.0,
+"part": "seabed",
+"caption": "6) a drone inside the seabed clutter cannot be separated from the bottom -> UNKNOWN (conservative)",
+"true_distance": 5.3,
+"echoes": {
+"FRONT": [
+[
+2.62,
+"SEABED"
+],
+[
+10.72,
+"SEABED"
+]
+],
+"REAR": [
+[
+1.77,
+"SEABED"
+],
+[
+5.47,
+"SEABED"
+]
+],
+"LEFT": [
+[
+1.72,
+"SEABED"
+],
+[
+5.67,
+"SEABED"
+],
+[
+6.27,
+"SEABED"
+],
+[
+6.72,
+"SEABED"
+],
+[
+7.12,
+"SEABED"
+],
+[
+7.42,
+"SEABED"
+],
+[
+7.77,
+"SEABED"
+]
+],
+"RIGHT": [
+[
+2.57,
+"SEABED"
+],
+[
+6.42,
+"SEABED"
+],
+[
+6.97,
+"SEABED"
+],
+[
+7.67,
+"SEABED"
+],
+[
+7.92,
+"SEABED"
+],
+[
+8.28,
+"SEABED"
+],
+[
+8.78,
+"SEABED"
+],
+[
+9.47,
+"SEABED"
+],
+[
+11.38,
+"SEABED"
+],
+[
+11.62,
+"SEABED"
+]
+]
+}
+},
+{
+"t": 22.1,
+"part": "seabed",
+"caption": "6) a drone inside the seabed clutter cannot be separated from the bottom -> UNKNOWN (conservative)",
+"true_distance": 5.2,
+"echoes": {
+"FRONT": [
+[
+2.62,
+"SEABED"
+],
+[
+10.72,
+"SEABED"
+]
+],
+"REAR": [
+[
+1.77,
+"SEABED"
+]
+],
+"LEFT": [
+[
+1.72,
+"SEABED"
+],
+[
+5.87,
+"SEABED"
+],
+[
+6.22,
+"SEABED"
+],
+[
+6.47,
+"SEABED"
+],
+[
+7.02,
+"SEABED"
+],
+[
+7.47,
+"SEABED"
+]
+],
+"RIGHT": [
+[
+2.57,
+"SEABED"
+],
+[
+6.42,
+"SEABED"
+],
+[
+7.47,
+"SEABED"
+],
+[
+7.97,
+"SEABED"
+],
+[
+8.17,
+"SEABED"
+],
+[
+8.57,
+"SEABED"
+],
+[
+8.78,
+"SEABED"
+],
+[
+9.07,
+"SEABED"
+],
+[
+9.47,
+"SEABED"
+]
+]
+}
+},
+{
+"t": 22.2,
+"part": "seabed",
+"caption": "6) a drone inside the seabed clutter cannot be separated from the bottom -> UNKNOWN (conservative)",
+"true_distance": 5.1,
+"echoes": {
+"FRONT": [
+[
+2.62,
+"SEABED"
+],
+[
+10.72,
+"SEABED"
+]
+],
+"REAR": [
+[
+1.77,
+"SEABED"
+],
+[
+5.32,
+"SEABED"
+]
+],
+"LEFT": [
+[
+1.72,
+"SEABED"
+],
+[
+5.82,
+"SEABED"
+],
+[
+6.42,
+"SEABED"
+],
+[
+6.77,
+"SEABED"
+],
+[
+7.12,
+"SEABED"
+],
+[
+7.62,
+"SEABED"
+],
+[
+7.87,
+"SEABED"
+]
+],
+"RIGHT": [
+[
+2.57,
+"SEABED"
+],
+[
+6.12,
+"SEABED"
+],
+[
+7.62,
+"SEABED"
+],
+[
+8.38,
+"SEABED"
+],
+[
+8.78,
+"SEABED"
+],
+[
+9.47,
+"SEABED"
+],
+[
+10.82,
+"SEABED"
+],
+[
+11.17,
+"SEABED"
+],
+[
+11.97,
+"SEABED"
+]
+]
+}
+},
+{
+"t": 22.3,
+"part": "seabed",
+"caption": "6) a drone inside the seabed clutter cannot be separated from the bottom -> UNKNOWN (conservative)",
+"true_distance": 5.0,
+"echoes": {
+"FRONT": [
+[
+2.62,
+"SEABED"
+],
+[
+10.78,
+"SEABED"
+]
+],
+"REAR": [
+[
+1.77,
+"SEABED"
+]
+],
+"LEFT": [
+[
+1.72,
+"SEABED"
+],
+[
+5.97,
+"SEABED"
+],
+[
+6.87,
+"SEABED"
+],
+[
+7.37,
+"SEABED"
+]
+],
+"RIGHT": [
+[
+2.57,
+"SEABED"
+],
+[
+6.07,
+"SEABED"
+],
+[
+7.42,
+"SEABED"
+],
+[
+8.03,
+"SEABED"
+],
+[
+8.88,
+"SEABED"
+],
+[
+9.43,
+"SEABED"
+],
+[
+11.72,
+"SEABED"
+]
+]
+}
+},
+{
+"t": 22.4,
+"part": "seabed",
+"caption": "6) a drone inside the seabed clutter cannot be separated from the bottom -> UNKNOWN (conservative)",
+"true_distance": 4.9,
+"echoes": {
+"FRONT": [
+[
+2.62,
+"SEABED"
+],
+[
+10.78,
+"SEABED"
+]
+],
+"REAR": [
+[
+1.77,
+"SEABED"
+],
+[
+5.37,
+"SEABED"
+],
+[
+5.72,
+"SEABED"
+],
+[
+5.92,
+"SEABED"
+],
+[
+6.27,
+"SEABED"
+]
+],
+"LEFT": [
+[
+1.72,
+"SEABED"
+],
+[
+5.92,
+"SEABED"
+],
+[
+6.17,
+"SEABED"
+],
+[
+6.37,
+"SEABED"
+],
+[
+6.97,
+"SEABED"
+],
+[
+7.87,
+"SEABED"
+]
+],
+"RIGHT": [
+[
+2.57,
+"SEABED"
+],
+[
+7.57,
+"SEABED"
+],
+[
+7.87,
+"SEABED"
+],
+[
+8.38,
+"SEABED"
+],
+[
+9.47,
+"SEABED"
+]
+]
+}
+},
+{
+"t": 22.5,
+"part": "seabed",
+"caption": "6) a drone inside the seabed clutter cannot be separated from the bottom -> UNKNOWN (conservative)",
+"true_distance": 4.8,
+"echoes": {
+"FRONT": [
+[
+2.57,
+"SEABED"
+],
+[
+5.47,
+"SEABED"
+],
+[
+10.78,
+"SEABED"
+]
+],
+"REAR": [
+[
+1.77,
+"SEABED"
+],
+[
+5.27,
+"SEABED"
+],
+[
+5.52,
+"SEABED"
+],
+[
+5.82,
+"SEABED"
+]
+],
+"LEFT": [
+[
+1.72,
+"SEABED"
+],
+[
+6.17,
+"SEABED"
+],
+[
+6.37,
+"SEABED"
+],
+[
+7.22,
+"SEABED"
+],
+[
+7.52,
+"SEABED"
+]
+],
+"RIGHT": [
+[
+2.57,
+"SEABED"
+],
+[
+5.57,
+"SEABED"
+],
+[
+6.27,
+"SEABED"
+],
+[
+7.67,
+"SEABED"
+],
+[
+8.12,
+"SEABED"
+],
+[
+8.53,
+"SEABED"
+],
+[
+8.82,
+"SEABED"
+],
+[
+9.18,
+"SEABED"
+],
+[
+9.47,
+"SEABED"
+]
+]
+}
+},
+{
+"t": 22.6,
+"part": "seabed",
+"caption": "6) a drone inside the seabed clutter cannot be separated from the bottom -> UNKNOWN (conservative)",
+"true_distance": 4.7,
+"echoes": {
+"FRONT": [
+[
+2.62,
+"SEABED"
+],
+[
+10.68,
+"SEABED"
+]
+],
+"REAR": [
+[
+1.77,
+"SEABED"
+],
+[
+5.72,
+"SEABED"
+],
+[
+6.17,
+"SEABED"
+]
+],
+"LEFT": [
+[
+1.72,
+"SEABED"
+],
+[
+5.62,
+"SEABED"
+],
+[
+5.82,
+"SEABED"
+],
+[
+6.57,
+"SEABED"
+],
+[
+6.97,
+"SEABED"
+],
+[
+7.47,
+"SEABED"
+],
+[
+7.82,
+"SEABED"
+]
+],
+"RIGHT": [
+[
+2.62,
+"SEABED"
+],
+[
+6.17,
+"SEABED"
+],
+[
+7.82,
+"SEABED"
+],
+[
+8.07,
+"SEABED"
+],
+[
+8.93,
+"SEABED"
+],
+[
+9.43,
+"SEABED"
+],
+[
+10.72,
+"SEABED"
+],
+[
+11.22,
+"SEABED"
+],
+[
+11.62,
+"SEABED"
+]
+]
+}
+},
+{
+"t": 22.7,
+"part": "seabed",
+"caption": "6) a drone inside the seabed clutter cannot be separated from the bottom -> UNKNOWN (conservative)",
+"true_distance": 4.6,
+"echoes": {
+"FRONT": [
+[
+2.67,
+"SEABED"
+],
+[
+10.72,
+"SEABED"
+]
+],
+"REAR": [
+[
+1.77,
+"SEABED"
+],
+[
+5.17,
+"SEABED"
+],
+[
+5.52,
+"SEABED"
+],
+[
+5.72,
+"SEABED"
+],
+[
+5.92,
+"SEABED"
+],
+[
+6.27,
+"SEABED"
+]
+],
+"LEFT": [
+[
+1.72,
+"SEABED"
+],
+[
+5.67,
+"SEABED"
+],
+[
+6.32,
+"SEABED"
+],
+[
+6.52,
+"SEABED"
+],
+[
+6.82,
+"SEABED"
+],
+[
+7.17,
+"SEABED"
+],
+[
+7.87,
+"SEABED"
+]
+],
+"RIGHT": [
+[
+2.57,
+"SEABED"
+],
+[
+5.92,
+"SEABED"
+],
+[
+6.42,
+"SEABED"
+],
+[
+7.42,
+"SEABED"
+],
+[
+7.97,
+"SEABED"
+],
+[
+8.43,
+"SEABED"
+],
+[
+8.62,
+"SEABED"
+],
+[
+8.97,
+"SEABED"
+],
+[
+9.47,
+"SEABED"
+],
+[
+11.53,
+"SEABED"
+]
+]
+}
+},
+{
+"t": 22.8,
+"part": "seabed",
+"caption": "6) a drone inside the seabed clutter cannot be separated from the bottom -> UNKNOWN (conservative)",
+"true_distance": 4.5,
+"echoes": {
+"FRONT": [
+[
+2.57,
+"SEABED"
+],
+[
+10.72,
+"SEABED"
+]
+],
+"REAR": [
+[
+1.77,
+"SEABED"
+],
+[
+5.92,
+"SEABED"
+],
+[
+6.82,
+"SEABED"
+]
+],
+"LEFT": [
+[
+1.72,
+"SEABED"
+],
+[
+5.27,
+"SEABED"
+],
+[
+6.27,
+"SEABED"
+],
+[
+6.57,
+"SEABED"
+],
+[
+6.82,
+"SEABED"
+],
+[
+7.07,
+"SEABED"
+],
+[
+7.47,
+"SEABED"
+],
+[
+7.77,
+"SEABED"
+]
+],
+"RIGHT": [
+[
+2.62,
+"SEABED"
+],
+[
+5.87,
+"SEABED"
+],
+[
+6.32,
+"SEABED"
+],
+[
+6.57,
+"SEABED"
+],
+[
+7.42,
+"SEABED"
+],
+[
+8.17,
+"SEABED"
+],
+[
+8.72,
+"SEABED"
+],
+[
+8.93,
+"SEABED"
+],
+[
+9.47,
+"SEABED"
+]
+]
+}
+},
+{
+"t": 22.9,
+"part": "seabed",
+"caption": "6) a drone inside the seabed clutter cannot be separated from the bottom -> UNKNOWN (conservative)",
+"true_distance": 4.4,
+"echoes": {
+"FRONT": [
+[
+2.57,
+"SEABED"
+],
+[
+10.78,
+"SEABED"
+]
+],
+"REAR": [
+[
+1.77,
+"SEABED"
+],
+[
+6.07,
+"SEABED"
+],
+[
+7.27,
+"SEABED"
+]
+],
+"LEFT": [
+[
+1.72,
+"SEABED"
+],
+[
+5.52,
+"SEABED"
+],
+[
+5.97,
+"SEABED"
+],
+[
+7.57,
+"SEABED"
+],
+[
+7.82,
+"SEABED"
+]
+],
+"RIGHT": [
+[
+2.57,
+"SEABED"
+],
+[
+6.22,
+"SEABED"
+],
+[
+6.82,
+"SEABED"
+],
+[
+7.02,
+"SEABED"
+],
+[
+7.57,
+"SEABED"
+],
+[
+8.17,
+"SEABED"
+],
+[
+8.38,
+"SEABED"
+],
+[
+8.82,
+"SEABED"
+],
+[
+9.47,
+"SEABED"
+],
+[
+11.78,
+"SEABED"
+]
+]
+}
+},
+{
+"t": 23.0,
+"part": "seabed",
+"caption": "6) a drone inside the seabed clutter cannot be separated from the bottom -> UNKNOWN (conservative)",
+"true_distance": 4.3,
+"echoes": {
+"FRONT": [
+[
+2.62,
+"SEABED"
+],
+[
+10.72,
+"SEABED"
+]
+],
+"REAR": [
+[
+1.77,
+"SEABED"
+],
+[
+5.57,
+"SEABED"
+],
+[
+10.38,
+"SEABED"
+]
+],
+"LEFT": [
+[
+1.72,
+"SEABED"
+],
+[
+6.62,
+"SEABED"
+],
+[
+6.87,
+"SEABED"
+],
+[
+7.17,
+"SEABED"
+],
+[
+7.42,
+"SEABED"
+],
+[
+7.92,
+"SEABED"
+]
+],
+"RIGHT": [
+[
+2.62,
+"SEABED"
+],
+[
+6.52,
+"SEABED"
+],
+[
+7.67,
+"SEABED"
+],
+[
+8.17,
+"SEABED"
+],
+[
+8.53,
+"SEABED"
+],
+[
+9.03,
+"SEABED"
+],
+[
+9.47,
+"SEABED"
+],
+[
+11.32,
+"SEABED"
+],
+[
+11.78,
+"SEABED"
+],
+[
+11.97,
+"SEABED"
+]
+]
+}
+},
+{
+"t": 23.1,
+"part": "seabed",
+"caption": "6) a drone inside the seabed clutter cannot be separated from the bottom -> UNKNOWN (conservative)",
+"true_distance": 4.2,
+"echoes": {
+"FRONT": [
+[
+2.62,
+"SEABED"
+],
+[
+10.78,
+"SEABED"
+]
+],
+"REAR": [
+[
+1.82,
+"SEABED"
+],
+[
+5.52,
+"SEABED"
+],
+[
+6.02,
+"SEABED"
+],
+[
+7.12,
+"SEABED"
+]
+],
+"LEFT": [
+[
+1.72,
+"SEABED"
+],
+[
+5.92,
+"SEABED"
+],
+[
+6.17,
+"SEABED"
+],
+[
+6.82,
+"SEABED"
+],
+[
+7.07,
+"SEABED"
+],
+[
+7.57,
+"SEABED"
+],
+[
+7.77,
+"SEABED"
+]
+],
+"RIGHT": [
+[
+2.57,
+"SEABED"
+],
+[
+6.12,
+"SEABED"
+],
+[
+6.32,
+"SEABED"
+],
+[
+7.72,
+"SEABED"
+],
+[
+8.17,
+"SEABED"
+],
+[
+9.47,
+"SEABED"
+],
+[
+11.28,
+"SEABED"
+]
+]
+}
+},
+{
+"t": 23.2,
+"part": "seabed",
+"caption": "6) a drone inside the seabed clutter cannot be separated from the bottom -> UNKNOWN (conservative)",
+"true_distance": 4.1,
+"echoes": {
+"FRONT": [
+[
+2.62,
+"SEABED"
+],
+[
+10.53,
+"SEABED"
+],
+[
+10.72,
+"SEABED"
+]
+],
+"REAR": [
+[
+1.77,
+"SEABED"
+],
+[
+5.57,
+"SEABED"
+],
+[
+7.17,
+"SEABED"
+]
+],
+"LEFT": [
+[
+1.72,
+"SEABED"
+],
+[
+5.72,
+"SEABED"
+],
+[
+5.97,
+"SEABED"
+],
+[
+6.17,
+"SEABED"
+],
+[
+6.47,
+"SEABED"
+],
+[
+6.87,
+"SEABED"
+],
+[
+7.37,
+"SEABED"
+],
+[
+7.82,
+"SEABED"
+]
+],
+"RIGHT": [
+[
+2.57,
+"SEABED"
+],
+[
+6.17,
+"SEABED"
+],
+[
+7.62,
+"SEABED"
+],
+[
+8.07,
+"SEABED"
+],
+[
+9.07,
+"SEABED"
+],
+[
+9.43,
+"SEABED"
+],
+[
+11.07,
+"SEABED"
+],
+[
+11.57,
+"SEABED"
+]
+]
+}
+},
+{
+"t": 23.3,
+"part": "seabed",
+"caption": "6) a drone inside the seabed clutter cannot be separated from the bottom -> UNKNOWN (conservative)",
+"true_distance": 4.0,
+"echoes": {
+"FRONT": [
+[
+2.67,
+"SEABED"
+],
+[
+10.72,
+"SEABED"
+]
+],
+"REAR": [
+[
+1.77,
+"SEABED"
+],
+[
+5.42,
+"SEABED"
+]
+],
+"LEFT": [
+[
+1.72,
+"SEABED"
+],
+[
+6.02,
+"SEABED"
+],
+[
+6.72,
+"SEABED"
+],
+[
+7.17,
+"SEABED"
+],
+[
+7.77,
+"SEABED"
+]
+],
+"RIGHT": [
+[
+2.57,
+"SEABED"
+],
+[
+7.52,
+"SEABED"
+],
+[
+8.12,
+"SEABED"
+],
+[
+8.53,
+"SEABED"
+],
+[
+8.97,
+"SEABED"
+],
+[
+9.47,
+"SEABED"
+],
+[
+11.28,
+"SEABED"
+],
+[
+11.78,
+"SEABED"
+]
+]
+}
+},
+{
+"t": 23.4,
+"part": "seabed",
+"caption": "6) a drone inside the seabed clutter cannot be separated from the bottom -> UNKNOWN (conservative)",
+"true_distance": 3.9,
+"echoes": {
+"FRONT": [
+[
+2.62,
+"SEABED"
+],
+[
+10.72,
+"SEABED"
+]
+],
+"REAR": [
+[
+1.77,
+"SEABED"
+]
+],
+"LEFT": [
+[
+1.72,
+"SEABED"
+],
+[
+5.72,
+"SEABED"
+],
+[
+6.27,
+"SEABED"
+],
+[
+6.47,
+"SEABED"
+],
+[
+6.72,
+"SEABED"
+],
+[
+6.97,
+"SEABED"
+],
+[
+7.52,
+"SEABED"
+]
+],
+"RIGHT": [
+[
+2.57,
+"SEABED"
+],
+[
+5.67,
+"SEABED"
+],
+[
+5.92,
+"SEABED"
+],
+[
+6.52,
+"SEABED"
+],
+[
+6.82,
+"SEABED"
+],
+[
+7.47,
+"SEABED"
+],
+[
+7.77,
+"SEABED"
+],
+[
+8.47,
+"SEABED"
+],
+[
+9.07,
+"SEABED"
+],
+[
+9.47,
+"SEABED"
+]
+]
+}
+},
+{
+"t": 23.5,
+"part": "seabed",
+"caption": "6) a drone inside the seabed clutter cannot be separated from the bottom -> UNKNOWN (conservative)",
+"true_distance": 3.8,
+"echoes": {
+"FRONT": [
+[
+2.62,
+"SEABED"
+],
+[
+10.78,
+"SEABED"
+]
+],
+"REAR": [
+[
+1.77,
+"SEABED"
+],
+[
+5.47,
+"SEABED"
+]
+],
+"LEFT": [
+[
+1.72,
+"SEABED"
+],
+[
+5.67,
+"SEABED"
+],
+[
+5.92,
+"SEABED"
+],
+[
+6.22,
+"SEABED"
+],
+[
+6.72,
+"SEABED"
+],
+[
+7.12,
+"SEABED"
+],
+[
+7.87,
+"SEABED"
+]
+],
+"RIGHT": [
+[
+2.57,
+"SEABED"
+],
+[
+5.72,
+"SEABED"
+],
+[
+6.07,
+"SEABED"
+],
+[
+6.27,
+"SEABED"
+],
+[
+7.57,
+"SEABED"
+],
+[
+8.53,
+"SEABED"
+],
+[
+8.93,
+"SEABED"
+],
+[
+9.47,
+"SEABED"
+]
+]
+}
+},
+{
+"t": 23.6,
+"part": "seabed",
+"caption": "6) a drone inside the seabed clutter cannot be separated from the bottom -> UNKNOWN (conservative)",
+"true_distance": 3.7,
+"echoes": {
+"FRONT": [
+[
+2.57,
+"SEABED"
+],
+[
+10.78,
+"SEABED"
+]
+],
+"REAR": [
+[
+1.77,
+"SEABED"
+],
+[
+5.27,
+"SEABED"
+],
+[
+5.82,
+"SEABED"
+]
+],
+"LEFT": [
+[
+1.72,
+"SEABED"
+],
+[
+5.57,
+"SEABED"
+],
+[
+5.82,
+"SEABED"
+],
+[
+6.27,
+"SEABED"
+],
+[
+6.52,
+"SEABED"
+],
+[
+6.77,
+"SEABED"
+],
+[
+7.37,
+"SEABED"
+],
+[
+7.62,
+"SEABED"
+],
+[
+7.87,
+"SEABED"
+]
+],
+"RIGHT": [
+[
+2.62,
+"SEABED"
+],
+[
+6.17,
+"SEABED"
+],
+[
+7.57,
+"SEABED"
+],
+[
+7.97,
+"SEABED"
+],
+[
+8.22,
+"SEABED"
+],
+[
+8.57,
+"SEABED"
+],
+[
+8.93,
+"SEABED"
+],
+[
+9.43,
+"SEABED"
+],
+[
+11.78,
+"SEABED"
+],
+[
+11.97,
+"SEABED"
+]
+]
+}
+},
+{
+"t": 23.7,
+"part": "seabed",
+"caption": "6) a drone inside the seabed clutter cannot be separated from the bottom -> UNKNOWN (conservative)",
+"true_distance": 3.6,
+"echoes": {
+"FRONT": [
+[
+2.67,
+"SEABED"
+],
+[
+10.82,
+"SEABED"
+]
+],
+"REAR": [
+[
+1.82,
+"SEABED"
+],
+[
+5.37,
+"SEABED"
+],
+[
+5.87,
+"SEABED"
+],
+[
+8.17,
+"SEABED"
+],
+[
+8.62,
+"SEABED"
+]
+],
+"LEFT": [
+[
+1.72,
+"SEABED"
+],
+[
+5.22,
+"SEABED"
+],
+[
+5.67,
+"SEABED"
+],
+[
+6.47,
+"SEABED"
+],
+[
+6.82,
+"SEABED"
+],
+[
+7.17,
+"SEABED"
+],
+[
+7.92,
+"SEABED"
+]
+],
+"RIGHT": [
+[
+2.57,
+"SEABED"
+],
+[
+5.67,
+"SEABED"
+],
+[
+5.92,
+"SEABED"
+],
+[
+7.57,
+"SEABED"
+],
+[
+8.47,
+"SEABED"
+],
+[
+8.72,
+"SEABED"
+],
+[
+9.47,
+"SEABED"
+],
+[
+11.72,
+"SEABED"
+]
+]
+}
+},
+{
+"t": 23.8,
+"part": "seabed",
+"caption": "6) a drone inside the seabed clutter cannot be separated from the bottom -> UNKNOWN (conservative)",
+"true_distance": 3.6,
+"echoes": {
+"FRONT": [
+[
+2.62,
+"SEABED"
+],
+[
+10.78,
+"SEABED"
+]
+],
+"REAR": [
+[
+1.77,
+"SEABED"
+],
+[
+5.42,
+"SEABED"
+]
+],
+"LEFT": [
+[
+1.72,
+"SEABED"
+],
+[
+5.67,
+"SEABED"
+],
+[
+5.87,
+"SEABED"
+],
+[
+6.17,
+"SEABED"
+],
+[
+6.67,
+"SEABED"
+],
+[
+6.87,
+"SEABED"
+],
+[
+7.12,
+"SEABED"
+],
+[
+7.72,
+"SEABED"
+]
+],
+"RIGHT": [
+[
+2.57,
+"SEABED"
+],
+[
+5.97,
+"SEABED"
+],
+[
+6.47,
+"SEABED"
+],
+[
+7.02,
+"SEABED"
+],
+[
+7.47,
+"SEABED"
+],
+[
+7.87,
+"SEABED"
+],
+[
+8.72,
+"SEABED"
+],
+[
+9.03,
+"SEABED"
+],
+[
+9.47,
+"SEABED"
+],
+[
+11.17,
+"SEABED"
+],
+[
+11.62,
+"SEABED"
+]
+]
+}
+},
+{
+"t": 23.9,
+"part": "seabed",
+"caption": "6) a drone inside the seabed clutter cannot be separated from the bottom -> UNKNOWN (conservative)",
+"true_distance": 3.6,
+"echoes": {
+"FRONT": [
+[
+2.62,
+"SEABED"
+],
+[
+10.53,
+"SEABED"
+],
+[
+10.72,
+"SEABED"
+]
+],
+"REAR": [
+[
+1.77,
+"SEABED"
+],
+[
+6.37,
+"SEABED"
+]
+],
+"LEFT": [
+[
+1.72,
+"SEABED"
+],
+[
+5.77,
+"SEABED"
+],
+[
+6.72,
+"SEABED"
+],
+[
+7.02,
+"SEABED"
+],
+[
+7.22,
+"SEABED"
+],
+[
+7.87,
+"SEABED"
+]
+],
+"RIGHT": [
+[
+2.57,
+"SEABED"
+],
+[
+6.07,
+"SEABED"
+],
+[
+6.37,
+"SEABED"
+],
+[
+7.72,
+"SEABED"
+],
+[
+8.28,
+"SEABED"
+],
+[
+9.53,
+"SEABED"
+],
+[
+11.22,
+"SEABED"
+],
+[
+11.92,
+"SEABED"
+]
+]
+}
+},
+{
+"t": 24.0,
+"part": "seabed",
+"caption": "6) a drone inside the seabed clutter cannot be separated from the bottom -> UNKNOWN (conservative)",
+"true_distance": 3.6,
+"echoes": {
+"FRONT": [
+[
+2.62,
+"SEABED"
+],
+[
+10.78,
+"SEABED"
+]
+],
+"REAR": [
+[
+1.82,
+"SEABED"
+],
+[
+6.77,
+"SEABED"
+]
+],
+"LEFT": [
+[
+1.72,
+"SEABED"
+],
+[
+6.32,
+"SEABED"
+],
+[
+7.37,
+"SEABED"
+],
+[
+7.62,
+"SEABED"
+],
+[
+7.87,
+"SEABED"
+]
+],
+"RIGHT": [
+[
+2.57,
+"SEABED"
+],
+[
+5.62,
+"SEABED"
+],
+[
+7.62,
+"SEABED"
+],
+[
+7.82,
+"SEABED"
+],
+[
+8.93,
+"SEABED"
+],
+[
+9.43,
+"SEABED"
+],
+[
+11.42,
+"SEABED"
+],
+[
+11.92,
+"SEABED"
+]
+]
+}
+},
+{
+"t": 24.1,
+"part": "seabed",
+"caption": "6) a drone inside the seabed clutter cannot be separated from the bottom -> UNKNOWN (conservative)",
+"true_distance": 3.6,
+"echoes": {
+"FRONT": [
+[
+2.62,
+"SEABED"
+],
+[
+10.78,
+"SEABED"
+]
+],
+"REAR": [
+[
+1.77,
+"SEABED"
+],
+[
+5.67,
+"SEABED"
+]
+],
+"LEFT": [
+[
+1.72,
+"SEABED"
+],
+[
+5.97,
+"SEABED"
+],
+[
+6.17,
+"SEABED"
+],
+[
+6.62,
+"SEABED"
+],
+[
+6.87,
+"SEABED"
+],
+[
+7.12,
+"SEABED"
+],
+[
+7.32,
+"SEABED"
+]
+],
+"RIGHT": [
+[
+2.62,
+"SEABED"
+],
+[
+6.07,
+"SEABED"
+],
+[
+6.42,
+"SEABED"
+],
+[
+7.62,
+"SEABED"
+],
+[
+8.78,
+"SEABED"
+],
+[
+8.97,
+"SEABED"
+],
+[
+9.43,
+"SEABED"
+],
+[
+11.17,
+"SEABED"
+],
+[
+11.38,
+"SEABED"
+]
+]
+}
+},
+{
+"t": 24.2,
+"part": "seabed",
+"caption": "6) a drone inside the seabed clutter cannot be separated from the bottom -> UNKNOWN (conservative)",
+"true_distance": 3.6,
+"echoes": {
+"FRONT": [
+[
+2.62,
+"SEABED"
+],
+[
+10.78,
+"SEABED"
+]
+],
+"REAR": [
+[
+1.77,
+"SEABED"
+],
+[
+5.47,
+"SEABED"
+],
+[
+6.57,
+"SEABED"
+]
+],
+"LEFT": [
+[
+1.72,
+"SEABED"
+],
+[
+5.82,
+"SEABED"
+],
+[
+6.02,
+"SEABED"
+],
+[
+6.52,
+"SEABED"
+],
+[
+6.87,
+"SEABED"
+],
+[
+7.47,
+"SEABED"
+],
+[
+7.82,
+"SEABED"
+]
+],
+"RIGHT": [
+[
+2.57,
+"SEABED"
+],
+[
+5.67,
+"SEABED"
+],
+[
+5.92,
+"SEABED"
+],
+[
+6.42,
+"SEABED"
+],
+[
+6.82,
+"SEABED"
+],
+[
+7.57,
+"SEABED"
+],
+[
+7.87,
+"SEABED"
+],
+[
+8.82,
+"SEABED"
+],
+[
+9.47,
+"SEABED"
+]
+]
+}
+},
+{
+"t": 24.3,
+"part": "seabed",
+"caption": "6) a drone inside the seabed clutter cannot be separated from the bottom -> UNKNOWN (conservative)",
+"true_distance": 3.6,
+"echoes": {
+"FRONT": [
+[
+2.62,
+"SEABED"
+],
+[
+10.72,
+"SEABED"
+]
+],
+"REAR": [
+[
+1.82,
+"SEABED"
+],
+[
+5.67,
+"SEABED"
+]
+],
+"LEFT": [
+[
+1.72,
+"SEABED"
+],
+[
+5.32,
+"SEABED"
+],
+[
+5.67,
+"SEABED"
+],
+[
+6.07,
+"SEABED"
+],
+[
+7.37,
+"SEABED"
+],
+[
+7.62,
+"SEABED"
+],
+[
+7.87,
+"SEABED"
+]
+],
+"RIGHT": [
+[
+2.57,
+"SEABED"
+],
+[
+5.92,
+"SEABED"
+],
+[
+6.37,
+"SEABED"
+],
+[
+7.67,
+"SEABED"
+],
+[
+7.92,
+"SEABED"
+],
+[
+8.28,
+"SEABED"
+],
+[
+8.93,
+"SEABED"
+],
+[
+9.18,
+"SEABED"
+],
+[
+9.47,
+"SEABED"
+],
+[
+11.53,
+"SEABED"
+]
+]
+}
+},
+{
+"t": 24.4,
+"part": "seabed",
+"caption": "6) a drone inside the seabed clutter cannot be separated from the bottom -> UNKNOWN (conservative)",
+"true_distance": 3.6,
+"echoes": {
+"FRONT": [
+[
+2.67,
+"SEABED"
+],
+[
+10.53,
+"SEABED"
+],
+[
+10.72,
+"SEABED"
+]
+],
+"REAR": [
+[
+1.77,
+"SEABED"
+],
+[
+5.27,
+"SEABED"
+],
+[
+5.52,
+"SEABED"
+]
+],
+"LEFT": [
+[
+1.72,
+"SEABED"
+],
+[
+5.52,
+"SEABED"
+],
+[
+5.92,
+"SEABED"
+],
+[
+6.47,
+"SEABED"
+],
+[
+6.77,
+"SEABED"
+],
+[
+7.12,
+"SEABED"
+],
+[
+7.72,
+"SEABED"
+]
+],
+"RIGHT": [
+[
+2.62,
+"SEABED"
+],
+[
+7.57,
+"SEABED"
+],
+[
+8.17,
+"SEABED"
+],
+[
+8.43,
+"SEABED"
+],
+[
+8.68,
+"SEABED"
+],
+[
+9.47,
+"SEABED"
+],
+[
+11.62,
+"SEABED"
+]
+]
+}
+},
+{
+"t": 24.5,
+"part": "seabed",
+"caption": "6) a drone inside the seabed clutter cannot be separated from the bottom -> UNKNOWN (conservative)",
+"true_distance": 3.6,
+"echoes": {
+"FRONT": [
+[
+2.62,
+"SEABED"
+],
+[
+10.53,
+"SEABED"
+],
+[
+10.72,
+"SEABED"
+]
+],
+"REAR": [
+[
+1.77,
+"SEABED"
+],
+[
+5.17,
+"SEABED"
+],
+[
+5.67,
+"SEABED"
+],
+[
+6.17,
+"SEABED"
+]
+],
+"LEFT": [
+[
+1.72,
+"SEABED"
+],
+[
+6.02,
+"SEABED"
+],
+[
+6.42,
+"SEABED"
+],
+[
+7.12,
+"SEABED"
+],
+[
+7.52,
+"SEABED"
+],
+[
+7.82,
+"SEABED"
+]
+],
+"RIGHT": [
+[
+2.62,
+"SEABED"
+],
+[
+5.97,
+"SEABED"
+],
+[
+7.52,
+"SEABED"
+],
+[
+7.92,
+"SEABED"
+],
+[
+8.43,
+"SEABED"
+],
+[
+8.82,
+"SEABED"
+],
+[
+9.47,
+"SEABED"
+],
+[
+11.17,
+"SEABED"
+],
+[
+11.78,
+"SEABED"
+],
+[
+11.97,
+"SEABED"
+]
+]
+}
+},
+{
+"t": 24.6,
+"part": "seabed",
+"caption": "6) a drone inside the seabed clutter cannot be separated from the bottom -> UNKNOWN (conservative)",
+"true_distance": 3.6,
+"echoes": {
+"FRONT": [
+[
+2.62,
+"SEABED"
+],
+[
+10.72,
+"SEABED"
+]
+],
+"REAR": [
+[
+1.77,
+"SEABED"
+],
+[
+7.57,
+"SEABED"
+]
+],
+"LEFT": [
+[
+1.72,
+"SEABED"
+],
+[
+5.97,
+"SEABED"
+],
+[
+6.62,
+"SEABED"
+],
+[
+7.32,
+"SEABED"
+]
+],
+"RIGHT": [
+[
+2.57,
+"SEABED"
+],
+[
+5.32,
+"SEABED"
+],
+[
+5.72,
+"SEABED"
+],
+[
+6.37,
+"SEABED"
+],
+[
+7.62,
+"SEABED"
+],
+[
+8.32,
+"SEABED"
+],
+[
+8.57,
+"SEABED"
+],
+[
+9.47,
+"SEABED"
+],
+[
+11.42,
+"SEABED"
+],
+[
+11.67,
+"SEABED"
+]
+]
+}
+},
+{
+"t": 24.7,
+"part": "seabed",
+"caption": "6) a drone inside the seabed clutter cannot be separated from the bottom -> UNKNOWN (conservative)",
+"true_distance": 3.6,
+"echoes": {
+"FRONT": [
+[
+2.62,
+"SEABED"
+],
+[
+10.72,
+"SEABED"
+]
+],
+"REAR": [
+[
+1.82,
+"SEABED"
+],
+[
+5.27,
+"SEABED"
+],
+[
+6.07,
+"SEABED"
+],
+[
+6.27,
+"SEABED"
+]
+],
+"LEFT": [
+[
+1.72,
+"SEABED"
+],
+[
+5.47,
+"SEABED"
+],
+[
+5.97,
+"SEABED"
+],
+[
+6.37,
+"SEABED"
+],
+[
+7.32,
+"SEABED"
+],
+[
+7.57,
+"SEABED"
+],
+[
+7.82,
+"SEABED"
+]
+],
+"RIGHT": [
+[
+2.57,
+"SEABED"
+],
+[
+7.52,
+"SEABED"
+],
+[
+7.82,
+"SEABED"
+],
+[
+8.47,
+"SEABED"
+],
+[
+8.68,
+"SEABED"
+],
+[
+8.93,
+"SEABED"
+],
+[
+9.47,
+"SEABED"
+],
+[
+11.38,
+"SEABED"
+],
+[
+11.88,
+"SEABED"
+]
+]
+}
+},
+{
+"t": 24.8,
+"part": "seabed",
+"caption": "6) a drone inside the seabed clutter cannot be separated from the bottom -> UNKNOWN (conservative)",
+"true_distance": 3.6,
+"echoes": {
+"FRONT": [
+[
+2.62,
+"SEABED"
+],
+[
+10.72,
+"SEABED"
+]
+],
+"REAR": [
+[
+1.77,
+"SEABED"
+]
+],
+"LEFT": [
+[
+1.72,
+"SEABED"
+],
+[
+5.77,
+"SEABED"
+],
+[
+6.62,
+"SEABED"
+],
+[
+6.82,
+"SEABED"
+],
+[
+7.07,
+"SEABED"
+],
+[
+7.32,
+"SEABED"
+],
+[
+7.57,
+"SEABED"
+]
+],
+"RIGHT": [
+[
+2.57,
+"SEABED"
+],
+[
+5.87,
+"SEABED"
+],
+[
+6.22,
+"SEABED"
+],
+[
+7.62,
+"SEABED"
+],
+[
+8.38,
+"SEABED"
+],
+[
+8.72,
+"SEABED"
+],
+[
+9.47,
+"SEABED"
+]
+]
+}
+},
+{
+"t": 24.9,
+"part": "seabed",
+"caption": "6) a drone inside the seabed clutter cannot be separated from the bottom -> UNKNOWN (conservative)",
+"true_distance": 3.6,
+"echoes": {
+"FRONT": [
+[
+2.62,
+"SEABED"
+],
+[
+5.52,
+"SEABED"
+],
+[
+10.78,
+"SEABED"
+]
+],
+"REAR": [
+[
+1.77,
+"SEABED"
+],
+[
+5.62,
+"SEABED"
+],
+[
+6.27,
+"SEABED"
+]
+],
+"LEFT": [
+[
+1.72,
+"SEABED"
+],
+[
+5.62,
+"SEABED"
+],
+[
+6.92,
+"SEABED"
+],
+[
+7.62,
+"SEABED"
+],
+[
+7.87,
+"SEABED"
+]
+],
+"RIGHT": [
+[
+2.62,
+"SEABED"
+],
+[
+5.97,
+"SEABED"
+],
+[
+6.22,
+"SEABED"
+],
+[
+6.67,
+"SEABED"
+],
+[
+7.72,
+"SEABED"
+],
+[
+8.17,
+"SEABED"
+],
+[
+8.47,
+"SEABED"
+],
+[
+9.47,
+"SEABED"
+]
+]
+}
+},
+{
+"t": 25.0,
+"part": "seabed",
+"caption": "6) a drone inside the seabed clutter cannot be separated from the bottom -> UNKNOWN (conservative)",
+"true_distance": 3.6,
+"echoes": {
+"FRONT": [
+[
+2.57,
+"SEABED"
+],
+[
+5.47,
+"SEABED"
+],
+[
+10.72,
+"SEABED"
+]
+],
+"REAR": [
+[
+1.77,
+"SEABED"
+],
+[
+5.37,
+"SEABED"
+],
+[
+5.57,
+"SEABED"
+]
+],
+"LEFT": [
+[
+1.72,
+"SEABED"
+],
+[
+5.57,
+"SEABED"
+],
+[
+5.77,
+"SEABED"
+],
+[
+6.12,
+"SEABED"
+],
+[
+6.52,
+"SEABED"
+],
+[
+7.07,
+"SEABED"
+],
+[
+7.62,
+"SEABED"
+],
+[
+7.82,
+"SEABED"
+]
+],
+"RIGHT": [
+[
+2.57,
+"SEABED"
+],
+[
+6.32,
+"SEABED"
+],
+[
+7.47,
+"SEABED"
+],
+[
+7.92,
+"SEABED"
+],
+[
+8.47,
+"SEABED"
+],
+[
+8.68,
+"SEABED"
+],
+[
+9.12,
+"SEABED"
+],
+[
+9.47,
+"SEABED"
+],
+[
+10.72,
+"SEABED"
+],
+[
+11.92,
+"SEABED"
+]
+]
+}
+},
+{
+"t": 25.1,
+"part": "seabed",
+"caption": "6) a drone inside the seabed clutter cannot be separated from the bottom -> UNKNOWN (conservative)",
+"true_distance": 3.6,
+"echoes": {
+"FRONT": [
+[
+2.62,
+"SEABED"
+],
+[
+10.78,
+"SEABED"
+]
+],
+"REAR": [
+[
+1.77,
+"SEABED"
+],
+[
+5.27,
+"SEABED"
+],
+[
+5.77,
+"SEABED"
+]
+],
+"LEFT": [
+[
+1.72,
+"SEABED"
+],
+[
+5.72,
+"SEABED"
+],
+[
+5.97,
+"SEABED"
+],
+[
+6.17,
+"SEABED"
+],
+[
+6.37,
+"SEABED"
+],
+[
+6.62,
+"SEABED"
+],
+[
+6.87,
+"SEABED"
+],
+[
+7.22,
+"SEABED"
+],
+[
+7.82,
+"SEABED"
+]
+],
+"RIGHT": [
+[
+2.57,
+"SEABED"
+],
+[
+5.87,
+"SEABED"
+],
+[
+7.47,
+"SEABED"
+],
+[
+7.72,
+"SEABED"
+],
+[
+8.78,
+"SEABED"
+],
+[
+9.07,
+"SEABED"
+],
+[
+9.43,
+"SEABED"
+]
+]
+}
+},
+{
+"t": 25.2,
+"part": "seabed",
+"caption": "6) a drone inside the seabed clutter cannot be separated from the bottom -> UNKNOWN (conservative)",
+"true_distance": 3.6,
+"echoes": {
+"FRONT": [
+[
+2.57,
+"SEABED"
+],
+[
+10.68,
+"SEABED"
+]
+],
+"REAR": [
+[
+1.77,
+"SEABED"
+],
+[
+5.67,
+"SEABED"
+]
+],
+"LEFT": [
+[
+1.72,
+"SEABED"
+],
+[
+5.42,
+"SEABED"
+],
+[
+5.62,
+"SEABED"
+],
+[
+6.57,
+"SEABED"
+],
+[
+7.17,
+"SEABED"
+],
+[
+7.47,
+"SEABED"
+]
+],
+"RIGHT": [
+[
+2.57,
+"SEABED"
+],
+[
+5.62,
+"SEABED"
+],
+[
+5.87,
+"SEABED"
+],
+[
+6.07,
+"SEABED"
+],
+[
+7.17,
+"SEABED"
+],
+[
+7.47,
+"SEABED"
+],
+[
+7.97,
+"SEABED"
+],
+[
+8.38,
+"SEABED"
+],
+[
+8.88,
+"SEABED"
+],
+[
+9.12,
+"SEABED"
+],
+[
+9.47,
+"SEABED"
+],
+[
+11.32,
+"SEABED"
+],
+[
+11.72,
+"SEABED"
+]
+]
+}
+},
+{
+"t": 25.3,
+"part": "seabed",
+"caption": "7) closer than the clutter onset the drone is a separate echo -> DYNAMIC before SEABED",
+"true_distance": 3.6,
+"echoes": {
+"FRONT": [
+[
+2.62,
+"SEABED"
+],
+[
+10.62,
+"SEABED"
+]
+],
+"REAR": [
+[
+1.77,
+"SEABED"
+],
+[
+5.42,
+"SEABED"
+],
+[
+5.82,
+"SEABED"
+]
+],
+"LEFT": [
+[
+1.72,
+"SEABED"
+],
+[
+5.82,
+"SEABED"
+],
+[
+6.02,
+"SEABED"
+],
+[
+6.57,
+"SEABED"
+],
+[
+6.77,
+"SEABED"
+],
+[
+7.37,
+"SEABED"
+],
+[
+7.57,
+"SEABED"
+],
+[
+7.87,
+"SEABED"
+]
+],
+"RIGHT": [
+[
+2.62,
+"SEABED"
+],
+[
+7.67,
+"SEABED"
+],
+[
+7.87,
+"SEABED"
+],
+[
+8.07,
+"SEABED"
+],
+[
+8.47,
+"SEABED"
+],
+[
+8.97,
+"SEABED"
+],
+[
+9.43,
+"SEABED"
+],
+[
+11.17,
+"SEABED"
+],
+[
+11.38,
+"SEABED"
+],
+[
+11.88,
+"SEABED"
+]
+]
+}
+},
+{
+"t": 25.4,
+"part": "seabed",
+"caption": "7) closer than the clutter onset the drone is a separate echo -> DYNAMIC before SEABED",
+"true_distance": 3.5,
+"echoes": {
+"FRONT": [
+[
+2.57,
+"SEABED"
+],
+[
+10.78,
+"SEABED"
+]
+],
+"REAR": [
+[
+1.77,
+"SEABED"
+]
+],
+"LEFT": [
+[
+1.72,
+"SEABED"
+],
+[
+5.77,
+"SEABED"
+],
+[
+6.07,
+"SEABED"
+],
+[
+6.37,
+"SEABED"
+],
+[
+6.57,
+"SEABED"
+],
+[
+7.07,
+"SEABED"
+],
+[
+7.37,
+"SEABED"
+],
+[
+7.87,
+"SEABED"
+]
+],
+"RIGHT": [
+[
+2.62,
+"SEABED"
+],
+[
+6.12,
+"SEABED"
+],
+[
+6.52,
+"SEABED"
+],
+[
+7.67,
+"SEABED"
+],
+[
+8.32,
+"SEABED"
+],
+[
+8.57,
+"SEABED"
+],
+[
+8.78,
+"SEABED"
+],
+[
+9.47,
+"SEABED"
+],
+[
+10.62,
+"SEABED"
+],
+[
+10.88,
+"SEABED"
+],
+[
+11.82,
+"SEABED"
+]
+]
+}
+},
+{
+"t": 25.5,
+"part": "seabed",
+"caption": "7) closer than the clutter onset the drone is a separate echo -> DYNAMIC before SEABED",
+"true_distance": 3.4,
+"echoes": {
+"FRONT": [
+[
+2.67,
+"SEABED"
+],
+[
+10.72,
+"SEABED"
+]
+],
+"REAR": [
+[
+1.77,
+"SEABED"
+],
+[
+5.47,
+"SEABED"
+],
+[
+6.02,
+"SEABED"
+]
+],
+"LEFT": [
+[
+1.72,
+"SEABED"
+],
+[
+5.87,
+"SEABED"
+],
+[
+6.07,
+"SEABED"
+],
+[
+7.07,
+"SEABED"
+],
+[
+7.82,
+"SEABED"
+]
+],
+"RIGHT": [
+[
+2.57,
+"SEABED"
+],
+[
+7.62,
+"SEABED"
+],
+[
+8.28,
+"SEABED"
+],
+[
+8.57,
+"SEABED"
+],
+[
+9.47,
+"SEABED"
+],
+[
+10.88,
+"SEABED"
+],
+[
+11.38,
+"SEABED"
+]
+]
+}
+},
+{
+"t": 25.6,
+"part": "seabed",
+"caption": "7) closer than the clutter onset the drone is a separate echo -> DYNAMIC before SEABED",
+"true_distance": 3.3,
+"echoes": {
+"FRONT": [
+[
+2.62,
+"SEABED"
+],
+[
+10.78,
+"SEABED"
+]
+],
+"REAR": [
+[
+1.77,
+"SEABED"
+],
+[
+6.02,
+"SEABED"
+]
+],
+"LEFT": [
+[
+1.72,
+"SEABED"
+],
+[
+5.32,
+"SEABED"
+],
+[
+5.62,
+"SEABED"
+],
+[
+6.22,
+"SEABED"
+],
+[
+6.52,
+"SEABED"
+],
+[
+6.87,
+"SEABED"
+],
+[
+7.37,
+"SEABED"
+],
+[
+7.57,
+"SEABED"
+],
+[
+7.82,
+"SEABED"
+]
+],
+"RIGHT": [
+[
+2.57,
+"SEABED"
+],
+[
+6.22,
+"SEABED"
+],
+[
+7.62,
+"SEABED"
+],
+[
+7.82,
+"SEABED"
+],
+[
+8.03,
+"SEABED"
+],
+[
+8.43,
+"SEABED"
+],
+[
+8.78,
+"SEABED"
+],
+[
+9.43,
+"SEABED"
+],
+[
+11.78,
+"SEABED"
+]
+]
+}
+},
+{
+"t": 25.7,
+"part": "seabed",
+"caption": "7) closer than the clutter onset the drone is a separate echo -> DYNAMIC before SEABED",
+"true_distance": 3.2,
+"echoes": {
+"FRONT": [
+[
+2.62,
+"SEABED"
+],
+[
+10.78,
+"SEABED"
+]
+],
+"REAR": [
+[
+1.77,
+"SEABED"
+],
+[
+5.27,
+"SEABED"
+],
+[
+5.47,
+"SEABED"
+],
+[
+6.17,
+"SEABED"
+]
+],
+"LEFT": [
+[
+1.72,
+"SEABED"
+],
+[
+6.12,
+"SEABED"
+],
+[
+6.47,
+"SEABED"
+],
+[
+6.97,
+"SEABED"
+],
+[
+7.37,
+"SEABED"
+],
+[
+7.72,
+"SEABED"
+]
+],
+"RIGHT": [
+[
+2.57,
+"SEABED"
+],
+[
+6.22,
+"SEABED"
+],
+[
+7.57,
+"SEABED"
+],
+[
+8.12,
+"SEABED"
+],
+[
+8.72,
+"SEABED"
+],
+[
+9.47,
+"SEABED"
+],
+[
+11.17,
+"SEABED"
+]
+]
+}
+},
+{
+"t": 25.8,
+"part": "seabed",
+"caption": "7) closer than the clutter onset the drone is a separate echo -> DYNAMIC before SEABED",
+"true_distance": 3.1,
+"echoes": {
+"FRONT": [
+[
+2.62,
+"SEABED"
+],
+[
+10.72,
+"SEABED"
+]
+],
+"REAR": [
+[
+1.77,
+"SEABED"
+],
+[
+5.37,
+"SEABED"
+],
+[
+5.67,
+"SEABED"
+],
+[
+5.87,
+"SEABED"
+]
+],
+"LEFT": [
+[
+1.72,
+"SEABED"
+],
+[
+5.87,
+"SEABED"
+],
+[
+6.07,
+"SEABED"
+],
+[
+6.82,
+"SEABED"
+],
+[
+7.72,
+"SEABED"
+]
+],
+"RIGHT": [
+[
+2.57,
+"SEABED"
+],
+[
+6.02,
+"SEABED"
+],
+[
+6.27,
+"SEABED"
+],
+[
+7.42,
+"SEABED"
+],
+[
+7.62,
+"SEABED"
+],
+[
+7.92,
+"SEABED"
+],
+[
+8.47,
+"SEABED"
+],
+[
+9.03,
+"SEABED"
+],
+[
+9.47,
+"SEABED"
+],
+[
+11.62,
+"SEABED"
+]
+]
+}
+},
+{
+"t": 25.9,
+"part": "seabed",
+"caption": "7) closer than the clutter onset the drone is a separate echo -> DYNAMIC before SEABED",
+"true_distance": 3.0,
+"echoes": {
+"FRONT": [
+[
+2.57,
+"SEABED"
+],
+[
+10.68,
+"SEABED"
+]
+],
+"REAR": [
+[
+1.77,
+"SEABED"
+],
+[
+5.72,
+"SEABED"
+]
+],
+"LEFT": [
+[
+1.72,
+"SEABED"
+],
+[
+5.57,
+"SEABED"
+],
+[
+5.97,
+"SEABED"
+],
+[
+6.47,
+"SEABED"
+],
+[
+7.17,
+"SEABED"
+],
+[
+7.37,
+"SEABED"
+],
+[
+7.57,
+"SEABED"
+],
+[
+7.82,
+"SEABED"
+]
+],
+"RIGHT": [
+[
+2.57,
+"SEABED"
+],
+[
+6.02,
+"SEABED"
+],
+[
+7.72,
+"SEABED"
+],
+[
+7.92,
+"SEABED"
+],
+[
+8.12,
+"SEABED"
+],
+[
+8.62,
+"SEABED"
+],
+[
+8.97,
+"SEABED"
+],
+[
+9.47,
+"SEABED"
+]
+]
+}
+},
+{
+"t": 26.0,
+"part": "seabed",
+"caption": "7) closer than the clutter onset the drone is a separate echo -> DYNAMIC before SEABED",
+"true_distance": 2.9,
+"echoes": {
+"FRONT": [
+[
+2.47,
+"SEABED"
+],
+[
+10.82,
+"SEABED"
+]
+],
+"REAR": [
+[
+1.77,
+"SEABED"
+],
+[
+6.02,
+"SEABED"
+]
+],
+"LEFT": [
+[
+1.72,
+"SEABED"
+],
+[
+5.82,
+"SEABED"
+],
+[
+6.07,
+"SEABED"
+],
+[
+6.32,
+"SEABED"
+],
+[
+6.62,
+"SEABED"
+],
+[
+6.92,
+"SEABED"
+],
+[
+7.62,
+"SEABED"
+]
+],
+"RIGHT": [
+[
+2.57,
+"SEABED"
+],
+[
+6.32,
+"SEABED"
+],
+[
+7.72,
+"SEABED"
+],
+[
+8.38,
+"SEABED"
+],
+[
+8.82,
+"SEABED"
+],
+[
+9.43,
+"SEABED"
+],
+[
+11.82,
+"SEABED"
+]
+]
+}
+},
+{
+"t": 26.1,
+"part": "seabed",
+"caption": "7) closer than the clutter onset the drone is a separate echo -> DYNAMIC before SEABED",
+"true_distance": 2.8,
+"echoes": {
+"FRONT": [
+[
+2.37,
+"SEABED"
+],
+[
+10.72,
+"SEABED"
+]
+],
+"REAR": [
+[
+1.77,
+"SEABED"
+],
+[
+5.47,
+"SEABED"
+],
+[
+5.72,
+"SEABED"
+],
+[
+5.92,
+"SEABED"
+]
+],
+"LEFT": [
+[
+1.72,
+"SEABED"
+],
+[
+5.37,
+"SEABED"
+],
+[
+5.92,
+"SEABED"
+],
+[
+7.12,
+"SEABED"
+],
+[
+7.77,
+"SEABED"
+]
+],
+"RIGHT": [
+[
+2.57,
+"SEABED"
+],
+[
+5.77,
+"SEABED"
+],
+[
+7.62,
+"SEABED"
+],
+[
+8.07,
+"SEABED"
+],
+[
+8.47,
+"SEABED"
+],
+[
+8.72,
+"SEABED"
+],
+[
+9.18,
+"SEABED"
+],
+[
+9.43,
+"SEABED"
+],
+[
+11.72,
+"SEABED"
+]
+]
+}
+},
+{
+"t": 26.2,
+"part": "seabed",
+"caption": "7) closer than the clutter onset the drone is a separate echo -> DYNAMIC before SEABED",
+"true_distance": 2.7,
+"echoes": {
+"FRONT": [
+[
+2.27,
+"SEABED"
+],
+[
+10.82,
+"SEABED"
+]
+],
+"REAR": [
+[
+1.77,
+"SEABED"
+],
+[
+5.62,
+"SEABED"
+]
+],
+"LEFT": [
+[
+1.72,
+"SEABED"
+],
+[
+5.62,
+"SEABED"
+],
+[
+6.37,
+"SEABED"
+],
+[
+6.87,
+"SEABED"
+],
+[
+7.17,
+"SEABED"
+],
+[
+7.77,
+"SEABED"
+]
+],
+"RIGHT": [
+[
+2.57,
+"SEABED"
+],
+[
+6.27,
+"SEABED"
+],
+[
+7.62,
+"SEABED"
+],
+[
+8.03,
+"SEABED"
+],
+[
+8.22,
+"SEABED"
+],
+[
+8.62,
+"SEABED"
+],
+[
+9.07,
+"SEABED"
+],
+[
+9.43,
+"SEABED"
+]
+]
+}
+},
+{
+"t": 26.3,
+"part": "seabed",
+"caption": "7) closer than the clutter onset the drone is a separate echo -> DYNAMIC before SEABED",
+"true_distance": 2.6,
+"echoes": {
+"FRONT": [
+[
+2.17,
+"SEABED"
+],
+[
+2.62,
+"SEABED"
+],
+[
+10.78,
+"SEABED"
+]
+],
+"REAR": [
+[
+1.77,
+"SEABED"
+],
+[
+5.22,
+"SEABED"
+],
+[
+5.87,
+"SEABED"
+],
+[
+8.53,
+"SEABED"
+]
+],
+"LEFT": [
+[
+1.72,
+"SEABED"
+],
+[
+6.02,
+"SEABED"
+],
+[
+6.82,
+"SEABED"
+],
+[
+7.27,
+"SEABED"
+],
+[
+7.82,
+"SEABED"
+]
+],
+"RIGHT": [
+[
+2.62,
+"SEABED"
+],
+[
+5.47,
+"SEABED"
+],
+[
+5.82,
+"SEABED"
+],
+[
+7.12,
+"SEABED"
+],
+[
+7.52,
+"SEABED"
+],
+[
+7.97,
+"SEABED"
+],
+[
+8.43,
+"SEABED"
+],
+[
+8.97,
+"SEABED"
+],
+[
+9.47,
+"SEABED"
+],
+[
+10.97,
+"SEABED"
+],
+[
+11.92,
+"SEABED"
+]
+]
+}
+},
+{
+"t": 26.4,
+"part": "seabed",
+"caption": "7) closer than the clutter onset the drone is a separate echo -> DYNAMIC before SEABED",
+"true_distance": 2.5,
+"echoes": {
+"FRONT": [
+[
+2.07,
+"SEABED"
+],
+[
+2.42,
+"SEABED"
+],
+[
+2.62,
+"SEABED"
+],
+[
+10.72,
+"SEABED"
+]
+],
+"REAR": [
+[
+1.77,
+"SEABED"
+],
+[
+5.32,
+"SEABED"
+],
+[
+5.62,
+"SEABED"
+]
+],
+"LEFT": [
+[
+1.72,
+"SEABED"
+],
+[
+5.97,
+"SEABED"
+],
+[
+6.87,
+"SEABED"
+],
+[
+7.77,
+"SEABED"
+]
+],
+"RIGHT": [
+[
+2.57,
+"SEABED"
+],
+[
+6.02,
+"SEABED"
+],
+[
+7.57,
+"SEABED"
+],
+[
+7.82,
+"SEABED"
+],
+[
+8.22,
+"SEABED"
+],
+[
+8.93,
+"SEABED"
+],
+[
+9.38,
+"SEABED"
+],
+[
+11.82,
+"SEABED"
+]
+]
+}
+},
+{
+"t": 26.5,
+"part": "seabed",
+"caption": "7) closer than the clutter onset the drone is a separate echo -> DYNAMIC before SEABED",
+"true_distance": 2.4,
+"echoes": {
+"FRONT": [
+[
+1.97,
+"SEABED"
+],
+[
+2.62,
+"SEABED"
+],
+[
+10.62,
+"SEABED"
+]
+],
+"REAR": [
+[
+1.82,
+"SEABED"
+],
+[
+5.32,
+"SEABED"
+]
+],
+"LEFT": [
+[
+1.72,
+"SEABED"
+],
+[
+5.47,
+"SEABED"
+],
+[
+6.17,
+"SEABED"
+],
+[
+7.27,
+"SEABED"
+],
+[
+7.82,
+"SEABED"
+]
+],
+"RIGHT": [
+[
+2.57,
+"SEABED"
+],
+[
+6.07,
+"SEABED"
+],
+[
+7.47,
+"SEABED"
+],
+[
+8.03,
+"SEABED"
+],
+[
+9.07,
+"SEABED"
+],
+[
+9.47,
+"SEABED"
+],
+[
+10.78,
+"SEABED"
+]
+]
+}
+},
+{
+"t": 26.6,
+"part": "seabed",
+"caption": "7) closer than the clutter onset the drone is a separate echo -> DYNAMIC before SEABED",
+"true_distance": 2.3,
+"echoes": {
+"FRONT": [
+[
+1.88,
+"SEABED"
+],
+[
+2.67,
+"SEABED"
+],
+[
+10.82,
+"SEABED"
+]
+],
+"REAR": [
+[
+1.77,
+"SEABED"
+],
+[
+5.52,
+"SEABED"
+]
+],
+"LEFT": [
+[
+1.72,
+"SEABED"
+],
+[
+5.42,
+"SEABED"
+],
+[
+5.67,
+"SEABED"
+],
+[
+6.12,
+"SEABED"
+],
+[
+6.67,
+"SEABED"
+],
+[
+7.22,
+"SEABED"
+],
+[
+7.52,
+"SEABED"
+],
+[
+7.87,
+"SEABED"
+]
+],
+"RIGHT": [
+[
+2.62,
+"SEABED"
+],
+[
+5.87,
+"SEABED"
+],
+[
+7.57,
+"SEABED"
+],
+[
+7.82,
+"SEABED"
+],
+[
+8.22,
+"SEABED"
+],
+[
+8.93,
+"SEABED"
+],
+[
+9.43,
+"SEABED"
+]
+]
+}
+},
+{
+"t": 26.7,
+"part": "seabed",
+"caption": "7) closer than the clutter onset the drone is a separate echo -> DYNAMIC before SEABED",
+"true_distance": 2.2,
+"echoes": {
+"FRONT": [
+[
+1.77,
+"SEABED"
+],
+[
+2.67,
+"SEABED"
+],
+[
+10.78,
+"SEABED"
+]
+],
+"REAR": [
+[
+1.77,
+"SEABED"
+],
+[
+5.77,
+"SEABED"
+]
+],
+"LEFT": [
+[
+1.72,
+"SEABED"
+],
+[
+5.37,
+"SEABED"
+],
+[
+5.72,
+"SEABED"
+],
+[
+6.32,
+"SEABED"
+],
+[
+6.57,
+"SEABED"
+],
+[
+7.17,
+"SEABED"
+],
+[
+7.62,
+"SEABED"
+],
+[
+7.87,
+"SEABED"
+]
+],
+"RIGHT": [
+[
+2.62,
+"SEABED"
+],
+[
+6.37,
+"SEABED"
+],
+[
+7.52,
+"SEABED"
+],
+[
+8.12,
+"SEABED"
+],
+[
+8.38,
+"SEABED"
+],
+[
+9.43,
+"SEABED"
+],
+[
+11.92,
+"SEABED"
+]
+]
+}
+},
+{
+"t": 26.8,
+"part": "seabed",
+"caption": "7) closer than the clutter onset the drone is a separate echo -> DYNAMIC before SEABED",
+"true_distance": 2.1,
+"echoes": {
+"FRONT": [
+[
+1.67,
+"SEABED"
+],
+[
+2.62,
+"SEABED"
+],
+[
+5.57,
+"SEABED"
+],
+[
+10.82,
+"SEABED"
+]
+],
+"REAR": [
+[
+1.77,
+"SEABED"
+],
+[
+5.32,
+"SEABED"
+],
+[
+5.52,
+"SEABED"
+]
+],
+"LEFT": [
+[
+1.72,
+"SEABED"
+],
+[
+5.57,
+"SEABED"
+],
+[
+6.22,
+"SEABED"
+],
+[
+6.42,
+"SEABED"
+],
+[
+7.07,
+"SEABED"
+],
+[
+7.67,
+"SEABED"
+]
+],
+"RIGHT": [
+[
+2.57,
+"SEABED"
+],
+[
+6.92,
+"SEABED"
+],
+[
+7.37,
+"SEABED"
+],
+[
+7.57,
+"SEABED"
+],
+[
+8.07,
+"SEABED"
+],
+[
+8.97,
+"SEABED"
+],
+[
+9.47,
+"SEABED"
+]
+]
+}
+},
+{
+"t": 26.9,
+"part": "seabed",
+"caption": "7) closer than the clutter onset the drone is a separate echo -> DYNAMIC before SEABED",
+"true_distance": 2.0,
+"echoes": {
+"FRONT": [
+[
+1.57,
+"UNCONFIRMED"
+],
+[
+2.57,
+"SEABED"
+],
+[
+10.78,
+"SEABED"
+]
+],
+"REAR": [
+[
+1.77,
+"SEABED"
+],
+[
+7.42,
+"SEABED"
+]
+],
+"LEFT": [
+[
+1.72,
+"SEABED"
+],
+[
+5.87,
+"SEABED"
+],
+[
+6.27,
+"SEABED"
+],
+[
+6.62,
+"SEABED"
+],
+[
+7.02,
+"SEABED"
+],
+[
+7.82,
+"SEABED"
+]
+],
+"RIGHT": [
+[
+2.57,
+"SEABED"
+],
+[
+6.37,
+"SEABED"
+],
+[
+7.47,
+"SEABED"
+],
+[
+8.17,
+"SEABED"
+],
+[
+8.78,
+"SEABED"
+],
+[
+9.43,
+"SEABED"
+],
+[
+11.22,
+"SEABED"
+]
+]
+}
+},
+{
+"t": 27.0,
+"part": "seabed",
+"caption": "7) closer than the clutter onset the drone is a separate echo -> DYNAMIC before SEABED",
+"true_distance": 1.9,
+"echoes": {
+"FRONT": [
+[
+1.47,
+"DYNAMIC"
+],
+[
+2.62,
+"SEABED"
+],
+[
+10.72,
+"SEABED"
+]
+],
+"REAR": [
+[
+1.77,
+"SEABED"
+],
+[
+5.42,
+"SEABED"
+],
+[
+6.32,
+"SEABED"
+]
+],
+"LEFT": [
+[
+1.72,
+"SEABED"
+],
+[
+5.47,
+"SEABED"
+],
+[
+5.67,
+"SEABED"
+],
+[
+6.12,
+"SEABED"
+],
+[
+6.37,
+"SEABED"
+],
+[
+6.67,
+"SEABED"
+],
+[
+7.92,
+"SEABED"
+]
+],
+"RIGHT": [
+[
+2.62,
+"SEABED"
+],
+[
+5.32,
+"SEABED"
+],
+[
+5.97,
+"SEABED"
+],
+[
+6.32,
+"SEABED"
+],
+[
+6.72,
+"SEABED"
+],
+[
+7.52,
+"SEABED"
+],
+[
+7.82,
+"SEABED"
+],
+[
+8.07,
+"SEABED"
+],
+[
+8.68,
+"SEABED"
+],
+[
+9.47,
+"SEABED"
+],
+[
+10.78,
+"SEABED"
+],
+[
+11.47,
+"SEABED"
+],
+[
+11.78,
+"SEABED"
+]
+]
+}
+},
+{
+"t": 27.1,
+"part": "seabed",
+"caption": "7) closer than the clutter onset the drone is a separate echo -> DYNAMIC before SEABED",
+"true_distance": 1.9,
+"echoes": {
+"FRONT": [
+[
+1.47,
+"DYNAMIC"
+],
+[
+2.67,
+"SEABED"
+],
+[
+10.82,
+"SEABED"
+]
+],
+"REAR": [
+[
+1.82,
+"SEABED"
+],
+[
+5.27,
+"SEABED"
+],
+[
+5.67,
+"SEABED"
+],
+[
+6.12,
+"SEABED"
+],
+[
+7.52,
+"SEABED"
+]
+],
+"LEFT": [
+[
+1.72,
+"SEABED"
+],
+[
+5.57,
+"SEABED"
+],
+[
+5.97,
+"SEABED"
+],
+[
+6.42,
+"SEABED"
+],
+[
+6.62,
+"SEABED"
+],
+[
+7.07,
+"SEABED"
+],
+[
+7.47,
+"SEABED"
+],
+[
+7.82,
+"SEABED"
+]
+],
+"RIGHT": [
+[
+2.57,
+"SEABED"
+],
+[
+7.52,
+"SEABED"
+],
+[
+7.72,
+"SEABED"
+],
+[
+8.43,
+"SEABED"
+],
+[
+8.97,
+"SEABED"
+],
+[
+9.47,
+"SEABED"
+],
+[
+11.88,
+"SEABED"
+]
+]
+}
+},
+{
+"t": 27.2,
+"part": "seabed",
+"caption": "7) closer than the clutter onset the drone is a separate echo -> DYNAMIC before SEABED",
+"true_distance": 1.9,
+"echoes": {
+"FRONT": [
+[
+1.47,
+"DYNAMIC"
+],
+[
+2.62,
+"SEABED"
+],
+[
+10.72,
+"SEABED"
+]
+],
+"REAR": [
+[
+1.77,
+"SEABED"
+]
+],
+"LEFT": [
+[
+1.72,
+"SEABED"
+],
+[
+6.27,
+"SEABED"
+],
+[
+6.47,
+"SEABED"
+],
+[
+6.82,
+"SEABED"
+],
+[
+7.37,
+"SEABED"
+],
+[
+7.77,
+"SEABED"
+]
+],
+"RIGHT": [
+[
+2.57,
+"SEABED"
+],
+[
+5.47,
+"SEABED"
+],
+[
+6.07,
+"SEABED"
+],
+[
+6.42,
+"SEABED"
+],
+[
+7.62,
+"SEABED"
+],
+[
+7.97,
+"SEABED"
+],
+[
+8.28,
+"SEABED"
+],
+[
+8.97,
+"SEABED"
+],
+[
+9.22,
+"SEABED"
+],
+[
+9.43,
+"SEABED"
+],
+[
+11.38,
+"SEABED"
+],
+[
+11.88,
+"SEABED"
+]
+]
+}
+},
+{
+"t": 27.3,
+"part": "seabed",
+"caption": "7) closer than the clutter onset the drone is a separate echo -> DYNAMIC before SEABED",
+"true_distance": 1.9,
+"echoes": {
+"FRONT": [
+[
+1.47,
+"DYNAMIC"
+],
+[
+2.62,
+"SEABED"
+],
+[
+10.72,
+"SEABED"
+]
+],
+"REAR": [
+[
+1.77,
+"SEABED"
+],
+[
+5.32,
+"SEABED"
+],
+[
+5.72,
+"SEABED"
+],
+[
+8.53,
+"SEABED"
+]
+],
+"LEFT": [
+[
+1.72,
+"SEABED"
+],
+[
+5.77,
+"SEABED"
+],
+[
+6.02,
+"SEABED"
+],
+[
+6.57,
+"SEABED"
+],
+[
+7.22,
+"SEABED"
+]
+],
+"RIGHT": [
+[
+2.57,
+"SEABED"
+],
+[
+7.67,
+"SEABED"
+],
+[
+8.12,
+"SEABED"
+],
+[
+8.53,
+"SEABED"
+],
+[
+9.43,
+"SEABED"
+],
+[
+10.88,
+"SEABED"
+],
+[
+11.62,
+"SEABED"
+]
+]
+}
+},
+{
+"t": 27.4,
+"part": "seabed",
+"caption": "7) closer than the clutter onset the drone is a separate echo -> DYNAMIC before SEABED",
+"true_distance": 1.9,
+"echoes": {
+"FRONT": [
+[
+1.47,
+"DYNAMIC"
+],
+[
+2.62,
+"SEABED"
+],
+[
+10.32,
+"SEABED"
+],
+[
+10.82,
+"SEABED"
+]
+],
+"REAR": [
+[
+1.77,
+"SEABED"
+]
+],
+"LEFT": [
+[
+1.72,
+"SEABED"
+],
+[
+6.02,
+"SEABED"
+],
+[
+7.02,
+"SEABED"
+],
+[
+7.22,
+"SEABED"
+],
+[
+7.42,
+"SEABED"
+],
+[
+7.77,
+"SEABED"
+]
+],
+"RIGHT": [
+[
+2.57,
+"SEABED"
+],
+[
+7.62,
+"SEABED"
+],
+[
+8.57,
+"SEABED"
+],
+[
+9.53,
+"SEABED"
+],
+[
+11.12,
+"SEABED"
+],
+[
+11.38,
+"SEABED"
+],
+[
+11.67,
+"SEABED"
+]
+]
+}
+},
+{
+"t": 27.5,
+"part": "seabed",
+"caption": "7) closer than the clutter onset the drone is a separate echo -> DYNAMIC before SEABED",
+"true_distance": 1.9,
+"echoes": {
+"FRONT": [
+[
+1.47,
+"DYNAMIC"
+],
+[
+2.62,
+"SEABED"
+],
+[
+10.78,
+"SEABED"
+]
+],
+"REAR": [
+[
+1.77,
+"SEABED"
+],
+[
+5.32,
+"SEABED"
+]
+],
+"LEFT": [
+[
+1.72,
+"SEABED"
+],
+[
+5.87,
+"SEABED"
+],
+[
+6.32,
+"SEABED"
+],
+[
+7.62,
+"SEABED"
+]
+],
+"RIGHT": [
+[
+2.57,
+"SEABED"
+],
+[
+5.97,
+"SEABED"
+],
+[
+7.57,
+"SEABED"
+],
+[
+8.03,
+"SEABED"
+],
+[
+8.53,
+"SEABED"
+],
+[
+8.97,
+"SEABED"
+],
+[
+9.43,
+"SEABED"
+],
+[
+11.92,
+"SEABED"
+]
+]
+}
+},
+{
+"t": 27.6,
+"part": "seabed",
+"caption": "7) closer than the clutter onset the drone is a separate echo -> DYNAMIC before SEABED",
+"true_distance": 1.9,
+"echoes": {
+"FRONT": [
+[
+1.47,
+"DYNAMIC"
+],
+[
+2.62,
+"SEABED"
+],
+[
+10.78,
+"SEABED"
+]
+],
+"REAR": [
+[
+1.77,
+"SEABED"
+],
+[
+5.07,
+"SEABED"
+]
+],
+"LEFT": [
+[
+1.72,
+"SEABED"
+],
+[
+5.62,
+"SEABED"
+],
+[
+5.82,
+"SEABED"
+],
+[
+6.27,
+"SEABED"
+],
+[
+7.02,
+"SEABED"
+],
+[
+7.57,
+"SEABED"
+],
+[
+7.92,
+"SEABED"
+]
+],
+"RIGHT": [
+[
+2.57,
+"SEABED"
+],
+[
+6.37,
+"SEABED"
+],
+[
+7.47,
+"SEABED"
+],
+[
+7.67,
+"SEABED"
+],
+[
+8.07,
+"SEABED"
+],
+[
+8.93,
+"SEABED"
+],
+[
+9.47,
+"SEABED"
+],
+[
+10.88,
+"SEABED"
+],
+[
+11.67,
+"SEABED"
+]
+]
+}
+},
+{
+"t": 27.7,
+"part": "seabed",
+"caption": "7) closer than the clutter onset the drone is a separate echo -> DYNAMIC before SEABED",
+"true_distance": 1.9,
+"echoes": {
+"FRONT": [
+[
+1.47,
+"DYNAMIC"
+],
+[
+2.67,
+"SEABED"
+],
+[
+10.78,
+"SEABED"
+]
+],
+"REAR": [
+[
+1.77,
+"SEABED"
+],
+[
+5.32,
+"SEABED"
+]
+],
+"LEFT": [
+[
+1.72,
+"SEABED"
+],
+[
+5.82,
+"SEABED"
+],
+[
+6.22,
+"SEABED"
+],
+[
+6.82,
+"SEABED"
+],
+[
+7.17,
+"SEABED"
+],
+[
+7.82,
+"SEABED"
+]
+],
+"RIGHT": [
+[
+2.62,
+"SEABED"
+],
+[
+5.92,
+"SEABED"
+],
+[
+6.12,
+"SEABED"
+],
+[
+6.62,
+"SEABED"
+],
+[
+7.57,
+"SEABED"
+],
+[
+8.62,
+"SEABED"
+],
+[
+9.12,
+"SEABED"
+],
+[
+9.43,
+"SEABED"
+],
+[
+11.28,
+"SEABED"
+]
+]
+}
+},
+{
+"t": 27.8,
+"part": "seabed",
+"caption": "7) closer than the clutter onset the drone is a separate echo -> DYNAMIC before SEABED",
+"true_distance": 1.9,
+"echoes": {
+"FRONT": [
+[
+1.47,
+"DYNAMIC"
+],
+[
+2.57,
+"SEABED"
+],
+[
+10.72,
+"SEABED"
+]
+],
+"REAR": [
+[
+1.77,
+"SEABED"
+],
+[
+5.32,
+"SEABED"
+],
+[
+5.52,
+"SEABED"
+],
+[
+5.97,
+"SEABED"
+]
+],
+"LEFT": [
+[
+1.72,
+"SEABED"
+],
+[
+5.97,
+"SEABED"
+],
+[
+6.37,
+"SEABED"
+],
+[
+6.97,
+"SEABED"
+],
+[
+7.47,
+"SEABED"
+],
+[
+7.67,
+"SEABED"
+],
+[
+7.87,
+"SEABED"
+]
+],
+"RIGHT": [
+[
+2.57,
+"SEABED"
+],
+[
+5.47,
+"SEABED"
+],
+[
+6.27,
+"SEABED"
+],
+[
+7.52,
+"SEABED"
+],
+[
+8.32,
+"SEABED"
+],
+[
+8.97,
+"SEABED"
+],
+[
+9.47,
+"SEABED"
+],
+[
+11.07,
+"SEABED"
+],
+[
+11.32,
+"SEABED"
+],
+[
+11.53,
+"SEABED"
+]
+]
+}
+},
+{
+"t": 27.9,
+"part": "seabed",
+"caption": "7) closer than the clutter onset the drone is a separate echo -> DYNAMIC before SEABED",
+"true_distance": 1.9,
+"echoes": {
+"FRONT": [
+[
+1.47,
+"DYNAMIC"
+],
+[
+2.62,
+"SEABED"
+],
+[
+10.68,
+"SEABED"
+]
+],
+"REAR": [
+[
+1.77,
+"SEABED"
+],
+[
+5.27,
+"SEABED"
+],
+[
+5.92,
+"SEABED"
+]
+],
+"LEFT": [
+[
+1.72,
+"SEABED"
+],
+[
+5.67,
+"SEABED"
+],
+[
+6.02,
+"SEABED"
+],
+[
+7.07,
+"SEABED"
+],
+[
+7.82,
+"SEABED"
+]
+],
+"RIGHT": [
+[
+2.57,
+"SEABED"
+],
+[
+5.72,
+"SEABED"
+],
+[
+6.07,
+"SEABED"
+],
+[
+7.62,
+"SEABED"
+],
+[
+7.97,
+"SEABED"
+],
+[
+8.22,
+"SEABED"
+],
+[
+8.78,
+"SEABED"
+],
+[
+9.43,
+"SEABED"
+],
+[
+10.22,
+"SEABED"
+],
+[
+11.32,
+"SEABED"
+]
+]
+}
+},
+{
+"t": 28.0,
+"part": "seabed",
+"caption": "7) closer than the clutter onset the drone is a separate echo -> DYNAMIC before SEABED",
+"true_distance": 1.9,
+"echoes": {
+"FRONT": [
+[
+1.47,
+"DYNAMIC"
+],
+[
+2.67,
+"SEABED"
+],
+[
+10.72,
+"SEABED"
+]
+],
+"REAR": [
+[
+1.77,
+"SEABED"
+]
+],
+"LEFT": [
+[
+1.72,
+"SEABED"
+],
+[
+5.57,
+"SEABED"
+],
+[
+6.62,
+"SEABED"
+],
+[
+6.97,
+"SEABED"
+],
+[
+7.62,
+"SEABED"
+],
+[
+7.92,
+"SEABED"
+]
+],
+"RIGHT": [
+[
+2.57,
+"SEABED"
+],
+[
+5.92,
+"SEABED"
+],
+[
+6.37,
+"SEABED"
+],
+[
+6.67,
+"SEABED"
+],
+[
+7.57,
+"SEABED"
+],
+[
+7.97,
+"SEABED"
+],
+[
+8.32,
+"SEABED"
+],
+[
+8.68,
+"SEABED"
+],
+[
+8.97,
+"SEABED"
+],
+[
+9.43,
+"SEABED"
+],
+[
+11.17,
+"SEABED"
+]
+]
+}
+},
+{
+"t": 28.1,
+"part": "seabed",
+"caption": "7) closer than the clutter onset the drone is a separate echo -> DYNAMIC before SEABED",
+"true_distance": 1.9,
+"echoes": {
+"FRONT": [
+[
+1.47,
+"DYNAMIC"
+],
+[
+2.62,
+"SEABED"
+],
+[
+10.78,
+"SEABED"
+]
+],
+"REAR": [
+[
+1.82,
+"SEABED"
+],
+[
+5.32,
+"SEABED"
+],
+[
+5.77,
+"SEABED"
+],
+[
+7.97,
+"SEABED"
+]
+],
+"LEFT": [
+[
+1.72,
+"SEABED"
+],
+[
+5.72,
+"SEABED"
+],
+[
+6.42,
+"SEABED"
+],
+[
+6.67,
+"SEABED"
+],
+[
+6.92,
+"SEABED"
+],
+[
+7.37,
+"SEABED"
+],
+[
+7.87,
+"SEABED"
+]
+],
+"RIGHT": [
+[
+2.62,
+"SEABED"
+],
+[
+5.92,
+"SEABED"
+],
+[
+6.22,
+"SEABED"
+],
+[
+7.57,
+"SEABED"
+],
+[
+8.32,
+"SEABED"
+],
+[
+8.62,
+"SEABED"
+],
+[
+8.93,
+"SEABED"
+],
+[
+9.47,
+"SEABED"
+],
+[
+11.97,
+"SEABED"
+]
+]
+}
+},
+{
+"t": 28.2,
+"part": "seabed",
+"caption": "7) closer than the clutter onset the drone is a separate echo -> DYNAMIC before SEABED",
+"true_distance": 1.9,
+"echoes": {
+"FRONT": [
+[
+1.47,
+"DYNAMIC"
+],
+[
+2.57,
+"SEABED"
+],
+[
+10.78,
+"SEABED"
+]
+],
+"REAR": [
+[
+1.77,
+"SEABED"
+],
+[
+5.17,
+"SEABED"
+],
+[
+5.57,
+"SEABED"
+]
+],
+"LEFT": [
+[
+1.72,
+"SEABED"
+],
+[
+7.07,
+"SEABED"
+],
+[
+7.32,
+"SEABED"
+],
+[
+7.82,
+"SEABED"
+]
+],
+"RIGHT": [
+[
+2.57,
+"SEABED"
+],
+[
+6.22,
+"SEABED"
+],
+[
+7.37,
+"SEABED"
+],
+[
+7.57,
+"SEABED"
+],
+[
+7.77,
+"SEABED"
+],
+[
+9.47,
+"SEABED"
+]
+]
+}
+},
+{
+"t": 28.3,
+"part": "seabed",
+"caption": "7) closer than the clutter onset the drone is a separate echo -> DYNAMIC before SEABED",
+"true_distance": 1.9,
+"echoes": {
+"FRONT": [
+[
+1.47,
+"DYNAMIC"
+],
+[
+2.57,
+"SEABED"
+],
+[
+10.72,
+"SEABED"
+]
+],
+"REAR": [
+[
+1.77,
+"SEABED"
+],
+[
+5.22,
+"SEABED"
+],
+[
+5.62,
+"SEABED"
+]
+],
+"LEFT": [
+[
+1.72,
+"SEABED"
+],
+[
+5.87,
+"SEABED"
+],
+[
+6.77,
+"SEABED"
+],
+[
+7.12,
+"SEABED"
+],
+[
+7.87,
+"SEABED"
+]
+],
+"RIGHT": [
+[
+2.57,
+"SEABED"
+],
+[
+6.22,
+"SEABED"
+],
+[
+6.42,
+"SEABED"
+],
+[
+7.52,
+"SEABED"
+],
+[
+9.47,
+"SEABED"
+],
+[
+11.72,
+"SEABED"
+]
+]
+}
+},
+{
+"t": 28.4,
+"part": "seabed",
+"caption": "7) closer than the clutter onset the drone is a separate echo -> DYNAMIC before SEABED",
+"true_distance": 1.9,
+"echoes": {
+"FRONT": [
+[
+1.47,
+"DYNAMIC"
+],
+[
+2.57,
+"SEABED"
+],
+[
+10.72,
+"SEABED"
+]
+],
+"REAR": [
+[
+1.77,
+"SEABED"
+],
+[
+5.42,
+"SEABED"
+],
+[
+5.62,
+"SEABED"
+],
+[
+6.32,
+"SEABED"
+]
+],
+"LEFT": [
+[
+1.72,
+"SEABED"
+],
+[
+6.12,
+"SEABED"
+],
+[
+6.87,
+"SEABED"
+],
+[
+7.52,
+"SEABED"
+],
+[
+7.82,
+"SEABED"
+]
+],
+"RIGHT": [
+[
+2.57,
+"SEABED"
+],
+[
+5.77,
+"SEABED"
+],
+[
+6.27,
+"SEABED"
+],
+[
+7.57,
+"SEABED"
+],
+[
+8.07,
+"SEABED"
+],
+[
+8.93,
+"SEABED"
+],
+[
+9.18,
+"SEABED"
+],
+[
+9.43,
+"SEABED"
+]
+]
+}
+},
+{
+"t": 28.5,
+"part": "seabed",
+"caption": "7) closer than the clutter onset the drone is a separate echo -> DYNAMIC before SEABED",
+"true_distance": 1.9,
+"echoes": {
+"FRONT": [
+[
+1.47,
+"DYNAMIC"
+],
+[
+2.57,
+"SEABED"
+],
+[
+10.78,
+"SEABED"
+]
+],
+"REAR": [
+[
+1.77,
+"SEABED"
+],
+[
+5.52,
+"SEABED"
+],
+[
+7.42,
+"SEABED"
+]
+],
+"LEFT": [
+[
+1.72,
+"SEABED"
+],
+[
+5.72,
+"SEABED"
+],
+[
+6.37,
+"SEABED"
+],
+[
+6.67,
+"SEABED"
+],
+[
+7.17,
+"SEABED"
+]
+],
+"RIGHT": [
+[
+2.62,
+"SEABED"
+],
+[
+6.67,
+"SEABED"
+],
+[
+7.57,
+"SEABED"
+],
+[
+8.07,
+"SEABED"
+],
+[
+8.47,
+"SEABED"
+],
+[
+8.78,
+"SEABED"
+],
+[
+9.47,
+"SEABED"
+],
+[
+11.03,
+"SEABED"
+],
+[
+11.32,
+"SEABED"
+]
+]
+}
+}
+]

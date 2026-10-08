@@ -1,0 +1,106 @@
+{
+ "P1_separation": {
+  "formula": "G(forall i!=j: d_ij >= d_safe)",
+  "d_safe": 1.0,
+  "min_distance": 2.778,
+  "min_per_pair": {
+   "drone_0-drone_1": {
+    "d": 3.421,
+    "t": 54.899451
+   },
+   "drone_0-drone_2": {
+    "d": 2.778,
+    "t": 25.099749
+   },
+   "drone_0-drone_3": {
+    "d": 4.249,
+    "t": 28.099719
+   },
+   "drone_1-drone_2": {
+    "d": 4.947,
+    "t": 20.299797
+   },
+   "drone_1-drone_3": {
+    "d": 3.415,
+    "t": 23.599764
+   },
+   "drone_2-drone_3": {
+    "d": 3.499,
+    "t": 0.199998
+   }
+  },
+  "violations": 0,
+  "first_violation": [],
+  "physical_contacts": 0,
+  "collision_sensor_edges": [],
+  "holds": true,
+  "intruder": null
+ },
+ "P2_mutual_exclusion": {
+  "formula": "G(sum_i inside_CR_i <= 1)",
+  "gates": [],
+  "max_occupancy": {},
+  "entry_order": {},
+  "violations": 0,
+  "first_violation": [],
+  "holds": true
+ },
+ "P3_formation_recovery": {
+  "formula": "G(formation_lost -> F formation_recovered)",
+  "enabled": true,
+  "e_lost": 1.2,
+  "e_ok": 0.5,
+  "t_ok_hold": 2.0,
+  "episodes": [
+   {
+    "t_lost": 24.9,
+    "t_recovered": 30.6,
+    "recovery_time_s": 5.7,
+    "t_perturbation_end": 25.9,
+    "recovery_after_perturbation_s": 4.7,
+    "modes_at_loss": "FAILSAFE_HOLD_OR_RETREAT,FORMATION_FOLLOW,FORMATION_RECOVERY"
+   }
+  ],
+  "n_episodes": 1,
+  "open_at_end": 0,
+  "all_recovered_within_run": true,
+  "final_form_err": 0.1183
+ },
+ "envelope": {
+  "current_drift_max_claimed": 0.6,
+  "max_horizontal_drift": 0.935,
+  "max_vertical_drift": 0.0,
+  "inside_envelope": false
+ },
+ "kinematics": {
+  "max_true_speed_m_s": 0.546
+ },
+ "run": {
+  "status": "COMPLETE",
+  "scenario": "formation_gust",
+  "sim_time_s": 55.0,
+  "determinism_violations": {
+   "drone_0": 0,
+   "drone_1": 0,
+   "drone_2": 0,
+   "drone_3": 0
+  },
+  "comms_enabled": false,
+  "inter_agent_messages": 0,
+  "ground_truth_used_by_controllers": false,
+  "static_rank_uses": 0,
+  "occupancy_timeouts": 0,
+  "self_declared_envelope_violations": 1,
+  "perf": {
+   "ticks": 1650,
+   "mean_tick_ms": 54.85,
+   "p95_tick_ms": 139.76,
+   "real_time_factor": 0.608,
+   "controller_ms_mean_all_drones": 5.21,
+   "controller_hz": 10.0,
+   "sonar_hz": 10.0,
+   "wall_s": 108.0,
+   "sim_s": 55.0
+  }
+ }
+}

@@ -1,0 +1,128 @@
+{
+ "claims": {
+  "A1 onboard distance <= true distance, every hull within 5 m detected (S0 on real data)": true,
+  "A2 sonar data age <= tau_max = 0.25 s": true,
+  "A3 pair closing speed <= c_max = 1.20 m/s": true,
+  "A4 queued neighbours >= spacing - 2 x 0.10 m apart (formal M4c)": true,
+  "A5 a committed drone crosses the CR at >= 0.12 m/s (formal M3)": true
+ },
+ "runs": {
+  "p1_head_on": {
+   "A1_onboard_distance_le_true": {
+    "samples_within_5m": 222,
+    "violations": 0,
+    "no_target": 0,
+    "min_margin_m": 0.398,
+    "missed_or_late_5_to_8m": 0
+   },
+   "A2_sonar_age_max_s": 0.0,
+   "A7_nav_error_max_m": 0.117,
+   "A3_closing_speed_max_m_s": 0.78
+  },
+  "p1_vertical_escape": {
+   "A1_onboard_distance_le_true": {
+    "samples_within_5m": 1626,
+    "violations": 0,
+    "no_target": 0,
+    "min_margin_m": 0.285,
+    "missed_or_late_5_to_8m": 0
+   },
+   "A2_sonar_age_max_s": 0.0,
+   "A7_nav_error_max_m": 0.134,
+   "A3_closing_speed_max_m_s": 0.607,
+   "formation_err_onboard_p95_m": 4.678
+  },
+  "p1_two_lines": {
+   "A1_onboard_distance_le_true": {
+    "samples_within_5m": 2148,
+    "violations": 0,
+    "no_target": 0,
+    "min_margin_m": 0.295,
+    "missed_or_late_5_to_8m": 0
+   },
+   "A2_sonar_age_max_s": 0.0,
+   "A7_nav_error_max_m": 0.143,
+   "A3_closing_speed_max_m_s": 0.75
+  },
+  "formation_triangle": {
+   "A1_onboard_distance_le_true": {
+    "samples_within_5m": 1344,
+    "violations": 0,
+    "no_target": 0,
+    "min_margin_m": 0.87,
+    "missed_or_late_5_to_8m": 0
+   },
+   "A2_sonar_age_max_s": 0.0,
+   "A7_nav_error_max_m": 0.129,
+   "A3_closing_speed_max_m_s": 0.028,
+   "formation_err_onboard_p95_m": 0.105
+  },
+  "formation_square": {
+   "A1_onboard_distance_le_true": {
+    "samples_within_5m": 1792,
+    "violations": 0,
+    "no_target": 0,
+    "min_margin_m": 0.836,
+    "missed_or_late_5_to_8m": 0
+   },
+   "A2_sonar_age_max_s": 0.0,
+   "A7_nav_error_max_m": 0.158,
+   "A3_closing_speed_max_m_s": 0.03,
+   "formation_err_onboard_p95_m": 0.115
+  },
+  "formation_six": {
+   "A1_onboard_distance_le_true": {
+    "samples_within_5m": 2988,
+    "violations": 0,
+    "no_target": 0,
+    "min_margin_m": 0.412,
+    "missed_or_late_5_to_8m": 0
+   },
+   "A2_sonar_age_max_s": 0.0,
+   "A7_nav_error_max_m": 0.133,
+   "A3_closing_speed_max_m_s": 0.04,
+   "formation_err_onboard_p95_m": 0.107
+  },
+  "formation_gust": {
+   "A1_onboard_distance_le_true": {
+    "samples_within_5m": 2192,
+    "violations": 0,
+    "no_target": 0,
+    "min_margin_m": 0.271,
+    "missed_or_late_5_to_8m": 0
+   },
+   "A2_sonar_age_max_s": 0.0,
+   "A7_nav_error_max_m": 0.169,
+   "A3_closing_speed_max_m_s": 0.469,
+   "formation_err_onboard_p95_m": 1.351
+  },
+  "gate_single": {
+   "A1_onboard_distance_le_true": {
+    "samples_within_5m": 1781,
+    "violations": 0,
+    "no_target": 0,
+    "min_margin_m": 0.356,
+    "missed_or_late_5_to_8m": 122
+   },
+   "A2_sonar_age_max_s": 0.0,
+   "A7_nav_error_max_m": 0.159,
+   "A3_closing_speed_max_m_s": 0.554,
+   "A4_queued_pair_min_distance_m": 3.449,
+   "A5_speed_inside_CR_min_m_s": 0.48
+  },
+  "integrated_short": {
+   "A1_onboard_distance_le_true": {
+    "samples_within_5m": 2089,
+    "violations": 0,
+    "no_target": 0,
+    "min_margin_m": 0.355,
+    "missed_or_late_5_to_8m": 75
+   },
+   "A2_sonar_age_max_s": 0.0,
+   "A7_nav_error_max_m": 0.142,
+   "A3_closing_speed_max_m_s": 0.57,
+   "A4_queued_pair_min_distance_m": 3.439,
+   "A5_speed_inside_CR_min_m_s": 0.484
+  }
+ }
+}

@@ -1,0 +1,10 @@
+scenario,status,sim_time_s,P1_holds,min_distance,P2_holds,max_occupancy,P3_episodes,P3_all_recovered,max_recovery_time_s,collisions,messages,inside_envelope,static_rank_uses,mean_tick_ms,p95_tick_ms,rtf,controller_ms_all,n_drones,recovery_after_perturbation_s,intruder_clearance
+p1_head_on,COMPLETE,30.0,True,4.054,True,,0,True,,0,0,True,0,52.21,110.46,0.638,2.5,2,,
+p1_vertical_escape,COMPLETE,45.0,True,2.489,True,,1,True,25.2,0,0,True,0,55.2,129.66,0.604,7.69,4,14.3,2.44
+p1_two_lines,COMPLETE,36.0,True,3.209,True,,0,True,,0,0,True,0,53.14,104.99,0.627,8.59,6,,
+formation_triangle,COMPLETE,45.0,True,4.604,True,,0,True,,0,0,True,0,62.33,179.66,0.535,3.53,3,,
+formation_square,COMPLETE,45.0,True,3.459,True,,0,True,,0,0,True,0,57.73,162.09,0.577,4.83,4,,
+formation_six,COMPLETE,50.0,True,3.443,True,,0,True,,0,0,True,0,54.1,152.88,0.616,8.25,6,,
+formation_gust,COMPLETE,55.0,True,2.778,True,,1,True,5.7,0,0,False,0,54.85,139.76,0.608,5.21,4,4.7,
+gate_single,COMPLETE,80.0,True,3.308,True,1,1,True,63.2,0,0,True,0,56.3,160.71,0.592,7.92,3,5.0,
+integrated_short,COMPLETE,92.0,True,3.324,True,1,1,True,69.5,0,0,True,0,54.15,125.64,0.616,6.96,3,4.7,

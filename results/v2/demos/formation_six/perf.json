@@ -1,0 +1,11 @@
+{
+ "ticks": 1500,
+ "mean_tick_ms": 54.1,
+ "p95_tick_ms": 152.88,
+ "real_time_factor": 0.616,
+ "controller_ms_mean_all_drones": 8.25,
+ "controller_hz": 10.0,
+ "sonar_hz": 10.0,
+ "wall_s": 99.3,
+ "sim_s": 50.0
+}

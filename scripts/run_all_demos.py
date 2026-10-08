@@ -30,12 +30,44 @@ ORDER = ["p1_head_on", "p1_vertical_escape", "p1_two_lines", "formation_triangle
          "formation_six", "formation_gust", "gate_single", "integrated_short"]
 
 
+def onboard_summary(run: Path) -> dict:
+    """What the controllers logged (onboard knowledge only): time per mode, escape and give-way choices, depth span."""
+    cfg = json.loads((run / "run_config.json").read_text(encoding="utf-8"))
+    out = {}
+    for k in range(cfg["n_drones"]):
+        p = run / f"drone_{k}_state.jsonl"
+        if not p.exists():
+            continue
+        recs = [json.loads(l) for l in open(p, encoding="utf-8")]
+        modes, esc, gw = {}, set(), set()
+        for r in recs:
+            modes[r["mode"]] = round(modes.get(r["mode"], 0.0) + 0.1, 1)
+            if r.get("escape"):
+                esc.add(r["escape"]["dir"])
+            if r.get("giveway"):
+                gw.add(r["giveway"])
+        z = [r["nav_p"][2] for r in recs]
+        out[f"drone_{k}"] = {"time_in_mode_s": modes, "escape_directions": sorted(esc), "giveway": sorted(gw),
+                             "depth_span_m": round(max(z) - min(z), 2),
+                             "min_onboard_distance_m": min((r["d_min"] for r in recs if r.get("d_min") is not None), default=None)}
+    (run / "onboard_summary.json").write_text(json.dumps(out, indent=1), encoding="utf-8")
+    return out
+
+
+def small_gif(name: str) -> None:
+    """Repository copy of the dashboard GIF: 640 px, every third frame (about 1.8 s of simulation per frame)."""
+    frames = sorted((OUT / name / "dashboard").glob("dash_*.jpg"))
+    if frames:
+        make_gif(frames, ROOT / "figures" / "v2" / "gifs" / f"{name}.gif", width=640, fps=4.0, every=3, colors=80)
+
+
 def summary_table() -> None:
     rows = []
     for name in ORDER:
         p = OUT / name / "referee_metrics.json"
         if not p.exists():
             continue
+        onboard_summary(OUT / name)
         m = json.loads(p.read_text(encoding="utf-8"))
         r = summary_row(name, m)
         perf = m["run"].get("perf", {})
@@ -74,12 +106,14 @@ def main(argv) -> int:
             from demo_classification import run_classification_demo
 
             run_classification_demo(OUT, headless=True, show=False)
+            small_gif("sonar_classification")
             continue
         sc = SCENARIOS[name](DEFAULT)
         ui = DemoUI(sc, DEFAULT, sc.sim.names, show=False, draw_viewport=False)
         m = run(name, OUT, headless=True, run_id=name, ui=ui)
         print_summary(name, m)
         make_gif((OUT / name / "dashboard").glob("dash_*.jpg"), OUT / name / f"{name}.gif")
+        small_gif(name)
         print(f"    wall {time.time() - t0:.0f} s", flush=True)
     summary_table()
     return 0

@@ -1,0 +1,112 @@
+{
+ "P1_separation": {
+  "formula": "G(forall i!=j: d_ij >= d_safe)",
+  "d_safe": 1.0,
+  "min_distance": 2.489,
+  "min_per_pair": {
+   "drone_0-drone_1": {
+    "d": 3.499,
+    "t": 0.899991
+   },
+   "drone_0-drone_2": {
+    "d": 6.861,
+    "t": 39.899601
+   },
+   "drone_0-drone_3": {
+    "d": 4.945,
+    "t": 1.099989
+   },
+   "drone_1-drone_2": {
+    "d": 3.241,
+    "t": 13.99986
+   },
+   "drone_1-drone_3": {
+    "d": 2.489,
+    "t": 19.599804
+   },
+   "drone_2-drone_3": {
+    "d": 4.949,
+    "t": 0.799992
+   }
+  },
+  "violations": 0,
+  "first_violation": [],
+  "physical_contacts": 0,
+  "collision_sensor_edges": [],
+  "holds": true,
+  "intruder": {
+   "note": "scripted vehicle outside the fleet (no controller); not part of P1 among drones",
+   "min_distance": 2.44,
+   "t": 15.299847,
+   "below_d_safe": false,
+   "contacts": 0
+  }
+ },
+ "P2_mutual_exclusion": {
+  "formula": "G(sum_i inside_CR_i <= 1)",
+  "gates": [],
+  "max_occupancy": {},
+  "entry_order": {},
+  "violations": 0,
+  "first_violation": [],
+  "holds": true
+ },
+ "P3_formation_recovery": {
+  "formula": "G(formation_lost -> F formation_recovered)",
+  "enabled": true,
+  "e_lost": 1.2,
+  "e_ok": 0.5,
+  "t_ok_hold": 2.0,
+  "episodes": [
+   {
+    "t_lost": 16.5,
+    "t_recovered": 41.7,
+    "recovery_time_s": 25.2,
+    "t_perturbation_end": 27.4,
+    "recovery_after_perturbation_s": 14.3,
+    "modes_at_loss": "COLLISION_AVOIDANCE,FORMATION_FOLLOW"
+   }
+  ],
+  "n_episodes": 1,
+  "open_at_end": 0,
+  "all_recovered_within_run": true,
+  "final_form_err": 0.1598
+ },
+ "envelope": {
+  "current_drift_max_claimed": 0.6,
+  "max_horizontal_drift": 0.0,
+  "max_vertical_drift": 0.0,
+  "inside_envelope": true
+ },
+ "kinematics": {
+  "max_true_speed_m_s": 0.651
+ },
+ "run": {
+  "status": "COMPLETE",
+  "scenario": "p1_vertical_escape",
+  "sim_time_s": 45.0,
+  "determinism_violations": {
+   "drone_0": 0,
+   "drone_1": 0,
+   "drone_2": 0,
+   "drone_3": 0
+  },
+  "comms_enabled": false,
+  "inter_agent_messages": 0,
+  "ground_truth_used_by_controllers": false,
+  "static_rank_uses": 0,
+  "occupancy_timeouts": 0,
+  "self_declared_envelope_violations": 0,
+  "perf": {
+   "ticks": 1350,
+   "mean_tick_ms": 55.2,
+   "p95_tick_ms": 129.66,
+   "real_time_factor": 0.604,
+   "controller_ms_mean_all_drones": 7.69,
+   "controller_hz": 10.0,
+   "sonar_hz": 10.0,
+   "wall_s": 92.8,
+   "sim_s": 45.0
+  }
+ }
+}

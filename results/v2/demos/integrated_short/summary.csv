@@ -1,0 +1,2 @@
+scenario,status,sim_time_s,P1_holds,min_distance,P2_holds,max_occupancy,P3_episodes,P3_all_recovered,max_recovery_time_s,collisions,messages,inside_envelope,static_rank_uses
+integrated_short,COMPLETE,92.0,True,3.324,True,1,1,True,69.5,0,0,True,0

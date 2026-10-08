@@ -1,0 +1,215 @@
+{
+ "scenario": "p1_head_on",
+ "title": "P1 head-on encounter",
+ "description": "Two drones on the same line, 12 m apart, closing at 0.64 m/s. No current, no communication.",
+ "focus": "FRONT echo closing -> both give way to the right (sector rule), pass port to port; warning filter as safety net; P1 distance >= d_safe",
+ "duration_s": 30.0,
+ "n_drones": 2,
+ "template": null,
+ "gates": [],
+ "current": [],
+ "intruders": [],
+ "cfg_patch": {},
+ "disturbance_windows": [],
+ "stress": {
+  "beam_dropout": 0.0,
+  "blackout_every_s": 0.0,
+  "blackout_len_s": 0.0,
+  "nav_init_err_m": 0.0
+ },
+ "setup": {
+  "holoocean": {
+   "patched": true,
+   "root": "F:\\Andrea\\holoocean_patched_root",
+   "unreal": "5.3.2",
+   "source": "F:\\Andrea\\holoocean-octree-patch (branch sonar-octree-rebuild)",
+   "holoocean": "2.3.0",
+   "exe_sha256": "A5E9AA1FB7756C06B83AF3A0896E42E6188F0390DD7A3D3D6E6E0532549FA028",
+   "patch": "sonar-octree-rebuild",
+   "built": "2026-10-07T23:52:04",
+   "source_commit": "a8d3070"
+  },
+  "engine_start_s": 10.0,
+  "octree": {
+   "mode": "patched_rebuild",
+   "ticks": 18
+  },
+  "static_scene_s": 1.7,
+  "gate_ids": []
+ },
+ "comms_enabled": false,
+ "fleet_config": {
+  "sep": {
+   "d_nominal": 3.5,
+   "d_warning": 2.4,
+   "d_warning_exit": 2.7,
+   "d_ca": 1.7,
+   "d_ca_exit": 2.0,
+   "d_safe": 1.0,
+   "d_collision": 0.6
+  },
+  "env": {
+   "dt": 0.1,
+   "tau_max": 0.25,
+   "eps_range_far": 0.12,
+   "eps_range_near": 0.08,
+   "v_max_nominal": 0.5,
+   "v_escape": 0.55,
+   "a_brake": 0.5,
+   "w_rel_max": 0.15,
+   "w_drift_max": 0.15,
+   "g_min": 0.5,
+   "v_open": 0.2,
+   "current_drift_max": 0.6,
+   "current_vertical_max": 0.25,
+   "struct_keepout": 0.7,
+   "z_min": -9.0,
+   "z_max": -1.5
+  },
+  "gate": {
+   "cr_half_len": 0.8,
+   "cr_half_width": 1.0,
+   "cr_half_height": 1.0,
+   "queue_spacing": 3.5,
+   "queue_cone_deg": 49.0,
+   "queue_tol": 0.35,
+   "heading_tol_deg": 6.0,
+   "approach_len": 7.0,
+   "corridor_half_width": 6.5,
+   "t_clear": 1.0,
+   "t_occ_max": 25.0,
+   "merge_angle_deg": 55.0,
+   "merge_before_cr": 0.7,
+   "merge_clearance": 3.2,
+   "veer_s": 1.0,
+   "exit_s": 3.5,
+   "rally_s": 6.0,
+   "v_approach": 0.5,
+   "v_pass": 0.5,
+   "k_track": 0.6,
+   "queue_bracket_m": 7.5
+  },
+  "form": {
+   "e_lost": 1.2,
+   "e_ok": 0.5,
+   "t_ok_hold": 2.0,
+   "k_slot": 0.45,
+   "k_sonar": 0.2,
+   "v_corr_max": 0.1,
+   "k_progress": 0.08,
+   "progress_max": 2.0,
+   "v_nominal": 0.3,
+   "v_slot_max": 0.4,
+   "v_recovery_max": 0.5,
+   "range_gate_m": 1.2,
+   "neighbour_range_m": 7.5
+  },
+  "perc": {
+   "sonar": {
+    "opening_deg": 120.0,
+    "range_min": 0.3,
+    "range_max": 12.0,
+    "bins": 234,
+    "hz": 10.0,
+    "add_sigma": 0.05,
+    "mult_sigma": 0.1,
+    "range_sigma": 0.05,
+    "threshold": 0.3
+   },
+   "merge_gap_bins": 2,
+   "vehicle_max_extent_m": 0.9,
+   "structure_tol_m": 0.3,
+   "structure_tol_far_m": 0.7,
+   "seabed_tol_m": 0.7,
+   "confirm_captures": 2,
+   "track_drop_s": 1.2,
+   "closing_rate_alpha": 0.5,
+   "v_close_staleness": 1.2,
+   "beam_dropout": 0.0,
+   "blackout_every_s": 0.0,
+   "blackout_len_s": 0.0,
+   "camera_hz": 5
+  },
+  "plant": {
+   "surge_speed_per_cmd": 2.4,
+   "sway_speed_per_cmd": 2.4,
+   "heave_speed_per_cmd": 3.4,
+   "thruster_limit": 12.0,
+   "current_cmd_to_drift": [
+    [
+     0.0,
+     0.0
+    ],
+    [
+     0.3,
+     0.012
+    ],
+    [
+     1.0,
+     0.117
+    ],
+    [
+     2.0,
+     0.391
+    ],
+    [
+     4.0,
+     1.191
+    ]
+   ],
+   "current_cmd_to_drift_z": [
+    [
+     0.0,
+     0.0
+    ],
+    [
+     0.3,
+     0.012
+    ],
+    [
+     1.0,
+     0.117
+    ],
+    [
+     2.0,
+     0.391
+    ],
+    [
+     4.0,
+     1.191
+    ]
+   ]
+  },
+  "ref": {
+   "e_lost": 1.2,
+   "e_ok": 0.5,
+   "t_ok_hold": 2.0
+  },
+  "comms_enabled": false,
+  "traffic_rule": true
+ },
+ "plans": [
+  {
+   "drone": "drone_0",
+   "slot": 0,
+   "queue_lateral": 0.0,
+   "static_rank": 0,
+   "launch": [
+    -6.0,
+    -30.0,
+    -5.0
+   ]
+  },
+  {
+   "drone": "drone_1",
+   "slot": 0,
+   "queue_lateral": 0.0,
+   "static_rank": 1,
+   "launch": [
+    6.0,
+    -30.0,
+    -5.0
+   ]
+  }
+ ]
+}
