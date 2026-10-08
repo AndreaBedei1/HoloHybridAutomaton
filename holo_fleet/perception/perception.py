@@ -92,6 +92,7 @@ class Perception:
         self.tracker = SectorTracker(cfg)
         self.gp = GatePerception(plan, cfg)
         self.ok_since: Optional[float] = None
+        self.neighbour_seen: Dict[int, float] = {}     # slot -> last time it was matched by sonar
 
     # ------------------------------------------------------------------ formation reference
     def slot_reference(self, t: float, sigma: float = 0.0):
@@ -135,7 +136,8 @@ class Perception:
         if offset is not None:
             slot = slot + offset                  # intentional give-way deviation is not a formation error
         healthy = {s: readings[s].healthy for s in SECTORS}
-        form = check_formation(self.plan, self.cfg, slot - nav.p, R_form, R_wb, targets, healthy)
+        form = check_formation(self.plan, self.cfg, slot - nav.p, R_form, R_wb, targets, healthy, t, self.neighbour_seen,
+                               readings)
         fr = self.cfg.form
         if form.form_err < fr.e_ok and form.neighbors_ok:
             self.ok_since = t if self.ok_since is None else self.ok_since

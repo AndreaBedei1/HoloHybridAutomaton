@@ -60,3 +60,38 @@ def test_formation_clock_jump_and_hold():
     assert c.s(17.0) == 40.0 and c.s(30.0) == 40.0
     assert c.s(37.67) == pytest.approx(40.3, abs=0.01)
     assert c.s(1e4) == 60.0
+
+
+def test_merged_target_confirms_both_neighbours():
+    # square, front-left drone: the right and the rear neighbour echo at similar ranges in adjacent
+    # sectors and are merged into one REAR+RIGHT target; each of its sectors confirms one neighbour
+    plan = _plan("square", 0)
+    healthy = {s: True for s in ("FRONT", "REAR", "LEFT", "RIGHT", "UP", "DOWN")}
+    merged = Target(pattern=frozenset({"REAR", "RIGHT"}), r_min=2.87, d_lower=2.87, age=0.0, closing_rate=0.0,
+                    cls="DYNAMIC", ranges={"REAR": 2.97, "RIGHT": 2.87})
+    diag = _tg({"REAR", "RIGHT"}, 4.52)
+    o = check_formation(plan, DEFAULT, np.zeros(3), I3, I3, [merged, diag], healthy)
+    assert o.neighbors_ok and all(c.seen for c in o.checks)
+
+
+def test_intermittent_far_neighbour_is_remembered_and_far_ones_not_required():
+    plan = _plan("line6", 2)
+    healthy = {s: True for s in ("FRONT", "REAR", "LEFT", "RIGHT", "UP", "DOWN")}
+    seen = {}
+    full = [_tg({"LEFT"}, 2.92), _tg({"RIGHT"}, 2.92), _tg({"LEFT"}, 6.42), _tg({"RIGHT"}, 6.42)]
+    assert check_formation(plan, DEFAULT, np.zeros(3), I3, I3, full, healthy, 0.0, seen).neighbors_ok
+    gap = [_tg({"LEFT"}, 2.92), _tg({"RIGHT"}, 2.92), _tg({"RIGHT"}, 6.42)]          # the 7 m LEFT echo drops once
+    assert check_formation(plan, DEFAULT, np.zeros(3), I3, I3, gap, healthy, 0.5, seen).neighbors_ok
+    assert not check_formation(plan, DEFAULT, np.zeros(3), I3, I3, gap, healthy, 2.0, seen).neighbors_ok
+
+
+def test_neighbour_inside_a_structure_window_is_not_required():
+    from holo_fleet.perception.sonar_processing import SectorReading
+
+    plan = _plan("line6", 2)
+    healthy = {s: True for s in ("FRONT", "REAR", "LEFT", "RIGHT", "UP", "DOWN")}
+    readings = {s: SectorReading(s, age=0.0, healthy=True) for s in healthy}
+    readings["LEFT"].structure_window = (6.2, 7.0)                 # mapped bars at the far left neighbour's range
+    near = [_tg({"LEFT"}, 2.92), _tg({"RIGHT"}, 2.92), _tg({"RIGHT"}, 6.42)]
+    assert check_formation(plan, DEFAULT, np.zeros(3), I3, I3, near, healthy, 0.0, {}, readings).neighbors_ok
+    assert not check_formation(plan, DEFAULT, np.zeros(3), I3, I3, near, healthy, 0.0, {}, None).neighbors_ok

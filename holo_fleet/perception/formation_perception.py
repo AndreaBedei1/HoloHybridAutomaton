@@ -23,6 +23,7 @@ from holo_fleet.perception.sonar_geometry import AXES, MOUNTS, SECTORS, far_fiel
 
 HULL_MID = 0.24            # typical extent of a BlueROV2 hull towards the observer [m]
 PATTERN_TOL_DEG = 35.0     # a displaced neighbour may appear up to this beyond the expected sectors
+NEIGHBOUR_MEMORY_S = 1.0   # a neighbour matched within this is present (intermittent weak returns)
 
 
 @dataclass
@@ -71,13 +72,40 @@ def compatible(pattern, u_body: np.ndarray, tol_deg: float = PATTERN_TOL_DEG) ->
     return all(float(AXES[s] @ u_body) >= lim for s in pattern)
 
 
+def masked_by_structure(expected_d: float, exp_pat, u_body: np.ndarray, readings, cfg: FleetConfig) -> bool:
+    """True when, in every sector where the neighbour is expected, its echo would fall inside the window
+    explained by a mapped structure (it would be classified STRUCTURE: unobservable, not missing)."""
+    if not readings:
+        return False
+    pc = cfg.perc
+    for sec in exp_pat:
+        rd = readings.get(sec)
+        sw = None if rd is None else rd.structure_window
+        if sw is None:
+            return False
+        r = expected_d - HULL_MID - float(np.dot(MOUNTS[sec], u_body))
+        if not (sw[0] - pc.structure_tol_m - 0.3 <= r <= sw[1] + pc.structure_tol_far_m + 0.3):
+            return False
+    return True
+
+
 def check_formation(plan: MissionPlan, cfg: FleetConfig, slot_err: np.ndarray, R_formation: np.ndarray,
-                    R_world_body: np.ndarray, targets, healthy: Dict[str, bool]) -> FormationObs:
-    """Expected neighbours vs sonar targets, one-to-one (greedy on |range residual|)."""
+                    R_world_body: np.ndarray, targets, healthy: Dict[str, bool], t: float = 0.0,
+                    last_seen: Dict[int, float] = None, readings=None) -> FormationObs:
+    """Expected neighbours vs sonar echoes, one-to-one per (target, sector).
+
+    Association is done per sector of a target, not per target: two neighbours at similar ranges
+    in adjacent sectors are merged into one target by the target builder (e.g. the side and the
+    rear neighbour of a square, REAR+RIGHT), and each of its sectors can still confirm one of
+    them.  A neighbour counts as present if it was matched within ``NEIGHBOUR_MEMORY_S``; only
+    neighbours expected within ``fr.neighbour_range_m`` are required (weak returns near the
+    maximum range are intermittent), and not those whose echo would fall inside a mapped structure's
+    window (a range-only sensor classifies it STRUCTURE: unobservable, not missing)."""
     fr = cfg.form
     o = FormationObs(slot_err=slot_err, slot_err_norm=float(np.linalg.norm(slot_err)))
     t_hat, n_hat = R_formation[:, 0], R_formation[:, 1]
     sonar_max = cfg.perc.sonar.range_max - 1.0
+    last_seen = {} if last_seen is None else last_seen
     errs = [o.slot_err_norm]
     expected = []
     for k, d_world in expected_relative(plan, R_formation).items():
@@ -88,33 +116,38 @@ def check_formation(plan: MissionPlan, cfg: FleetConfig, slot_err: np.ndarray, R
         exp_pat = far_field_pattern(u_body)
         expected.append((NeighbourCheck(slot=k, expected_d=dist, expected_pattern="+".join(sorted(exp_pat))),
                          d_world, dist, u_body, exp_pat))
-    cands = []                                     # (|residual|, neighbour index, target index, d_measured)
+    cands = []                                     # (|residual|, neighbour index, target index, sector, d_measured)
     for i, (_chk, _dw, dist, u_body, exp_pat) in enumerate(expected):
         for j, tg in enumerate(targets):
             if not (set(tg.pattern) & set(exp_pat)) or not compatible(tg.pattern, u_body):
                 continue
-            sec = min((x for x in tg.pattern if x in exp_pat), key=lambda x: tg.ranges.get(x, 99.0))
-            d_m = estimate_centre_distance(tg.ranges.get(sec, tg.r_min), sec, u_body)
-            if abs(d_m - dist) <= 3.0:
-                tg.possible_neighbour = True
-            if abs(d_m - dist) <= fr.range_gate_m:
-                cands.append((abs(d_m - dist), i, j, d_m))
-    used_n, used_t = set(), set()
-    for _r, i, j, d_m in sorted(cands):
-        if i in used_n or j in used_t:
+            for sec in tg.pattern:
+                if sec not in exp_pat:
+                    continue
+                d_m = estimate_centre_distance(tg.ranges.get(sec, tg.r_min), sec, u_body)
+                if abs(d_m - dist) <= 3.0:
+                    tg.possible_neighbour = True
+                if abs(d_m - dist) <= fr.range_gate_m:
+                    cands.append((abs(d_m - dist), i, j, sec, d_m))
+    used_n, used_ts = set(), set()
+    for _r, i, j, sec, d_m in sorted(cands):
+        if i in used_n or (j, sec) in used_ts:
             continue
         used_n.add(i)
-        used_t.add(j)
+        used_ts.add((j, sec))
         chk, d_world, dist, _u, _p = expected[i]
         targets[j].expected_neighbour = True
         g = d_world / dist
         chk.measured_d, chk.residual, chk.seen = d_m, d_m - dist, True
         chk.along_w, chk.lateral_w = float(g @ t_hat), float(g @ n_hat)
         errs.append(abs(chk.residual))
+        last_seen[chk.slot] = t
     all_ok = True
-    for i, (chk, _dw, _d, _u, exp_pat) in enumerate(expected):
-        if not chk.seen and all(healthy.get(x, False) for x in exp_pat):
-            all_ok = False                             # expected in range, healthy sectors, not seen
+    for i, (chk, _dw, dist, u_b, exp_pat) in enumerate(expected):
+        required = (dist <= fr.neighbour_range_m and all(healthy.get(x, False) for x in exp_pat)
+                    and not masked_by_structure(dist, exp_pat, u_b, readings, cfg))
+        if required and t - last_seen.get(chk.slot, -1e9) > NEIGHBOUR_MEMORY_S:
+            all_ok = False                             # expected nearby, healthy sectors, not seen recently
         o.checks.append(chk)
     seen = [c for c in o.checks if c.seen]
     if seen:

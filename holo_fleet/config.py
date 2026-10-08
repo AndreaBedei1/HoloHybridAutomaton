@@ -172,6 +172,7 @@ class FormationRule:
     v_slot_max: float = 0.40          # speed cap while following
     v_recovery_max: float = 0.50      # speed cap while recovering (catch-up margin 0.2 m/s; = Envelope.v_max_nominal)
     range_gate_m: float = 1.2         # an echo is associated to an expected neighbour within this
+    neighbour_range_m: float = 7.5    # expected neighbours nearer than this must be seen (neighbors_ok)
 
 
 @dataclass(frozen=True)
