@@ -65,10 +65,75 @@
   "final_form_err": 0.0981
  },
  "envelope": {
-  "current_drift_max_claimed": 0.6,
   "max_horizontal_drift": 0.301,
   "max_vertical_drift": 0.0,
-  "inside_envelope": true
+  "definition": "control-feasible current envelope (DI-27): steady command for the requested velocity within the authority (plant model, tolerance 0.06), current within the exercised range",
+  "current_validated_max_m_s": 0.6,
+  "current_vertical_max_m_s": 0.25,
+  "max_current_m_s": 0.301,
+  "max_vertical_m_s": 0.0,
+  "max_required_over_authority": 1.121,
+  "worst_step": {
+   "drone": "drone_0",
+   "t": 22.4,
+   "head_m_s": 0.284,
+   "lateral_m_s": 0.1,
+   "requested_speed_m_s": 0.5
+  },
+  "verdict": "OUTSIDE",
+  "inside_envelope": false,
+  "self_declared_envelope_violations": 0,
+  "coherent_with_vehicles": false,
+  "drones": {
+   "drone_0": {
+    "max_current_m_s": 0.301,
+    "max_vertical_m_s": 0.0,
+    "max_required_over_authority": 1.121,
+    "worst_step": {
+     "t": 22.4,
+     "head_m_s": 0.284,
+     "lateral_m_s": 0.1,
+     "requested_speed_m_s": 0.5
+    },
+    "time_over_authority_s": 6.4,
+    "time_over_authority_plus_tolerance_s": 4.9,
+    "persistent_infeasibility_at_s": 25.7,
+    "persistent_limit_at_s": 25.7,
+    "outside_exercised_range": false
+   },
+   "drone_1": {
+    "max_current_m_s": 0.301,
+    "max_vertical_m_s": 0.0,
+    "max_required_over_authority": 0.798,
+    "worst_step": {
+     "t": 13.3,
+     "head_m_s": 0.053,
+     "lateral_m_s": 0.296,
+     "requested_speed_m_s": 0.5
+    },
+    "time_over_authority_s": 0.0,
+    "time_over_authority_plus_tolerance_s": 0.0,
+    "persistent_infeasibility_at_s": null,
+    "persistent_limit_at_s": null,
+    "outside_exercised_range": false
+   },
+   "drone_2": {
+    "max_current_m_s": 0.301,
+    "max_vertical_m_s": 0.0,
+    "max_required_over_authority": 0.754,
+    "worst_step": {
+     "t": 40.8,
+     "head_m_s": 0.01,
+     "lateral_m_s": 0.3,
+     "requested_speed_m_s": 0.5
+    },
+    "time_over_authority_s": 0.0,
+    "time_over_authority_plus_tolerance_s": 0.0,
+    "persistent_infeasibility_at_s": null,
+    "persistent_limit_at_s": null,
+    "outside_exercised_range": false
+   }
+  }
  },
  "kinematics": {
   "max_true_speed_m_s": 0.562

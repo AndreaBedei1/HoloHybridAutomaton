@@ -48,10 +48,16 @@ class Envelope:
     a_brake: float = 0.50            # closing-speed reduction per drone [m/s^2] (calibrated >= 0.74)
     w_rel_max: float = 0.15          # unrejected differential drift between two drones [m/s]
     w_drift_max: float = 0.15        # unrejected absolute drift of one drone [m/s]
+                                     # (residuals after compensation: they hold while the requested velocity is
+                                     #  control-feasible, see control/current_envelope.py)
     g_min: float = 0.50              # certified opening per unit speed of the escape table (single threat), S2a
     v_open: float = 0.20             # opening speed demanded by the warning filter [m/s]
-    current_drift_max: float = 0.6   # largest effective horizontal current drift we claim to handle [m/s]
-    current_vertical_max: float = 0.25
+    # current envelope (DI-27): a current is acceptable when the requested velocity stays control-feasible
+    # against it (control/current_envelope.py: steady command within the authority, direction-dependent)
+    # AND it lies in the exercised range below.  The range is NOT a controllability bound: against the
+    # motion at 0.30 m/s the authority already stops at about 0.41 m/s.
+    current_validated_max: float = 0.6     # largest horizontal current magnitude exercised (calibration, demos) [m/s]
+    current_vertical_max: float = 0.25     # declared vertical range (separate heave channel, not binding) [m/s]
     struct_keepout: float = 0.70     # never close on mapped structure nearer than this [m]
     z_min: float = -9.0              # operating depth band (world z, up positive)
     z_max: float = -1.5
@@ -179,10 +185,16 @@ class FormationRule:
 class PlantCalibration:
     """Measured in probe/probe_motion.py, probe/probe_current.py and scripts/calibrate_plant.py."""
 
-    surge_speed_per_cmd: float = 2.4
+    surge_speed_per_cmd: float = 2.4      # small-signal slope [m/s per unit command]: the low level's linear model
     sway_speed_per_cmd: float = 2.4
     heave_speed_per_cmd: float = 3.4
     thruster_limit: float = 12.0
+    # steady command needed per horizontal axis for a through-water speed r [m/s]:
+    #   g(r) = |r| / surge_speed_per_cmd + cmd_quadratic * r^2
+    # fitted on results/calibration/head_current_authority.json (probe/probe_head_current_authority.py);
+    # largest residual on the calibration points: cmd_model_tolerance (relative)
+    cmd_quadratic: float = 0.203
+    cmd_model_tolerance: float = 0.06
     # commanded set_ocean_currents magnitude -> steady horizontal drift of an unactuated BlueROV2
     current_cmd_to_drift: Tuple[Tuple[float, float], ...] = (
         (0.0, 0.0), (0.3, 0.012), (1.0, 0.117), (2.0, 0.391), (4.0, 1.191))

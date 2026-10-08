@@ -139,7 +139,26 @@ def test_close_encounter_reaches_the_warning_band_without_breaking_p1():
     assert e["min_true_pair_distance_m"] >= e["thresholds_m"]["d_safe"] and e["collisions"] == 0 and e["messages"] == 0
 
 
-def test_head_current_stays_inside_the_claimed_drift_bound():
+def test_head_current_is_outside_the_control_feasible_envelope():
+    """0.6 m/s against the motion: within the exercised range, beyond the authority at survey speed (DI-27);
+    the hit drone declares it itself."""
     run = _run("formation_recovery_head_current")
     m = json.loads((run / "referee_metrics.json").read_text(encoding="utf-8"))
-    assert m["envelope"]["max_horizontal_drift"] <= 0.6 + 1e-9 and m["envelope"]["max_vertical_drift"] <= 0.25 + 1e-9
+    e = m["envelope"]
+    assert e["max_current_m_s"] <= 0.6 + 1e-9 and e["max_vertical_m_s"] <= 0.25 + 1e-9
+    assert e["verdict"] == "OUTSIDE" and e["worst_step"]["head_m_s"] > 0.41
+    assert m["run"]["self_declared_envelope_violations"] >= 1 and e["coherent_with_vehicles"]
+
+
+@pytest.mark.parametrize("run", complete_runs(), ids=lambda p: p.name if p else "none")
+def test_envelope_verdict_and_vehicles(run):
+    """Every run carries the control-feasible verdict; a drone never declares a violation the ground truth
+    does not see (the converse may fail at the margin: a request beyond the authority by a few per cent can
+    show up as a lag instead of a persistent saturation, DI-27)."""
+    if run is None:
+        pytest.skip("no completed demonstration run yet")
+    m = json.loads((run / "referee_metrics.json").read_text(encoding="utf-8"))
+    e = m["envelope"]
+    assert e["verdict"] in ("INSIDE", "LIMIT", "OUTSIDE") and e["inside_envelope"] == (e["verdict"] != "OUTSIDE")
+    if m["run"]["self_declared_envelope_violations"]:
+        assert e["verdict"] == "OUTSIDE"

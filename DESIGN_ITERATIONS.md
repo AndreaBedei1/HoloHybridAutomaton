@@ -536,6 +536,8 @@ v1 iterations are summarised in REPORT.md section 6.
   * Against the motion, at survey speed, the effective bound is about 0.4 m/s.
   * This is now a documented limit (REPORT section 6). ASSUMPTIONS.md reports the vehicle's own view
     (E2) next to the referee's drift (E1).
+  * Corrected in DI-27: the scalar bound is replaced by the control-feasible envelope. By that envelope this
+    run is OUTSIDE, which is what the hit drone declared.
 
 ## DI-25 - A right-angle crossing is not a head-on encounter
 
@@ -595,3 +597,96 @@ v1 iterations are summarised in REPORT.md section 6.
   defect, which is exactly what a sensing fault means.
 * **Result.** 0 violations in every final run; the formal suite gives every check its expected
   verdict.
+
+## DI-27 - The current envelope was a scalar bound; what the drone can do depends on the direction and on the requested speed
+
+* **Problem.** The v2 baseline declared one isotropic bound, |w| <= 0.6 m/s (`current_drift_max`), and called
+  "inside the envelope" every run whose current stayed below it. `formation_recovery_head_current` (DI-24)
+  showed that this was false. A 0.6 m/s current against the motion was "inside", yet the hit drone could not
+  hold its slot and declared ENVELOPE_VIOLATION itself.
+* **What the code did** (checked before changing anything).
+  * The onboard `env_ok` never looked at |w|. EnvelopeMonitor declared a violation after 4 s (leaky) of
+    saturated horizontal command outside avoidance manoeuvres. `env_ok` False then takes the fault edge to
+    FAILSAFE.
+  * The value 0.6 was used only on the judging side:
+    * the referee's `inside_envelope`;
+    * the live dashboard label;
+    * the head-current scenario;
+    * the assumption script, the tests and the documents.
+  * The formal models never used the raw current. P1 uses the residual drifts w_rel and w_drift (0.15 m/s);
+    P3 uses the residual w_res (0.05 m/s).
+  * The low level caps the norm of the normalised (surge, sway) command at AUTHORITY: 0.40 nominal, 0.50
+    brake (also FAILSAFE), 0.60 escape. Its feed-forward uses the small-signal slope of 2.4 m/s per unit of
+    command, and its current estimate is its own integral action expressed with that slope.
+* **Calibration.** `probe/probe_head_current_authority.py` runs one 32 s session: seven BlueROV2s, no
+  sonars, the deployed low level, a requested velocity of 0.30 m/s
+  (`results/calibration/head_current_authority.json`).
+
+  | current | ground speed [m/s] | saturated steps | onboard monitor | through-water speed [m/s] |
+  |---|---|---|---|---|
+  | head 0.30 | 0.300 | 0 % | ok | 0.60 |
+  | head 0.35 | 0.301 | 0 % | ok | 0.65 |
+  | head 0.40 | 0.297 | 13 % (0.2 s at most) | ok | 0.70 |
+  | head 0.45 | 0.263 | 91 % | violation at 16 s | 0.71 |
+  | head 0.50 | 0.211 | 99 % | violation | 0.71 |
+  | head 0.60 | 0.102 | 100 % | violation | 0.70 |
+  | lateral 0.60 | 0.301 (lateral residual 0.033) | 0 % | ok | 0.64 |
+
+  * At the nominal authority the BlueROV2 makes 0.70-0.71 m/s through the water, not the 0.96 m/s that the
+    slope of 2.4 would give.
+  * At 0.30 m/s it holds head currents up to 0.40 m/s and loses ground from 0.45 m/s.
+  * A lateral 0.60 m/s current is held without saturation, as in the earlier station-keeping calibration.
+  * Per axis, the steady command for a through-water speed r is g(r) = |r|/2.4 + 0.203 r^2. This is fitted on
+    these points only; the largest residual is 5.3 %, so the model tolerance is 6 %.
+* **Fix: one shared definition** (`holo_fleet/control/current_envelope.py`).
+  * **Definition.** A current w is inside the envelope for a requested velocity v when three conditions hold:
+    * the steady command |(g(r_surge), g(r_sway))| for the through-water velocity r = v - w, on the drone's
+      body axes, stays within the AUTHORITY of the mode;
+    * |w_h| <= 0.6 m/s, the exercised range (renamed `current_validated_max`; it is not a controllability
+      bound);
+    * |w_z| <= 0.25 m/s.
+
+    The vertical channel is separate and not binding.
+  * **Derived limits.**
+    * At 0.30 m/s: head current <= 0.41 m/s, lateral <= 0.60 m/s (physics alone allows 0.67 m/s).
+    * At 0.50 m/s (recovery catch-up, gate passage): head <= 0.21 m/s, lateral <= 0.57 m/s.
+    * A diagonal current of 0.59 m/s is inside when it follows the motion and outside when it opposes it.
+  * **Onboard (EnvelopeMonitor).** The same authority test runs on the steady command of the implemented
+    loop, |v_d - w_est| / 2.4, with saturation kept as direct evidence (the integrator freezes while
+    saturated). The persistence rule is unchanged (4 s).
+    * Logged every step: current estimate, requested velocity, head, lateral and vertical components,
+      through-water speed, required command, authority, reason.
+    * ENVELOPE_VIOLATION and ENVELOPE_OK events carry the same fields.
+    * Replayed on the logs of the eleven final runs, the new monitor gives exactly the logged `env_ok`
+      sequence on every drone, so the runs were re-evaluated, not regenerated.
+  * **Judging** (`holo_fleet/referee/envelope.py`, called at the end of every run and by
+    `scripts/run_all_demos.py` on logged runs). It applies the same test to the true current, with the plant
+    curve, the logged requested velocity and heading, the authority of the mode and the same persistence.
+    * Verdict INSIDE, LIMIT (beyond the authority only within the model tolerance) or OUTSIDE.
+    * The vehicles' own declarations are reported next to it.
+  * **Formal.** The ranking proof of P3 works with the residual after compensation, which exists only while
+    the commanded velocities are deliverable. A raw current is therefore admissible for P3 when the recovery
+    speed V = 0.5 m/s stays deliverable: the envelope evaluated at V, head current <= 0.21 m/s. New checks:
+    * F5 (UNSAT): at V the catch-up margin of F1 remains;
+    * Fm3 (SAT): with the envelope at the survey speed only, the margin can vanish;
+    * Em1 (SAT): the old scalar bound admits head currents with which not even the survey speed is
+      deliverable.
+* **Why the fix is principled.**
+  * The envelope is the controller's own feasibility condition: a norm bound on its commands, mapped through
+    a calibrated plant curve.
+  * One definition, with the same parameters, serves the runtime, the judging, the tests and the proofs.
+  * No gain, authority or threshold was changed.
+* **Result** (re-evaluation of the logged runs, `results/v2/ASSUMPTIONS.md`).
+  * `formation_triangle`, `formation_square`, `formation_six`, `gate_single` and the P1 runs: INSIDE, with no
+    violation declared.
+  * `formation_recovery_head_current`: OUTSIDE (1.52 times the authority, head current 0.59 m/s). The hit
+    drone declares it: the two views now agree, where before the run was "inside 0.6" yet in violation.
+  * `formation_gust`: OUTSIDE (beyond the range and 2.06 times the authority); the drone declares it.
+  * `integrated_short`: OUTSIDE at the margin. The old scalar bound had called this run inside.
+    * Drone 0's diagonal gate passage at 0.5 m/s against the 0.30 m/s cross-current requires up to 1.12 times
+      the authority. It was above authority plus tolerance for 4.9 s.
+    * The drone delivered its maximum: ratio 1.00 on the achieved velocity, with a lag of up to 0.07 m/s.
+    * Its command stayed at the edge without persistent saturation, so its own monitor did not declare it.
+    * A monitor that also flagged such lags would put a committed drone in FAILSAFE during a gate passage.
+      That was not done (no controller change); the case is documented as a limit.
+  * Inside the corrected envelope no run loses its formation, consistent with DI-24.

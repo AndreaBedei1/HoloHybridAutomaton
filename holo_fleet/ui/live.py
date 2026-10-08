@@ -52,10 +52,10 @@ class DemoUI:
             self._viewport(sim, recs, scenario)
         if not (self.show or save_frame):
             return
-        env = "drift inside" if referee.max_drift <= sim.cfg.env.current_drift_max + 1e-9 else "drift OUT"
+        env = f"current max {referee.max_drift:.2f} m/s"
         out_self = [nm for nm in self.names if not ctrls[nm].envmon.ok]
-        if out_self:
-            env += f"; {', '.join(out_self)} self-declared ENVELOPE_VIOLATION (saturation)"
+        env += (f"; {', '.join(out_self)} ENVELOPE_VIOLATION (not control-feasible)" if out_self
+                else "; all drones ENVELOPE_OK")
         meta = dict(self.meta, t=t, envelope=env)
         img = dashboard.render(meta, recs, referee_state(referee, truth), sim.image("ChaseCamera"), self.trails)
         if save_frame:

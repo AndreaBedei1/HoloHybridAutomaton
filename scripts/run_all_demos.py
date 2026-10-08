@@ -55,6 +55,22 @@ def onboard_summary(run: Path) -> dict:
     return out
 
 
+def refresh_envelope(run: Path) -> None:
+    """(Re-)evaluate the control-feasible envelope of a logged run (DI-27) into referee_metrics.json and
+    summary.csv; the same evaluation the runner performs at the end of a new run."""
+    from holo_fleet.runner import envelope_block
+
+    p = run / "referee_metrics.json"
+    m = json.loads(p.read_text(encoding="utf-8"))
+    m["envelope"] = envelope_block(run, m["envelope"], DEFAULT)
+    p.write_text(json.dumps(m, indent=1), encoding="utf-8")
+    summ = summary_row(run.name, m)
+    with open(run / "summary.csv", "w", newline="", encoding="utf-8") as f:
+        w = csv.DictWriter(f, fieldnames=list(summ))
+        w.writeheader()
+        w.writerow(summ)
+
+
 def small_gif(name: str) -> None:
     """Repository copy of the dashboard GIF: 640 px, every third frame (about 1.8 s of simulation per frame)."""
     frames = sorted((OUT / name / "dashboard").glob("dash_*.jpg"))
@@ -71,6 +87,7 @@ def summary_table() -> None:
         onboard_summary(OUT / name)
         from experiment_metrics import summarize
 
+        refresh_envelope(OUT / name)
         summarize(OUT / name)
         m = json.loads(p.read_text(encoding="utf-8"))
         r = summary_row(name, m)
@@ -83,6 +100,7 @@ def summary_table() -> None:
         intr = m["P1_separation"].get("intruder")
         r["intruder_clearance"] = None if not intr else intr["min_distance"]
         r["self_declared_envelope_violations"] = m["run"]["self_declared_envelope_violations"]
+        r["envelope_verdict"] = m["envelope"].get("verdict")
         r["determinism_violations"] = sum(m["run"]["determinism_violations"].values())
         inc = m["run"].get("observation_consistency_violations")
         r["observation_consistency_violations"] = None if inc is None else sum(inc.values())
@@ -95,13 +113,13 @@ def summary_table() -> None:
         w.writeheader()
         w.writerows(rows)
     lines = ["| scenario | drones | status | P1 min d [m] | P2 max occ | P3 episodes / max recovery [s] | collisions | messages | "
-             "drift envelope | self-declared envelope violations | determinism viol. | observation consistency viol. | "
+             "control-feasible envelope | self-declared envelope violations | determinism viol. | observation consistency viol. | "
              "static rank | mean tick [ms] | RTF |", "|" + "---|" * 15]
     for r in rows:
         p3 = "-" if r["P3_episodes"] is None else f"{r['P3_episodes']} / {r['max_recovery_time_s'] if r['max_recovery_time_s'] is not None else '-'}"
         lines.append(f"| {r['scenario']} | {r['n_drones']} | {r['status']} | {r['min_distance']} | "
                      f"{r['max_occupancy'] if r['max_occupancy'] is not None else '-'} | {p3} | {r['collisions']} | "
-                     f"{r['messages']} | {'inside' if r['inside_envelope'] else 'OUT'} | "
+                     f"{r['messages']} | {r['envelope_verdict']} | "
                      f"{r['self_declared_envelope_violations']} | {r['determinism_violations']} | "
                      f"{'-' if r['observation_consistency_violations'] is None else r['observation_consistency_violations']} | "
                      f"{r['static_rank_uses']} | {r['mean_tick_ms']} | {r['rtf']} |")

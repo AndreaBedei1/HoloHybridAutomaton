@@ -14,8 +14,8 @@
   formation_square       4 drones, diagonal current 0.30      2 x 2 box under a diagonal current
   formation_six          6 drones, lateral + vertical current survey line (6 swaths), current with w_z
   formation_recovery_head_current
-                         4 drones, 0.6 m/s head jet           a jet at the claimed drift limit, against the
-                                                              motion, on the rear-left drone: lost, recovered
+                         4 drones, 0.6 m/s head jet           a 0.6 m/s jet against the motion on the rear-left
+                                                              drone: not control-feasible (DI-27), lost, recovered
   formation_gust         4 drones, temporary 0.85 m/s jet     out-of-envelope stress test: lost and recovered
   gate_single            3 drones, one arena gate (G06)       one at a time through the gate (P2)
   integrated_short       3 drones, cross-current + G06        P1 + P2 + P3 in one short mission
@@ -240,12 +240,15 @@ def formation_six(cfg: FleetConfig = DEFAULT) -> Scenario:
 
 
 def formation_recovery_head_current(cfg: FleetConfig = DEFAULT) -> Scenario:
-    """P3 under a current at the claimed drift limit (Envelope.current_drift_max = 0.6 m/s), against the motion.
+    """P3 under a 0.6 m/s current against the motion: the old scalar bound, which this scenario showed to be
+    too general (DI-24, DI-27).  0.6 m/s is the largest current exercised (Envelope.current_validated_max); against
+    the motion at the 0.30 m/s survey speed the control-feasible limit is about 0.41 m/s, so the hit drone is
+    outside the envelope and declares it (ENVELOPE_VIOLATION).
 
     Choice of the disturbance (not tuned on the outcome):
     * direction: against the survey direction, the one with the smallest control margin (the survey
       speed adds to the current; a lateral 0.6 m/s jet is rejected with a formation error below 0.5 m);
-    * intensity: the claimed limit itself, 0.6 m/s; no background current, so the drift stays <= 0.6;
+    * intensity: the old claimed limit itself, 0.6 m/s; no background current, so the drift stays <= 0.6;
     * shape: a localized jet (Gaussian, radius 3 m, as formation_gust), so that it deforms the geometry
       (a uniform current only translates the formation);
     * target: centred on the track of the rear-left drone when it switches on, the front-left drone being
@@ -253,7 +256,7 @@ def formation_recovery_head_current(cfg: FleetConfig = DEFAULT) -> Scenario:
       warning filter move both drones (P1 interplay), the rear drone tests formation keeping alone;
     * timing: on at t = 12 s for 12 s (about five time constants of the low-level integrator, 2.3 s),
       1.5 s sin^2 ramps as in formation_gust."""
-    jet = CurrentComponent("jet", drift=(-cfg.env.current_drift_max, 0.0, 0.0), center=(-14.75, -32.25), radius=3.0,
+    jet = CurrentComponent("jet", drift=(-cfg.env.current_validated_max, 0.0, 0.0), center=(-14.75, -32.25), radius=3.0,
                            t_on=12.0, t_off=24.0, ramp=1.5)
     return _survey("formation_recovery_head_current", "square", 34.0, CurrentField([jet]), 50.0,
                    "P3: a head current at the claimed drift limit hits one drone",

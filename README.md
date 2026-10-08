@@ -46,20 +46,21 @@ The v2 baseline is frozen.  Each piece of evidence below is one scenario with on
 | P1, safety layer | `p1_close_encounter` | fleet drones only, traffic rule ON, right-angle crossing with simultaneous arrival: SEPARATION_WARNING keeps them apart | onboard bound 1.97 m (< d_warning 2.4), true min 2.93 m; COLLISION_AVOIDANCE not reached (DI-25) |
 | P1, safety layer | `p1_vertical_escape` | traffic rule OFF, a non-cooperative vehicle crosses a T formation: SEPARATION_WARNING, COLLISION_AVOIDANCE, escape UP | min 2.70 m between drones, vehicle clearance 2.35 m |
 | P2 | `gate_single` | arena gate G06, abreast queue, one drone at a time, static rank never used | max occupancy 1, min 3.34 m |
-| P3, main validation | `formation_recovery_head_current` | a 0.6 m/s jet against the motion (the claimed drift limit) on the rear-left drone of the square | lost at 21.0 s, recovered at 29.1 s: 8.1 s after the loss, 5.1 s after the jet |
-| P3, stress test outside the envelope | `formation_gust` | a 0.85 m/s jet (0.94 m/s measured at the drone), beyond the claimed envelope | lost and recovered in 7.6 s |
-| INTEGRATED | `integrated_short` | survey, cross-current at the gate, one at a time, re-form beyond the gate | P1 3.32 m, P2 occupancy 1, P3 re-formed 4.9 s after the last passage |
+| P3, main validation | `formation_recovery_head_current` | a 0.6 m/s jet against the motion on the rear-left drone of the square: outside the control-feasible envelope (DI-27), and the drone declares it | lost at 21.0 s, recovered at 29.1 s: 8.1 s after the loss, 5.1 s after the jet |
+| P3, stress test outside the envelope | `formation_gust` | a 0.85 m/s jet (0.94 m/s measured at the drone), beyond the exercised range | lost and recovered in 7.6 s |
+| INTEGRATED | `integrated_short` | survey, cross-current at the gate, one at a time, re-form beyond the gate | P1 3.32 m, P2 occupancy 1, P3 re-formed 4.9 s after the last passage; drone 0's diagonal gate passage is at the margin of the envelope (DI-27) |
 
 **What P3 evidence means.** `formation_gust` is a stress test outside the envelope: its current is beyond
-the claim.  `formation_recovery_head_current` is the main experimental validation of P3, with the
+the exercised range.  `formation_recovery_head_current` is the main experimental validation of P3, with the
 perturbation chosen on principle, not tuned on the outcome:
-* the claimed drift limit, against the motion: the direction with the smallest control margin;
+* 0.6 m/s, the old scalar bound, against the motion: the direction with the smallest control margin;
 * one localized jet;
 * on the rear drone, so that the warning filter does not move a neighbour with it.
 
-Its drift stays inside the claimed bound (max 0.59 m/s).  Even so, the hit drone saturates:
-* at nominal authority it makes about 0.71 m/s through the water;
-* the survey speed is 0.30 m/s;
+The scenario is what revealed that the old bound was too general (DI-24, corrected in DI-27).  Against the
+motion it is outside the control-feasible envelope:
+* at nominal authority the drone makes about 0.71 m/s through the water;
+* the survey speed is 0.30 m/s, so it can hold a head current of at most about 0.41 m/s;
 * after 7 s its own monitor declares ENVELOPE_VIOLATION (FAILSAFE from 19.4 to 23.3 s).
 
 The formation is lost only after that declaration and recovers once the jet ends.  The sequence of the
@@ -67,10 +68,43 @@ hit drone is FOLLOW -> FAILSAFE -> RECOVERY -> FOLLOW.  The two front drones go 
 FOLLOW, and the rear-right drone stays in FOLLOW.
 
 The run therefore validates P3 as it is proved: recovery after a perturbation that ends.  A formation
-loss with every assumption valid was not achievable.  Lateral 0.6 m/s jets give at most 0.47 m of
-formation error, a head-on jet on a front drone 0.74 m (`results/v2/design_probes.json`).  The reason is
-the design itself, explained in DI-24: the claimed 0.6 m/s does not hold against the motion at survey
-speed; the effective bound there is about 0.4 m/s.
+loss with every assumption valid was not achievable: lateral 0.6 m/s jets give at most 0.47 m of
+formation error, a head-on jet on a front drone 0.74 m (`results/v2/design_probes.json`).  Inside the
+control-feasible envelope the controller holds the formation, which is what the envelope is meant to
+declare.
+
+### Current envelope (DI-27)
+
+The old bound, |current| <= 0.6 m/s in every direction, was too general.  What a drone can do depends on the
+direction of the current relative to the motion it is asked for, and on the speed of that motion.  The v2
+envelope is therefore **control-feasible**: a current is inside when the low level can still deliver the
+requested velocity against it.  One definition (`holo_fleet/control/current_envelope.py`) serves the
+onboard monitor, the run evaluation, the tests and the Z3 checks:
+
+* **Authority.** The low level caps the norm of its normalised (surge, sway) command at 0.40.  The steady
+  command needed for the through-water velocity r = v_requested - w, on the body axes, must stay within it,
+  per axis g(r) = |r|/2.4 + 0.203 r^2.  The curve is calibrated in
+  `results/calibration/head_current_authority.json`: seven BlueROV2s, one 32 s session, head currents
+  0.30-0.60 m/s and one lateral 0.60 m/s.
+* **Exercised range.** |w_h| <= 0.6 m/s is the largest current exercised; nothing beyond it is claimed.
+  The vertical current is bounded at 0.25 m/s (the heave channel is separate and not binding).
+
+| requested speed | head current (against the motion) | lateral current |
+|---|---|---|
+| 0.30 m/s (survey) | <= 0.41 m/s (calibration: 0.40 held, 0.45 lost) | <= 0.60 m/s (exercised range; the authority alone allows 0.67) |
+| 0.50 m/s (recovery catch-up, gate passage) | <= 0.21 m/s | <= 0.57 m/s |
+
+A 0.59 m/s diagonal current is inside when it follows the motion and outside when it opposes it.  The scalar
+bound could not tell the two apart.
+
+Re-evaluated on the logged runs:
+* triangle, square, six-drone line, gate and P1 runs: inside;
+* `formation_recovery_head_current` and `formation_gust`: outside, and in both the hit drone declares it;
+* `integrated_short`: outside at the margin.
+  * Drone 0's diagonal gate passage at 0.5 m/s against the 0.30 m/s cross-current needs up to 1.12 times
+    the authority for about 5 s.
+  * The drone delivers its maximum with a lag of up to 0.07 m/s and does not saturate persistently, so its
+    own monitor does not declare it (DI-27).
 
 ## 1. Watch the demos
 
@@ -117,7 +151,7 @@ messages, `AUTOMATON DETERMINISM VIOLATIONS`, `OBSERVATION CONSISTENCY VIOLATION
 | `formation_triangle` | 3 | 45 s | triangle under a 0.25 m/s lateral current |
 | `formation_square` | 4 | 45 s | 2 x 2 box under a 0.30 m/s diagonal current |
 | `formation_six` | 6 | 50 s | six swaths abreast (36 sonars), lateral current with a vertical component |
-| `formation_recovery_head_current` | 4 | 50 s | a 0.6 m/s jet **against the motion** (the claimed drift limit) hits the rear-left drone: the drone saturates and declares its own envelope violation; the formation is lost and recovered |
+| `formation_recovery_head_current` | 4 | 50 s | a 0.6 m/s jet **against the motion** hits the rear-left drone: outside the control-feasible envelope (DI-27), the drone saturates and declares its own envelope violation; the formation is lost and recovered |
 | `formation_gust` | 4 | 55 s | stress test **outside the envelope**: a 0.85 m/s jet breaks the square; P3 lost and recovered |
 | `gate_single` | 3 | 80 s | arena gate G06 (1.5 m opening): abreast queue, one at a time, re-form beyond the gate |
 | `integrated_short` | 3 | 92 s | survey, 0.35 m/s cross-current at the gate, one at a time, re-form |
@@ -161,6 +195,8 @@ holo_fleet/
   ha/gate_rule.py              sector-pattern priority rule (shared with Z3)
   ha/observation_invariants.py semantic invariants of the abstract observation: runtime consistency check
                                and the domain of every Z3 suite (one definition)
+  control/current_envelope.py  control-feasible current envelope (authority, plant curve): onboard monitor,
+                               run evaluation (referee/envelope.py), tests and Z3 checks (one definition)
   perception/                  sonar geometry and region tables, echo classifier, targets and the sound distance
                                bound, gate perception (occupancy latch), formation perception, dead reckoning
   control/                     flows, 3-D escape planner, low level
@@ -247,10 +283,17 @@ visible): see [docs/HOLOOCEAN_OCTREE_PATCH.md](docs/HOLOOCEAN_OCTREE_PATCH.md).
     invariant, values), and the automaton receives the observation with `sense_ok = False`: the
     existing fault edge to FAILSAFE_HOLD_OR_RETREAT, no new mode.
   * Latched beliefs that may legitimately persist (occupancy, the commit latch) are not constrained.
+* **Current envelope** (control-feasible, DI-27).
+  * Every drone checks whether its low level can deliver the velocity it is asked for against the current
+    it estimates.  The steady command of its own velocity loop must stay within the authority, and the
+    horizontal command must not saturate.
+  * After 4 s without that, it declares ENVELOPE_VIOLATION (fault edge, FAILSAFE).
+  * Logged every step: estimated current, requested velocity, head / lateral / vertical components,
+    through-water speed, required command, authority, reason.
 
 ## 5. Results (HoloOcean, one seed per scenario, `results/v2/demos/SUMMARY.md`)
 
-| scenario | drones | P1 min distance [m] (d_safe 1.0) | P2 max CR occupancy | P3 episodes: recovery [s] (after the perturbation) | contacts | messages | current drift / vehicle envelope | determinism / observation violations | static rank uses | RTF (with cameras) |
+| scenario | drones | P1 min distance [m] (d_safe 1.0) | P2 max CR occupancy | P3 episodes: recovery [s] (after the perturbation) | contacts | messages | control-feasible envelope / vehicles | determinism / observation violations | static rank uses | RTF (with cameras) |
 |---|---|---|---|---|---|---|---|---|---|---|
 | `p1_head_on` | 2 | 4.044 | - | n/a | 0 | 0 | inside / ok | 0 / 0 | 0 | 1.025 |
 | `p1_vertical_escape` | 4 | 2.697 (vehicle clearance 2.35) | - | 18.1 (10.0) | 0 | 0 | inside / ok | 0 / 0 | 0 | 0.953 |
@@ -259,10 +302,10 @@ visible): see [docs/HOLOOCEAN_OCTREE_PATCH.md](docs/HOLOOCEAN_OCTREE_PATCH.md).
 | `formation_triangle` | 3 | 4.598 | - | never lost | 0 | 0 | inside / ok | 0 / 0 | 0 | 0.863 |
 | `formation_square` | 4 | 3.450 | - | never lost | 0 | 0 | inside / ok | 0 / 0 | 0 | 0.937 |
 | `formation_six` | 6 | 3.447 | - | never lost | 0 | 0 | inside / ok | 0 / 0 | 0 | 1.074 |
-| `formation_recovery_head_current` | 4 | 3.293 | - | 8.1 (5.1) | 0 | 0 | inside / 1 self-declared violation | 0 / 0 | 0 | 1.015 |
-| `formation_gust` | 4 | 2.710 | - | 7.6 (6.3) | 0 | 0 | OUT (0.94 m/s) / 1 self-declared violation | 0 / 0 | 0 | 1.029 |
+| `formation_recovery_head_current` | 4 | 3.293 | - | 8.1 (5.1) | 0 | 0 | OUTSIDE (1.52 x authority) / 1 self-declared violation | 0 / 0 | 0 | 1.015 |
+| `formation_gust` | 4 | 2.710 | - | 7.6 (6.3) | 0 | 0 | OUTSIDE (2.06 x authority) / 1 self-declared violation | 0 / 0 | 0 | 1.029 |
 | `gate_single` | 3 | 3.342 | 1 | 68.8 (5.0) | 0 | 0 | inside / ok | 0 / 0 | 0 | 1.068 |
-| `integrated_short` | 3 | 3.320 | 1 | 69.1 (4.9) | 0 | 0 | inside / ok | 0 / 0 | 0 | 0.844 |
+| `integrated_short` | 3 | 3.320 | 1 | 69.1 (4.9) | 0 | 0 | OUTSIDE (1.12 x authority) / ok | 0 / 0 | 0 | 0.844 |
 
 All runs are COMPLETE, and no controller uses ground truth.
 
@@ -270,12 +313,12 @@ How to read the columns:
 * **P3 recovery** is measured from the loss.  In brackets it is measured from the end of the last
   perturbation (jet, encounter, last gate passage).  In the gate scenarios the abreast queue breaks the
   formation on purpose and the drones re-form at the rendezvous.
-* **Vehicle envelope** is the drone's own view.  A self-declared violation means persistent thrust
-  saturation: the current is stronger than the drone at the commanded speed.
+* **Control-feasible envelope** is judged on the true current against the velocities the drones were asked
+  for (DI-27).  The second part of that column is the drones' own view: a self-declared ENVELOPE_VIOLATION
+  means the drone could not deliver the requested velocity for 4 s.
 
-`formation_recovery_head_current`:
-* the drift stays within the claimed 0.6 m/s;
-* the hit drone still declares the violation, because the current opposes its motion (DI-24).
+The two views agree on every run except `integrated_short`, where drone 0 was beyond the authority by a few
+per cent.  It lagged instead of saturating persistently (DI-27).
 
 `p1_close_encounter` (DI-25):
 * both drones enter SEPARATION_WARNING twice: at 24.0 / 23.9 s, then 26.7 / 26.8 s;
@@ -286,16 +329,17 @@ How to read the columns:
   LEFT+REAR sectors;
 * collision avoidance is not reached.
 
-Formal verification: **136 checks, all with the expected verdict**:
+Formal verification: **139 checks, all with the expected verdict**:
 * local determinism & priority hierarchy: 66/66;
 * observation consistency: 27/27;
 * P1 inter-vehicle separation: 13/13;
 * P2 critical-region mutual exclusion: 19/19;
-* P3 formation recovery: 11/11.
+* P3 formation recovery: 14/14, including the current envelope (F5, Fm3, Em1).
 
 Details are in [formal/results/SUMMARY.md](formal/results/SUMMARY.md).  The assumptions measured on these
-runs are in [results/v2/ASSUMPTIONS.md](results/v2/ASSUMPTIONS.md); E2, the vehicle's own envelope, fails
-only on `formation_recovery_head_current`, as described above.
+runs are in [results/v2/ASSUMPTIONS.md](results/v2/ASSUMPTIONS.md).  For each run the envelope table gives
+the current magnitude, the head and lateral components at the binding step, the vertical component, the
+control-feasible verdict and the persistent saturation.
 
 | P1 | P2 | P3 |
 |---|---|---|
@@ -343,6 +387,7 @@ python scripts/run_all_demos.py                           # every demo, headless
 python scripts/make_figures_v2.py                         # figures/v2/
 python scripts/validate_assumptions_v2.py                 # results/v2/ASSUMPTIONS.md
 python scripts/experiment_metrics.py results/v2/demos/p1_close_encounter    # per-run P1 / P3 metrics
+python probe/probe_head_current_authority.py              # head-current authority calibration (one short session)
 python probe/octree_rebuild_regression.py                 # simulator patch regression
 python scripts/sonar_bench.py coverage|classify|perf      # sensor benches
 ```
@@ -371,6 +416,10 @@ A run folder `results/v2/demos/<scenario>/` holds `run_status.json` (`INCOMPLETE
   queue geometry for n = 2..6;
 * P3: eventual recovery by ranking functions (no time bound) under fairness assumptions A1-A4, and
   the automaton edges FOLLOW <-> RECOVERY;
+* the current envelope, with the plant curve and the authority shared with the runtime:
+  * the catch-up of the P3 ranking keeps its margin for every head current admitted at the recovery speed
+    (F5);
+  * the survey-speed envelope alone (Fm3) and the old scalar bound (Em1) are refuted by counterexamples;
 * observation consistency:
   * the invariants of the abstract observation are satisfiable and independent;
   * every edge is enabled on some consistent observation (the proofs are not vacuous);
@@ -395,13 +444,14 @@ A run folder `results/v2/demos/<scenario>/` holds `run_status.json` (`INCOMPLETE
 * the octree patch regression.
 
 **OUTSIDE THE FORMAL ENVELOPE (shown, flagged, not covered by the proofs):**
-* `formation_gust`, a stress test: a 0.85 m/s jet, above the 0.6 m/s claimed. The drone declares
-  ENVELOPE_VIOLATION and the referee flags it.
-* `formation_recovery_head_current`:
-  * the drift stays within the claimed 0.6 m/s, but it opposes the motion;
-  * the hit drone cannot make way at the survey speed (about 0.71 m/s through the water at nominal
-    authority) and declares its own ENVELOPE_VIOLATION;
-  * the P1 assumption w_drift_max and P3's A3 do not hold while it saturates (DI-24).
+* `formation_gust`, a stress test: a 0.85 m/s jet, beyond the exercised range. The drone declares
+  ENVELOPE_VIOLATION and the evaluation flags it.
+* `formation_recovery_head_current`: a 0.6 m/s current against the motion.
+  * It is outside the control-feasible envelope: the head limit at 0.30 m/s is about 0.41 m/s.
+  * The hit drone cannot make way and declares its own ENVELOPE_VIOLATION.
+  * The P1 assumption w_drift_max and P3's A3 do not hold while it saturates (DI-24, DI-27).
+* `integrated_short`, drone 0's gate passage: at the margin of the envelope for about 5 s, undetected
+  onboard (DI-27).
 * `p1_vertical_escape`: the scripted vehicle does not run the protocol. Its clearance is reported
   separately from P1.
 * Two drones masked at the same time by a mapped structure.

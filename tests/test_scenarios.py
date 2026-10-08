@@ -32,16 +32,21 @@ def test_gate_scenarios_use_only_arena_gate_g06():
         assert sorted(p.queue_lateral for p in sc.plans) == sorted(DEFAULT.gate.queue_laterals(len(sc.plans)))
 
 
-def test_currents_inside_the_claimed_envelope_except_declared_disturbances():
-    env = DEFAULT.env
+def test_currents_inside_the_envelope_except_declared_disturbances():
+    """Outside the declared disturbance windows every current is control-feasible for the survey velocity
+    (DI-27, along the mission path at the planned clock speed) and inside the exercised range."""
+    from holo_fleet.control.current_envelope import check_current
+
     for name in EXPECTED:
         sc = SCENARIOS[name](DEFAULT)
-        for t in np.arange(0.0, sc.duration_s, 0.5):
-            if sc.disturbance_active(t):
-                continue
-            for p in sc.sim.spawn_positions:
-                w = sc.sim.current.drift_at(np.asarray(p, float), t)
-                assert np.linalg.norm(w[:2]) <= env.current_drift_max + 1e-9 and abs(w[2]) <= env.current_vertical_max
+        for plan, p in zip(sc.plans, sc.sim.spawn_positions):
+            _q, d, _n = plan.path.frame_at(0.0)
+            v = np.array([d[0], d[1], 0.0]) * (plan.clock.v if plan.clock is not None else DEFAULT.form.v_nominal)
+            for t in np.arange(0.0, sc.duration_s, 0.5):
+                if sc.disturbance_active(t):
+                    continue
+                c = check_current(sc.sim.current.drift_at(np.asarray(p, float), t), v, DEFAULT)
+                assert c.ok, (name, t, c.reason)
 
 
 def test_only_the_safety_layer_demo_switches_the_traffic_rule_off():
@@ -62,10 +67,20 @@ def test_close_encounter_is_a_simultaneous_right_angle_crossing():
     assert not sc.sim.current.components and not getattr(sc.sim, "intruders", ())
 
 
-def test_head_current_stays_at_the_claimed_drift_limit():
+def test_head_current_is_in_range_but_not_control_feasible():
+    """The jet stays within the exercised range (0.6 m/s) but, against the 0.30 m/s survey velocity, it is
+    beyond the control-feasible head limit (about 0.41 m/s): outside the corrected envelope (DI-27)."""
+    from holo_fleet.control.current_envelope import check_current, head_limit
+
     sc = SCENARIOS["formation_recovery_head_current"](DEFAULT)
     jet, = sc.sim.current.components
-    assert np.isclose(np.linalg.norm(jet.drift), DEFAULT.env.current_drift_max) and jet.drift[0] < 0.0
+    assert np.isclose(np.linalg.norm(jet.drift), DEFAULT.env.current_validated_max) and jet.drift[0] < 0.0
     worst = max(np.linalg.norm(sc.sim.current.drift_at(np.array([x, y, -5.0]), t)[:2])
                 for t in np.arange(10.0, 26.0, 0.5) for x in np.arange(-20.0, -8.0, 0.5) for y in (-32.25, -35.75))
-    assert worst <= DEFAULT.env.current_drift_max + 1e-9
+    assert worst <= DEFAULT.env.current_validated_max + 1e-9
+    c = check_current(jet.drift, (DEFAULT.form.v_nominal, 0.0, 0.0), DEFAULT)
+    assert c.in_range and not c.feasible and norm_head(jet) > head_limit(DEFAULT.form.v_nominal, DEFAULT)
+
+
+def norm_head(jet):
+    return -float(jet.drift[0])

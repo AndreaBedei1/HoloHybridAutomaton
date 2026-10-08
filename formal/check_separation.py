@@ -38,7 +38,9 @@ S4  Blackout lemma (Z3): a sonar blackout of <= T_b s starting at d >= d_blackou
 
 NOT proved here (assumptions, measured in results/v2/ASSUMPTIONS.md): the sonar detects a BlueROV2
 anywhere in its 60 deg cone within range (probe F), both drones of a pair detect each other (six
-cones cover the sphere), a_brake, w_rel_max and the velocity caps of the plant, no simultaneous
+cones cover the sphere), a_brake, w_rel_max (a RESIDUAL drift after the low-level compensation: it holds
+while the commanded velocities are control-feasible against the raw current, control/current_envelope.py, and
+the onboard monitor declares ENVELOPE_VIOLATION otherwise) and the velocity caps of the plant, no simultaneous
 masking of both drones of a pair by a mapped structure.
 """
 

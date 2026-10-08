@@ -177,7 +177,7 @@ class Referee:
 
     # ------------------------------------------------------------------ verdicts
     def metrics(self) -> Dict:
-        sep, env = self.cfg.sep, self.cfg.env
+        sep = self.cfg.sep
         dmin = min(self.min_d.values()) if self.min_d else None
         eps = [{"t_lost": round(e.t_lost, 2),
                 "t_recovered": None if e.t_recovered is None else round(e.t_recovered, 2),
@@ -210,10 +210,9 @@ class Referee:
                                       "open_at_end": int(self._lost),
                                       "all_recovered_within_run": not self._lost,
                                       "final_form_err": self.rows[-1].get("form_err") if self.rows else None},
-            "envelope": {"current_drift_max_claimed": env.current_drift_max,
-                         "max_horizontal_drift": round(self.max_drift, 3),
-                         "max_vertical_drift": round(self.max_vertical_drift, 3),
-                         "inside_envelope": self.max_drift <= env.current_drift_max + 1e-9
-                         and self.max_vertical_drift <= env.current_vertical_max + 1e-9},
+            # raw current statistics; the envelope verdict (control-feasibility of the requested velocities,
+            # DI-27) needs the controllers' logs and is added by referee/envelope.evaluate_run at the end of a run
+            "envelope": {"max_horizontal_drift": round(self.max_drift, 3),
+                         "max_vertical_drift": round(self.max_vertical_drift, 3)},
             "kinematics": {"max_true_speed_m_s": round(self.max_speed, 3)},
         }

@@ -140,6 +140,7 @@ def run(name: str, out_root: Path, headless: bool = True, run_id: Optional[str] 
                       "ground_truth_used_by_controllers": any(c.uses_ground_truth for c in ctrls.values()),
                       "static_rank_uses": rank_uses, "occupancy_timeouts": occ_timeouts,
                       "self_declared_envelope_violations": env_violations, "perf": perf}
+    metrics["envelope"] = envelope_block(out, metrics["envelope"], cfg)
     (out / "referee_metrics.json").write_text(json.dumps(metrics, indent=1, default=_jsonable), encoding="utf-8")
     (out / "perf.json").write_text(json.dumps(perf, indent=1), encoding="utf-8")
     (out / "run_status.json").write_text(json.dumps(status), encoding="utf-8")
@@ -165,16 +166,29 @@ def summary_row(name: str, m: Dict) -> Dict:
             "static_rank_uses": m["run"]["static_rank_uses"]}
 
 
+def envelope_block(run_dir: Path, raw: Dict, cfg: FleetConfig = DEFAULT) -> Dict:
+    """referee_metrics['envelope']: raw current statistics + the control-feasible verdict (DI-27)."""
+    from holo_fleet.referee.envelope import evaluate_run
+
+    ev = evaluate_run(Path(run_dir), cfg)
+    return {"max_horizontal_drift": raw.get("max_horizontal_drift"), "max_vertical_drift": raw.get("max_vertical_drift"),
+            **{k: v for k, v in ev.items() if k != "drones"}, "drones": ev["drones"]}
+
+
 def _envelope_line(m: Dict) -> str:
-    """Envelope verdict: the current (referee, against the claimed drift bound) AND the vehicles' own view
-    (a self-declared ENVELOPE_VIOLATION = persistent thrust saturation: the current is stronger than the drone)."""
+    """Envelope verdict (control-feasible, DI-27) next to the vehicles' own view (self-declared
+    ENVELOPE_VIOLATION: persistent thrust saturation or a steady command beyond the authority)."""
+    e = m["envelope"]
     n_self = m["run"]["self_declared_envelope_violations"]
-    if not m["envelope"]["inside_envelope"]:
-        return "OUT OF ENVELOPE (current drift beyond the claimed bound)"
-    if n_self:
-        return (f"NOT INSIDE: drift within the claimed bound, but {n_self} self-declared ENVELOPE_VIOLATION "
-                f"(persistent thrust saturation)")
-    return "PASS (inside envelope)"
+    own = f"; vehicles: {n_self} self-declared ENVELOPE_VIOLATION" if n_self else "; vehicles: ENVELOPE_OK"
+    if "verdict" not in e:
+        return "envelope not evaluated (run without logs)"
+    if e["verdict"] == "OUTSIDE":
+        return (f"OUTSIDE THE CONTROL-FEASIBLE ENVELOPE (required command up to {e['max_required_over_authority']:.2f} "
+                f"x authority, current up to {e['max_current_m_s']:.2f} m/s){own}")
+    if e["verdict"] == "LIMIT":
+        return f"PASS at the limit (within the plant-model tolerance){own}"
+    return f"PASS (inside the control-feasible envelope){own}"
 
 
 def print_summary(name: str, m: Dict, assumptions: Optional[str] = None) -> str:

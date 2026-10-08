@@ -23,6 +23,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
 from holo_fleet.config import DEFAULT  # noqa: E402
+from holo_fleet.referee.envelope import evaluate_run  # noqa: E402
 from holo_fleet.sim.currents import CurrentComponent, CurrentField  # noqa: E402
 
 T_START = 0.3          # first two sonar captures (an echo needs 2 of 3 to be confirmed)
@@ -72,9 +73,11 @@ def _common(R) -> Dict:
     run = m["run"]
     return {"collisions": p1["physical_contacts"] + len(p1["collision_sensor_edges"]),
             "messages": run["inter_agent_messages"],
-            "envelope": {**m["envelope"], "self_declared_envelope_violations": run["self_declared_envelope_violations"],
-                         "self_declared_events": [{"t": round(e["t"], 2), "drone": e.get("drone"), "type": e["type"]}
-                                                  for e in R["events"] if e.get("type") in ("ENVELOPE_VIOLATION", "ENVELOPE_RESTORED")]},
+            "envelope": {**{k: v for k, v in evaluate_run(R["run"], DEFAULT).items() if k != "drones"},
+                         "self_declared_events": [{"t": round(e["t"], 2), "drone": e.get("drone"), "type": e["type"],
+                                                   "reason": e.get("reason")}
+                                                  for e in R["events"]
+                                                  if e.get("type") in ("ENVELOPE_VIOLATION", "ENVELOPE_RESTORED", "ENVELOPE_OK")]},
             "determinism_violations": sum(run["determinism_violations"].values()),
             "observation_consistency_violations": sum((run.get("observation_consistency_violations") or {}).values())
             if run.get("observation_consistency_violations") is not None else None}

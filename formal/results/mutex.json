@@ -66,7 +66,7 @@
       "expect": "sat",
       "verdict": "sat",
       "passed": true,
-      "seconds": 0.013,
+      "seconds": 0.01,
       "counterexample": {
         "ad_iB": 78.25,
         "ad_iF": 101.75,
@@ -112,7 +112,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 0.009,
+      "seconds": 0.008,
       "counterexample": null,
       "note": "queue line s = -4.18 m, adjacent bearing deviation <= 20.0 deg"
     },
@@ -123,7 +123,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 0.057,
+      "seconds": 0.053,
       "counterexample": null,
       "note": "queue line s = -5.41 m, adjacent bearing deviation <= 20.0 deg"
     },
@@ -134,7 +134,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 0.219,
+      "seconds": 0.169,
       "counterexample": null,
       "note": "queue line s = -6.63 m, adjacent bearing deviation <= 20.0 deg"
     },
@@ -145,7 +145,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 0.488,
+      "seconds": 0.376,
       "counterexample": null,
       "note": "queue line s = -7.99 m, adjacent bearing deviation <= 20.0 deg"
     },
@@ -156,7 +156,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 0.944,
+      "seconds": 0.747,
       "counterexample": null,
       "note": "queue line s = -9.52 m, adjacent bearing deviation <= 20.0 deg"
     },
@@ -233,7 +233,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 10.04,
+      "seconds": 5.194,
       "counterexample": null,
       "note": "masked s in (-0.7149999999999999, 1.9649999999999999), beyond s > 1.9300000000000006, B needs >= 92 steps to the CR, A crosses at >= 0.12 m/s"
     },
@@ -244,7 +244,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 7.942,
+      "seconds": 5.057,
       "counterexample": null,
       "note": "masked s in (-0.03500000000000014, 1.2650000000000006), beyond s > 1.3399999999999999, B needs >= 92 steps to the CR, A crosses at >= 0.12 m/s"
     },
@@ -255,7 +255,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 5.534,
+      "seconds": 3.738,
       "counterexample": null,
       "note": "masked s in (-0.875, 2.130000000000001), beyond s > 2.0649999999999995, B needs >= 116 steps to the CR, A crosses at >= 0.12 m/s"
     },
@@ -266,7 +266,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 5.216,
+      "seconds": 4.953,
       "counterexample": null,
       "note": "masked s in (-0.3099999999999996, 1.505), beyond s > 1.5549999999999997, B needs >= 116 steps to the CR, A crosses at >= 0.12 m/s"
     },
@@ -277,7 +277,7 @@
       "expect": "sat",
       "verdict": "sat",
       "passed": true,
-      "seconds": 4.211,
+      "seconds": 3.526,
       "counterexample": {
         "beyond_0": false,
         "beyond_1": false,

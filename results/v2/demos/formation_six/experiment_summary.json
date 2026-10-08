@@ -142,11 +142,23 @@
   "collisions": 0,
   "messages": 0,
   "envelope": {
-   "current_drift_max_claimed": 0.6,
-   "max_horizontal_drift": 0.2,
-   "max_vertical_drift": 0.08,
+   "definition": "control-feasible current envelope (DI-27): steady command for the requested velocity within the authority (plant model, tolerance 0.06), current within the exercised range",
+   "current_validated_max_m_s": 0.6,
+   "current_vertical_max_m_s": 0.25,
+   "max_current_m_s": 0.2,
+   "max_vertical_m_s": 0.08,
+   "max_required_over_authority": 0.491,
+   "worst_step": {
+    "drone": "drone_1",
+    "t": 2.6,
+    "head_m_s": 0.027,
+    "lateral_m_s": 0.198,
+    "requested_speed_m_s": 0.333
+   },
+   "verdict": "INSIDE",
    "inside_envelope": true,
    "self_declared_envelope_violations": 0,
+   "coherent_with_vehicles": true,
    "self_declared_events": []
   },
   "determinism_violations": 0,
@@ -314,11 +326,23 @@
   "collisions": 0,
   "messages": 0,
   "envelope": {
-   "current_drift_max_claimed": 0.6,
-   "max_horizontal_drift": 0.2,
-   "max_vertical_drift": 0.08,
+   "definition": "control-feasible current envelope (DI-27): steady command for the requested velocity within the authority (plant model, tolerance 0.06), current within the exercised range",
+   "current_validated_max_m_s": 0.6,
+   "current_vertical_max_m_s": 0.25,
+   "max_current_m_s": 0.2,
+   "max_vertical_m_s": 0.08,
+   "max_required_over_authority": 0.491,
+   "worst_step": {
+    "drone": "drone_1",
+    "t": 2.6,
+    "head_m_s": 0.027,
+    "lateral_m_s": 0.198,
+    "requested_speed_m_s": 0.333
+   },
+   "verdict": "INSIDE",
    "inside_envelope": true,
    "self_declared_envelope_violations": 0,
+   "coherent_with_vehicles": true,
    "self_declared_events": []
   },
   "determinism_violations": 0,

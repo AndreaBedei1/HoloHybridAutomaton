@@ -64,7 +64,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 0.006,
+      "seconds": 0.007,
       "counterexample": null,
       "note": "e* = 0.355 m (A4 needs the onboard form_err below e_ok = 0.5 m)"
     },
@@ -86,7 +86,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 0.007,
+      "seconds": 0.006,
       "counterexample": null,
       "note": ""
     },
@@ -102,13 +102,52 @@
       "note": ""
     },
     {
+      "prop": "F5 envelope at the recovery speed -> the catch-up of F1 keeps its margin",
+      "formula": "g(V + h) <= A  ->  min(V, xs - h) - v_clock - s_rate - w_res > 0",
+      "encoding": "formal/check_formation.py (abstraction of Flows.formation) + holo_fleet/ha/spec.py",
+      "expect": "unsat",
+      "verdict": "unsat",
+      "passed": true,
+      "seconds": 0.021,
+      "counterexample": null,
+      "note": "head current admitted at V; xs: one-axis through-water speed at the nominal authority"
+    },
+    {
+      "prop": "Fm3 mutation: envelope at the survey speed only -> the catch-up margin of F1 can vanish",
+      "formula": "expect counterexample",
+      "encoding": "formal/check_formation.py (abstraction of Flows.formation) + holo_fleet/ha/spec.py",
+      "expect": "sat",
+      "verdict": "sat",
+      "passed": true,
+      "seconds": 0.019,
+      "counterexample": {
+        "h": 0.25,
+        "xs": 0.7126002621221232
+      },
+      "note": "a head current the drone can hold at v_clock but not overcome during a recovery"
+    },
+    {
+      "prop": "Em1 mutation: the v1-v2 scalar bound |w| <= 0.6 m/s admits head currents with which the survey speed is not deliverable",
+      "formula": "expect counterexample",
+      "encoding": "formal/check_formation.py (abstraction of Flows.formation) + holo_fleet/ha/spec.py",
+      "expect": "sat",
+      "verdict": "sat",
+      "passed": true,
+      "seconds": 0.017,
+      "counterexample": {
+        "h": 0.5,
+        "xs": 0.7126002621221232
+      },
+      "note": "the old isotropic current bound (DI-24, DI-27)"
+    },
+    {
       "prop": "Fm1 mutation: no catch-up margin (v_recovery = v_clock) must break F1 (along)",
       "formula": "expect counterexample",
       "encoding": "formal/check_formation.py (abstraction of Flows.formation) + holo_fleet/ha/spec.py",
       "expect": "sat",
       "verdict": "sat",
       "passed": true,
-      "seconds": 0.005,
+      "seconds": 0.006,
       "counterexample": {
         "e": 0.6666666666666666,
         "sigma_dot": -0.004546363636363637,
@@ -125,9 +164,9 @@
       "passed": true,
       "seconds": 0.004,
       "counterexample": {
-        "corr": -4.1666666666666667e-07,
+        "corr": -0.004546363636363637,
         "e": -0.4,
-        "w": -5.416666666666667e-06
+        "w": 0.05
       },
       "note": ""
     }

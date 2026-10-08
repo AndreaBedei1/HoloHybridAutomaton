@@ -450,12 +450,13 @@ def fig_p3_head_current():
     ax = fig.add_subplot(gs[0, 0])
     for a, b in run["cfg"]["disturbance_windows"]:
         ax.axvspan(a, b, color=STATUS["warning"], alpha=0.14, lw=0)
-        ax.annotate("0.6 m/s jet against the motion (claimed drift limit)", (a, 1.0), xycoords=("data", "axes fraction"),
+        ax.annotate("0.6 m/s jet against the motion (not control-feasible)", (a, 1.0), xycoords=("data", "axes fraction"),
                     xytext=(3, -12), textcoords="offset points", fontsize=8, color=INK["secondary"])
     ev = [e for e in (summ or {}).get("envelope", {}).get("self_declared_events", [])]
     for e in ev:
         if e["type"] == "ENVELOPE_VIOLATION":
-            t_end = next((x["t"] for x in ev if x["type"] == "ENVELOPE_RESTORED" and x["t"] > e["t"]), ts["t"][-1])
+            t_end = next((x["t"] for x in ev if x["type"] in ("ENVELOPE_RESTORED", "ENVELOPE_OK") and x["t"] > e["t"]),
+                         ts["t"][-1])
             ax.axvspan(e["t"], t_end, ymin=0.0, ymax=0.06, color=MODE_COLOR["FAILSAFE_HOLD_OR_RETREAT"], lw=0)
             ax.annotate(f"{e['drone']}: ENVELOPE_VIOLATION (own monitor)", (e["t"], 0.07),
                         xycoords=("data", "axes fraction"), xytext=(2, 2), textcoords="offset points", fontsize=8,
@@ -498,12 +499,19 @@ def fig_p3_head_current():
     if sat.any():
         ax.fill_between(t_s, 0, 0.05, where=sat, color=STATUS["critical"], lw=0, step="mid",
                         label=f"drone {hit}: thrust saturated (nominal authority)")
-    ax.axhline(DEFAULT.env.current_drift_max, color=INK["muted"], ls=":", lw=1.0)
-    ax.annotate("claimed drift limit 0.6 m/s", (0.0, DEFAULT.env.current_drift_max), xycoords=("axes fraction", "data"),
+    from holo_fleet.control.current_envelope import head_limit
+
+    h_lim = head_limit(DEFAULT.form.v_nominal, DEFAULT)
+    ax.axhline(h_lim, color=STATUS["critical"], ls="--", lw=1.0)
+    ax.annotate(f"control-feasible head current at {DEFAULT.form.v_nominal:.2f} m/s: {h_lim:.2f} m/s", (0.0, h_lim),
+                xycoords=("axes fraction", "data"), xytext=(4, 3), textcoords="offset points", fontsize=8,
+                color=STATUS["critical"])
+    ax.axhline(DEFAULT.env.current_validated_max, color=INK["muted"], ls=":", lw=1.0)
+    ax.annotate("exercised range 0.6 m/s", (0.0, DEFAULT.env.current_validated_max), xycoords=("axes fraction", "data"),
                 xytext=(4, 3), textcoords="offset points", fontsize=8, color=INK["muted"])
     ax.set_ylim(0, 0.8)
     ax.set_ylabel("|current| [m/s]")
-    ax.legend(fontsize=8, loc="center right")
+    ax.legend(fontsize=8, loc="upper right")
     mode_timeline(fig.add_subplot(gs[2, 0], sharex=ax), run)
     ax = fig.add_subplot(gs[:, 1])
     jet = run["cfg"]["current"][0]

@@ -1,6 +1,6 @@
 # Formal verification summary
 
-Generated 2026-10-08 21:13:32 by `formal/check_properties.py`.
+Generated 2026-10-08 22:54:31 by `formal/check_properties.py`.
 
 UNSAT = the negated property has no model in the abstraction, i.e. the property HOLDS for the model; SAT is expected for the satisfiability / non-vacuity checks (a witness must exist) and for the mutation tests (deliberately broken designs must yield a counterexample); mutation Om2 expects UNSAT (a broken observation domain loses the reachability of an edge).  The observation domain of every suite is the conjunction of the invariants of holo_fleet/ha/observation_invariants.py.
 
@@ -77,7 +77,7 @@ Encoding: `holo_fleet/ha/spec.py`
 | M1 mutation: commit without priority must violate G1 | expect counterexample | SAT | SAT | yes |
 | M2 mutation: gate pass ignoring collision risk must violate H2 | expect counterexample | SAT | SAT | yes |
 
-## Observation consistency (perception -> automaton interface)  (27/27 as expected, 0.6 s)
+## Observation consistency (perception -> automaton interface)  (27/27 as expected, 0.5 s)
 
 Encoding: `holo_fleet/ha/observation_invariants.py + holo_fleet/ha/spec.py`
 
@@ -111,7 +111,7 @@ Encoding: `holo_fleet/ha/observation_invariants.py + holo_fleet/ha/spec.py`
 | Om2 mutation: v1 constraint passed -> at_queue makes pass_done unreachable | expect UNSAT (reachability lost) | UNSAT | UNSAT | yes |
 | Om3 mutation: no monitor -> an inconsistent observation drives a mission edge | expect counterexample | SAT | SAT | yes |
 
-## P1 inter-vehicle separation  (13/13 as expected, 91.4 s)
+## P1 inter-vehicle separation  (13/13 as expected, 85.1 s)
 
 Encoding: `formal/check_separation.py`
 
@@ -131,7 +131,7 @@ Encoding: `formal/check_separation.py`
 | S3 at most one vertex angle >= 90 deg (pairwise d >= d_safe) | d_ij >= d_safe -> not(angle_i >= 90 and angle_j >= 90) | UNSAT | UNSAT | yes |
 | S4 blackout <= 0.8s starting at d >= 2.34 m keeps d >= d_safe | FAILSAFE hold with unrejected drift w_rel | UNSAT | UNSAT | yes |
 
-## P2 critical-region mutual exclusion  (19/19 as expected, 82.8 s)
+## P2 critical-region mutual exclusion  (19/19 as expected, 61.1 s)
 
 Encoding: `holo_fleet/ha/gate_rule.py + formal/check_mutex.py`
 
@@ -157,7 +157,7 @@ Encoding: `holo_fleet/ha/gate_rule.py + formal/check_mutex.py`
 | M3 occupancy latch, n=4, observer at l=+1.75: never both in the CR (42 s BMC) | latch + persistence + exit + t_clear + t_occ_max -> not(A in CR and B in CR) | UNSAT | UNSAT | yes |
 | M3m mutation: belief without latch (FREE when nothing is seen) must violate P2 | expect counterexample | SAT | SAT | yes |
 
-## P3 formation recovery (liveness, ranking functions)  (11/11 as expected, 0.7 s)
+## P3 formation recovery (liveness, ranking functions)  (14/14 as expected, 0.7 s)
 
 Encoding: `formal/check_formation.py`
 
@@ -172,6 +172,9 @@ Encoding: `formal/check_formation.py`
 | F4a RECOVERY & calm & no gate & recovered -> only the edge to FORMATION_FOLLOW | guard(e) & target(e) != FOLLOW is unsatisfiable | UNSAT | UNSAT | yes |
 | F4b ... and that edge is enabled | recovered -> guard(formation_recovered) | UNSAT | UNSAT | yes |
 | F4c FOLLOW & calm & no gate & lost -> FORMATION_RECOVERY | lost -> target = RECOVERY | UNSAT | UNSAT | yes |
+| F5 envelope at the recovery speed -> the catch-up of F1 keeps its margin | g(V + h) <= A  ->  min(V, xs - h) - v_clock - s_rate - w_res > 0 | UNSAT | UNSAT | yes |
+| Fm3 mutation: envelope at the survey speed only -> the catch-up margin of F1 can vanish | expect counterexample | SAT | SAT | yes |
+| Em1 mutation: the v1-v2 scalar bound |w| <= 0.6 m/s admits head currents with which the survey speed is not deliverable | expect counterexample | SAT | SAT | yes |
 | Fm1 mutation: no catch-up margin (v_recovery = v_clock) must break F1 (along) | expect counterexample | SAT | SAT | yes |
 | Fm2 mutation: k_slot = 0 must break F2 (lateral) | expect counterexample | SAT | SAT | yes |
 

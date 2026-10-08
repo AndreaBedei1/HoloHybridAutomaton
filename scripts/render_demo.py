@@ -41,8 +41,9 @@ def render_run(run_dir: Path, every: float = 0.5, fps: float = 4.0, width: int =
     env_label = status
     if (run_dir / "referee_metrics.json").exists():
         mm = json.loads((run_dir / "referee_metrics.json").read_text(encoding="utf-8"))
-        env_label = ("drift inside (whole run)" if mm["envelope"]["inside_envelope"]
-                     else "drift OUT (disturbance beyond the claimed envelope)")
+        e = mm["envelope"]
+        env_label = {"INSIDE": "control-feasible (whole run)", "LIMIT": "control-feasible at the limit",
+                     "OUTSIDE": "OUTSIDE the control-feasible envelope"}.get(e.get("verdict"), "not evaluated")
         if status != "COMPLETE":
             env_label += f" - run {status}"
     sc = SCENARIOS[cfg_run["scenario"]](DEFAULT)
@@ -103,7 +104,7 @@ def render_run(run_dir: Path, every: float = 0.5, fps: float = 4.0, width: int =
             if abs(cam_t[j] - t) < 1.0:
                 cam = cv2.imread(str(cams[j]))
         out_self = [names[k] for k in range(n) if rr[k].get("env_ok") is False]
-        label = env_label + (f"; {', '.join(out_self)} self-declared ENVELOPE_VIOLATION (saturation)" if out_self else "")
+        label = env_label + (f"; {', '.join(out_self)} ENVELOPE_VIOLATION (not control-feasible)" if out_self else "")
         meta = dict(meta0, t=t, envelope=label)
         img = dashboard.render(meta, rr, ref, cam, trails)
         cv2.imwrite(str(out_dir / f"dash_{int(round(t * 10)):05d}.jpg"), img, [cv2.IMWRITE_JPEG_QUALITY, 88])

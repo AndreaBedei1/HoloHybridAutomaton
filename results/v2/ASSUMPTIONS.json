@@ -5,8 +5,8 @@
   "A3 pair closing speed <= c_max = 1.20 m/s": true,
   "A4 queued neighbours >= spacing - 2 x 0.10 m apart (formal M4c)": true,
   "A5 a committed drone crosses the CR at >= 0.12 m/s (formal M3)": true,
-  "E1 current drift <= 0.6 m/s horizontal, <= 0.25 m/s vertical (every run except the declared stress test formation_gust)": true,
-  "E2 no persistent actuator saturation: no self-declared ENVELOPE_VIOLATION (the vehicle rejects the current; onboard proxy of w_drift_max)": false,
+  "E1 control-feasible envelope (DI-27): every requested velocity deliverable against the current, current within 0.6 m/s horizontal / 0.25 m/s vertical": false,
+  "E2 the vehicles' own envelope status agrees with E1 (OUTSIDE <-> self-declared ENVELOPE_VIOLATION)": false,
   "P3 A3 no FAILSAFE once the perturbation has ended (formation runs)": true,
   "automaton determinism violations = 0": true,
   "observation consistency violations = 0": true
@@ -23,43 +23,26 @@
    "A2_sonar_age_max_s": 0.0,
    "A7_nav_error_max_m": 0.124,
    "A3_closing_speed_max_m_s": 0.79,
-   "E1_drift": {
-    "max_horizontal_m_s": 0.0,
-    "max_vertical_m_s": 0.0,
-    "inside": true,
-    "declared_out_of_envelope": false
+   "E1_envelope": {
+    "current_max_m_s": 0.0,
+    "worst_step": {
+     "drone": "drone_0",
+     "t": 28.3,
+     "head_m_s": -0.0,
+     "lateral_m_s": 0.0,
+     "requested_speed_m_s": 0.401
+    },
+    "vertical_max_m_s": 0.0,
+    "required_over_authority_max": 0.485,
+    "verdict": "INSIDE",
+    "declared_stress_test": false
    },
    "E2_self_declared_envelope_violations": 0,
+   "E1_E2_coherent": true,
    "saturated_time_max_s": 0.0,
    "determinism_violations": 0,
    "observation_consistency_violations": 0,
    "failsafe_steps": 0
-  },
-  "p1_vertical_escape": {
-   "A1_onboard_distance_le_true": {
-    "samples_within_5m": 1787,
-    "violations": 0,
-    "no_target": 0,
-    "min_margin_m": 0.234,
-    "missed_or_late_5_to_8m": 0
-   },
-   "A2_sonar_age_max_s": 0.0,
-   "A7_nav_error_max_m": 0.146,
-   "A3_closing_speed_max_m_s": 0.586,
-   "formation_err_onboard_p95_m": 2.566,
-   "E1_drift": {
-    "max_horizontal_m_s": 0.0,
-    "max_vertical_m_s": 0.0,
-    "inside": true,
-    "declared_out_of_envelope": false
-   },
-   "E2_self_declared_envelope_violations": 0,
-   "saturated_time_max_s": 0.7,
-   "determinism_violations": 0,
-   "observation_consistency_violations": 0,
-   "failsafe_steps": 0,
-   "P3_A1_perturbations_end_s": null,
-   "P3_A3_failsafe_steps_after_perturbation": 0
   },
   "p1_two_lines": {
    "A1_onboard_distance_le_true": {
@@ -72,13 +55,22 @@
    "A2_sonar_age_max_s": 0.0,
    "A7_nav_error_max_m": 0.164,
    "A3_closing_speed_max_m_s": 0.74,
-   "E1_drift": {
-    "max_horizontal_m_s": 0.0,
-    "max_vertical_m_s": 0.0,
-    "inside": true,
-    "declared_out_of_envelope": false
+   "E1_envelope": {
+    "current_max_m_s": 0.0,
+    "worst_step": {
+     "drone": "drone_2",
+     "t": 23.6,
+     "head_m_s": -0.0,
+     "lateral_m_s": 0.0,
+     "requested_speed_m_s": 0.5
+    },
+    "vertical_max_m_s": 0.0,
+    "required_over_authority_max": 0.615,
+    "verdict": "INSIDE",
+    "declared_stress_test": false
    },
    "E2_self_declared_envelope_violations": 0,
+   "E1_E2_coherent": true,
    "saturated_time_max_s": 0.0,
    "determinism_violations": 0,
    "observation_consistency_violations": 0,
@@ -95,13 +87,22 @@
    "A2_sonar_age_max_s": 0.0,
    "A7_nav_error_max_m": 0.122,
    "A3_closing_speed_max_m_s": 0.509,
-   "E1_drift": {
-    "max_horizontal_m_s": 0.0,
-    "max_vertical_m_s": 0.0,
-    "inside": true,
-    "declared_out_of_envelope": false
+   "E1_envelope": {
+    "current_max_m_s": 0.0,
+    "worst_step": {
+     "drone": "drone_0",
+     "t": 25.6,
+     "head_m_s": -0.0,
+     "lateral_m_s": 0.0,
+     "requested_speed_m_s": 0.5
+    },
+    "vertical_max_m_s": 0.0,
+    "required_over_authority_max": 0.648,
+    "verdict": "INSIDE",
+    "declared_stress_test": false
    },
    "E2_self_declared_envelope_violations": 0,
+   "E1_E2_coherent": true,
    "saturated_time_max_s": 0.4,
    "determinism_violations": 0,
    "observation_consistency_violations": 0,
@@ -119,13 +120,22 @@
    "A7_nav_error_max_m": 0.149,
    "A3_closing_speed_max_m_s": 0.036,
    "formation_err_onboard_p95_m": 0.112,
-   "E1_drift": {
-    "max_horizontal_m_s": 0.25,
-    "max_vertical_m_s": 0.0,
-    "inside": true,
-    "declared_out_of_envelope": false
+   "E1_envelope": {
+    "current_max_m_s": 0.25,
+    "worst_step": {
+     "drone": "drone_2",
+     "t": 2.5,
+     "head_m_s": 0.042,
+     "lateral_m_s": 0.246,
+     "requested_speed_m_s": 0.335
+    },
+    "vertical_max_m_s": 0.0,
+    "required_over_authority_max": 0.542,
+    "verdict": "INSIDE",
+    "declared_stress_test": false
    },
    "E2_self_declared_envelope_violations": 0,
+   "E1_E2_coherent": true,
    "saturated_time_max_s": 0.0,
    "determinism_violations": 0,
    "observation_consistency_violations": 0,
@@ -145,13 +155,22 @@
    "A7_nav_error_max_m": 0.158,
    "A3_closing_speed_max_m_s": 0.03,
    "formation_err_onboard_p95_m": 0.116,
-   "E1_drift": {
-    "max_horizontal_m_s": 0.297,
-    "max_vertical_m_s": 0.0,
-    "inside": true,
-    "declared_out_of_envelope": false
+   "E1_envelope": {
+    "current_max_m_s": 0.297,
+    "worst_step": {
+     "drone": "drone_1",
+     "t": 1.9,
+     "head_m_s": 0.297,
+     "lateral_m_s": 0.0,
+     "requested_speed_m_s": 0.066
+    },
+    "vertical_max_m_s": 0.0,
+    "required_over_authority_max": 0.426,
+    "verdict": "INSIDE",
+    "declared_stress_test": false
    },
    "E2_self_declared_envelope_violations": 0,
+   "E1_E2_coherent": true,
    "saturated_time_max_s": 0.0,
    "determinism_violations": 0,
    "observation_consistency_violations": 0,
@@ -171,13 +190,22 @@
    "A7_nav_error_max_m": 0.143,
    "A3_closing_speed_max_m_s": 0.04,
    "formation_err_onboard_p95_m": 0.107,
-   "E1_drift": {
-    "max_horizontal_m_s": 0.2,
-    "max_vertical_m_s": 0.08,
-    "inside": true,
-    "declared_out_of_envelope": false
+   "E1_envelope": {
+    "current_max_m_s": 0.2,
+    "worst_step": {
+     "drone": "drone_1",
+     "t": 2.6,
+     "head_m_s": 0.027,
+     "lateral_m_s": 0.198,
+     "requested_speed_m_s": 0.333
+    },
+    "vertical_max_m_s": 0.08,
+    "required_over_authority_max": 0.491,
+    "verdict": "INSIDE",
+    "declared_stress_test": false
    },
    "E2_self_declared_envelope_violations": 0,
+   "E1_E2_coherent": true,
    "saturated_time_max_s": 0.0,
    "determinism_violations": 0,
    "observation_consistency_violations": 0,
@@ -197,13 +225,22 @@
    "A7_nav_error_max_m": 0.141,
    "A3_closing_speed_max_m_s": 0.448,
    "formation_err_onboard_p95_m": 1.135,
-   "E1_drift": {
-    "max_horizontal_m_s": 0.59,
-    "max_vertical_m_s": 0.0,
-    "inside": true,
-    "declared_out_of_envelope": false
+   "E1_envelope": {
+    "current_max_m_s": 0.59,
+    "worst_step": {
+     "drone": "drone_2",
+     "t": 13.8,
+     "head_m_s": 0.588,
+     "lateral_m_s": 0.009,
+     "requested_speed_m_s": 0.4
+    },
+    "vertical_max_m_s": 0.0,
+    "required_over_authority_max": 1.524,
+    "verdict": "OUTSIDE",
+    "declared_stress_test": false
    },
    "E2_self_declared_envelope_violations": 1,
+   "E1_E2_coherent": true,
    "saturated_time_max_s": 5.6,
    "determinism_violations": 0,
    "observation_consistency_violations": 0,
@@ -223,13 +260,22 @@
    "A7_nav_error_max_m": 0.139,
    "A3_closing_speed_max_m_s": 0.478,
    "formation_err_onboard_p95_m": 1.487,
-   "E1_drift": {
-    "max_horizontal_m_s": 0.941,
-    "max_vertical_m_s": 0.0,
-    "inside": false,
-    "declared_out_of_envelope": true
+   "E1_envelope": {
+    "current_max_m_s": 0.941,
+    "worst_step": {
+     "drone": "drone_0",
+     "t": 19.1,
+     "head_m_s": 0.708,
+     "lateral_m_s": 0.59,
+     "requested_speed_m_s": 0.4
+    },
+    "vertical_max_m_s": 0.0,
+    "required_over_authority_max": 2.065,
+    "verdict": "OUTSIDE",
+    "declared_stress_test": true
    },
    "E2_self_declared_envelope_violations": 1,
+   "E1_E2_coherent": true,
    "saturated_time_max_s": 5.3,
    "determinism_violations": 0,
    "observation_consistency_violations": 0,
@@ -250,13 +296,22 @@
    "A3_closing_speed_max_m_s": 0.554,
    "A4_queued_pair_min_distance_m": 3.484,
    "A5_speed_inside_CR_min_m_s": 0.48,
-   "E1_drift": {
-    "max_horizontal_m_s": 0.05,
-    "max_vertical_m_s": 0.0,
-    "inside": true,
-    "declared_out_of_envelope": false
+   "E1_envelope": {
+    "current_max_m_s": 0.05,
+    "worst_step": {
+     "drone": "drone_1",
+     "t": 55.699,
+     "head_m_s": 0.044,
+     "lateral_m_s": 0.023,
+     "requested_speed_m_s": 0.501
+    },
+    "vertical_max_m_s": 0.0,
+    "required_over_authority_max": 0.681,
+    "verdict": "INSIDE",
+    "declared_stress_test": false
    },
    "E2_self_declared_envelope_violations": 0,
+   "E1_E2_coherent": true,
    "saturated_time_max_s": 0.3,
    "determinism_violations": 0,
    "observation_consistency_violations": 0,
@@ -277,13 +332,22 @@
    "A3_closing_speed_max_m_s": 0.558,
    "A4_queued_pair_min_distance_m": 3.479,
    "A5_speed_inside_CR_min_m_s": 0.483,
-   "E1_drift": {
-    "max_horizontal_m_s": 0.301,
-    "max_vertical_m_s": 0.0,
-    "inside": true,
-    "declared_out_of_envelope": false
+   "E1_envelope": {
+    "current_max_m_s": 0.301,
+    "worst_step": {
+     "drone": "drone_0",
+     "t": 22.4,
+     "head_m_s": 0.284,
+     "lateral_m_s": 0.1,
+     "requested_speed_m_s": 0.5
+    },
+    "vertical_max_m_s": 0.0,
+    "required_over_authority_max": 1.121,
+    "verdict": "OUTSIDE",
+    "declared_stress_test": false
    },
    "E2_self_declared_envelope_violations": 0,
+   "E1_E2_coherent": false,
    "saturated_time_max_s": 1.8,
    "determinism_violations": 0,
    "observation_consistency_violations": 0,

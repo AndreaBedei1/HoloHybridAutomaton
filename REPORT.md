@@ -87,8 +87,8 @@ Phase-1 probe ([docs/v2/SONAR_PROBE.md](docs/v2/SONAR_PROBE.md)) and benches (`s
 | Observation consistency (perception -> automaton interface) | 27 | 27 | 0.6 s |
 | P1 inter-vehicle separation | 13 | 13 | 91.4 s |
 | P2 critical-region mutual exclusion | 19 | 19 | 82.8 s |
-| P3 formation recovery (liveness, ranking functions) | 11 | 11 | 0.7 s |
-| **total** | **136** | **136** | |
+| P3 formation recovery (liveness, ranking functions) | 14 | 14 | 0.7 s |
+| **total** | **139** | **139** | |
 
 Key numbers:
 * **Observation domain.** Every suite quantifies over the observations that satisfy the invariants of
@@ -128,6 +128,12 @@ Key numbers:
   * Ranking decreases are certified in the saturated and linear bands (along and lateral).
   * The ball |e| <= e* is invariant: e* = 0.44 m along, 0.36 m lateral.
   * The mutations are caught: no catch-up margin; k_slot = 0.
+  * Current envelope (DI-27), with the plant curve and the authority shared with the runtime:
+    * F5: for every head current admitted at the recovery speed, the catch-up of F1 keeps its margin.
+    * Fm3: the envelope evaluated at the survey speed only admits a current that removes that margin
+      (counterexample: 0.25 m/s).
+    * Em1: the old scalar bound admits head currents with which not even the survey speed is
+      deliverable (counterexample: 0.5 m/s).
 
 **Assumptions** (measured on the runs in [results/v2/ASSUMPTIONS.md](results/v2/ASSUMPTIONS.md)):
 * both drones of a pair detect each other;
@@ -137,14 +143,19 @@ Key numbers:
 * queued drones hold their point within 0.1 m;
 * a committed drone crosses the CR at >= 0.12 m/s;
 * for P3, perturbations end and the residual disturbance after the integrator is <= 0.05 m/s;
-* the current stays within the claimed drift bound (E1, referee), and the vehicle rejects it without
-  persistent thrust saturation (E2, its own monitor; the onboard proxy of w_drift_max).  E2 fails
-  only on `formation_recovery_head_current`, where a current inside E1 opposes the motion (DI-24);
+* the current is inside the control-feasible envelope (E1, DI-27).  The velocities the drones are
+  asked for must stay deliverable against the true current within the authority, and the current must stay
+  within the exercised range (0.6 m/s horizontal, 0.25 m/s vertical).  The residual drifts w_rel, w_drift
+  (P1) and w_res (P3) exist only there.
+  * The drones' own view (E2: ENVELOPE_VIOLATION after 4 s of undeliverable requests) agrees with E1 on
+    every run except `integrated_short`, which is at the margin.
+  * E1 fails on `formation_recovery_head_current` and `formation_gust` (both declared by the drones) and
+    on `integrated_short` (drone 0's gate passage, up to 1.12 times the authority);
 * every observation satisfies the observation invariants: 0 violations on every run.
 
 ## 4. Experiments (HoloOcean, one seed each, communication off)
 
-| scenario | drones | P1 min distance [m] (d_safe 1.0) | P2 max CR occupancy | P3 episodes: recovery [s] (after the perturbation) | contacts | messages | current drift / vehicle envelope | determinism / observation violations | static rank uses | RTF (with cameras) |
+| scenario | drones | P1 min distance [m] (d_safe 1.0) | P2 max CR occupancy | P3 episodes: recovery [s] (after the perturbation) | contacts | messages | control-feasible envelope / vehicles | determinism / observation violations | static rank uses | RTF (with cameras) |
 |---|---|---|---|---|---|---|---|---|---|---|
 | `p1_head_on` | 2 | 4.044 | - | n/a | 0 | 0 | inside / ok | 0 / 0 | 0 | 1.025 |
 | `p1_vertical_escape` | 4 | 2.697 (vehicle clearance 2.35) | - | 18.1 (10.0) | 0 | 0 | inside / ok | 0 / 0 | 0 | 0.953 |
@@ -153,10 +164,10 @@ Key numbers:
 | `formation_triangle` | 3 | 4.598 | - | never lost | 0 | 0 | inside / ok | 0 / 0 | 0 | 0.863 |
 | `formation_square` | 4 | 3.450 | - | never lost | 0 | 0 | inside / ok | 0 / 0 | 0 | 0.937 |
 | `formation_six` | 6 | 3.447 | - | never lost | 0 | 0 | inside / ok | 0 / 0 | 0 | 1.074 |
-| `formation_recovery_head_current` | 4 | 3.293 | - | 8.1 (5.1) | 0 | 0 | inside / 1 self-declared violation | 0 / 0 | 0 | 1.015 |
-| `formation_gust` | 4 | 2.710 | - | 7.6 (6.3) | 0 | 0 | OUT (0.94 m/s) / 1 self-declared violation | 0 / 0 | 0 | 1.029 |
+| `formation_recovery_head_current` | 4 | 3.293 | - | 8.1 (5.1) | 0 | 0 | OUTSIDE (1.52 x authority) / 1 self-declared violation | 0 / 0 | 0 | 1.015 |
+| `formation_gust` | 4 | 2.710 | - | 7.6 (6.3) | 0 | 0 | OUTSIDE (2.06 x authority) / 1 self-declared violation | 0 / 0 | 0 | 1.029 |
 | `gate_single` | 3 | 3.342 | 1 | 68.8 (5.0) | 0 | 0 | inside / ok | 0 / 0 | 0 | 1.068 |
-| `integrated_short` | 3 | 3.320 | 1 | 69.1 (4.9) | 0 | 0 | inside / ok | 0 / 0 | 0 | 0.844 |
+| `integrated_short` | 3 | 3.320 | 1 | 69.1 (4.9) | 0 | 0 | OUTSIDE (1.12 x authority) / ok | 0 / 0 | 0 | 0.844 |
 
 All runs are COMPLETE, no controller uses ground truth, and the automaton determinism and observation
 consistency violations are 0 in every run.  P3 recovery is measured from the loss; in brackets it is
@@ -200,8 +211,9 @@ scenarios the formation is broken on purpose by the abreast queue and re-formed 
 * **P3**
   * The triangle, the square and the six-drone line never lose the formation under in-envelope
     currents (lateral, diagonal, with a vertical component).
-  * `formation_recovery_head_current`, the main P3 validation: a 0.6 m/s jet against the motion, the
-    claimed drift limit, on the rear-left drone of the square (drift measured at the drone: 0.59 m/s).
+  * `formation_recovery_head_current`, the main P3 validation: a 0.6 m/s jet against the motion (the
+    old scalar bound) on the rear-left drone of the square (drift measured at the drone: 0.59 m/s).
+    It is outside the control-feasible envelope: the head limit at 0.30 m/s is about 0.41 m/s (DI-27).
     * At nominal authority the drone makes about 0.71 m/s through the water, so it cannot follow its
       slot at 0.30 m/s.  Its thrust saturates (5.6 s in total).
     * At 19.3 s its own monitor declares ENVELOPE_VIOLATION, and it holds in FAILSAFE until 23.3 s.
@@ -221,7 +233,7 @@ Figures: [figures/v2/](figures/v2/) (sensor, p1, p2, p3).  GIFs: [figures/v2/gif
 
 ## 5. Design iterations
 
-All 26 iterations, with problem, cause, fix, why the fix is principled and result, are in
+All 27 iterations, with problem, cause, fix, why the fix is principled and result, are in
 [DESIGN_ITERATIONS.md](DESIGN_ITERATIONS.md).  The ones that changed the design:
 
 | iteration | what changed |
@@ -244,6 +256,7 @@ All 26 iterations, with problem, cause, fix, why the fix is principled and resul
 | DI-24 | no current inside every assumption breaks the formation; against the motion the claimed 0.6 m/s is not met (about 0.4 m/s at survey speed) |
 | DI-25 | a right-angle crossing is outside the head-on traffic rule: the warning filter acts, collision avoidance is not reached |
 | DI-26 | observation consistency check between perception and automaton (runtime + Z3) |
+| DI-27 | the scalar current bound replaced by a control-feasible, direction-aware envelope (authority, calibrated plant curve, requested speed): one definition for the onboard monitor, the run evaluation, the tests and Z3 |
 
 Two late fixes came from checking the demo figures and the onboard summaries, not only the referee:
 * DI-20: the square's merged neighbour echoes and intermittent far returns kept the drones in
@@ -269,15 +282,23 @@ Two late fixes came from checking the demo figures and the onboard summaries, no
   reaction is conservative (UNKNOWN).
 * **Long range.** Weak returns at 10-12 m are intermittent.  Formation checks only require neighbours
   within 7.5 m.
-* **Current envelope against the motion.** The claimed drift bound of 0.6 m/s holds for lateral and
-  following currents and for station keeping.
-  * Against the motion the nominal authority gives about 0.71 m/s through the water (measured).
-  * At the 0.30 m/s survey speed a drone therefore follows its slot only against head currents up to
-    about 0.4 m/s.
-  * Above that it saturates; after 4 s its own monitor declares ENVELOPE_VIOLATION and it holds in
-    FAILSAFE (`formation_recovery_head_current`).
-  * The referee's drift check alone would call such a current "inside".  ASSUMPTIONS.md reports both
-    the drift (E1) and the vehicle's own view (E2).
+* **Current envelope (DI-27).** The v2 baseline first declared |current| <= 0.6 m/s in every direction.
+  That was too general: what a drone can do depends on the direction of the current relative to the motion
+  it is asked for, and on the speed of that motion.
+  * The envelope is now control-feasible.  The steady command for the through-water velocity, on the
+    body axes and with the calibrated plant curve, must stay within the authority (0.40 nominal); the
+    current must also stay within the exercised range (0.6 m/s horizontal, 0.25 m/s vertical).
+  * At the 0.30 m/s survey speed: head <= 0.41 m/s, lateral <= 0.60 m/s.  At 0.50 m/s (recovery
+    catch-up, gate passage): head <= 0.21 m/s, lateral <= 0.57 m/s.
+  * The plant curve is accurate to 6 % on its calibration points.
+  * The onboard monitor sees an undeliverable request only through persistent saturation or its own
+    steady command.  A request beyond the authority by a few per cent can show up as a lag instead:
+    `integrated_short`, drone 0's diagonal gate passage at 0.5 m/s against the 0.30 m/s cross-current,
+    is outside the envelope for about 5 s without being declared onboard.  Flagging such lags would put
+    a committed drone in FAILSAFE during a gate passage; that was not done.
+  * P3's catch-up needs the envelope evaluated at the recovery speed (F5).  Between about 0.21 and
+    0.41 m/s of head current the slot can be held, but the recovery margin of the proof is not
+    guaranteed (Fm3).
 * **No formation loss inside every assumption.** With an unrejected drift <= w_drift_max = 0.15 m/s
   the slot loop keeps the error far below e_lost.  Every P3 loss in the demos comes from a
   perturbation beyond what the drone can reject:
@@ -287,7 +308,8 @@ Two late fixes came from checking the demo figures and the onboard summaries, no
   * the deliberate gate queue.
 
   The P3 property is proved for what happens after such a perturbation ends (assumption A1).  It does
-  not say that in-envelope currents cause losses (DI-24).
+  not say that in-envelope currents cause losses (DI-24); inside the control-feasible envelope none of
+  the runs loses its formation.
 * **Collision avoidance in fleet-only encounters.** In the right-angle crossing the warning filter
   stops the closing before the conservative bound reaches d_ca.  COLLISION_AVOIDANCE is demonstrated
   only against the non-cooperative vehicle of `p1_vertical_escape` (DI-25).
@@ -321,14 +343,15 @@ COMPLETE" for the numbers):
 * `formation_gust` is a stress test outside the envelope.
 * `formation_recovery_head_current` is the main experimental validation of P3: recovery after a
   perturbation that ends, which is what the property claims.
-  * Its drift stays within the claimed bound, but against the motion the vehicle declares its own
-    envelope violation.
-  * The scenario was requested as "formation recovery inside the envelope".  It is named after what
-    it shows, because no formation loss inside every assumption was achievable (DI-24).
+  * It is outside the control-feasible envelope (a 0.6 m/s head current against an about 0.41 m/s
+    limit), and the hit drone declares it.
+  * The scenario is the one that revealed that the scalar bound was too general, corrected in DI-27.
+  * It was requested as "formation recovery inside the envelope".  It is named after what it shows,
+    because no formation loss inside every assumption was achievable (DI-24).
 
-**Formal verification.** 136 checks with the expected verdict:
+**Formal verification.** 139 checks with the expected verdict:
 * determinism 66;
 * observation consistency 27;
 * P1 13;
 * P2 19;
-* P3 11.
+* P3 14 (including the current envelope: F5, Fm3, Em1).
