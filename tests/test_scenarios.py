@@ -6,8 +6,8 @@ from holo_fleet.config import DEFAULT
 from holo_fleet.sim.scenarios import SCENARIOS
 
 EXPECTED = {"p1_head_on": 2, "p1_vertical_escape": 4, "p1_two_lines": 6, "p1_close_encounter": 2,
-            "formation_triangle": 3, "formation_square": 4, "formation_six": 6, "formation_gust": 4,
-            "gate_single": 3, "integrated_short": 3}
+            "formation_triangle": 3, "formation_square": 4, "formation_six": 6, "formation_recovery_head_current": 4,
+            "formation_gust": 4, "gate_single": 3, "integrated_short": 3}
 
 
 def test_catalogue_is_small_and_short():
@@ -61,3 +61,11 @@ def test_close_encounter_is_a_simultaneous_right_angle_crossing():
     assert all(p.clock.v == DEFAULT.form.v_nominal for p in sc.plans)  # survey speed on both clocks
     assert not sc.sim.current.components and not getattr(sc.sim, "intruders", ())
 
+
+def test_head_current_stays_at_the_claimed_drift_limit():
+    sc = SCENARIOS["formation_recovery_head_current"](DEFAULT)
+    jet, = sc.sim.current.components
+    assert np.isclose(np.linalg.norm(jet.drift), DEFAULT.env.current_drift_max) and jet.drift[0] < 0.0
+    worst = max(np.linalg.norm(sc.sim.current.drift_at(np.array([x, y, -5.0]), t)[:2])
+                for t in np.arange(10.0, 26.0, 0.5) for x in np.arange(-20.0, -8.0, 0.5) for y in (-32.25, -35.75))
+    assert worst <= DEFAULT.env.current_drift_max + 1e-9

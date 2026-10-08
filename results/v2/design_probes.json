@@ -1,0 +1,322 @@
+{
+ "probe_p3_a": {
+  "current": [
+   {
+    "kind": "jet",
+    "drift": [
+     0.0,
+     0.6,
+     0.0
+    ],
+    "center": [
+     -9.5,
+     -32.25
+    ],
+    "radius": 3.0,
+    "t_on": 12.0,
+    "t_off": 24.0,
+    "amplitude": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "period": 30.0,
+    "seed": 0,
+    "ramp": 1.5
+   }
+  ],
+  "duration_s": 50.0,
+  "n_drones": 4,
+  "P1_min_distance_m": 3.274,
+  "max_horizontal_drift": 0.594,
+  "self_declared_envelope_violations": 0,
+  "max_true_formation_error_m": 0.471,
+  "episodes": [],
+  "max_onboard_form_err_m": {
+   "drone_0": 0.635,
+   "drone_1": 0.944,
+   "drone_2": 0.315,
+   "drone_3": 0.849
+  },
+  "modes": {
+   "drone_0": [
+    "FORMATION_FOLLOW",
+    "FORMATION_RECOVERY",
+    "SEPARATION_WARNING"
+   ],
+   "drone_1": [
+    "FORMATION_FOLLOW",
+    "FORMATION_RECOVERY",
+    "SEPARATION_WARNING"
+   ],
+   "drone_2": [
+    "FORMATION_FOLLOW",
+    "FORMATION_RECOVERY"
+   ],
+   "drone_3": [
+    "FORMATION_FOLLOW",
+    "FORMATION_RECOVERY",
+    "SEPARATION_WARNING"
+   ]
+  }
+ },
+ "probe_p3_reversal": {
+  "current": [
+   {
+    "kind": "jet",
+    "drift": [
+     0.0,
+     0.6,
+     0.0
+    ],
+    "center": [
+     -9.75,
+     -31.25
+    ],
+    "radius": 3.0,
+    "t_on": 11.0,
+    "t_off": 17.0,
+    "amplitude": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "period": 30.0,
+    "seed": 0,
+    "ramp": 0.5
+   },
+   {
+    "kind": "jet",
+    "drift": [
+     0.0,
+     -0.6,
+     0.0
+    ],
+    "center": [
+     -9.75,
+     -31.25
+    ],
+    "radius": 3.0,
+    "t_on": 17.0,
+    "t_off": 23.0,
+    "amplitude": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "period": 30.0,
+    "seed": 0,
+    "ramp": 0.5
+   }
+  ],
+  "duration_s": 50.0,
+  "n_drones": 4,
+  "P1_min_distance_m": 3.264,
+  "max_horizontal_drift": 0.511,
+  "self_declared_envelope_violations": 0,
+  "max_true_formation_error_m": 0.444,
+  "episodes": [],
+  "max_onboard_form_err_m": {
+   "drone_0": 0.734,
+   "drone_1": 0.847,
+   "drone_2": 0.365,
+   "drone_3": 0.823
+  },
+  "modes": {
+   "drone_0": [
+    "FORMATION_FOLLOW",
+    "FORMATION_RECOVERY",
+    "SEPARATION_WARNING"
+   ],
+   "drone_1": [
+    "FORMATION_FOLLOW",
+    "FORMATION_RECOVERY",
+    "SEPARATION_WARNING"
+   ],
+   "drone_2": [
+    "FORMATION_FOLLOW",
+    "FORMATION_RECOVERY"
+   ],
+   "drone_3": [
+    "FORMATION_FOLLOW",
+    "FORMATION_RECOVERY",
+    "SEPARATION_WARNING"
+   ]
+  }
+ },
+ "probe_p3_head": {
+  "current": [
+   {
+    "kind": "jet",
+    "drift": [
+     -0.6,
+     0.0,
+     0.0
+    ],
+    "center": [
+     -9.75,
+     -32.25
+    ],
+    "radius": 3.0,
+    "t_on": 11.0,
+    "t_off": 23.0,
+    "amplitude": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "period": 30.0,
+    "seed": 0,
+    "ramp": 1.0
+   }
+  ],
+  "duration_s": 50.0,
+  "n_drones": 4,
+  "P1_min_distance_m": 3.202,
+  "max_horizontal_drift": 0.595,
+  "self_declared_envelope_violations": 0,
+  "max_true_formation_error_m": 0.741,
+  "episodes": [],
+  "max_onboard_form_err_m": {
+   "drone_0": 1.404,
+   "drone_1": 1.186,
+   "drone_2": 1.492,
+   "drone_3": 0.615
+  },
+  "modes": {
+   "drone_0": [
+    "FORMATION_FOLLOW",
+    "FORMATION_RECOVERY",
+    "SEPARATION_WARNING"
+   ],
+   "drone_1": [
+    "FORMATION_FOLLOW",
+    "FORMATION_RECOVERY"
+   ],
+   "drone_2": [
+    "FORMATION_FOLLOW",
+    "FORMATION_RECOVERY",
+    "SEPARATION_WARNING"
+   ],
+   "drone_3": [
+    "FORMATION_FOLLOW",
+    "FORMATION_RECOVERY"
+   ]
+  }
+ },
+ "probe_p3_rear": {
+  "current": [
+   {
+    "kind": "jet",
+    "drift": [
+     -0.6,
+     0.0,
+     0.0
+    ],
+    "center": [
+     -14.75,
+     -32.25
+    ],
+    "radius": 3.0,
+    "t_on": 12.0,
+    "t_off": 24.0,
+    "amplitude": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "period": 30.0,
+    "seed": 0,
+    "ramp": 1.5
+   }
+  ],
+  "duration_s": 50.0,
+  "n_drones": 4,
+  "P1_min_distance_m": 3.267,
+  "max_horizontal_drift": 0.588,
+  "self_declared_envelope_violations": 1,
+  "max_true_formation_error_m": 1.826,
+  "episodes": [
+   {
+    "t_lost": 21.0,
+    "t_recovered": 29.0,
+    "recovery_time_s": 8.0,
+    "t_perturbation_end": 24.0,
+    "recovery_after_perturbation_s": 5.0,
+    "modes_at_loss": "FAILSAFE_HOLD_OR_RETREAT,FORMATION_FOLLOW,FORMATION_RECOVERY",
+    "recovery_from_end_of_disturbance_s": 5.0
+   }
+  ],
+  "max_onboard_form_err_m": {
+   "drone_0": 1.155,
+   "drone_1": 1.186,
+   "drone_2": 2.595,
+   "drone_3": 0.765
+  },
+  "modes": {
+   "drone_0": [
+    "FORMATION_FOLLOW",
+    "FORMATION_RECOVERY"
+   ],
+   "drone_1": [
+    "FORMATION_FOLLOW",
+    "FORMATION_RECOVERY"
+   ],
+   "drone_2": [
+    "FAILSAFE_HOLD_OR_RETREAT",
+    "FORMATION_FOLLOW",
+    "FORMATION_RECOVERY",
+    "SEPARATION_WARNING"
+   ],
+   "drone_3": [
+    "FORMATION_FOLLOW",
+    "FORMATION_RECOVERY"
+   ]
+  }
+ },
+ "probe_p1_cross": {
+  "current": [],
+  "duration_s": 40.0,
+  "n_drones": 2,
+  "P1_min_distance_m": 2.888,
+  "max_horizontal_drift": 0.0,
+  "self_declared_envelope_violations": 0,
+  "min_true_pair_distance_m": 2.888,
+  "min_onboard": {
+   "drone_0": 1.922,
+   "drone_1": 1.952
+  },
+  "SW": {
+   "drone_0": 2,
+   "drone_1": 2
+  },
+  "CA": {
+   "drone_0": 0,
+   "drone_1": 0
+  }
+ },
+ "probe_p1_gap": {
+  "current": [],
+  "duration_s": 40.0,
+  "n_drones": 3,
+  "P1_min_distance_m": 2.825,
+  "max_horizontal_drift": 0.0,
+  "self_declared_envelope_violations": 0,
+  "min_true_pair_distance_m": 2.825,
+  "min_onboard": {
+   "drone_0": 2.023,
+   "drone_1": 2.103,
+   "drone_2": 2.253
+  },
+  "SW": {
+   "drone_0": 4,
+   "drone_1": 3,
+   "drone_2": 2
+  },
+  "CA": {
+   "drone_0": 0,
+   "drone_1": 0,
+   "drone_2": 0
+  }
+ }
+}

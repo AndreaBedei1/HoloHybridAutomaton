@@ -13,7 +13,10 @@
   formation_triangle     3 drones, lateral current 0.25       triangle survey under a constant current
   formation_square       4 drones, diagonal current 0.30      2 x 2 box under a diagonal current
   formation_six          6 drones, lateral + vertical current survey line (6 swaths), current with w_z
-  formation_gust         4 drones, temporary 0.7 m/s gust     formation lost and recovered (P3)
+  formation_recovery_head_current
+                         4 drones, 0.6 m/s head jet           a jet at the claimed drift limit, against the
+                                                              motion, on the rear-left drone: lost, recovered
+  formation_gust         4 drones, temporary 0.85 m/s jet     out-of-envelope stress test: lost and recovered
   gate_single            3 drones, one arena gate (G06)       one at a time through the gate (P2)
   integrated_short       3 drones, cross-current + G06        P1 + P2 + P3 in one short mission
 """
@@ -236,6 +239,31 @@ def formation_six(cfg: FleetConfig = DEFAULT) -> Scenario:
                    camera=2)
 
 
+def formation_recovery_head_current(cfg: FleetConfig = DEFAULT) -> Scenario:
+    """P3 under a current at the claimed drift limit (Envelope.current_drift_max = 0.6 m/s), against the motion.
+
+    Choice of the disturbance (not tuned on the outcome):
+    * direction: against the survey direction, the one with the smallest control margin (the survey
+      speed adds to the current; a lateral 0.6 m/s jet is rejected with a formation error below 0.5 m);
+    * intensity: the claimed limit itself, 0.6 m/s; no background current, so the drift stays <= 0.6;
+    * shape: a localized jet (Gaussian, radius 3 m, as formation_gust), so that it deforms the geometry
+      (a uniform current only translates the formation);
+    * target: centred on the track of the rear-left drone when it switches on, the front-left drone being
+      3.5 m ahead (jet factor 0.07): a front drone pushed back into its rear neighbour would make the
+      warning filter move both drones (P1 interplay), the rear drone tests formation keeping alone;
+    * timing: on at t = 12 s for 12 s (about five time constants of the low-level integrator, 2.3 s),
+      1.5 s sin^2 ramps as in formation_gust."""
+    jet = CurrentComponent("jet", drift=(-cfg.env.current_drift_max, 0.0, 0.0), center=(-14.75, -32.25), radius=3.0,
+                           t_on=12.0, t_off=24.0, ramp=1.5)
+    return _survey("formation_recovery_head_current", "square", 34.0, CurrentField([jet]), 50.0,
+                   "P3: a head current at the claimed drift limit hits one drone",
+                   "4 drones (square); a 0.6 m/s jet against the motion, the claimed drift limit, acts on the "
+                   "rear-left drone between t = 12 s and 24 s. No background current.",
+                   "the hit drone cannot hold its slot at the survey speed; formation lost / recovered from the "
+                   "true error; the onboard saturation monitor of the hit drone is part of the picture",
+                   windows=[(12.0, 24.0)], camera=2)
+
+
 def formation_gust(cfg: FleetConfig = DEFAULT) -> Scenario:
     """A localized jet (0.85 m/s, beyond the 0.6 m/s envelope) hits only the left lane of the square for
     10 s: unlike a uniform current it deforms the relative geometry, so the formation is lost."""
@@ -311,6 +339,7 @@ SCENARIOS: Dict[str, Callable[..., Scenario]] = {
     "formation_triangle": formation_triangle,
     "formation_square": formation_square,
     "formation_six": formation_six,
+    "formation_recovery_head_current": formation_recovery_head_current,
     "formation_gust": formation_gust,
     "gate_single": gate_single,
     "integrated_short": integrated_short,
