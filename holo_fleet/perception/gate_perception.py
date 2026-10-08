@@ -99,7 +99,10 @@ class GatePerception:
         herr = math.degrees((yaw - gate_yaw + math.pi) % (2 * math.pi) - math.pi)
         o.gate_id, o.s, o.l, o.dz, o.heading_err_deg = g.gate_id, float(s), float(l), float(dz), herr
         o.queue_l, o.queue_s = self.plan.queue_lateral, self.plan.queue_s
-        o.in_zone = (o.queue_s - G.approach_len) <= s <= G.exit_s and abs(l) <= G.corridor_half_width
+        # the lateral bound always contains the own queue point (for n >= 5 the outer queue points lie
+        # beyond corridor_half_width): at_queue -> in_zone holds by construction (invariant I2)
+        half_w = max(G.corridor_half_width, abs(o.queue_l) + 1.0)
+        o.in_zone = (o.queue_s - G.approach_len) <= s <= G.exit_s and abs(l) <= half_w
         o.passed = s > G.exit_s
         o.at_queue = (abs(s - o.queue_s) <= G.queue_tol and abs(l - o.queue_l) <= G.queue_tol
                       and abs(herr) <= G.heading_tol_deg)

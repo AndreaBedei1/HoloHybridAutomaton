@@ -20,6 +20,7 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
+from holo_fleet.ha import observation_invariants as OI  # noqa: E402
 from holo_fleet.ha.spec import BOOL_VARS, REAL_VARS, Logic  # noqa: E402
 
 RESULTS_DIR = ROOT / "formal" / "results"
@@ -34,6 +35,14 @@ class Z3Logic(Logic):
 
     def Not(self, a):
         return z3.Not(a)
+
+    # observation invariant N0 (holo_fleet/ha/observation_invariants.py): Z3 Real and Bool symbols are
+    # finite and Boolean by construction, so the runtime type checks are trivially true here
+    def finite(self, x):
+        return z3.BoolVal(True)
+
+    def boolean(self, b):
+        return z3.BoolVal(True)
 
 
 Z3L = Z3Logic()
@@ -65,15 +74,11 @@ class Obs:
         for v in BOOL_VARS:
             setattr(self, v, z3.Bool(v + suffix))
 
-    def legal(self, cfg) -> z3.BoolRef:
-        """Constraints that the perception layer guarantees by construction."""
-        return z3.And(
-            self.form_err >= 0, self.t_ok >= 0,
-            self.d_min >= -20, self.d_min <= 1e9,
-            # perception: passed (s > exit) implies at_queue (s >= s_q - window) and not gate_zone
-            z3.Implies(self.passed, self.at_queue),
-            z3.Implies(self.passed, z3.Not(self.gate_zone)),
-        )
+    def legal(self, cfg, drop=(), extra=()) -> z3.BoolRef:
+        """The observations the perception layer can produce: the shared semantic invariants of
+        holo_fleet/ha/observation_invariants.py (the same predicate as the runtime consistency check),
+        minus the short names in ``drop`` (mutation tests), plus ``extra``."""
+        return OI.legal(self, Z3L, cfg, drop=drop, extra=extra)
 
 
 @dataclass

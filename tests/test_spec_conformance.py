@@ -10,6 +10,7 @@ import z3
 from holo_fleet.config import DEFAULT
 from holo_fleet.ha import gate_rule
 from holo_fleet.ha.automaton import AbstractObservation, LocalHybridAutomaton
+from holo_fleet.ha.observation_invariants import consistent
 from holo_fleet.ha.spec import BOOL_VARS, MODES, PY_LOGIC, REAL_VARS, build_edges
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "formal"))
@@ -25,16 +26,19 @@ def _random_obs(rng):
 
 
 def test_exactly_one_edge_enabled_runtime():
+    # every Boolean combination, consistent with the observation invariants or not: the guards partition
+    # the observation space by themselves (formal O4/O5); the invariants are not needed for determinism
     rng = random.Random(1)
     ha = LocalHybridAutomaton()
+    n_consistent = 0
     for _ in range(5000):
         o = _random_obs(rng)
-        if o.passed:                     # perception guarantee (see formal/common.Obs.legal)
-            o.at_queue, o.gate_zone = True, False
+        n_consistent += consistent(o)
         ha.mode = rng.choice(MODES)
         ha.committed = o.committed
         ha.step(o, 0.0, 0.1)
     assert ha.determinism_violations == 0
+    assert 0 < n_consistent < 5000                  # both kinds were exercised
 
 
 def test_python_and_z3_evaluations_agree():

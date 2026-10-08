@@ -1,8 +1,8 @@
 # Formal verification summary
 
-Generated 2026-10-08 02:54:54 by `formal/check_properties.py`.
+Generated 2026-10-08 21:13:32 by `formal/check_properties.py`.
 
-UNSAT = the negated property has no model in the abstraction, i.e. the property HOLDS for the model; SAT is expected only for the mutation tests (deliberately broken designs must yield a counterexample).
+UNSAT = the negated property has no model in the abstraction, i.e. the property HOLDS for the model; SAT is expected for the satisfiability / non-vacuity checks (a witness must exist) and for the mutation tests (deliberately broken designs must yield a counterexample); mutation Om2 expects UNSAT (a broken observation domain loses the reachability of an edge).  The observation domain of every suite is the conjunction of the invariants of holo_fleet/ha/observation_invariants.py.
 
 ## Local determinism & priority hierarchy  (66/66 as expected, 0.2 s)
 
@@ -77,7 +77,41 @@ Encoding: `holo_fleet/ha/spec.py`
 | M1 mutation: commit without priority must violate G1 | expect counterexample | SAT | SAT | yes |
 | M2 mutation: gate pass ignoring collision risk must violate H2 | expect counterexample | SAT | SAT | yes |
 
-## P1 inter-vehicle separation  (13/13 as expected, 84.8 s)
+## Observation consistency (perception -> automaton interface)  (27/27 as expected, 0.6 s)
+
+Encoding: `holo_fleet/ha/observation_invariants.py + holo_fleet/ha/spec.py`
+
+| check | formula | expected | verdict | ok |
+|---|---|---|---|---|
+| O1 the observation invariants are jointly satisfiable | exists obs: N1 & I1 & I2 & I3 & I4 | SAT | SAT | yes |
+| O2 N1 ranges: excludes observations admitted by the other invariants | exists obs: others & !(form_err >= 0  and  t_ok >= 0  and  d_min <= D_NONE) | SAT | SAT | yes |
+| O2 I1 priority only at the queue point: excludes observations admitted by the other invariants | exists obs: others & !(has_prio -> at_queue) | SAT | SAT | yes |
+| O2 I2 the queue point lies in the approach zone: excludes observations admitted by the other invariants | exists obs: others & !(at_queue -> gate_zone) | SAT | SAT | yes |
+| O2 I3 a passed gate is out of the approach zone: excludes observations admitted by the other invariants | exists obs: others & !(passed -> !gate_zone) | SAT | SAT | yes |
+| O2 I4 t_ok counts only while the formation is ok: excludes observations admitted by the other invariants | exists obs: others & !(t_ok > 0 -> (form_err < e_ok & neighbors_ok)) | SAT | SAT | yes |
+| O3 non-vacuity [FORMATION_FOLLOW]: every edge enabled on some consistent observation | for each edge e: exists consistent obs with guard(e) | SAT | SAT | yes |
+| O3 non-vacuity [SEPARATION_WARNING]: every edge enabled on some consistent observation | for each edge e: exists consistent obs with guard(e) | SAT | SAT | yes |
+| O3 non-vacuity [COLLISION_AVOIDANCE]: every edge enabled on some consistent observation | for each edge e: exists consistent obs with guard(e) | SAT | SAT | yes |
+| O3 non-vacuity [GATE_APPROACH]: every edge enabled on some consistent observation | for each edge e: exists consistent obs with guard(e) | SAT | SAT | yes |
+| O3 non-vacuity [GATE_YIELD]: every edge enabled on some consistent observation | for each edge e: exists consistent obs with guard(e) | SAT | SAT | yes |
+| O3 non-vacuity [GATE_PASS]: every edge enabled on some consistent observation | for each edge e: exists consistent obs with guard(e) | SAT | SAT | yes |
+| O3 non-vacuity [FORMATION_RECOVERY]: every edge enabled on some consistent observation | for each edge e: exists consistent obs with guard(e) | SAT | SAT | yes |
+| O3 non-vacuity [FAILSAFE_HOLD_OR_RETREAT]: every edge enabled on some consistent observation | for each edge e: exists consistent obs with guard(e) | SAT | SAT | yes |
+| O4 consistent observation -> exactly one edge [FORMATION_FOLLOW] | invariants -> exactly one outgoing guard enabled | UNSAT | UNSAT | yes |
+| O4 consistent observation -> exactly one edge [SEPARATION_WARNING] | invariants -> exactly one outgoing guard enabled | UNSAT | UNSAT | yes |
+| O4 consistent observation -> exactly one edge [COLLISION_AVOIDANCE] | invariants -> exactly one outgoing guard enabled | UNSAT | UNSAT | yes |
+| O4 consistent observation -> exactly one edge [GATE_APPROACH] | invariants -> exactly one outgoing guard enabled | UNSAT | UNSAT | yes |
+| O4 consistent observation -> exactly one edge [GATE_YIELD] | invariants -> exactly one outgoing guard enabled | UNSAT | UNSAT | yes |
+| O4 consistent observation -> exactly one edge [GATE_PASS] | invariants -> exactly one outgoing guard enabled | UNSAT | UNSAT | yes |
+| O4 consistent observation -> exactly one edge [FORMATION_RECOVERY] | invariants -> exactly one outgoing guard enabled | UNSAT | UNSAT | yes |
+| O4 consistent observation -> exactly one edge [FAILSAFE_HOLD_OR_RETREAT] | invariants -> exactly one outgoing guard enabled | UNSAT | UNSAT | yes |
+| O5 monitor: any observation -> exactly one edge; inconsistent -> only the fault edge to FAILSAFE | sense_ok' = sense_ok & consistent: exactly one guard, and !consistent -> target FAILSAFE | UNSAT | UNSAT | yes |
+| Q1 calm, not committed, at the queue point -> commit or yield (every mode) | at_queue -> enabled edge in {commit, yield} | UNSAT | UNSAT | yes |
+| Om1 mutation: without I2 a queued drone takes a formation edge (Q1 must fail) | expect counterexample | SAT | SAT | yes |
+| Om2 mutation: v1 constraint passed -> at_queue makes pass_done unreachable | expect UNSAT (reachability lost) | UNSAT | UNSAT | yes |
+| Om3 mutation: no monitor -> an inconsistent observation drives a mission edge | expect counterexample | SAT | SAT | yes |
+
+## P1 inter-vehicle separation  (13/13 as expected, 91.4 s)
 
 Encoding: `formal/check_separation.py`
 
@@ -97,7 +131,7 @@ Encoding: `formal/check_separation.py`
 | S3 at most one vertex angle >= 90 deg (pairwise d >= d_safe) | d_ij >= d_safe -> not(angle_i >= 90 and angle_j >= 90) | UNSAT | UNSAT | yes |
 | S4 blackout <= 0.8s starting at d >= 2.34 m keeps d >= d_safe | FAILSAFE hold with unrejected drift w_rel | UNSAT | UNSAT | yes |
 
-## P2 critical-region mutual exclusion  (19/19 as expected, 59.4 s)
+## P2 critical-region mutual exclusion  (19/19 as expected, 82.8 s)
 
 Encoding: `holo_fleet/ha/gate_rule.py + formal/check_mutex.py`
 
@@ -123,7 +157,7 @@ Encoding: `holo_fleet/ha/gate_rule.py + formal/check_mutex.py`
 | M3 occupancy latch, n=4, observer at l=+1.75: never both in the CR (42 s BMC) | latch + persistence + exit + t_clear + t_occ_max -> not(A in CR and B in CR) | UNSAT | UNSAT | yes |
 | M3m mutation: belief without latch (FREE when nothing is seen) must violate P2 | expect counterexample | SAT | SAT | yes |
 
-## P3 formation recovery (liveness, ranking functions)  (11/11 as expected, 0.5 s)
+## P3 formation recovery (liveness, ranking functions)  (11/11 as expected, 0.7 s)
 
 Encoding: `formal/check_formation.py`
 

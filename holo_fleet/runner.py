@@ -126,6 +126,7 @@ def run(name: str, out_root: Path, headless: bool = True, run_id: Optional[str] 
             w.writerows(rows)
     metrics = ref.metrics()
     det = {nm: c.ha.determinism_violations for nm, c in ctrls.items()}
+    obs_inc = {nm: c.observation_violations for nm, c in ctrls.items()}
     rank_uses = sum(c.perception.gp.rank_uses for c in ctrls.values())
     occ_timeouts = sum(c.perception.gp.occ_timeouts for c in ctrls.values())
     env_violations = 0
@@ -134,6 +135,7 @@ def run(name: str, out_root: Path, headless: bool = True, run_id: Optional[str] 
             if '"ENVELOPE_VIOLATION"' in line:
                 env_violations += 1
     metrics["run"] = {**status, "scenario": name, "sim_time_s": round(sim.t, 2), "determinism_violations": det,
+                      "observation_consistency_violations": obs_inc,
                       "comms_enabled": cfg.comms_enabled, "inter_agent_messages": 0,
                       "ground_truth_used_by_controllers": any(c.uses_ground_truth for c in ctrls.values()),
                       "static_rank_uses": rank_uses, "occupancy_timeouts": occ_timeouts,
@@ -163,6 +165,18 @@ def summary_row(name: str, m: Dict) -> Dict:
             "static_rank_uses": m["run"]["static_rank_uses"]}
 
 
+def _envelope_line(m: Dict) -> str:
+    """Envelope verdict: the current (referee, against the claimed drift bound) AND the vehicles' own view
+    (a self-declared ENVELOPE_VIOLATION = persistent thrust saturation: the current is stronger than the drone)."""
+    n_self = m["run"]["self_declared_envelope_violations"]
+    if not m["envelope"]["inside_envelope"]:
+        return "OUT OF ENVELOPE (current drift beyond the claimed bound)"
+    if n_self:
+        return (f"NOT INSIDE: drift within the claimed bound, but {n_self} self-declared ENVELOPE_VIOLATION "
+                f"(persistent thrust saturation)")
+    return "PASS (inside envelope)"
+
+
 def print_summary(name: str, m: Dict, assumptions: Optional[str] = None) -> str:
     p1, p2, p3 = m["P1_separation"], m["P2_mutual_exclusion"], m["P3_formation_recovery"]
     bar = "=" * 49
@@ -186,11 +200,13 @@ def print_summary(name: str, m: Dict, assumptions: Optional[str] = None) -> str:
     else:
         lines += ["P3 FORMATION RECOVERY", "n/a (no formation judged in this scenario)", ""]
     coll = p1["physical_contacts"] + len(p1["collision_sensor_edges"])
+    det = sum((m["run"].get("determinism_violations") or {}).values())
+    inc = m["run"].get("observation_consistency_violations")
     lines += ["COLLISIONS", str(coll), "", "COMMUNICATION", f"{m['run']['inter_agent_messages']} messages", "",
+              f"AUTOMATON DETERMINISM VIOLATIONS: {det}",
+              f"OBSERVATION CONSISTENCY VIOLATIONS: {'n/a' if inc is None else sum(inc.values())}", "",
               "GROUND TRUTH USED BY CONTROLLERS", "YES" if m["run"]["ground_truth_used_by_controllers"] else "NO", "",
-              "FORMAL ASSUMPTIONS",
-              assumptions or ("PASS (inside envelope)" if m["envelope"]["inside_envelope"] else "OUT OF ENVELOPE"),
-              "", bar]
+              "FORMAL ASSUMPTIONS", assumptions or _envelope_line(m), "", bar]
     text = "\n".join(lines)
     print(text)
     return text

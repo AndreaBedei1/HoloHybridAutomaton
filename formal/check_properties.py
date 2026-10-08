@@ -21,11 +21,14 @@ sys.path.insert(0, str(HERE.parent))
 import check_determinism  # noqa: E402
 import check_formation  # noqa: E402
 import check_mutex  # noqa: E402
+import check_observations  # noqa: E402
 import check_separation  # noqa: E402
 from common import RESULTS_DIR  # noqa: E402
 
 SUITES = [
     ("Local determinism & priority hierarchy", check_determinism, "holo_fleet/ha/spec.py"),
+    ("Observation consistency (perception -> automaton interface)", check_observations,
+     "holo_fleet/ha/observation_invariants.py + holo_fleet/ha/spec.py"),
     ("P1 inter-vehicle separation", check_separation, "formal/check_separation.py"),
     ("P2 critical-region mutual exclusion", check_mutex, "holo_fleet/ha/gate_rule.py + formal/check_mutex.py"),
     ("P3 formation recovery (liveness, ranking functions)", check_formation, "formal/check_formation.py"),
@@ -60,7 +63,10 @@ def main(argv=None) -> int:
     (RESULTS_DIR / "SUMMARY.json").write_text(json.dumps(summary, indent=2, default=str))
     lines = ["# Formal verification summary", "", f"Generated {summary['started']} by `formal/check_properties.py`.", "",
              "UNSAT = the negated property has no model in the abstraction, i.e. the property HOLDS for the model; "
-             "SAT is expected only for the mutation tests (deliberately broken designs must yield a counterexample).", ""]
+             "SAT is expected for the satisfiability / non-vacuity checks (a witness must exist) and for the mutation "
+             "tests (deliberately broken designs must yield a counterexample); mutation Om2 expects UNSAT (a broken "
+             "observation domain loses the reachability of an edge).  The observation domain of every suite is the "
+             "conjunction of the invariants of holo_fleet/ha/observation_invariants.py.", ""]
     for s in summary["suites"]:
         n_ok = sum(c["passed"] for c in s["checks"])
         lines += [f"## {s['title']}  ({n_ok}/{len(s['checks'])} as expected, {s['seconds']} s)", "",

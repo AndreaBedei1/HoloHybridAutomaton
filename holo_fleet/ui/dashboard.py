@@ -23,7 +23,7 @@ import numpy as np
 W, H = 1600, 900
 SPLIT = 880                                  # ONBOARD | REFEREE
 HEADER = 54
-FOOTER = 34
+FOOTER = 54
 
 
 def _bgr(hexs: str):
@@ -101,7 +101,8 @@ def _drone_card(img, k, name, rec, x, y, w, h, show_form=True):
     cv2.rectangle(img, (x, y), (x + 6, y + h), DRONE[k % len(DRONE)], -1)
     mode = rec.get("mode", "?")
     xx = _badge(img, f"{name}", x + 14, y + 22, DRONE[k % len(DRONE)], 0.5, text_color=INK)
-    xx = _badge(img, MODE_SHORT.get(mode, mode), xx, y + 22, MODE_COLOR.get(mode, INK2), 0.5)
+    _text(img, "AUTOMATON mode:", xx, y + 22, 0.42, INK2)
+    xx = _badge(img, MODE_SHORT.get(mode, mode), xx + 128, y + 22, MODE_COLOR.get(mode, INK2), 0.5)
     g = rec.get("gate") or {}
     if g.get("id") and mode.startswith("GATE"):
         _text(img, f"gate {g['id']}: {g.get('decision', '')}  CR belief {g.get('occ', '')}", xx, y + 22, 0.42, INK2)
@@ -111,6 +112,9 @@ def _drone_card(img, k, name, rec, x, y, w, h, show_form=True):
     ce = rec.get("current_est") or [0, 0, 0]
     _text(img, f"nav pose  x {p[0]:6.1f}  y {p[1]:6.1f}  z {p[2]:5.1f}  yaw {rec.get('nav_yaw_deg', 0):5.0f}",
           x + 14, y + 44, 0.42, INK2)
+    ok = rec.get("obs_consistent", True)
+    _badge(img, "OBSERVATION CONSISTENT" if ok else "OBSERVATION INCONSISTENT", x + 470, y + 44,
+           GOOD if ok else CRIT, 0.36)
     _text(img, f"current est  ({ce[0]:+.2f}, {ce[1]:+.2f}, {ce[2]:+.2f}) m/s", x + 14, y + 62, 0.42, INK2)
     dmin = rec.get("d_min")
     esc = rec.get("escape") or {}
@@ -274,7 +278,11 @@ def render(meta: Dict, recs: Sequence[Dict], ref: Dict, cam: Optional[np.ndarray
     cv2.rectangle(img, (0, H - FOOTER), (W, H), PANEL, -1)
     _text(img, f"COMMUNICATION: {meta.get('messages', 0)} messages     GROUND TRUTH USED BY CONTROLLERS: "
                f"{'YES' if meta.get('gt_used') else 'NO'}     {meta.get('n_sonars', 6 * n)} sonars, 10 Hz     "
-               f"envelope: {meta.get('envelope', '-')}", 16, H - 12, 0.5, INK2)
+               f"envelope: {meta.get('envelope', '-')}", 16, H - 32, 0.5, INK2)
+    det = sum(int(r.get("determinism_violations") or 0) for r in recs)
+    inc = sum(int(r.get("observation_violations") or 0) for r in recs)
+    _text(img, f"AUTOMATON DETERMINISM VIOLATIONS: {det}     OBSERVATION CONSISTENCY VIOLATIONS: {inc}", 16, H - 10,
+          0.5, INK2 if det == 0 and inc == 0 else CRIT)
     return img
 
 

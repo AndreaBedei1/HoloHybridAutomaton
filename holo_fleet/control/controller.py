@@ -15,6 +15,7 @@ from holo_fleet.config import DEFAULT, FleetConfig
 from holo_fleet.control.flows import Flows
 from holo_fleet.control.lowlevel import LowLevelController
 from holo_fleet.ha.automaton import LocalHybridAutomaton
+from holo_fleet.ha.observation_invariants import violated as observation_violations
 from holo_fleet.ha.spec import Mode
 from holo_fleet.mission import MissionPlan
 from holo_fleet.perception.frame import SensorFrame
@@ -58,6 +59,8 @@ class DroneController:
         self.flows = Flows(plan, cfg)
         self.ll = LowLevelController(cfg)
         self.envmon = EnvelopeMonitor()
+        self.observation_violations = 0            # control steps with an inconsistent abstract observation
+        self.obs_consistent = True
         self.events: List[Dict[str, Any]] = []
         self.last_obs: Optional[LocalObservation] = None
         self.last_record: Dict[str, Any] = {}
@@ -66,6 +69,17 @@ class DroneController:
         t = frame.t
         obs = self.perception.update(frame, dt, sigma=self.flows.sigma, env_ok=self.envmon.ok,
                                      offset=self.flows.offset)
+        # observation consistency check (ha/observation_invariants.py) between perception and automaton:
+        # an observation the perception cannot produce reveals a defect; it is logged and handed to the
+        # automaton as a sensing fault, i.e. the existing fault edge -> FAILSAFE_HOLD_OR_RETREAT
+        bad = observation_violations(obs.ab, self.cfg)
+        self.obs_consistent = not bad
+        if bad:
+            self.observation_violations += 1
+            self.events.append({"t": t, "type": "OBSERVATION_INCONSISTENT", "violated": bad,
+                                "observation": {**obs.ab.as_dict(), "committed": self.ha.committed},
+                                "mode": self.ha.mode.value})
+            obs.ab.sense_ok = False
         prev = self.ha.mode
         rec = self.ha.step(obs.ab, t, dt)
         mode = self.ha.mode
@@ -133,5 +147,7 @@ class DroneController:
                      "checks": [(c.slot, round(c.expected_d, 2), None if not c.seen else round(c.residual, 2))
                                 for c in obs.form.checks]},
             "determinism_violations": self.ha.determinism_violations,
+            "obs_consistent": self.obs_consistent, "observation_violations": self.observation_violations,
+            "saturated": self.ll.saturated,
         }
         return thruster_command(cmd["surge"], cmd["sway"], cmd["heave"], cmd["yaw"], self.cfg.plant.thruster_limit)

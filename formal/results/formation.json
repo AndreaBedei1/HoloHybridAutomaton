@@ -31,7 +31,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 0.005,
+      "seconds": 0.006,
       "counterexample": null,
       "note": "e* = 0.439 m (A4 needs the onboard form_err below e_ok = 0.5 m)"
     },
@@ -64,7 +64,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 0.004,
+      "seconds": 0.006,
       "counterexample": null,
       "note": "e* = 0.355 m (A4 needs the onboard form_err below e_ok = 0.5 m)"
     },
@@ -86,7 +86,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 0.004,
+      "seconds": 0.007,
       "counterexample": null,
       "note": ""
     },
@@ -108,7 +108,7 @@
       "expect": "sat",
       "verdict": "sat",
       "passed": true,
-      "seconds": 0.004,
+      "seconds": 0.005,
       "counterexample": {
         "e": 0.6666666666666666,
         "sigma_dot": -0.004546363636363637,
