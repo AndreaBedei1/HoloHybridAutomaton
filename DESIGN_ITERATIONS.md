@@ -400,3 +400,41 @@ v1 iterations are summarised in REPORT.md section 6.
 * **Result.** Both the boxed-in centre drone (REAR+UP, FWD+UP) and the rear drone escape upwards.
   P1 among the drones holds (minimum 2.5 m), the clearance to the intruder stays above 2.4 m, and
   the formation recovers 18.5 s after the encounter.
+
+## DI-20 - Square drones never declared the formation recovered
+
+* **Problem.** In the final `formation_square` run the referee saw a perfect formation (error below
+  0.08 m), but all four drones stayed in FORMATION_RECOVERY for the whole run. Six-drone drones were
+  in it most of the time.
+* **Cause.** Two effects of DI-18's one-to-one association.
+  * In a 2 x 2 box the side and the rear neighbour echo at almost the same range in adjacent sectors.
+    The target builder merges them into one REAR+RIGHT target, which could confirm only one of them.
+  * In the six-drone line the returns of neighbours 10.5 m away are intermittent near the end of the
+    range, so `neighbors_ok` flickered.
+* **Fix.**
+  * Association per (target, sector): each sector of a merged target can confirm one neighbour.
+    The direction compatibility of DI-18 is kept.
+  * A neighbour counts as present for 1 s after its last match.
+  * Only neighbours expected within 7.5 m are required.
+* **Why the fix is principled.**
+  * A merged target is two hulls seen in two sectors, so each sector carries its own evidence.
+  * The memory matches the sonar's measured intermittency at long range.
+  * Requiring the nearer neighbours is what the spacing correction actually uses.
+* **Result.** Triangle and square: every drone in FORMATION_FOLLOW for 42.8 of 45 s (after the
+  initial 2.2 s). New unit tests: merged target, intermittent far neighbour.
+
+## DI-21 - A neighbour hidden in the gate's echo window was reported missing
+
+* **Problem.** In `gate_single` the last drone through the gate never declared the formation
+  recovered. The referee did declare it, at 73 s.
+* **Cause.** At the rendezvous, 6 m beyond the gate, the neighbour 7 m away on the drone's left lies
+  at the same range as the gate bars behind-left of it. Its echo (6.42 m) falls inside the structure
+  window of that sector and is classified STRUCTURE. For a range-only sensor the neighbour is
+  unobservable there, but the formation check counted it as missing.
+* **Fix.** An expected neighbour whose predicted echo lies inside a mapped structure's window, in
+  every sector where it is expected, is not required for `neighbors_ok`. It is still used when it is
+  matched.
+* **Why the fix is principled.** It separates "not seen" from "cannot be seen with this sensor and
+  this map". Nothing changes for P1: a masked hull is a documented limitation, covered for the gate by
+  the occupancy latch.
+* **Result.** See the final `gate_single` and `integrated_short` runs in the README table.

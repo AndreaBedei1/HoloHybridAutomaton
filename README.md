@@ -1,224 +1,288 @@
-# HoloFleet-HA: a leaderless, communication-free UUV fleet built from verifiable local hybrid automata
+# HoloFleet-HA v2: a leaderless, communication-free UUV fleet with realistic six-sonar sensing and verifiable local hybrid automata
 
-Three simulated underwater drones (BlueROV2, HoloOcean 2.3.0) survey the seabed in formation and pass
-through the narrow gates of an existing **marine arena** one at a time. They have **no leader**, they
-**exchange no messages**, and **every drone runs the same local hybrid automaton** fed only by its own
-onboard sensors (3D proximity sonar, forward-looking imaging sonar, DVL, compass/IMU, depth, camera).
-Fleet-level properties emerge from the composition `H_fleet = H_1 || H_2 || H_3`, where the drones are
-coupled only through the physical environment they observe:
+Simulated BlueROV2 drones (HoloOcean 2.3.0, patched) survey in formation, cross a narrow gate of the
+existing **Marine Race Arena** one at a time and avoid each other in 3-D.  They have **no leader**,
+**exchange no messages** and **all run the same local hybrid automaton**.  Each drone sees its
+surroundings only through **six identical wide-beam directional single-beam sonars** (one per hull
+face) plus DVL, IMU, compass and depth.  The fleet behaviour is the composition
+`H_fleet = H_1 || ... || H_N`; the drones are coupled only through the water they observe.
 
 | | property | formula | how it is established |
 |---|---|---|---|
-| **P1** | inter-vehicle separation (safety) | `G( forall i != j : d_ij >= d_safe )` | Z3: pairwise k-induction (unbounded) + local 3D-escape and triangle lemmas; HoloOcean referee |
-| **P2** | critical-region mutual exclusion (safety) | `G( sum_i inside_CR_i <= 1 )` | Z3: lemmas on the shared priority rule (no double commit, no deadlock, priority persistence, occupancy visibility) + inductive invariant; HoloOcean referee |
-| **P3** | bounded formation recovery (liveness) | `G( formation_lost -> F_[0,T] formation_recovered )` | Z3: ranking-function proof with a worst-case bound T; HoloOcean referee |
+| **P1** | inter-vehicle separation (safety) | `G( forall i != j : d_ij >= d_safe )`, d_safe = 1 m (ground truth) | Z3: pairwise radial model with the one-sided onboard distance (BMC + k-induction), exhaustive escape-table lemmas on the deployed planner, triangle and blackout lemmas; numeric soundness of the distance bound; HoloOcean referee |
+| **P2** | critical-region mutual exclusion (safety) | `G( sum_i inside_CR_i <= 1 )` | Z3: sector-pattern priority rule on the bearing model, exactly one priority in abreast queues of 2..6, timed model of the occupancy latch; queue geometry checks; HoloOcean referee |
+| **P3** | formation recovery (liveness) | `G( formation_lost -> F formation_recovered )`, no time bound | Z3: ranking functions on the formation law under explicit fairness assumptions; HoloOcean referee with measured recovery times |
 
-The controller never reads simulator ground truth. Ground truth is used only by the **referee**,
-offline and online, to judge each run. Tests enforce this by scanning imports and checking at runtime
-which sensor keys reach a controller.
+Ground truth is read only by the **referee** (and by the dashboard's referee half).  Tests scan the
+controller code and check at runtime which sensor keys reach a controller.
 
-> Start with [REPORT.md](REPORT.md) for results, verified properties and limits, and
-> [DISCOVERY.md](DISCOVERY.md) for what was found on this machine and what is re-used.
+> [REPORT.md](REPORT.md): results, proofs, assumptions, limits.  [DESIGN_ITERATIONS.md](DESIGN_ITERATIONS.md):
+> every problem met in v2, its cause and the fix.  [docs/HOLOOCEAN_OCTREE_PATCH.md](docs/HOLOOCEAN_OCTREE_PATCH.md):
+> the simulator patch.  [docs/v2/SONAR_PROBE.md](docs/v2/SONAR_PROBE.md): what the sonar really measures.
 
 ---
 
-## 1. Architecture
+## 1. Watch the demos
+
+```bash
+conda activate holo_fleet_ha
+python scripts/run_demo.py --list
+python scripts/run_demo.py --scenario p1_vertical_escape
+```
+
+Each demo opens the HoloOcean viewport, with the onboard belief drawn on it (nearest echo per sonar
+sector: grey structure, brown seabed, red possible vehicle, amber unknown; escape direction in
+magenta), and a dashboard:
+
+* **ONBOARD**, per drone: mode, estimated pose, the six sectors (range, class, age), the conservative
+  nearest distance, escape direction, current estimate, gate decision and CR belief, formation error
+  estimate;
+* **REFEREE / GROUND TRUTH**: top view, P1 SAFE/VIOLATED with the true nearest distance next to the
+  onboard one, d_warning and d_safe, P2 occupancy and entry order, P3 OK/LOST/RECOVERING/RECOVERED
+  with the formation error, true current;
+* footer: `COMMUNICATION: 0 messages`, `GROUND TRUTH USED BY CONTROLLERS: NO`.
+
+At the end the summary is printed (P1/P2/P3, collisions, messages, envelope) and a GIF is written.
+
+| scenario | drones | sim time | shows |
+|---|---|---|---|
+| `sonar_classification` | 2 (bench) | 28 s | echo classes: gate STRUCTURE, drone DYNAMIC, both in one cone, drone behind the gate, abeam, SEABED, drone in the seabed clutter (UNKNOWN) |
+| `p1_head_on` | 2 | 30 s | head-on: both give way to the right (sector traffic rule), pass port to port |
+| `p1_vertical_escape` | 4 + 1 scripted vehicle | 45 s | traffic rule OFF, safety layer only: a vehicle that does not react crosses a T formation 1.2 m below; the boxed-in centre drone escapes **up** |
+| `p1_two_lines` | 6 | 36 s | two survey lines head-on: flanked drones give way **vertically**, outer ones to the right |
+| `formation_triangle` | 3 | 45 s | triangle under a 0.25 m/s lateral current |
+| `formation_square` | 4 | 45 s | 2 x 2 box under a 0.30 m/s diagonal current |
+| `formation_six` | 6 | 50 s | six swaths abreast (36 sonars), lateral current with a vertical component |
+| `formation_gust` | 4 | 55 s | a 0.85 m/s jet (beyond the envelope) breaks the square: P3 lost and recovered |
+| `gate_single` | 3 | 80 s | arena gate G06 (1.5 m opening): abreast queue, one at a time, re-form beyond the gate |
+| `integrated_short` | 3 | 92 s | survey, 0.35 m/s cross-current at the gate, one at a time, re-form |
+
+`--headless` runs without the HoloOcean window, `--no-window` without the dashboard window.
+`python scripts/run_all_demos.py` runs everything headless (about 25 min) and writes
+`results/v2/demos/SUMMARY.md`; `python scripts/render_demo.py results/v2/demos/<scenario>` rebuilds
+the dashboard GIF from the logs.  Small GIF copies are in [figures/v2/gifs/](figures/v2/gifs/).
+
+## 2. Architecture
 
 ```mermaid
 flowchart LR
   subgraph SIM["holo_fleet.sim (owns ground truth)"]
-    HO[HoloOcean 2.3.0<br/>OpenWater + Horseshoe Bay gates<br/>(marine_race_arena)] -->|onboard sensors only| F[SensorFrame per drone]
+    HO[HoloOcean 2.3.0 + octree patch<br/>OpenWater + arena gate G06] -->|onboard sensors only| F[SensorFrame per drone]
     HO -->|PoseSensor, VelocitySensor, CollisionSensor| R[Referee P1/P2/P3]
-    C[current field<br/>effective drift] --> HO
+    C[current field] --> HO
+    X[scripted vehicle<br/>(optional, not in the fleet)] --> HO
   end
-  subgraph DRONE["holo_fleet.perception + ha + control (identical on every drone)"]
-    F --> P[Perception<br/>DVL+compass dead reckoning<br/>sonar point clouds -> tracks<br/>gate frame, formation estimate]
+  subgraph DRONE["perception + ha + control (identical on every drone)"]
+    F --> P[Perception<br/>dead reckoning, six echo profiles,<br/>STRUCTURE/SEABED/DYNAMIC/UNKNOWN,<br/>sector targets, gate belief, formation check]
     P -->|abstract observation| A[Local hybrid automaton<br/>8 modes, shared guard spec]
-    A -->|mode| FL[Mode flows<br/>formation / gate / QP safety filter / 3D escape / failsafe]
-    P --> FL
-    FL --> LL[DVL velocity PI loop + heading loop]
+    A --> FL[Mode flows<br/>formation / traffic rule / gate / warning filter / 3-D escape / failsafe]
+    FL --> LL[DVL velocity PI + heading loop<br/>onboard current estimate]
   end
-  LL -->|surge, sway, heave, yaw -> 8 thrusters| HO
-  SPEC[holo_fleet/ha/spec.py<br/>holo_fleet/ha/gate_rule.py] --- A
+  LL -->|8 thrusters| HO
+  SPEC[ha/spec.py, ha/gate_rule.py] --- A
   SPEC --- Z3[formal/ Z3 checks]
+  R --> UI[dashboard: ONBOARD vs REFEREE]
+  A --> UI
 ```
-
-Package layout:
 
 ```text
 holo_fleet/
-  config.py              every threshold, gain and envelope assumption (single source of truth for runtime AND proofs)
-  mission.py             static mission plan uploaded before the dive: survey path, formation slots, gate map
-  arena_bridge.py        re-use of ~/Desktop/HoloDroneCompetition/marine_race_arena (tracks, gate factory, spawner)
-  ha/spec.py             hybrid-automaton edge table; guards written once for Python AND Z3 (logic backend)
-  ha/gate_rule.py        communication-free priority rule for the critical region (shared with Z3)
-  ha/automaton.py        runtime automaton + determinism monitor
-  perception/            sensor suite, dead reckoning, proximity/forward sonar processing, tracker, observations
-  control/               per-mode flows (formation, gate queue/pass, QP safety filter, escape, failsafe), low level
-  sim/                   HoloOcean multi-agent wrapper, current fields, scenarios
-  referee/               ground-truth validator (the only reader of simulator state)
-  comms/                 optional intermittent acoustic channel - OFF by default
-  analysis.py            offline figures and perception-vs-truth statistics
-formal/                  Z3 encodings + check_properties.py (results in formal/results/)
-scripts/                 run_experiment, run_all, analyze_results, render_report, calibrate_plant, validate_assumptions
-tests/                   isolation, no-comms default, runtime/Z3 conformance, rule properties, geometry, artifacts
-probe/                   Phase-0 HoloOcean probes (sensor conventions, plant and current calibration, cameras)
-results/                 demonstrative runs (verdicts, events, per-drone states, referee time series) + SUMMARY / ASSUMPTIONS
-figures/                 key figures and GIFs of every demonstrative run (versioned copies)
+  config.py                    every threshold, gain and envelope assumption (runtime AND proofs)
+  mission.py, formations.py    mission plan, FormationClock (holds, rendezvous jumps), generic templates
+  arena_bridge.py              re-use of ~/Desktop/HoloDroneCompetition/marine_race_arena (tracks, gates, spawner)
+  ha/spec.py, ha/automaton.py  hybrid automaton: edge table written once for Python and Z3, determinism monitor
+  ha/gate_rule.py              sector-pattern priority rule (shared with Z3)
+  perception/                  sonar geometry and region tables, echo classifier, targets and the sound distance
+                               bound, gate perception (occupancy latch), formation perception, dead reckoning
+  control/                     flows, 3-D escape planner, low level
+  sim/                         HoloOcean wrapper, patched-engine setup, watchdog, currents, scenarios
+  referee/                     ground-truth validator (the only reader of simulator state)
+  ui/                          dashboard, live hook, GIFs
+formal/                        Z3 suites P1 / P2 / P3 / determinism -> formal/results/SUMMARY.md
+scripts/                       demos, figures, assumption validation, sonar bench, plant calibration
+probe/                         sonar probe, octree regression, benches
+patches/                       HoloOcean octree patch + build/install script
 ```
 
-## 2. Drones and onboard sensors
+## 3. Sensors: six identical wide-beam directional single-beam sonars
 
-BlueROV2, control scheme 0 (8 thrusters), commands mapped with the arena's own BlueROV2 mapping.
+| sensor | HoloOcean type | mounting | range | rate | noise |
+|---|---|---|---|---|---|
+| FRONT, REAR, LEFT, RIGHT, UP, DOWN | `SinglebeamSonar`, 120 deg cone, 234 bins (5 cm) | one per hull face, 1 cm outside the hull, along the face normal; only position and orientation differ | 0.3-12 m | 10 Hz | intensity Rayleigh 0.05 + multiplicative 0.1, range exponential 0.05 m; threshold 0.30 |
+| DVL | `DVLSensor`, 4 beams at 22.5 deg | hull bottom | 50 m | 10 Hz | 0.01 m/s, range 0.02 m |
+| IMU, compass, depth | `IMUSensor`, `MagnetometerSensor`, `DepthSensor` | sockets | - | 30 Hz | 0.01 / 0.005 / 0.02 |
 
-| sensor (log name) | HoloOcean type | socket / mounting | FOV | range [m] | Hz | noise | role |
-|---|---|---|---|---|---|---|---|
-| IMUSensor | IMUSensor | IMUSocket / hull centre | - | - | 30 | accel 0.01, gyro 0.005 (std) | yaw-rate damping, attitude monitoring |
-| Compass | MagnetometerSensor | IMUSocket / hull centre | - | - | 30 | 0.005 std per axis | heading (AHRS role) |
-| DVLSensor | DVLSensor | DVLSocket / hull bottom, 4 beams 22.5 deg | - | 50 | 10 | 0.01 m/s per beam | body velocity over ground: dead reckoning, velocity loop |
-| DepthSensor | DepthSensor | DepthSocket / pressure port | - | - | 30 | 0.02 m | depth keeping, vertical escape, relative depth |
-| ProxSonar_e-60 ... e+60 | RangeFinderSensor x25 | IMUSocket / hull centre | 360 deg az x [-60, 60] deg el, 5 x 5 deg | 10 | 10 | 0.04 m range std + per-beam dropout | 3D proximity sonar: other drones and gate bars (safety layer) |
-| AltimeterDown / AltimeterUp | RangeFinderSensor | IMUSocket | single beam +/-90 deg | 30 | 10 | - | vertical escape availability |
-| FrontSonar | ImagingSonar | SonarSocket / bow | 90 deg az x 20 deg el | 0.5-12 | 5 | Rayleigh 0.02, mult 0.05 | forward-looking sonar: vehicles ahead |
-| FrontCamera | RGBCamera | CameraSocket / bow | 90 deg, 320x240 | - | 5 | - | imagery for checks and figures (not used by the safety logic) |
+A sonar returns the echo intensity per range bin over its whole cone: **no bearing inside the cone**.
+What a drone knows about another hull is the **sector pattern** (which sonars see it) and one range per
+sector.  The 25-ray ring, the imaging sonar and every artificial proximity sensor of v1 are gone.
 
-Why a ray-cast proximity sonar: the HoloOcean imaging sonar works on a static octree that does **not**
-contain runtime-spawned props (the arena gates), while `RangeFinderSensor` rays hit both vehicles and
-gate props (probe results in DISCOVERY.md). The ring array is an abstraction of an omnidirectional
-obstacle-avoidance sonar. Range noise and dropout are added by the simulator-side sensor model.
-Referee-only sensors (PoseSensor, VelocitySensor, CollisionSensor) and two visualisation cameras
-(ChaseCamera, SideCamera) are stripped before any controller sees the data.
+![six sonars](figures/v2/sensor/six_sonar_coverage.png)
 
-## 3. The local hybrid automaton
+* **3-D coverage.** Six 60 deg half-angle cones cover the sphere (the worst directions, the 8 cube
+  diagonals, are 54.7 deg from three axes and are seen by three sonars).  For a hull at 1 m and beyond
+  every direction is seen; near-field pockets exist only closer than 0.8 m (centre distance), below
+  d_safe.  HoloOcean bench: 204/204 placements (axes, edges, diagonals; 1-5 m) detected, sector pattern
+  always within the geometric prediction (`scripts/sonar_bench.py coverage`).
+* **Echo classes** (onboard information only: own estimated pose, depth, DVL altitude, gate map):
+  `STRUCTURE` (inside the gate-map window), `SEABED` (cone meets the bottom known from depth and DVL
+  altitude), `DYNAMIC` (compact, unexplained: a possible vehicle), `UNKNOWN` (extended or inside the
+  seabed clutter: treated as an obstacle), `UNCONFIRMED` (seen once; M-of-N confirmation 2 of 3).
+  HoloOcean bench, all cases as expected: gate only, drone only, drone in front of the gate, two drones
+  in one cone, seabed, drone before the seabed onset, drone hidden in the clutter (never declared a
+  clear vehicle; the guards get a conservative UNKNOWN target).
+* **Sector model.** Per sector: nearest obstacle range, class, age, filtered closing rate.  Echoes of
+  adjacent sectors at similar ranges form a target whose pattern narrows its direction to a region.
+* **Conservative distance.** A **sound** lower bound of the centre distance per target (DI-13): never
+  above the true distance on 10^5 random hull poses (formal S0), minus c_max x age for staleness.
 
-Modes: `FORMATION_FOLLOW`, `SEPARATION_WARNING`, `COLLISION_AVOIDANCE`, `GATE_APPROACH`, `GATE_YIELD`,
-`GATE_PASS`, `FORMATION_RECOVERY`, `FAILSAFE_HOLD_OR_RETREAT`, plus a latched `committed` bit.
-Priority (checked in Z3): **failsafe > collision avoidance > separation warning > critical region >
-formation recovery > mission following**. Guards use abstract observations computed by perception:
-`d_min` (staleness-inflated nearest distance), `occ_busy`, `has_prio`, `at_queue`, `passed`, `gate_zone`,
-`form_err`, `t_ok`, `neighbors_ok`, `sense_ok`, `env_ok`.
+Requires the **HoloOcean octree patch** (runtime props visible, no ghosts, no crash, every agent
+visible): see [docs/HOLOOCEAN_OCTREE_PATCH.md](docs/HOLOOCEAN_OCTREE_PATCH.md).
 
-| mode | flow (desired velocity) |
-|---|---|
-| FORMATION_FOLLOW / RECOVERY | slot tracking on the survey line (triangle: lanes at +/-2.5 m, centre slot 2.5 m behind; lane spacing > d_warning so re-ordering never needs to enter the warning band): along-track **consensus** on perceived relative positions (`v = v_nom + k * mean residual`), lane keeping + relative lateral consensus, depth keeping |
-| SEPARATION_WARNING (d < 2.3 m) | **QP safety filter**: smallest change of the mission velocity that never closes on any threat and opens at >= 0.2 m/s; closing intent becomes a sidestep: right-hand when head-on (antisymmetric, so drones meeting head-on pass port to port), otherwise on the side the mission already heads to |
-| COLLISION_AVOIDANCE (d < 1.6 m) | escape at 0.5 m/s along the bisector away from the threats, **plus a vertical component** when all threats are above (or all below): the 3D escape |
-| GATE_APPROACH / GATE_YIELD | go to / hold the queue point (side slots at +/-2.6 m lateral, centre slot 2.6 m back), retreat when the priority rule says so |
-| GATE_PASS | leave the queue line straight, merge onto the gate axis, traverse the critical region |
-| FAILSAFE | blind (sonar data older than 0.2 s): hold position and move to a pre-assigned depth layer; out of envelope: hold and return to the depth band |
-| every mode | **structure safety filter**: never close on gate bars nearer than 0.7 m (sonar returns matched to the arena map) |
+## 4. Behaviour
 
-### Leaderless gate protocol without messages
+* **P1.**
+  * `SEPARATION_WARNING`: the conservative distance is below d_warning = 2.4 m. A 3-D velocity filter
+    keeps the velocity closest to the mission one that opens every threat region at >= 0.2 m/s.
+  * `COLLISION_AVOIDANCE`: the distance is below d_ca = 1.7 m. The escape direction maximises the
+    certified worst-case opening, preferring free sectors, the onboard current estimate, the mission
+    direction and the depth band. Vertical escapes are included.
+  * A mission-level traffic rule removes head-on encounters before the warning band: give way to the
+    right, or vertically when the right is occupied.
+* **P2.**
+  * Drones queue abreast before the gate, at a line computed so that the CR lies inside every queue
+    sonar's FRONT cone.
+  * Each drone WAITs for anything ahead of it or on its left. Otherwise it has PRIORITY, held for
+    1 s.
+  * A drone commits only with PRIORITY and a FREE belief about the CR. The belief is BUSY on a
+    corridor echo, stays BUSY while the bars mask the crossing drone, and is FREE only after an echo
+    beyond the CR plus t_clear.
+  * The static rank is a last resort, used only for vertically stacked neighbours. Uses are counted:
+    0 in every run.
+* **P3.**
+  * Generic templates (triangle 3, square 4, line of 6) share one controller. Each drone tracks its
+    own slot with dead reckoning and a FormationClock that is part of the plan.
+  * Sonar range residuals to the expected neighbours correct the lateral spacing and the progress.
+  * Recovery runs at up to 0.5 m/s.
+  * Beyond a gate the reference jumps to a rendezvous and waits a planned time budget.
 
-Each drone evaluates every neighbour it perceives in the gate's approach corridor using **its own
-measurement** of the relative gate-frame position (along `s`, lateral `l`, vertical `z`), with the shared
-rule in `holo_fleet/ha/gate_rule.py`. The result is one of six exclusive classes:
+## 5. Results (HoloOcean, one seed per scenario, `results/v2/demos/SUMMARY.md`)
 
-* `COMMIT`: closer to the gate (by more than 1.7 m), or along-tie and more to the left (by more than
-  2.4 m), or both ties and higher (by more than 0.75 m). Each level is decisive only beyond a margin
-  larger than twice the measurement error, and the next level is consulted only inside a strictly
-  narrower tie band.
-* `WAIT_ROBUST`: the other drone wins even under worst-case errors.
-* `WAIT_FRONT`, `BACKOFF_REAR`, `BACKOFF_RIGHT`, `BACKOFF_RANK`: undecided cases are resolved by the
-  robustly-identified rear or right drone stepping back. As a last resort a pre-configured static rank
-  is used, identical on every drone and known before the mission, so it is not communication.
+| scenario | drones | P1 min distance [m] (d_safe 1.0) | P2 max CR occupancy | P3 episodes / recovery [s] (after the last perturbation) | contacts | messages | current envelope | static rank uses | RTF (with cameras) |
+|---|---|---|---|---|---|---|---|---|---|
+| `p1_head_on` | 2 | 4.054 | - | n/a | 0 | 0 | inside | 0 | 0.638 |
+| `p1_vertical_escape` | 4 | 2.489 (vehicle clearance 2.44) | - | 25.2 (14.3) | 0 | 0 | inside | 0 | 0.604 |
+| `p1_two_lines` | 6 | 3.209 | - | n/a | 0 | 0 | inside | 0 | 0.627 |
+| `formation_triangle` | 3 | 4.604 | - | never lost | 0 | 0 | inside | 0 | 0.535 |
+| `formation_square` | 4 | 3.459 | - | never lost | 0 | 0 | inside | 0 | 0.577 |
+| `formation_six` | 6 | 3.443 | - | never lost | 0 | 0 | inside | 0 | 0.616 |
+| `formation_gust` | 4 | 2.778 | - | 5.7 (4.7) | 0 | 0 | OUT (0.85 m/s jet, flagged) | 0 | 0.608 |
+| `gate_single` | 3 | 3.308 | 1 | 63.2 (5.0) | 0 | 0 | inside | 0 | 0.592 |
+| `integrated_short` | 3 | 3.324 | 1 | 69.5 (4.7) | 0 | 0 | inside | 0 | 0.616 |
 
-A drone commits only from the queue line, only if it beats every perceived queued drone with fresh data,
-and only if nobody is perceived in the occupied zone (from just past the queue line to 1 m past the gate's
-critical region). Z3 proves that two drones never both commit and never both wait, and that a commit
-keeps its priority until the committing drone is visible in the occupied zone.
+All runs COMPLETE, determinism-monitor violations 0, ground truth used by controllers: NO.  P3 recovery is measured from the loss; in brackets from the end of the last perturbation (jet, encounter, last gate passage).  In the gate scenarios the formation is broken on purpose by the abreast queue and re-formed at the rendezvous.
 
-## 4. Installation
+Formal verification: **109 checks, all with the expected verdict** (Local determinism & priority hierarchy 66/66, P1 inter-vehicle separation 13/13, P2 critical-region mutual exclusion 19/19, P3 formation recovery 11/11); details in [formal/results/SUMMARY.md](formal/results/SUMMARY.md).  Assumptions measured on these runs:
+[results/v2/ASSUMPTIONS.md](results/v2/ASSUMPTIONS.md).
 
-The project runs in a clone of the arena's `ocean` env (left untouched) with `z3-solver` added:
+| P1 | P2 | P3 |
+|---|---|---|
+| ![p1](figures/v2/p1/p1_vertical_escape.png) | ![p2](figures/v2/p2/gate_single.png) | ![p3](figures/v2/p3/formation_gust.png) |
+
+## 6. Performance (6 sonars per drone, 10 Hz, controller 10 Hz)
+
+| drones x sonars | mean tick [ms] | p95 tick [ms] | real-time factor | sonar rate (sim time) |
+|---|---|---|---|---|
+| 1 x 6 = 6 | 15.28 (gate scene 15.97) | 19.38 (22.25) | 2.182 (2.087) | 10.0 Hz |
+| 3 x 6 = 18 | 14.73 (gate scene 14.33) | 18.0 (17.63) | 2.264 (2.325) | 10.0 Hz |
+| 4 x 6 = 24 | 15.27 (gate scene 14.92) | 20.25 (19.42) | 2.183 (2.234) | 10.0 Hz |
+| 6 x 6 = 36 | 15.09 (gate scene 15.46) | 20.8 (20.46) | 2.208 (2.155) | 10.0 Hz |
+
+Bench without cameras (`scripts/sonar_bench.py perf`, pinned drones): the six sonars per drone cost
+almost nothing extra; the tick is dominated by the engine.  With the two RGB visualisation cameras of
+the demos (800 x 450, 5 Hz) the real-time factor drops to about 0.6 (table in section 5).  The
+controllers of all drones together take 2.5-8.6 ms per 0.1 s step.  Trade-offs kept on purpose:
+6 cm octree leaves (structure echoes accurate to one bin), 234 bins, 10 Hz sonars; cameras are for
+visualisation only and can be removed for speed.
+
+## 7. Installation
 
 ```bash
-conda create -n holo_fleet_ha --clone ocean -y
+conda create -n holo_fleet_ha --clone ocean -y        # the arena's env is left untouched
 conda activate holo_fleet_ha
 pip install z3-solver imageio
-pip install -e .            # from this folder
+pip install -e .
+pip install -e F:\Andrea\holoocean-octree-patch\client --no-deps     # patched HoloOcean client
+powershell -ExecutionPolicy Bypass -File patches/build_and_install_patched_holoocean.ps1   # patched engine (UE 5.3)
 ```
 
-The marine arena is imported from `~/Desktop/HoloDroneCompetition` (override with
-`MARINE_RACE_ARENA_ROOT`). HoloOcean 2.3.0 with the `Ocean` package must be installed (see DISCOVERY.md).
+`holo_fleet/sim/holoocean_setup.py` points `HOLODECKPATH` to the patched root
+(`F:\Andrea\holoocean_patched_root`); the official HoloOcean installation is never modified.  The arena
+is imported from `~/Desktop/HoloDroneCompetition` (override with `MARINE_RACE_ARENA_ROOT`).
 
-## 5. Commands
+## 8. Commands
 
 ```bash
-conda activate holo_fleet_ha
-python formal/check_properties.py                       # all Z3 checks -> formal/results/SUMMARY.md
-python formal/check_properties.py --quick               # skip the slowest suite (P1, ~5 min)
-python scripts/run_experiment.py --scenario pair_crossing
-python scripts/run_experiment.py --scenario formation_current --current medium --n-drones 3
-python scripts/run_experiment.py --scenario formation_current --current medium --no-jet
-python scripts/run_experiment.py --scenario gate_arena --n-drones 3
-python scripts/run_experiment.py --scenario stress
-python scripts/run_experiment.py --scenario gate_arena_comms        # optional comparison (comms ON)
-python scripts/analyze_results.py --run <run_id>         # verdicts, perception stats, figures
-python scripts/render_report.py --run <run_id>           # + GIFs, sensor sheet, RUN_REPORT.md
-python scripts/validate_assumptions.py                   # empirical check of every formal assumption
-python scripts/run_all.py                                # everything (about 1.5 h wall time)
-python -m pytest -q                                      # tests (add -m "not slow" to skip the P1 Z3 suite)
-python scripts/calibrate_plant.py                        # plant calibration used by the formal models
+python formal/check_properties.py                         # all Z3 suites -> formal/results/SUMMARY.md
+python -m pytest -q -m "not slow and not holoocean"       # fast tests (~1 min)
+python -m pytest -q                                       # all tests (incl. Z3 P1/P2 suites and the octree regression)
+python scripts/run_all_demos.py                           # every demo, headless -> results/v2/demos/
+python scripts/make_figures_v2.py                         # figures/v2/
+python scripts/validate_assumptions_v2.py                 # results/v2/ASSUMPTIONS.md
+python probe/octree_rebuild_regression.py                 # simulator patch regression
+python scripts/sonar_bench.py coverage|classify|perf      # sensor benches
 ```
 
-Add `--viewport` to `run_experiment.py` to watch the HoloOcean window.
+A run folder `results/v2/demos/<scenario>/` holds `run_status.json` (`INCOMPLETE` until the run ends),
+`run_config.json`, `events.jsonl` (automaton decisions, envelope violations), `drone_<k>_state.jsonl`
+(onboard: mode, pose estimate, sectors, targets, escape, gate belief, formation check),
+`onboard_summary.json`, `referee_timeseries.csv` and `referee_metrics.json` (ground truth),
+`perf.json`, `summary.csv`, the dashboard GIF.
 
-## 6. Reading a run folder (`results/<run_id>/`)
+## 9. What is proved, validated, outside the envelope, not claimed
 
-| file | content |
-|---|---|
-| `run_config.json` | scenario, seeds, currents, stress settings, slots, full `FleetConfig` |
-| `events.jsonl` | automaton decisions (`PASS`, `YIELD`, `RETRY_PASS`, `EXITED`, `FORMATION_LOST/RECOVERED`), `ENVELOPE_VIOLATION`, releases |
-| `drone_i_state.jsonl` | mode, latched commit, onboard nav estimate, enabled edges, determinism monitor |
-| `drone_i_observations.jsonl` | abstract observation + full local observation (neighbours, gate frame, formation) |
-| `drone_i_actions.jsonl` | desired velocity, authority, normalised command |
-| `referee_timeseries.csv` | ground truth: positions, pairwise distances, CR occupancy, formation error, drift |
-| `referee_metrics.json` | P1/P2/P3 verdicts, episodes, envelope flags, determinism, message counters |
-| `summary.csv` | one-line summary |
-| `figures/` | trajectories, distances, occupancy, formation error, modes, depth, perception error, sensors, scene |
-| `chasecamera.gif`, `sidecamera.gif`, `RUN_REPORT.md` | visual checks and per-run report |
+**FORMALLY VERIFIED (Z3, on abstractions whose guards are the runtime code):**
+* the local automaton is deterministic and complete, and its priority hierarchy holds
+  (fault > collision avoidance > warning > gate > formation);
+* P1 for a pair: radial model with the one-sided onboard distance, unbounded by k-induction, with
+  smallest verified d_warning 1.84 m against 2.4 m configured;
+* P1 sensing and escape lemmas, evaluated on the deployed planner over every sector pattern:
+  * single-threat escape >= g_min;
+  * warning filter >= v_open;
+  * two threats within 90 deg;
+  * vertical escapes for FRONT+DOWN / FRONT+UP;
+  * triangle and blackout lemmas;
+* P2: never two PRIORITY within the heading tolerance; exactly one PRIORITY in abreast queues of 2..6
+  drones; the occupancy latch never lets a second drone into the CR for every queue view (n = 3, 4);
+  queue geometry for n = 2..6;
+* P3: eventual recovery by ranking functions (no time bound) under fairness assumptions A1-A4, and
+  the automaton edges FOLLOW <-> RECOVERY;
+* every suite has mutation tests that must produce counterexamples.
 
-The repository versions the verdicts, events, run configs, per-drone states and referee time series of
-every run, plus the key figures and GIFs in `figures/`. Bulky per-run artifacts (`*_observations.jsonl`,
-`*_actions.jsonl`, raw camera frames, sensor dumps, per-run `figures/` and GIFs) stay on disk and are not
-versioned (see `.gitignore`); `scripts/run_all.py` regenerates them.
+**VERIFIED NUMERICALLY, not by Z3:**
+* the onboard distance bound is never above the true distance (10^5 poses);
+* the escape-table guarantees, by exhaustive evaluation of the deployed planner with a certified
+  sampling error;
+* the queue geometry facts.
 
-## 7. Results
+**EMPIRICALLY VALIDATED (HoloOcean, ground-truth referee, one seed each):**
+* P1, P2 and P3 hold in all nine demos, with zero contacts and zero messages;
+* the formal assumptions, measured back on the logs (`results/v2/ASSUMPTIONS.md`): onboard distance
+  never above the true one, sonar data age, closing speeds, queue holding, crossing speed;
+* sonar coverage (204/204 placements) and echo classification (bench A-F);
+* the octree patch regression.
 
-Formal: **102 Z3 checks, all with the expected verdict** (UNSAT for the properties, SAT for the mutation
-tests): local determinism and priority 66/66, P1 9/9 (k-induction, unbounded), P2 17/17, P3 10/10
-(worst-case recovery 60 s). Details in [formal/results/SUMMARY.md](formal/results/SUMMARY.md).
+**OUTSIDE THE FORMAL ENVELOPE (shown, flagged, not covered by the proofs):**
+* `formation_gust`: a 0.85 m/s jet, above the 0.6 m/s claimed. The drone declares
+  ENVELOPE_VIOLATION and the referee flags it.
+* `p1_vertical_escape`: the scripted vehicle does not run the protocol. Its clearance is reported
+  separately from P1.
+* Two drones masked at the same time by a mapped structure.
+* A committed drone stopping inside the gate longer than t_occ_max.
+* Drones inside the seabed clutter (only a conservative UNKNOWN reaction).
 
-HoloOcean, ground-truth referee (seed 0, communication OFF unless stated):
-
-| run | P1 min distance [m] (d_safe 1.0) | P2 max CR occupancy | P3 recovery after perturbation [s] (T 75) | current envelope |
-|---|---|---|---|---|
-| `pair_crossing_s0` (2 drones head-on) | 2.11 | - | - | inside |
-| `formation_medium_s0` (0.25 m/s) | 3.51 | - | never lost | inside |
-| `formation_high_s0` (0.40 m/s) | 3.43 | - | never lost | inside |
-| `formation_medium_gust_s0` (+0.8 m/s gust) | 2.45 | - | 4.9 | exceeded on purpose (flagged) |
-| `gate_arena_s0` (gates G06, G07) | 2.39 | 1 | 4.9 | inside |
-| `stress_s0` (variable current, dropout, blackouts) | 2.41 | 1 | re-formed while still perturbed | inside |
-| `gate_arena_comms_s0` (optional comms ON) | 2.45 | 1 | 18.7 (same absolute recovery time as without comms) | inside |
-
-Collision-sensor contacts and determinism-monitor violations: 0 in every run. The formal assumptions,
-measured back on the logs, hold in every in-envelope run except the stress run, which exceeds the
-perception-error bound on purpose ([results/ASSUMPTIONS.md](results/ASSUMPTIONS.md)). The full
-discussion, figures, acceptance criteria and limits are in [REPORT.md](REPORT.md); per-run verdicts in
-[results/SUMMARY.md](results/SUMMARY.md).
-
-## 8. What is proved, what is validated, what is not claimed
-
-* **Proved in Z3, on abstractions whose guards are the runtime code itself:** local determinism, completeness and
-  the priority hierarchy; P1 for a pair under explicit assumptions (perception error and staleness,
-  speed caps, braking capability from calibration, unrejected differential drift), plus the local lemmas
-  that make the pairwise argument hold inside a three-drone fleet; P2 via the shared priority rule and an
-  inductive invariant; P3 as a ranking-function bound on the formation law. Every suite includes
-  mutation tests that must produce counterexamples.
-* **Validated empirically in HoloOcean**: the closed loop (real sensing, real thruster dynamics, currents,
-  gate props) through the ground-truth referee, and each formal assumption via
-  `scripts/validate_assumptions.py`.
-* **Not claimed**: a proof over HoloOcean's continuous physics; guarantees when an assumption is violated
-  (the referee flags out-of-envelope currents, and the drones themselves declare `ENVELOPE_VIOLATION`);
-  more than 3 drones; static-obstacle avoidance beyond mapped gate structures.
+**NOT CLAIMED:**
+* a proof over HoloOcean's continuous physics;
+* proofs for arbitrary N (P1 is pairwise plus the triangle lemma; P2 is checked for queues of 2..6);
+* statistical performance: there are no multi-seed campaigns;
+* real-sea acoustics such as multipath, surface reflections and real beam patterns;
+* static-obstacle avoidance beyond the mapped gate.

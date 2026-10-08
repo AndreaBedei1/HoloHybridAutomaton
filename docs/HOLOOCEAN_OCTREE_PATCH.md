@@ -122,13 +122,17 @@ ends the Python process with a clear message if the engine dies instead of hangi
 
 128 x 128 x 40 m environment box, 6 cm leaves, `results/v2/octree_patch/regression.json`:
 
-| operation | ticks | wall time |
-|---|---|---|
-| initial rebuild | 15 | 0.21 s |
-| full rebuild | 15 | 0.29 s |
-| region rebuild | 15 | 0.42 s |
-| rebuild with a late agent | 15 | 0.45 s |
-| rebuild after reset | 15 | 0.21 s |
+| operation | ticks | wall time (build 1934564) | wall time (build a8d3070, current) |
+|---|---|---|---|
+| initial rebuild | 15 | 0.21 s | 0.67 s |
+| full rebuild | 15 | 0.29 s | 1.06 s |
+| region rebuild | 15 | 0.42 s | 0.97 s |
+| rebuild with a late agent | 15 | 0.45 s | 1.01 s |
+| rebuild after reset | 15 | 0.21 s | 0.40 s |
+
+Both measurements pass every check.  The second one ran right after a long batch of demos (engine tick
+median 23 ms instead of 14 ms), so the absolute times reflect the machine load as much as the patch;
+either way the rebuild is a one-off cost of about a second after a scene change.
 
 A rebuild is a one-off cost after a scene change.  Steady-state cost with six sonars per drone is in
 `README.md` (performance) and `results/v2/sonar_bench/perf.json`.
