@@ -182,16 +182,16 @@ def run_classification_demo(out_root: Path, headless: bool = True, show: bool = 
     sim.pin(tg, far, (0, 0, gyaw - 90))
     sim.step({nm: None for nm in sim.names}, 0.5)
     legs = [
-        ("1) only the gate in the FRONT cone -> STRUCTURE", [far, far], 2.5),
+        ("1) only the gate in the FRONT cone -> STRUCTURE", [far, far], 1.5),
         ("2) a drone enters the FRONT cone between observer and gate -> DYNAMIC + STRUCTURE",
-         [obs_pos + 7.0 * left + 2.2 * g6.axis, obs_pos + 2.2 * g6.axis + 0.3 * left, obs_pos + 2.2 * g6.axis - 1.2 * left], 0.0),
+         [obs_pos + 7.0 * left + 2.2 * g6.axis, obs_pos + 2.2 * g6.axis + 0.3 * left, obs_pos + 2.2 * g6.axis - 1.2 * left], 1.0),
         ("3) the drone moves behind the gate: STRUCTURE first, the drone beyond it",
          [obs_pos + 2.2 * g6.axis - 3.0 * left, obs_pos + 7.5 * g6.axis - 3.0 * left, obs_pos + 7.5 * g6.axis], 0.0),
         ("4) the drone comes abeam on the left: LEFT sees a DYNAMIC echo, FRONT only the gate",
          [obs_pos + 7.5 * g6.axis + 3.5 * left, obs_pos + 3.0 * left + 0.5 * g6.axis], 1.5),
     ]
     for caption, wps, hold in legs:
-        pts = _path(wps, 0.9) if len(wps) > 1 and np.linalg.norm(np.asarray(wps[0]) - np.asarray(wps[-1])) > 1e-6 else []
+        pts = _path(wps, 1.6) if len(wps) > 1 and np.linalg.norm(np.asarray(wps[0]) - np.asarray(wps[-1])) > 1e-6 else []
         steps = [(p, False) for p in pts] + [(np.asarray(wps[-1], float), True)] * int(hold / 0.1)
         for p, _h in steps:
             sim.pin(tg, p, (0, 0, gyaw - 90))
@@ -208,7 +208,7 @@ def run_classification_demo(out_root: Path, headless: bool = True, show: bool = 
                          {"center": P_o + 3.0 * g6.axis, "bars": bars, "observer": P_o, "observer_yaw": gyaw, "targets": [P_t]},
                          sim.image("ChaseCamera"))
             k = int(round(t_global * 10))
-            if k % 3 == 0:
+            if k % 4 == 0:
                 cv2.imwrite(str(out / "dashboard" / f"dash_{k:05d}.jpg"), img, [cv2.IMWRITE_JPEG_QUALITY, 88])
             if show:
                 cv2.imshow("sonar_classification", img)
@@ -232,13 +232,13 @@ def run_classification_demo(out_root: Path, headless: bool = True, show: bool = 
         sim.pin(tg, wp, (0, 0, 180))
         sim.step({nm: None for nm in sim.names}, 0.3)
     legs = [("5) near the seabed: the lower part of every cone hits the bottom -> SEABED (DVL altitude + cone)",
-             [SB + np.array([7.0, 0.0, 0.0])], 2.0),
+             [SB + np.array([7.0, 0.0, 0.0])], 1.5),
             ("6) a drone inside the seabed clutter cannot be separated from the bottom -> UNKNOWN (conservative)",
              [SB + np.array([7.0, 0.0, 0.0]), SB + np.array([3.6, 0.0, 0.0])], 1.5),
             ("7) closer than the clutter onset the drone is a separate echo -> DYNAMIC before SEABED",
-             [SB + np.array([3.6, 0.0, 0.0]), SB + np.array([1.9, 0.0, 0.0])], 2.0)]
+             [SB + np.array([3.6, 0.0, 0.0]), SB + np.array([1.9, 0.0, 0.0])], 1.5)]
     for caption, wps, hold in legs:
-        pts = _path(wps, 0.6) if len(wps) > 1 else []
+        pts = _path(wps, 1.0) if len(wps) > 1 else []
         steps = [(p, False) for p in pts] + [(np.asarray(wps[-1], float), True)] * int(hold / 0.1)
         for p, _h in steps:
             sim.pin(tg, p, (0, 0, 180))
@@ -254,7 +254,7 @@ def run_classification_demo(out_root: Path, headless: bool = True, show: bool = 
                          profiles, rd, lines, {"center": P_o + np.array([3.0, 0, 0]), "bars": [], "observer": P_o,
                                                "observer_yaw": 0.0, "targets": [P_t]}, sim.image("ChaseCamera"))
             k = int(round(t_global * 10))
-            if k % 3 == 0:
+            if k % 4 == 0:
                 cv2.imwrite(str(out / "dashboard" / f"dash_{k:05d}.jpg"), img, [cv2.IMWRITE_JPEG_QUALITY, 88])
             if show:
                 cv2.imshow("sonar_classification", img)

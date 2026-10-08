@@ -156,3 +156,247 @@ v1 iterations are summarised in REPORT.md section 6.
   target yaws, centre distance 1-5 m). All 204 are valid and detected, and the observed sector pattern
   is always within the geometric prediction (must <= seen <= maybe). The worst-case diagonals are
   covered at every distance.
+
+## DI-9 - With several sonar-equipped drones, some drones were invisible to every sonar
+
+* **Problem.** In the first head-on run drone_1 never saw drone_0, while drone_0 saw drone_1. The
+  single-observer benches had not exposed it: there only the observer's view was checked.
+* **Cause.** This is pre-existing HoloOcean behaviour. Agent octrees are built with the *shared*
+  collision query `Octree::params`. The first sonar that initialises adds every agent to that query's
+  ignore list, because the world octree must not contain agents. Any agent octree built afterwards is
+  swept with a query that ignores that very agent: the build fails and the agent is invisible to all
+  sonars. With six sonars per drone, only the agents built by the very first sonar were visible.
+* **Fix.** Fourth commit of the engine patch: agent octrees use a clean collision query. The
+  actor-name filter already restricts hits to the agent itself.
+* **Why the fix is principled.** Each query gets the parameters its purpose requires. Nothing about
+  what a sonar can see changes, except removing an order-dependent failure.
+* **Result.** Both drones of the head-on pair see each other from 8 m. Every drone sees every other
+  in the 6-drone runs.
+
+## DI-10 - Head-on standoff: cone uncertainty forbids a guaranteed sidestep
+
+* **Problem.** The first head-on runs were safe (minimum distance 2.6-2.8 m) but the drones did not
+  cross. One retreated while the other pushed, or both sidestepped too late and stalled abeam inside
+  the warning band.
+* **Cause.**
+  * A FRONT-only echo leaves the bearing uncertain by about +/-50 deg. No lateral motion has a
+    guaranteed opening against the whole region, so the warning filter can only open by moving
+    backwards. That is correct for safety but gives no way through.
+  * Abeam at about 2.8 m the conservative distance is inside the band, and again only opening motions
+    are certified.
+* **Fix.** A mission-level traffic rule (as COLREG rule 14), decided from sector patterns before the
+  warning band:
+  * a DYNAMIC echo closing in FRONT within 8 m makes the drone shift its mission target 2.5 m to its
+    right;
+  * if a neighbour occupies the right side, the shift is vertical: up when heading east-ish, down
+    otherwise, which is opposite for two drones meeting head-on;
+  * the shift is released only once the other drone is behind (REAR/UP/DOWN only) or beyond 5 m.
+* **Why the fix is principled.** Safety still rests only on the certified filter and escape (P1).
+  The rule addresses liveness (no standoff) with a symmetric, communication-free convention, like
+  maritime traffic.
+* **Result.** `p1_head_on`: both drones give way at 8 m and pass port to port at 4.8 m, without
+  entering the warning band. `p1_vertical_escape`: drones flanked by a neighbour give way UP (one
+  line) and DOWN (the other line), and the end drones give way to the right. Minimum distance
+  3.1 m, 0 collisions.
+
+## DI-11 - Single-capture false alarms from the intensity-noise tail
+
+* **Problem.** In a 6-drone run, two single-capture UNKNOWN echoes (0.93 m UP, 2.22 m FRONT) put a
+  drone into COLLISION_AVOIDANCE / SEPARATION_WARNING for one control step. No drone was there.
+* **Cause.** The detection threshold was 0.25 with Rayleigh intensity noise sigma = 0.05. The
+  per-bin exceedance probability is exp(-0.25^2 / (2 * 0.05^2)) = 3.7e-6. Per 234-bin profile that
+  is about 9e-4, which means about ten false alarms over the roughly 13 000 captures of a 36 s run
+  with 36 sonars. The Phase-1 empty-water test (60 captures) was too short to see them.
+* **Fix.** Threshold 0.30, giving a per-bin tail of exp(-18) = 1.5e-8, i.e. about 0.05 expected
+  false alarms per run. Vehicle and structure echoes have intensity 0.7-0.95 and Phase 1 measured
+  100 % detection up to threshold 0.7.
+* **Why the fix is principled.** The threshold is set from the noise model's tail probability and
+  the measured detection margin, not tuned until a test passes. The conservative reaction to
+  unconfirmed echoes is kept.
+* **Result.** Re-measured in the following runs (no spurious avoidance events expected).
+
+## DI-12 - Gate bars echo far outside the nominal cone at short range
+
+* **Problem.** While crossing gate G06 a drone entered COLLISION_AVOIDANCE for 0.1-0.3 s several
+  times, on UNKNOWN echoes at 0.6-1.0 m. The passage took 22 s instead of about 14 s.
+* **Cause.** The echoes were the gate posts, but the predicted structure window did not contain
+  them. At 0.63 m the FRONT sonar returned a post 78 deg off its axis, 18 deg outside the nominal
+  60 deg cone. A strong reflector close to the transducer is detected outside the main lobe, as
+  with a real wide beam, and the bar's octree leaves straddle the cone boundary. The probe (60 deg;
+  62.5 deg at 3 m) used BlueROV2 targets at 1.3 m and beyond, where the effect is small.
+* **Fix.** The structure window uses a cone widened by atan(0.25 m / r): 22 deg at 0.6 m, 5 deg at
+  3 m, 2 deg at 7 m. The same near-field widening enters the sound distance bound (DI-13).
+* **Why the fix is principled.** It changes the prediction of where the mapped structure can echo,
+  not the decision thresholds. A wider window can only mask a drone near the bars, and the gate
+  protocol already handles that (occupancy latch, DI-14).
+* **Result.** No avoidance mode while crossing the gate in `gate_single` and `integrated_short`.
+
+## DI-13 - The conservative distance could exceed the true distance
+
+* **Problem.** A numeric check of the onboard distance bound, written for the formal suite (S0),
+  found poses where the bound was above the true centre distance by up to 0.38 m. That is an
+  unsound bound for a safety guard.
+* **Cause.** The bound assumed L = r + R_IN from the sensor to the hull centre, which is true when
+  the centre is inside the cone. When only a hull corner reaches into the cone while the centre is
+  outside, the centre can be nearer than r + R_IN. This happens at cone edges, and for the
+  cube-corner directions below 3 m because of the sensor parallax. Taking the minimum over the
+  member sectors did not help near the corners, where no sector contains the centre.
+* **Fix.**
+  * Every member sector gives a bound that is always sound. The nearest in-cone hull point is at
+    |p| >= sqrt(r'^2 + |m| r' + |m|^2) (law of cosines with the cone half-angle plus the near-field
+    widening), and the centre is within R_OUT of that point.
+  * The tight r + R_IN bound is used only where the sector pattern and the sound bound certify that
+    the centre is inside that cone (region tables per distance band, parallax, 5 deg hull fuzz).
+  * The target keeps the minimum over its sectors, so two objects merged into one target are both
+    bounded.
+* **Why the fix is principled.**
+  * The bound is derived, then checked numerically on 10^5 random BlueROV2 poses, with a mutation
+    (the uncertified bound) that the check must catch.
+  * The P1 proof needs only the one-sided property d_hat <= d; the looseness (median 0.8 m,
+    max 1.2 m) only makes the warning start earlier.
+* **Result.**
+  * S0: 0 violations, minimum margin 0.07 m.
+  * Lateral formation and queue neighbours at 3.5 m keep the tight bound (about 3.0 m, outside the
+    2.7 m warning exit).
+  * All scenarios were re-run with the sound bound: P1 holds in all of them.
+
+## DI-14 - The occupancy belief latched BUSY on noise and on the queue itself
+
+* **Problem.** In `gate_single` the first queued drone had PRIORITY at 6.4 s but committed only at
+  28.2 s, when its CR belief timed out (t_occ_max = 25 s).
+* **Cause.** Two triggers:
+  * during the approach, the corridor test ("FRONT echo nearer than the far end of the CR") also
+    held for the centre drone already waiting at its queue point;
+  * in another run, an echo 1.2 m beyond the far gate post, seen in 2 of 3 captures, was confirmed
+    as a DYNAMIC target in the corridor. The exponential range noise is applied per octree leaf:
+    the farthest of about 10^3 leaves lies about 0.05 ln N = 0.4 m beyond the surface. Structure
+    echoes are therefore lengthened on the far side only.
+* **Fix.**
+  * The corridor is the range interval [r_near - R_OUT - eps_far, r_far + eps_near] of the CR seen
+    from the drone's own FRONT sonar (gate map + own pose). Nearer drones are WAIT relations, not
+    occupancy.
+  * The structure window gets an asymmetric tolerance: 0.3 m near, 0.7 m far.
+  * Gate decisions use only echoes that persist over two updates.
+* **Why the fix is principled.**
+  * The corridor is now exactly the set of ranges at which a hull centred in the CR can echo.
+  * The far tolerance follows from the sonar noise model.
+  * A drone inside the CR is seen for several captures before the bars mask it (formal M4d), so
+    persistence costs no safety.
+* **Result.**
+  * First commit at 7.5 s.
+  * Formal M3: the latch model holds for every queue view (n = 3, 4).
+  * The variant without latch gives a counterexample.
+
+## DI-15 - Single-capture echoes reached the safety guards
+
+* **Problem.** While passing the gate, a drone entered SEPARATION_WARNING twice on REAR echoes at
+  1.9-2.0 m that appeared in a single capture: the far corners of the gate frame grazing the cone.
+* **Cause.** Only DYNAMIC echoes had a confirmation step. "Too extended" and the other UNKNOWN
+  echoes went straight to the guards.
+* **Fix.** Every unexplained echo needs M-of-N confirmation.
+  * It becomes DYNAMIC or UNKNOWN only once an unexplained echo has been seen within 0.5 m in at
+    least 2 of the last 3 captures.
+  * Before that it is UNCONFIRMED: logged and shown on the dashboard, but not used by the guards.
+  * The seabed-clutter pseudo-target is not an echo and is not delayed.
+* **Why the fix is principled.** This is the standard M-of-N detection logic of sonar trackers. The
+  added latency (one capture, 0.1 s) is inside the staleness budget tau_max = 0.25 s used by the P1
+  derivation.
+* **Result.** No avoidance mode is caused by single captures. The classification bench A-F is
+  unchanged.
+
+## DI-16 - BACKOFF at the queue from two drones merged into one target
+
+* **Problem.** The centre queued drone repeatedly backed off and re-approached while the left drone
+  was passing. The logged relation was BACKOFF, "FRONT+RIGHT at 2.87 m".
+* **Cause.** The passing drone (FRONT) and the right queue neighbour (RIGHT) were at similar ranges.
+  The target builder associated them into one FRONT+RIGHT target. The table read that as a single
+  drone in the ambiguous zone: BACKOFF.
+* **Fix.** A simpler table: WAIT if FRONT or LEFT is in the pattern; PRIORITY if only REAR and/or
+  RIGHT; RANK if only UP and/or DOWN; no BACKOFF state.
+  * Two drones at their queue points cannot wait for each other: they are abreast, so their
+    relation is pure LEFT/RIGHT with a 12 deg margin.
+  * A WAIT caused by an approaching or passing drone ends by itself.
+* **Why the fix is principled.** A merged FRONT+RIGHT target now gets WAIT, which is safe for both
+  readings. The rule is checked formally:
+  * M1: never both PRIORITY when |delta| + 2 fuzz <= 30 deg (the bound is tight, shown by mutation);
+  * M2: exactly one PRIORITY in abreast queues of 2 to 6 drones.
+* **Result.** No BACKOFF. Entry order is left, centre, right in every gate run, and the static rank
+  is never used.
+
+## DI-17 - Gate queue geometry and the rendezvous beyond the gate
+
+* **Problem.** Three problems with the first gate design:
+  * the committed drone merged diagonally across the queue line, passing 2.4 m from the next queued
+    drone (warning);
+  * for wide queues the CR left the FRONT cone of the outer queue points;
+  * after the gate the formation clock was still behind the gate, so passed drones would have
+    turned back towards it.
+* **Cause.** The queue parameters were fixed (s_queue = -5 m for any n), and the formation clock
+  knew nothing about the gate.
+* **Fix.**
+  * `GateRule.queue_s(n)` is the smaller of two bounds:
+    * the CR inside every queue sonar's FRONT cone: 49 deg, plus 6 deg heading tolerance, plus
+      5 deg fuzz;
+    * a 55 deg descent to the axis that keeps merge_clearance = 3.2 m from the next queue point.
+  * The pass path: follow the own lane, descend to the axis 0.7 m before the CR, cross, then veer
+    back to the own lane.
+  * Rendezvous: as soon as every drone is in the approach zone, the formation reference jumps to a
+    point 6 m beyond the gate and holds there for a planned time budget. The jump and budget are
+    part of the mission plan; no communication is involved.
+* **Why the fix is principled.** The geometry is derived from the sensor cone and the separation
+  thresholds, and checked formally (M4a-e) for n = 2..6. The rendezvous is ordinary mission
+  planning.
+* **Result.** In `gate_single` three drones pass one at a time (left, centre, right), with maximum
+  occupancy 1, P1 minimum 3.2-3.3 m, and the formation re-formed beyond the gate.
+
+## DI-18 - Slow formation recovery after the jet
+
+* **Problem.** In `formation_gust` the formation was lost at 24.7 s and recovered only at 46.1 s
+  (21.4 s). A later variant declared itself recovered while a neighbour was still missing.
+* **Cause.** Three causes:
+  * The displaced neighbour was outside the 1.2 m range gate, so it was no longer associated as
+    "expected". The head-on traffic rule then made a formation drone give way upwards inside its
+    own formation, twice.
+  * The catch-up margin was only v_slot_max - v_clock = 0.1 m/s, so 2 m of slot error took 20 s.
+  * One echo could match two expected neighbours that were both behind, hiding a missing one.
+* **Fix.**
+  * Echoes within 3 m of an expected neighbour's distance, in compatible sectors, count as
+    "possible neighbours". They never trigger the traffic rule, which also requires closing at
+    >= 0.45 m/s.
+  * In FORMATION_RECOVERY the speed cap is 0.5 m/s (= v_max_nominal), a catch-up margin of
+    0.2 m/s.
+  * Neighbour association is one-to-one, and a pattern pointing to the other side of the hull is
+    incompatible.
+* **Why the fix is principled.**
+  * The margin is what the P3 ranking function needs: the mutation Fm1 shows that without a
+    catch-up margin no decrease can be certified.
+  * The traffic rule is a liveness aid and must not act on the drone's own formation.
+* **Result.** In repeated development runs (one seed each), `formation_gust` recovers 6-7 s after
+  the jet ends. The triangle, square and six-drone runs never lose the formation.
+
+## DI-19 - The P1 demo never exercised the escape, then the escape chattered
+
+* **Problem.** Three successive issues:
+  * in the two-lines head-on scenario the traffic rule resolved every encounter, so the escape
+    planner (the safety layer) never acted;
+  * with a non-cooperative vehicle, the escape alternated between UP and DOWN every 0.1-0.3 s;
+  * the rear drone was then chased backwards for 20 s by the scripted vehicle.
+* **Cause.** Respectively:
+  * the traffic rule is designed to remove the encounter before the warning band;
+  * nearly tied candidates flipped with the vertical component of the mission velocity;
+  * the scripted vehicle moved at constant velocity along the formation's centre line.
+* **Fix.**
+  * `p1_vertical_escape` is now a T formation crossed head-on, 1.2 m below, by a scripted vehicle
+    outside the fleet, with the traffic rule switched off for this scenario only. The old scenario
+    remains as `p1_two_lines`.
+  * The escape planner keeps a previous direction that still opens every threat and scores within
+    0.10 of the best.
+  * The scripted vehicle dives away after crossing.
+* **Why the fix is principled.**
+  * The demo shows what the formal P1 argument relies on: the warning filter and the escape alone.
+  * The hysteresis keeps only certified choices.
+  * The intruder is labelled as outside the fleet and outside P1; its clearance is reported
+    separately.
+* **Result.** Both the boxed-in centre drone (REAR+UP, FWD+UP) and the rear drone escape upwards.
+  P1 among the drones holds (minimum 2.5 m), the clearance to the intruder stays above 2.4 m, and
+  the formation recovers 18.5 s after the encounter.

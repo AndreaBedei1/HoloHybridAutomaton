@@ -1,0 +1,89 @@
+"""Run every demonstration scenario once (one seed), headless, with dashboard frames and a GIF each.
+
+    python scripts/run_all_demos.py                  # all scenarios + sonar_classification
+    python scripts/run_all_demos.py gate_single      # a subset
+
+Writes results/v2/demos/<scenario>/ and results/v2/demos/SUMMARY.{csv,md}.  To watch a scenario live
+use scripts/run_demo.py instead.
+"""
+
+from __future__ import annotations
+
+import csv
+import json
+import sys
+import time
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT))
+sys.path.insert(0, str(ROOT / "scripts"))
+
+from holo_fleet.config import DEFAULT  # noqa: E402
+from holo_fleet.runner import print_summary, run, summary_row  # noqa: E402
+from holo_fleet.sim.scenarios import SCENARIOS  # noqa: E402
+from holo_fleet.ui.gif import make_gif  # noqa: E402
+from holo_fleet.ui.live import DemoUI  # noqa: E402
+
+OUT = ROOT / "results" / "v2" / "demos"
+ORDER = ["p1_head_on", "p1_vertical_escape", "p1_two_lines", "formation_triangle", "formation_square",
+         "formation_six", "formation_gust", "gate_single", "integrated_short"]
+
+
+def summary_table() -> None:
+    rows = []
+    for name in ORDER:
+        p = OUT / name / "referee_metrics.json"
+        if not p.exists():
+            continue
+        m = json.loads(p.read_text(encoding="utf-8"))
+        r = summary_row(name, m)
+        perf = m["run"].get("perf", {})
+        r.update({"mean_tick_ms": perf.get("mean_tick_ms"), "p95_tick_ms": perf.get("p95_tick_ms"),
+                  "rtf": perf.get("real_time_factor"), "controller_ms_all": perf.get("controller_ms_mean_all_drones"),
+                  "n_drones": json.loads((OUT / name / "run_config.json").read_text(encoding="utf-8"))["n_drones"]})
+        rec = [e for e in m["P3_formation_recovery"]["episodes"]]
+        r["recovery_after_perturbation_s"] = max([e["recovery_after_perturbation_s"] or 0 for e in rec], default=None)
+        intr = m["P1_separation"].get("intruder")
+        r["intruder_clearance"] = None if not intr else intr["min_distance"]
+        rows.append(r)
+    if not rows:
+        return
+    keys = list(rows[0])
+    with open(OUT / "SUMMARY.csv", "w", newline="", encoding="utf-8") as f:
+        w = csv.DictWriter(f, fieldnames=keys)
+        w.writeheader()
+        w.writerows(rows)
+    lines = ["| scenario | drones | status | P1 min d [m] | P2 max occ | P3 episodes / max recovery [s] | collisions | messages | "
+             "envelope | static rank | mean tick [ms] | RTF |", "|" + "---|" * 12]
+    for r in rows:
+        p3 = "-" if r["P3_episodes"] is None else f"{r['P3_episodes']} / {r['max_recovery_time_s'] if r['max_recovery_time_s'] is not None else '-'}"
+        lines.append(f"| {r['scenario']} | {r['n_drones']} | {r['status']} | {r['min_distance']} | "
+                     f"{r['max_occupancy'] if r['max_occupancy'] is not None else '-'} | {p3} | {r['collisions']} | "
+                     f"{r['messages']} | {'inside' if r['inside_envelope'] else 'OUT'} | {r['static_rank_uses']} | "
+                     f"{r['mean_tick_ms']} | {r['rtf']} |")
+    (OUT / "SUMMARY.md").write_text("\n".join(lines) + "\n", encoding="utf-8")
+
+
+def main(argv) -> int:
+    names = argv or (["sonar_classification"] + ORDER)
+    for name in names:
+        t0 = time.time()
+        print(f"=== {name}", flush=True)
+        if name == "sonar_classification":
+            from demo_classification import run_classification_demo
+
+            run_classification_demo(OUT, headless=True, show=False)
+            continue
+        sc = SCENARIOS[name](DEFAULT)
+        ui = DemoUI(sc, DEFAULT, sc.sim.names, show=False, draw_viewport=False)
+        m = run(name, OUT, headless=True, run_id=name, ui=ui)
+        print_summary(name, m)
+        make_gif((OUT / name / "dashboard").glob("dash_*.jpg"), OUT / name / f"{name}.gif")
+        print(f"    wall {time.time() - t0:.0f} s", flush=True)
+    summary_table()
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main(sys.argv[1:]))
