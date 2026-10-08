@@ -152,6 +152,7 @@ class Report:
         self.results: List[CheckResult] = []
 
     def add(self, r: CheckResult, verbose: bool = True) -> CheckResult:
+        r.passed = bool(r.passed)                    # numpy booleans from numeric lemmas -> plain JSON booleans
         self.results.append(r)
         if verbose:
             flag = "PASS" if r.passed else "FAIL"

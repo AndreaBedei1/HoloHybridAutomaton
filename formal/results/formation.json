@@ -31,7 +31,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 0.004,
+      "seconds": 0.005,
       "counterexample": null,
       "note": "e* = 0.439 m (A4 needs the onboard form_err below e_ok = 0.5 m)"
     },
@@ -86,7 +86,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 0.003,
+      "seconds": 0.004,
       "counterexample": null,
       "note": ""
     },
@@ -97,7 +97,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 0.002,
+      "seconds": 0.004,
       "counterexample": null,
       "note": ""
     },

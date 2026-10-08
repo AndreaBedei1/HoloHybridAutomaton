@@ -287,7 +287,8 @@ def run(cfg: FleetConfig = DEFAULT, verbose: bool = True, n_poses: int = 35000) 
     rep.add(check("S3 at most one vertex angle >= 90 deg (pairwise d >= d_safe)",
                   "d_ij >= d_safe -> not(angle_i >= 90 and angle_j >= 90)", ENC,
                   sep_c + [z3.Or(z3.And(obtuse(0, 1, 2), obtuse(1, 0, 2)), z3.And(obtuse(0, 1, 2), obtuse(2, 0, 1)),
-                                 z3.And(obtuse(1, 0, 2), obtuse(2, 0, 1)))]), verbose)
+                                 z3.And(obtuse(1, 0, 2), obtuse(2, 0, 1)))], timeout_ms=900000,
+                  note="nonlinear real arithmetic: about 50 s alone, longer under load"), verbose)
     # ---------------------------------------------------------------- S4 blackout lemma
     T_b = 0.8
     Kb = int(round((T_b + env.tau_max) / p["dt"])) + 10

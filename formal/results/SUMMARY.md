@@ -1,6 +1,6 @@
 # Formal verification summary
 
-Generated 2026-10-08 01:45:43 by `formal/check_properties.py`.
+Generated 2026-10-08 02:54:54 by `formal/check_properties.py`.
 
 UNSAT = the negated property has no model in the abstraction, i.e. the property HOLDS for the model; SAT is expected only for the mutation tests (deliberately broken designs must yield a counterexample).
 
@@ -77,7 +77,7 @@ Encoding: `holo_fleet/ha/spec.py`
 | M1 mutation: commit without priority must violate G1 | expect counterexample | SAT | SAT | yes |
 | M2 mutation: gate pass ignoring collision risk must violate H2 | expect counterexample | SAT | SAT | yes |
 
-## P1 inter-vehicle separation  (13/13 as expected, 86.5 s)
+## P1 inter-vehicle separation  (13/13 as expected, 84.8 s)
 
 Encoding: `formal/check_separation.py`
 
@@ -97,7 +97,7 @@ Encoding: `formal/check_separation.py`
 | S3 at most one vertex angle >= 90 deg (pairwise d >= d_safe) | d_ij >= d_safe -> not(angle_i >= 90 and angle_j >= 90) | UNSAT | UNSAT | yes |
 | S4 blackout <= 0.8s starting at d >= 2.34 m keeps d >= d_safe | FAILSAFE hold with unrejected drift w_rel | UNSAT | UNSAT | yes |
 
-## P2 critical-region mutual exclusion  (19/19 as expected, 63.8 s)
+## P2 critical-region mutual exclusion  (19/19 as expected, 59.4 s)
 
 Encoding: `holo_fleet/ha/gate_rule.py + formal/check_mutex.py`
 
