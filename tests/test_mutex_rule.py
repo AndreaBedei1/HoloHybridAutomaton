@@ -5,7 +5,7 @@ import math
 import random
 
 from holo_fleet.config import DEFAULT
-from holo_fleet.ha.gate_rule import PRIORITY, RANK, WAIT, classify_pattern, decide
+from holo_fleet.ha.mutex_rule import PRIORITY, RANK, WAIT, classify_pattern, decide
 
 AX = {"FRONT": 0.0, "LEFT": 90.0, "REAR": 180.0, "RIGHT": -90.0}
 

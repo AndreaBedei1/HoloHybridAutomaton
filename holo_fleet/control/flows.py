@@ -156,15 +156,15 @@ class Flows:
         go = obs.gate
         yaw = math.atan2(g.axis[1], g.axis[0])
         q = np.array([go.s, go.l])
-        if mode == "GATE_PASS":
+        if mode == "MUTEX_PASS":
             c = self._carrot(self.pass_path(go.queue_s, go.queue_l), q)
             tgt = g.from_gate_frame([c[0], c[1], 0.0])
             vmax = G.v_pass
-        else:  # GATE_APPROACH / GATE_YIELD: go to / hold the own queue point
+        else:  # MUTEX_APPROACH / MUTEX_YIELD: go to / hold the own queue point
             tgt = g.from_gate_frame([go.queue_s, go.queue_l, 0.0])
             vmax = G.v_approach
         v = G.k_track * (tgt - obs.p)
-        if mode == "GATE_PASS":                                    # carrot: keep the cruise speed
+        if mode == "MUTEX_PASS":                                    # carrot: keep the cruise speed
             n = float(np.linalg.norm(v[:2]))
             if n > 1e-6:
                 v[:2] *= vmax / n

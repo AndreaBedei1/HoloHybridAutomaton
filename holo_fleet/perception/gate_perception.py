@@ -3,7 +3,7 @@
 * own gate-frame position and heading error from the navigation estimate and the gate map;
 * the own queue point (abreast queue line, lateral order of the formation slots: no ID involved);
 * the relation to every obstacle target inside the queue bracket, from its SECTOR PATTERN only
-  (ha/gate_rule.py), and the resulting decision with a persistence requirement (``t_clear``);
+  (ha/mutex_rule.py), and the resulting decision with a persistence requirement (``t_clear``);
 * the critical-region occupancy belief.  From the FRONT sonar position the drone computes the
   smallest and largest range of the CR (gate map + own pose).  A FRONT echo between
   r_near - R_OUT - eps and r_far + eps may come from a drone inside the CR ("corridor"); one
@@ -24,7 +24,7 @@ from typing import Dict, List, Optional
 import numpy as np
 
 from holo_fleet.config import DEFAULT, FleetConfig
-from holo_fleet.ha import gate_rule
+from holo_fleet.ha import mutex_rule
 from holo_fleet.mission import GateSpec, MissionPlan
 from holo_fleet.perception.sonar_geometry import MOUNTS, R_OUT
 from holo_fleet.perception.sonar_processing import DYNAMIC
@@ -44,8 +44,8 @@ class GateObs:
     queue_s: float = -4.6
     r_far: float = 0.0
     relations: List[Dict] = field(default_factory=list)       # [{pattern, range, relation}]
-    raw_decision: str = gate_rule.PRIORITY
-    decision: str = gate_rule.WAIT                           # after persistence
+    raw_decision: str = mutex_rule.PRIORITY
+    decision: str = mutex_rule.WAIT                           # after persistence
     has_prio: bool = False
     occ_state: str = "FREE"                                  # FREE | BUSY | EXITING
     occ_busy: bool = False
@@ -125,16 +125,16 @@ class GatePerception:
                     continue                  # certainly beyond the CR: a drone that has passed
             elif tg.r_min > G.queue_bracket_m:
                 continue
-            rel = gate_rule.classify_pattern(tg.pattern)
+            rel = mutex_rule.classify_pattern(tg.pattern)
             rels.append({"pattern": "+".join(sorted(tg.pattern)), "range": round(tg.r_min, 2), "relation": rel})
         o.relations = rels
-        o.raw_decision = gate_rule.decide([r["relation"] for r in rels], self.plan.static_rank,
-                                          their_ranks=[-1] * sum(r["relation"] == gate_rule.RANK for r in rels))
-        o.rank_used = o.raw_decision == "WAIT_RANK" or (gate_rule.RANK in [r["relation"] for r in rels])
+        o.raw_decision = mutex_rule.decide([r["relation"] for r in rels], self.plan.static_rank,
+                                          their_ranks=[-1] * sum(r["relation"] == mutex_rule.RANK for r in rels))
+        o.rank_used = o.raw_decision == "WAIT_RANK" or (mutex_rule.RANK in [r["relation"] for r in rels])
         if o.rank_used and o.at_queue and not self._rank_prev:
             self.rank_uses += 1                       # counted once per use (rising edge)
         self._rank_prev = o.rank_used and o.at_queue
-        if o.raw_decision == gate_rule.PRIORITY and o.at_queue:
+        if o.raw_decision == mutex_rule.PRIORITY and o.at_queue:
             self.prio_since = t if self.prio_since is None else self.prio_since
         else:
             self.prio_since = None

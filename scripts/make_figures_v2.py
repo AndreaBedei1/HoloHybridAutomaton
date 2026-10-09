@@ -38,11 +38,11 @@ INK = {"primary": "#0b0b0b", "secondary": "#52514e", "muted": "#898781", "grid":
        "surface": "#fcfcfb"}
 STATUS = {"good": "#0ca30c", "warning": "#fab219", "serious": "#ec835a", "critical": "#d03b3b"}
 MODE_COLOR = {"FORMATION_FOLLOW": "#0ca30c", "FORMATION_RECOVERY": "#fab219", "SEPARATION_WARNING": "#ec835a",
-              "COLLISION_AVOIDANCE": "#d03b3b", "FAILSAFE_HOLD_OR_RETREAT": "#4a3aa7", "GATE_APPROACH": "#86b6ef",
-              "GATE_YIELD": "#2a78d6", "GATE_PASS": "#184f95"}
+              "COLLISION_AVOIDANCE": "#d03b3b", "FAILSAFE_HOLD_OR_RETREAT": "#4a3aa7", "MUTEX_APPROACH": "#86b6ef",
+              "MUTEX_YIELD": "#2a78d6", "MUTEX_PASS": "#184f95"}
 MODE_SHORT = {"FORMATION_FOLLOW": "follow", "FORMATION_RECOVERY": "recovery", "SEPARATION_WARNING": "sep. warning",
-              "COLLISION_AVOIDANCE": "coll. avoidance", "FAILSAFE_HOLD_OR_RETREAT": "failsafe", "GATE_APPROACH": "gate approach",
-              "GATE_YIELD": "gate yield", "GATE_PASS": "gate pass"}
+              "COLLISION_AVOIDANCE": "coll. avoidance", "FAILSAFE_HOLD_OR_RETREAT": "failsafe", "MUTEX_APPROACH": "mutex approach",
+              "MUTEX_YIELD": "mutex yield", "MUTEX_PASS": "mutex pass"}
 
 
 def style():

@@ -1,6 +1,6 @@
 """P2 - critical-region mutual exclusion:  G( sum_i inside_CR_i <= 1 )   (v2: sector-pattern rule).
 
-The rule (holo_fleet/ha/gate_rule.py) is evaluated here with Z3 terms - the same functions the
+The rule (holo_fleet/ha/mutex_rule.py) is evaluated here with Z3 terms - the same functions the
 drones run.  Queue geometry and thresholds come from holo_fleet.config.GateRule.
 
 M1  Pairwise rule on the bearing model (Z3, linear arithmetic over angles): two drones whose
@@ -46,10 +46,10 @@ import z3
 from common import CheckResult, Report, check  # noqa: E402
 
 from holo_fleet.config import DEFAULT, FleetConfig
-from holo_fleet.ha import gate_rule
+from holo_fleet.ha import mutex_rule
 from holo_fleet.perception.sonar_geometry import MOUNTS, R_IN, R_OUT, centre_distance_lower
 
-ENC = "holo_fleet/ha/gate_rule.py (shared relation) + formal/check_mutex.py"
+ENC = "holo_fleet/ha/mutex_rule.py (shared relation) + formal/check_mutex.py"
 AXIS = {"F": 0.0, "L": 90.0, "B": 180.0, "R": -90.0}
 HALF = 60.0
 HOLD_ERR = 0.10       # measured position-holding error of a queued drone (results/v2/ASSUMPTIONS.md)
@@ -79,9 +79,9 @@ def _membership(beta, fuzz, tag):
     return flags, cons
 
 
-def priority(flags, rule=gate_rule.relation):
+def priority(flags, rule=mutex_rule.relation):
     rel = rule(flags["F"], flags["B"], flags["L"], flags["R"], z3.BoolVal(False), z3.BoolVal(False), _Z)
-    return rel[gate_rule.PRIORITY]
+    return rel[mutex_rule.PRIORITY]
 
 
 def pair_constraints(delta_max, fuzz):
@@ -94,8 +94,8 @@ def pair_constraints(delta_max, fuzz):
 def _wait_only_front(F, B, L, R, U, D, Lg):
     """Mutation: a drone yields only to what is ahead (LEFT ignored)."""
     wait = F
-    return {gate_rule.WAIT: wait, gate_rule.PRIORITY: Lg.And(Lg.Not(wait), Lg.Or(B, L, R)),
-            gate_rule.RANK: Lg.And(Lg.Not(Lg.Or(F, B, L, R)), Lg.Or(U, D)), "NONE": Lg.Not(Lg.Or(F, B, L, R, U, D))}
+    return {mutex_rule.WAIT: wait, mutex_rule.PRIORITY: Lg.And(Lg.Not(wait), Lg.Or(B, L, R)),
+            mutex_rule.RANK: Lg.And(Lg.Not(Lg.Or(F, B, L, R)), Lg.Or(U, D)), "NONE": Lg.Not(Lg.Or(F, B, L, R, U, D))}
 
 
 # ---------------------------------------------------------------------------------------------- M4 geometry
@@ -266,9 +266,9 @@ def run(cfg: FleetConfig = DEFAULT, verbose: bool = True) -> Report:
                 cons += c
                 echo = gap + 2 * G.queue_tol - 0.30 - 0.29          # farthest echo of that neighbour
                 if echo <= G.queue_bracket_m:
-                    flags_seen.append(gate_rule.relation(fl["F"], fl["B"], fl["L"], fl["R"], z3.BoolVal(False),
+                    flags_seen.append(mutex_rule.relation(fl["F"], fl["B"], fl["L"], fl["R"], z3.BoolVal(False),
                                                          z3.BoolVal(False), _Z))
-            pr = z3.And(*[z3.Not(r[gate_rule.WAIT]) for r in flags_seen]) if flags_seen else z3.BoolVal(True)
+            pr = z3.And(*[z3.Not(r[mutex_rule.WAIT]) for r in flags_seen]) if flags_seen else z3.BoolVal(True)
             prios.append(pr)
         exactly_leftmost = z3.And(prios[0], *[z3.Not(p) for p in prios[1:]])
         rep.add(check(f"M2 abreast queue n={n}: exactly the leftmost queued drone has PRIORITY",

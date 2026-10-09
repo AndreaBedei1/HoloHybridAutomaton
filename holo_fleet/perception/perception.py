@@ -146,7 +146,7 @@ class Perception:
         t_ok = 0.0 if self.ok_since is None else t - self.ok_since
         ab = AbstractObservation(
             d_min=float(d_min), form_err=float(form.form_err), t_ok=float(t_ok), sense_ok=bool(sense_ok),
-            env_ok=bool(env_ok), gate_zone=bool(gate.in_zone), at_queue=bool(gate.at_queue),
+            env_ok=bool(env_ok), mutex_zone=bool(gate.in_zone), at_queue=bool(gate.at_queue),
             occ_busy=bool(gate.occ_busy), has_prio=bool(gate.has_prio), passed=bool(gate.passed),
             neighbors_ok=bool(form.neighbors_ok))
         return LocalObservation(t=t, p=nav.p.copy(), yaw=nav.yaw, R_wb=R_wb, v_world=nav.v_world.copy(),

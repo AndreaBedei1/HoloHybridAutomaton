@@ -105,7 +105,7 @@ class GateRule:
     Queue points are abreast on the queue line s = queue_s(n), ``queue_spacing`` apart, so that two
     queued drones see each other in a pure LEFT/RIGHT relation; the line is far enough back that the
     whole CR lies inside every queued drone's FRONT cone (``queue_cone_deg`` + heading tolerance <
-    60 deg).  Decisions use only sector patterns (ha/gate_rule.py), the own navigation estimate and
+    60 deg).  Decisions use only sector patterns (ha/mutex_rule.py), the own navigation estimate and
     the gate map.  A committed drone leaves the queue line on a path that keeps ``merge_clearance``
     from the queue points on its right (``pass_path``), joins the axis ``merge_ahead`` beyond the
     queue line, crosses the gate and veers towards its own formation lane after ``veer_s``.

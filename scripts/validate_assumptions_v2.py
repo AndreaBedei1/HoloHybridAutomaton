@@ -119,7 +119,7 @@ def check_run(run) -> dict:
         v_in, queued_min, sw_queued = [], math.inf, 0
         m = min(min(len(st) for st in run["states"]), len(t)) - 1
         for i in range(m):
-            q = [k for k in range(n) if run["states"][k][i]["mode"] == "GATE_YIELD" and run["states"][k][i]["gate"].get("at_queue")]
+            q = [k for k in range(n) if run["states"][k][i]["mode"] == "MUTEX_YIELD" and run["states"][k][i]["gate"].get("at_queue")]
             for a in range(len(q)):
                 for b in range(a + 1, len(q)):
                     queued_min = min(queued_min, float(np.linalg.norm(P[i, q[a]] - P[i, q[b]])))

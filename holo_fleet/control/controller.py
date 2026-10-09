@@ -123,8 +123,8 @@ class DroneController:
             self.flows.clear_failsafe()
         # ---------------------------------------------------------------- mission velocity of the calm mode
         if obs.gate.in_zone or self.ha.committed:
-            gmode = mode.value if mode in (Mode.GATE_APPROACH, Mode.GATE_YIELD, Mode.GATE_PASS) else (
-                "GATE_PASS" if self.ha.committed else "GATE_APPROACH")
+            gmode = mode.value if mode in (Mode.MUTEX_APPROACH, Mode.MUTEX_YIELD, Mode.MUTEX_PASS) else (
+                "MUTEX_PASS" if self.ha.committed else "MUTEX_APPROACH")
             v_mis, yaw_d = self.flows.gate(obs, gmode)
         else:
             v_mis, yaw_d = self.flows.formation(obs, dt, recovering=(mode == Mode.FORMATION_RECOVERY))

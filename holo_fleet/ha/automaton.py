@@ -20,7 +20,7 @@ class AbstractObservation:
     t_ok: float = 0.0
     sense_ok: bool = True
     env_ok: bool = True
-    gate_zone: bool = False
+    mutex_zone: bool = False
     at_queue: bool = False
     occ_busy: bool = False
     has_prio: bool = False

@@ -189,15 +189,15 @@ def run(cfg: FleetConfig = DEFAULT, verbose: bool = True) -> Report:
     calm = P.calm(o, Z3L, Mode.FORMATION_RECOVERY)
     rep.add(check("F4a RECOVERY & calm & no gate & recovered -> only the edge to FORMATION_FOLLOW",
                   "guard(e) & target(e) != FOLLOW is unsatisfiable", ENC,
-                  [o.legal(cfg), calm, z3.Not(o.gate_zone), z3.Not(o.committed), P.recovered(o, Z3L),
+                  [o.legal(cfg), calm, z3.Not(o.mutex_zone), z3.Not(o.committed), P.recovered(o, Z3L),
                    z3.Or(*[g for e, g in gs if e.target != Mode.FORMATION_FOLLOW])]), verbose)
     rep.add(check("F4b ... and that edge is enabled", "recovered -> guard(formation_recovered)", ENC,
-                  [o.legal(cfg), calm, z3.Not(o.gate_zone), z3.Not(o.committed), P.recovered(o, Z3L),
+                  [o.legal(cfg), calm, z3.Not(o.mutex_zone), z3.Not(o.committed), P.recovered(o, Z3L),
                    z3.Not(z3.Or(*[g for e, g in gs if e.target == Mode.FORMATION_FOLLOW]))]), verbose)
     gs = [(e, e.guard(o, Z3L)) for e in edges[Mode.FORMATION_FOLLOW]]
     calm_f = P.calm(o, Z3L, Mode.FORMATION_FOLLOW)
     rep.add(check("F4c FOLLOW & calm & no gate & lost -> FORMATION_RECOVERY", "lost -> target = RECOVERY", ENC,
-                  [o.legal(cfg), calm_f, z3.Not(o.gate_zone), z3.Not(o.committed), P.lost(o, Z3L),
+                  [o.legal(cfg), calm_f, z3.Not(o.mutex_zone), z3.Not(o.committed), P.lost(o, Z3L),
                    z3.Or(*[g for e, g in gs if e.target != Mode.FORMATION_RECOVERY])]), verbose)
     # ---------------------------------------------------------------- current envelope (raw current -> authority)
     for r in head_envelope_checks(cfg, p):

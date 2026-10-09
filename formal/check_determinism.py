@@ -9,9 +9,9 @@ Checks, for every source mode:
   H1  fault  => FAILSAFE                         (top priority);
   H2  no fault & d_min < d_ca => COLLISION_AVOIDANCE (collision avoidance prevails over the gate);
   H3  calm & d_ca_exit <= d_min < d_warning => SEPARATION_WARNING;
-  G1  the only way into GATE_PASS without being committed is the commit edge, whose guard implies
+  G1  the only way into MUTEX_PASS without being committed is the commit edge, whose guard implies
       at_queue & !occ_busy & has_prio (local mutual-exclusion entry condition);
-  G2  a committed drone never falls back to GATE_APPROACH/GATE_YIELD (no oscillation PASS->YIELD);
+  G2  a committed drone never falls back to MUTEX_APPROACH/MUTEX_YIELD (no oscillation PASS->YIELD);
   G3  a hazard (d_min < d_warning) never coexists with a commit decision;
   M*  mutation tests: deliberately broken automata must produce counterexamples (non-vacuity).
 """
@@ -59,7 +59,7 @@ def run(cfg=DEFAULT, verbose=True) -> Report:
         bad = [g for e, g in gs if e.target != Mode.FAILSAFE_HOLD_OR_RETREAT]
         rep.add(check(f"H1 fault=>FAILSAFE [{src.value}]", "fault -> target = FAILSAFE", ENC,
                       [legal, P.fault(o, Z3L), z3.Or(*bad)]), verbose)
-        # H2 collision risk => CA (from every mode, including GATE_PASS)
+        # H2 collision risk => CA (from every mode, including MUTEX_PASS)
         bad = [g for e, g in gs if e.target != Mode.COLLISION_AVOIDANCE]
         rep.add(check(f"H2 d<d_ca=>COLLISION_AVOIDANCE [{src.value}]",
                       "!fault & d_min < d_ca -> target = COLLISION_AVOIDANCE", ENC,
@@ -70,18 +70,18 @@ def run(cfg=DEFAULT, verbose=True) -> Report:
                       "!fault & d_ca_exit <= d_min < d_warning -> target = SEPARATION_WARNING", ENC,
                       [legal, z3.Not(P.fault(o, Z3L)), o.d_min >= cfg.sep.d_ca_exit, o.d_min < cfg.sep.d_warning,
                        z3.Or(*bad)]), verbose)
-        # G1 entering GATE_PASS uncommitted requires the mutual-exclusion entry condition
-        into_gp = [g for e, g in gs if e.target == Mode.GATE_PASS]
+        # G1 entering MUTEX_PASS uncommitted requires the mutual-exclusion entry condition
+        into_gp = [g for e, g in gs if e.target == Mode.MUTEX_PASS]
         if into_gp:
-            rep.add(check(f"G1 GATE_PASS entry condition [{src.value}]",
-                          "!committed & guard(->GATE_PASS) -> at_queue & !occ_busy & has_prio", ENC,
+            rep.add(check(f"G1 MUTEX_PASS entry condition [{src.value}]",
+                          "!committed & guard(->MUTEX_PASS) -> at_queue & !occ_busy & has_prio", ENC,
                           [legal, z3.Not(o.committed), z3.Or(*into_gp),
                            z3.Not(z3.And(o.at_queue, z3.Not(o.occ_busy), o.has_prio))]), verbose)
         # G2 committed never goes back to approach/yield
-        back = [g for e, g in gs if e.target in (Mode.GATE_APPROACH, Mode.GATE_YIELD)]
+        back = [g for e, g in gs if e.target in (Mode.MUTEX_APPROACH, Mode.MUTEX_YIELD)]
         if back:
             rep.add(check(f"G2 no PASS->YIELD fallback [{src.value}]",
-                          "committed -> target not in {GATE_APPROACH, GATE_YIELD}", ENC,
+                          "committed -> target not in {MUTEX_APPROACH, MUTEX_YIELD}", ENC,
                           [legal, o.committed, z3.Or(*back)]), verbose)
         # G3 no commit decision under a separation hazard
         commits = [g for e, g in gs if e.set_committed is True]
@@ -98,10 +98,10 @@ def run(cfg=DEFAULT, verbose=True) -> Report:
             new = []
             for e in lst:
                 if drop_prio and e.name == "commit":
-                    new.append(Edge(e.name, lambda o, L, s=src: L.And(P.calm(o, L, s), L.Not(o.committed), o.gate_zone,
+                    new.append(Edge(e.name, lambda o, L, s=src: L.And(P.calm(o, L, s), L.Not(o.committed), o.mutex_zone,
                                                                         o.at_queue, L.Not(o.occ_busy)),
                                     e.target, e.set_committed, e.decision))
-                elif drop_ca_priority and e.name == "pass_continue" and src == Mode.GATE_PASS:
+                elif drop_ca_priority and e.name == "pass_continue" and src == Mode.MUTEX_PASS:
                     # broken design: "once committed, keep passing whatever happens"
                     new.append(Edge(e.name, lambda o, L: L.And(L.Not(P.fault(o, L)), o.committed, L.Not(o.passed)),
                                     e.target, e.set_committed, e.decision))
@@ -112,14 +112,14 @@ def run(cfg=DEFAULT, verbose=True) -> Report:
 
     o = Obs()
     me = mutated(drop_prio=True)
-    gs = guards_of(me[Mode.GATE_YIELD], o)
-    into_gp = [g for e, g in gs if e.target == Mode.GATE_PASS]
+    gs = guards_of(me[Mode.MUTEX_YIELD], o)
+    into_gp = [g for e, g in gs if e.target == Mode.MUTEX_PASS]
     rep.add(check("M1 mutation: commit without priority must violate G1",
                   "expect counterexample", ENC,
                   [o.legal(cfg), z3.Not(o.committed), z3.Or(*into_gp),
                    z3.Not(z3.And(o.at_queue, z3.Not(o.occ_busy), o.has_prio))], expect="sat"), verbose)
     me = mutated(drop_ca_priority=True)
-    gs = guards_of(me[Mode.GATE_PASS], o)
+    gs = guards_of(me[Mode.MUTEX_PASS], o)
     bad = [g for e, g in gs if e.target != Mode.COLLISION_AVOIDANCE]
     rep.add(check("M2 mutation: gate pass ignoring collision risk must violate H2",
                   "expect counterexample", ENC,

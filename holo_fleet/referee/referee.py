@@ -22,7 +22,7 @@ from holo_fleet.config import DEFAULT, FleetConfig
 from holo_fleet.mission import GateSpec
 
 PERTURBING_MODES = ("SEPARATION_WARNING", "COLLISION_AVOIDANCE", "FAILSAFE_HOLD_OR_RETREAT",
-                    "GATE_APPROACH", "GATE_YIELD", "GATE_PASS")
+                    "MUTEX_APPROACH", "MUTEX_YIELD", "MUTEX_PASS")
 
 
 @dataclass

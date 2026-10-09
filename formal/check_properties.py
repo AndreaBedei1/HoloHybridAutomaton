@@ -30,7 +30,7 @@ SUITES = [
     ("Observation consistency (perception -> automaton interface)", check_observations,
      "holo_fleet/ha/observation_invariants.py + holo_fleet/ha/spec.py"),
     ("P1 inter-vehicle separation", check_separation, "formal/check_separation.py"),
-    ("P2 critical-region mutual exclusion", check_mutex, "holo_fleet/ha/gate_rule.py + formal/check_mutex.py"),
+    ("P2 critical-region mutual exclusion", check_mutex, "holo_fleet/ha/mutex_rule.py + formal/check_mutex.py"),
     ("P3 formation recovery (liveness, ranking functions)", check_formation, "formal/check_formation.py"),
 ]
 

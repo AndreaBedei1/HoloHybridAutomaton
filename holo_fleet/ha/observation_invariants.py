@@ -2,7 +2,7 @@
 
 The automaton (ha/spec.py) evaluates its guards on an :class:`AbstractObservation` of 12 variables.
 Not every assignment of those variables can come out of the deployed perception: several flags are
-computed from the same quantity (``gate_zone``, ``at_queue`` and ``passed`` all from the own
+computed from the same quantity (``mutex_zone``, ``at_queue`` and ``passed`` all from the own
 gate-frame position), and one is latched on top of another (``has_prio`` is only ever set while
 ``at_queue`` holds).  This module lists the relations that hold BY CONSTRUCTION of the perception
 code, each with its meaning, the reason it holds and the states it excludes.
@@ -25,11 +25,11 @@ are NOT constrained:
 * ``occ_busy`` may be set anywhere, also outside the approach zone (the occupancy latch keeps BUSY or
   EXITING until the exit is seen or ``t_occ_max`` expires);
 * ``committed`` is the automaton's own latch, not a perception output (a committed drone may be
-  outside ``gate_zone`` and not yet ``passed``, e.g. after a FAILSAFE during the passage);
+  outside ``mutex_zone`` and not yet ``passed``, e.g. after a FAILSAFE during the passage);
 * ``has_prio`` and ``occ_busy`` may hold together (priority among queued drones and the occupancy of
   the critical region are separate beliefs), and so may ``neighbors_ok`` with any formation error.
 
-Derived relations (implied by the list, not checked separately): has_prio -> gate_zone,
+Derived relations (implied by the list, not checked separately): has_prio -> mutex_zone,
 passed -> not at_queue, passed -> not has_prio.
 """
 
@@ -109,22 +109,22 @@ INVARIANTS: List[Invariant] = [
         lambda o, L, cfg: _implies(L, o.has_prio, o.at_queue)),
     Invariant(
         "I2 the queue point lies in the approach zone",
-        "at_queue -> gate_zone",
+        "at_queue -> mutex_zone",
         "a drone at its queue point is inside the approach zone of the same gate",
         "both flags come from the own gate-frame (s, l): at_queue needs |s - queue_s| <= queue_tol and "
-        "|l - queue_l| <= queue_tol; gate_zone needs queue_s - approach_len <= s <= exit_s and "
+        "|l - queue_l| <= queue_tol; mutex_zone needs queue_s - approach_len <= s <= exit_s and "
         "|l| <= max(corridor_half_width, |queue_l| + 1).  queue_s(n) < 0 < exit_s - queue_tol, and the lateral "
         "bound always contains the own queue point (for n >= 5 the outer queue points lie beyond 6.5 m)",
-        "at_queue & !gate_zone: the automaton would follow the formation (or recover) while queued, and the "
-        "yield/commit edges, which require gate_zone, could never fire for that drone",
-        lambda o, L, cfg: _implies(L, o.at_queue, o.gate_zone)),
+        "at_queue & !mutex_zone: the automaton would follow the formation (or recover) while queued, and the "
+        "yield/commit edges, which require mutex_zone, could never fire for that drone",
+        lambda o, L, cfg: _implies(L, o.at_queue, o.mutex_zone)),
     Invariant(
         "I3 a passed gate is out of the approach zone",
-        "passed -> !gate_zone",
+        "passed -> !mutex_zone",
         "beyond the exit of the critical region the drone is no longer approaching that gate",
-        "gate_perception.update: passed = s > exit_s, gate_zone requires s <= exit_s (same s)",
-        "passed & gate_zone: approach/yield/commit and pass_done would both describe the same gate",
-        lambda o, L, cfg: _implies(L, o.passed, L.Not(o.gate_zone))),
+        "gate_perception.update: passed = s > exit_s, mutex_zone requires s <= exit_s (same s)",
+        "passed & mutex_zone: approach/yield/commit and pass_done would both describe the same gate",
+        lambda o, L, cfg: _implies(L, o.passed, L.Not(o.mutex_zone))),
     Invariant(
         "I4 t_ok counts only while the formation is ok",
         "t_ok > 0 -> (form_err < e_ok & neighbors_ok)",

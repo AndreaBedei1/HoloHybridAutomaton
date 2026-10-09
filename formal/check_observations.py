@@ -17,7 +17,7 @@ perception and automaton.
   Q1  a drone holding its queue point (calm, not committed) is handled by the gate protocol: the
       enabled edge is commit or yield (this one relies on I2);
 mutations, each with its expected verdict:
-  Om1 without I2, Q1 has a counterexample: at_queue & !gate_zone takes a formation edge (SAT);
+  Om1 without I2, Q1 has a counterexample: at_queue & !mutex_zone takes a formation edge (SAT);
   Om2 the v1 domain constraint passed -> at_queue makes pass_done unreachable (UNSAT): the v1
       determinism proof silently excluded every reachable 'passed' observation;
   Om3 without the monitor an inconsistent observation is taken by a mission edge, not by FAILSAFE (SAT).
@@ -122,7 +122,7 @@ def run(cfg=DEFAULT, verbose=True) -> Report:
                   "expect counterexample", ENC, queue_violation(cfg, edges, o, o.legal(cfg, drop=["I2"])), expect="sat"),
             verbose)
     v1 = o.legal(cfg, extra=[z3.Implies(o.passed, o.at_queue)])
-    g_done = [e.guard(o, Z3L) for e in edges[Mode.GATE_PASS] if e.name == "pass_done"][0]
+    g_done = [e.guard(o, Z3L) for e in edges[Mode.MUTEX_PASS] if e.name == "pass_done"][0]
     rep.add(check("Om2 mutation: v1 constraint passed -> at_queue makes pass_done unreachable",
                   "expect UNSAT (reachability lost)", ENC, [v1, g_done], expect="unsat",
                   note="v1 formal/common.Obs.legal had passed -> at_queue; with I2 and I3 no 'passed' observation "

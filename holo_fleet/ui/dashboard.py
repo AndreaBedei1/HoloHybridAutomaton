@@ -46,10 +46,10 @@ CLS_COLOR = {"STRUCTURE": _bgr("#6f6e69"), "SEABED": _bgr("#8c6d46"), "DYNAMIC":
 CLS_SHORT = {"STRUCTURE": "STR", "SEABED": "SEA", "DYNAMIC": "DYN", "UNKNOWN": "UNK", "UNCONFIRMED": "unc"}
 MODE_COLOR = {"FORMATION_FOLLOW": GOOD, "FORMATION_RECOVERY": WARN, "SEPARATION_WARNING": SERIOUS,
               "COLLISION_AVOIDANCE": CRIT, "FAILSAFE_HOLD_OR_RETREAT": _bgr("#9085e9"),
-              "GATE_APPROACH": _bgr("#5598e7"), "GATE_YIELD": _bgr("#86b6ef"), "GATE_PASS": _bgr("#e87ba4")}
+              "MUTEX_APPROACH": _bgr("#5598e7"), "MUTEX_YIELD": _bgr("#86b6ef"), "MUTEX_PASS": _bgr("#e87ba4")}
 MODE_SHORT = {"FORMATION_FOLLOW": "FOLLOW", "FORMATION_RECOVERY": "RECOVERY", "SEPARATION_WARNING": "SEP WARNING",
-              "COLLISION_AVOIDANCE": "COLL AVOID", "FAILSAFE_HOLD_OR_RETREAT": "FAILSAFE", "GATE_APPROACH": "GATE APPROACH",
-              "GATE_YIELD": "GATE YIELD", "GATE_PASS": "GATE PASS"}
+              "COLLISION_AVOIDANCE": "COLL AVOID", "FAILSAFE_HOLD_OR_RETREAT": "FAILSAFE", "MUTEX_APPROACH": "MUTEX APPROACH",
+              "MUTEX_YIELD": "MUTEX YIELD", "MUTEX_PASS": "MUTEX PASS"}
 FONT = cv2.FONT_HERSHEY_SIMPLEX
 
 
@@ -104,7 +104,7 @@ def _drone_card(img, k, name, rec, x, y, w, h, show_form=True):
     _text(img, "AUTOMATON mode:", xx, y + 22, 0.42, INK2)
     xx = _badge(img, MODE_SHORT.get(mode, mode), xx + 128, y + 22, MODE_COLOR.get(mode, INK2), 0.5)
     g = rec.get("gate") or {}
-    if g.get("id") and mode.startswith("GATE"):
+    if g.get("id") and mode.startswith("MUTEX"):
         _text(img, f"gate {g['id']}: {g.get('decision', '')}  CR belief {g.get('occ', '')}", xx, y + 22, 0.42, INK2)
     elif rec.get("giveway"):
         _text(img, f"give-way {rec['giveway']}", xx, y + 22, 0.45, WARN)

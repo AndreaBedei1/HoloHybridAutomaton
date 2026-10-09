@@ -30,9 +30,9 @@ class Mode(str, Enum):
     FORMATION_FOLLOW = "FORMATION_FOLLOW"
     SEPARATION_WARNING = "SEPARATION_WARNING"
     COLLISION_AVOIDANCE = "COLLISION_AVOIDANCE"
-    GATE_APPROACH = "GATE_APPROACH"
-    GATE_YIELD = "GATE_YIELD"
-    GATE_PASS = "GATE_PASS"
+    MUTEX_APPROACH = "MUTEX_APPROACH"
+    MUTEX_YIELD = "MUTEX_YIELD"
+    MUTEX_PASS = "MUTEX_PASS"
     FORMATION_RECOVERY = "FORMATION_RECOVERY"
     FAILSAFE_HOLD_OR_RETREAT = "FAILSAFE_HOLD_OR_RETREAT"
 
@@ -45,7 +45,7 @@ REAL_VARS = ("d_min", "form_err", "t_ok")
 BOOL_VARS = (
     "sense_ok",      # every safety-relevant sensor stream is fresh
     "env_ok",        # vehicle believes it is inside the operational envelope
-    "gate_zone",     # next gate exists and own estimate is inside its approach zone
+    "mutex_zone",     # next gate exists and own estimate is inside its approach zone
     "at_queue",      # own gate-frame along position is inside the commit window
     "occ_busy",      # some other drone is perceived inside the occupied zone
     "has_prio",      # robust priority over every perceived queued drone
@@ -165,8 +165,8 @@ def build_edges(cfg: FleetConfig = DEFAULT) -> Dict[Mode, List[Edge]]:
         out.append(Edge(
             "pass_continue",
             lambda o, L, c=calm: L.And(c(o, L), o.committed, L.Not(o.passed)),
-            Mode.GATE_PASS,
-            decision=("RESUME_PASS" if src != Mode.GATE_PASS else None),
+            Mode.MUTEX_PASS,
+            decision=("RESUME_PASS" if src != Mode.MUTEX_PASS else None),
         ))
         out.append(Edge(
             "pass_done",
@@ -178,45 +178,45 @@ def build_edges(cfg: FleetConfig = DEFAULT) -> Dict[Mode, List[Edge]]:
         # 4b. gate approach / yield / commit (not yet committed, inside approach zone)
         out.append(Edge(
             "commit",
-            lambda o, L, c=calm: L.And(c(o, L), L.Not(o.committed), o.gate_zone, P.can_go(o, L)),
-            Mode.GATE_PASS,
+            lambda o, L, c=calm: L.And(c(o, L), L.Not(o.committed), o.mutex_zone, P.can_go(o, L)),
+            Mode.MUTEX_PASS,
             set_committed=True,
-            decision=("RETRY_PASS" if src == Mode.GATE_YIELD else "PASS"),
+            decision=("RETRY_PASS" if src == Mode.MUTEX_YIELD else "PASS"),
         ))
         out.append(Edge(
             "yield",
-            lambda o, L, c=calm: L.And(c(o, L), L.Not(o.committed), o.gate_zone, L.Not(P.can_go(o, L)), o.at_queue),
-            Mode.GATE_YIELD,
-            decision=(None if src == Mode.GATE_YIELD else "YIELD"),
+            lambda o, L, c=calm: L.And(c(o, L), L.Not(o.committed), o.mutex_zone, L.Not(P.can_go(o, L)), o.at_queue),
+            Mode.MUTEX_YIELD,
+            decision=(None if src == Mode.MUTEX_YIELD else "YIELD"),
         ))
         out.append(Edge(
             "approach",
-            lambda o, L, c=calm: L.And(c(o, L), L.Not(o.committed), o.gate_zone, L.Not(o.at_queue)),
-            Mode.GATE_APPROACH,
-            decision=(None if src == Mode.GATE_APPROACH else "APPROACH"),
+            lambda o, L, c=calm: L.And(c(o, L), L.Not(o.committed), o.mutex_zone, L.Not(o.at_queue)),
+            Mode.MUTEX_APPROACH,
+            decision=(None if src == Mode.MUTEX_APPROACH else "APPROACH"),
         ))
         # 4c. no gate in view: formation follow / recovery
         if src == Mode.FORMATION_FOLLOW:
             out.append(Edge(
                 "formation_lost",
-                lambda o, L, c=calm: L.And(c(o, L), L.Not(o.committed), L.Not(o.gate_zone), P.lost(o, L)),
+                lambda o, L, c=calm: L.And(c(o, L), L.Not(o.committed), L.Not(o.mutex_zone), P.lost(o, L)),
                 Mode.FORMATION_RECOVERY, decision="FORMATION_LOST",
             ))
             out.append(Edge(
                 "follow",
-                lambda o, L, c=calm: L.And(c(o, L), L.Not(o.committed), L.Not(o.gate_zone), L.Not(P.lost(o, L))),
+                lambda o, L, c=calm: L.And(c(o, L), L.Not(o.committed), L.Not(o.mutex_zone), L.Not(P.lost(o, L))),
                 Mode.FORMATION_FOLLOW,
             ))
         else:
             out.append(Edge(
                 "formation_recovered",
-                lambda o, L, c=calm: L.And(c(o, L), L.Not(o.committed), L.Not(o.gate_zone), P.recovered(o, L)),
+                lambda o, L, c=calm: L.And(c(o, L), L.Not(o.committed), L.Not(o.mutex_zone), P.recovered(o, L)),
                 Mode.FORMATION_FOLLOW,
                 decision=("FORMATION_RECOVERED" if src == Mode.FORMATION_RECOVERY else "RESUME_FOLLOW"),
             ))
             out.append(Edge(
                 "recover",
-                lambda o, L, c=calm: L.And(c(o, L), L.Not(o.committed), L.Not(o.gate_zone), L.Not(P.recovered(o, L))),
+                lambda o, L, c=calm: L.And(c(o, L), L.Not(o.committed), L.Not(o.mutex_zone), L.Not(P.recovered(o, L))),
                 Mode.FORMATION_RECOVERY,
             ))
         edges[src] = out
@@ -231,9 +231,9 @@ PRIORITY_ORDER = [
     Mode.FAILSAFE_HOLD_OR_RETREAT,
     Mode.COLLISION_AVOIDANCE,
     Mode.SEPARATION_WARNING,
-    Mode.GATE_PASS,
-    Mode.GATE_YIELD,
-    Mode.GATE_APPROACH,
+    Mode.MUTEX_PASS,
+    Mode.MUTEX_YIELD,
+    Mode.MUTEX_APPROACH,
     Mode.FORMATION_RECOVERY,
     Mode.FORMATION_FOLLOW,
 ]

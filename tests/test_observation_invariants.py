@@ -26,7 +26,7 @@ from common import Obs, Z3L  # noqa: E402
 
 def test_valid_observations_pass():
     assert violated(AbstractObservation()) == []                          # cruising, nothing in view
-    queued = AbstractObservation(gate_zone=True, at_queue=True, has_prio=True, occ_busy=True)
+    queued = AbstractObservation(mutex_zone=True, at_queue=True, has_prio=True, occ_busy=True)
     assert consistent(queued)                                              # priority + busy CR: separate beliefs
     recovered = AbstractObservation(form_err=0.2, t_ok=3.0, neighbors_ok=True)
     assert consistent(recovered)
@@ -35,15 +35,15 @@ def test_valid_observations_pass():
 
 
 def test_at_queue_outside_the_approach_zone_is_inconsistent():
-    assert violated(AbstractObservation(at_queue=True, gate_zone=False)) == ["I2"]
+    assert violated(AbstractObservation(at_queue=True, mutex_zone=False)) == ["I2"]
 
 
 def test_incoherent_gate_states():
-    assert violated(AbstractObservation(passed=True, gate_zone=True)) == ["I3"]
+    assert violated(AbstractObservation(passed=True, mutex_zone=True)) == ["I3"]
     assert violated(AbstractObservation(has_prio=True, at_queue=False)) == ["I1"]
     # passed and still queued: the queue point is in the zone (I2), a passed gate is not (I3)
-    assert set(violated(AbstractObservation(passed=True, at_queue=True, gate_zone=False))) == {"I2"}
-    assert set(violated(AbstractObservation(passed=True, at_queue=True, gate_zone=True))) == {"I3"}
+    assert set(violated(AbstractObservation(passed=True, at_queue=True, mutex_zone=False))) == {"I2"}
+    assert set(violated(AbstractObservation(passed=True, at_queue=True, mutex_zone=True))) == {"I3"}
 
 
 def test_stale_t_ok_and_malformed_numbers():
@@ -52,13 +52,13 @@ def test_stale_t_ok_and_malformed_numbers():
     assert violated(AbstractObservation(form_err=-0.1)) == ["N1"]
     assert "N0" in violated(AbstractObservation(d_min=float("nan")))     # NaN would disable both hazard guards
     assert "N0" in violated(AbstractObservation(t_ok=math.inf))
-    assert "N0" in violated(AbstractObservation(gate_zone=None))
+    assert "N0" in violated(AbstractObservation(mutex_zone=None))
 
 
 def _random_obs(rng):
     return AbstractObservation(
         d_min=rng.uniform(-0.5, 4.0), form_err=rng.uniform(0, 2.0), t_ok=rng.choice([0.0, rng.uniform(0, 4.0)]),
-        sense_ok=rng.random() < 0.9, env_ok=rng.random() < 0.9, gate_zone=rng.random() < 0.5,
+        sense_ok=rng.random() < 0.9, env_ok=rng.random() < 0.9, mutex_zone=rng.random() < 0.5,
         at_queue=rng.random() < 0.5, occ_busy=rng.random() < 0.5, has_prio=rng.random() < 0.5,
         passed=rng.random() < 0.3, neighbors_ok=rng.random() < 0.8, committed=rng.random() < 0.3)
 
