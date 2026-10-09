@@ -22,7 +22,8 @@ def _random_obs(rng):
         d_min=rng.uniform(-0.5, 4.0), form_err=rng.uniform(0, 2.0), t_ok=rng.uniform(0, 4.0),
         sense_ok=rng.random() < 0.9, env_ok=rng.random() < 0.9, mutex_zone=rng.random() < 0.5,
         at_queue=rng.random() < 0.5, occ_busy=rng.random() < 0.5, has_prio=rng.random() < 0.5,
-        passed=rng.random() < 0.3, neighbors_ok=rng.random() < 0.8, committed=rng.random() < 0.3)
+        passed=rng.random() < 0.3, neighbors_ok=rng.random() < 0.8, degraded=rng.random() < 0.3,
+        committed=rng.random() < 0.3)
 
 
 def test_exactly_one_edge_enabled_runtime():

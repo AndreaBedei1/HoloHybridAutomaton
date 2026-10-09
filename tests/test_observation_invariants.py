@@ -48,7 +48,9 @@ def test_incoherent_gate_states():
 
 def test_stale_t_ok_and_malformed_numbers():
     assert violated(AbstractObservation(t_ok=1.0, form_err=DEFAULT.form.e_ok)) == ["I4"]
-    assert violated(AbstractObservation(t_ok=1.0, neighbors_ok=False)) == ["I4"]
+    # a missing neighbour is not an error of the drone itself: its own 'ok' counter keeps running
+    assert consistent(AbstractObservation(t_ok=1.0, neighbors_ok=False))
+    assert consistent(AbstractObservation(t_ok=1.0, neighbors_ok=True, degraded=True))
     assert violated(AbstractObservation(form_err=-0.1)) == ["N1"]
     assert "N0" in violated(AbstractObservation(d_min=float("nan")))     # NaN would disable both hazard guards
     assert "N0" in violated(AbstractObservation(t_ok=math.inf))
@@ -60,7 +62,8 @@ def _random_obs(rng):
         d_min=rng.uniform(-0.5, 4.0), form_err=rng.uniform(0, 2.0), t_ok=rng.choice([0.0, rng.uniform(0, 4.0)]),
         sense_ok=rng.random() < 0.9, env_ok=rng.random() < 0.9, mutex_zone=rng.random() < 0.5,
         at_queue=rng.random() < 0.5, occ_busy=rng.random() < 0.5, has_prio=rng.random() < 0.5,
-        passed=rng.random() < 0.3, neighbors_ok=rng.random() < 0.8, committed=rng.random() < 0.3)
+        passed=rng.random() < 0.3, neighbors_ok=rng.random() < 0.8, degraded=rng.random() < 0.3,
+        committed=rng.random() < 0.3)
 
 
 def test_python_and_z3_invariants_agree():

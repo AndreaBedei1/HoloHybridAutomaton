@@ -51,7 +51,13 @@ def evaluate_run(run: Path, cfg: FleetConfig = DEFAULT) -> Dict:
     rows = list(csv.DictReader(open(run / "referee_timeseries.csv", encoding="utf-8")))
     field = CurrentField([CurrentComponent(**c) for c in rc.get("current", [])])
     tol = cfg.plant.cmd_model_tolerance
-    self_declared = sum(1 for line in open(run / "events.jsonl", encoding="utf-8") if '"ENVELOPE_VIOLATION"' in line)
+    # a drone with an injected actuator fault (simulator side, DI-29) declares a violation because its thrusters do
+    # not respond, not because of the current: those declarations do not count for the current envelope
+    faulty = {f["drone"] for f in rc.get("faults", []) or []}
+    declared = [json.loads(line).get("drone") for line in open(run / "events.jsonl", encoding="utf-8")
+                if '"ENVELOPE_VIOLATION"' in line]
+    self_declared = len(declared)
+    by_faulty = sum(1 for d in declared if d in faulty)
     drones, any_out_range, any_out, any_over = {}, False, False, False
     for k in range(n):
         st = [json.loads(line) for line in open(run / f"drone_{k}_state.jsonl", encoding="utf-8")]
@@ -110,6 +116,7 @@ def evaluate_run(run: Path, cfg: FleetConfig = DEFAULT) -> Dict:
         "worst_step": {"drone": wname, **wd["worst_step"]},
         "verdict": verdict, "inside_envelope": verdict != "OUTSIDE",
         "self_declared_envelope_violations": self_declared,
-        "coherent_with_vehicles": (verdict == "OUTSIDE") == (self_declared > 0),
+        "self_declared_by_faulty_drones": by_faulty,
+        "coherent_with_vehicles": (verdict == "OUTSIDE") == (self_declared - by_faulty > 0),
         "drones": drones,
     }

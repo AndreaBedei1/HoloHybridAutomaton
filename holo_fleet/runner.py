@@ -52,11 +52,13 @@ def run(name: str, out_root: Path, headless: bool = True, run_id: Optional[str] 
     sim.start()
     ctrls = {p.drone_id: DroneController(p, cfg) for p in sc.plans}
     tmpl = sc.template.offsets() if sc.template is not None else None
-    ref = Referee(sim.names, tmpl, sc.path, sc.judged_gates, cfg, sc.formation_enabled)
+    ref = Referee(sim.names, tmpl, sc.path, sc.judged_gates, cfg, sc.formation_enabled,
+                  clock=sc.plans[0].clock if sc.formation_enabled else None)
     cfg_dump = {"scenario": name, "title": sc.title, "description": sc.description, "focus": sc.focus,
                 "duration_s": T, "n_drones": len(sim.names), "template": None if sc.template is None else sc.template.name,
                 "gates": [g.gate_id for g in sc.judged_gates], "current": sc.sim.current.describe(),
                 "intruders": list(getattr(sc.sim, "intruders", ())), "cfg_patch": sc.cfg_patch,
+                "faults": list(getattr(sc.sim, "faults", ())),
                 "disturbance_windows": sc.disturbance_windows, "stress": sc.sim.stress.__dict__,
                 "setup": sim.setup_report, "comms_enabled": cfg.comms_enabled, "fleet_config": cfg.to_dict(),
                 "plans": [{"drone": p.drone_id, "slot": p.slot_index, "queue_lateral": p.queue_lateral,
@@ -70,8 +72,19 @@ def run(name: str, out_root: Path, headless: bool = True, run_id: Optional[str] 
     n_steps = int(round(T / DT))
     last_frame_t = -1e9
     ctrl_ms = []
+    fault_on = {i: False for i in range(len(getattr(sc.sim, "faults", ())))}
     try:
         for step in range(n_steps):
+            step_events = []
+            for i, f in enumerate(getattr(sc.sim, "faults", ())):         # ground truth, never seen by a controller
+                on = f["t_on"] <= sim.t and (f.get("t_off") is None or sim.t < f["t_off"])
+                if on != fault_on[i]:
+                    fault_on[i] = on
+                    fe = {"t": round(sim.t, 2), "drone": f["drone"], "source": "simulator",
+                          "type": "FAULT_INJECTED" if on else "FAULT_CLEARED", "fault": f["type"],
+                          "permanent": f.get("t_off") is None}
+                    ev_f.write(json.dumps(fe) + "\n")
+                    step_events.append(fe)
             frames = sim.frames()
             cmds = {}
             c0 = time.perf_counter()
@@ -155,12 +168,14 @@ def run(name: str, out_root: Path, headless: bool = True, run_id: Optional[str] 
 def summary_row(name: str, m: Dict) -> Dict:
     p3 = m["P3_formation_recovery"]
     rec = [e["recovery_time_s"] for e in p3["episodes"] if e["recovery_time_s"] is not None]
+    deg = m.get("P3_degraded") or {}
     return {"scenario": name, "status": m["run"]["status"], "sim_time_s": m["run"]["sim_time_s"],
             "P1_holds": m["P1_separation"]["holds"], "min_distance": m["P1_separation"]["min_distance"],
             "P2_holds": m["P2_mutual_exclusion"]["holds"],
             "max_occupancy": max(m["P2_mutual_exclusion"]["max_occupancy"].values(), default=None),
             "P3_episodes": p3["n_episodes"], "P3_all_recovered": p3["all_recovered_within_run"],
             "max_recovery_time_s": max(rec) if rec else None,
+            "P3_degraded_holds": deg.get("holds"), "absent_at_end": "+".join(deg.get("absent_at_end") or []),
             "collisions": m["P1_separation"]["physical_contacts"] + len(m["P1_separation"]["collision_sensor_edges"]),
             "messages": m["run"]["inter_agent_messages"], "inside_envelope": m["envelope"]["inside_envelope"],
             "static_rank_uses": m["run"]["static_rank_uses"]}
@@ -180,7 +195,10 @@ def _envelope_line(m: Dict) -> str:
     ENVELOPE_VIOLATION: persistent thrust saturation or a steady command beyond the authority)."""
     e = m["envelope"]
     n_self = m["run"]["self_declared_envelope_violations"]
+    n_fault = e.get("self_declared_by_faulty_drones", 0)
     own = f"; vehicles: {n_self} self-declared ENVELOPE_VIOLATION" if n_self else "; vehicles: ENVELOPE_OK"
+    if n_fault:
+        own += f" ({n_fault} by the drone with the injected thruster fault)"
     if "verdict" not in e:
         return "envelope not evaluated (run without logs)"
     if e["verdict"] == "OUTSIDE":
@@ -211,6 +229,13 @@ def print_summary(name: str, m: Dict, assumptions: Optional[str] = None) -> str:
             lines += [f"formation lost at: {e['t_lost']} s", f"formation recovered at: {e['t_recovered']} s",
                       f"recovery time: {e['recovery_time_s']} s"]
         lines.append("")
+        deg = m.get("P3_degraded") or {}
+        if deg.get("exercised"):
+            lines += ["P3-deg DEGRADED FORMATION (remaining drones on their original slots)",
+                      "PASS" if deg["holds"] else "NOT RE-FORMED WITHIN THE RUN"]
+            for e in deg["absence_log"]:
+                lines.append(f"{e['drone']} {'absent (slot vacant)' if e['event'] == 'absent' else 'back'} at {e['t']} s")
+            lines += [f"final formation error of the present drones: {deg['final_form_err_present']} m", ""]
     else:
         lines += ["P3 FORMATION RECOVERY", "n/a (no formation judged in this scenario)", ""]
     coll = p1["physical_contacts"] + len(p1["collision_sensor_edges"])

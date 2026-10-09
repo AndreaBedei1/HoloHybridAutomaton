@@ -191,6 +191,20 @@ class FormationRule:
     v_recovery_max: float = 0.50      # speed cap while recovering (catch-up margin 0.2 m/s; = Envelope.v_max_nominal)
     range_gate_m: float = 1.2         # an echo is associated to an expected neighbour within this
     neighbour_range_m: float = 7.5    # expected neighbours nearer than this must be seen (neighbors_ok)
+    t_reinclude: float = 1.0          # a vacant slot is re-included after its drone is seen there this long [s]
+    rejoin_lane_tol_m: float = 1.0    # a recovering drone farther than this from its own lane rejoins from behind
+    rejoin_back_m: float = 2.0        # ... through a point on its lane this far behind the rear-most slot [m]
+
+    @property
+    def t_rejoin(self) -> float:
+        """Missing time after which an expected neighbour's slot is declared vacant [s].
+
+        The time a lost drone that is still at the edge of the sensing range (neighbour_range_m behind its
+        slot) needs to close the gap with the catch-up margin of the recovery speed: 7.5 / (0.5 - 0.3) =
+        37.5 s.  A drone that is still missing after it is either unable to move or farther than the
+        sensing range; the others stop waiting and keep a degraded formation (no reconfiguration).  The slot
+        is re-included if the drone comes back later."""
+        return self.neighbour_range_m / (self.v_recovery_max - self.v_nominal)
 
 
 @dataclass(frozen=True)

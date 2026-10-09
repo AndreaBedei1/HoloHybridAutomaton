@@ -1,6 +1,6 @@
 """Semantic invariants of the abstract observation (the perception -> automaton interface).
 
-The automaton (ha/spec.py) evaluates its guards on an :class:`AbstractObservation` of 12 variables.
+The automaton (ha/spec.py) evaluates its guards on an :class:`AbstractObservation` of 13 variables.
 Not every assignment of those variables can come out of the deployed perception: several flags are
 computed from the same quantity (``mutex_zone``, ``at_queue`` and ``passed`` all from the own
 gate-frame position), and one is latched on top of another (``has_prio`` is only ever set while
@@ -27,7 +27,9 @@ are NOT constrained:
 * ``committed`` is the automaton's own latch, not a perception output (a committed drone may be
   outside ``mutex_zone`` and not yet ``passed``, e.g. after a FAILSAFE during the passage);
 * ``has_prio`` and ``occ_busy`` may hold together (priority among queued drones and the occupancy of
-  the critical region are separate beliefs), and so may ``neighbors_ok`` with any formation error.
+  the critical region are separate beliefs), and so may ``neighbors_ok`` with any formation error;
+* ``degraded`` (some slot declared vacant) is a latch of the perception: it may hold with or without
+  ``neighbors_ok`` (another neighbour may be missing as well) and in any gate state.
 
 Derived relations (implied by the list, not checked separately): has_prio -> mutex_zone,
 passed -> not at_queue, passed -> not has_prio.
@@ -70,7 +72,7 @@ class Invariant:
     formula: str            # readable form
     meaning: str
     why: str                # why the deployed perception guarantees it (code reference)
-    excludes: str           # states of the 12 variables it rules out
+    excludes: str           # states of the 13 variables it rules out
     pred: Callable[[Any, Any, FleetConfig], Any]      # pred(o, L, cfg), L = PY_INV or the Z3 backend
 
 
@@ -83,7 +85,7 @@ def _well_formed(o, L, cfg):
 INVARIANTS: List[Invariant] = [
     Invariant(
         "N0 well-formed",
-        "d_min, form_err, t_ok finite reals; the eight perception flags are Booleans",
+        "d_min, form_err, t_ok finite reals; the nine perception flags are Booleans",
         "every variable carries a value of its declared type",
         "perception.py casts every field (float(...), bool(...)); a NaN, an infinity or a missing flag can "
         "only come from a defect upstream (e.g. a NaN pose)",
@@ -126,13 +128,14 @@ INVARIANTS: List[Invariant] = [
         "passed & mutex_zone: approach/yield/commit and pass_done would both describe the same gate",
         lambda o, L, cfg: _implies(L, o.passed, L.Not(o.mutex_zone))),
     Invariant(
-        "I4 t_ok counts only while the formation is ok",
-        "t_ok > 0 -> (form_err < e_ok & neighbors_ok)",
-        "t_ok is the time for which the formation has been continuously ok up to now",
-        "perception.py: ok_since is set while form_err < e_ok and neighbors_ok and reset to None otherwise; "
-        "t_ok = 0 when ok_since is None",
-        "t_ok > 0 with form_err >= e_ok or with a missing neighbour (a stale 'ok for t seconds' counter)",
-        lambda o, L, cfg: _implies(L, o.t_ok > 0, L.And(o.form_err < cfg.form.e_ok, o.neighbors_ok))),
+        "I4 t_ok counts only while the own slot error is ok",
+        "t_ok > 0 -> form_err < e_ok",
+        "t_ok is the time for which the own formation error has been continuously below e_ok up to now",
+        "perception.py: ok_since is set while form_err < e_ok and reset to None otherwise; t_ok = 0 when "
+        "ok_since is None.  A missing neighbour does not reset it: it is not an error of the drone itself "
+        "(it selects FORMATION_WAIT_REJOIN, not FORMATION_RECOVERY)",
+        "t_ok > 0 with form_err >= e_ok (a stale 'ok for t seconds' counter)",
+        lambda o, L, cfg: _implies(L, o.t_ok > 0, o.form_err < cfg.form.e_ok)),
 ]
 
 BY_NAME: Dict[str, Invariant] = {inv.name.split()[0]: inv for inv in INVARIANTS}     # "N0", "I1", ...

@@ -6,6 +6,7 @@ IMU, compass, depth) and its mission plan.  ``uses_ground_truth`` is checked by 
 
 from __future__ import annotations
 
+import math
 from typing import Any, Dict, List, Optional
 
 import numpy as np
@@ -17,7 +18,7 @@ from holo_fleet.control.flows import Flows
 from holo_fleet.control.lowlevel import AUTHORITY, LowLevelController
 from holo_fleet.ha.automaton import LocalHybridAutomaton
 from holo_fleet.ha.observation_invariants import violated as observation_violations
-from holo_fleet.ha.spec import Mode
+from holo_fleet.ha.spec import IN_FORMATION, Mode
 from holo_fleet.mission import MissionPlan
 from holo_fleet.perception.frame import SensorFrame
 from holo_fleet.perception.perception import LocalObservation, Perception
@@ -36,36 +37,74 @@ class EnvelopeMonitor:
     and on the requested speed, not on |w| alone.  The violation is declared after t_enter of such steps
     (leaky) and cleared after t_exit without; avoidance manoeuvres are not judged (higher authority,
     transients).  Saturation is kept as direct evidence: the integrator freezes while saturated, so the
-    estimate alone could under-report a current stronger than the drone."""
+    estimate alone could under-report a current stronger than the drone.
 
-    def __init__(self, t_enter: float = 4.0, t_exit: float = 4.0):
+    A declared violation is cleared only after t_exit of steps in which the vehicle DELIVERS a velocity it
+    requests (DVL navigation; DI-29): a vehicle whose thrusters do not respond (a thruster failure) holding
+    still in FAILSAFE is neither saturated nor infeasible, and requesting nothing it cannot be told from a
+    healthy one.  So while the violation lasts the FAILSAFE flow adds a small heave probe (Flows.failsafe),
+    and a step counts toward the clear only when, over the last ``window_s``, the vehicle delivered the
+    motion it requested: projection gain sum(v_nav . v_req) / sum(|v_req|^2) >= ``gain_min`` (about 0 for a
+    vehicle that does not respond, about 0.7-1 for a healthy one: over half a period of the probe the gain
+    of a lagging response is cos(lag) times its amplitude ratio, whatever the window phase).  A window that
+    requests motion and does not get it restarts the count; one that requests (almost) nothing (RMS below
+    ``v_probe_min``) pauses it; without velocity data the rule is not applied."""
+
+    def __init__(self, t_enter: float = 4.0, t_exit: float = 4.0, v_probe_min: float = 0.04,
+                 gain_min: float = 0.5, window_s: float = 4.0):
         self.persist = Persistence(t_enter, t_exit)
+        self.v_probe_min, self.gain_min, self.window_s = v_probe_min, gain_min, window_s
+        self.window: List = []
+        self.gain: Optional[float] = None
         self.check: Optional[CurrentCheck] = None
         self.saturated = False
+        self.delivering = True
         self.reason = ""
 
     @property
     def ok(self) -> bool:
         return self.persist.ok
 
-    def update(self, saturated: bool, check: Optional[CurrentCheck], dt: float) -> bool:
-        """``check`` is None while the step is not judged (avoidance manoeuvres)."""
+    def update(self, saturated: bool, check: Optional[CurrentCheck], dt: float, v_nav=None, v_req=None) -> bool:
+        """``check`` is None while the step is not judged (avoidance manoeuvres); ``v_nav`` is the navigation
+        velocity now and ``v_req`` the velocity requested at the previous step."""
         self.check, self.saturated = check, bool(saturated and check is not None)
+        if v_nav is not None and v_req is not None:
+            self.window.append((np.asarray(v_nav, float), np.asarray(v_req, float)))
+            self.window = self.window[-max(1, int(round(self.window_s / dt))):]
+        rr = sum(float(r @ r) for _n, r in self.window)
+        rms = math.sqrt(rr / len(self.window)) if self.window else 0.0
+        self.gain = (sum(float(n @ r) for n, r in self.window) / rr) if rr > 1e-9 else None
+        self.delivering = self.gain is None or self.gain >= self.gain_min
         bad = check is not None and (saturated or not check.ok)
-        if check is not None and not check.ok:
+        hold = None
+        if not self.persist.ok and not bad and self.window:      # in violation: clearing needs delivered motion
+            if rms < self.v_probe_min:
+                hold = "pause"
+            elif not self.delivering:
+                hold = "reset"
+        if hold == "reset":
+            self.reason = (f"requested motion not delivered (gain {self.gain:.2f} over {self.window_s:.0f} s, "
+                           f"RMS request {rms:.2f} m/s)")
+        elif check is not None and not check.ok:
             self.reason = check.reason
         elif self.saturated:
             self.reason = (f"thrust saturated (steady command {check.required_cmd:.2f} of {check.authority:.2f}; "
                            f"head {check.head:+.2f}, lateral {check.lateral:.2f} m/s estimated)")
         elif self.persist.ok:
             self.reason = ""
-        return self.persist.update(bad, dt)
+        was_ok = self.persist.ok
+        ok = self.persist.update(bad, dt, hold=hold)
+        if ok and not was_ok:
+            self.reason = ""                            # cleared: the record of ENVELOPE_OK carries no stale reason
+        return ok
 
     def record(self) -> Dict[str, Any]:
         """Per-step log entry: estimated current, requested velocity, components, required vs available."""
         c = self.check
         out: Dict[str, Any] = {"status": "ENVELOPE_OK" if self.ok else "ENVELOPE_VIOLATION",
-                               "judged": c is not None, "saturated": self.saturated}
+                               "judged": c is not None, "saturated": self.saturated, "delivering": self.delivering,
+                               "delivery_gain": None if self.gain is None else round(self.gain, 2)}
         if c is not None:
             out.update({"current_est": [round(float(x), 3) for x in c.current],
                         "v_desired": [round(float(x), 3) for x in c.desired],
@@ -93,11 +132,15 @@ class DroneController:
         self.events: List[Dict[str, Any]] = []
         self.last_obs: Optional[LocalObservation] = None
         self.last_record: Dict[str, Any] = {}
+        self.v_requested = np.zeros(3)             # velocity requested from the low level at the previous step
 
     def step(self, frame: SensorFrame, dt: float) -> np.ndarray:
         t = frame.t
         obs = self.perception.update(frame, dt, sigma=self.flows.sigma, env_ok=self.envmon.ok,
-                                     offset=self.flows.offset)
+                                     offset=self.flows.offset, in_formation=self.ha.mode in IN_FORMATION)
+        for e in self.perception.events:                       # SLOT_DECLARED_VACANT / SLOT_REOCCUPIED
+            self.events.append({**e, "mode": self.ha.mode.value})
+        self.perception.events.clear()
         # observation consistency check (ha/observation_invariants.py) between perception and automaton:
         # an observation the perception cannot produce reveals a defect; it is logged and handed to the
         # automaton as a sensing fault, i.e. the existing fault edge -> FAILSAFE_HOLD_OR_RETREAT
@@ -127,7 +170,8 @@ class DroneController:
                 "MUTEX_PASS" if self.ha.committed else "MUTEX_APPROACH")
             v_mis, yaw_d = self.flows.gate(obs, gmode)
         else:
-            v_mis, yaw_d = self.flows.formation(obs, dt, recovering=(mode == Mode.FORMATION_RECOVERY))
+            v_mis, yaw_d = self.flows.formation(obs, dt, recovering=(mode == Mode.FORMATION_RECOVERY),
+                                                traffic=(mode != Mode.FAILSAFE_HOLD_OR_RETREAT))
         authority = "nominal"
         if mode not in AVOIDANCE:
             self.flows.last_choice = None
@@ -139,7 +183,7 @@ class DroneController:
             v = self.flows.collision_avoidance(obs, self.ll.current_estimate(), v_mis)
             authority = "escape"
         elif mode == Mode.FAILSAFE_HOLD_OR_RETREAT:
-            v = self.flows.failsafe(obs)
+            v = self.flows.failsafe(obs, probe=not self.envmon.ok)
             authority = "brake"
         else:
             v = v_mis
@@ -149,7 +193,8 @@ class DroneController:
         judged = mode not in AVOIDANCE
         check = check_onboard(self.ll.current_estimate(), v, self.cfg, AUTHORITY[authority]) if judged else None
         was_ok = self.envmon.ok
-        ok = self.envmon.update(self.ll.saturated, check, dt)
+        ok = self.envmon.update(self.ll.saturated, check, dt, v_nav=obs.v_world, v_req=self.v_requested)
+        self.v_requested = np.asarray(v, dtype=float).copy()
         if was_ok and not ok:
             self.events.append({"t": t, "type": "ENVELOPE_VIOLATION", **self.envmon.record()})
         elif ok and not was_ok:
@@ -178,7 +223,11 @@ class DroneController:
             "form": {"form_err": round(obs.form.form_err, 3), "slot_err": round(obs.form.slot_err_norm, 3),
                      "neighbors_ok": obs.form.neighbors_ok, "sigma": round(self.flows.sigma, 3),
                      "checks": [(c.slot, round(c.expected_d, 2), None if not c.seen else round(c.residual, 2))
-                                for c in obs.form.checks]},
+                                for c in obs.form.checks],
+                     "missing": sorted(k for k in obs.form.missing if k not in self.perception.vacant),
+                     "missing_t": {k: round(v, 1) for k, v in self.perception.missing_t.items() if v > 0.0},
+                     "vacant": sorted(self.perception.vacant), "degraded": bool(self.perception.vacant),
+                     "slot": np.round(obs.slot_pos, 2).tolist(), "rejoin": self.flows.rejoin_phase},
             "determinism_violations": self.ha.determinism_violations,
             "obs_consistent": self.obs_consistent, "observation_violations": self.observation_violations,
             "saturated": self.ll.saturated,

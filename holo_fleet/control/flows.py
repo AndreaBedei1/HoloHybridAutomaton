@@ -60,20 +60,25 @@ class Flows:
         self.offset = np.zeros(3)             # give-way offset of the mission target (world) [m]
         self.giveway: str = ""                # "", "RIGHT", "UP", "DOWN"
         self.giveway_t = -1e9                 # last time the head-on condition held
+        self.rejoin_phase = ""                # "", "DROP_BACK", "TO_LANE" (rejoin from behind, recovering only)
 
     # ------------------------------------------------------------------ give-way (traffic rule)
     def traffic_offset(self, obs: LocalObservation, dt: float, r_trigger: float = 8.0,
-                       offset_max: float = 2.5, rate: float = 0.35) -> np.ndarray:
+                       offset_max: float = 2.5, rate: float = 0.35, active: bool = True) -> np.ndarray:
         """Head-on rule (as COLREG rule 14): a drone that sees a DYNAMIC echo closing in its FRONT sector
         shifts its mission target to its right; if a neighbour occupies the right side it shifts vertically
         instead (up when heading east-ish, down otherwise: opposite for two drones meeting head-on).
         Decided before the warning band, from sector patterns only; safety does not rely on it (P1 is
-        enforced by the warning filter and the escape), it avoids head-on standoffs."""
+        enforced by the warning filter and the escape), it avoids head-on standoffs.  Not ``active`` (the
+        drone is in FAILSAFE, holding): no give-way is decided and a running one is cancelled - a decision
+        latched while holding would displace the mission target after the drone resumes (DI-29)."""
         R = obs.R_wb
         if not self.cfg.traffic_rule:
             return self.offset
         front = [tg for tg in obs.targets if tg.cls == "DYNAMIC" and "FRONT" in tg.pattern
-                 and tg.r_min < r_trigger and tg.closing_rate >= 0.45 and not tg.possible_neighbour]
+                 and tg.r_min < r_trigger and tg.closing_rate >= 0.45 and not tg.possible_neighbour] if active else []
+        if not active:
+            self.giveway = ""
         if front:
             self.giveway_t = obs.t
             if not self.giveway:
@@ -101,7 +106,8 @@ class Flows:
         return self.offset
 
     # ------------------------------------------------------------------ formation (P3)
-    def formation(self, obs: LocalObservation, dt: float, recovering: bool = False) -> Tuple[np.ndarray, float]:
+    def formation(self, obs: LocalObservation, dt: float, recovering: bool = False,
+                  traffic: bool = True) -> Tuple[np.ndarray, float]:
         fr = self.cfg.form
         clock = self.plan.clock
         t = obs.t
@@ -109,17 +115,49 @@ class Flows:
         # sonar progress consensus: drift sigma towards the neighbours' actual along-track positions
         self.sigma += dt * (fr.k_progress * obs.form.along_corr - 0.02 * self.sigma)
         self.sigma = float(np.clip(self.sigma, -fr.progress_max, fr.progress_max))
-        _slot, R_form, _s = self._slot(obs)
+        _slot, R_form, s_ref = self._slot(obs)
         t_hat, n_hat = R_form[:, 0], R_form[:, 1]
-        self.traffic_offset(obs, dt)
+        self.traffic_offset(obs, dt, active=traffic)
         err = obs.slot_pos - obs.p             # slot_pos already includes the give-way offset
-        v = t_hat * v_clock + fr.k_slot * err
-        corr = fr.k_sonar * obs.form.lateral_corr * n_hat
-        if np.linalg.norm(corr) > fr.v_corr_max:
-            corr *= fr.v_corr_max / np.linalg.norm(corr)
-        v = v + corr
+        entry = self.rejoin_entry(obs, R_form, s_ref) if recovering else None
+        if not recovering:
+            self.rejoin_phase = ""
+        if entry is None:
+            v = t_hat * v_clock + fr.k_slot * err
+            corr = fr.k_sonar * obs.form.lateral_corr * n_hat
+            if np.linalg.norm(corr) > fr.v_corr_max:
+                corr *= fr.v_corr_max / np.linalg.norm(corr)
+            v = v + corr
+        elif self.rejoin_phase == "DROP_BACK":   # let the fleet pass: slow down (never reverse), no lateral motion
+            e = entry - obs.p
+            v_al = float(np.clip(v_clock + fr.k_slot * float(e @ t_hat), 0.0, max(v_clock, 0.0)))
+            v = v_al * t_hat + np.array([0.0, 0.0, fr.k_slot * float(e[2])])
+        else:                                    # TO_LANE: to the own lane behind the rear-most slot
+            v = t_hat * v_clock + fr.k_slot * (entry - obs.p)
         v = _cap(v, fr.v_recovery_max if recovering else fr.v_slot_max, 0.3)
         return v, math.atan2(t_hat[1], t_hat[0])
+
+    def rejoin_entry(self, obs: LocalObservation, R_form: np.ndarray, s_ref: float) -> Optional[np.ndarray]:
+        """Rejoin from behind (DI-29).  A recovering drone that is off its own lane does not head straight for
+        its slot, which could take it across the lanes of the drones in formation: it first falls behind the
+        formation (DROP_BACK: along-track correction only, no lateral motion, while it is level with the
+        fleet), then moves to its own lane at ``rejoin_back_m`` behind the rear-most slot (TO_LANE), and from
+        there advances along its own lane to the slot (direct slot tracking, ``rejoin_phase`` = "").
+        Only the shared plan and the own navigation are used."""
+        fr = self.cfg.form
+        me = self.plan.my_slot
+        t_hat, n_hat = R_form[:, 0], R_form[:, 1]
+        p_lane, _d, _n = self.plan.path.frame_at(s_ref + me.along)
+        lane_err = float((obs.p[:2] - p_lane[:2]) @ n_hat[:2]) - me.lateral
+        if abs(lane_err) <= fr.rejoin_lane_tol_m:
+            self.rejoin_phase = ""
+            return None
+        rear = min(sl.along for sl in self.plan.slots) - fr.rejoin_back_m
+        p_r, _d, n_r = self.plan.path.frame_at(s_ref + rear)
+        entry = np.array([p_r[0] + me.lateral * n_r[0], p_r[1] + me.lateral * n_r[1], self.plan.path.depth_z + me.dz])
+        behind = float((entry - obs.p) @ t_hat) >= -0.5          # at (or behind) the rear entry point
+        self.rejoin_phase = "TO_LANE" if behind else "DROP_BACK"
+        return entry
 
     def _slot(self, obs):
         clock = self.plan.clock
@@ -214,12 +252,19 @@ class Flows:
         return R @ ch.v_body
 
     # ------------------------------------------------------------------ failsafe
-    def failsafe(self, obs: LocalObservation) -> np.ndarray:
+    def failsafe(self, obs: LocalObservation, probe: bool = False, amp: float = 0.3, period: float = 8.0) -> np.ndarray:
+        """Hold the position at the own failsafe layer.  With ``probe`` (an envelope violation is declared) the
+        held depth oscillates by +-``amp`` (period ``period``, twice the monitor's window): the vehicle shows,
+        with its own DVL, that it moves when asked to before the violation is cleared
+        (controller.EnvelopeMonitor, DI-29)."""
         if self.hold_pos is None:
             self.hold_pos = obs.p.copy()
             self.hold_pos[2] = float(np.clip(obs.p[2] + self.plan.failsafe_layer_dz, self.cfg.env.z_min + 0.5,
                                              self.cfg.env.z_max - 0.5))
-        return _cap(0.5 * (self.hold_pos - obs.p), 0.25, 0.2)
+        target = self.hold_pos.copy()
+        if probe:
+            target[2] += amp * math.sin(2.0 * math.pi * obs.t / period)
+        return _cap(0.5 * (target - obs.p), 0.25, 0.2)
 
     def clear_failsafe(self) -> None:
         self.hold_pos = None

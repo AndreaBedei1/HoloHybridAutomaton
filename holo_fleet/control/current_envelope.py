@@ -175,7 +175,11 @@ class Persistence:
     """The envelope monitor's persistence rule: a leaky time accumulator of 'bad' steps.
 
     +dt on a bad step, -dt otherwise; the violation is declared when it reaches t_enter and cleared after
-    t_exit consecutive good steps.  Shared by the onboard monitor and by the run evaluation."""
+    t_exit good steps, which also empties the accumulator (otherwise, after a violation longer than
+    t_enter + t_exit, the clear would be undone at the next step).  While a violation is declared the onboard
+    monitor may mark a step ``hold="reset"`` (the vehicle does not deliver what it requests: the clear counter
+    restarts) or ``hold="pause"`` (nothing to verify: the counter neither grows nor restarts).  Shared by the
+    onboard monitor and by the run evaluation (which uses only the first declaration)."""
 
     def __init__(self, t_enter: float = 4.0, t_exit: float = 4.0):
         self.t_enter, self.t_exit = t_enter, t_exit
@@ -183,16 +187,19 @@ class Persistence:
         self.ok_time = 0.0
         self.ok = True
 
-    def update(self, bad: bool, dt: float) -> bool:
+    def update(self, bad: bool, dt: float, hold: Optional[str] = None) -> bool:
         if bad:
             self.bad_time += dt
             self.ok_time = 0.0
+        elif hold == "reset" and not self.ok:
+            self.ok_time = 0.0
+        elif hold == "pause" and not self.ok:
+            pass
         else:
             self.ok_time += dt
             self.bad_time = max(0.0, self.bad_time - dt)
-        # the same comparisons as the v2 EnvelopeMonitor (the logged runs replay identically)
         if self.ok and self.bad_time >= self.t_enter:
             self.ok = False
         elif not self.ok and self.ok_time >= self.t_exit:
-            self.ok = True
+            self.ok, self.bad_time = True, 0.0
         return self.ok

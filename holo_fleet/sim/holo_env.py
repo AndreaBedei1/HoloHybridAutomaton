@@ -285,6 +285,8 @@ class HoloFleetSim:
                 self.env.agents[name].teleport([float(v) for v in self.spec.spawn_positions[k]],
                                                [0.0, 0.0, float(self.spec.spawn_yaw_deg[k])])
                 self.env.act(name, np.zeros(8))
+            elif self.spec.fault_active(name, self.t):
+                self.env.act(name, np.zeros(8))          # injected thruster failure: commands are not executed
             else:
                 self.env.act(name, np.zeros(8) if cmd is None else np.asarray(cmd, dtype=float))
         for name in self.intruder_names:

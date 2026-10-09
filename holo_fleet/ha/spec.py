@@ -35,9 +35,16 @@ class Mode(str, Enum):
     MUTEX_PASS = "MUTEX_PASS"
     FORMATION_RECOVERY = "FORMATION_RECOVERY"
     FAILSAFE_HOLD_OR_RETREAT = "FAILSAFE_HOLD_OR_RETREAT"
+    # formation keeping with an incomplete formation (same flow and priority level as FORMATION_FOLLOW):
+    FORMATION_WAIT_REJOIN = "FORMATION_WAIT_REJOIN"    # own slot ok, an expected neighbour missing: keep the
+                                                       # slot, follow the shared clock, wait (bounded) for it
+    DEGRADED_FORMATION = "DEGRADED_FORMATION"          # a slot declared vacant after the timeout: keep the own
+                                                       # original slot, the vacant slot stays empty
 
 
 MODES: List[Mode] = list(Mode)
+# modes in which the drone holds its own slot of the formation (the missing-neighbour timers run only here)
+IN_FORMATION = (Mode.FORMATION_FOLLOW, Mode.FORMATION_WAIT_REJOIN, Mode.DEGRADED_FORMATION)
 
 # Abstract observation variables consumed by the guards.  Reals and Booleans are
 # declared separately so the Z3 encoding can create correctly-typed symbols.
@@ -50,7 +57,8 @@ BOOL_VARS = (
     "occ_busy",      # some other drone is perceived inside the occupied zone
     "has_prio",      # robust priority over every perceived queued drone
     "passed",        # own estimate is beyond the occupied zone of the current gate
-    "neighbors_ok",  # every expected neighbour perceived recently
+    "neighbors_ok",  # every expected neighbour not declared vacant perceived recently
+    "degraded",      # latched: some expected neighbour was missing for t_rejoin, its slot is declared vacant
     "committed",     # latched: this drone committed to the current gate
 )
 
@@ -135,11 +143,20 @@ class Predicates:
         return L.And(o.at_queue, L.Not(o.occ_busy), o.has_prio)
 
     # --- formation ---------------------------------------------------------
-    def lost(self, o, L):
-        return L.Or(o.form_err > self.cfg.form.e_lost, L.Not(o.neighbors_ok))
+    # A drone separates what it can fix from what it cannot: its OWN slot error (navigation + sonar
+    # residuals of the neighbours it sees) drives FORMATION_RECOVERY; a MISSING neighbour is not its own
+    # error and drives FORMATION_WAIT_REJOIN, then DEGRADED_FORMATION once the slot is declared vacant.
+    def self_lost(self, o, L):
+        return o.form_err > self.cfg.form.e_lost
 
-    def recovered(self, o, L):
-        return L.And(o.form_err < self.cfg.form.e_ok, o.t_ok >= self.cfg.form.t_ok_hold, o.neighbors_ok)
+    def self_recovered(self, o, L):
+        return L.And(o.form_err < self.cfg.form.e_ok, o.t_ok >= self.cfg.form.t_ok_hold)
+
+    def formation_target(self, o, L):
+        """Formation-keeping mode selected by the neighbour knowledge (own slot ok): {mode: condition}."""
+        return {Mode.FORMATION_WAIT_REJOIN: L.Not(o.neighbors_ok),
+                Mode.DEGRADED_FORMATION: L.And(o.neighbors_ok, o.degraded),
+                Mode.FORMATION_FOLLOW: L.And(o.neighbors_ok, L.Not(o.degraded))}
 
 
 def build_edges(cfg: FleetConfig = DEFAULT) -> Dict[Mode, List[Edge]]:
@@ -195,28 +212,41 @@ def build_edges(cfg: FleetConfig = DEFAULT) -> Dict[Mode, List[Edge]]:
             Mode.MUTEX_APPROACH,
             decision=(None if src == Mode.MUTEX_APPROACH else "APPROACH"),
         ))
-        # 4c. no gate in view: formation follow / recovery
-        if src == Mode.FORMATION_FOLLOW:
+        # 4c. no gate in view: formation keeping.  From a formation-keeping mode the own slot error
+        #     decides first (lost -> RECOVERY), then the neighbour knowledge (missing -> WAIT_REJOIN,
+        #     vacant slot -> DEGRADED, else FOLLOW); from any other mode the drone first recovers its
+        #     own slot (RECOVERY until self_recovered), then joins the mode selected the same way.
+        def base(o, L, c=calm):
+            return L.And(c(o, L), L.Not(o.committed), L.Not(o.mutex_zone))
+
+        if src in IN_FORMATION:
             out.append(Edge(
                 "formation_lost",
-                lambda o, L, c=calm: L.And(c(o, L), L.Not(o.committed), L.Not(o.mutex_zone), P.lost(o, L)),
+                lambda o, L, b=base: L.And(b(o, L), P.self_lost(o, L)),
                 Mode.FORMATION_RECOVERY, decision="FORMATION_LOST",
             ))
-            out.append(Edge(
-                "follow",
-                lambda o, L, c=calm: L.And(c(o, L), L.Not(o.committed), L.Not(o.mutex_zone), L.Not(P.lost(o, L))),
-                Mode.FORMATION_FOLLOW,
-            ))
+            for tgt, name, label in ((Mode.FORMATION_WAIT_REJOIN, "neighbour_missing", "NEIGHBOUR_MISSING"),
+                                     (Mode.DEGRADED_FORMATION, "slot_vacant", "SLOT_VACANT"),
+                                     (Mode.FORMATION_FOLLOW, "follow",
+                                      {Mode.FORMATION_WAIT_REJOIN: "NEIGHBOUR_REJOINED",
+                                       Mode.DEGRADED_FORMATION: "FORMATION_RESTORED"}.get(src))):
+                out.append(Edge(
+                    name,
+                    lambda o, L, b=base, k=tgt: L.And(b(o, L), L.Not(P.self_lost(o, L)), P.formation_target(o, L)[k]),
+                    tgt, decision=(None if tgt == src else label),
+                ))
         else:
-            out.append(Edge(
-                "formation_recovered",
-                lambda o, L, c=calm: L.And(c(o, L), L.Not(o.committed), L.Not(o.mutex_zone), P.recovered(o, L)),
-                Mode.FORMATION_FOLLOW,
-                decision=("FORMATION_RECOVERED" if src == Mode.FORMATION_RECOVERY else "RESUME_FOLLOW"),
-            ))
+            for tgt, name, resume in ((Mode.FORMATION_FOLLOW, "formation_recovered", "RESUME_FOLLOW"),
+                                      (Mode.FORMATION_WAIT_REJOIN, "recovered_wait_rejoin", "RESUME_WAIT_REJOIN"),
+                                      (Mode.DEGRADED_FORMATION, "recovered_degraded", "RESUME_DEGRADED")):
+                out.append(Edge(
+                    name,
+                    lambda o, L, b=base, k=tgt: L.And(b(o, L), P.self_recovered(o, L), P.formation_target(o, L)[k]),
+                    tgt, decision=("FORMATION_RECOVERED" if src == Mode.FORMATION_RECOVERY else resume),
+                ))
             out.append(Edge(
                 "recover",
-                lambda o, L, c=calm: L.And(c(o, L), L.Not(o.committed), L.Not(o.mutex_zone), L.Not(P.recovered(o, L))),
+                lambda o, L, b=base: L.And(b(o, L), L.Not(P.self_recovered(o, L))),
                 Mode.FORMATION_RECOVERY,
             ))
         edges[src] = out
@@ -226,7 +256,9 @@ def build_edges(cfg: FleetConfig = DEFAULT) -> Dict[Mode, List[Edge]]:
 EDGES = build_edges()
 
 # Priority hierarchy (documentation + checked in formal/check_determinism.py):
-# collision avoidance > critical-region mutual exclusion > formation recovery > mission following.
+# FAILSAFE > COLLISION_AVOIDANCE > SEPARATION_WARNING > MUTEX (pass, yield, approach) > FORMATION_RECOVERY
+# > formation keeping (FORMATION_WAIT_REJOIN, DEGRADED_FORMATION, FORMATION_FOLLOW: one level, the same flow;
+# the three modes differ only in what the drone knows about its neighbours).
 PRIORITY_ORDER = [
     Mode.FAILSAFE_HOLD_OR_RETREAT,
     Mode.COLLISION_AVOIDANCE,
@@ -235,5 +267,7 @@ PRIORITY_ORDER = [
     Mode.MUTEX_YIELD,
     Mode.MUTEX_APPROACH,
     Mode.FORMATION_RECOVERY,
+    Mode.FORMATION_WAIT_REJOIN,
+    Mode.DEGRADED_FORMATION,
     Mode.FORMATION_FOLLOW,
 ]

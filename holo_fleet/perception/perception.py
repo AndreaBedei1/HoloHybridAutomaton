@@ -2,6 +2,19 @@
 
 Only data a real vehicle has is used: its own sensors and the mission plan (survey line, formation
 template, gate map).  No simulator state, no neighbour identity, no communication.
+
+Missing neighbours (lost-drone handling, DI-29).  Every expected neighbour that should be visible and
+is not seen is MISSING; its timer runs only while the drone itself holds its slot (FORMATION_FOLLOW,
+FORMATION_WAIT_REJOIN, DEGRADED_FORMATION: a drone that is itself lost or avoiding cannot judge the
+others) and while the shared clock moves (planned holds such as the rendezvous beyond a gate are not
+absences).  After ``t_rejoin`` of missing time the slot is declared VACANT (a latch: ``degraded``); a
+vacant slot is no longer required, so the drone continues in DEGRADED_FORMATION on its own original
+slot.  A neighbour becomes MISSING when it is not seen for NEIGHBOUR_MEMORY_S and counts as back only
+when CONFIRMED near its slot (at least ``CONFIRM_N`` associations within the last ``CONFIRM_WINDOW_S``,
+each with a range residual within half the range gate): an echo of another neighbour that happens to fit
+the missing one's (wide) range gate does not reset the timer.  A
+vacant slot is re-included after its drone has been confirmed there for ``t_reinclude``.  At launch the
+formation is complete by plan (every neighbour counts as seen at the first update).
 """
 
 from __future__ import annotations
@@ -15,7 +28,11 @@ import numpy as np
 from holo_fleet.config import DEFAULT, FleetConfig
 from holo_fleet.ha.automaton import AbstractObservation
 from holo_fleet.mission import MissionPlan
-from holo_fleet.perception.formation_perception import FormationObs, check_formation
+from holo_fleet.perception.formation_perception import NEIGHBOUR_MEMORY_S, FormationObs, check_formation
+
+CONFIRM_N = 3              # associations ...
+CONFIRM_WINDOW_S = 1.0     # ... within this window confirm that a missing neighbour is back,
+CONFIRM_GATE = 0.5         # ... each within this fraction of the range gate (near its slot)
 from holo_fleet.perception.frame import SensorFrame
 from holo_fleet.perception.gate_perception import GateObs, GatePerception
 from holo_fleet.perception.nav import DeadReckoning
@@ -93,6 +110,12 @@ class Perception:
         self.gp = GatePerception(plan, cfg)
         self.ok_since: Optional[float] = None
         self.neighbour_seen: Dict[int, float] = {}     # slot -> last time it was matched by sonar
+        self.sightings: Dict[int, List[float]] = {}     # slot -> association times within CONFIRM_WINDOW_S
+        self.confirmed_since: Dict[int, float] = {}     # slot -> start of the current confirmed presence
+        self.missing_state: Dict[int, bool] = {}        # slot -> MISSING (hysteresis, see the module docstring)
+        self.missing_t: Dict[int, float] = {}          # slot -> missing time (own slot held, clock moving)
+        self.vacant: Dict[int, float] = {}             # slot -> time it was declared vacant (latch)
+        self.events: List[Dict] = []                   # vacancy / re-inclusion events (drained by the controller)
 
     # ------------------------------------------------------------------ formation reference
     def slot_reference(self, t: float, sigma: float = 0.0):
@@ -107,9 +130,46 @@ class Perception:
         R_form = np.array([[d0[0], n0[0], 0.0], [d0[1], n0[1], 0.0], [0.0, 0.0, 1.0]])
         return slot, R_form, s_ref
 
+    # ------------------------------------------------------------------ missing neighbours
+    def track_missing(self, t: float, dt: float, form: FormationObs, in_formation: bool) -> None:
+        """Missing state (hysteresis), missing timers and the vacancy latch (see the module docstring)."""
+        fr = self.cfg.form
+        clock = self.plan.clock
+        moving = clock is None or clock.moving(t)
+        for chk in form.checks:
+            k = chk.slot
+            sight = [x for x in self.sightings.get(k, []) if t - x <= CONFIRM_WINDOW_S]
+            if chk.seen and abs(chk.residual) <= CONFIRM_GATE * fr.range_gate_m:
+                sight.append(t)                            # near its slot: counts toward the confirmation
+            self.sightings[k] = sight
+            if len(sight) >= CONFIRM_N:
+                self.confirmed_since.setdefault(k, t)
+            else:
+                self.confirmed_since.pop(k, None)
+            confirmed = k in self.confirmed_since
+            if k in form.missing:
+                self.missing_state[k] = True               # not seen for NEIGHBOUR_MEMORY_S
+            elif self.missing_state.get(k) and confirmed:
+                self.missing_state[k] = False              # back, confirmed
+            if not self.missing_state.get(k):
+                self.missing_t[k] = 0.0
+            if k in self.vacant:
+                if confirmed and t - self.confirmed_since[k] >= fr.t_reinclude - 1e-9:
+                    del self.vacant[k]
+                    self.missing_state[k], self.missing_t[k] = False, 0.0
+                    self.events.append({"t": t, "type": "SLOT_REOCCUPIED", "slot": k})
+            elif self.missing_state.get(k) and k in form.required and in_formation and moving:
+                self.missing_t[k] = self.missing_t.get(k, 0.0) + dt
+                if self.missing_t[k] >= fr.t_rejoin - 1e-9:
+                    self.vacant[k] = t
+                    self.events.append({"t": t, "type": "SLOT_DECLARED_VACANT", "slot": k,
+                                        "missing_s": round(self.missing_t[k], 1)})
+        form.missing = [k for k in form.required if self.missing_state.get(k)]
+        form.neighbors_ok = not [k for k in form.missing if k not in self.vacant]
+
     # ------------------------------------------------------------------ main update
     def update(self, frame: SensorFrame, dt: float, sigma: float = 0.0, env_ok: bool = True,
-               offset: Optional[np.ndarray] = None) -> LocalObservation:
+               offset: Optional[np.ndarray] = None, in_formation: bool = True) -> LocalObservation:
         t = frame.t
         d = frame.data
         env = self.cfg.env
@@ -136,10 +196,15 @@ class Perception:
         if offset is not None:
             slot = slot + offset                  # intentional give-way deviation is not a formation error
         healthy = {s: readings[s].healthy for s in SECTORS}
+        if not self.missing_state:                 # first update: the formation is complete by plan (launch)
+            for k in range(len(self.plan.slots)):
+                if k != self.plan.slot_index:
+                    self.neighbour_seen[k], self.missing_state[k] = t, False
         form = check_formation(self.plan, self.cfg, slot - nav.p, R_form, R_wb, targets, healthy, t, self.neighbour_seen,
-                               readings)
+                               readings, vacant=self.vacant)
+        self.track_missing(t, dt, form, in_formation)
         fr = self.cfg.form
-        if form.form_err < fr.e_ok and form.neighbors_ok:
+        if form.form_err < fr.e_ok:
             self.ok_since = t if self.ok_since is None else self.ok_since
         else:
             self.ok_since = None
@@ -148,7 +213,7 @@ class Perception:
             d_min=float(d_min), form_err=float(form.form_err), t_ok=float(t_ok), sense_ok=bool(sense_ok),
             env_ok=bool(env_ok), mutex_zone=bool(gate.in_zone), at_queue=bool(gate.at_queue),
             occ_busy=bool(gate.occ_busy), has_prio=bool(gate.has_prio), passed=bool(gate.passed),
-            neighbors_ok=bool(form.neighbors_ok))
+            neighbors_ok=bool(form.neighbors_ok), degraded=bool(self.vacant))
         return LocalObservation(t=t, p=nav.p.copy(), yaw=nav.yaw, R_wb=R_wb, v_world=nav.v_world.copy(),
                                 readings=readings, targets=targets, d_min=float(d_min), sense_ok=bool(sense_ok),
                                 sonar_ages=ages, altitude=altitude, seabed_z=seabed_z, gate=gate, form=form,

@@ -1,6 +1,7 @@
-"""P3 - formation recovery (liveness):  G( formation_lost -> F formation_recovered ).
+"""P3 - formation recovery (liveness):  G( formation_lost -> F formation_recovered ),
+and its degraded variant P3-deg for a drone that never comes back (DI-29).
 
-No time bound is claimed.  Eventual recovery is proved by RANKING FUNCTIONS on an abstraction of the
+No time bound is claimed for P3.  Eventual recovery is proved by RANKING FUNCTIONS on an abstraction of the
 deployed formation law (holo_fleet.control.flows.Flows.formation), under explicit fairness and
 environment assumptions; every lemma is a one-step, universally quantified Z3 query, hence valid for
 unbounded time.
@@ -18,9 +19,16 @@ integrator has converged is |w| <= w_res.
 F1  far band (saturated): |e| decreases by >= eps_far per step whenever |e| >= e1  (ranking R1);
 F2  near band (linear):   |e| decreases by >= eps_near per step whenever e* <= |e| <= e1 (ranking R2);
 F3  the ball |e| <= e* is invariant (once recovered, the slot error stays recovered);
-F4  automaton: in FORMATION_RECOVERY, calm, no gate, the guard `recovered` enables exactly the edge to
-    FORMATION_FOLLOW; in FORMATION_FOLLOW `lost` enables exactly the edge to FORMATION_RECOVERY
-    (the same spec functions as the runtime);
+F4  automaton (the same spec functions as the runtime): in FORMATION_RECOVERY, calm, no gate, the own
+    slot recovered enables exactly one edge, to the formation-keeping mode selected by the neighbour
+    knowledge (FOLLOW, WAIT_REJOIN or DEGRADED); in every formation-keeping mode the own slot lost enables
+    exactly the edge to FORMATION_RECOVERY, a missing neighbour (own slot ok) the edge to WAIT_REJOIN;
+F6  bounded waiting (P3-deg): the missing timer of a neighbour that never reappears is a ranking function
+    (t_rejoin - tau decreases by dt in every step in which the drone holds its slot and the shared clock
+    moves); a BMC over ceil(t_rejoin / dt) + 1 such steps shows that the slot is declared vacant, neighbors_ok
+    holds again and the edge out of FORMATION_WAIT_REJOIN is enabled: no drone waits forever.  Fm4: without
+    the timeout (the v2 baseline: a missing neighbour kept the drone in FORMATION_RECOVERY) the same run
+    waits for ever (counterexample);
 F5  current envelope (DI-27): for every head current admitted by the control-feasible envelope evaluated
     at the recovery speed V, the deliverable along-track speed is >= V, so the saturated band of F1 keeps
     its margin; the same parameters as the runtime (plant curve, AUTHORITY, v_clock, V);
@@ -37,6 +45,14 @@ the velocities the formation law commands - up to V along-track during a recover
 against it: that is the envelope evaluated at V (head current <= about 0.21 m/s at V = 0.5 m/s).  At the
 survey speed alone (<= about 0.41 m/s) the slot can be held but the catch-up of F1 is not guaranteed (Fm3).
 
+P3-deg (degraded formation).  If a drone never comes back (permanent fault), P3 cannot hold for the whole
+fleet.  What is guaranteed instead: (i) every drone that expected it leaves FORMATION_WAIT_REJOIN after at
+most t_rejoin of formation time (F6), declaring the slot vacant (DEGRADED_FORMATION); (ii) a vacant slot is
+not required, so the remaining drones' guards depend only on their own slot errors and on the neighbours
+they see, and F1-F3 apply to each of them unchanged: the degraded formation (remaining drones on their
+original slots, the vacant slot empty) is recovered after every perturbation under A1-A4.  No
+reconfiguration closes the hole.
+
 Fairness / environment assumptions (eventual recovery holds under them, and only under them):
   A1  every perturbation ends: currents return inside the control-feasible envelope (evaluated at the
       recovery speed, F5), encounters (SEPARATION_WARNING / COLLISION_AVOIDANCE) and gate passages are
@@ -44,7 +60,9 @@ Fairness / environment assumptions (eventual recovery holds under them, and only
   A2  after a perturbation the residual disturbance is |w| <= w_res (the integrator has converged; it can
       only converge while the commanded velocity is control-feasible, A1);
   A3  the sensors stay healthy (no FAILSAFE) and the expected neighbours become visible
-      (neighbors_ok), so the onboard estimate form_err follows the slot errors;
+      (neighbors_ok), so the onboard estimate form_err follows the slot errors; for P3 (nominal) also:
+      every lost drone can move again (no permanent fault) - otherwise only P3-deg is claimed;
+  A5  planned holds of the shared clock are finite (the missing timers are frozen during them, F6).
   A4  slot errors inside the ball give form_err < e_ok (sonar residual = own + neighbour slot error +
       range/hull ambiguity): checked on the logs, not proved.
 """
@@ -62,7 +80,7 @@ from fractions import Fraction
 
 from holo_fleet.config import DEFAULT, FleetConfig
 from holo_fleet.control.current_envelope import AUTH_NOMINAL
-from holo_fleet.ha.spec import Mode, Predicates, build_edges
+from holo_fleet.ha.spec import IN_FORMATION, Mode, Predicates, build_edges
 
 ENC = "formal/check_formation.py (abstraction of Flows.formation) + holo_fleet/ha/spec.py"
 DT = 0.1
@@ -155,6 +173,63 @@ def best_eps(step, p, lo, hi):
     return a
 
 
+def waiting_bmc(cfg: FleetConfig, timeout: bool = True):
+    """A drone in FORMATION_WAIT_REJOIN whose missing neighbour never reappears (perception.track_missing).
+
+    Per step: the neighbour is not seen; the timer tau runs while the drone holds its slot and the shared
+    clock moves (``run_k``, free: frozen steps are allowed but, by A5 and the guards, every waiting step that
+    counts toward the bound is a running one); the slot is declared vacant when tau >= t_rejoin (latch);
+    neighbors_ok = vacant (the only expected neighbour is the missing one, worst case).  The automaton stays
+    in WAIT_REJOIN exactly while the edge 'neighbour_missing' is the enabled one (spec guard, own slot ok,
+    calm, no gate).  Property: after N running steps (N = ceil(t_rejoin / dt)) the drone is no longer waiting."""
+    fr = cfg.form
+    n = int(math.ceil(fr.t_rejoin / DT - 1e-9))
+    edges = build_edges(cfg)
+    P = Predicates(cfg)
+    tau = [z3.Real(f"tau_{k}") for k in range(n + 2)]
+    vac = [z3.Bool(f"vacant_{k}") for k in range(n + 2)]
+    cons = [tau[0] == 0, z3.Not(vac[0])]
+    waiting = []
+    for k in range(n + 1):
+        nxt = tau[k] + DT
+        if timeout:
+            cons += [tau[k + 1] == z3.If(vac[k], tau[k], nxt),
+                     vac[k + 1] == z3.Or(vac[k], tau[k + 1] >= z3.RealVal(str(Fraction(repr(fr.t_rejoin)))) - z3.RealVal("1/1000000000"))]
+        else:
+            cons += [tau[k + 1] == nxt, vac[k + 1] == vac[k]]       # mutation: no timeout, never vacant
+        o = Obs(f"_w{k}")
+        legal = o.legal(cfg)
+        calm = P.calm(o, Z3L, Mode.FORMATION_WAIT_REJOIN)
+        # own slot ok, no gate, calm; the only expected neighbour is the missing one
+        cons += [legal, calm, z3.Not(o.mutex_zone), z3.Not(o.committed), z3.Not(P.self_lost(o, Z3L)),
+                 o.neighbors_ok == vac[k + 1], o.degraded == vac[k + 1]]
+        g = [e.guard(o, Z3L) for e in edges[Mode.FORMATION_WAIT_REJOIN] if e.target == Mode.FORMATION_WAIT_REJOIN]
+        waiting.append(z3.Or(*g))
+    return cons, waiting, n
+
+
+def waiting_checks(cfg: FleetConfig) -> list:
+    out = []
+    cons, waiting, n = waiting_bmc(cfg)
+    out.append(check(f"F6 bounded waiting: a neighbour that never reappears is declared vacant within t_rejoin = "
+                     f"{cfg.form.t_rejoin:.1f} s ({n} running steps), and the drone leaves FORMATION_WAIT_REJOIN",
+                     "ranking t_rejoin - tau: after N running steps the WAIT_REJOIN self-loop is disabled", ENC,
+                     cons + [waiting[-1]],
+                     note="perception.track_missing (timer, latch) + spec guards; frozen steps (planned holds, drone "
+                          "not on its slot) do not count, A5"))
+    # ranking function, one step: while waiting and not yet vacant, t_rejoin - tau decreases by dt and stays >= 0
+    tau, tau1 = z3.Reals("tau tau1")
+    T = z3.RealVal(str(Fraction(repr(cfg.form.t_rejoin))))
+    out.append(check("F6r ranking: t_rejoin - tau >= 0 and decreases by dt per running step until the slot is vacant",
+                     "0 <= tau < t_rejoin & tau' = tau + dt -> (t_rejoin - tau') = (t_rejoin - tau) - dt", ENC,
+                     [tau >= 0, tau < T, tau1 == tau + DT, z3.Not(T - tau1 == T - tau - DT)]))
+    cons, waiting, n = waiting_bmc(cfg, timeout=False)
+    out.append(check("Fm4 mutation: no timeout (v2 baseline) -> the drone may wait for ever (still waiting after N steps)",
+                     "expect counterexample", ENC, cons + [waiting[-1]], expect="sat",
+                     note="the v2 automaton kept a drone with a missing neighbour in FORMATION_RECOVERY indefinitely"))
+    return out
+
+
 def run(cfg: FleetConfig = DEFAULT, verbose: bool = True) -> Report:
     rep = Report("formation")
     p = model(cfg)
@@ -187,18 +262,30 @@ def run(cfg: FleetConfig = DEFAULT, verbose: bool = True) -> Report:
     o = Obs()
     gs = [(e, e.guard(o, Z3L)) for e in edges[Mode.FORMATION_RECOVERY]]
     calm = P.calm(o, Z3L, Mode.FORMATION_RECOVERY)
-    rep.add(check("F4a RECOVERY & calm & no gate & recovered -> only the edge to FORMATION_FOLLOW",
-                  "guard(e) & target(e) != FOLLOW is unsatisfiable", ENC,
-                  [o.legal(cfg), calm, z3.Not(o.mutex_zone), z3.Not(o.committed), P.recovered(o, Z3L),
-                   z3.Or(*[g for e, g in gs if e.target != Mode.FORMATION_FOLLOW])]), verbose)
-    rep.add(check("F4b ... and that edge is enabled", "recovered -> guard(formation_recovered)", ENC,
-                  [o.legal(cfg), calm, z3.Not(o.mutex_zone), z3.Not(o.committed), P.recovered(o, Z3L),
-                   z3.Not(z3.Or(*[g for e, g in gs if e.target == Mode.FORMATION_FOLLOW]))]), verbose)
-    gs = [(e, e.guard(o, Z3L)) for e in edges[Mode.FORMATION_FOLLOW]]
-    calm_f = P.calm(o, Z3L, Mode.FORMATION_FOLLOW)
-    rep.add(check("F4c FOLLOW & calm & no gate & lost -> FORMATION_RECOVERY", "lost -> target = RECOVERY", ENC,
-                  [o.legal(cfg), calm_f, z3.Not(o.mutex_zone), z3.Not(o.committed), P.lost(o, Z3L),
-                   z3.Or(*[g for e, g in gs if e.target != Mode.FORMATION_RECOVERY])]), verbose)
+    base = [o.legal(cfg), calm, z3.Not(o.mutex_zone), z3.Not(o.committed), P.self_recovered(o, Z3L)]
+    target = P.formation_target(o, Z3L)
+    wrong = [z3.And(cond, z3.Or(*[g for e, g in gs if e.target != tgt])) for tgt, cond in target.items()]
+    rep.add(check("F4a RECOVERY & calm & no gate & own slot recovered -> only the edge to the selected formation mode",
+                  "guard(e) & target(e) != FOLLOW / WAIT_REJOIN / DEGRADED (by neighbors_ok, degraded) is unsatisfiable",
+                  ENC, base + [z3.Or(*wrong)]), verbose)
+    missing = [z3.And(cond, z3.Not(z3.Or(*[g for e, g in gs if e.target == tgt]))) for tgt, cond in target.items()]
+    rep.add(check("F4b ... and that edge is enabled", "self_recovered -> guard(edge to the selected mode)", ENC,
+                  base + [z3.Or(*missing)]), verbose)
+    for src in IN_FORMATION:
+        gs = [(e, e.guard(o, Z3L)) for e in edges[src]]
+        calm_f = P.calm(o, Z3L, src)
+        common = [o.legal(cfg), calm_f, z3.Not(o.mutex_zone), z3.Not(o.committed)]
+        rep.add(check(f"F4c {src.value} & calm & no gate & own slot lost -> FORMATION_RECOVERY",
+                      "self_lost -> target = RECOVERY", ENC,
+                      common + [P.self_lost(o, Z3L), z3.Or(*[g for e, g in gs if e.target != Mode.FORMATION_RECOVERY])]),
+                verbose)
+        rep.add(check(f"F4d {src.value} & own slot ok & neighbour missing -> FORMATION_WAIT_REJOIN",
+                      "!self_lost & !neighbors_ok -> target = WAIT_REJOIN", ENC,
+                      common + [z3.Not(P.self_lost(o, Z3L)), z3.Not(o.neighbors_ok),
+                                z3.Or(*[g for e, g in gs if e.target != Mode.FORMATION_WAIT_REJOIN])]), verbose)
+    # ---------------------------------------------------------------- F6 bounded waiting (P3-deg)
+    for r in waiting_checks(cfg):
+        rep.add(r, verbose)
     # ---------------------------------------------------------------- current envelope (raw current -> authority)
     for r in head_envelope_checks(cfg, p):
         rep.add(r, verbose)

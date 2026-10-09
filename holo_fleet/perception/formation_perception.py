@@ -6,8 +6,9 @@ sonar range, the drone knows in which sectors it should appear and at which cent
 Echoes are associated by sector and range (no bearing is assumed inside a cone) and the range
 residual ``dr = d_measured - d_expected`` is projected on the template direction of that
 neighbour: its along-track part feeds the progress correction, its lateral part the lateral
-spacing correction (control/flows.py).  Neighbours expected in range but not seen make the
-formation "not consistent" for the automaton guards.
+spacing correction (control/flows.py).  Neighbours expected in range but not seen are MISSING; the
+perception (perception.py) times them and declares a slot vacant after ``t_rejoin``: a vacant slot is
+no longer required (DEGRADED_FORMATION) until its drone is seen there again.
 """
 
 from __future__ import annotations
@@ -47,6 +48,8 @@ class FormationObs:
     lateral_corr: float = 0.0
     form_err: float = 0.0             # onboard formation-error estimate used by the guards [m]
     neighbors_ok: bool = True
+    missing: List[int] = field(default_factory=list)      # required (expected nearby, observable), not seen recently
+    required: List[int] = field(default_factory=list)     # expected nearby and observable (healthy sectors, unmasked)
 
 
 def expected_relative(plan: MissionPlan, R_formation: np.ndarray) -> Dict[int, np.ndarray]:
@@ -91,7 +94,7 @@ def masked_by_structure(expected_d: float, exp_pat, u_body: np.ndarray, readings
 
 def check_formation(plan: MissionPlan, cfg: FleetConfig, slot_err: np.ndarray, R_formation: np.ndarray,
                     R_world_body: np.ndarray, targets, healthy: Dict[str, bool], t: float = 0.0,
-                    last_seen: Dict[int, float] = None, readings=None) -> FormationObs:
+                    last_seen: Dict[int, float] = None, readings=None, vacant=()) -> FormationObs:
     """Expected neighbours vs sonar echoes, one-to-one per (target, sector).
 
     Association is done per sector of a target, not per target: two neighbours at similar ranges
@@ -100,7 +103,10 @@ def check_formation(plan: MissionPlan, cfg: FleetConfig, slot_err: np.ndarray, R
     them.  A neighbour counts as present if it was matched within ``NEIGHBOUR_MEMORY_S``; only
     neighbours expected within ``fr.neighbour_range_m`` are required (weak returns near the
     maximum range are intermittent), and not those whose echo would fall inside a mapped structure's
-    window (a range-only sensor classifies it STRUCTURE: unobservable, not missing)."""
+    window (a range-only sensor classifies it STRUCTURE: unobservable, not missing).  Neighbours whose echoes
+    cannot be separated (same expected sectors and range) are confirmed as a group.  Slots in ``vacant``
+    (declared vacant by the perception after t_rejoin) are still associated when an echo fits them, but
+    they are not required."""
     fr = cfg.form
     o = FormationObs(slot_err=slot_err, slot_err_norm=float(np.linalg.norm(slot_err)))
     t_hat, n_hat = R_formation[:, 0], R_formation[:, 1]
@@ -142,17 +148,31 @@ def check_formation(plan: MissionPlan, cfg: FleetConfig, slot_err: np.ndarray, R
         chk.along_w, chk.lateral_w = float(g @ t_hat), float(g @ n_hat)
         errs.append(abs(chk.residual))
         last_seen[chk.slot] = t
-    all_ok = True
+    # neighbours a range-only sonar cannot separate (same expected sector pattern, expected distances within the
+    # range gate: e.g. a stacked pair seen from the side, one echo for both) are observable only as a group: an
+    # association of one member confirms the group (DI-29)
+    for i, (chk, d_world, dist, _u, exp_pat) in enumerate(expected):
+        if chk.seen:
+            continue
+        for k, (chk2, _dw2, dist2, _u2, exp_pat2) in enumerate(expected):
+            if k != i and chk2.seen and set(exp_pat2) == set(exp_pat) and abs(dist2 - dist) < fr.range_gate_m:
+                g = d_world / dist
+                chk.measured_d, chk.residual, chk.seen = chk2.measured_d, chk2.measured_d - dist, True
+                chk.along_w, chk.lateral_w = float(g @ t_hat), float(g @ n_hat)
+                last_seen[chk.slot] = t
+                break
     for i, (chk, _dw, dist, u_b, exp_pat) in enumerate(expected):
         required = (dist <= fr.neighbour_range_m and all(healthy.get(x, False) for x in exp_pat)
                     and not masked_by_structure(dist, exp_pat, u_b, readings, cfg))
+        if required:
+            o.required.append(chk.slot)
         if required and t - last_seen.get(chk.slot, -1e9) > NEIGHBOUR_MEMORY_S:
-            all_ok = False                             # expected nearby, healthy sectors, not seen recently
+            o.missing.append(chk.slot)                 # expected nearby, healthy sectors, not seen recently
         o.checks.append(chk)
     seen = [c for c in o.checks if c.seen]
     if seen:
         o.along_corr = float(np.mean([c.residual * c.along_w for c in seen]))
         o.lateral_corr = float(np.mean([c.residual * c.lateral_w for c in seen]))
     o.form_err = float(max(errs))
-    o.neighbors_ok = all_ok
+    o.neighbors_ok = not [k for k in o.missing if k not in vacant]
     return o

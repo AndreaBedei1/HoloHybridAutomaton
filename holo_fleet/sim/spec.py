@@ -38,6 +38,13 @@ class SimSpec:
     # scripted vehicles that are NOT part of the fleet (no controller, no reaction): each dict has
     # name, start [x,y,z], velocity [vx,vy,vz], yaw_deg, t_start.  Seen by the sonars like any hull.
     intruders: Tuple[Dict[str, Any], ...] = ()
+    # injected faults (simulator side, never visible to a controller): each dict has drone, type
+    # ("THRUSTER_FAILURE": the 8 thruster commands of that drone are zeroed), t_on and t_off (None: permanent)
+    faults: Tuple[Dict[str, Any], ...] = ()
+
+    def fault_active(self, name: str, t: float) -> bool:
+        return any(f["drone"] == name and f["t_on"] <= t and (f.get("t_off") is None or t < f["t_off"])
+                   for f in self.faults)
 
     def __post_init__(self) -> None:
         if self.release_s is None:

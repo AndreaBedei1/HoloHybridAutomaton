@@ -8,6 +8,11 @@ never returns anything to a controller.  It judges, on agent-origin (hull-centre
 * P3  G(formation_lost -> F formation_recovered) - episodes of formation loss with their recovery
   times.  A finite run cannot falsify a liveness property: an episode still open at the end of a
   run is reported as "not recovered within the run", never as a counterexample.
+* P3-deg (DI-29)  a drone farther than e_lost from its slot (robust fit of the others) for t_rejoin of
+  mission time (the shared clock moving) is ABSENT (ground truth: it is not coming back on its own);
+  the formation of the PRESENT drones on their original slots is then judged with the same episode
+  logic: the degraded formation is stable when every such episode is recovered.  A drone back within
+  e_ok of its slot is present again.
 """
 
 from __future__ import annotations
@@ -45,7 +50,7 @@ class Episode:
 
 class Referee:
     def __init__(self, names: Sequence[str], template_offsets: Optional[np.ndarray], path, gates: Sequence[GateSpec],
-                 cfg: FleetConfig = DEFAULT, formation_enabled: bool = True):
+                 cfg: FleetConfig = DEFAULT, formation_enabled: bool = True, clock=None):
         self.cfg = cfg
         self.names = list(names)
         self.n = len(self.names)
@@ -75,6 +80,16 @@ class Referee:
         self.intruder_min_d = 1e9                  # fleet drone <-> scripted non-fleet vehicle
         self.intruder_min_t: Optional[float] = None
         self.intruder_contacts: List[Dict] = []
+        # P3-deg: absent drones and the formation of the present ones
+        self.clock = clock
+        self.t_rejoin = cfg.form.t_rejoin
+        self._off_time = np.zeros(self.n)
+        self.absent: Dict[int, float] = {}
+        self.absence_log: List[Dict] = []
+        self.episodes_present: List[Episode] = []
+        self._lost_p = False
+        self._ok_since_p: Optional[float] = None
+        self._t_prev: Optional[float] = None
 
     # ------------------------------------------------------------------ formation error
     def formation_error(self, P: np.ndarray) -> float:
@@ -88,6 +103,68 @@ class Referee:
         rel_f = np.stack([rel[:, :2] @ tan, rel[:, :2] @ nrm, rel[:, 2]], axis=1)
         tm = self.tmpl - self.tmpl.mean(axis=0)
         return float(np.max(np.linalg.norm(rel_f - tm, axis=1)))
+
+    def deviations(self, P: np.ndarray, idx: Sequence[int]) -> np.ndarray:
+        """Deviation of EVERY drone from its template slot after the translation fitted on the drones ``idx``
+        (median: robust to one drone far away), in the formation frame."""
+        c = P[list(idx)].mean(axis=0)
+        s_c, _lat, _k = self.path.project(c[:2])
+        _p, tan, nrm = self.path.frame_at(s_c)
+        X = np.stack([P[:, :2] @ tan, P[:, :2] @ nrm, P[:, 2]], axis=1)
+        D = X - self.tmpl
+        return np.linalg.norm(D - np.median(D[list(idx)], axis=0), axis=1)
+
+    def present_error(self, P: np.ndarray, idx: Sequence[int]) -> float:
+        """Formation error (as formation_error) of the drones ``idx`` on their original slots."""
+        idx = list(idx)
+        c = P[idx].mean(axis=0)
+        s_c, _lat, _k = self.path.project(c[:2])
+        _p, tan, nrm = self.path.frame_at(s_c)
+        rel = P[idx] - c
+        rel_f = np.stack([rel[:, :2] @ tan, rel[:, :2] @ nrm, rel[:, 2]], axis=1)
+        tm = self.tmpl[idx] - self.tmpl[idx].mean(axis=0)
+        return float(np.max(np.linalg.norm(rel_f - tm, axis=1)))
+
+    def _update_absence(self, t: float, P: np.ndarray, row: Dict) -> None:
+        rc = self.cfg.ref
+        dt = 0.0 if self._t_prev is None else t - self._t_prev
+        self._t_prev = t
+        moving = self.clock is None or self.clock.moving(t)
+        present = [k for k in range(self.n) if k not in self.absent]
+        dev = self.deviations(P, present)
+        for k in range(self.n):
+            if k in self.absent:
+                if dev[k] < rc.e_ok:
+                    self.absence_log.append({"drone": self.names[k], "event": "back", "t": round(t, 2)})
+                    del self.absent[k]
+                    self._off_time[k] = 0.0
+                continue
+            if dev[k] > rc.e_lost:
+                self._off_time[k] += dt if moving else 0.0
+            else:
+                self._off_time[k] = 0.0
+            if self._off_time[k] >= self.t_rejoin - 1e-9 and len(self.absent) < self.n - 2:
+                self.absent[k] = t
+                self.absence_log.append({"drone": self.names[k], "event": "absent", "t": round(t, 2),
+                                         "deviation_m": round(float(dev[k]), 2)})
+        present = [k for k in range(self.n) if k not in self.absent]
+        e_p = self.present_error(P, present)
+        row["form_err_present"] = round(e_p, 4)
+        row["absent"] = "+".join(str(k) for k in sorted(self.absent))
+        if not self._lost_p and e_p > rc.e_lost:
+            self._lost_p = True
+            self.episodes_present.append(Episode(t_lost=t))
+            self._ok_since_p = None
+        elif self._lost_p:
+            if e_p < rc.e_ok:
+                self._ok_since_p = t if self._ok_since_p is None else self._ok_since_p
+                if t - self._ok_since_p >= rc.t_ok_hold:
+                    ep = self.episodes_present[-1]
+                    ep.t_recovered = self._ok_since_p
+                    ep.modes_at_loss = "absent: " + ",".join(self.names[k] for k in sorted(self.absent))
+                    self._lost_p = False
+            else:
+                self._ok_since_p = None
 
     def cr_inside(self, g: GateSpec, p: np.ndarray) -> bool:
         G = self.cfg.gate
@@ -154,6 +231,8 @@ class Referee:
                         self._lost = False
                 else:
                     self._ok_since = None
+            if self.n >= 3:
+                self._update_absence(t, P, row)
         drift = np.asarray(truth.current_drift, float)
         self.max_drift = max(self.max_drift, float(np.max(np.linalg.norm(drift[:, :2], axis=1))))
         self.max_vertical_drift = max(self.max_vertical_drift, float(np.max(np.abs(drift[:, 2]))))
@@ -173,9 +252,27 @@ class Referee:
                 "p2_ok": not self.p2_violations, "form_err": last.get("form_err"),
                 "formation": ("LOST" if self._lost and self._ok_since is None else
                               "RECOVERING" if self._lost else "OK") if self.formation_enabled else None,
-                "episodes": len(self.episodes)}
+                "episodes": len(self.episodes), "absent": sorted(self.names[k] for k in self.absent),
+                "form_err_present": last.get("form_err_present"),
+                "formation_present": None if not self.formation_enabled else (
+                    "LOST" if self._lost_p and self._ok_since_p is None else "RECOVERING" if self._lost_p else "OK")}
 
     # ------------------------------------------------------------------ verdicts
+    def _degraded_metrics(self) -> Dict:
+        ever = [e for e in self.absence_log if e["event"] == "absent"]
+        eps = [{"t_lost": round(e.t_lost, 2), "t_recovered": None if e.t_recovered is None else round(e.t_recovered, 2),
+                "recovery_time_s": None if e.recovery_time is None else round(e.recovery_time, 2)}
+               for e in self.episodes_present]
+        exercised = bool(ever)
+        return {"formula": "G(neighbour_missing -> F(rejoined or slot_vacant)); remaining drones: "
+                           "G(lost -> F recovered) on their original slots",
+                "enabled": self.formation_enabled and self.n >= 3, "t_rejoin": round(self.t_rejoin, 1),
+                "exercised": exercised, "absence_log": self.absence_log,
+                "absent_at_end": sorted(self.names[k] for k in self.absent),
+                "episodes_present": eps, "open_at_end": int(self._lost_p),
+                "holds": (not self._lost_p) if exercised else None,
+                "final_form_err_present": self.rows[-1].get("form_err_present") if self.rows else None}
+
     def metrics(self) -> Dict:
         sep = self.cfg.sep
         dmin = min(self.min_d.values()) if self.min_d else None
@@ -210,6 +307,7 @@ class Referee:
                                       "open_at_end": int(self._lost),
                                       "all_recovered_within_run": not self._lost,
                                       "final_form_err": self.rows[-1].get("form_err") if self.rows else None},
+            "P3_degraded": self._degraded_metrics(),
             # raw current statistics; the envelope verdict (control-feasibility of the requested velocities,
             # DI-27) needs the controllers' logs and is added by referee/envelope.evaluate_run at the end of a run
             "envelope": {"max_horizontal_drift": round(self.max_drift, 3),

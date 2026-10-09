@@ -26,6 +26,7 @@ class AbstractObservation:
     has_prio: bool = False
     passed: bool = False
     neighbors_ok: bool = True
+    degraded: bool = False
     committed: bool = False
 
     def as_dict(self) -> Dict:
