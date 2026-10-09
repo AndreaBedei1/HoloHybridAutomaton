@@ -7,9 +7,21 @@ M1  Pairwise rule on the bearing model (Z3, linear arithmetic over angles): two 
     headings differ by |delta| <= 2 heading_tol, with every cone boundary uncertain by +-fuzz
     (hull angular size, octree leaf): never both PRIORITY.  The bound |delta| + 2 fuzz <= 30 deg is
     tight: M1m (fuzz too large) and M1m2 (a rule that ignores LEFT) must give counterexamples.
-M2  Abreast queue, n = 2..6 (Z3): with every drone within queue_tol of its queue point and within
-    heading_tol of the gate axis, exactly one queued drone - the leftmost - has PRIORITY; every
-    other one sees its left neighbour in pure LEFT (WAIT) inside the queue bracket.
+M2  Progress / no deadlock of the abreast queue, n = 2..6 (Z3): with every drone within queue_tol of
+    its queue point and within heading_tol of the gate axis, for EVERY set of occupied queue points
+    with at most one vacant point between two occupied ones (degraded formations, drones already
+    passed), exactly one queued drone - the leftmost occupied - has PRIORITY (no deadlock: some drone
+    may go; no double priority); every other one sees a left neighbour in pure LEFT (WAIT) inside the
+    queue bracket.  M2s (scope): two adjacent vacant points put the two remaining drones out of each
+    other's bracket - both PRIORITY (expected SAT): outside the scope, the occupancy latch (M3) is then
+    the only protection.
+M2v Stacked queue (numeric, 3-D cones): the 2 x 2 queue of a template with two depth layers (columns
+    stack_column_spacing apart, layers stack_spacing apart), every pair perturbed over a grid of the
+    position (+-queue_tol per axis) and heading (+-heading_tol) tolerances, every cone boundary within
+    +-fuzz free: every pair has ONE possible relation, and for every occupancy exactly the first in the
+    order left-top, left-bottom, right-top, right-bottom has PRIORITY; the static rank is never needed.
+    M2m (mutation, the v2 rule): vertical-only patterns resolved by the static rank with unknown ranks
+    - no drone has PRIORITY in the stacked queue: a deadlock (expected).
 M3  Occupancy latch (Z3, bounded model checking of a timed abstraction, 30 s): drone A commits and
     crosses the CR at a speed in [v_lo, v_pass] without stopping; drone B, next in the order, sees A
     (in FRONT, ranges -> along-axis thresholds computed from the geometry, M4) with a two-capture
@@ -23,12 +35,24 @@ M4  Geometry of the queue (numeric, n = 2..6, exact config values): (a) the CR l
     outside the warning band; (d) every queued drone sees a crossing drone unmasked in its
     corridor for at least the confirmation time; (e) the masking interval ends inside the
     corridor or beyond it (no permanent masking).  M4m: a queue line at 70 deg must fail (a).
-M5  Liveness of the queue (argument + spec): the leftmost queued drone has PRIORITY (M2); the
-    belief returns FREE after the previous drone is seen beyond the CR (or after t_occ_max,
-    logged); the commit edge is then enabled (formal/check_determinism.py, G1/D2).  Under the
-    fairness assumption "a committed drone completes its passage", every queued drone eventually
-    commits.  The static rank is used only for vertically stacked neighbours (RANK), counted in
-    every run.
+M4f The queue neighbours a decision needs are never hidden by the gate frame (an echo inside the structure
+    window predicted from the gate map is classified STRUCTURE and its relation is lost), with the measured
+    holding error: in an abreast queue the adjacent pairs (n = 2..6), in a stacked queue every pair - its
+    queue line (mission.queue_line) is moved back until this holds.  The pair around ONE vacant point of
+    an abreast queue is hidden for n = 3 at this gate: that occupancy (the middle drone missing) is
+    outside the scope of M2 (listed in the note); moving the line back would put the exits beyond the range
+    at which the outer drones detect a hull (probe runs: occupancy-latch timeouts).  M4fm: the stacked
+    queue at the cone-only line hides its diagonal neighbours (seen in a probe run).
+M5  Progress of the queue (argument + spec): for every occupancy in scope some queued drone has
+    PRIORITY - the first in the order left first, then top first (M2, M2v); the belief returns FREE
+    after the previous drone is seen beyond the CR (or after t_occ_max, logged); the commit edge is
+    then enabled (formal/check_determinism.py, G1/D2).  A WAIT caused by a drone that is not at its
+    queue point (approaching, passing) ends when that drone reaches its queue point or moves beyond the
+    CR.  Under the fairness assumptions "a committed drone completes its passage" and "every drone in
+    the approach zone reaches its queue point or leaves the zone", every queued drone eventually
+    commits.  The static rank (the plan's queue order) is only the last tie-break for an ambiguous
+    pattern (UP and DOWN at once), counted in every run.  Not covered: a drone that stops for good
+    inside the approach zone (a permanent fault there) blocks the drones on its right.
 
 Scope: one critical region at a time, n <= 6 drones in the abreast queue (n = 6 needs the queue
 line 9.1 m back).  Not proved: the sonar sees a crossing drone in its corridor (sensing
@@ -37,6 +61,7 @@ assumption, measured), a committed drone does not stop inside the CR for t_occ_m
 
 from __future__ import annotations
 
+import dataclasses
 import math
 import sys
 
@@ -45,14 +70,19 @@ import z3
 
 from common import CheckResult, Report, check  # noqa: E402
 
+import itertools
+
 from holo_fleet.config import DEFAULT, FleetConfig
+from holo_fleet.control.flows import pass_path_points
 from holo_fleet.ha import mutex_rule
-from holo_fleet.perception.sonar_geometry import MOUNTS, R_IN, R_OUT, centre_distance_lower
+from holo_fleet.mission import (Slot, abreast_slots, queue_assignment, queue_line, queue_order,
+                                structure_masked_pairs)
+from holo_fleet.perception.sonar_geometry import AXES, MOUNTS, R_IN, R_OUT, centre_distance_lower
 
 ENC = "holo_fleet/ha/mutex_rule.py (shared relation) + formal/check_mutex.py"
 AXIS = {"F": 0.0, "L": 90.0, "B": 180.0, "R": -90.0}
 HALF = 60.0
-HOLD_ERR = 0.10       # measured position-holding error of a queued drone (results/v2/ASSUMPTIONS.md)
+HOLD_ERR = DEFAULT.gate.hold_err_m   # measured position-holding error of a queued drone (results/v2/ASSUMPTIONS.md)
 V_LO = 0.12           # a committed drone crosses the masked part of the CR within t_occ_max (2.7 m / 25 s)
 
 
@@ -98,9 +128,148 @@ def _wait_only_front(F, B, L, R, U, D, Lg):
             mutex_rule.RANK: Lg.And(Lg.Not(Lg.Or(F, B, L, R)), Lg.Or(U, D)), "NONE": Lg.Not(Lg.Or(F, B, L, R, U, D))}
 
 
+# ---------------------------------------------------------------------------------------------- M2 subsets
+def occupancies(n: int, max_gap: int = 2):
+    """Non-empty sets of occupied queue points (indices, left first) with consecutive indices at most
+    ``max_gap`` apart, i.e. at most max_gap - 1 vacant points between two occupied ones."""
+    for r in range(1, n + 1):
+        for S in itertools.combinations(range(n), r):
+            if all(b - a <= max_gap for a, b in zip(S, S[1:])):
+                yield S
+
+
+def abreast_relations(G, n: int, fuzz: float):
+    """Z3 constraints + the relation of every ordered pair (None: outside the queue bracket)."""
+    lats = G.queue_laterals(n)
+    cons, rel = [], {}
+    for i in range(n):
+        for j in range(n):
+            if i == j:
+                continue
+            gap = abs(lats[i] - lats[j])
+            dev = math.degrees(math.atan2(2 * G.queue_tol, gap - 2 * G.queue_tol)) + G.heading_tol_deg
+            beta = z3.Real(f"b_{n}_{i}_{j}")
+            nominal = -90.0 if lats[j] < lats[i] else 90.0      # j on my right / left
+            cons += [beta >= nominal - dev, beta <= nominal + dev]
+            fl, c = _membership(beta, fuzz, f"q{n}_{i}_{j}_")
+            cons += c
+            echo = gap + 2 * G.queue_tol - 0.30 - 0.29          # farthest echo of that neighbour
+            rel[(i, j)] = (mutex_rule.relation(fl["F"], fl["B"], fl["L"], fl["R"], z3.BoolVal(False),
+                                               z3.BoolVal(False), _Z) if echo <= G.queue_bracket_m else None)
+    return cons, rel
+
+
+def leader_violation(rel, S):
+    """Not exactly the leftmost occupied point has PRIORITY (no WAIT relation inside the bracket)."""
+    prio = {i: z3.And(*[z3.Not(rel[(i, j)][mutex_rule.WAIT]) for j in S if j != i and rel[(i, j)] is not None])
+            for i in S}
+    first = min(S)
+    return z3.Not(z3.And(prio[first], *[z3.Not(prio[k]) for k in S if k != first]))
+
+
+# ---------------------------------------------------------------------------------------------- M2v stacked queue
+STACK_2X2 = (Slot(0.0, 1.75, 1.75), Slot(0.0, 1.75, -1.75), Slot(0.0, -1.75, 1.75), Slot(0.0, -1.75, -1.75))
+STACK_PAIR = (Slot(0.0, 1.75, 1.75), Slot(0.0, 1.75, -1.75), Slot(0.0, -1.75, 0.0))     # formations "stack_pair"
+
+
+def _cone_flags(rel: np.ndarray, yaw_deg: float, fuzz: float):
+    """Sector flags of a target in direction ``rel`` (gate frame) seen by a level drone with heading error
+    yaw_deg: "in" (certain), "out" (certain) or "?" (within +-fuzz of the 60 deg boundary)."""
+    c, sn = math.cos(math.radians(yaw_deg)), math.sin(math.radians(yaw_deg))
+    Rz = np.array([[c, -sn, 0.0], [sn, c, 0.0], [0.0, 0.0, 1.0]])
+    u = Rz.T @ (rel / np.linalg.norm(rel))
+    out = {}
+    for k, a in AXES.items():
+        ang = math.degrees(math.acos(float(np.clip(a @ u, -1.0, 1.0))))
+        out[k] = "in" if ang <= HALF - fuzz else ("out" if ang >= HALF + fuzz else "?")
+    return out
+
+
+def possible_relations(G, p_i, p_j, fuzz: float, relation=mutex_rule.relation, grid: int = 5):
+    """Every relation drone i can assign to drone j over the tolerance grid and the free cone boundaries."""
+    names = ("FRONT", "REAR", "LEFT", "RIGHT", "UP", "DOWN")
+    rels = set()
+    g = np.linspace(-2 * G.queue_tol, 2 * G.queue_tol, grid)
+    nominal = np.asarray(p_j, float) - np.asarray(p_i, float)
+    for d in itertools.product(g, g, g):
+        for yaw in (-G.heading_tol_deg, 0.0, G.heading_tol_deg):
+            fl = _cone_flags(nominal + np.array(d), yaw, fuzz)
+            unc = [k for k, v in fl.items() if v == "?"]
+            base = {k for k, v in fl.items() if v == "in"}
+            for bits in itertools.product((False, True), repeat=len(unc)):
+                pat = base | {k for k, b in zip(unc, bits) if b}
+                r = relation(*[k in pat for k in names], mutex_rule.PY_RULE_LOGIC)
+                rels.add(next(k for k in (mutex_rule.WAIT, mutex_rule.PRIORITY, mutex_rule.RANK, "NONE") if r[k]))
+    return rels
+
+
+def _old_relation(F, B, L, R, U, D, Lg):
+    """The v2 rule (mutation): any vertical-only pattern is RANK."""
+    horiz = Lg.Or(F, B, L, R)
+    wait = Lg.Or(F, L)
+    return {mutex_rule.WAIT: wait, mutex_rule.PRIORITY: Lg.And(Lg.Not(wait), Lg.Or(B, R)),
+            mutex_rule.RANK: Lg.And(Lg.Not(horiz), Lg.Or(U, D)), "NONE": Lg.And(Lg.Not(horiz), Lg.Not(U), Lg.Not(D))}
+
+
+def stacked_queue(cfg: FleetConfig, fuzz: float, relation=mutex_rule.relation, old_decide: bool = False,
+                  slots=STACK_2X2) -> dict:
+    """M2v / M2m: possible relations of every pair of a stacked queue and the leaders of every occupancy."""
+    G = cfg.gate
+    qa = queue_assignment(slots, G)
+    order = queue_order(slots, G)
+    q_s = queue_line(slots, G, cfg.perc)
+    n = len(slots)
+    pts = [np.array([q_s, l, dz]) for l, dz in qa]
+    rels = {(i, j): possible_relations(G, pts[i], pts[j], fuzz, relation) for i in range(n) for j in range(n) if i != j}
+    far = max(float(np.linalg.norm(pts[i] - pts[j])) + 2 * math.sqrt(3) * G.queue_tol for i in range(n) for j in range(n))
+    out = {"queue_points": [[round(float(x), 2) for x in p] for p in pts], "order": order,
+           "ambiguous_pairs": sorted(f"{i}->{j}" for (i, j), r in rels.items() if len(r) > 1),
+           "rank_possible": any(mutex_rule.RANK in r for r in rels.values()), "farthest_pair_m": round(far, 2),
+           "occupancies": []}
+    ok = not out["ambiguous_pairs"] and far <= G.queue_bracket_m + 0.6
+    for r in range(1, n + 1):
+        for S in itertools.combinations(range(n), r):
+            leaders = []
+            for i in S:
+                rel_i = [next(iter(rels[(i, j)])) for j in S if j != i]
+                if old_decide:     # v2: RANK resolved against unknown ranks (their_ranks = [-1] * count)
+                    d = mutex_rule.decide(rel_i, order[i], their_ranks=[-1] * sum(x == mutex_rule.RANK for x in rel_i))
+                else:
+                    d = mutex_rule.decide(rel_i, order[i], their_ranks=[order[j] for j in S if j != i])
+                if d == mutex_rule.PRIORITY:
+                    leaders.append(i)
+            first = min(S, key=lambda k: order[k])
+            out["occupancies"].append({"occupied": list(S), "leaders": leaders})
+            ok &= leaders == [first]
+    out["ok"] = bool(ok)
+    out["deadlocks"] = sum(1 for o in out["occupancies"] if not o["leaders"])
+    # M4s geometry of the stacked queue: CR inside the FRONT cone of every queue point (3-D angle), and the
+    # pass path of every drone keeps merge_clearance from the queue points of the drones after it in the order
+    worst = 0.0
+    for p in pts:
+        son = p + np.array([float(MOUNTS["FRONT"][0]), 0.0, 0.0])
+        for a, b, c in itertools.product((-1, 1), repeat=3):
+            v = np.array([a * G.cr_half_len, b * G.cr_half_width, c * G.cr_half_height]) - son
+            worst = max(worst, math.degrees(math.acos(v[0] / np.linalg.norm(v))))
+    out["cr_bearing_max_deg"] = round(worst + G.heading_tol_deg, 2)
+    clear = 99.0
+    for i in range(n):
+        path = pass_path_points(G, q_s, qa[i][0], qa[i][1])
+        later = [pts[j] for j in range(n) if order[j] > order[i]]
+        for a, b in zip(path[:-1], path[1:]):
+            for t in np.linspace(0.0, 1.0, 201):
+                x = a + t * (b - a)
+                for q in later:
+                    clear = min(clear, float(np.linalg.norm(x - q)))
+    out["merge_clearance_min"] = round(clear, 3)
+    return out
+
+
 # ---------------------------------------------------------------------------------------------- M4 geometry
-def queue_points(G, n):
-    return G.queue_s(n), G.queue_laterals(n)
+def queue_points(G, n, perc=DEFAULT.perc):
+    """Deployed abreast queue of n drones: the queue line of the shared plan (mission.queue_line: the bounds
+    of GateRule.queue_s, moved back until no in-scope neighbour is hidden by the gate frame, M4f)."""
+    return queue_line(abreast_slots(n), G, perc), G.queue_laterals(n)
 
 
 def geometry(cfg: FleetConfig, n: int, queue_line=None) -> dict:
@@ -247,34 +416,57 @@ def run(cfg: FleetConfig = DEFAULT, verbose: bool = True) -> Report:
     rep.add(check("M1m2 mutation: yield only to FRONT (LEFT ignored) must allow double PRIORITY",
                   "expect counterexample", ENC,
                   cons + [priority(fi, _wait_only_front), priority(fj, _wait_only_front)], expect="sat"), verbose)
-    # M2 abreast queue
+    # M2 progress / no deadlock of the abreast queue, every occupancy in scope
     for n in range(2, 7):
-        q_s, lats = queue_points(G, n)
-        cons, prios = [], []
+        q_s, _lats = queue_points(G, n, cfg.perc)
+        cons, rel = abreast_relations(G, n, fuzz)
+        sets = list(occupancies(n))
         dev_adj = math.degrees(math.atan2(2 * G.queue_tol, G.queue_spacing - 2 * G.queue_tol)) + G.heading_tol_deg
-        for i in range(n):
-            flags_seen = []
-            for j in range(n):
-                if i == j:
-                    continue
-                gap = abs(lats[i] - lats[j])
-                dev = math.degrees(math.atan2(2 * G.queue_tol, gap - 2 * G.queue_tol)) + G.heading_tol_deg
-                beta = z3.Real(f"b_{n}_{i}_{j}")
-                nominal = -90.0 if lats[j] < lats[i] else 90.0      # j on my right / left
-                cons += [beta >= nominal - dev, beta <= nominal + dev]
-                fl, c = _membership(beta, fuzz, f"q{n}_{i}_{j}_")
-                cons += c
-                echo = gap + 2 * G.queue_tol - 0.30 - 0.29          # farthest echo of that neighbour
-                if echo <= G.queue_bracket_m:
-                    flags_seen.append(mutex_rule.relation(fl["F"], fl["B"], fl["L"], fl["R"], z3.BoolVal(False),
-                                                         z3.BoolVal(False), _Z))
-            pr = z3.And(*[z3.Not(r[mutex_rule.WAIT]) for r in flags_seen]) if flags_seen else z3.BoolVal(True)
-            prios.append(pr)
-        exactly_leftmost = z3.And(prios[0], *[z3.Not(p) for p in prios[1:]])
-        rep.add(check(f"M2 abreast queue n={n}: exactly the leftmost queued drone has PRIORITY",
-                      "queue_tol, heading_tol -> PRIORITY_0 and not PRIORITY_k (k > 0)", ENC,
-                      cons + [z3.Not(exactly_leftmost)], note=f"queue line s = {q_s:.2f} m, adjacent bearing deviation <= {dev_adj:.1f} deg"),
-                verbose)
+        rep.add(check(f"M2 queue n={n}: for every occupancy with <= 1 vacant point between neighbours ({len(sets)} sets), "
+                      f"exactly the leftmost occupied drone has PRIORITY",
+                      "queue_tol, heading_tol -> PRIORITY_first(S) and not PRIORITY_k (k in S, k > first)", ENC,
+                      cons + [z3.Or(*[leader_violation(rel, S) for S in sets])],
+                      note=f"queue line s = {q_s:.2f} m, adjacent bearing deviation <= {dev_adj:.1f} deg; "
+                           f"no deadlock (a leader exists) and no double priority"), verbose)
+    cons, rel = abreast_relations(G, 4, fuzz)
+    rep.add(check("M2s scope: two adjacent vacant queue points (n=4, occupied {0, 3}) -> both PRIORITY",
+                  "expect SAT: outside the scope of M2, the occupancy latch (M3) is the only protection", ENC,
+                  cons + [leader_violation(rel, (0, 3))], expect="sat",
+                  note="gap 10.5 m > queue bracket 7.5 m: the two drones do not count each other"), verbose)
+    # M2v stacked queue (numeric, 3-D cones) and the v2 rule as a mutation (deadlock)
+    sp = stacked_queue(cfg, fuzz, slots=STACK_PAIR)
+    st = stacked_queue(cfg, fuzz)
+    st["ok"] = st["ok"] and sp["ok"]
+    rep.add(CheckResult("M2v stacked queues (2 x 2, and the 3-drone stack_pair of the demo): one relation per pair over "
+                        "the tolerances, exactly the first in the order left first, then top first has PRIORITY for every "
+                        "occupancy (15 + 7)",
+                        "grid of +-queue_tol, +-heading_tol, +-fuzz -> unique relation; leader = first(S); no RANK",
+                        "holo_fleet/ha/mutex_rule.py + mission.queue_assignment (numeric)", "holds",
+                        verdict="holds" if st["ok"] else "violated", passed=st["ok"],
+                        note=f"queue points {st['queue_points']}, ambiguous pairs {st['ambiguous_pairs'] or 'none'}, "
+                             f"static rank possible: {st['rank_possible']}, farthest pair {st['farthest_pair_m']} m"), verbose)
+    ok_s = all(x["cr_bearing_max_deg"] + 5.0 <= 60.0 and x["merge_clearance_min"] >= G.merge_clearance - 1e-6
+               for x in (st, sp))
+    rep.add(CheckResult("M4s stacked queue geometry: CR inside every FRONT cone; each pass path keeps merge_clearance "
+                        "from the queue points of the drones after it", "3-D bearing + heading_tol + fuzz <= 60 deg; "
+                        "min distance >= merge_clearance", "config.GateRule.queue_s + control/flows.pass_path_points",
+                        "holds", verdict="holds" if ok_s else "violated", passed=ok_s,
+                        note=f"{st['cr_bearing_max_deg']} deg; clearance {st['merge_clearance_min']} m "
+                             f">= {G.merge_clearance} m"), verbose)
+    old = stacked_queue(cfg, fuzz, relation=_old_relation, old_decide=True)
+    old_p = stacked_queue(cfg, fuzz, relation=_old_relation, old_decide=True, slots=STACK_PAIR)
+    old["deadlocks"] = old["deadlocks"] if old_p["deadlocks"] else 0
+    rep.add(CheckResult("M2m mutation: the v2 rule (vertical-only pattern -> RANK, ranks unknown) deadlocks the stacked "
+                        "queue (no drone has PRIORITY)", "expect violation", "mutex_rule (v2)", "violated",
+                        verdict="violated" if old["deadlocks"] else "holds", passed=old["deadlocks"] > 0,
+                        note=f"{old['deadlocks']} of 15 occupancies without a leader, e.g. "
+                             f"{next((o['occupied'] for o in old['occupancies'] if not o['leaders']), None)}"), verbose)
+    st_close = stacked_queue(dataclasses.replace(cfg, gate=dataclasses.replace(G, stack_column_spacing=G.queue_spacing)), fuzz)
+    rep.add(CheckResult("M2vm mutation: stacked columns only queue_spacing (3.5 m) apart -> a diagonal pair is ambiguous",
+                        "expect violation", "config.GateRule.stack_column_spacing", "violated",
+                        verdict="violated" if not st_close["ok"] else "holds", passed=not st_close["ok"],
+                        note=f"ambiguous pairs {st_close['ambiguous_pairs']}: left-bottom / right-top seen in UP/DOWN only "
+                             f"at the tolerance limits"), verbose)
     # M4 geometry (numeric) for n = 2..6
     geos = {n: geometry(cfg, n) for n in range(2, 7)}
     ok_a = all(g["cr_bearing_max_deg"] + 5.0 <= 60.0 for g in geos.values())
@@ -305,6 +497,40 @@ def run(cfg: FleetConfig = DEFAULT, verbose: bool = True) -> Report:
                         "corridor_from < mask_from and visible_again <= cr_half_len + 2 m", "perception", "holds",
                         verdict="holds" if ok_e else "violated", passed=ok_e,
                         note=f"masked span <= {span:.2f} m along the axis"), verbose)
+    # M4f no queue neighbour a decision needs is hidden by the gate frame (structure window of the classifier)
+    rows, ok_f, scope = [], True, []
+    for n in range(2, 7):
+        q_s, lats = queue_points(G, n, cfg.perc)
+        pts = [(l, 0.0) for l in lats]
+        adj = {(i, j) for i in range(n) for j in range(n) if abs(i - j) == 1}
+        gap = {(i, j) for i in range(n) for j in range(n) if abs(i - j) == 2}
+        ok_f &= not structure_masked_pairs(pts, q_s, G, cfg.perc, pairs=adj)
+        hidden = sorted({tuple(sorted(x[:2])) for x in structure_masked_pairs(pts, q_s, G, cfg.perc, pairs=gap)})
+        if hidden:
+            scope.append(f"n={n}: pair(s) {hidden} around a vacant point")
+        rows.append(f"n={n}: s={q_s:.2f}")
+    for nm, slots in (("stack 2x2", STACK_2X2), ("stack_pair", STACK_PAIR)):
+        q_x = queue_line(slots, G, cfg.perc)
+        m = structure_masked_pairs(queue_assignment(slots, G), q_x, G, cfg.perc)
+        ok_f &= not m
+        rows.append(f"{nm}: s={q_x:.2f}")
+    rep.add(CheckResult("M4f queue neighbours a decision needs are never hidden in the gate's structure window "
+                        "(abreast: adjacent pairs, n = 2..6; stacked: every pair; +-hold_err)",
+                        "echo of the neighbour outside [window - tol, window + tol_far] of every sector that sees it",
+                        "mission.queue_line + perception/sonar_processing.py (structure window)",
+                        "holds", verdict="holds" if ok_f else "violated", passed=ok_f,
+                        note="; ".join(rows) + (". Scope of M2 (hidden, excluded): " + "; ".join(scope) if scope else "")),
+            verbose)
+    rep.scope_hidden = scope
+    qa_st = queue_assignment(STACK_2X2, G)
+    lats_st = tuple(sorted({l for l, _dz in qa_st}, reverse=True))
+    q_an = G.queue_s(2, max(abs(dz) for _l, dz in qa_st), lats=lats_st)
+    m = structure_masked_pairs(qa_st, q_an, G, cfg.perc)
+    rep.add(CheckResult("M4fm mutation: the stacked queue at the cone-only line (no structure clearance) hides the "
+                        "diagonal neighbours", "expect violation", "mission.queue_line", "violated",
+                        verdict="violated" if m else "holds", passed=bool(m),
+                        note=f"s = {q_an:.2f}: {len(m)} masked views, e.g. {m[:1]} (seen in a probe run: diagonal "
+                             f"neighbour classified STRUCTURE, the vertical relation decided alone)"), verbose)
     bad = geometry(cfg, 4, queue_line=-4.0)
     rep.add(CheckResult("M4m mutation: n=4 queue line at s = -4 m must violate M4a", "expect violation",
                         "config.GateRule", "violated",
@@ -312,7 +538,7 @@ def run(cfg: FleetConfig = DEFAULT, verbose: bool = True) -> Report:
                         passed=bad["cr_bearing_max_deg"] + 5.0 > 60.0,
                         note=f"{bad['cr_bearing_max_deg']} deg + fuzz > 60"), verbose)
     # M3 timed latch model: every queue point as the observer B
-    for n in (3, 4):
+    for n in (2, 3, 4):
         for view in geos[n]["views"]:
             if view["queue_l"] < -1e-6 and any(abs(v["queue_l"] + view["queue_l"]) < 1e-6 for v in geos[n]["views"]):
                 continue                                              # mirror image of a view already checked
@@ -321,11 +547,12 @@ def run(cfg: FleetConfig = DEFAULT, verbose: bool = True) -> Report:
                           "latch + persistence + exit + t_clear + t_occ_max -> not(A in CR and B in CR)", ENC, cons,
                           note=f"masked s in {info['mask_s']}, beyond s > {info['beyond_s']}, B needs >= {info['reach_steps']} "
                                f"steps to the CR, A crosses at >= {V_LO} m/s"), verbose)
-    worst = max(geos[3]["views"], key=lambda v: min(0.8, v["visible_again_s"] or 0.8) - (v["mask_from_s"] or 0.8))
-    cons, _ = latch_bmc(cfg, geos[3], latch=False, view=worst)
+    # the queue closest to the gate (n = 2): the shortest way to the CR, where the masked interval matters most
+    worst = max(geos[2]["views"], key=lambda v: v["queue_l"])
+    cons, _ = latch_bmc(cfg, geos[2], latch=False, view=worst)
     rep.add(check("M3m mutation: belief without latch (FREE when nothing is seen) must violate P2",
                   "expect counterexample", ENC, cons, expect="sat",
-                  note=f"observer at l={worst['queue_l']:+.2f}"), verbose)
+                  note=f"n=2, observer at l={worst['queue_l']:+.2f}"), verbose)
     rep.geometry = geos
     return rep
 

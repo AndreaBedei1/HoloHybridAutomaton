@@ -32,7 +32,7 @@ import numpy as np
 from holo_fleet.arena_bridge import HORSESHOE_TRACK, load_arena_gates
 from holo_fleet.config import DEFAULT, FleetConfig
 from holo_fleet.formations import TEMPLATES, FormationTemplate
-from holo_fleet.mission import FormationClock, GateSpec, MissionPlan, Path, Slot
+from holo_fleet.mission import FormationClock, GateSpec, MissionPlan, Path, Slot, queue_assignment, queue_line, queue_order
 from holo_fleet.sim.currents import CurrentComponent, CurrentField
 from holo_fleet.sim.spec import SimSpec, StressSpec
 
@@ -63,31 +63,22 @@ class Scenario:
         return any(a <= t <= b for a, b in self.disturbance_windows)
 
 
-def _queue_laterals(template: FormationTemplate, cfg: FleetConfig) -> List[float]:
-    """Abreast queue points assigned in the slots' lateral order (left first): geometry, not IDs."""
-    order = sorted(range(template.n), key=lambda k: (-template.slots[k].lateral, -template.slots[k].along))
-    lats = cfg.gate.queue_laterals(template.n)
-    out = [0.0] * template.n
-    for r, k in enumerate(order):
-        out[k] = lats[r]
-    return out
-
-
 def _fleet(name: str, template: FormationTemplate, path: Path, clock: FormationClock, gates: Sequence[GateSpec],
            structures: Sequence[GateSpec], cfg: FleetConfig, s_start: float = 0.0, formation: bool = True):
     plans, spawns, yaws = [], [], []
-    qlat = _queue_laterals(template, cfg)
-    q_s = cfg.gate.queue_s(template.n)
+    qa = queue_assignment(template.slots, cfg.gate)
+    q_s = queue_line(template.slots, cfg.gate)
+    rank = queue_order(template.slots, cfg.gate)
     for k, sl in enumerate(template.slots):
         p, d, n = path.frame_at(s_start + sl.along)
         pos = np.array([p[0] + sl.lateral * n[0], p[1] + sl.lateral * n[1], path.depth_z + sl.dz])
         yaw = math.degrees(math.atan2(d[1], d[0]))
         plans.append(MissionPlan(drone_id=f"drone_{k}", slot_index=k, slots=list(template.slots), path=path,
                                  gates=list(gates), structures=list(structures), launch_position=pos,
-                                 launch_yaw_deg=yaw, static_rank=k, s_end=clock.s_end,
+                                 launch_yaw_deg=yaw, static_rank=rank[k], s_end=clock.s_end,
                                  failsafe_layer_dz=FAILSAFE_LAYERS[k % len(FAILSAFE_LAYERS)],
                                  formation_enabled=formation, mission_name=name, template_name=template.name,
-                                 queue_lateral=qlat[k], queue_s=q_s, clock=clock))
+                                 queue_lateral=qa[k][0], queue_dz=qa[k][1], queue_s=q_s, clock=clock))
         spawns.append(pos)
         yaws.append(yaw)
     return plans, spawns, yaws
@@ -292,7 +283,7 @@ def _gate_mission(name: str, template_name: str, duration: float, current: Curre
     g6 = {g.gate_id: g for g in load_arena_gates(HORSESHOE_TRACK)}["G06"]
     G = cfg.gate
     tm = TEMPLATES[template_name]
-    q_s = G.queue_s(tm.n)
+    q_s = queue_line(tm.slots, G)
     s_gate = 40.0                                         # path arclength of the gate centre
     path = Path(np.array([g6.center[:2] - s_gate * g6.axis[:2], g6.center[:2] + 30.0 * g6.axis[:2]]),
                 float(g6.center[2]))

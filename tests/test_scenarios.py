@@ -3,11 +3,13 @@
 import numpy as np
 
 from holo_fleet.config import DEFAULT
+from holo_fleet.mission import queue_assignment, queue_line
 from holo_fleet.sim.scenarios import SCENARIOS
 
 EXPECTED = {"p1_head_on": 2, "p1_vertical_escape": 4, "p1_two_lines": 6, "p1_close_encounter": 2,
             "formation_triangle": 3, "formation_square": 4, "formation_six": 6, "formation_recovery_head_current": 4,
             "formation_gust": 4, "gate_single": 3, "integrated_short": 3}
+GATE_SCENARIOS = ("gate_single", "integrated_short")
 
 
 def test_catalogue_is_small_and_short():
@@ -25,11 +27,18 @@ def test_same_controller_three_templates():
 
 
 def test_gate_scenarios_use_only_arena_gate_g06():
-    for name in ("gate_single", "integrated_short"):
+    G = DEFAULT.gate
+    for name in GATE_SCENARIOS:
         sc = SCENARIOS[name](DEFAULT)
         assert [g.gate_id for g in sc.judged_gates] == ["G06"] and sc.sim.gate_ids == ("G06",)
-        assert {round(p.queue_s, 2) for p in sc.plans} == {round(DEFAULT.gate.queue_s(len(sc.plans)), 2)}
-        assert sorted(p.queue_lateral for p in sc.plans) == sorted(DEFAULT.gate.queue_laterals(len(sc.plans)))
+        assert {round(p.queue_s, 2) for p in sc.plans} == {round(queue_line(sc.template.slots, G), 2)}
+        qa = queue_assignment(sc.template.slots, G)
+        assert [(p.queue_lateral, p.queue_dz) for p in sc.plans] == qa
+        assert sorted(p.static_rank for p in sc.plans) == list(range(len(sc.plans)))
+    # abreast templates keep the v2 abreast queue
+    sc = SCENARIOS["gate_single"](DEFAULT)
+    assert sorted(p.queue_lateral for p in sc.plans) == sorted(G.queue_laterals(3))
+    assert {p.queue_s for p in sc.plans} == {G.queue_s(3)}                 # abreast: the v2 queue line
 
 
 def test_currents_inside_the_envelope_except_declared_disturbances():

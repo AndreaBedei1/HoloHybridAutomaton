@@ -28,6 +28,27 @@ def _cap(v: np.ndarray, vmax_xy: float, vmax_z: float) -> np.ndarray:
     return v
 
 
+def pass_path_points(G, queue_s: float, queue_l: float, queue_dz: float = 0.0, lane: float = 0.0,
+                     lane_dz: float = 0.0) -> np.ndarray:
+    """Gate-frame polyline (s, l, dz) of a committed drone: queue point -> axis -> through -> own lane.
+
+    Forward along the own queue lane, then down to the merge point (merge_s, 0, 0) on a fixed heading
+    ``merge_angle_deg`` from the axis; GateRule.queue_s places the queue line so that this diagonal keeps
+    ``merge_clearance`` from the queue point on the right (the next drone in the left-first order).  From
+    a stacked queue point (queue_dz != 0) the depth offset is kept along the lane and removed on the
+    diagonal, so the drone moves away from the drone below / above it before changing depth and is level
+    with the gate axis at the merge point (formal M4s).  Beyond the CR the drone veers towards its own
+    formation lane and slot depth (``lane``, ``lane_dz``)."""
+    m_s = G.merge_s
+    pts = [(queue_s, queue_l, queue_dz)]
+    if abs(queue_l) > 0.3:
+        k_s = m_s - abs(queue_l) / math.tan(math.radians(G.merge_angle_deg))
+        if k_s > queue_s + 0.1:
+            pts.append((k_s, queue_l, queue_dz))
+    pts += [(m_s, 0.0, 0.0), (G.veer_s, 0.0, 0.0), (G.exit_s + 3.0, lane, lane_dz), (G.rally_s + 6.0, lane, lane_dz)]
+    return np.array(pts, dtype=float)
+
+
 class Flows:
     def __init__(self, plan: MissionPlan, cfg: FleetConfig = DEFAULT):
         self.plan = plan
@@ -108,23 +129,13 @@ class Flows:
         return None, R, s_ref
 
     # ------------------------------------------------------------------ gate (P2)
-    def pass_path(self, queue_s: float, queue_l: float) -> np.ndarray:
-        """Gate-frame polyline (s, l) of a committed drone: queue point -> axis -> through -> own lane.
-
-        Forward along the own queue lane, then down to the merge point (merge_s, 0) on a fixed heading
-        ``merge_angle_deg`` from the axis; GateRule.queue_s(n) places the queue line so that this
-        diagonal keeps ``merge_clearance`` from the queue point on the right (the next drone in the
-        left-first order).  Beyond the CR the drone veers towards its own formation lane."""
-        G = self.cfg.gate
-        lane = self.plan.slots[self.plan.slot_index].lateral       # path direction == gate axis
-        m_s = G.merge_s
-        pts = [(queue_s, queue_l)]
-        if abs(queue_l) > 0.3:
-            k_s = m_s - abs(queue_l) / math.tan(math.radians(G.merge_angle_deg))
-            if k_s > queue_s + 0.1:
-                pts.append((k_s, queue_l))
-        pts += [(m_s, 0.0), (G.veer_s, 0.0), (G.exit_s + 3.0, lane), (G.rally_s + 6.0, lane)]
-        return np.array(pts, dtype=float)
+    def pass_path(self, queue_s: float, queue_l: float, queue_dz: float = 0.0) -> np.ndarray:
+        """Gate-frame polyline (s, l, dz) of a committed drone: queue point -> axis -> through -> own lane.
+        See :func:`pass_path_points`."""
+        me = self.plan.slots[self.plan.slot_index]                  # path direction == gate axis
+        g = self.plan.gates[0] if self.plan.gates else None
+        lane_dz = (self.plan.path.depth_z + me.dz - float(g.center[2])) if g is not None else 0.0
+        return pass_path_points(self.cfg.gate, queue_s, queue_l, queue_dz, me.lateral, lane_dz)
 
     @staticmethod
     def _carrot(path: np.ndarray, q: np.ndarray, look: float = 1.0) -> np.ndarray:
@@ -155,13 +166,12 @@ class Flows:
         g = self.plan.gates[min(obs.gate_index, len(self.plan.gates) - 1)]
         go = obs.gate
         yaw = math.atan2(g.axis[1], g.axis[0])
-        q = np.array([go.s, go.l])
         if mode == "MUTEX_PASS":
-            c = self._carrot(self.pass_path(go.queue_s, go.queue_l), q)
-            tgt = g.from_gate_frame([c[0], c[1], 0.0])
+            c = self._carrot(self.pass_path(go.queue_s, go.queue_l, go.queue_dz), np.array([go.s, go.l, go.dz]))
+            tgt = g.from_gate_frame(c)
             vmax = G.v_pass
         else:  # MUTEX_APPROACH / MUTEX_YIELD: go to / hold the own queue point
-            tgt = g.from_gate_frame([go.queue_s, go.queue_l, 0.0])
+            tgt = g.from_gate_frame([go.queue_s, go.queue_l, go.queue_dz])
             vmax = G.v_approach
         v = G.k_track * (tgt - obs.p)
         if mode == "MUTEX_PASS":                                    # carrot: keep the cruise speed

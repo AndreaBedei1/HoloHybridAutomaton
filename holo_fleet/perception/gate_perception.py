@@ -1,7 +1,8 @@
 """Gate-related perception (P2), onboard information only.
 
 * own gate-frame position and heading error from the navigation estimate and the gate map;
-* the own queue point (abreast queue line, lateral order of the formation slots: no ID involved);
+* the own queue point (abreast queue line, lateral order of the formation slots; slots stacked in depth
+  share a column and queue one above the other: mission.queue_assignment, no ID involved);
 * the relation to every obstacle target inside the queue bracket, from its SECTOR PATTERN only
   (ha/mutex_rule.py), and the resulting decision with a persistence requirement (``t_clear``);
 * the critical-region occupancy belief.  From the FRONT sonar position the drone computes the
@@ -25,7 +26,7 @@ import numpy as np
 
 from holo_fleet.config import DEFAULT, FleetConfig
 from holo_fleet.ha import mutex_rule
-from holo_fleet.mission import GateSpec, MissionPlan
+from holo_fleet.mission import GateSpec, MissionPlan, queue_assignment, queue_order
 from holo_fleet.perception.sonar_geometry import MOUNTS, R_OUT
 from holo_fleet.perception.sonar_processing import DYNAMIC
 
@@ -42,6 +43,7 @@ class GateObs:
     passed: bool = False
     queue_l: float = 0.0
     queue_s: float = -4.6
+    queue_dz: float = 0.0
     r_far: float = 0.0
     relations: List[Dict] = field(default_factory=list)       # [{pattern, range, relation}]
     raw_decision: str = mutex_rule.PRIORITY
@@ -67,6 +69,13 @@ class GatePerception:
         self.rank_uses = 0
         self._rank_prev = False
         self.prev_targets = []
+        # static-rank fallback (ambiguous patterns only): the queue precedence order of the plan's drones
+        # whose queue points lie within the queue bracket of mine - from the shared plan, no identity exchanged
+        G = cfg.gate
+        qa, order = queue_assignment(plan.slots, G), queue_order(plan.slots, G)
+        me = np.array([0.0, plan.queue_lateral, plan.queue_dz])
+        self.bracket_ranks = [order[k] for k, (lk, dk) in enumerate(qa) if k != plan.slot_index
+                              and float(np.linalg.norm(np.array([0.0, lk, dk]) - me)) <= G.queue_bracket_m]
 
     @property
     def gate(self) -> Optional[GateSpec]:
@@ -98,14 +107,14 @@ class GatePerception:
         gate_yaw = math.atan2(g.axis[1], g.axis[0])
         herr = math.degrees((yaw - gate_yaw + math.pi) % (2 * math.pi) - math.pi)
         o.gate_id, o.s, o.l, o.dz, o.heading_err_deg = g.gate_id, float(s), float(l), float(dz), herr
-        o.queue_l, o.queue_s = self.plan.queue_lateral, self.plan.queue_s
+        o.queue_l, o.queue_s, o.queue_dz = self.plan.queue_lateral, self.plan.queue_s, self.plan.queue_dz
         # the lateral bound always contains the own queue point (for n >= 5 the outer queue points lie
         # beyond corridor_half_width): at_queue -> in_zone holds by construction (invariant I2)
         half_w = max(G.corridor_half_width, abs(o.queue_l) + 1.0)
         o.in_zone = (o.queue_s - G.approach_len) <= s <= G.exit_s and abs(l) <= half_w
         o.passed = s > G.exit_s
         o.at_queue = (abs(s - o.queue_s) <= G.queue_tol and abs(l - o.queue_l) <= G.queue_tol
-                      and abs(herr) <= G.heading_tol_deg)
+                      and abs(dz - o.queue_dz) <= G.queue_tol and abs(herr) <= G.heading_tol_deg)
         r_near, r_far = self.cr_ranges(g, p, yaw)
         r_near = r_near - R_OUT - self.cfg.env.eps_range_far       # nearest echo of a hull centred in the CR
         r_far = r_far + self.cfg.env.eps_range_near                 # farther echoes are certainly beyond it
@@ -129,7 +138,7 @@ class GatePerception:
             rels.append({"pattern": "+".join(sorted(tg.pattern)), "range": round(tg.r_min, 2), "relation": rel})
         o.relations = rels
         o.raw_decision = mutex_rule.decide([r["relation"] for r in rels], self.plan.static_rank,
-                                          their_ranks=[-1] * sum(r["relation"] == mutex_rule.RANK for r in rels))
+                                           their_ranks=self.bracket_ranks)
         o.rank_used = o.raw_decision == "WAIT_RANK" or (mutex_rule.RANK in [r["relation"] for r in rels])
         if o.rank_used and o.at_queue and not self._rank_prev:
             self.rank_uses += 1                       # counted once per use (rising edge)

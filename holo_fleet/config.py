@@ -132,22 +132,34 @@ class GateRule:
     v_pass: float = 0.50
     k_track: float = 0.6              # proportional gain of the gate-path tracking [1/s]
     queue_bracket_m: float = 7.5      # LEFT/RIGHT/REAR neighbours closer than this count for the queue decision
+    # vertically stacked queue (slots that differ only in depth): columns farther apart than the stack spacing,
+    # so that a diagonal neighbour is always seen in LEFT/RIGHT (left first decides) and a neighbour of the same
+    # column only in UP/DOWN (top first decides), within the position / heading tolerances (formal M2v); every
+    # pair stays inside the queue bracket
+    stack_column_spacing: float = 5.0
+    stack_spacing: float = 3.5
+    hold_err_m: float = 0.10          # measured position-holding error of a queued drone (results/v2/ASSUMPTIONS.md)
 
     @property
     def merge_s(self) -> float:
         return -(self.cr_half_len + self.merge_before_cr)
 
-    def queue_s(self, n: int) -> float:
+    def queue_s(self, n: int, dz_max: float = 0.0, lats: Tuple[float, ...] = ()) -> float:
         """Queue line, the smaller of two bounds:
-        (a) the CR lies inside the FRONT cone (``queue_cone_deg``) of every queue point;
+        (a) the CR lies inside the FRONT cone (``queue_cone_deg``) of every queue point (with a vertical
+            stack of queue points, ``dz_max`` > 0, the off-axis distance includes the vertical offset);
         (b) a drone left of the axis that descends to the merge point at ``merge_angle_deg`` keeps
-            ``merge_clearance`` from its right neighbour's queue point (the next in the order)."""
-        lats = self.queue_laterals(n)
+            ``merge_clearance`` from its right neighbour's queue point (the next in the order).
+        ``lats``: the column laterals (default: the abreast queue of n columns)."""
+        lats = tuple(lats) or self.queue_laterals(n)
         l_max = max(abs(x) for x in lats)
         # bearing of the far CR corners seen from the FRONT sonar (0.24 m ahead of the centre)
         need = self.cr_half_len + 0.24 + (l_max + self.cr_half_width) / math.tan(math.radians(self.queue_cone_deg))
+        if dz_max > 0.0:
+            off = math.hypot(l_max + self.cr_half_width, dz_max + self.cr_half_height)
+            need = max(need, self.cr_half_len + 0.24 + off / math.tan(math.radians(self.queue_cone_deg)))
         a = math.radians(self.merge_angle_deg)
-        for k in range(n - 1):
+        for k in range(len(lats) - 1):
             lq, ln = lats[k], lats[k + 1]
             if lq <= 0.3:
                 continue                          # right of the axis: it descends away from its right neighbour
@@ -157,9 +169,9 @@ class GateRule:
             need = max(need, -self.merge_s + d)
         return -need
 
-    def queue_laterals(self, n: int) -> Tuple[float, ...]:
+    def queue_laterals(self, n: int, spacing: float = 0.0) -> Tuple[float, ...]:
         """Abreast queue points, left (positive) first."""
-        return tuple(((n - 1) / 2.0 - r) * self.queue_spacing for r in range(n))
+        return tuple(((n - 1) / 2.0 - r) * (spacing or self.queue_spacing) for r in range(n))
 
 
 @dataclass(frozen=True)
