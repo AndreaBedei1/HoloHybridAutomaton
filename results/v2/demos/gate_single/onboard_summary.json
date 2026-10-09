@@ -1,49 +1,51 @@
 {
  "drone_0": {
   "time_in_mode_s": {
-   "GATE_APPROACH": 6.4,
-   "GATE_YIELD": 1.1,
-   "GATE_PASS": 21.0,
-   "SEPARATION_WARNING": 1.5,
-   "FORMATION_RECOVERY": 29.6,
-   "FORMATION_FOLLOW": 20.4
+   "MUTEX_APPROACH": 6.4,
+   "MUTEX_YIELD": 1.1,
+   "MUTEX_PASS": 21.2,
+   "SEPARATION_WARNING": 1.4,
+   "FORMATION_RECOVERY": 8.3,
+   "FORMATION_WAIT_REJOIN": 17.6,
+   "FORMATION_FOLLOW": 24.0
   },
   "escape_directions": [
    "FWD",
    "FWD+LEFT"
   ],
   "giveway": [],
-  "depth_span_m": 0.17,
+  "depth_span_m": 0.15,
   "min_onboard_distance_m": 2.354
  },
  "drone_1": {
   "time_in_mode_s": {
-   "GATE_APPROACH": 6.5,
-   "GATE_YIELD": 40.5,
-   "GATE_PASS": 21.3,
-   "FORMATION_RECOVERY": 7.9,
-   "FORMATION_FOLLOW": 3.8
+   "MUTEX_APPROACH": 6.5,
+   "MUTEX_YIELD": 40.1,
+   "MUTEX_PASS": 21.4,
+   "FORMATION_RECOVERY": 8.5,
+   "FORMATION_FOLLOW": 3.5
   },
   "escape_directions": [],
   "giveway": [],
-  "depth_span_m": 0.13,
+  "depth_span_m": 0.16,
   "min_onboard_distance_m": 2.945
  },
  "drone_2": {
   "time_in_mode_s": {
-   "GATE_APPROACH": 1.6,
-   "GATE_YIELD": 24.3,
-   "SEPARATION_WARNING": 5.2,
-   "GATE_PASS": 17.9,
-   "FORMATION_RECOVERY": 25.2,
-   "FORMATION_FOLLOW": 5.8
+   "MUTEX_APPROACH": 1.1,
+   "MUTEX_YIELD": 27.5,
+   "SEPARATION_WARNING": 2.1,
+   "MUTEX_PASS": 17.9,
+   "FORMATION_RECOVERY": 13.4,
+   "FORMATION_WAIT_REJOIN": 10.4,
+   "FORMATION_FOLLOW": 7.6
   },
   "escape_directions": [
-   "REAR+RIGHT",
-   "REAR+UP"
+   "REAR",
+   "REAR+LEFT"
   ],
   "giveway": [],
-  "depth_span_m": 0.52,
-  "min_onboard_distance_m": 2.354
+  "depth_span_m": 0.2,
+  "min_onboard_distance_m": 2.374
  }
 }

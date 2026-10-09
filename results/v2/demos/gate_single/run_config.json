@@ -36,6 +36,7 @@
  ],
  "intruders": [],
  "cfg_patch": {},
+ "faults": [],
  "disturbance_windows": [],
  "stress": {
   "beam_dropout": 0.0,
@@ -55,7 +56,7 @@
    "built": "2026-10-07T23:52:04",
    "source_commit": "a8d3070"
   },
-  "engine_start_s": 9.4,
+  "engine_start_s": 9.6,
   "gate_spawn": {
    "physically_spawned": true,
    "spawned_bar_count": 124,
@@ -67,7 +68,7 @@
    "mode": "patched_rebuild",
    "ticks": 18
   },
-  "static_scene_s": 0.9,
+  "static_scene_s": 1.0,
   "gate_ids": [
    "G06"
   ]
@@ -95,7 +96,7 @@
    "w_drift_max": 0.15,
    "g_min": 0.5,
    "v_open": 0.2,
-   "current_drift_max": 0.6,
+   "current_validated_max": 0.6,
    "current_vertical_max": 0.25,
    "struct_keepout": 0.7,
    "z_min": -9.0,
@@ -122,7 +123,10 @@
    "v_approach": 0.5,
    "v_pass": 0.5,
    "k_track": 0.6,
-   "queue_bracket_m": 7.5
+   "queue_bracket_m": 7.5,
+   "stack_column_spacing": 5.0,
+   "stack_spacing": 3.5,
+   "hold_err_m": 0.1
   },
   "form": {
    "e_lost": 1.2,
@@ -137,7 +141,10 @@
    "v_slot_max": 0.4,
    "v_recovery_max": 0.5,
    "range_gate_m": 1.2,
-   "neighbour_range_m": 7.5
+   "neighbour_range_m": 7.5,
+   "t_reinclude": 1.0,
+   "rejoin_lane_tol_m": 1.0,
+   "rejoin_back_m": 2.0
   },
   "perc": {
    "sonar": {
@@ -170,6 +177,8 @@
    "sway_speed_per_cmd": 2.4,
    "heave_speed_per_cmd": 3.4,
    "thruster_limit": 12.0,
+   "cmd_quadratic": 0.203,
+   "cmd_model_tolerance": 0.06,
    "current_cmd_to_drift": [
     [
      0.0,
@@ -228,6 +237,8 @@
    "drone": "drone_0",
    "slot": 0,
    "queue_lateral": 3.5,
+   "queue_dz": 0.0,
+   "queue_s": -5.406,
    "static_rank": 0,
    "launch": [
     -14.227,
@@ -239,7 +250,9 @@
    "drone": "drone_1",
    "slot": 1,
    "queue_lateral": -3.5,
-   "static_rank": 1,
+   "queue_dz": 0.0,
+   "queue_s": -5.406,
+   "static_rank": 2,
    "launch": [
     -13.192,
     11.235,
@@ -250,12 +263,60 @@
    "drone": "drone_2",
    "slot": 2,
    "queue_lateral": 0.0,
-   "static_rank": 2,
+   "queue_dz": 0.0,
+   "queue_s": -5.406,
+   "static_rank": 1,
    "launch": [
     -10.743,
     15.141,
     -4.3
    ]
   }
- ]
+ ],
+ "slots": [
+  [
+   0.0,
+   3.5,
+   0.0
+  ],
+  [
+   0.0,
+   -3.5,
+   0.0
+  ],
+  [
+   3.0,
+   0.0,
+   0.0
+  ]
+ ],
+ "path": [
+  [
+   -44.56,
+   10.08
+  ],
+  [
+   24.67,
+   20.44
+  ]
+ ],
+ "path_depth": -4.3,
+ "clock": {
+  "s0": 31.193521315963345,
+  "v": 0.3,
+  "t_start": 0.0,
+  "holds": [
+   [
+    46.0,
+    90.0
+   ]
+  ],
+  "s_end": 67.0,
+  "jumps": [
+   [
+    31.193521315963345,
+    46.0
+   ]
+  ]
+ }
 }

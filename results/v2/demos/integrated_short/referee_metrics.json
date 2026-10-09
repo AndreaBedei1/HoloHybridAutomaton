@@ -2,19 +2,19 @@
  "P1_separation": {
   "formula": "G(forall i!=j: d_ij >= d_safe)",
   "d_safe": 1.0,
-  "min_distance": 3.32,
+  "min_distance": 3.335,
   "min_per_pair": {
    "drone_0-drone_1": {
-    "d": 5.469,
-    "t": 27.499725
+    "d": 5.371,
+    "t": 27.599724
    },
    "drone_0-drone_2": {
-    "d": 3.32,
-    "t": 20.599794
+    "d": 3.335,
+    "t": 20.399796
    },
    "drone_1-drone_2": {
-    "d": 3.424,
-    "t": 21.799782
+    "d": 3.377,
+    "t": 21.299787
    }
   },
   "violations": 0,
@@ -51,18 +51,36 @@
   "t_ok_hold": 2.0,
   "episodes": [
    {
-    "t_lost": 12.5,
-    "t_recovered": 81.6,
-    "recovery_time_s": 69.1,
-    "t_perturbation_end": 76.7,
-    "recovery_after_perturbation_s": 4.9,
-    "modes_at_loss": "GATE_APPROACH,GATE_YIELD"
+    "t_lost": 12.6,
+    "t_recovered": 83.2,
+    "recovery_time_s": 70.6,
+    "t_perturbation_end": 77.6,
+    "recovery_after_perturbation_s": 5.6,
+    "modes_at_loss": "MUTEX_APPROACH,MUTEX_YIELD"
    }
   ],
   "n_episodes": 1,
   "open_at_end": 0,
   "all_recovered_within_run": true,
-  "final_form_err": 0.0981
+  "final_form_err": 0.1527
+ },
+ "P3_degraded": {
+  "formula": "G(neighbour_missing -> F(rejoined or slot_vacant)); remaining drones: G(lost -> F recovered) on their original slots",
+  "enabled": true,
+  "t_rejoin": 37.5,
+  "exercised": false,
+  "absence_log": [],
+  "absent_at_end": [],
+  "episodes_present": [
+   {
+    "t_lost": 12.6,
+    "t_recovered": 83.2,
+    "recovery_time_s": 70.6
+   }
+  ],
+  "open_at_end": 0,
+  "holds": null,
+  "final_form_err_present": 0.1527
  },
  "envelope": {
   "max_horizontal_drift": 0.301,
@@ -72,31 +90,32 @@
   "current_vertical_max_m_s": 0.25,
   "max_current_m_s": 0.301,
   "max_vertical_m_s": 0.0,
-  "max_required_over_authority": 1.121,
+  "max_required_over_authority": 1.118,
   "worst_step": {
    "drone": "drone_0",
-   "t": 22.4,
-   "head_m_s": 0.284,
-   "lateral_m_s": 0.1,
+   "t": 22.3,
+   "head_m_s": 0.283,
+   "lateral_m_s": 0.101,
    "requested_speed_m_s": 0.5
   },
   "verdict": "OUTSIDE",
   "inside_envelope": false,
   "self_declared_envelope_violations": 0,
+  "self_declared_by_faulty_drones": 0,
   "coherent_with_vehicles": false,
   "drones": {
    "drone_0": {
     "max_current_m_s": 0.301,
     "max_vertical_m_s": 0.0,
-    "max_required_over_authority": 1.121,
+    "max_required_over_authority": 1.118,
     "worst_step": {
-     "t": 22.4,
-     "head_m_s": 0.284,
-     "lateral_m_s": 0.1,
+     "t": 22.3,
+     "head_m_s": 0.283,
+     "lateral_m_s": 0.101,
      "requested_speed_m_s": 0.5
     },
     "time_over_authority_s": 6.4,
-    "time_over_authority_plus_tolerance_s": 4.9,
+    "time_over_authority_plus_tolerance_s": 5.1,
     "persistent_infeasibility_at_s": 25.7,
     "persistent_limit_at_s": 25.7,
     "outside_exercised_range": false
@@ -104,9 +123,9 @@
    "drone_1": {
     "max_current_m_s": 0.301,
     "max_vertical_m_s": 0.0,
-    "max_required_over_authority": 0.798,
+    "max_required_over_authority": 0.799,
     "worst_step": {
-     "t": 13.3,
+     "t": 13.2,
      "head_m_s": 0.053,
      "lateral_m_s": 0.296,
      "requested_speed_m_s": 0.5
@@ -120,10 +139,10 @@
    "drone_2": {
     "max_current_m_s": 0.301,
     "max_vertical_m_s": 0.0,
-    "max_required_over_authority": 0.754,
+    "max_required_over_authority": 0.753,
     "worst_step": {
-     "t": 40.8,
-     "head_m_s": 0.01,
+     "t": 41.0,
+     "head_m_s": 0.009,
      "lateral_m_s": 0.3,
      "requested_speed_m_s": 0.5
     },
@@ -136,7 +155,7 @@
   }
  },
  "kinematics": {
-  "max_true_speed_m_s": 0.562
+  "max_true_speed_m_s": 0.555
  },
  "run": {
   "status": "COMPLETE",
@@ -160,13 +179,13 @@
   "self_declared_envelope_violations": 0,
   "perf": {
    "ticks": 2760,
-   "mean_tick_ms": 39.48,
-   "p95_tick_ms": 71.36,
-   "real_time_factor": 0.844,
-   "controller_ms_mean_all_drones": 7.66,
+   "mean_tick_ms": 38.04,
+   "p95_tick_ms": 78.92,
+   "real_time_factor": 0.876,
+   "controller_ms_mean_all_drones": 8.04,
    "controller_hz": 10.0,
    "sonar_hz": 10.0,
-   "wall_s": 131.8,
+   "wall_s": 135.1,
    "sim_s": 92.0
   }
  }

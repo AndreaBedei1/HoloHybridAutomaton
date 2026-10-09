@@ -9,14 +9,13 @@
       "expect": "sat",
       "verdict": "sat",
       "passed": true,
-      "seconds": 0.0,
+      "seconds": 0.001,
       "counterexample": {
         "at_queue": false,
         "d_min": 0.125,
         "form_err": 0.125,
-        "gate_zone": false,
         "has_prio": false,
-        "neighbors_ok": true,
+        "mutex_zone": false,
         "passed": false,
         "t_ok": 0.125
       },
@@ -29,14 +28,13 @@
       "expect": "sat",
       "verdict": "sat",
       "passed": true,
-      "seconds": 0.002,
+      "seconds": 0.001,
       "counterexample": {
         "at_queue": false,
         "d_min": 1000000001.0,
         "form_err": -1.0,
-        "gate_zone": false,
         "has_prio": false,
-        "neighbors_ok": false,
+        "mutex_zone": false,
         "passed": false,
         "t_ok": -1.0
       },
@@ -52,73 +50,69 @@
       "seconds": 0.0,
       "counterexample": {
         "at_queue": false,
-        "d_min": 0.0,
-        "form_err": 0.0,
-        "gate_zone": false,
+        "d_min": 0.125,
+        "form_err": 0.125,
         "has_prio": true,
-        "neighbors_ok": false,
+        "mutex_zone": false,
         "passed": false,
-        "t_ok": 0.0
+        "t_ok": 0.125
       },
       "note": "excludes: has_prio & !at_queue: a drone away from its queue point believing it may commit (the commit guard also requires at_queue, so this state would be a latent defect, not a commit)"
     },
     {
       "prop": "O2 I2 the queue point lies in the approach zone: excludes observations admitted by the other invariants",
-      "formula": "exists obs: others & !(at_queue -> gate_zone)",
+      "formula": "exists obs: others & !(at_queue -> mutex_zone)",
       "encoding": "holo_fleet/ha/observation_invariants.py + holo_fleet/ha/spec.py (shared guards)",
       "expect": "sat",
       "verdict": "sat",
       "passed": true,
-      "seconds": 0.0,
+      "seconds": 0.001,
       "counterexample": {
         "at_queue": true,
-        "d_min": 0.0,
-        "form_err": 0.0,
-        "gate_zone": false,
-        "neighbors_ok": false,
-        "t_ok": 0.0
+        "d_min": 0.125,
+        "form_err": 0.125,
+        "mutex_zone": false,
+        "t_ok": 0.125
       },
-      "note": "excludes: at_queue & !gate_zone: the automaton would follow the formation (or recover) while queued, and the yield/commit edges, which require gate_zone, could never fire for that drone"
+      "note": "excludes: at_queue & !mutex_zone: the automaton would follow the formation (or recover) while queued, and the yield/commit edges, which require mutex_zone, could never fire for that drone"
     },
     {
       "prop": "O2 I3 a passed gate is out of the approach zone: excludes observations admitted by the other invariants",
-      "formula": "exists obs: others & !(passed -> !gate_zone)",
+      "formula": "exists obs: others & !(passed -> !mutex_zone)",
       "encoding": "holo_fleet/ha/observation_invariants.py + holo_fleet/ha/spec.py (shared guards)",
       "expect": "sat",
       "verdict": "sat",
       "passed": true,
-      "seconds": 0.002,
-      "counterexample": {
-        "at_queue": false,
-        "d_min": 0.0,
-        "form_err": 0.0,
-        "gate_zone": true,
-        "has_prio": false,
-        "neighbors_ok": false,
-        "passed": true,
-        "t_ok": 0.0
-      },
-      "note": "excludes: passed & gate_zone: approach/yield/commit and pass_done would both describe the same gate"
-    },
-    {
-      "prop": "O2 I4 t_ok counts only while the formation is ok: excludes observations admitted by the other invariants",
-      "formula": "exists obs: others & !(t_ok > 0 -> (form_err < e_ok & neighbors_ok))",
-      "encoding": "holo_fleet/ha/observation_invariants.py + holo_fleet/ha/spec.py (shared guards)",
-      "expect": "sat",
-      "verdict": "sat",
-      "passed": true,
-      "seconds": 0.002,
+      "seconds": 0.001,
       "counterexample": {
         "at_queue": false,
         "d_min": 0.125,
         "form_err": 0.125,
-        "gate_zone": false,
         "has_prio": false,
-        "neighbors_ok": false,
-        "passed": false,
+        "mutex_zone": true,
+        "passed": true,
         "t_ok": 0.125
       },
-      "note": "excludes: t_ok > 0 with form_err >= e_ok or with a missing neighbour (a stale 'ok for t seconds' counter)"
+      "note": "excludes: passed & mutex_zone: approach/yield/commit and pass_done would both describe the same gate"
+    },
+    {
+      "prop": "O2 I4 t_ok counts only while the own slot error is ok: excludes observations admitted by the other invariants",
+      "formula": "exists obs: others & !(t_ok > 0 -> form_err < e_ok)",
+      "encoding": "holo_fleet/ha/observation_invariants.py + holo_fleet/ha/spec.py (shared guards)",
+      "expect": "sat",
+      "verdict": "sat",
+      "passed": true,
+      "seconds": 0.001,
+      "counterexample": {
+        "at_queue": false,
+        "d_min": 0.5,
+        "form_err": 0.5,
+        "has_prio": false,
+        "mutex_zone": false,
+        "passed": false,
+        "t_ok": 0.5
+      },
+      "note": "excludes: t_ok > 0 with form_err >= e_ok (a stale 'ok for t seconds' counter)"
     },
     {
       "prop": "O3 non-vacuity [FORMATION_FOLLOW]: every edge enabled on some consistent observation",
@@ -127,9 +121,9 @@
       "expect": "sat",
       "verdict": "sat",
       "passed": true,
-      "seconds": 0.018,
+      "seconds": 0.023,
       "counterexample": null,
-      "note": "10 edges"
+      "note": "12 edges"
     },
     {
       "prop": "O3 non-vacuity [SEPARATION_WARNING]: every edge enabled on some consistent observation",
@@ -138,9 +132,9 @@
       "expect": "sat",
       "verdict": "sat",
       "passed": true,
-      "seconds": 0.02,
+      "seconds": 0.027,
       "counterexample": null,
-      "note": "10 edges"
+      "note": "12 edges"
     },
     {
       "prop": "O3 non-vacuity [COLLISION_AVOIDANCE]: every edge enabled on some consistent observation",
@@ -149,42 +143,42 @@
       "expect": "sat",
       "verdict": "sat",
       "passed": true,
-      "seconds": 0.017,
+      "seconds": 0.023,
       "counterexample": null,
-      "note": "10 edges"
+      "note": "12 edges"
     },
     {
-      "prop": "O3 non-vacuity [GATE_APPROACH]: every edge enabled on some consistent observation",
+      "prop": "O3 non-vacuity [MUTEX_APPROACH]: every edge enabled on some consistent observation",
       "formula": "for each edge e: exists consistent obs with guard(e)",
       "encoding": "holo_fleet/ha/observation_invariants.py + holo_fleet/ha/spec.py (shared guards)",
       "expect": "sat",
       "verdict": "sat",
       "passed": true,
-      "seconds": 0.017,
+      "seconds": 0.021,
       "counterexample": null,
-      "note": "10 edges"
+      "note": "12 edges"
     },
     {
-      "prop": "O3 non-vacuity [GATE_YIELD]: every edge enabled on some consistent observation",
+      "prop": "O3 non-vacuity [MUTEX_YIELD]: every edge enabled on some consistent observation",
       "formula": "for each edge e: exists consistent obs with guard(e)",
       "encoding": "holo_fleet/ha/observation_invariants.py + holo_fleet/ha/spec.py (shared guards)",
       "expect": "sat",
       "verdict": "sat",
       "passed": true,
-      "seconds": 0.017,
+      "seconds": 0.023,
       "counterexample": null,
-      "note": "10 edges"
+      "note": "12 edges"
     },
     {
-      "prop": "O3 non-vacuity [GATE_PASS]: every edge enabled on some consistent observation",
+      "prop": "O3 non-vacuity [MUTEX_PASS]: every edge enabled on some consistent observation",
       "formula": "for each edge e: exists consistent obs with guard(e)",
       "encoding": "holo_fleet/ha/observation_invariants.py + holo_fleet/ha/spec.py (shared guards)",
       "expect": "sat",
       "verdict": "sat",
       "passed": true,
-      "seconds": 0.016,
+      "seconds": 0.021,
       "counterexample": null,
-      "note": "10 edges"
+      "note": "12 edges"
     },
     {
       "prop": "O3 non-vacuity [FORMATION_RECOVERY]: every edge enabled on some consistent observation",
@@ -193,9 +187,9 @@
       "expect": "sat",
       "verdict": "sat",
       "passed": true,
-      "seconds": 0.014,
+      "seconds": 0.025,
       "counterexample": null,
-      "note": "10 edges"
+      "note": "12 edges"
     },
     {
       "prop": "O3 non-vacuity [FAILSAFE_HOLD_OR_RETREAT]: every edge enabled on some consistent observation",
@@ -204,9 +198,31 @@
       "expect": "sat",
       "verdict": "sat",
       "passed": true,
-      "seconds": 0.016,
+      "seconds": 0.022,
       "counterexample": null,
-      "note": "10 edges"
+      "note": "12 edges"
+    },
+    {
+      "prop": "O3 non-vacuity [FORMATION_WAIT_REJOIN]: every edge enabled on some consistent observation",
+      "formula": "for each edge e: exists consistent obs with guard(e)",
+      "encoding": "holo_fleet/ha/observation_invariants.py + holo_fleet/ha/spec.py (shared guards)",
+      "expect": "sat",
+      "verdict": "sat",
+      "passed": true,
+      "seconds": 0.02,
+      "counterexample": null,
+      "note": "12 edges"
+    },
+    {
+      "prop": "O3 non-vacuity [DEGRADED_FORMATION]: every edge enabled on some consistent observation",
+      "formula": "for each edge e: exists consistent obs with guard(e)",
+      "encoding": "holo_fleet/ha/observation_invariants.py + holo_fleet/ha/spec.py (shared guards)",
+      "expect": "sat",
+      "verdict": "sat",
+      "passed": true,
+      "seconds": 0.019,
+      "counterexample": null,
+      "note": "12 edges"
     },
     {
       "prop": "O4 consistent observation -> exactly one edge [FORMATION_FOLLOW]",
@@ -215,7 +231,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 0.0,
+      "seconds": 0.001,
       "counterexample": null,
       "note": ""
     },
@@ -226,7 +242,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 0.002,
+      "seconds": 0.001,
       "counterexample": null,
       "note": ""
     },
@@ -237,12 +253,12 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 0.0,
+      "seconds": 0.001,
       "counterexample": null,
       "note": ""
     },
     {
-      "prop": "O4 consistent observation -> exactly one edge [GATE_APPROACH]",
+      "prop": "O4 consistent observation -> exactly one edge [MUTEX_APPROACH]",
       "formula": "invariants -> exactly one outgoing guard enabled",
       "encoding": "holo_fleet/ha/observation_invariants.py + holo_fleet/ha/spec.py (shared guards)",
       "expect": "unsat",
@@ -253,7 +269,7 @@
       "note": ""
     },
     {
-      "prop": "O4 consistent observation -> exactly one edge [GATE_YIELD]",
+      "prop": "O4 consistent observation -> exactly one edge [MUTEX_YIELD]",
       "formula": "invariants -> exactly one outgoing guard enabled",
       "encoding": "holo_fleet/ha/observation_invariants.py + holo_fleet/ha/spec.py (shared guards)",
       "expect": "unsat",
@@ -264,13 +280,13 @@
       "note": ""
     },
     {
-      "prop": "O4 consistent observation -> exactly one edge [GATE_PASS]",
+      "prop": "O4 consistent observation -> exactly one edge [MUTEX_PASS]",
       "formula": "invariants -> exactly one outgoing guard enabled",
       "encoding": "holo_fleet/ha/observation_invariants.py + holo_fleet/ha/spec.py (shared guards)",
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 0.0,
+      "seconds": 0.001,
       "counterexample": null,
       "note": ""
     },
@@ -281,7 +297,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 0.002,
+      "seconds": 0.001,
       "counterexample": null,
       "note": ""
     },
@@ -293,6 +309,28 @@
       "verdict": "unsat",
       "passed": true,
       "seconds": 0.001,
+      "counterexample": null,
+      "note": ""
+    },
+    {
+      "prop": "O4 consistent observation -> exactly one edge [FORMATION_WAIT_REJOIN]",
+      "formula": "invariants -> exactly one outgoing guard enabled",
+      "encoding": "holo_fleet/ha/observation_invariants.py + holo_fleet/ha/spec.py (shared guards)",
+      "expect": "unsat",
+      "verdict": "unsat",
+      "passed": true,
+      "seconds": 0.002,
+      "counterexample": null,
+      "note": ""
+    },
+    {
+      "prop": "O4 consistent observation -> exactly one edge [DEGRADED_FORMATION]",
+      "formula": "invariants -> exactly one outgoing guard enabled",
+      "encoding": "holo_fleet/ha/observation_invariants.py + holo_fleet/ha/spec.py (shared guards)",
+      "expect": "unsat",
+      "verdict": "unsat",
+      "passed": true,
+      "seconds": 0.002,
       "counterexample": null,
       "note": ""
     },
@@ -314,7 +352,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 0.0,
+      "seconds": 0.001,
       "counterexample": null,
       "note": ""
     },
@@ -330,14 +368,15 @@
         "at_queue": true,
         "committed": false,
         "d_min": 2.7,
+        "degraded": true,
         "env_ok": true,
         "form_err": 0.25,
-        "gate_zone": false,
         "has_prio": false,
+        "mutex_zone": false,
         "neighbors_ok": true,
         "passed": false,
         "sense_ok": true,
-        "t_ok": 2.7
+        "t_ok": 1.75
       },
       "note": ""
     },
@@ -348,7 +387,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 0.0,
+      "seconds": 0.001,
       "counterexample": null,
       "note": "v1 formal/common.Obs.legal had passed -> at_queue; with I2 and I3 no 'passed' observation remains, so a proof over that domain says nothing about the exit edge"
     },
@@ -359,20 +398,21 @@
       "expect": "sat",
       "verdict": "sat",
       "passed": true,
-      "seconds": 0.002,
+      "seconds": 0.001,
       "counterexample": {
         "at_queue": true,
         "committed": false,
-        "d_min": 1000000001.0,
+        "d_min": 1.325,
+        "degraded": false,
         "env_ok": true,
-        "form_err": -1.0,
-        "gate_zone": true,
-        "has_prio": false,
-        "neighbors_ok": true,
+        "form_err": 1.325,
+        "has_prio": true,
+        "mutex_zone": false,
+        "neighbors_ok": false,
         "occ_busy": false,
-        "passed": true,
+        "passed": false,
         "sense_ok": true,
-        "t_ok": -1.0
+        "t_ok": -0.125
       },
       "note": ""
     }

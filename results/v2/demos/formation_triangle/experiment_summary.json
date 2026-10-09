@@ -8,17 +8,17 @@
    "d_ca_exit": 2.0,
    "d_safe": 1.0
   },
-  "min_true_pair_distance_m": 4.597,
-  "at_s": 4.7,
+  "min_true_pair_distance_m": 4.575,
+  "at_s": 10.1,
   "closest_pair": [
    "drone_0",
    "drone_2"
   ],
   "first_intervention_s": null,
   "true_distance_at_first_intervention_m": null,
-  "max_closing_speed_before_intervention_m_s": 0.012,
+  "max_closing_speed_before_intervention_m_s": 0.018,
   "closing_speed_at_first_intervention_m_s": null,
-  "max_opening_speed_5s_after_closest_m_s": 0.014,
+  "max_opening_speed_5s_after_closest_m_s": 0.01,
   "max_true_current_m_s": 0.25,
   "drones": {
    "drone_0": {
@@ -28,15 +28,14 @@
     "CA_entry_times_s": [],
     "time_in_SW_s": 0,
     "time_in_CA_s": 0,
-    "min_onboard_conservative_distance_m": 3.658,
-    "at_s": 0.3,
+    "min_onboard_conservative_distance_m": 3.608,
+    "at_s": 10.0,
     "escape_directions": [],
     "giveway": [],
     "sonar_patterns_within_4m_in_SW_CA": [],
     "sonar_sectors_involved": [],
-    "max_onboard_current_estimate_m_s": 0.296,
+    "max_onboard_current_estimate_m_s": 0.295,
     "mode_sequence": [
-     "FORMATION_RECOVERY",
      "FORMATION_FOLLOW"
     ]
    },
@@ -48,14 +47,13 @@
     "time_in_SW_s": 0,
     "time_in_CA_s": 0,
     "min_onboard_conservative_distance_m": 3.658,
-    "at_s": 0.3,
+    "at_s": 0.4,
     "escape_directions": [],
     "giveway": [],
     "sonar_patterns_within_4m_in_SW_CA": [],
     "sonar_sectors_involved": [],
-    "max_onboard_current_estimate_m_s": 0.297,
+    "max_onboard_current_estimate_m_s": 0.296,
     "mode_sequence": [
-     "FORMATION_RECOVERY",
      "FORMATION_FOLLOW"
     ]
    },
@@ -67,14 +65,13 @@
     "time_in_SW_s": 0,
     "time_in_CA_s": 0,
     "min_onboard_conservative_distance_m": 3.658,
-    "at_s": 1.1,
+    "at_s": 4.2,
     "escape_directions": [],
     "giveway": [],
     "sonar_patterns_within_4m_in_SW_CA": [],
     "sonar_sectors_involved": [],
-    "max_onboard_current_estimate_m_s": 0.297,
+    "max_onboard_current_estimate_m_s": 0.296,
     "mode_sequence": [
-     "FORMATION_RECOVERY",
      "FORMATION_FOLLOW"
     ]
    }
@@ -87,17 +84,18 @@
    "current_vertical_max_m_s": 0.25,
    "max_current_m_s": 0.25,
    "max_vertical_m_s": 0.0,
-   "max_required_over_authority": 0.542,
+   "max_required_over_authority": 0.539,
    "worst_step": {
     "drone": "drone_2",
-    "t": 2.5,
-    "head_m_s": 0.042,
-    "lateral_m_s": 0.246,
-    "requested_speed_m_s": 0.335
+    "t": 2.7,
+    "head_m_s": 0.04,
+    "lateral_m_s": 0.247,
+    "requested_speed_m_s": 0.334
    },
    "verdict": "INSIDE",
    "inside_envelope": true,
    "self_declared_envelope_violations": 0,
+   "self_declared_by_faulty_drones": 0,
    "coherent_with_vehicles": true,
    "self_declared_events": []
   },
@@ -109,74 +107,59 @@
   "e_ok_m": 0.5,
   "t_ok_hold_s": 2.0,
   "disturbance_windows_s": [],
-  "max_true_formation_error_m": 0.057,
-  "at_s": 43.0,
+  "max_true_formation_error_m": 0.054,
+  "at_s": 43.7,
   "episodes": [],
   "all_recovered_within_run": true,
-  "min_P1_distance_m": 4.598,
+  "min_P1_distance_m": 4.576,
   "drones": {
    "drone_0": {
     "max_true_current_at_drone_m_s": 0.25,
-    "max_onboard_form_err_m": 0.154,
-    "at_s": 3.0,
-    "nav_error_max_m": 0.133,
+    "max_onboard_form_err_m": 0.138,
+    "at_s": 10.0,
+    "nav_error_max_m": 0.14,
     "sonar_age_max_s": 0.0,
     "saturated_time_s": 0.0,
     "longest_saturation_s": 0.0,
-    "max_onboard_current_estimate_m_s": 0.296,
+    "max_onboard_current_estimate_m_s": 0.295,
     "mode_episodes": [
      {
-      "mode": "FORMATION_RECOVERY",
-      "t0": 0.0,
-      "t1": 2.1
-     },
-     {
       "mode": "FORMATION_FOLLOW",
-      "t0": 2.2,
+      "t0": 0.0,
       "t1": 44.9
      }
     ]
    },
    "drone_1": {
     "max_true_current_at_drone_m_s": 0.25,
-    "max_onboard_form_err_m": 0.118,
-    "at_s": 38.7,
-    "nav_error_max_m": 0.149,
+    "max_onboard_form_err_m": 0.126,
+    "at_s": 3.0,
+    "nav_error_max_m": 0.13,
     "sonar_age_max_s": 0.0,
     "saturated_time_s": 0.0,
     "longest_saturation_s": 0.0,
-    "max_onboard_current_estimate_m_s": 0.297,
+    "max_onboard_current_estimate_m_s": 0.296,
     "mode_episodes": [
      {
-      "mode": "FORMATION_RECOVERY",
-      "t0": 0.0,
-      "t1": 2.1
-     },
-     {
       "mode": "FORMATION_FOLLOW",
-      "t0": 2.2,
+      "t0": 0.0,
       "t1": 44.9
      }
     ]
    },
    "drone_2": {
     "max_true_current_at_drone_m_s": 0.25,
-    "max_onboard_form_err_m": 0.127,
-    "at_s": 3.0,
-    "nav_error_max_m": 0.126,
+    "max_onboard_form_err_m": 0.128,
+    "at_s": 3.2,
+    "nav_error_max_m": 0.122,
     "sonar_age_max_s": 0.0,
     "saturated_time_s": 0.0,
     "longest_saturation_s": 0.0,
-    "max_onboard_current_estimate_m_s": 0.297,
+    "max_onboard_current_estimate_m_s": 0.296,
     "mode_episodes": [
      {
-      "mode": "FORMATION_RECOVERY",
-      "t0": 0.0,
-      "t1": 2.1
-     },
-     {
       "mode": "FORMATION_FOLLOW",
-      "t0": 2.2,
+      "t0": 0.0,
       "t1": 44.9
      }
     ]
@@ -190,17 +173,18 @@
    "current_vertical_max_m_s": 0.25,
    "max_current_m_s": 0.25,
    "max_vertical_m_s": 0.0,
-   "max_required_over_authority": 0.542,
+   "max_required_over_authority": 0.539,
    "worst_step": {
     "drone": "drone_2",
-    "t": 2.5,
-    "head_m_s": 0.042,
-    "lateral_m_s": 0.246,
-    "requested_speed_m_s": 0.335
+    "t": 2.7,
+    "head_m_s": 0.04,
+    "lateral_m_s": 0.247,
+    "requested_speed_m_s": 0.334
    },
    "verdict": "INSIDE",
    "inside_envelope": true,
    "self_declared_envelope_violations": 0,
+   "self_declared_by_faulty_drones": 0,
    "coherent_with_vehicles": true,
    "self_declared_events": []
   },

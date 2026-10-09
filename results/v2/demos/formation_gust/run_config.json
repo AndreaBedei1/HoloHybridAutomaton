@@ -57,6 +57,7 @@
  ],
  "intruders": [],
  "cfg_patch": {},
+ "faults": [],
  "disturbance_windows": [
   [
    12.0,
@@ -86,7 +87,7 @@
    "mode": "patched_rebuild",
    "ticks": 18
   },
-  "static_scene_s": 0.8,
+  "static_scene_s": 0.9,
   "gate_ids": []
  },
  "comms_enabled": false,
@@ -112,7 +113,7 @@
    "w_drift_max": 0.15,
    "g_min": 0.5,
    "v_open": 0.2,
-   "current_drift_max": 0.6,
+   "current_validated_max": 0.6,
    "current_vertical_max": 0.25,
    "struct_keepout": 0.7,
    "z_min": -9.0,
@@ -139,7 +140,10 @@
    "v_approach": 0.5,
    "v_pass": 0.5,
    "k_track": 0.6,
-   "queue_bracket_m": 7.5
+   "queue_bracket_m": 7.5,
+   "stack_column_spacing": 5.0,
+   "stack_spacing": 3.5,
+   "hold_err_m": 0.1
   },
   "form": {
    "e_lost": 1.2,
@@ -154,7 +158,10 @@
    "v_slot_max": 0.4,
    "v_recovery_max": 0.5,
    "range_gate_m": 1.2,
-   "neighbour_range_m": 7.5
+   "neighbour_range_m": 7.5,
+   "t_reinclude": 1.0,
+   "rejoin_lane_tol_m": 1.0,
+   "rejoin_back_m": 2.0
   },
   "perc": {
    "sonar": {
@@ -187,6 +194,8 @@
    "sway_speed_per_cmd": 2.4,
    "heave_speed_per_cmd": 3.4,
    "thruster_limit": 12.0,
+   "cmd_quadratic": 0.203,
+   "cmd_model_tolerance": 0.06,
    "current_cmd_to_drift": [
     [
      0.0,
@@ -245,6 +254,8 @@
    "drone": "drone_0",
    "slot": 0,
    "queue_lateral": 5.25,
+   "queue_dz": 0.0,
+   "queue_s": -6.632,
    "static_rank": 0,
    "launch": [
     -14.25,
@@ -256,7 +267,9 @@
    "drone": "drone_1",
    "slot": 1,
    "queue_lateral": -1.75,
-   "static_rank": 1,
+   "queue_dz": 0.0,
+   "queue_s": -6.632,
+   "static_rank": 2,
    "launch": [
     -14.25,
     -35.75,
@@ -267,7 +280,9 @@
    "drone": "drone_2",
    "slot": 2,
    "queue_lateral": 1.75,
-   "static_rank": 2,
+   "queue_dz": 0.0,
+   "queue_s": -6.632,
+   "static_rank": 1,
    "launch": [
     -17.75,
     -32.25,
@@ -278,6 +293,8 @@
    "drone": "drone_3",
    "slot": 3,
    "queue_lateral": -5.25,
+   "queue_dz": 0.0,
+   "queue_s": -6.632,
    "static_rank": 3,
    "launch": [
     -17.75,
@@ -285,5 +302,46 @@
     -5.0
    ]
   }
- ]
+ ],
+ "slots": [
+  [
+   1.75,
+   1.75,
+   0.0
+  ],
+  [
+   1.75,
+   -1.75,
+   0.0
+  ],
+  [
+   -1.75,
+   1.75,
+   0.0
+  ],
+  [
+   -1.75,
+   -1.75,
+   0.0
+  ]
+ ],
+ "path": [
+  [
+   -16.0,
+   -34.0
+  ],
+  [
+   18.0,
+   -34.0
+  ]
+ ],
+ "path_depth": -5.0,
+ "clock": {
+  "s0": 0.0,
+  "v": 0.3,
+  "t_start": 2.0,
+  "holds": [],
+  "s_end": 30.0,
+  "jumps": []
+ }
 }

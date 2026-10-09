@@ -1,0 +1,2 @@
+scenario,status,sim_time_s,P1_holds,min_distance,P2_holds,max_occupancy,P3_episodes,P3_all_recovered,max_recovery_time_s,P3_degraded_holds,absent_at_end,collisions,messages,inside_envelope,static_rank_uses
+lost_drone_timeout,COMPLETE,64.0,True,3.448,True,,1,False,,True,drone_2,0,0,True,0

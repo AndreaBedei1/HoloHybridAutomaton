@@ -20,7 +20,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 0.0,
+      "seconds": 0.001,
       "counterexample": null,
       "note": ""
     },
@@ -31,7 +31,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 0.002,
+      "seconds": 0.001,
       "counterexample": null,
       "note": ""
     },
@@ -42,7 +42,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 0.0,
+      "seconds": 0.001,
       "counterexample": null,
       "note": ""
     },
@@ -58,24 +58,24 @@
       "note": ""
     },
     {
-      "prop": "G1 GATE_PASS entry condition [FORMATION_FOLLOW]",
-      "formula": "!committed & guard(->GATE_PASS) -> at_queue & !occ_busy & has_prio",
+      "prop": "G1 MUTEX_PASS entry condition [FORMATION_FOLLOW]",
+      "formula": "!committed & guard(->MUTEX_PASS) -> at_queue & !occ_busy & has_prio",
       "encoding": "holo_fleet/ha/spec.py (shared guards) + formal/check_determinism.py",
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 0.002,
+      "seconds": 0.001,
       "counterexample": null,
       "note": ""
     },
     {
       "prop": "G2 no PASS->YIELD fallback [FORMATION_FOLLOW]",
-      "formula": "committed -> target not in {GATE_APPROACH, GATE_YIELD}",
+      "formula": "committed -> target not in {MUTEX_APPROACH, MUTEX_YIELD}",
       "encoding": "holo_fleet/ha/spec.py (shared guards) + formal/check_determinism.py",
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 0.0,
+      "seconds": 0.001,
       "counterexample": null,
       "note": ""
     },
@@ -97,7 +97,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 0.002,
+      "seconds": 0.001,
       "counterexample": null,
       "note": ""
     },
@@ -108,7 +108,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 0.002,
+      "seconds": 0.001,
       "counterexample": null,
       "note": ""
     },
@@ -119,7 +119,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 0.0,
+      "seconds": 0.001,
       "counterexample": null,
       "note": ""
     },
@@ -130,7 +130,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 0.0,
+      "seconds": 0.001,
       "counterexample": null,
       "note": ""
     },
@@ -141,13 +141,13 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 0.002,
+      "seconds": 0.001,
       "counterexample": null,
       "note": ""
     },
     {
-      "prop": "G1 GATE_PASS entry condition [SEPARATION_WARNING]",
-      "formula": "!committed & guard(->GATE_PASS) -> at_queue & !occ_busy & has_prio",
+      "prop": "G1 MUTEX_PASS entry condition [SEPARATION_WARNING]",
+      "formula": "!committed & guard(->MUTEX_PASS) -> at_queue & !occ_busy & has_prio",
       "encoding": "holo_fleet/ha/spec.py (shared guards) + formal/check_determinism.py",
       "expect": "unsat",
       "verdict": "unsat",
@@ -158,12 +158,12 @@
     },
     {
       "prop": "G2 no PASS->YIELD fallback [SEPARATION_WARNING]",
-      "formula": "committed -> target not in {GATE_APPROACH, GATE_YIELD}",
+      "formula": "committed -> target not in {MUTEX_APPROACH, MUTEX_YIELD}",
       "encoding": "holo_fleet/ha/spec.py (shared guards) + formal/check_determinism.py",
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 0.002,
+      "seconds": 0.001,
       "counterexample": null,
       "note": ""
     },
@@ -174,7 +174,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 0.0,
+      "seconds": 0.001,
       "counterexample": null,
       "note": ""
     },
@@ -185,7 +185,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 0.0,
+      "seconds": 0.001,
       "counterexample": null,
       "note": ""
     },
@@ -207,7 +207,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 0.0,
+      "seconds": 0.001,
       "counterexample": null,
       "note": ""
     },
@@ -229,13 +229,13 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 0.002,
+      "seconds": 0.001,
       "counterexample": null,
       "note": ""
     },
     {
-      "prop": "G1 GATE_PASS entry condition [COLLISION_AVOIDANCE]",
-      "formula": "!committed & guard(->GATE_PASS) -> at_queue & !occ_busy & has_prio",
+      "prop": "G1 MUTEX_PASS entry condition [COLLISION_AVOIDANCE]",
+      "formula": "!committed & guard(->MUTEX_PASS) -> at_queue & !occ_busy & has_prio",
       "encoding": "holo_fleet/ha/spec.py (shared guards) + formal/check_determinism.py",
       "expect": "unsat",
       "verdict": "unsat",
@@ -246,7 +246,7 @@
     },
     {
       "prop": "G2 no PASS->YIELD fallback [COLLISION_AVOIDANCE]",
-      "formula": "committed -> target not in {GATE_APPROACH, GATE_YIELD}",
+      "formula": "committed -> target not in {MUTEX_APPROACH, MUTEX_YIELD}",
       "encoding": "holo_fleet/ha/spec.py (shared guards) + formal/check_determinism.py",
       "expect": "unsat",
       "verdict": "unsat",
@@ -267,95 +267,7 @@
       "note": ""
     },
     {
-      "prop": "D1 determinism [GATE_APPROACH]",
-      "formula": "forall legal obs: at most one outgoing guard enabled",
-      "encoding": "holo_fleet/ha/spec.py (shared guards) + formal/check_determinism.py",
-      "expect": "unsat",
-      "verdict": "unsat",
-      "passed": true,
-      "seconds": 0.002,
-      "counterexample": null,
-      "note": ""
-    },
-    {
-      "prop": "D2 completeness [GATE_APPROACH]",
-      "formula": "forall legal obs: some guard enabled",
-      "encoding": "holo_fleet/ha/spec.py (shared guards) + formal/check_determinism.py",
-      "expect": "unsat",
-      "verdict": "unsat",
-      "passed": true,
-      "seconds": 0.002,
-      "counterexample": null,
-      "note": ""
-    },
-    {
-      "prop": "H1 fault=>FAILSAFE [GATE_APPROACH]",
-      "formula": "fault -> target = FAILSAFE",
-      "encoding": "holo_fleet/ha/spec.py (shared guards) + formal/check_determinism.py",
-      "expect": "unsat",
-      "verdict": "unsat",
-      "passed": true,
-      "seconds": 0.0,
-      "counterexample": null,
-      "note": ""
-    },
-    {
-      "prop": "H2 d<d_ca=>COLLISION_AVOIDANCE [GATE_APPROACH]",
-      "formula": "!fault & d_min < d_ca -> target = COLLISION_AVOIDANCE",
-      "encoding": "holo_fleet/ha/spec.py (shared guards) + formal/check_determinism.py",
-      "expect": "unsat",
-      "verdict": "unsat",
-      "passed": true,
-      "seconds": 0.0,
-      "counterexample": null,
-      "note": ""
-    },
-    {
-      "prop": "H3 warning band=>SEPARATION_WARNING [GATE_APPROACH]",
-      "formula": "!fault & d_ca_exit <= d_min < d_warning -> target = SEPARATION_WARNING",
-      "encoding": "holo_fleet/ha/spec.py (shared guards) + formal/check_determinism.py",
-      "expect": "unsat",
-      "verdict": "unsat",
-      "passed": true,
-      "seconds": 0.0,
-      "counterexample": null,
-      "note": ""
-    },
-    {
-      "prop": "G1 GATE_PASS entry condition [GATE_APPROACH]",
-      "formula": "!committed & guard(->GATE_PASS) -> at_queue & !occ_busy & has_prio",
-      "encoding": "holo_fleet/ha/spec.py (shared guards) + formal/check_determinism.py",
-      "expect": "unsat",
-      "verdict": "unsat",
-      "passed": true,
-      "seconds": 0.001,
-      "counterexample": null,
-      "note": ""
-    },
-    {
-      "prop": "G2 no PASS->YIELD fallback [GATE_APPROACH]",
-      "formula": "committed -> target not in {GATE_APPROACH, GATE_YIELD}",
-      "encoding": "holo_fleet/ha/spec.py (shared guards) + formal/check_determinism.py",
-      "expect": "unsat",
-      "verdict": "unsat",
-      "passed": true,
-      "seconds": 0.001,
-      "counterexample": null,
-      "note": ""
-    },
-    {
-      "prop": "G3 no commit under hazard [GATE_APPROACH]",
-      "formula": "commit edge enabled -> d_min >= d_warning (or >= d_warning_exit from SW)",
-      "encoding": "holo_fleet/ha/spec.py (shared guards) + formal/check_determinism.py",
-      "expect": "unsat",
-      "verdict": "unsat",
-      "passed": true,
-      "seconds": 0.0,
-      "counterexample": null,
-      "note": ""
-    },
-    {
-      "prop": "D1 determinism [GATE_YIELD]",
+      "prop": "D1 determinism [MUTEX_APPROACH]",
       "formula": "forall legal obs: at most one outgoing guard enabled",
       "encoding": "holo_fleet/ha/spec.py (shared guards) + formal/check_determinism.py",
       "expect": "unsat",
@@ -366,7 +278,7 @@
       "note": ""
     },
     {
-      "prop": "D2 completeness [GATE_YIELD]",
+      "prop": "D2 completeness [MUTEX_APPROACH]",
       "formula": "forall legal obs: some guard enabled",
       "encoding": "holo_fleet/ha/spec.py (shared guards) + formal/check_determinism.py",
       "expect": "unsat",
@@ -377,7 +289,7 @@
       "note": ""
     },
     {
-      "prop": "H1 fault=>FAILSAFE [GATE_YIELD]",
+      "prop": "H1 fault=>FAILSAFE [MUTEX_APPROACH]",
       "formula": "fault -> target = FAILSAFE",
       "encoding": "holo_fleet/ha/spec.py (shared guards) + formal/check_determinism.py",
       "expect": "unsat",
@@ -388,30 +300,41 @@
       "note": ""
     },
     {
-      "prop": "H2 d<d_ca=>COLLISION_AVOIDANCE [GATE_YIELD]",
+      "prop": "H2 d<d_ca=>COLLISION_AVOIDANCE [MUTEX_APPROACH]",
       "formula": "!fault & d_min < d_ca -> target = COLLISION_AVOIDANCE",
       "encoding": "holo_fleet/ha/spec.py (shared guards) + formal/check_determinism.py",
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 0.002,
+      "seconds": 0.0,
       "counterexample": null,
       "note": ""
     },
     {
-      "prop": "H3 warning band=>SEPARATION_WARNING [GATE_YIELD]",
+      "prop": "H3 warning band=>SEPARATION_WARNING [MUTEX_APPROACH]",
       "formula": "!fault & d_ca_exit <= d_min < d_warning -> target = SEPARATION_WARNING",
       "encoding": "holo_fleet/ha/spec.py (shared guards) + formal/check_determinism.py",
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 0.0,
+      "seconds": 0.001,
       "counterexample": null,
       "note": ""
     },
     {
-      "prop": "G1 GATE_PASS entry condition [GATE_YIELD]",
-      "formula": "!committed & guard(->GATE_PASS) -> at_queue & !occ_busy & has_prio",
+      "prop": "G1 MUTEX_PASS entry condition [MUTEX_APPROACH]",
+      "formula": "!committed & guard(->MUTEX_PASS) -> at_queue & !occ_busy & has_prio",
+      "encoding": "holo_fleet/ha/spec.py (shared guards) + formal/check_determinism.py",
+      "expect": "unsat",
+      "verdict": "unsat",
+      "passed": true,
+      "seconds": 0.001,
+      "counterexample": null,
+      "note": ""
+    },
+    {
+      "prop": "G2 no PASS->YIELD fallback [MUTEX_APPROACH]",
+      "formula": "committed -> target not in {MUTEX_APPROACH, MUTEX_YIELD}",
       "encoding": "holo_fleet/ha/spec.py (shared guards) + formal/check_determinism.py",
       "expect": "unsat",
       "verdict": "unsat",
@@ -421,29 +344,18 @@
       "note": ""
     },
     {
-      "prop": "G2 no PASS->YIELD fallback [GATE_YIELD]",
-      "formula": "committed -> target not in {GATE_APPROACH, GATE_YIELD}",
-      "encoding": "holo_fleet/ha/spec.py (shared guards) + formal/check_determinism.py",
-      "expect": "unsat",
-      "verdict": "unsat",
-      "passed": true,
-      "seconds": 0.002,
-      "counterexample": null,
-      "note": ""
-    },
-    {
-      "prop": "G3 no commit under hazard [GATE_YIELD]",
+      "prop": "G3 no commit under hazard [MUTEX_APPROACH]",
       "formula": "commit edge enabled -> d_min >= d_warning (or >= d_warning_exit from SW)",
       "encoding": "holo_fleet/ha/spec.py (shared guards) + formal/check_determinism.py",
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 0.0,
+      "seconds": 0.001,
       "counterexample": null,
       "note": ""
     },
     {
-      "prop": "D1 determinism [GATE_PASS]",
+      "prop": "D1 determinism [MUTEX_YIELD]",
       "formula": "forall legal obs: at most one outgoing guard enabled",
       "encoding": "holo_fleet/ha/spec.py (shared guards) + formal/check_determinism.py",
       "expect": "unsat",
@@ -454,18 +366,18 @@
       "note": ""
     },
     {
-      "prop": "D2 completeness [GATE_PASS]",
+      "prop": "D2 completeness [MUTEX_YIELD]",
       "formula": "forall legal obs: some guard enabled",
       "encoding": "holo_fleet/ha/spec.py (shared guards) + formal/check_determinism.py",
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 0.0,
+      "seconds": 0.001,
       "counterexample": null,
       "note": ""
     },
     {
-      "prop": "H1 fault=>FAILSAFE [GATE_PASS]",
+      "prop": "H1 fault=>FAILSAFE [MUTEX_YIELD]",
       "formula": "fault -> target = FAILSAFE",
       "encoding": "holo_fleet/ha/spec.py (shared guards) + formal/check_determinism.py",
       "expect": "unsat",
@@ -476,7 +388,7 @@
       "note": ""
     },
     {
-      "prop": "H2 d<d_ca=>COLLISION_AVOIDANCE [GATE_PASS]",
+      "prop": "H2 d<d_ca=>COLLISION_AVOIDANCE [MUTEX_YIELD]",
       "formula": "!fault & d_min < d_ca -> target = COLLISION_AVOIDANCE",
       "encoding": "holo_fleet/ha/spec.py (shared guards) + formal/check_determinism.py",
       "expect": "unsat",
@@ -487,46 +399,134 @@
       "note": ""
     },
     {
-      "prop": "H3 warning band=>SEPARATION_WARNING [GATE_PASS]",
+      "prop": "H3 warning band=>SEPARATION_WARNING [MUTEX_YIELD]",
       "formula": "!fault & d_ca_exit <= d_min < d_warning -> target = SEPARATION_WARNING",
       "encoding": "holo_fleet/ha/spec.py (shared guards) + formal/check_determinism.py",
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 0.0,
+      "seconds": 0.002,
       "counterexample": null,
       "note": ""
     },
     {
-      "prop": "G1 GATE_PASS entry condition [GATE_PASS]",
-      "formula": "!committed & guard(->GATE_PASS) -> at_queue & !occ_busy & has_prio",
-      "encoding": "holo_fleet/ha/spec.py (shared guards) + formal/check_determinism.py",
-      "expect": "unsat",
-      "verdict": "unsat",
-      "passed": true,
-      "seconds": 0.0,
-      "counterexample": null,
-      "note": ""
-    },
-    {
-      "prop": "G2 no PASS->YIELD fallback [GATE_PASS]",
-      "formula": "committed -> target not in {GATE_APPROACH, GATE_YIELD}",
-      "encoding": "holo_fleet/ha/spec.py (shared guards) + formal/check_determinism.py",
-      "expect": "unsat",
-      "verdict": "unsat",
-      "passed": true,
-      "seconds": 0.0,
-      "counterexample": null,
-      "note": ""
-    },
-    {
-      "prop": "G3 no commit under hazard [GATE_PASS]",
-      "formula": "commit edge enabled -> d_min >= d_warning (or >= d_warning_exit from SW)",
+      "prop": "G1 MUTEX_PASS entry condition [MUTEX_YIELD]",
+      "formula": "!committed & guard(->MUTEX_PASS) -> at_queue & !occ_busy & has_prio",
       "encoding": "holo_fleet/ha/spec.py (shared guards) + formal/check_determinism.py",
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
       "seconds": 0.001,
+      "counterexample": null,
+      "note": ""
+    },
+    {
+      "prop": "G2 no PASS->YIELD fallback [MUTEX_YIELD]",
+      "formula": "committed -> target not in {MUTEX_APPROACH, MUTEX_YIELD}",
+      "encoding": "holo_fleet/ha/spec.py (shared guards) + formal/check_determinism.py",
+      "expect": "unsat",
+      "verdict": "unsat",
+      "passed": true,
+      "seconds": 0.0,
+      "counterexample": null,
+      "note": ""
+    },
+    {
+      "prop": "G3 no commit under hazard [MUTEX_YIELD]",
+      "formula": "commit edge enabled -> d_min >= d_warning (or >= d_warning_exit from SW)",
+      "encoding": "holo_fleet/ha/spec.py (shared guards) + formal/check_determinism.py",
+      "expect": "unsat",
+      "verdict": "unsat",
+      "passed": true,
+      "seconds": 0.0,
+      "counterexample": null,
+      "note": ""
+    },
+    {
+      "prop": "D1 determinism [MUTEX_PASS]",
+      "formula": "forall legal obs: at most one outgoing guard enabled",
+      "encoding": "holo_fleet/ha/spec.py (shared guards) + formal/check_determinism.py",
+      "expect": "unsat",
+      "verdict": "unsat",
+      "passed": true,
+      "seconds": 0.001,
+      "counterexample": null,
+      "note": ""
+    },
+    {
+      "prop": "D2 completeness [MUTEX_PASS]",
+      "formula": "forall legal obs: some guard enabled",
+      "encoding": "holo_fleet/ha/spec.py (shared guards) + formal/check_determinism.py",
+      "expect": "unsat",
+      "verdict": "unsat",
+      "passed": true,
+      "seconds": 0.0,
+      "counterexample": null,
+      "note": ""
+    },
+    {
+      "prop": "H1 fault=>FAILSAFE [MUTEX_PASS]",
+      "formula": "fault -> target = FAILSAFE",
+      "encoding": "holo_fleet/ha/spec.py (shared guards) + formal/check_determinism.py",
+      "expect": "unsat",
+      "verdict": "unsat",
+      "passed": true,
+      "seconds": 0.001,
+      "counterexample": null,
+      "note": ""
+    },
+    {
+      "prop": "H2 d<d_ca=>COLLISION_AVOIDANCE [MUTEX_PASS]",
+      "formula": "!fault & d_min < d_ca -> target = COLLISION_AVOIDANCE",
+      "encoding": "holo_fleet/ha/spec.py (shared guards) + formal/check_determinism.py",
+      "expect": "unsat",
+      "verdict": "unsat",
+      "passed": true,
+      "seconds": 0.0,
+      "counterexample": null,
+      "note": ""
+    },
+    {
+      "prop": "H3 warning band=>SEPARATION_WARNING [MUTEX_PASS]",
+      "formula": "!fault & d_ca_exit <= d_min < d_warning -> target = SEPARATION_WARNING",
+      "encoding": "holo_fleet/ha/spec.py (shared guards) + formal/check_determinism.py",
+      "expect": "unsat",
+      "verdict": "unsat",
+      "passed": true,
+      "seconds": 0.001,
+      "counterexample": null,
+      "note": ""
+    },
+    {
+      "prop": "G1 MUTEX_PASS entry condition [MUTEX_PASS]",
+      "formula": "!committed & guard(->MUTEX_PASS) -> at_queue & !occ_busy & has_prio",
+      "encoding": "holo_fleet/ha/spec.py (shared guards) + formal/check_determinism.py",
+      "expect": "unsat",
+      "verdict": "unsat",
+      "passed": true,
+      "seconds": 0.0,
+      "counterexample": null,
+      "note": ""
+    },
+    {
+      "prop": "G2 no PASS->YIELD fallback [MUTEX_PASS]",
+      "formula": "committed -> target not in {MUTEX_APPROACH, MUTEX_YIELD}",
+      "encoding": "holo_fleet/ha/spec.py (shared guards) + formal/check_determinism.py",
+      "expect": "unsat",
+      "verdict": "unsat",
+      "passed": true,
+      "seconds": 0.0,
+      "counterexample": null,
+      "note": ""
+    },
+    {
+      "prop": "G3 no commit under hazard [MUTEX_PASS]",
+      "formula": "commit edge enabled -> d_min >= d_warning (or >= d_warning_exit from SW)",
+      "encoding": "holo_fleet/ha/spec.py (shared guards) + formal/check_determinism.py",
+      "expect": "unsat",
+      "verdict": "unsat",
+      "passed": true,
+      "seconds": 0.0,
       "counterexample": null,
       "note": ""
     },
@@ -537,7 +537,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 0.0,
+      "seconds": 0.001,
       "counterexample": null,
       "note": ""
     },
@@ -548,7 +548,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 0.002,
+      "seconds": 0.001,
       "counterexample": null,
       "note": ""
     },
@@ -559,7 +559,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 0.0,
+      "seconds": 0.001,
       "counterexample": null,
       "note": ""
     },
@@ -586,24 +586,24 @@
       "note": ""
     },
     {
-      "prop": "G1 GATE_PASS entry condition [FORMATION_RECOVERY]",
-      "formula": "!committed & guard(->GATE_PASS) -> at_queue & !occ_busy & has_prio",
+      "prop": "G1 MUTEX_PASS entry condition [FORMATION_RECOVERY]",
+      "formula": "!committed & guard(->MUTEX_PASS) -> at_queue & !occ_busy & has_prio",
       "encoding": "holo_fleet/ha/spec.py (shared guards) + formal/check_determinism.py",
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 0.0,
+      "seconds": 0.001,
       "counterexample": null,
       "note": ""
     },
     {
       "prop": "G2 no PASS->YIELD fallback [FORMATION_RECOVERY]",
-      "formula": "committed -> target not in {GATE_APPROACH, GATE_YIELD}",
+      "formula": "committed -> target not in {MUTEX_APPROACH, MUTEX_YIELD}",
       "encoding": "holo_fleet/ha/spec.py (shared guards) + formal/check_determinism.py",
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 0.0,
+      "seconds": 0.002,
       "counterexample": null,
       "note": ""
     },
@@ -614,7 +614,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 0.002,
+      "seconds": 0.001,
       "counterexample": null,
       "note": ""
     },
@@ -636,7 +636,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 0.002,
+      "seconds": 0.001,
       "counterexample": null,
       "note": ""
     },
@@ -647,7 +647,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 0.002,
+      "seconds": 0.0,
       "counterexample": null,
       "note": ""
     },
@@ -658,7 +658,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 0.0,
+      "seconds": 0.001,
       "counterexample": null,
       "note": ""
     },
@@ -669,13 +669,13 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 0.002,
+      "seconds": 0.0,
       "counterexample": null,
       "note": ""
     },
     {
-      "prop": "G1 GATE_PASS entry condition [FAILSAFE_HOLD_OR_RETREAT]",
-      "formula": "!committed & guard(->GATE_PASS) -> at_queue & !occ_busy & has_prio",
+      "prop": "G1 MUTEX_PASS entry condition [FAILSAFE_HOLD_OR_RETREAT]",
+      "formula": "!committed & guard(->MUTEX_PASS) -> at_queue & !occ_busy & has_prio",
       "encoding": "holo_fleet/ha/spec.py (shared guards) + formal/check_determinism.py",
       "expect": "unsat",
       "verdict": "unsat",
@@ -686,12 +686,12 @@
     },
     {
       "prop": "G2 no PASS->YIELD fallback [FAILSAFE_HOLD_OR_RETREAT]",
-      "formula": "committed -> target not in {GATE_APPROACH, GATE_YIELD}",
+      "formula": "committed -> target not in {MUTEX_APPROACH, MUTEX_YIELD}",
       "encoding": "holo_fleet/ha/spec.py (shared guards) + formal/check_determinism.py",
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 0.002,
+      "seconds": 0.0,
       "counterexample": null,
       "note": ""
     },
@@ -703,6 +703,182 @@
       "verdict": "unsat",
       "passed": true,
       "seconds": 0.0,
+      "counterexample": null,
+      "note": ""
+    },
+    {
+      "prop": "D1 determinism [FORMATION_WAIT_REJOIN]",
+      "formula": "forall legal obs: at most one outgoing guard enabled",
+      "encoding": "holo_fleet/ha/spec.py (shared guards) + formal/check_determinism.py",
+      "expect": "unsat",
+      "verdict": "unsat",
+      "passed": true,
+      "seconds": 0.001,
+      "counterexample": null,
+      "note": ""
+    },
+    {
+      "prop": "D2 completeness [FORMATION_WAIT_REJOIN]",
+      "formula": "forall legal obs: some guard enabled",
+      "encoding": "holo_fleet/ha/spec.py (shared guards) + formal/check_determinism.py",
+      "expect": "unsat",
+      "verdict": "unsat",
+      "passed": true,
+      "seconds": 0.001,
+      "counterexample": null,
+      "note": ""
+    },
+    {
+      "prop": "H1 fault=>FAILSAFE [FORMATION_WAIT_REJOIN]",
+      "formula": "fault -> target = FAILSAFE",
+      "encoding": "holo_fleet/ha/spec.py (shared guards) + formal/check_determinism.py",
+      "expect": "unsat",
+      "verdict": "unsat",
+      "passed": true,
+      "seconds": 0.001,
+      "counterexample": null,
+      "note": ""
+    },
+    {
+      "prop": "H2 d<d_ca=>COLLISION_AVOIDANCE [FORMATION_WAIT_REJOIN]",
+      "formula": "!fault & d_min < d_ca -> target = COLLISION_AVOIDANCE",
+      "encoding": "holo_fleet/ha/spec.py (shared guards) + formal/check_determinism.py",
+      "expect": "unsat",
+      "verdict": "unsat",
+      "passed": true,
+      "seconds": 0.0,
+      "counterexample": null,
+      "note": ""
+    },
+    {
+      "prop": "H3 warning band=>SEPARATION_WARNING [FORMATION_WAIT_REJOIN]",
+      "formula": "!fault & d_ca_exit <= d_min < d_warning -> target = SEPARATION_WARNING",
+      "encoding": "holo_fleet/ha/spec.py (shared guards) + formal/check_determinism.py",
+      "expect": "unsat",
+      "verdict": "unsat",
+      "passed": true,
+      "seconds": 0.001,
+      "counterexample": null,
+      "note": ""
+    },
+    {
+      "prop": "G1 MUTEX_PASS entry condition [FORMATION_WAIT_REJOIN]",
+      "formula": "!committed & guard(->MUTEX_PASS) -> at_queue & !occ_busy & has_prio",
+      "encoding": "holo_fleet/ha/spec.py (shared guards) + formal/check_determinism.py",
+      "expect": "unsat",
+      "verdict": "unsat",
+      "passed": true,
+      "seconds": 0.001,
+      "counterexample": null,
+      "note": ""
+    },
+    {
+      "prop": "G2 no PASS->YIELD fallback [FORMATION_WAIT_REJOIN]",
+      "formula": "committed -> target not in {MUTEX_APPROACH, MUTEX_YIELD}",
+      "encoding": "holo_fleet/ha/spec.py (shared guards) + formal/check_determinism.py",
+      "expect": "unsat",
+      "verdict": "unsat",
+      "passed": true,
+      "seconds": 0.0,
+      "counterexample": null,
+      "note": ""
+    },
+    {
+      "prop": "G3 no commit under hazard [FORMATION_WAIT_REJOIN]",
+      "formula": "commit edge enabled -> d_min >= d_warning (or >= d_warning_exit from SW)",
+      "encoding": "holo_fleet/ha/spec.py (shared guards) + formal/check_determinism.py",
+      "expect": "unsat",
+      "verdict": "unsat",
+      "passed": true,
+      "seconds": 0.0,
+      "counterexample": null,
+      "note": ""
+    },
+    {
+      "prop": "D1 determinism [DEGRADED_FORMATION]",
+      "formula": "forall legal obs: at most one outgoing guard enabled",
+      "encoding": "holo_fleet/ha/spec.py (shared guards) + formal/check_determinism.py",
+      "expect": "unsat",
+      "verdict": "unsat",
+      "passed": true,
+      "seconds": 0.001,
+      "counterexample": null,
+      "note": ""
+    },
+    {
+      "prop": "D2 completeness [DEGRADED_FORMATION]",
+      "formula": "forall legal obs: some guard enabled",
+      "encoding": "holo_fleet/ha/spec.py (shared guards) + formal/check_determinism.py",
+      "expect": "unsat",
+      "verdict": "unsat",
+      "passed": true,
+      "seconds": 0.001,
+      "counterexample": null,
+      "note": ""
+    },
+    {
+      "prop": "H1 fault=>FAILSAFE [DEGRADED_FORMATION]",
+      "formula": "fault -> target = FAILSAFE",
+      "encoding": "holo_fleet/ha/spec.py (shared guards) + formal/check_determinism.py",
+      "expect": "unsat",
+      "verdict": "unsat",
+      "passed": true,
+      "seconds": 0.0,
+      "counterexample": null,
+      "note": ""
+    },
+    {
+      "prop": "H2 d<d_ca=>COLLISION_AVOIDANCE [DEGRADED_FORMATION]",
+      "formula": "!fault & d_min < d_ca -> target = COLLISION_AVOIDANCE",
+      "encoding": "holo_fleet/ha/spec.py (shared guards) + formal/check_determinism.py",
+      "expect": "unsat",
+      "verdict": "unsat",
+      "passed": true,
+      "seconds": 0.001,
+      "counterexample": null,
+      "note": ""
+    },
+    {
+      "prop": "H3 warning band=>SEPARATION_WARNING [DEGRADED_FORMATION]",
+      "formula": "!fault & d_ca_exit <= d_min < d_warning -> target = SEPARATION_WARNING",
+      "encoding": "holo_fleet/ha/spec.py (shared guards) + formal/check_determinism.py",
+      "expect": "unsat",
+      "verdict": "unsat",
+      "passed": true,
+      "seconds": 0.001,
+      "counterexample": null,
+      "note": ""
+    },
+    {
+      "prop": "G1 MUTEX_PASS entry condition [DEGRADED_FORMATION]",
+      "formula": "!committed & guard(->MUTEX_PASS) -> at_queue & !occ_busy & has_prio",
+      "encoding": "holo_fleet/ha/spec.py (shared guards) + formal/check_determinism.py",
+      "expect": "unsat",
+      "verdict": "unsat",
+      "passed": true,
+      "seconds": 0.001,
+      "counterexample": null,
+      "note": ""
+    },
+    {
+      "prop": "G2 no PASS->YIELD fallback [DEGRADED_FORMATION]",
+      "formula": "committed -> target not in {MUTEX_APPROACH, MUTEX_YIELD}",
+      "encoding": "holo_fleet/ha/spec.py (shared guards) + formal/check_determinism.py",
+      "expect": "unsat",
+      "verdict": "unsat",
+      "passed": true,
+      "seconds": 0.0,
+      "counterexample": null,
+      "note": ""
+    },
+    {
+      "prop": "G3 no commit under hazard [DEGRADED_FORMATION]",
+      "formula": "commit edge enabled -> d_min >= d_warning (or >= d_warning_exit from SW)",
+      "encoding": "holo_fleet/ha/spec.py (shared guards) + formal/check_determinism.py",
+      "expect": "unsat",
+      "verdict": "unsat",
+      "passed": true,
+      "seconds": 0.001,
       "counterexample": null,
       "note": ""
     },
@@ -720,13 +896,12 @@
         "d_min": 2.4,
         "env_ok": true,
         "form_err": 0.25,
-        "gate_zone": true,
         "has_prio": false,
-        "neighbors_ok": false,
+        "mutex_zone": true,
         "occ_busy": false,
         "passed": false,
         "sense_ok": true,
-        "t_ok": 0.0
+        "t_ok": 2.4
       },
       "note": ""
     },
@@ -741,15 +916,14 @@
       "counterexample": {
         "at_queue": false,
         "committed": true,
-        "d_min": 0.0,
+        "d_min": 0.125,
         "env_ok": true,
-        "form_err": 0.0,
-        "gate_zone": false,
+        "form_err": 0.125,
         "has_prio": false,
-        "neighbors_ok": false,
+        "mutex_zone": false,
         "passed": false,
         "sense_ok": true,
-        "t_ok": 0.0
+        "t_ok": 0.125
       },
       "note": ""
     }

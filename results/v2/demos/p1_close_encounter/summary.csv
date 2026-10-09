@@ -1,2 +1,2 @@
-scenario,status,sim_time_s,P1_holds,min_distance,P2_holds,max_occupancy,P3_episodes,P3_all_recovered,max_recovery_time_s,collisions,messages,inside_envelope,static_rank_uses
-p1_close_encounter,COMPLETE,40.0,True,2.931,True,,0,True,,0,0,True,0
+scenario,status,sim_time_s,P1_holds,min_distance,P2_holds,max_occupancy,P3_episodes,P3_all_recovered,max_recovery_time_s,P3_degraded_holds,absent_at_end,collisions,messages,inside_envelope,static_rank_uses
+p1_close_encounter,COMPLETE,40.0,True,2.683,True,,0,True,,,,0,0,True,0

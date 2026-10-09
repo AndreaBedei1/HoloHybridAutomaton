@@ -3,7 +3,7 @@
     python scripts/make_figures_v2.py            # all figures that have data
     python scripts/make_figures_v2.py sensor     # only the sensor figures (no runs needed)
 
-Writes figures/v2/{sensor,p1,p2,p3}/*.png and copies the demo GIFs to figures/v2/gifs/.  Ground truth
+Writes figures/v2/{sensor,p1,p2,p3,fleet_view}/*.png and copies the demo GIFs to figures/v2/gifs/.  Ground truth
 is read here for judging and plotting only (offline), never by a controller.
 """
 
@@ -37,12 +37,15 @@ SERIES = ["#2a78d6", "#eb6834", "#1baf7a", "#eda100", "#e87ba4", "#008300", "#4a
 INK = {"primary": "#0b0b0b", "secondary": "#52514e", "muted": "#898781", "grid": "#e1e0d9", "axis": "#c3c2b7",
        "surface": "#fcfcfb"}
 STATUS = {"good": "#0ca30c", "warning": "#fab219", "serious": "#ec835a", "critical": "#d03b3b"}
-MODE_COLOR = {"FORMATION_FOLLOW": "#0ca30c", "FORMATION_RECOVERY": "#fab219", "SEPARATION_WARNING": "#ec835a",
-              "COLLISION_AVOIDANCE": "#d03b3b", "FAILSAFE_HOLD_OR_RETREAT": "#4a3aa7", "MUTEX_APPROACH": "#86b6ef",
-              "MUTEX_YIELD": "#2a78d6", "MUTEX_PASS": "#184f95"}
-MODE_SHORT = {"FORMATION_FOLLOW": "follow", "FORMATION_RECOVERY": "recovery", "SEPARATION_WARNING": "sep. warning",
-              "COLLISION_AVOIDANCE": "coll. avoidance", "FAILSAFE_HOLD_OR_RETREAT": "failsafe", "MUTEX_APPROACH": "mutex approach",
-              "MUTEX_YIELD": "mutex yield", "MUTEX_PASS": "mutex pass"}
+# the state colours of the fleet view (holo_fleet/ui/fleet_view.py), so that figures and GIFs read the same
+MODE_COLOR = {"FORMATION_FOLLOW": "#2f9e5b", "FORMATION_WAIT_REJOIN": "#e0a21c", "DEGRADED_FORMATION": "#8a63c9",
+              "FORMATION_RECOVERY": "#ef7d32", "MUTEX_APPROACH": "#7fb2e5", "MUTEX_YIELD": "#3d85c6",
+              "MUTEX_PASS": "#1c4e9c", "SEPARATION_WARNING": "#e8577a", "COLLISION_AVOIDANCE": "#c62828",
+              "FAILSAFE_HOLD_OR_RETREAT": "#4b4a46"}
+MODE_SHORT = {"FORMATION_FOLLOW": "follow", "FORMATION_WAIT_REJOIN": "wait rejoin", "DEGRADED_FORMATION": "degraded",
+              "FORMATION_RECOVERY": "recovery", "MUTEX_APPROACH": "mutex approach", "MUTEX_YIELD": "mutex yield",
+              "MUTEX_PASS": "mutex pass", "SEPARATION_WARNING": "sep. warning", "COLLISION_AVOIDANCE": "coll. avoidance",
+              "FAILSAFE_HOLD_OR_RETREAT": "failsafe"}
 
 
 def style():
@@ -569,12 +572,213 @@ def fig_p3_overview():
     save(fig, FIG / "p3" / "formations_triangle_square_six.png")
 
 
+# ---------------------------------------------------------------------------------------------- lost drones / mutex (DI-28..30)
+def _events(name):
+    p = DEMOS / name / "events.jsonl"
+    return [json.loads(l) for l in open(p, encoding="utf-8")] if p.exists() else []
+
+
+def _frame(sc):
+    wp = sc.path.waypoints
+    o = np.asarray(wp[0], float)
+    ex = np.asarray(wp[-1], float) - o
+    ex /= np.linalg.norm(ex)
+    ey = np.array([-ex[1], ex[0]])
+    return lambda x, y: ((np.asarray(x) - o[0]) * ex[0] + (np.asarray(y) - o[1]) * ex[1],
+                         (np.asarray(x) - o[0]) * ey[0] + (np.asarray(y) - o[1]) * ey[1])
+
+
+def _marks(ax, ev):
+    for e in ev:
+        if e.get("type") == "FAULT_INJECTED":
+            ax.axvline(e["t"], color=STATUS["critical"], lw=1.0, ls="--")
+        elif e.get("type") == "FAULT_CLEARED":
+            ax.axvline(e["t"], color=STATUS["good"], lw=1.0, ls="--")
+        elif e.get("type") == "SLOT_DECLARED_VACANT":
+            ax.axvline(e["t"], color=MODE_COLOR["DEGRADED_FORMATION"], lw=0.8, ls=":")
+
+
+def _top_view(ax, run, sc, faulty=None, gate=False, title=""):
+    ts, n = run["ts"], run["n"]
+    fr = _frame(sc)
+    if gate:
+        G = DEFAULT.gate
+        for g in sc.judged_gates:
+            cr = np.array([g.from_gate_frame([a * G.cr_half_len, b * G.cr_half_width, 0.0])[:2]
+                           for a, b in ((-1, -1), (1, -1), (1, 1), (-1, 1), (-1, -1))])
+            u, v = fr(cr[:, 0], cr[:, 1])
+            ax.fill(u, v, color="#cfe0f5", zorder=1)
+            for b in g.bars:
+                corners = np.array([b.center + b.axes @ (b.half * np.array([sx, sy, sz]))
+                                    for sx in (-1, 1) for sy in (-1, 1) for sz in (-1, 1)])
+                cu, cv = fr(corners[:, 0], corners[:, 1])
+                ax.fill([cu.min(), cu.max(), cu.max(), cu.min()], [cv.min(), cv.min(), cv.max(), cv.max()],
+                        color="#3b3a36", zorder=3)
+            groups = {}
+            for pl in sc.plans:
+                groups.setdefault(round(pl.queue_lateral, 2), []).append(pl)
+            for _key, ps in groups.items():
+                q = g.from_gate_frame([ps[0].queue_s, ps[0].queue_lateral, 0.0])
+                qu, qv = fr(q[0], q[1])
+                lab = "/".join(str(pl.static_rank + 1) for pl in sorted(ps, key=lambda pl: -pl.queue_dz))
+                ax.annotate(lab, (qu, qv), ha="center", va="center", fontsize=8, color="#2f5f9e", fontweight="bold",
+                            bbox=dict(boxstyle="round,pad=0.25", fc="white", ec="#7ea6d8", lw=0.8), zorder=6)
+    wp = sc.path.waypoints
+    pu, pv = fr(wp[:, 0], wp[:, 1])
+    ax.plot(pu, pv, color=INK["axis"], ls="--", lw=1.0, zorder=0)
+    for k in range(n):
+        u, v = fr(ts[f"x{k}"], ts[f"y{k}"])
+        ax.plot(u, v, color=SERIES[k], lw=2.4 if k == faulty else 1.4, zorder=4,
+                label=f"drone {k}" + (" (fault)" if k == faulty else ""))
+        ax.plot(u[0], v[0], "o", color=SERIES[k], ms=5, zorder=5)
+        ax.plot(u[-1], v[-1], ">", color=SERIES[k], ms=7, zorder=5)
+    if gate:
+        g = sc.judged_gates[0]
+        cu, _cv = fr(g.center[0], g.center[1])
+        ax.set_xlim(cu - 14.0, cu + 13.0)
+    ax.set_aspect("equal", adjustable="datalim")
+    ax.set_xlabel("along the survey line [m]")
+    ax.set_ylabel("lateral [m] (left +)")
+    ax.legend(loc="best", fontsize=8, ncol=2)
+    ax.set_title(title)
+
+
+def _slot_error(run, sc, k):
+    """Ground-truth distance of drone k from its slot of the shared plan (clock s(t))."""
+    pl = sc.plans[k]
+    t = run["ts"]["t"]
+    out = np.zeros_like(t)
+    sl = pl.slots[pl.slot_index]
+    for i, tt in enumerate(t):
+        pp, _d, nn = pl.path.frame_at(pl.clock.s(tt) + sl.along)
+        q = np.array([pp[0] + sl.lateral * nn[0], pp[1] + sl.lateral * nn[1], pl.path.depth_z + sl.dz])
+        out[i] = np.linalg.norm(q - np.array([run["ts"][f"x{k}"][i], run["ts"][f"y{k}"][i], run["ts"][f"z{k}"][i]]))
+    return out
+
+
+def fig_lost(name):
+    run = load(name)
+    if run is None:
+        return
+    sc = SCENARIOS[name](DEFAULT)
+    ev = _events(name)
+    faulty = int(sc.sim.faults[0]["drone"].split("_")[1])
+    perm = sc.sim.faults[0]["t_off"] is None
+    fig = plt.figure(figsize=(13, 8.2))
+    gs = fig.add_gridspec(2, 2, height_ratios=[1.2, 1.0], hspace=0.45, wspace=0.18)
+    ax = fig.add_subplot(gs[0, :])
+    _top_view(ax, run, sc, faulty=faulty,
+              title=("permanent thruster failure: the others keep their original slots, the hole stays (no reconfiguration)"
+                     if perm else "temporary thruster failure: dragged off its lane, held in FAILSAFE, rejoins from behind"))
+    ax2 = fig.add_subplot(gs[1, 0])
+    mode_timeline(ax2, run)
+    _marks(ax2, ev)
+    ax2.set_title("automaton states (red: fault injected, green: cleared, violet: slot vacant)")
+    ax3 = fig.add_subplot(gs[1, 1])
+    t = run["ts"]["t"]
+    if perm:
+        for k in range(run["n"]):
+            if k == faulty:
+                continue
+            tt = [r["t"] for r in run["states"][k]]
+            mt = []
+            for r in run["states"][k]:
+                f = r.get("form") or {}
+                m = f.get("missing_t") or {}
+                val = float(m.get(str(faulty), m.get(faulty, 0.0)))
+                mt.append(DEFAULT.form.t_rejoin if faulty in (f.get("vacant") or []) else val)
+            ax3.plot(tt, mt, color=SERIES[k], label=f"drone {k}")
+        ax3.axhline(DEFAULT.form.t_rejoin, color=MODE_COLOR["DEGRADED_FORMATION"], lw=1.0, ls="--")
+        ax3.annotate(f"t_rejoin = {DEFAULT.form.t_rejoin:.1f} s: slot declared vacant", (0.02, DEFAULT.form.t_rejoin),
+                     xycoords=("axes fraction", "data"), xytext=(0, 4), textcoords="offset points", fontsize=8,
+                     color=INK["secondary"])
+        ax3.set_ylabel(f"missing time of drone {faulty} [s]")
+        ax3.set_title("each neighbour times the missing drone on its own (no message)")
+    else:
+        ax3.plot(t, _slot_error(run, sc, faulty), color=SERIES[faulty], label=f"drone {faulty}: distance from its slot")
+        ax3.axhline(DEFAULT.ref.e_lost, color=STATUS["warning"], lw=1.0, ls="--")
+        ax3.axhline(DEFAULT.ref.e_ok, color=STATUS["good"], lw=1.0, ls="--")
+        ax3.set_ylabel("distance from the planned slot [m]")
+        ax3.set_title("lost, held until it moves again, back on its slot")
+    _marks(ax3, ev)
+    ax3.set_xlabel("time [s]")
+    ax3.legend(fontsize=8, loc="upper left")
+    save(fig, FIG / "p3" / f"{name}.png")
+
+
+def fig_mutex(name):
+    run = load(name)
+    if run is None:
+        return
+    sc = SCENARIOS[name](DEFAULT)
+    ev = _events(name)
+    g = sc.judged_gates[0]
+    faulty = int(sc.sim.faults[0]["drone"].split("_")[1]) if sc.sim.faults else None
+    fig = plt.figure(figsize=(13, 8.2))
+    gs = fig.add_gridspec(2, 2, height_ratios=[1.15, 1.0], hspace=0.45, wspace=0.2)
+    ax = fig.add_subplot(gs[0, 0])
+    order = run["met"]["P2_mutual_exclusion"]["entry_order"].get(g.gate_id, [])
+    _top_view(ax, run, sc, faulty=faulty, gate=True,
+              title=f"queue points numbered in precedence order; entry order: drone {', '.join(o.split('_')[1] for o in order)}")
+    ax2 = fig.add_subplot(gs[0, 1])
+    t = run["ts"]["t"]
+    G = DEFAULT.gate
+    for k in range(run["n"]):
+        P = np.stack([run["ts"][f"x{k}"], run["ts"][f"y{k}"], run["ts"][f"z{k}"]], axis=1)
+        q = np.array([g.to_gate_frame(p) for p in P])
+        if name == "mutex_deadlock_resolution":
+            ax2.plot(q[:, 0], q[:, 2], color=SERIES[k], label=f"drone {k}")
+        else:
+            ax2.plot(t, q[:, 0], color=SERIES[k], label=f"drone {k}")
+    if name == "mutex_deadlock_resolution":
+        ax2.add_patch(plt.Rectangle((-G.cr_half_len, -G.cr_half_height), 2 * G.cr_half_len, 2 * G.cr_half_height,
+                                    color="#cfe0f5", zorder=0))
+        for zz in (-0.93, 0.93):
+            ax2.add_patch(plt.Rectangle((-0.11, zz - 0.09), 0.22, 0.18, color="#3b3a36", zorder=3))
+        ax2.set_xlabel("along the gate axis [m]")
+        ax2.set_ylabel("depth offset from the gate centre [m]")
+        ax2.set_title("side view: the stacked pair goes upper first, then lower")
+        ax2.set_xlim(-8.5, 9.0)
+    else:
+        ax2.axhspan(-G.cr_half_len, G.cr_half_len, color="#cfe0f5", zorder=0)
+        ax2.set_xlabel("time [s]")
+        ax2.set_ylabel("along the gate axis [m] (critical region shaded)")
+        ax2.set_title("one at a time through the critical region")
+        _marks(ax2, ev)
+    ax2.legend(fontsize=8, loc="best")
+    ax3 = fig.add_subplot(gs[1, :])
+    mode_timeline(ax3, run)
+    _marks(ax3, ev)
+    occ = max(run["met"]["P2_mutual_exclusion"]["max_occupancy"].values())
+    ax3.set_title(f"automaton states  ·  max critical-region occupancy {occ}  ·  static rank used "
+                  f"{run['met']['run']['static_rank_uses']} times  ·  0 messages")
+    save(fig, FIG / "p2" / f"{name}.png")
+
+
+def fleet_snapshots():
+    """One fleet-view frame per new scenario at its key moment (figures/v2/fleet_view/<name>.png)."""
+    sys.path.insert(0, str(ROOT / "scripts"))
+    import cv2
+    from render_demo import replay
+
+    key = {"lost_drone_rejoin": 30.0, "lost_drone_timeout": 60.0, "mutex_deadlock_resolution": 28.0,
+           "line_parallel_mutex": 30.0, "lost_drone_mutex": 32.0}
+    for name, t in key.items():
+        if not (DEMOS / name / "referee_timeseries.csv").exists():
+            continue
+        for _t, img in replay(DEMOS / name, at=[t]):
+            out = FIG / "fleet_view" / f"{name}.png"
+            out.parent.mkdir(parents=True, exist_ok=True)
+            cv2.imwrite(str(out), img)
+            print("  ", out.relative_to(ROOT))
+
+
 def copy_gifs():
-    """Small repository copies of the dashboard GIFs (720 px, every second frame)."""
+    """Small repository copies of the fleet-view GIFs (run_all_demos.small_gif)."""
     sys.path.insert(0, str(ROOT / "scripts"))
     from run_all_demos import small_gif
 
-    for d in sorted(p for p in DEMOS.glob("*") if (p / "dashboard").is_dir()):
+    for d in sorted(p for p in DEMOS.glob("*") if (p / "fleet_view").is_dir() or (p / "dashboard").is_dir()):
         small_gif(d.name)
         g = FIG / "gifs" / f"{d.name}.gif"
         if g.exists():
@@ -583,7 +787,7 @@ def copy_gifs():
 
 def main(argv) -> int:
     style()
-    what = set(argv) or {"sensor", "p1", "p2", "p3", "gifs"}
+    what = set(argv) or {"sensor", "p1", "p2", "p3", "lost", "mutex", "fleet", "gifs"}
     if "sensor" in what:
         fig_sensor()
     if "p1" in what:
@@ -596,6 +800,14 @@ def main(argv) -> int:
         fig_p3_head_current()
         fig_p3_gust()
         fig_p3_overview()
+    if "lost" in what:
+        fig_lost("lost_drone_rejoin")
+        fig_lost("lost_drone_timeout")
+    if "mutex" in what:
+        for nm in ("mutex_deadlock_resolution", "line_parallel_mutex", "lost_drone_mutex"):
+            fig_mutex(nm)
+    if "fleet" in what:
+        fleet_snapshots()
     if "gifs" in what:
         copy_gifs()
     return 0

@@ -2,11 +2,11 @@
  "P1_separation": {
   "formula": "G(forall i!=j: d_ij >= d_safe)",
   "d_safe": 1.0,
-  "min_distance": 4.044,
+  "min_distance": 4.051,
   "min_per_pair": {
    "drone_0-drone_1": {
-    "d": 4.044,
-    "t": 24.199758
+    "d": 4.051,
+    "t": 24.299757
    }
   },
   "violations": 0,
@@ -37,6 +37,18 @@
   "all_recovered_within_run": true,
   "final_form_err": null
  },
+ "P3_degraded": {
+  "formula": "G(neighbour_missing -> F(rejoined or slot_vacant)); remaining drones: G(lost -> F recovered) on their original slots",
+  "enabled": false,
+  "t_rejoin": 37.5,
+  "exercised": false,
+  "absence_log": [],
+  "absent_at_end": [],
+  "episodes_present": [],
+  "open_at_end": 0,
+  "holds": null,
+  "final_form_err_present": null
+ },
  "envelope": {
   "max_horizontal_drift": 0.0,
   "max_vertical_drift": 0.0,
@@ -45,17 +57,18 @@
   "current_vertical_max_m_s": 0.25,
   "max_current_m_s": 0.0,
   "max_vertical_m_s": 0.0,
-  "max_required_over_authority": 0.485,
+  "max_required_over_authority": 0.486,
   "worst_step": {
-   "drone": "drone_0",
-   "t": 28.3,
+   "drone": "drone_1",
+   "t": 15.9,
    "head_m_s": -0.0,
    "lateral_m_s": 0.0,
-   "requested_speed_m_s": 0.401
+   "requested_speed_m_s": 0.4
   },
   "verdict": "INSIDE",
   "inside_envelope": true,
   "self_declared_envelope_violations": 0,
+  "self_declared_by_faulty_drones": 0,
   "coherent_with_vehicles": true,
   "drones": {
    "drone_0": {
@@ -63,10 +76,10 @@
     "max_vertical_m_s": 0.0,
     "max_required_over_authority": 0.485,
     "worst_step": {
-     "t": 28.3,
+     "t": 28.5,
      "head_m_s": -0.0,
      "lateral_m_s": 0.0,
-     "requested_speed_m_s": 0.401
+     "requested_speed_m_s": 0.4
     },
     "time_over_authority_s": 0.0,
     "time_over_authority_plus_tolerance_s": 0.0,
@@ -77,9 +90,9 @@
    "drone_1": {
     "max_current_m_s": 0.0,
     "max_vertical_m_s": 0.0,
-    "max_required_over_authority": 0.485,
+    "max_required_over_authority": 0.486,
     "worst_step": {
-     "t": 15.8,
+     "t": 15.9,
      "head_m_s": -0.0,
      "lateral_m_s": 0.0,
      "requested_speed_m_s": 0.4
@@ -93,7 +106,7 @@
   }
  },
  "kinematics": {
-  "max_true_speed_m_s": 0.425
+  "max_true_speed_m_s": 0.429
  },
  "run": {
   "status": "COMPLETE",
@@ -115,13 +128,13 @@
   "self_declared_envelope_violations": 0,
   "perf": {
    "ticks": 900,
-   "mean_tick_ms": 32.53,
-   "p95_tick_ms": 57.12,
-   "real_time_factor": 1.025,
-   "controller_ms_mean_all_drones": 2.13,
+   "mean_tick_ms": 39.19,
+   "p95_tick_ms": 76.54,
+   "real_time_factor": 0.851,
+   "controller_ms_mean_all_drones": 2.72,
    "controller_hz": 10.0,
    "sonar_hz": 10.0,
-   "wall_s": 41.4,
+   "wall_s": 51.3,
    "sim_s": 30.0
   }
  }
