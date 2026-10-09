@@ -2,7 +2,7 @@
 
 Writes results/<run_id>/: run_config.json, events.jsonl, drone_<k>_state.jsonl,
 referee_timeseries.csv, referee_metrics.json, summary.csv, perf.json and (optionally) camera /
-dashboard frames for GIFs.  A run that does not reach its end writes ``status: INCOMPLETE``.
+fleet-view frames for GIFs.  A run that does not reach its end writes ``status: INCOMPLETE``.
 """
 
 from __future__ import annotations
@@ -62,8 +62,12 @@ def run(name: str, out_root: Path, headless: bool = True, run_id: Optional[str] 
                 "disturbance_windows": sc.disturbance_windows, "stress": sc.sim.stress.__dict__,
                 "setup": sim.setup_report, "comms_enabled": cfg.comms_enabled, "fleet_config": cfg.to_dict(),
                 "plans": [{"drone": p.drone_id, "slot": p.slot_index, "queue_lateral": p.queue_lateral,
+                           "queue_dz": p.queue_dz, "queue_s": round(p.queue_s, 3),
                            "static_rank": p.static_rank, "launch": np.round(p.launch_position, 3).tolist()}
-                          for p in sc.plans]}
+                          for p in sc.plans],
+                "slots": None if sc.template is None else [[sl.along, sl.lateral, sl.dz] for sl in sc.template.slots],
+                "path": np.round(sc.path.waypoints, 3).tolist(), "path_depth": sc.path.depth_z,
+                "clock": None if sc.plans[0].clock is None else dataclasses.asdict(sc.plans[0].clock)}
     (out / "run_config.json").write_text(json.dumps(cfg_dump, indent=1, default=_jsonable), encoding="utf-8")
     ev_f = open(out / "events.jsonl", "w", encoding="utf-8")
     st_f = {n: open(out / f"{n}_state.jsonl", "w", encoding="utf-8") for n in sim.names}
@@ -100,6 +104,7 @@ def run(name: str, out_root: Path, headless: bool = True, run_id: Optional[str] 
                 st_f[nm].write(json.dumps(rec, default=_jsonable) + "\n")
                 for e in c.events:
                     ev_f.write(json.dumps({"drone": nm, **e}, default=_jsonable) + "\n")
+                    step_events.append({"drone": nm, **e})
                 c.events.clear()
             row["modes"] = "|".join(modes)
             live = ref.live()
@@ -110,7 +115,7 @@ def run(name: str, out_root: Path, headless: bool = True, run_id: Optional[str] 
             want_frame = sim.t - last_frame_t >= frame_every_s
             if ui is not None:
                 ui(sim=sim, scenario=sc, ctrls=ctrls, referee=ref, truth=truth, t=sim.t, out=out,
-                   save_frame=want_frame)
+                   save_frame=want_frame, events=step_events)
             if want_frame:
                 last_frame_t = sim.t
                 img = sim.image("ChaseCamera")

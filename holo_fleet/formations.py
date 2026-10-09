@@ -75,6 +75,12 @@ TEMPLATES: Dict[str, FormationTemplate] = {
                 "6 contiguous swaths (3.5 m lane spacing): one pass covers a 21 m strip", swath=3.6),
     # 2 drones on one lane (pair tests)
     "pair_column": _t("pair_column", [(0.0, 0.0, 0.0), (-4.0, 0.0, 0.0)], "two drones on one lane"),
+    # 3 drones abreast: line of three swaths (arrive side by side at a gate: left first)
+    "line3": _t("line3", [(0.0, 3.5, 0.0), (0.0, 0.0, 0.0), (0.0, -3.5, 0.0)], "3 swaths 3.5 m apart", swath=3.6),
+    # 3 drones: the left lane surveyed at two depths (upper / lower layer, 3.5 m apart), the right lane at mid
+    # depth; at a gate the left pair queues as a vertical stack: left first, then top first
+    "stack_pair": _t("stack_pair", [(0.0, 1.75, 1.75), (0.0, 1.75, -1.75), (0.0, -1.75, 0.0)],
+                     "left lane at two depths (upper and lower drone 3.5 m apart), right lane at mid depth", swath=3.6),
 }
 
 

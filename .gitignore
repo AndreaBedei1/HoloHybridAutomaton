@@ -16,6 +16,8 @@ formal/results_*.log
 results/**/frames/
 results/**/dashboard/
 results/**/dashboard_replay/
+results/**/fleet_view/
+results/**/fleet_t*.png
 results/**/sensors/
 results/**/figures/
 results/**/*.gif

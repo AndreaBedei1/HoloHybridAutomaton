@@ -8,8 +8,9 @@ from holo_fleet.sim.scenarios import SCENARIOS
 
 EXPECTED = {"p1_head_on": 2, "p1_vertical_escape": 4, "p1_two_lines": 6, "p1_close_encounter": 2,
             "formation_triangle": 3, "formation_square": 4, "formation_six": 6, "formation_recovery_head_current": 4,
-            "formation_gust": 4, "gate_single": 3, "integrated_short": 3}
-GATE_SCENARIOS = ("gate_single", "integrated_short")
+            "formation_gust": 4, "gate_single": 3, "integrated_short": 3, "lost_drone_rejoin": 4,
+            "lost_drone_timeout": 4, "mutex_deadlock_resolution": 3, "line_parallel_mutex": 3, "lost_drone_mutex": 3}
+GATE_SCENARIOS = ("gate_single", "integrated_short", "mutex_deadlock_resolution", "line_parallel_mutex", "lost_drone_mutex")
 
 
 def test_catalogue_is_small_and_short():
@@ -35,10 +36,28 @@ def test_gate_scenarios_use_only_arena_gate_g06():
         qa = queue_assignment(sc.template.slots, G)
         assert [(p.queue_lateral, p.queue_dz) for p in sc.plans] == qa
         assert sorted(p.static_rank for p in sc.plans) == list(range(len(sc.plans)))
-    # abreast templates keep the v2 abreast queue
+    # abreast templates keep the v2 abreast queue; the stacked pair queues one drone above the other
     sc = SCENARIOS["gate_single"](DEFAULT)
     assert sorted(p.queue_lateral for p in sc.plans) == sorted(G.queue_laterals(3))
     assert {p.queue_s for p in sc.plans} == {G.queue_s(3)}                 # abreast: the v2 queue line
+    sc = SCENARIOS["mutex_deadlock_resolution"](DEFAULT)
+    assert [(p.queue_lateral, p.queue_dz) for p in sc.plans] == [(2.5, 1.75), (2.5, -1.75), (-2.5, 0.0)]
+    assert [p.static_rank for p in sc.plans] == [0, 1, 2]
+
+
+def test_lost_drone_scenarios_inject_one_simulator_fault_on_a_rear_drone():
+    for name, permanent in (("lost_drone_rejoin", False), ("lost_drone_timeout", True), ("lost_drone_mutex", True)):
+        sc = SCENARIOS[name](DEFAULT)
+        assert len(sc.sim.faults) == 1
+        f = sc.sim.faults[0]
+        k = int(f["drone"].split("_")[1])
+        assert f["type"] == "THRUSTER_FAILURE" and (f["t_off"] is None) == permanent
+        assert sc.template.slots[k].along == min(sl.along for sl in sc.template.slots)     # nobody runs into it
+        if name == "lost_drone_mutex":                       # the left drone of the line: the leftmost present goes
+            assert sc.template.name == "line3" and k == 0
+        assert sc.disturbance_active(f["t_on"] + 0.1)
+    for name in set(EXPECTED) - {"lost_drone_rejoin", "lost_drone_timeout", "lost_drone_mutex"}:
+        assert not SCENARIOS[name](DEFAULT).sim.faults, name
 
 
 def test_currents_inside_the_envelope_except_declared_disturbances():

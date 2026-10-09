@@ -1,15 +1,17 @@
-"""Watch one short demonstration scenario (one seed) with the live dashboard.
+"""Watch one short demonstration scenario (one seed) with the live fleet view.
 
     python scripts/run_demo.py --list
-    python scripts/run_demo.py --scenario p1_vertical_escape
-    python scripts/run_demo.py --scenario gate_single --headless          # no HoloOcean window
-    python scripts/run_demo.py --scenario sonar_classification            # echo classifier bench, A-F
+    python scripts/run_demo.py --scenario lost_drone_rejoin
+    python scripts/run_demo.py --scenario mutex_deadlock_resolution --headless   # no HoloOcean window
+    python scripts/run_demo.py --scenario sonar_classification                   # echo classifier bench, A-F
 
 Two windows: the HoloOcean viewport (the onboard belief is drawn on it: nearest echo per sonar
 sector coloured by class - grey structure, brown seabed, red possible vehicle, amber unknown - and
-the escape direction in magenta) and the dashboard (ONBOARD vs REFEREE / GROUND TRUTH).  Results
-go to results/v2/demos/<scenario>/ (logs, metrics, dashboard frames, <scenario>.gif); the
-post-run summary is printed at the end.  Ctrl+C stops the run and marks it INCOMPLETE.
+the escape direction in magenta) and the fleet view (top view of the fleet with the formation slots
+and the gate queue, P1 / P2 / P3 status, one row per drone, readable events, automaton timeline;
+holo_fleet/ui/fleet_view.py).  Results go to results/v2/demos/<scenario>/ (logs, metrics, fleet-view
+frames, <scenario>.gif); the post-run summary is printed at the end.  Ctrl+C stops the run and marks
+it INCOMPLETE.
 """
 
 from __future__ import annotations
@@ -35,7 +37,7 @@ def main() -> int:
     ap.add_argument("--scenario", choices=sorted(SCENARIOS) + ["sonar_classification"])
     ap.add_argument("--list", action="store_true")
     ap.add_argument("--headless", action="store_true", help="no HoloOcean viewport")
-    ap.add_argument("--no-window", action="store_true", help="no dashboard window (frames are still saved)")
+    ap.add_argument("--no-window", action="store_true", help="no fleet-view window (frames are still saved)")
     ap.add_argument("--out", default=str(OUT))
     ap.add_argument("--duration", type=float, default=None)
     a = ap.parse_args()
@@ -57,9 +59,10 @@ def main() -> int:
     ui = DemoUI(sc, DEFAULT, sc.sim.names, show=not a.no_window, draw_viewport=not a.headless)
     m = run(a.scenario, Path(a.out), headless=a.headless, run_id=a.scenario, duration=a.duration, ui=ui)
     print_summary(a.scenario, m)
-    gif = make_gif((Path(a.out) / a.scenario / "dashboard").glob("dash_*.jpg"), Path(a.out) / a.scenario / f"{a.scenario}.gif")
+    gif = make_gif((Path(a.out) / a.scenario / "fleet_view").glob("fleet_*.jpg"), Path(a.out) / a.scenario / f"{a.scenario}.gif",
+                   width=1280, fps=6.0)
     if gif:
-        print(f"dashboard GIF: {gif}")
+        print(f"fleet-view GIF: {gif}")
     return 0 if m["run"]["status"] == "COMPLETE" else 1
 
 

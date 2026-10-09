@@ -1,67 +1,51 @@
-"""Live demo hook for :func:`holo_fleet.runner.run`: dashboard window, dashboard frames, viewport drawing.
+"""Live demo hook for :func:`holo_fleet.runner.run`: fleet view window and frames, viewport drawing.
 
-The hook only *reads*: controller records (onboard knowledge) for the left half of the dashboard
-and the debug lines in the HoloOcean viewport, the referee for the right half.  It never writes
-into a controller.
+The hook only *reads*: controller records and events (onboard knowledge), the referee (ground truth
+for the viewer) and draws the onboard belief in the HoloOcean viewport.  It never writes into a
+controller.  The fleet view (holo_fleet/ui/fleet_view.py) is the same one scripts/render_demo.py
+rebuilds from the logs.
 """
 
 from __future__ import annotations
 
 import math
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Dict, List
 
 import cv2
 import numpy as np
 
 from holo_fleet.perception.sonar_geometry import AXES
-from holo_fleet.ui import dashboard
+from holo_fleet.ui.fleet_view import FleetView
 
 # viewport colours (RGB 0-255) of the echo classes; the escape arrow is magenta
 VP_CLS = {"STRUCTURE": [150, 150, 150], "SEABED": [140, 109, 70], "DYNAMIC": [230, 40, 40], "UNKNOWN": [250, 178, 25]}
 VP_ESCAPE = [230, 60, 230]
 
 
-def referee_state(referee, truth) -> Dict:
-    return {"row": referee.rows[-1] if referee.rows else {}, "live": referee.live(),
-            "entry_order": referee.entry_order, "max_occ": referee.max_occ,
-            "true_current": np.asarray(truth.current_drift[0], float), "contacts": len(referee.contacts)}
-
-
 class DemoUI:
     def __init__(self, scenario, cfg, names, show: bool = True, draw_viewport: bool = True,
-                 window: str = "holo_fleet - onboard vs referee"):
-        self.meta = dashboard.scenario_meta(scenario, cfg, names)
+                 window: str = "holo_fleet - fleet view"):
+        self.view = FleetView(scenario, cfg, names)
         self.names = list(names)
         self.show = show
         self.draw_viewport = draw_viewport
         self.window = window
-        self.trails: List[List] = [[] for _ in names]
-        self.last_trail_t = -1e9
         self.frames_written = 0
 
-    def __call__(self, sim, scenario, ctrls, referee, truth, t, out, save_frame) -> None:
+    def __call__(self, sim, scenario, ctrls, referee, truth, t, out, save_frame, events=()) -> None:
         recs = [ctrls[nm].last_record for nm in self.names]
-        if t - self.last_trail_t >= 0.5:
-            self.last_trail_t = t
-            for k in range(len(self.names)):
-                self.trails[k].append(truth.positions[k][:2].copy())
-        if not (self.show or save_frame or self.draw_viewport):
-            return
+        live = dict(referee.live(), row=referee.rows[-1] if referee.rows else {})
+        self.view.step(t, recs, truth.positions, live, list(events))
         if self.draw_viewport and not sim.headless:
             self._viewport(sim, recs, scenario)
         if not (self.show or save_frame):
             return
-        env = f"current max {referee.max_drift:.2f} m/s"
-        out_self = [nm for nm in self.names if not ctrls[nm].envmon.ok]
-        env += (f"; {', '.join(out_self)} ENVELOPE_VIOLATION (not control-feasible)" if out_self
-                else "; all drones ENVELOPE_OK")
-        meta = dict(self.meta, t=t, envelope=env)
-        img = dashboard.render(meta, recs, referee_state(referee, truth), sim.image("ChaseCamera"), self.trails)
+        img = self.view.render()
         if save_frame:
-            d = Path(out) / "dashboard"
+            d = Path(out) / "fleet_view"
             d.mkdir(parents=True, exist_ok=True)
-            cv2.imwrite(str(d / f"dash_{int(round(t * 10)):05d}.jpg"), img, [cv2.IMWRITE_JPEG_QUALITY, 88])
+            cv2.imwrite(str(d / f"fleet_{int(round(t * 10)):05d}.jpg"), img, [cv2.IMWRITE_JPEG_QUALITY, 90])
             self.frames_written += 1
         if self.show:
             cv2.imshow(self.window, img)

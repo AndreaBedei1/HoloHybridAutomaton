@@ -1,4 +1,4 @@
-"""Run every demonstration scenario once (one seed), headless, with dashboard frames and a GIF each.
+"""Run every demonstration scenario once (one seed), headless, with fleet-view frames and a GIF each.
 
     python scripts/run_all_demos.py                  # all scenarios + sonar_classification
     python scripts/run_all_demos.py gate_single      # a subset
@@ -28,7 +28,8 @@ from holo_fleet.ui.live import DemoUI  # noqa: E402
 OUT = ROOT / "results" / "v2" / "demos"
 ORDER = ["p1_head_on", "p1_vertical_escape", "p1_two_lines", "p1_close_encounter", "formation_triangle",
          "formation_square", "formation_six", "formation_recovery_head_current", "formation_gust", "gate_single",
-         "integrated_short"]
+         "integrated_short", "lost_drone_rejoin", "lost_drone_timeout", "mutex_deadlock_resolution",
+         "line_parallel_mutex", "lost_drone_mutex"]
 
 
 def onboard_summary(run: Path) -> dict:
@@ -72,7 +73,12 @@ def refresh_envelope(run: Path) -> None:
 
 
 def small_gif(name: str) -> None:
-    """Repository copy of the dashboard GIF: 640 px, every third frame (about 1.8 s of simulation per frame)."""
+    """Repository copy of the GIF: fleet view at 800 px, one frame per simulated second, 5x real time (the
+    sonar_classification bench keeps its own dashboard)."""
+    frames = sorted((OUT / name / "fleet_view").glob("fleet_*.jpg"))
+    if frames:
+        make_gif(frames, ROOT / "figures" / "v2" / "gifs" / f"{name}.gif", width=800, fps=5.0, every=2, colors=64)
+        return
     frames = sorted((OUT / name / "dashboard").glob("dash_*.jpg"))
     if frames:
         make_gif(frames, ROOT / "figures" / "v2" / "gifs" / f"{name}.gif", width=640, fps=4.0, every=3, colors=80)
@@ -141,7 +147,7 @@ def main(argv) -> int:
         ui = DemoUI(sc, DEFAULT, sc.sim.names, show=False, draw_viewport=False)
         m = run(name, OUT, headless=True, run_id=name, ui=ui)
         print_summary(name, m)
-        make_gif((OUT / name / "dashboard").glob("dash_*.jpg"), OUT / name / f"{name}.gif")
+        make_gif((OUT / name / "fleet_view").glob("fleet_*.jpg"), OUT / name / f"{name}.gif", width=1280, fps=6.0)
         small_gif(name)
         print(f"    wall {time.time() - t0:.0f} s", flush=True)
     summary_table()

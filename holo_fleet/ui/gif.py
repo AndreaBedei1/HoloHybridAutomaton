@@ -1,4 +1,4 @@
-"""Short GIFs from saved frames (dashboard or chase camera)."""
+"""Short GIFs from saved frames (fleet view, dashboard or chase camera)."""
 
 from __future__ import annotations
 

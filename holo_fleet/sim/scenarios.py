@@ -19,6 +19,20 @@
   formation_gust         4 drones, temporary 0.85 m/s jet     out-of-envelope stress test: lost and recovered
   gate_single            3 drones, one arena gate (G06)       one at a time through the gate (P2)
   integrated_short       3 drones, cross-current + G06        P1 + P2 + P3 in one short mission
+lost drones and the mutex queue (DI-28, DI-29):
+  lost_drone_rejoin      4 drones, lateral current 0.35       the rear-left drone loses its thrusters for 7 s and
+                                                              is dragged away; the others wait for it on their
+                                                              slots (FORMATION_WAIT_REJOIN), it rejoins from behind
+  lost_drone_timeout     4 drones, no current                 the same drone loses its thrusters for good: after
+                                                              t_rejoin the others declare its slot vacant and keep
+                                                              a degraded formation (DEGRADED_FORMATION)
+  mutex_deadlock_resolution
+                         3 drones, a stacked pair, G06        stacked queue: left first, then top first; the v2 rule
+                                                              (static rank with unknown ranks) deadlocked here
+  line_parallel_mutex    3 drones abreast, G06                a line arrives at the gate side by side: left first,
+                                                              no static rank
+  lost_drone_mutex       3 drones abreast, G06                the left drone is lost before the gate: the leftmost
+                                                              drone still present goes first (no ID, no deadlock)
 """
 
 from __future__ import annotations
@@ -172,8 +186,7 @@ def p1_close_encounter(cfg: FleetConfig = DEFAULT) -> Scenario:
 def p1_two_lines(cfg: FleetConfig = DEFAULT) -> Scenario:
     """Two survey lines of three drones (3.5 m apart) meet head-on: the middle drones have a
     neighbour on each side, so the traffic rule shifts them vertically instead of to the right."""
-    line3 = FormationTemplate("line3", (Slot(0.0, 3.5, 0.0), Slot(0.0, 0.0, 0.0), Slot(0.0, -3.5, 0.0)),
-                              "3 swaths 3.5 m apart", 3.6)
+    line3 = TEMPLATES["line3"]
     plans, spawns, yaws = [], [], []
     for side, (a, b) in enumerate((((-9.0, -30.0), (14.0, -30.0)), ((9.0, -30.0), (-14.0, -30.0)))):
         path = Path(np.array([a, b]), DEPTH)
@@ -272,6 +285,38 @@ def formation_gust(cfg: FleetConfig = DEFAULT) -> Scenario:
                    windows=[(12.0, 22.0)])
 
 
+# ---------------------------------------------------------------------------------------------- lost drones (DI-29)
+def _lost_drone(name: str, t_on: float, t_off: Optional[float], duration: float, current: CurrentField, title: str,
+                desc: str, focus: str, cfg: FleetConfig, faulty: int = 2) -> Scenario:
+    """Square survey; drone ``faulty`` (rear-left: nobody runs into it when it stops) loses its thrusters
+    (simulator fault, invisible to every controller) at t_on, until t_off (None: for good)."""
+    sc = _survey(name, "square", 34.0, current, duration, title, desc, focus, windows=[(t_on, t_off or duration)],
+                 cfg=cfg, camera=faulty)
+    sc.sim.faults = ({"drone": f"drone_{faulty}", "type": "THRUSTER_FAILURE", "t_on": t_on, "t_off": t_off},)
+    sc.sim.chase_offset, sc.sim.side_offset = (-7.0, 0.0, 3.0), (2.0, 10.0, 2.0)
+    return sc
+
+
+def lost_drone_rejoin(cfg: FleetConfig = DEFAULT) -> Scenario:
+    return _lost_drone("lost_drone_rejoin", 8.0, 15.0, 60.0, _uniform((0.0, 0.35, 0.0)),
+                       "Lost drone: temporary thruster failure, wait and rejoin from behind",
+                       "4 drones (square), 0.35 m/s lateral current (inside the envelope). The rear-left drone loses "
+                       "its thrusters between t = 8 s and 15 s (simulator fault, no controller is told) and is dragged "
+                       "off its lane and behind the fleet.",
+                       "the faulty drone detects it onboard (requested velocity not delivered -> FAILSAFE); its "
+                       "neighbours miss it and wait on their slots (FORMATION_WAIT_REJOIN, timer < t_rejoin); it "
+                       "rejoins from behind along its own lane; formation re-established, no communication", cfg)
+
+
+def lost_drone_timeout(cfg: FleetConfig = DEFAULT) -> Scenario:
+    return _lost_drone("lost_drone_timeout", 8.0, None, 64.0, CurrentField(),
+                       "Lost drone: permanent failure, timeout and degraded formation",
+                       "4 drones (square), no current. The rear-left drone loses its thrusters for good at t = 8 s "
+                       "(simulator fault, no controller is told).",
+                       "the neighbours miss it (FORMATION_WAIT_REJOIN), after t_rejoin = 37.5 s they declare its slot "
+                       "vacant (DEGRADED_FORMATION) and keep their original slots: no reconfiguration, the hole stays", cfg)
+
+
 # ---------------------------------------------------------------------------------------------- P2
 def _gate_mission(name: str, template_name: str, duration: float, current: CurrentField, cfg: FleetConfig,
                   windows=(), title: str = "", desc: str = "", focus: str = "", lead_in: float = 0.0,
@@ -325,6 +370,41 @@ def integrated_short(cfg: FleetConfig = DEFAULT) -> Scenario:
                          focus="P1 throughout, current estimate, P2 at the gate under cross-current, P3 re-formation")
 
 
+def mutex_deadlock_resolution(cfg: FleetConfig = DEFAULT) -> Scenario:
+    return _gate_mission("mutex_deadlock_resolution", "stack_pair", 75.0, CurrentField(), cfg,
+                         title="Mutex: stacked queue, left first then top first",
+                         desc="3 drones - an upper and a lower drone on the left lane, one on the right lane - reach gate "
+                              "G06 and queue with the left pair stacked. The stacked pair sees each other only in UP/DOWN: "
+                              "the v2 rule resolved that with a static rank it could not apply (both waited, and the right "
+                              "drone waited for them: deadlock); now the upper one goes first. No communication.",
+                         focus="queue order left-top, left-bottom, right from sector patterns; static rank never used; "
+                               "occupancy <= 1")
+
+
+def line_parallel_mutex(cfg: FleetConfig = DEFAULT) -> Scenario:
+    return _gate_mission("line_parallel_mutex", "line3", 75.0, CurrentField(), cfg,
+                         title="Mutex: a line abreast reaches the gate side by side",
+                         desc="3 drones abreast arrive together at gate G06: perfect parity. The tie is broken by the "
+                              "sector rule alone - left first - without any static rank. No communication.",
+                         focus="simultaneous arrival, abreast queue, left-first order, CR occupancy <= 1")
+
+
+def lost_drone_mutex(cfg: FleetConfig = DEFAULT) -> Scenario:
+    """The lead-in (9 m of survey) leaves the stopped drone more than a queue bracket behind the queue line:
+    a drone that stops for good INSIDE the bracket of a queued drone, on its left, would block it (M5)."""
+    sc = _gate_mission("lost_drone_mutex", "line3", 72.0, CurrentField(), cfg, lead_in=9.0,
+                       title="Lost drone before the gate: the leftmost drone present goes first",
+                       desc="3 drones abreast survey towards gate G06; the left drone loses its thrusters for good at "
+                            "t = 1 s and stays behind. The other two miss it, queue at their own queue points (the left "
+                            "one stays vacant) and pass one at a time: the middle drone, now the leftmost present, goes "
+                            "first. No communication.",
+                       focus="missing neighbour (FORMATION_WAIT_REJOIN; timer frozen in the mutex modes and during the "
+                             "rendezvous hold), queue order relative to the drones present, occupancy <= 1")
+    sc.sim.faults = ({"drone": "drone_0", "type": "THRUSTER_FAILURE", "t_on": 1.0, "t_off": None},)
+    sc.disturbance_windows = [(1.0, sc.duration_s)]
+    return sc
+
+
 SCENARIOS: Dict[str, Callable[..., Scenario]] = {
     "p1_head_on": p1_head_on,
     "p1_vertical_escape": p1_vertical_escape,
@@ -337,4 +417,9 @@ SCENARIOS: Dict[str, Callable[..., Scenario]] = {
     "formation_gust": formation_gust,
     "gate_single": gate_single,
     "integrated_short": integrated_short,
+    "lost_drone_rejoin": lost_drone_rejoin,
+    "lost_drone_timeout": lost_drone_timeout,
+    "mutex_deadlock_resolution": mutex_deadlock_resolution,
+    "line_parallel_mutex": line_parallel_mutex,
+    "lost_drone_mutex": lost_drone_mutex,
 }
