@@ -643,16 +643,19 @@ def _top_view(ax, run, sc, faulty=None, gate=False, title=""):
     ax.set_title(title)
 
 
-def _slot_error(run, sc, k):
-    """Ground-truth distance of drone k from its slot of the shared plan (clock s(t))."""
-    pl = sc.plans[k]
-    t = run["ts"]["t"]
-    out = np.zeros_like(t)
-    sl = pl.slots[pl.slot_index]
-    for i, tt in enumerate(t):
-        pp, _d, nn = pl.path.frame_at(pl.clock.s(tt) + sl.along)
-        q = np.array([pp[0] + sl.lateral * nn[0], pp[1] + sl.lateral * nn[1], pl.path.depth_z + sl.dz])
-        out[i] = np.linalg.norm(q - np.array([run["ts"][f"x{k}"][i], run["ts"][f"y{k}"][i], run["ts"][f"z{k}"][i]]))
+def _dev_from_fleet(run, sc, k):
+    """Ground-truth distance of drone k from its slot in the formation of the OTHER drones (robust fit, as the
+    referee): the formation may run behind the plan after a reduced-progress episode (DI-31)."""
+    from holo_fleet.referee.referee import Referee
+
+    n = run["n"]
+    ref = Referee([f"drone_{j}" for j in range(n)], sc.template.offsets(), sc.path, [], DEFAULT, True)
+    ts = run["ts"]
+    others = [j for j in range(n) if j != k]
+    out = np.zeros_like(ts["t"])
+    for i in range(len(ts["t"])):
+        P = np.array([[ts[f"x{j}"][i], ts[f"y{j}"][i], ts[f"z{j}"][i]] for j in range(n)])
+        out[i] = ref.deviations(P, others)[k]
     return out
 
 
@@ -662,20 +665,39 @@ def fig_lost(name):
         return
     sc = SCENARIOS[name](DEFAULT)
     ev = _events(name)
+    fr = DEFAULT.form
     faulty = int(sc.sim.faults[0]["drone"].split("_")[1])
     perm = sc.sim.faults[0]["t_off"] is None
-    fig = plt.figure(figsize=(13, 8.2))
-    gs = fig.add_gridspec(2, 2, height_ratios=[1.2, 1.0], hspace=0.45, wspace=0.18)
+    fig = plt.figure(figsize=(15, 8.6))
+    gs = fig.add_gridspec(2, 3, height_ratios=[1.15, 1.0], hspace=0.45, wspace=0.24)
     ax = fig.add_subplot(gs[0, :])
     _top_view(ax, run, sc, faulty=faulty,
-              title=("permanent thruster failure: the others keep their original slots, the hole stays (no reconfiguration)"
-                     if perm else "temporary thruster failure: dragged off its lane, held in FAILSAFE, rejoins from behind"))
+              title=("permanent thruster failure: the others slow down, time out, keep their original slots - the hole "
+                     "stays (no reconfiguration)" if perm else
+                     "temporary thruster failure: dragged off its lane, held in FAILSAFE, catches up with the slowed "
+                     "fleet, rejoins from behind"))
     ax2 = fig.add_subplot(gs[1, 0])
     mode_timeline(ax2, run)
     _marks(ax2, ev)
-    ax2.set_title("automaton states (red: fault injected, green: cleared, violet: slot vacant)")
-    ax3 = fig.add_subplot(gs[1, 1])
-    t = run["ts"]["t"]
+    ax2.set_title("automaton states (red: fault injected, green: cleared,\nviolet: slot vacant)")
+    # formation reference speed of every drone (onboard: its own formation time, DI-31)
+    ax4 = fig.add_subplot(gs[1, 1])
+    for k in range(run["n"]):
+        tt = [r["t"] for r in run["states"][k] if "v_ref" in (r.get("form") or {})]
+        vv = [r["form"]["v_ref"] for r in run["states"][k] if "v_ref" in (r.get("form") or {})]
+        ax4.plot(tt, vv, color=SERIES[k], lw=2.0 if k == faulty else 1.4,
+                 label=f"drone {k}" + (" (fault)" if k == faulty else ""))
+    for v, lab in ((fr.v_nominal, f"survey {fr.v_nominal:.2f} m/s"), (fr.v_wait, f"v_wait {fr.v_wait:.2f} m/s")):
+        ax4.axhline(v, color=INK["axis"], lw=1.0, ls="--")
+        ax4.annotate(lab, (0.99, v), xycoords=("axes fraction", "data"), xytext=(0, 3), textcoords="offset points",
+                     fontsize=8, color=INK["secondary"], ha="right")
+    ax4.set_ylim(0.0, fr.v_nominal + 0.08)
+    ax4.set_ylabel("speed of the own formation reference [m/s]")
+    ax4.set_title("reduced progress while a neighbour is missing\n(each drone from its own sensing, no message)")
+    _marks(ax4, ev)
+    ax4.set_xlabel("time [s]")
+    ax4.legend(fontsize=7.5, loc="lower left", ncol=2)
+    ax3 = fig.add_subplot(gs[1, 2])
     if perm:
         for k in range(run["n"]):
             if k == faulty:
@@ -686,23 +708,25 @@ def fig_lost(name):
                 f = r.get("form") or {}
                 m = f.get("missing_t") or {}
                 val = float(m.get(str(faulty), m.get(faulty, 0.0)))
-                mt.append(DEFAULT.form.t_rejoin if faulty in (f.get("vacant") or []) else val)
+                mt.append(fr.t_rejoin if faulty in (f.get("vacant") or []) else val)
             ax3.plot(tt, mt, color=SERIES[k], label=f"drone {k}")
-        ax3.axhline(DEFAULT.form.t_rejoin, color=MODE_COLOR["DEGRADED_FORMATION"], lw=1.0, ls="--")
-        ax3.annotate(f"t_rejoin = {DEFAULT.form.t_rejoin:.1f} s: slot declared vacant", (0.02, DEFAULT.form.t_rejoin),
+        ax3.axhline(fr.t_rejoin, color=MODE_COLOR["DEGRADED_FORMATION"], lw=1.0, ls="--")
+        ax3.annotate(f"t_rejoin = {fr.t_rejoin:.0f} s: slot declared vacant", (0.02, fr.t_rejoin),
                      xycoords=("axes fraction", "data"), xytext=(0, 4), textcoords="offset points", fontsize=8,
                      color=INK["secondary"])
         ax3.set_ylabel(f"missing time of drone {faulty} [s]")
-        ax3.set_title("each neighbour times the missing drone on its own (no message)")
+        ax3.set_title("each neighbour times the missing drone\non its own")
     else:
-        ax3.plot(t, _slot_error(run, sc, faulty), color=SERIES[faulty], label=f"drone {faulty}: distance from its slot")
+        t = run["ts"]["t"]
+        ax3.plot(t, _dev_from_fleet(run, sc, faulty), color=SERIES[faulty],
+                 label=f"drone {faulty}: distance from its slot\nin the formation of the others")
         ax3.axhline(DEFAULT.ref.e_lost, color=STATUS["warning"], lw=1.0, ls="--")
         ax3.axhline(DEFAULT.ref.e_ok, color=STATUS["good"], lw=1.0, ls="--")
-        ax3.set_ylabel("distance from the planned slot [m]")
-        ax3.set_title("lost, held until it moves again, back on its slot")
+        ax3.set_ylabel("distance [m]")
+        ax3.set_title(f"lost, held until it moves again, catches up\nat {fr.catch_up:.2f} m/s, back in its slot")
     _marks(ax3, ev)
     ax3.set_xlabel("time [s]")
-    ax3.legend(fontsize=8, loc="upper left")
+    ax3.legend(fontsize=8, loc="upper right")
     save(fig, FIG / "p3" / f"{name}.png")
 
 
@@ -755,8 +779,9 @@ def fig_mutex(name):
     save(fig, FIG / "p2" / f"{name}.png")
 
 
-def fleet_snapshots():
-    """One fleet-view frame per new scenario at its key moment (figures/v2/fleet_view/<name>.png)."""
+def fleet_snapshots(names=None):
+    """One fleet-view frame per new scenario at its key moment (figures/v2/fleet_view/<name>.png); ``names``: only
+    these scenarios (a re-rendered run of an older version would show the automaton card without its logs)."""
     sys.path.insert(0, str(ROOT / "scripts"))
     import cv2
     from render_demo import replay
@@ -764,7 +789,7 @@ def fleet_snapshots():
     key = {"lost_drone_rejoin": 30.0, "lost_drone_timeout": 60.0, "mutex_deadlock_resolution": 28.0,
            "line_parallel_mutex": 30.0, "lost_drone_mutex": 32.0}
     for name, t in key.items():
-        if not (DEMOS / name / "referee_timeseries.csv").exists():
+        if not (DEMOS / name / "referee_timeseries.csv").exists() or (names and name not in names):
             continue
         for _t, img in replay(DEMOS / name, at=[t]):
             out = FIG / "fleet_view" / f"{name}.png"

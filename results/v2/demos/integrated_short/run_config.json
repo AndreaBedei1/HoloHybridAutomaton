@@ -1,7 +1,7 @@
 {
  "scenario": "integrated_short",
  "title": "Integrated: survey, cross-current at the gate, one at a time, re-form",
- "description": "3 drones (triangle) survey towards gate G06; a 0.35 m/s cross-current builds up while they approach and queue (onboard current estimate, no ground truth); they pass the 1.5 m opening one at a time and re-form beyond it. No communication.",
+ "description": "3 drones (triangle) survey towards gate G06; a 0.27 m/s cross-current builds up while they approach and queue (onboard current estimate, no ground truth); they pass the 1.5 m opening one at a time and re-form beyond it. No communication.",
  "focus": "P1 throughout, current estimate, P2 at the gate under cross-current, P3 re-formation",
  "duration_s": 92.0,
  "n_drones": 3,
@@ -36,8 +36,8 @@
   {
    "kind": "uniform",
    "drift": [
-    -0.052,
-    0.346,
+    -0.04,
+    0.267,
     0.0
    ],
    "center": [
@@ -84,7 +84,7 @@
    "built": "2026-10-07T23:52:04",
    "source_commit": "a8d3070"
   },
-  "engine_start_s": 9.9,
+  "engine_start_s": 14.4,
   "gate_spawn": {
    "physically_spawned": true,
    "spawned_bar_count": 124,
@@ -96,7 +96,7 @@
    "mode": "patched_rebuild",
    "ticks": 18
   },
-  "static_scene_s": 1.0,
+  "static_scene_s": 1.5,
   "gate_ids": [
    "G06"
   ]
@@ -172,7 +172,14 @@
    "neighbour_range_m": 7.5,
    "t_reinclude": 1.0,
    "rejoin_lane_tol_m": 1.0,
-   "rejoin_back_m": 2.0
+   "rejoin_back_m": 2.0,
+   "v_wait": 0.2,
+   "a_wait": 0.02,
+   "t_rejoin_margin": 5.0,
+   "t_rejoin_max": 60.0,
+   "follow_on_m": 0.08,
+   "follow_off_m": 0.04,
+   "a_follow": 0.05
   },
   "perc": {
    "sonar": {

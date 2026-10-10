@@ -227,3 +227,62 @@ def test_envelope_verdict_and_vehicles(run):
     # a drone with an injected thruster fault declares a violation it cannot attribute to the current
     if m["run"]["self_declared_envelope_violations"] - e.get("self_declared_by_faulty_drones", 0):
         assert e["verdict"] == "OUTSIDE"
+
+
+# ---------------------------------------------------------------------------------------------- DI-31
+def _reduced_progress(run, k):
+    """(v_ref of the drone's formation reference while it waits, v_ref after its last formation-keeping change)."""
+    st = _states(run, k)
+    wait = [r["form"]["v_ref"] for r in st if r["mode"] == "FORMATION_WAIT_REJOIN" and "v_ref" in r["form"]]
+    return wait, st
+
+
+def test_waiting_drones_slow_the_formation_down_and_resume_the_survey_speed():
+    """lost_drone_rejoin / lost_drone_timeout: a drone that misses a neighbour runs its formation reference at v_wait
+    (reduced progress, not a stop); after the rejoin or the timeout the reference is back at the survey speed."""
+    from holo_fleet.config import DEFAULT
+
+    fr = DEFAULT.form
+    for name in ("lost_drone_rejoin", "lost_drone_timeout"):
+        run = _run(name)
+        cfg = json.loads((run / "run_config.json").read_text(encoding="utf-8"))
+        faulty = int(cfg["faults"][0]["drone"].split("_")[1])
+        for k in range(cfg["n_drones"]):
+            if k == faulty:
+                continue
+            wait, st = _reduced_progress(run, k)
+            assert wait and min(wait) == pytest.approx(fr.v_wait, abs=0.01), (name, k)   # slowed, not stopped
+            assert st[-1]["form"]["v_ref"] == pytest.approx(fr.v_nominal, abs=0.01), (name, k)
+        fleet = json.loads((run / "experiment_summary.json").read_text(encoding="utf-8"))["lost"]["fleet"]
+        assert 0.5 * fr.v_wait < fleet["true_speed_in_wait_m_s"] < fleet["true_speed_before_m_s"] - 0.03   # true speed
+        assert fleet["present_formation_error_max_m"] < fr.e_ok                    # the formation was preserved
+
+
+def test_every_mode_change_is_logged_with_its_cause():
+    for name in ("lost_drone_rejoin", "lost_drone_timeout", "integrated_short"):
+        run = _run(name)
+        cfg = json.loads((run / "run_config.json").read_text(encoding="utf-8"))
+        ev = [e for e in _decisions(run) if e.get("type") == "transition"]
+        for k in range(cfg["n_drones"]):
+            modes = ["FORMATION_FOLLOW"] + [r["mode"] for r in _states(run, k)]       # the automaton starts in FOLLOW
+            changes = [(a, b) for a, b in zip(modes, modes[1:]) if a != b]
+            mine = [e for e in ev if e["drone"] == f"drone_{k}"]
+            assert [(e["from"], e["to"]) for e in mine] == changes, (name, k)
+            assert all(e["reason"] and e["guard"] for e in mine), (name, k)
+
+
+def test_integrated_short_is_inside_the_control_feasible_envelope():
+    """DI-31: only the scenario changed (cross-current gust 0.35 -> 0.27 m/s); the mission keeps a real current, the
+    one-at-a-time passage, P1, P2 and the re-formation."""
+    from holo_fleet.sim.scenarios import INTEGRATED_GUST
+
+    run = _run("integrated_short")
+    cfg = json.loads((run / "run_config.json").read_text(encoding="utf-8"))
+    gust = [c for c in cfg["current"] if c["t_on"] > 0][0]
+    assert abs((gust["drift"][0] ** 2 + gust["drift"][1] ** 2) ** 0.5 - INTEGRATED_GUST) < 0.01
+    m = json.loads((run / "referee_metrics.json").read_text(encoding="utf-8"))
+    e = m["envelope"]
+    assert e["verdict"] == "INSIDE" and e["max_current_m_s"] >= 0.2
+    assert m["P1_separation"]["holds"] and m["P2_mutual_exclusion"]["holds"]
+    assert len(m["P2_mutual_exclusion"]["entry_order"]["G06"]) == cfg["n_drones"]
+    assert m["P3_formation_recovery"]["all_recovered_within_run"]

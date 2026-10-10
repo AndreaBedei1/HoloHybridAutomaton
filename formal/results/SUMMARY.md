@@ -1,10 +1,10 @@
 # Formal verification summary
 
-Generated 2026-10-09 14:26:55 by `formal/check_properties.py`.
+Generated 2026-10-10 20:16:23 by `formal/check_properties.py`.
 
 UNSAT = the negated property has no model in the abstraction, i.e. the property HOLDS for the model; SAT is expected for the satisfiability / non-vacuity checks (a witness must exist) and for the mutation tests (deliberately broken designs must yield a counterexample); mutation Om2 expects UNSAT (a broken observation domain loses the reachability of an edge).  The observation domain of every suite is the conjunction of the invariants of holo_fleet/ha/observation_invariants.py.
 
-## Local determinism & priority hierarchy  (82/82 as expected, 0.3 s)
+## Local determinism & priority hierarchy  (93/93 as expected, 0.6 s)
 
 Encoding: `holo_fleet/ha/spec.py`
 
@@ -18,6 +18,7 @@ Encoding: `holo_fleet/ha/spec.py`
 | G1 MUTEX_PASS entry condition [FORMATION_FOLLOW] | !committed & guard(->MUTEX_PASS) -> at_queue & !occ_busy & has_prio | UNSAT | UNSAT | yes |
 | G2 no PASS->YIELD fallback [FORMATION_FOLLOW] | committed -> target not in {MUTEX_APPROACH, MUTEX_YIELD} | UNSAT | UNSAT | yes |
 | G3 no commit under hazard [FORMATION_FOLLOW] | commit edge enabled -> d_min >= d_warning (or >= d_warning_exit from SW) | UNSAT | UNSAT | yes |
+| L1 readable guards exact [FORMATION_FOLLOW] | forall legal obs, edge k: no earlier edge enabled -> (label_k <-> guard_k) | UNSAT | UNSAT | yes |
 | D1 determinism [SEPARATION_WARNING] | forall legal obs: at most one outgoing guard enabled | UNSAT | UNSAT | yes |
 | D2 completeness [SEPARATION_WARNING] | forall legal obs: some guard enabled | UNSAT | UNSAT | yes |
 | H1 fault=>FAILSAFE [SEPARATION_WARNING] | fault -> target = FAILSAFE | UNSAT | UNSAT | yes |
@@ -26,6 +27,7 @@ Encoding: `holo_fleet/ha/spec.py`
 | G1 MUTEX_PASS entry condition [SEPARATION_WARNING] | !committed & guard(->MUTEX_PASS) -> at_queue & !occ_busy & has_prio | UNSAT | UNSAT | yes |
 | G2 no PASS->YIELD fallback [SEPARATION_WARNING] | committed -> target not in {MUTEX_APPROACH, MUTEX_YIELD} | UNSAT | UNSAT | yes |
 | G3 no commit under hazard [SEPARATION_WARNING] | commit edge enabled -> d_min >= d_warning (or >= d_warning_exit from SW) | UNSAT | UNSAT | yes |
+| L1 readable guards exact [SEPARATION_WARNING] | forall legal obs, edge k: no earlier edge enabled -> (label_k <-> guard_k) | UNSAT | UNSAT | yes |
 | D1 determinism [COLLISION_AVOIDANCE] | forall legal obs: at most one outgoing guard enabled | UNSAT | UNSAT | yes |
 | D2 completeness [COLLISION_AVOIDANCE] | forall legal obs: some guard enabled | UNSAT | UNSAT | yes |
 | H1 fault=>FAILSAFE [COLLISION_AVOIDANCE] | fault -> target = FAILSAFE | UNSAT | UNSAT | yes |
@@ -34,6 +36,7 @@ Encoding: `holo_fleet/ha/spec.py`
 | G1 MUTEX_PASS entry condition [COLLISION_AVOIDANCE] | !committed & guard(->MUTEX_PASS) -> at_queue & !occ_busy & has_prio | UNSAT | UNSAT | yes |
 | G2 no PASS->YIELD fallback [COLLISION_AVOIDANCE] | committed -> target not in {MUTEX_APPROACH, MUTEX_YIELD} | UNSAT | UNSAT | yes |
 | G3 no commit under hazard [COLLISION_AVOIDANCE] | commit edge enabled -> d_min >= d_warning (or >= d_warning_exit from SW) | UNSAT | UNSAT | yes |
+| L1 readable guards exact [COLLISION_AVOIDANCE] | forall legal obs, edge k: no earlier edge enabled -> (label_k <-> guard_k) | UNSAT | UNSAT | yes |
 | D1 determinism [MUTEX_APPROACH] | forall legal obs: at most one outgoing guard enabled | UNSAT | UNSAT | yes |
 | D2 completeness [MUTEX_APPROACH] | forall legal obs: some guard enabled | UNSAT | UNSAT | yes |
 | H1 fault=>FAILSAFE [MUTEX_APPROACH] | fault -> target = FAILSAFE | UNSAT | UNSAT | yes |
@@ -42,6 +45,7 @@ Encoding: `holo_fleet/ha/spec.py`
 | G1 MUTEX_PASS entry condition [MUTEX_APPROACH] | !committed & guard(->MUTEX_PASS) -> at_queue & !occ_busy & has_prio | UNSAT | UNSAT | yes |
 | G2 no PASS->YIELD fallback [MUTEX_APPROACH] | committed -> target not in {MUTEX_APPROACH, MUTEX_YIELD} | UNSAT | UNSAT | yes |
 | G3 no commit under hazard [MUTEX_APPROACH] | commit edge enabled -> d_min >= d_warning (or >= d_warning_exit from SW) | UNSAT | UNSAT | yes |
+| L1 readable guards exact [MUTEX_APPROACH] | forall legal obs, edge k: no earlier edge enabled -> (label_k <-> guard_k) | UNSAT | UNSAT | yes |
 | D1 determinism [MUTEX_YIELD] | forall legal obs: at most one outgoing guard enabled | UNSAT | UNSAT | yes |
 | D2 completeness [MUTEX_YIELD] | forall legal obs: some guard enabled | UNSAT | UNSAT | yes |
 | H1 fault=>FAILSAFE [MUTEX_YIELD] | fault -> target = FAILSAFE | UNSAT | UNSAT | yes |
@@ -50,6 +54,7 @@ Encoding: `holo_fleet/ha/spec.py`
 | G1 MUTEX_PASS entry condition [MUTEX_YIELD] | !committed & guard(->MUTEX_PASS) -> at_queue & !occ_busy & has_prio | UNSAT | UNSAT | yes |
 | G2 no PASS->YIELD fallback [MUTEX_YIELD] | committed -> target not in {MUTEX_APPROACH, MUTEX_YIELD} | UNSAT | UNSAT | yes |
 | G3 no commit under hazard [MUTEX_YIELD] | commit edge enabled -> d_min >= d_warning (or >= d_warning_exit from SW) | UNSAT | UNSAT | yes |
+| L1 readable guards exact [MUTEX_YIELD] | forall legal obs, edge k: no earlier edge enabled -> (label_k <-> guard_k) | UNSAT | UNSAT | yes |
 | D1 determinism [MUTEX_PASS] | forall legal obs: at most one outgoing guard enabled | UNSAT | UNSAT | yes |
 | D2 completeness [MUTEX_PASS] | forall legal obs: some guard enabled | UNSAT | UNSAT | yes |
 | H1 fault=>FAILSAFE [MUTEX_PASS] | fault -> target = FAILSAFE | UNSAT | UNSAT | yes |
@@ -58,6 +63,7 @@ Encoding: `holo_fleet/ha/spec.py`
 | G1 MUTEX_PASS entry condition [MUTEX_PASS] | !committed & guard(->MUTEX_PASS) -> at_queue & !occ_busy & has_prio | UNSAT | UNSAT | yes |
 | G2 no PASS->YIELD fallback [MUTEX_PASS] | committed -> target not in {MUTEX_APPROACH, MUTEX_YIELD} | UNSAT | UNSAT | yes |
 | G3 no commit under hazard [MUTEX_PASS] | commit edge enabled -> d_min >= d_warning (or >= d_warning_exit from SW) | UNSAT | UNSAT | yes |
+| L1 readable guards exact [MUTEX_PASS] | forall legal obs, edge k: no earlier edge enabled -> (label_k <-> guard_k) | UNSAT | UNSAT | yes |
 | D1 determinism [FORMATION_RECOVERY] | forall legal obs: at most one outgoing guard enabled | UNSAT | UNSAT | yes |
 | D2 completeness [FORMATION_RECOVERY] | forall legal obs: some guard enabled | UNSAT | UNSAT | yes |
 | H1 fault=>FAILSAFE [FORMATION_RECOVERY] | fault -> target = FAILSAFE | UNSAT | UNSAT | yes |
@@ -66,6 +72,7 @@ Encoding: `holo_fleet/ha/spec.py`
 | G1 MUTEX_PASS entry condition [FORMATION_RECOVERY] | !committed & guard(->MUTEX_PASS) -> at_queue & !occ_busy & has_prio | UNSAT | UNSAT | yes |
 | G2 no PASS->YIELD fallback [FORMATION_RECOVERY] | committed -> target not in {MUTEX_APPROACH, MUTEX_YIELD} | UNSAT | UNSAT | yes |
 | G3 no commit under hazard [FORMATION_RECOVERY] | commit edge enabled -> d_min >= d_warning (or >= d_warning_exit from SW) | UNSAT | UNSAT | yes |
+| L1 readable guards exact [FORMATION_RECOVERY] | forall legal obs, edge k: no earlier edge enabled -> (label_k <-> guard_k) | UNSAT | UNSAT | yes |
 | D1 determinism [FAILSAFE_HOLD_OR_RETREAT] | forall legal obs: at most one outgoing guard enabled | UNSAT | UNSAT | yes |
 | D2 completeness [FAILSAFE_HOLD_OR_RETREAT] | forall legal obs: some guard enabled | UNSAT | UNSAT | yes |
 | H1 fault=>FAILSAFE [FAILSAFE_HOLD_OR_RETREAT] | fault -> target = FAILSAFE | UNSAT | UNSAT | yes |
@@ -74,6 +81,7 @@ Encoding: `holo_fleet/ha/spec.py`
 | G1 MUTEX_PASS entry condition [FAILSAFE_HOLD_OR_RETREAT] | !committed & guard(->MUTEX_PASS) -> at_queue & !occ_busy & has_prio | UNSAT | UNSAT | yes |
 | G2 no PASS->YIELD fallback [FAILSAFE_HOLD_OR_RETREAT] | committed -> target not in {MUTEX_APPROACH, MUTEX_YIELD} | UNSAT | UNSAT | yes |
 | G3 no commit under hazard [FAILSAFE_HOLD_OR_RETREAT] | commit edge enabled -> d_min >= d_warning (or >= d_warning_exit from SW) | UNSAT | UNSAT | yes |
+| L1 readable guards exact [FAILSAFE_HOLD_OR_RETREAT] | forall legal obs, edge k: no earlier edge enabled -> (label_k <-> guard_k) | UNSAT | UNSAT | yes |
 | D1 determinism [FORMATION_WAIT_REJOIN] | forall legal obs: at most one outgoing guard enabled | UNSAT | UNSAT | yes |
 | D2 completeness [FORMATION_WAIT_REJOIN] | forall legal obs: some guard enabled | UNSAT | UNSAT | yes |
 | H1 fault=>FAILSAFE [FORMATION_WAIT_REJOIN] | fault -> target = FAILSAFE | UNSAT | UNSAT | yes |
@@ -82,6 +90,7 @@ Encoding: `holo_fleet/ha/spec.py`
 | G1 MUTEX_PASS entry condition [FORMATION_WAIT_REJOIN] | !committed & guard(->MUTEX_PASS) -> at_queue & !occ_busy & has_prio | UNSAT | UNSAT | yes |
 | G2 no PASS->YIELD fallback [FORMATION_WAIT_REJOIN] | committed -> target not in {MUTEX_APPROACH, MUTEX_YIELD} | UNSAT | UNSAT | yes |
 | G3 no commit under hazard [FORMATION_WAIT_REJOIN] | commit edge enabled -> d_min >= d_warning (or >= d_warning_exit from SW) | UNSAT | UNSAT | yes |
+| L1 readable guards exact [FORMATION_WAIT_REJOIN] | forall legal obs, edge k: no earlier edge enabled -> (label_k <-> guard_k) | UNSAT | UNSAT | yes |
 | D1 determinism [DEGRADED_FORMATION] | forall legal obs: at most one outgoing guard enabled | UNSAT | UNSAT | yes |
 | D2 completeness [DEGRADED_FORMATION] | forall legal obs: some guard enabled | UNSAT | UNSAT | yes |
 | H1 fault=>FAILSAFE [DEGRADED_FORMATION] | fault -> target = FAILSAFE | UNSAT | UNSAT | yes |
@@ -90,10 +99,12 @@ Encoding: `holo_fleet/ha/spec.py`
 | G1 MUTEX_PASS entry condition [DEGRADED_FORMATION] | !committed & guard(->MUTEX_PASS) -> at_queue & !occ_busy & has_prio | UNSAT | UNSAT | yes |
 | G2 no PASS->YIELD fallback [DEGRADED_FORMATION] | committed -> target not in {MUTEX_APPROACH, MUTEX_YIELD} | UNSAT | UNSAT | yes |
 | G3 no commit under hazard [DEGRADED_FORMATION] | commit edge enabled -> d_min >= d_warning (or >= d_warning_exit from SW) | UNSAT | UNSAT | yes |
+| L1 readable guards exact [DEGRADED_FORMATION] | forall legal obs, edge k: no earlier edge enabled -> (label_k <-> guard_k) | UNSAT | UNSAT | yes |
 | M1 mutation: commit without priority must violate G1 | expect counterexample | SAT | SAT | yes |
 | M2 mutation: gate pass ignoring collision risk must violate H2 | expect counterexample | SAT | SAT | yes |
+| ML mutation: a wrong readable guard (collision risk drawn at d_warning) must violate L1 | expect counterexample | SAT | SAT | yes |
 
-## Observation consistency (perception -> automaton interface)  (31/31 as expected, 0.8 s)
+## Observation consistency (perception -> automaton interface)  (31/31 as expected, 1.0 s)
 
 Encoding: `holo_fleet/ha/observation_invariants.py + holo_fleet/ha/spec.py`
 
@@ -131,7 +142,7 @@ Encoding: `holo_fleet/ha/observation_invariants.py + holo_fleet/ha/spec.py`
 | Om2 mutation: v1 constraint passed -> at_queue makes pass_done unreachable | expect UNSAT (reachability lost) | UNSAT | UNSAT | yes |
 | Om3 mutation: no monitor -> an inconsistent observation drives a mission edge | expect counterexample | SAT | SAT | yes |
 
-## P1 inter-vehicle separation  (13/13 as expected, 86.8 s)
+## P1 inter-vehicle separation  (13/13 as expected, 95.5 s)
 
 Encoding: `formal/check_separation.py`
 
@@ -151,7 +162,7 @@ Encoding: `formal/check_separation.py`
 | S3 at most one vertex angle >= 90 deg (pairwise d >= d_safe) | d_ij >= d_safe -> not(angle_i >= 90 and angle_j >= 90) | UNSAT | UNSAT | yes |
 | S4 blackout <= 0.8s starting at d >= 2.34 m keeps d >= d_safe | FAILSAFE hold with unrejected drift w_rel | UNSAT | UNSAT | yes |
 
-## P2 critical-region mutual exclusion  (27/27 as expected, 91.1 s)
+## P2 critical-region mutual exclusion  (27/27 as expected, 104.8 s)
 
 Encoding: `holo_fleet/ha/mutex_rule.py + formal/check_mutex.py`
 
@@ -185,7 +196,7 @@ Encoding: `holo_fleet/ha/mutex_rule.py + formal/check_mutex.py`
 | M3 occupancy latch, n=4, observer at l=+1.75: never both in the CR (42 s BMC) | latch + persistence + exit + t_clear + t_occ_max -> not(A in CR and B in CR) | UNSAT | UNSAT | yes |
 | M3m mutation: belief without latch (FREE when nothing is seen) must violate P2 | expect counterexample | SAT | SAT | yes |
 
-## P3 formation recovery (liveness, ranking functions)  (22/22 as expected, 3.1 s)
+## P3 formation recovery (liveness, ranking functions)  (22/22 as expected, 3.0 s)
 
 Encoding: `formal/check_formation.py`
 
@@ -205,7 +216,7 @@ Encoding: `formal/check_formation.py`
 | F4d FORMATION_WAIT_REJOIN & own slot ok & neighbour missing -> FORMATION_WAIT_REJOIN | !self_lost & !neighbors_ok -> target = WAIT_REJOIN | UNSAT | UNSAT | yes |
 | F4c DEGRADED_FORMATION & calm & no gate & own slot lost -> FORMATION_RECOVERY | self_lost -> target = RECOVERY | UNSAT | UNSAT | yes |
 | F4d DEGRADED_FORMATION & own slot ok & neighbour missing -> FORMATION_WAIT_REJOIN | !self_lost & !neighbors_ok -> target = WAIT_REJOIN | UNSAT | UNSAT | yes |
-| F6 bounded waiting: a neighbour that never reappears is declared vacant within t_rejoin = 37.5 s (375 running steps), and the drone leaves FORMATION_WAIT_REJOIN | ranking t_rejoin - tau: after N running steps the WAIT_REJOIN self-loop is disabled | UNSAT | UNSAT | yes |
+| F6 bounded waiting: a neighbour that never reappears is declared vacant within t_rejoin = 30.0 s (300 running steps), and the drone leaves FORMATION_WAIT_REJOIN | ranking t_rejoin - tau: after N running steps the WAIT_REJOIN self-loop is disabled | UNSAT | UNSAT | yes |
 | F6r ranking: t_rejoin - tau >= 0 and decreases by dt per running step until the slot is vacant | 0 <= tau < t_rejoin & tau' = tau + dt -> (t_rejoin - tau') = (t_rejoin - tau) - dt | UNSAT | UNSAT | yes |
 | Fm4 mutation: no timeout (v2 baseline) -> the drone may wait for ever (still waiting after N steps) | expect counterexample | SAT | SAT | yes |
 | F5 envelope at the recovery speed -> the catch-up of F1 keeps its margin | g(V + h) <= A  ->  min(V, xs - h) - v_clock - s_rate - w_res > 0 | UNSAT | UNSAT | yes |

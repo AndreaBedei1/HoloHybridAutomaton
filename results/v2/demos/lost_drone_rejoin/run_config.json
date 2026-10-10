@@ -1,8 +1,8 @@
 {
  "scenario": "lost_drone_rejoin",
- "title": "Lost drone: temporary thruster failure, wait and rejoin from behind",
+ "title": "Lost drone: temporary thruster failure, reduced progress and rejoin from behind",
  "description": "4 drones (square), 0.35 m/s lateral current (inside the envelope). The rear-left drone loses its thrusters between t = 8 s and 15 s (simulator fault, no controller is told) and is dragged off its lane and behind the fleet.",
- "focus": "the faulty drone detects it onboard (requested velocity not delivered -> FAILSAFE); its neighbours miss it and wait on their slots (FORMATION_WAIT_REJOIN, timer < t_rejoin); it rejoins from behind along its own lane; formation re-established, no communication",
+ "focus": "the faulty drone detects it onboard (FAILSAFE); its neighbours miss it and slow the formation to 0.20 m/s (FORMATION_WAIT_REJOIN); it catches up at 0.30 m/s, rejoins from behind along its own lane; FOLLOW again, no communication",
  "duration_s": 60.0,
  "n_drones": 4,
  "template": "square",
@@ -66,7 +66,7 @@
    "built": "2026-10-07T23:52:04",
    "source_commit": "a8d3070"
   },
-  "engine_start_s": 9.6,
+  "engine_start_s": 13.5,
   "octree": {
    "mode": "patched_rebuild",
    "ticks": 18
@@ -145,7 +145,14 @@
    "neighbour_range_m": 7.5,
    "t_reinclude": 1.0,
    "rejoin_lane_tol_m": 1.0,
-   "rejoin_back_m": 2.0
+   "rejoin_back_m": 2.0,
+   "v_wait": 0.2,
+   "a_wait": 0.02,
+   "t_rejoin_margin": 5.0,
+   "t_rejoin_max": 60.0,
+   "follow_on_m": 0.08,
+   "follow_off_m": 0.04,
+   "a_follow": 0.05
   },
   "perc": {
    "sonar": {

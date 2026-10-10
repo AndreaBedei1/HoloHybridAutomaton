@@ -186,11 +186,78 @@ def p3_section(R) -> Dict:
     }
 
 
+def lost_section(R) -> Dict:
+    """Runs with an injected thruster fault (DI-29, DI-31): when the others missed the faulty drone, how long they
+    waited and how it ended (rejoined / timeout), the speed of their formation reference while waiting (onboard
+    v_ref) and the true speed of the fleet, the formation error of the drones present, the lost drone's way back."""
+    from holo_fleet.referee.referee import Referee
+    from holo_fleet.sim.scenarios import SCENARIOS
+
+    cfg, t, P, n = R["cfg"], R["t"], R["P"], R["n"]
+    faults = cfg.get("faults") or []
+    faulty = sorted({int(f["drone"].split("_")[1]) for f in faults})
+    present = [k for k in range(n) if k not in faulty]
+    tr = [e for e in R["events"] if e.get("type") == "transition"]
+    fev = [{"t": round(e["t"], 2), "drone": e["drone"], "type": e["type"]} for e in R["events"]
+           if e.get("type") in ("FAULT_INJECTED", "FAULT_CLEARED")]
+    vac = [e for e in R["events"] if e.get("type") == "SLOT_DECLARED_VACANT"]
+    drones, w0, w1 = {}, [], []
+    for k in present:
+        st = R["states"][k]
+        mine = [e for e in tr if e["drone"] == f"drone_{k}"]
+        entries = [e for e in mine if e["to"] == "FORMATION_WAIT_REJOIN"]
+        exits = [e for e in mine if e["from"] == "FORMATION_WAIT_REJOIN"]
+        wait = [r for r in st if r["mode"] == "FORMATION_WAIT_REJOIN"]
+        vref = [r["form"]["v_ref"] for r in wait if "v_ref" in r.get("form", {})]
+        if entries:
+            w0.append(entries[0]["t"])
+        if exits:
+            w1.append(exits[-1]["t"])
+        drones[f"drone_{k}"] = {
+            "wait_entered_s": [e["t"] for e in entries], "wait_left_s": [(e["t"], e["to"], e["reason"]) for e in exits],
+            "time_in_wait_s": round(0.1 * len(wait), 1),
+            "v_ref_in_wait_m_s": None if not vref else {"min": round(min(vref), 3), "mean": round(float(np.mean(vref)), 3)},
+            "missing_s_at_vacancy": [e.get("missing_s") for e in vac if e.get("drone") == f"drone_{k}"],
+            "delay_tau_end_s": st[-1].get("form", {}).get("tau"), "v_ref_end_m_s": st[-1].get("form", {}).get("v_ref"),
+            "final_mode": st[-1]["mode"]}
+    lost = {}
+    for k in faulty:
+        mine = [e for e in tr if e["drone"] == f"drone_{k}"]
+        lost[f"drone_{k}"] = {"transitions": [(e["t"], e["from"], e["to"], e["reason"]) for e in mine],
+                              "back_in_slot_s": next((e["t"] for e in mine if e["reason"] == "slot_recovered"), None),
+                              "final_mode": R["states"][k][-1]["mode"]}
+    sc = SCENARIOS[cfg["scenario"]](DEFAULT)
+    ref = Referee([f"drone_{k}" for k in range(n)], sc.template.offsets(), sc.path, [], DEFAULT, True)
+    s_c = np.array([sc.path.project(P[i, present].mean(axis=0)[:2])[0] for i in range(len(t))])
+    v_c = _rate(t, s_c, half=5)
+    e_p = np.array([ref.present_error(P[i], present) for i in range(len(t))])
+    out = {"faults": fev, "faulty": [f"drone_{k}" for k in faulty], "waiting": drones, "lost": lost,
+           "v_wait_m_s": DEFAULT.form.v_wait, "v_nominal_m_s": DEFAULT.form.v_nominal,
+           "t_rejoin_s": DEFAULT.form.t_rejoin}
+    if w0:
+        a, b = min(w0), max(w1) if w1 else float(t[-1])
+        win = (t >= a) & (t <= b)
+        out["fleet"] = {"wait_window_s": [round(a, 2), round(b, 2)],
+                        "true_speed_before_m_s": round(float(np.nanmean(v_c[(t > 3.0) & (t < a)])), 3),
+                        "true_speed_in_wait_m_s": round(float(np.nanmean(v_c[win])), 3),
+                        "true_speed_after_m_s": None if not np.any(t > b + 5.0) else
+                        round(float(np.nanmean(v_c[t > b + 5.0])), 3),
+                        "present_formation_error_max_in_wait_m": round(float(np.max(e_p[win])), 3),
+                        "present_formation_error_max_m": round(float(np.max(e_p[t > 3.0])), 3),
+                        "present_formation_error_end_m": round(float(e_p[-1]), 3)}
+    p1 = R["met"]["P1_separation"]
+    out.update({"min_distance_m": p1["min_distance"], "collisions": p1["physical_contacts"] +
+                len(p1["collision_sensor_edges"]), "messages": R["met"]["run"]["inter_agent_messages"]})
+    return out
+
+
 def summarize(run: Path) -> Dict:
     R = load(run)
     out = {"scenario": R["cfg"]["scenario"], "p1": p1_section(R)}
     if R["met"]["P3_formation_recovery"]["enabled"]:
         out["p3"] = p3_section(R)
+    if R["cfg"].get("faults") and R["met"]["P3_formation_recovery"]["enabled"]:
+        out["lost"] = lost_section(R)
     (run / "experiment_summary.json").write_text(json.dumps(out, indent=1, default=float), encoding="utf-8")
     return out
 

@@ -9,7 +9,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 0.002,
+      "seconds": 0.005,
       "counterexample": null,
       "note": ""
     },
@@ -42,7 +42,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 0.001,
+      "seconds": 0.003,
       "counterexample": null,
       "note": ""
     },
@@ -53,7 +53,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 0.0,
+      "seconds": 0.001,
       "counterexample": null,
       "note": ""
     },
@@ -64,7 +64,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 0.001,
+      "seconds": 0.005,
       "counterexample": null,
       "note": ""
     },
@@ -75,7 +75,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 0.001,
+      "seconds": 0.0,
       "counterexample": null,
       "note": ""
     },
@@ -86,7 +86,18 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 0.0,
+      "seconds": 0.003,
+      "counterexample": null,
+      "note": ""
+    },
+    {
+      "prop": "L1 readable guards exact [FORMATION_FOLLOW]",
+      "formula": "forall legal obs, edge k: no earlier edge enabled -> (label_k <-> guard_k)",
+      "encoding": "holo_fleet/ha/spec.py (shared guards) + formal/check_determinism.py",
+      "expect": "unsat",
+      "verdict": "unsat",
+      "passed": true,
+      "seconds": 0.002,
       "counterexample": null,
       "note": ""
     },
@@ -97,7 +108,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 0.001,
+      "seconds": 0.004,
       "counterexample": null,
       "note": ""
     },
@@ -108,7 +119,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 0.001,
+      "seconds": 0.002,
       "counterexample": null,
       "note": ""
     },
@@ -119,7 +130,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 0.001,
+      "seconds": 0.002,
       "counterexample": null,
       "note": ""
     },
@@ -130,7 +141,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 0.001,
+      "seconds": 0.002,
       "counterexample": null,
       "note": ""
     },
@@ -141,7 +152,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 0.001,
+      "seconds": 0.002,
       "counterexample": null,
       "note": ""
     },
@@ -152,7 +163,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 0.0,
+      "seconds": 0.002,
       "counterexample": null,
       "note": ""
     },
@@ -163,7 +174,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 0.001,
+      "seconds": 0.002,
       "counterexample": null,
       "note": ""
     },
@@ -174,7 +185,18 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 0.001,
+      "seconds": 0.002,
+      "counterexample": null,
+      "note": ""
+    },
+    {
+      "prop": "L1 readable guards exact [SEPARATION_WARNING]",
+      "formula": "forall legal obs, edge k: no earlier edge enabled -> (label_k <-> guard_k)",
+      "encoding": "holo_fleet/ha/spec.py (shared guards) + formal/check_determinism.py",
+      "expect": "unsat",
+      "verdict": "unsat",
+      "passed": true,
+      "seconds": 0.003,
       "counterexample": null,
       "note": ""
     },
@@ -185,7 +207,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 0.001,
+      "seconds": 0.002,
       "counterexample": null,
       "note": ""
     },
@@ -218,7 +240,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 0.0,
+      "seconds": 0.002,
       "counterexample": null,
       "note": ""
     },
@@ -229,7 +251,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 0.001,
+      "seconds": 0.004,
       "counterexample": null,
       "note": ""
     },
@@ -251,7 +273,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 0.0,
+      "seconds": 0.003,
       "counterexample": null,
       "note": ""
     },
@@ -262,7 +284,18 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 0.0,
+      "seconds": 0.002,
+      "counterexample": null,
+      "note": ""
+    },
+    {
+      "prop": "L1 readable guards exact [COLLISION_AVOIDANCE]",
+      "formula": "forall legal obs, edge k: no earlier edge enabled -> (label_k <-> guard_k)",
+      "encoding": "holo_fleet/ha/spec.py (shared guards) + formal/check_determinism.py",
+      "expect": "unsat",
+      "verdict": "unsat",
+      "passed": true,
+      "seconds": 0.001,
       "counterexample": null,
       "note": ""
     },
@@ -273,7 +306,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 0.0,
+      "seconds": 0.005,
       "counterexample": null,
       "note": ""
     },
@@ -284,7 +317,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 0.001,
+      "seconds": 0.004,
       "counterexample": null,
       "note": ""
     },
@@ -295,7 +328,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 0.0,
+      "seconds": 0.002,
       "counterexample": null,
       "note": ""
     },
@@ -306,7 +339,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 0.0,
+      "seconds": 0.003,
       "counterexample": null,
       "note": ""
     },
@@ -317,7 +350,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 0.001,
+      "seconds": 0.002,
       "counterexample": null,
       "note": ""
     },
@@ -328,7 +361,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 0.001,
+      "seconds": 0.003,
       "counterexample": null,
       "note": ""
     },
@@ -350,7 +383,18 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 0.001,
+      "seconds": 0.002,
+      "counterexample": null,
+      "note": ""
+    },
+    {
+      "prop": "L1 readable guards exact [MUTEX_APPROACH]",
+      "formula": "forall legal obs, edge k: no earlier edge enabled -> (label_k <-> guard_k)",
+      "encoding": "holo_fleet/ha/spec.py (shared guards) + formal/check_determinism.py",
+      "expect": "unsat",
+      "verdict": "unsat",
+      "passed": true,
+      "seconds": 0.004,
       "counterexample": null,
       "note": ""
     },
@@ -361,7 +405,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 0.002,
+      "seconds": 0.004,
       "counterexample": null,
       "note": ""
     },
@@ -372,7 +416,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 0.001,
+      "seconds": 0.004,
       "counterexample": null,
       "note": ""
     },
@@ -383,7 +427,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 0.0,
+      "seconds": 0.002,
       "counterexample": null,
       "note": ""
     },
@@ -394,7 +438,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 0.0,
+      "seconds": 0.003,
       "counterexample": null,
       "note": ""
     },
@@ -405,7 +449,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 0.002,
+      "seconds": 0.004,
       "counterexample": null,
       "note": ""
     },
@@ -427,7 +471,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 0.0,
+      "seconds": 0.001,
       "counterexample": null,
       "note": ""
     },
@@ -438,7 +482,18 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 0.0,
+      "seconds": 0.004,
+      "counterexample": null,
+      "note": ""
+    },
+    {
+      "prop": "L1 readable guards exact [MUTEX_YIELD]",
+      "formula": "forall legal obs, edge k: no earlier edge enabled -> (label_k <-> guard_k)",
+      "encoding": "holo_fleet/ha/spec.py (shared guards) + formal/check_determinism.py",
+      "expect": "unsat",
+      "verdict": "unsat",
+      "passed": true,
+      "seconds": 0.007,
       "counterexample": null,
       "note": ""
     },
@@ -449,7 +504,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 0.001,
+      "seconds": 0.005,
       "counterexample": null,
       "note": ""
     },
@@ -460,7 +515,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 0.0,
+      "seconds": 0.001,
       "counterexample": null,
       "note": ""
     },
@@ -471,7 +526,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 0.001,
+      "seconds": 0.002,
       "counterexample": null,
       "note": ""
     },
@@ -482,7 +537,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 0.0,
+      "seconds": 0.001,
       "counterexample": null,
       "note": ""
     },
@@ -493,7 +548,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 0.001,
+      "seconds": 0.004,
       "counterexample": null,
       "note": ""
     },
@@ -504,7 +559,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 0.0,
+      "seconds": 0.001,
       "counterexample": null,
       "note": ""
     },
@@ -515,7 +570,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 0.0,
+      "seconds": 0.002,
       "counterexample": null,
       "note": ""
     },
@@ -526,7 +581,18 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 0.0,
+      "seconds": 0.001,
+      "counterexample": null,
+      "note": ""
+    },
+    {
+      "prop": "L1 readable guards exact [MUTEX_PASS]",
+      "formula": "forall legal obs, edge k: no earlier edge enabled -> (label_k <-> guard_k)",
+      "encoding": "holo_fleet/ha/spec.py (shared guards) + formal/check_determinism.py",
+      "expect": "unsat",
+      "verdict": "unsat",
+      "passed": true,
+      "seconds": 0.002,
       "counterexample": null,
       "note": ""
     },
@@ -537,7 +603,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 0.001,
+      "seconds": 0.003,
       "counterexample": null,
       "note": ""
     },
@@ -548,7 +614,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 0.001,
+      "seconds": 0.002,
       "counterexample": null,
       "note": ""
     },
@@ -559,7 +625,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 0.001,
+      "seconds": 0.002,
       "counterexample": null,
       "note": ""
     },
@@ -581,7 +647,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 0.002,
+      "seconds": 0.003,
       "counterexample": null,
       "note": ""
     },
@@ -592,7 +658,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 0.001,
+      "seconds": 0.002,
       "counterexample": null,
       "note": ""
     },
@@ -614,7 +680,18 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 0.001,
+      "seconds": 0.005,
+      "counterexample": null,
+      "note": ""
+    },
+    {
+      "prop": "L1 readable guards exact [FORMATION_RECOVERY]",
+      "formula": "forall legal obs, edge k: no earlier edge enabled -> (label_k <-> guard_k)",
+      "encoding": "holo_fleet/ha/spec.py (shared guards) + formal/check_determinism.py",
+      "expect": "unsat",
+      "verdict": "unsat",
+      "passed": true,
+      "seconds": 0.002,
       "counterexample": null,
       "note": ""
     },
@@ -625,7 +702,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 0.001,
+      "seconds": 0.002,
       "counterexample": null,
       "note": ""
     },
@@ -636,7 +713,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 0.001,
+      "seconds": 0.003,
       "counterexample": null,
       "note": ""
     },
@@ -647,7 +724,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 0.0,
+      "seconds": 0.004,
       "counterexample": null,
       "note": ""
     },
@@ -658,7 +735,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 0.001,
+      "seconds": 0.006,
       "counterexample": null,
       "note": ""
     },
@@ -669,7 +746,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 0.0,
+      "seconds": 0.001,
       "counterexample": null,
       "note": ""
     },
@@ -680,7 +757,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 0.0,
+      "seconds": 0.003,
       "counterexample": null,
       "note": ""
     },
@@ -702,7 +779,18 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 0.0,
+      "seconds": 0.007,
+      "counterexample": null,
+      "note": ""
+    },
+    {
+      "prop": "L1 readable guards exact [FAILSAFE_HOLD_OR_RETREAT]",
+      "formula": "forall legal obs, edge k: no earlier edge enabled -> (label_k <-> guard_k)",
+      "encoding": "holo_fleet/ha/spec.py (shared guards) + formal/check_determinism.py",
+      "expect": "unsat",
+      "verdict": "unsat",
+      "passed": true,
+      "seconds": 0.002,
       "counterexample": null,
       "note": ""
     },
@@ -713,7 +801,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 0.001,
+      "seconds": 0.006,
       "counterexample": null,
       "note": ""
     },
@@ -724,7 +812,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 0.001,
+      "seconds": 0.002,
       "counterexample": null,
       "note": ""
     },
@@ -746,7 +834,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 0.0,
+      "seconds": 0.001,
       "counterexample": null,
       "note": ""
     },
@@ -768,7 +856,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 0.001,
+      "seconds": 0.004,
       "counterexample": null,
       "note": ""
     },
@@ -790,7 +878,18 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 0.0,
+      "seconds": 0.001,
+      "counterexample": null,
+      "note": ""
+    },
+    {
+      "prop": "L1 readable guards exact [FORMATION_WAIT_REJOIN]",
+      "formula": "forall legal obs, edge k: no earlier edge enabled -> (label_k <-> guard_k)",
+      "encoding": "holo_fleet/ha/spec.py (shared guards) + formal/check_determinism.py",
+      "expect": "unsat",
+      "verdict": "unsat",
+      "passed": true,
+      "seconds": 0.002,
       "counterexample": null,
       "note": ""
     },
@@ -801,7 +900,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 0.001,
+      "seconds": 0.002,
       "counterexample": null,
       "note": ""
     },
@@ -812,7 +911,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 0.001,
+      "seconds": 0.002,
       "counterexample": null,
       "note": ""
     },
@@ -845,7 +944,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 0.001,
+      "seconds": 0.002,
       "counterexample": null,
       "note": ""
     },
@@ -878,7 +977,18 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 0.001,
+      "seconds": 0.002,
+      "counterexample": null,
+      "note": ""
+    },
+    {
+      "prop": "L1 readable guards exact [DEGRADED_FORMATION]",
+      "formula": "forall legal obs, edge k: no earlier edge enabled -> (label_k <-> guard_k)",
+      "encoding": "holo_fleet/ha/spec.py (shared guards) + formal/check_determinism.py",
+      "expect": "unsat",
+      "verdict": "unsat",
+      "passed": true,
+      "seconds": 0.002,
       "counterexample": null,
       "note": ""
     },
@@ -924,6 +1034,31 @@
         "passed": false,
         "sense_ok": true,
         "t_ok": 0.125
+      },
+      "note": ""
+    },
+    {
+      "prop": "ML mutation: a wrong readable guard (collision risk drawn at d_warning) must violate L1",
+      "formula": "expect counterexample",
+      "encoding": "holo_fleet/ha/spec.py (shared guards) + formal/check_determinism.py",
+      "expect": "sat",
+      "verdict": "sat",
+      "passed": true,
+      "seconds": 0.001,
+      "counterexample": {
+        "at_queue": false,
+        "committed": true,
+        "d_min": 1.7,
+        "degraded": false,
+        "env_ok": true,
+        "form_err": 1.7,
+        "has_prio": false,
+        "mutex_zone": false,
+        "neighbors_ok": true,
+        "occ_busy": false,
+        "passed": true,
+        "sense_ok": true,
+        "t_ok": 0.0
       },
       "note": ""
     }

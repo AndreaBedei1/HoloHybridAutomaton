@@ -8,30 +8,30 @@
    "d_ca_exit": 2.0,
    "d_safe": 1.0
   },
-  "min_true_pair_distance_m": 3.209,
-  "at_s": 29.1,
+  "min_true_pair_distance_m": 3.114,
+  "at_s": 33.7,
   "closest_pair": [
-   "drone_0",
-   "drone_5"
+   "drone_1",
+   "drone_4"
   ],
-  "first_intervention_s": 29.0,
-  "true_distance_at_first_intervention_m": 3.218,
-  "max_closing_speed_before_intervention_m_s": 0.735,
-  "closing_speed_at_first_intervention_m_s": 0.078,
-  "max_opening_speed_5s_after_closest_m_s": 0.48,
+  "first_intervention_s": 29.8,
+  "true_distance_at_first_intervention_m": 3.511,
+  "max_closing_speed_before_intervention_m_s": 0.733,
+  "closing_speed_at_first_intervention_m_s": 0.156,
+  "max_opening_speed_5s_after_closest_m_s": 0.244,
   "max_true_current_m_s": 0.0,
   "drones": {
    "drone_0": {
     "SW_entries": 1,
     "SW_entry_times_s": [
-     29.2
+     30.0
     ],
     "CA_entries": 0,
     "CA_entry_times_s": [],
-    "time_in_SW_s": 6.8,
+    "time_in_SW_s": 6.0,
     "time_in_CA_s": 0,
     "min_onboard_conservative_distance_m": 2.253,
-    "at_s": 29.2,
+    "at_s": 30.0,
     "escape_directions": [
      "FWD+LEFT+UP",
      "FWD+RIGHT",
@@ -54,49 +54,59 @@
      "LEFT",
      "RIGHT"
     ],
-    "max_onboard_current_estimate_m_s": 0.128,
+    "max_onboard_current_estimate_m_s": 0.12,
     "mode_sequence": [
-     "FORMATION_FOLLOW",
-     "FORMATION_WAIT_REJOIN",
-     "FORMATION_FOLLOW",
-     "FORMATION_WAIT_REJOIN",
      "FORMATION_FOLLOW",
      "FORMATION_WAIT_REJOIN",
      "SEPARATION_WARNING"
     ]
    },
    "drone_1": {
-    "SW_entries": 0,
-    "SW_entry_times_s": [],
+    "SW_entries": 1,
+    "SW_entry_times_s": [
+     33.5
+    ],
     "CA_entries": 0,
     "CA_entry_times_s": [],
-    "time_in_SW_s": 0,
+    "time_in_SW_s": 2.5,
     "time_in_CA_s": 0,
-    "min_onboard_conservative_distance_m": 2.454,
-    "at_s": 29.8,
-    "escape_directions": [],
+    "min_onboard_conservative_distance_m": 2.377,
+    "at_s": 33.5,
+    "escape_directions": [
+     "RIGHT",
+     "RIGHT+UP"
+    ],
     "giveway": [
      "UP"
     ],
-    "sonar_patterns_within_4m_in_SW_CA": [],
-    "sonar_sectors_involved": [],
-    "max_onboard_current_estimate_m_s": 0.101,
+    "sonar_patterns_within_4m_in_SW_CA": [
+     "DOWN+LEFT",
+     "DOWN+RIGHT",
+     "RIGHT"
+    ],
+    "sonar_sectors_involved": [
+     "DOWN",
+     "LEFT",
+     "RIGHT"
+    ],
+    "max_onboard_current_estimate_m_s": 0.113,
     "mode_sequence": [
      "FORMATION_FOLLOW",
-     "FORMATION_WAIT_REJOIN"
+     "FORMATION_WAIT_REJOIN",
+     "SEPARATION_WARNING"
     ]
    },
    "drone_2": {
     "SW_entries": 1,
     "SW_entry_times_s": [
-     29.7
+     29.9
     ],
     "CA_entries": 0,
     "CA_entry_times_s": [],
-    "time_in_SW_s": 2.1,
+    "time_in_SW_s": 2.5,
     "time_in_CA_s": 0,
     "min_onboard_conservative_distance_m": 2.354,
-    "at_s": 29.7,
+    "at_s": 29.9,
     "escape_directions": [
      "FWD+RIGHT",
      "RIGHT+UP"
@@ -105,14 +115,17 @@
      "RIGHT"
     ],
     "sonar_patterns_within_4m_in_SW_CA": [
+     "DOWN",
      "DOWN+LEFT"
     ],
     "sonar_sectors_involved": [
      "DOWN",
      "LEFT"
     ],
-    "max_onboard_current_estimate_m_s": 0.118,
+    "max_onboard_current_estimate_m_s": 0.112,
     "mode_sequence": [
+     "FORMATION_FOLLOW",
+     "FORMATION_WAIT_REJOIN",
      "FORMATION_FOLLOW",
      "FORMATION_WAIT_REJOIN",
      "FORMATION_FOLLOW",
@@ -121,83 +134,44 @@
     ]
    },
    "drone_3": {
-    "SW_entries": 1,
-    "SW_entry_times_s": [
-     29.7
-    ],
-    "CA_entries": 0,
-    "CA_entry_times_s": [],
-    "time_in_SW_s": 3.6,
-    "time_in_CA_s": 0,
-    "min_onboard_conservative_distance_m": 2.354,
-    "at_s": 29.7,
-    "escape_directions": [
-     "DOWN",
-     "FWD+DOWN",
-     "FWD+LEFT",
-     "FWD+RIGHT",
-     "FWD+RIGHT+DOWN"
-    ],
-    "giveway": [
-     "DOWN"
-    ],
-    "sonar_patterns_within_4m_in_SW_CA": [
-     "LEFT",
-     "LEFT+UP",
-     "RIGHT",
-     "RIGHT+UP"
-    ],
-    "sonar_sectors_involved": [
-     "LEFT",
-     "RIGHT",
-     "UP"
-    ],
-    "max_onboard_current_estimate_m_s": 0.106,
-    "mode_sequence": [
-     "FORMATION_FOLLOW",
-     "SEPARATION_WARNING",
-     "FORMATION_RECOVERY"
-    ]
-   },
-   "drone_4": {
     "SW_entries": 0,
     "SW_entry_times_s": [],
     "CA_entries": 0,
     "CA_entry_times_s": [],
     "time_in_SW_s": 0,
     "time_in_CA_s": 0,
-    "min_onboard_conservative_distance_m": 2.454,
-    "at_s": 30.4,
+    "min_onboard_conservative_distance_m": 2.404,
+    "at_s": 29.6,
     "escape_directions": [],
     "giveway": [
      "DOWN"
     ],
     "sonar_patterns_within_4m_in_SW_CA": [],
     "sonar_sectors_involved": [],
-    "max_onboard_current_estimate_m_s": 0.098,
+    "max_onboard_current_estimate_m_s": 0.096,
     "mode_sequence": [
      "FORMATION_FOLLOW",
-     "FORMATION_WAIT_REJOIN"
+     "FORMATION_WAIT_REJOIN",
+     "FORMATION_FOLLOW"
     ]
    },
-   "drone_5": {
-    "SW_entries": 2,
+   "drone_4": {
+    "SW_entries": 1,
     "SW_entry_times_s": [
-     29.0,
-     35.3
+     33.6
     ],
     "CA_entries": 0,
     "CA_entry_times_s": [],
-    "time_in_SW_s": 1.8,
+    "time_in_SW_s": 2.4,
     "time_in_CA_s": 0,
-    "min_onboard_conservative_distance_m": 2.304,
-    "at_s": 29.0,
+    "min_onboard_conservative_distance_m": 2.377,
+    "at_s": 33.6,
     "escape_directions": [
      "FWD+RIGHT",
      "RIGHT+DOWN"
     ],
     "giveway": [
-     "RIGHT"
+     "DOWN"
     ],
     "sonar_patterns_within_4m_in_SW_CA": [
      "LEFT+UP"
@@ -206,16 +180,46 @@
      "LEFT",
      "UP"
     ],
-    "max_onboard_current_estimate_m_s": 0.143,
+    "max_onboard_current_estimate_m_s": 0.109,
+    "mode_sequence": [
+     "FORMATION_FOLLOW",
+     "FORMATION_WAIT_REJOIN",
+     "SEPARATION_WARNING"
+    ]
+   },
+   "drone_5": {
+    "SW_entries": 1,
+    "SW_entry_times_s": [
+     29.8
+    ],
+    "CA_entries": 0,
+    "CA_entry_times_s": [],
+    "time_in_SW_s": 1.4,
+    "time_in_CA_s": 0,
+    "min_onboard_conservative_distance_m": 2.304,
+    "at_s": 29.8,
+    "escape_directions": [
+     "FWD+RIGHT",
+     "RIGHT+DOWN"
+    ],
+    "giveway": [
+     "RIGHT"
+    ],
+    "sonar_patterns_within_4m_in_SW_CA": [
+     "LEFT+UP",
+     "UP"
+    ],
+    "sonar_sectors_involved": [
+     "LEFT",
+     "UP"
+    ],
+    "max_onboard_current_estimate_m_s": 0.123,
     "mode_sequence": [
      "FORMATION_FOLLOW",
      "FORMATION_WAIT_REJOIN",
      "FORMATION_FOLLOW",
-     "FORMATION_WAIT_REJOIN",
-     "FORMATION_FOLLOW",
      "SEPARATION_WARNING",
-     "FORMATION_RECOVERY",
-     "SEPARATION_WARNING"
+     "FORMATION_RECOVERY"
     ]
    }
   },
@@ -229,11 +233,11 @@
    "max_vertical_m_s": 0.0,
    "max_required_over_authority": 0.648,
    "worst_step": {
-    "drone": "drone_3",
-    "t": 34.9,
+    "drone": "drone_2",
+    "t": 35.9,
     "head_m_s": -0.0,
     "lateral_m_s": 0.0,
-    "requested_speed_m_s": 0.5
+    "requested_speed_m_s": 0.501
    },
    "verdict": "INSIDE",
    "inside_envelope": true,

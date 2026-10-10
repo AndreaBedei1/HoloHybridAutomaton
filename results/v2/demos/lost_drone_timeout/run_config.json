@@ -2,8 +2,8 @@
  "scenario": "lost_drone_timeout",
  "title": "Lost drone: permanent failure, timeout and degraded formation",
  "description": "4 drones (square), no current. The rear-left drone loses its thrusters for good at t = 8 s (simulator fault, no controller is told).",
- "focus": "the neighbours miss it (FORMATION_WAIT_REJOIN), after t_rejoin = 37.5 s they declare its slot vacant (DEGRADED_FORMATION) and keep their original slots: no reconfiguration, the hole stays",
- "duration_s": 64.0,
+ "focus": "the neighbours miss it and slow down to 0.20 m/s (FORMATION_WAIT_REJOIN); after t_rejoin = 30 s they declare its slot vacant (DEGRADED_FORMATION), resume 0.30 m/s and keep their original slots: no reconfiguration, the hole stays",
+ "duration_s": 80.0,
  "n_drones": 4,
  "template": "square",
  "gates": [],
@@ -21,7 +21,7 @@
  "disturbance_windows": [
   [
    8.0,
-   64.0
+   80.0
   ]
  ],
  "stress": {
@@ -42,12 +42,12 @@
    "built": "2026-10-07T23:52:04",
    "source_commit": "a8d3070"
   },
-  "engine_start_s": 10.1,
+  "engine_start_s": 13.5,
   "octree": {
    "mode": "patched_rebuild",
    "ticks": 18
   },
-  "static_scene_s": 0.9,
+  "static_scene_s": 1.2,
   "gate_ids": []
  },
  "comms_enabled": false,
@@ -121,7 +121,14 @@
    "neighbour_range_m": 7.5,
    "t_reinclude": 1.0,
    "rejoin_lane_tol_m": 1.0,
-   "rejoin_back_m": 2.0
+   "rejoin_back_m": 2.0,
+   "v_wait": 0.2,
+   "a_wait": 0.02,
+   "t_rejoin_margin": 5.0,
+   "t_rejoin_max": 60.0,
+   "follow_on_m": 0.08,
+   "follow_off_m": 0.04,
+   "a_follow": 0.05
   },
   "perc": {
    "sonar": {

@@ -8,36 +8,48 @@
    "d_ca_exit": 2.0,
    "d_safe": 1.0
   },
-  "min_true_pair_distance_m": 2.698,
-  "at_s": 24.6,
+  "min_true_pair_distance_m": 2.725,
+  "at_s": 25.8,
   "closest_pair": [
    "drone_0",
    "drone_2"
   ],
-  "first_intervention_s": 19.9,
-  "true_distance_at_first_intervention_m": 3.309,
-  "max_closing_speed_before_intervention_m_s": 0.167,
-  "closing_speed_at_first_intervention_m_s": 0.135,
-  "max_opening_speed_5s_after_closest_m_s": 0.545,
-  "max_true_current_m_s": 0.94,
+  "first_intervention_s": 20.0,
+  "true_distance_at_first_intervention_m": 3.316,
+  "max_closing_speed_before_intervention_m_s": 0.135,
+  "closing_speed_at_first_intervention_m_s": 0.1,
+  "max_opening_speed_5s_after_closest_m_s": 0.506,
+  "max_true_current_m_s": 0.943,
   "drones": {
    "drone_0": {
-    "SW_entries": 0,
-    "SW_entry_times_s": [],
+    "SW_entries": 1,
+    "SW_entry_times_s": [
+     28.6
+    ],
     "CA_entries": 0,
     "CA_entry_times_s": [],
-    "time_in_SW_s": 0,
+    "time_in_SW_s": 0.9,
     "time_in_CA_s": 0,
     "min_onboard_conservative_distance_m": 2.314,
-    "at_s": 24.5,
-    "escape_directions": [],
+    "at_s": 25.8,
+    "escape_directions": [
+     "FWD"
+    ],
     "giveway": [],
-    "sonar_patterns_within_4m_in_SW_CA": [],
-    "sonar_sectors_involved": [],
-    "max_onboard_current_estimate_m_s": 0.721,
+    "sonar_patterns_within_4m_in_SW_CA": [
+     "REAR",
+     "RIGHT"
+    ],
+    "sonar_sectors_involved": [
+     "REAR",
+     "RIGHT"
+    ],
+    "max_onboard_current_estimate_m_s": 0.722,
     "mode_sequence": [
      "FORMATION_FOLLOW",
      "FAILSAFE_HOLD_OR_RETREAT",
+     "FORMATION_RECOVERY",
+     "SEPARATION_WARNING",
      "FORMATION_RECOVERY",
      "FORMATION_FOLLOW"
     ]
@@ -55,7 +67,7 @@
     "giveway": [],
     "sonar_patterns_within_4m_in_SW_CA": [],
     "sonar_sectors_involved": [],
-    "max_onboard_current_estimate_m_s": 0.139,
+    "max_onboard_current_estimate_m_s": 0.131,
     "mode_sequence": [
      "FORMATION_FOLLOW",
      "FORMATION_WAIT_REJOIN",
@@ -65,20 +77,20 @@
    "drone_2": {
     "SW_entries": 3,
     "SW_entry_times_s": [
-     19.9,
-     24.3,
-     27.7
+     20.0,
+     25.5,
+     28.5
     ],
     "CA_entries": 0,
     "CA_entry_times_s": [],
-    "time_in_SW_s": 6.5,
+    "time_in_SW_s": 6.6,
     "time_in_CA_s": 0,
     "min_onboard_conservative_distance_m": 2.314,
-    "at_s": 24.4,
+    "at_s": 25.8,
     "escape_directions": [
-     "LEFT+DOWN",
      "REAR",
-     "REAR+LEFT"
+     "REAR+LEFT",
+     "REAR+LEFT+DOWN"
     ],
     "giveway": [],
     "sonar_patterns_within_4m_in_SW_CA": [
@@ -90,7 +102,7 @@
      "FRONT",
      "RIGHT"
     ],
-    "max_onboard_current_estimate_m_s": 0.199,
+    "max_onboard_current_estimate_m_s": 0.191,
     "mode_sequence": [
      "FORMATION_FOLLOW",
      "SEPARATION_WARNING",
@@ -109,13 +121,13 @@
     "CA_entry_times_s": [],
     "time_in_SW_s": 0,
     "time_in_CA_s": 0,
-    "min_onboard_conservative_distance_m": 2.525,
-    "at_s": 46.8,
+    "min_onboard_conservative_distance_m": 2.504,
+    "at_s": 9.6,
     "escape_directions": [],
     "giveway": [],
     "sonar_patterns_within_4m_in_SW_CA": [],
     "sonar_sectors_involved": [],
-    "max_onboard_current_estimate_m_s": 0.127,
+    "max_onboard_current_estimate_m_s": 0.123,
     "mode_sequence": [
      "FORMATION_FOLLOW",
      "FORMATION_WAIT_REJOIN",
@@ -129,14 +141,14 @@
    "definition": "control-feasible current envelope (DI-27): steady command for the requested velocity within the authority (plant model, tolerance 0.06), current within the exercised range",
    "current_validated_max_m_s": 0.6,
    "current_vertical_max_m_s": 0.25,
-   "max_current_m_s": 0.94,
+   "max_current_m_s": 0.943,
    "max_vertical_m_s": 0.0,
-   "max_required_over_authority": 2.077,
+   "max_required_over_authority": 2.071,
    "worst_step": {
     "drone": "drone_0",
-    "t": 19.1,
-    "head_m_s": 0.717,
-    "lateral_m_s": 0.583,
+    "t": 19.0,
+    "head_m_s": 0.71,
+    "lateral_m_s": 0.588,
     "requested_speed_m_s": 0.4
    },
    "verdict": "OUTSIDE",
@@ -146,10 +158,10 @@
    "coherent_with_vehicles": true,
    "self_declared_events": [
     {
-     "t": 19.1,
+     "t": 19.0,
      "drone": "drone_0",
      "type": "ENVELOPE_VIOLATION",
-     "reason": "thrust saturated (steady command 0.36 of 0.40; head +0.42, lateral 0.31 m/s estimated)"
+     "reason": "thrust saturated (steady command 0.36 of 0.40; head +0.42, lateral 0.32 m/s estimated)"
     },
     {
      "t": 28.3,
@@ -172,156 +184,166 @@
     22.0
    ]
   ],
-  "max_true_formation_error_m": 1.835,
-  "at_s": 28.5,
+  "max_true_formation_error_m": 1.656,
+  "at_s": 28.6,
   "episodes": [
    {
-    "t_lost": 24.3,
-    "t_recovered": 39.6,
-    "recovery_time_s": 15.3,
-    "t_perturbation_end": 29.1,
-    "recovery_after_perturbation_s": 10.5,
-    "modes_at_loss": "FAILSAFE_HOLD_OR_RETREAT,FORMATION_FOLLOW,FORMATION_RECOVERY,FORMATION_WAIT_REJOIN",
-    "recovery_from_end_of_disturbance_s": 17.6
+    "t_lost": 25.0,
+    "t_recovered": 35.0,
+    "recovery_time_s": 10.0,
+    "t_perturbation_end": 29.6,
+    "recovery_after_perturbation_s": 5.4,
+    "modes_at_loss": "FAILSAFE_HOLD_OR_RETREAT,FORMATION_RECOVERY,FORMATION_WAIT_REJOIN",
+    "recovery_from_end_of_disturbance_s": 13.0
    }
   ],
   "all_recovered_within_run": true,
-  "min_P1_distance_m": 2.698,
+  "min_P1_distance_m": 2.725,
   "drones": {
    "drone_0": {
-    "max_true_current_at_drone_m_s": 0.94,
-    "max_onboard_form_err_m": 3.34,
-    "at_s": 28.7,
-    "nav_error_max_m": 0.135,
+    "max_true_current_at_drone_m_s": 0.943,
+    "max_onboard_form_err_m": 2.674,
+    "at_s": 28.6,
+    "nav_error_max_m": 0.119,
     "sonar_age_max_s": 0.0,
-    "saturated_time_s": 5.3,
+    "saturated_time_s": 5.6,
     "longest_saturation_s": 4.0,
-    "max_onboard_current_estimate_m_s": 0.721,
+    "max_onboard_current_estimate_m_s": 0.722,
     "mode_episodes": [
      {
       "mode": "FORMATION_FOLLOW",
       "t0": 0.0,
-      "t1": 19.1
+      "t1": 19.0
      },
      {
       "mode": "FAILSAFE_HOLD_OR_RETREAT",
-      "t0": 19.2,
+      "t0": 19.1,
       "t1": 28.3
      },
      {
       "mode": "FORMATION_RECOVERY",
       "t0": 28.4,
-      "t1": 44.7
+      "t1": 28.5
+     },
+     {
+      "mode": "SEPARATION_WARNING",
+      "t0": 28.6,
+      "t1": 29.4
+     },
+     {
+      "mode": "FORMATION_RECOVERY",
+      "t0": 29.5,
+      "t1": 38.1
      },
      {
       "mode": "FORMATION_FOLLOW",
-      "t0": 44.8,
+      "t0": 38.2,
       "t1": 54.9
      }
     ]
    },
    "drone_1": {
     "max_true_current_at_drone_m_s": 0.1,
-    "max_onboard_form_err_m": 1.186,
-    "at_s": 34.5,
-    "nav_error_max_m": 0.149,
+    "max_onboard_form_err_m": 1.187,
+    "at_s": 32.2,
+    "nav_error_max_m": 0.116,
     "sonar_age_max_s": 0.0,
     "saturated_time_s": 0.0,
     "longest_saturation_s": 0.0,
-    "max_onboard_current_estimate_m_s": 0.139,
+    "max_onboard_current_estimate_m_s": 0.131,
     "mode_episodes": [
      {
       "mode": "FORMATION_FOLLOW",
       "t0": 0.0,
-      "t1": 22.1
+      "t1": 21.9
      },
      {
       "mode": "FORMATION_WAIT_REJOIN",
-      "t0": 22.2,
-      "t1": 35.0
+      "t0": 22.0,
+      "t1": 33.0
      },
      {
       "mode": "FORMATION_FOLLOW",
-      "t0": 35.1,
+      "t0": 33.1,
       "t1": 54.9
      }
     ]
    },
    "drone_2": {
-    "max_true_current_at_drone_m_s": 0.202,
-    "max_onboard_form_err_m": 2.58,
-    "at_s": 29.5,
-    "nav_error_max_m": 0.155,
+    "max_true_current_at_drone_m_s": 0.194,
+    "max_onboard_form_err_m": 1.598,
+    "at_s": 29.9,
+    "nav_error_max_m": 0.16,
     "sonar_age_max_s": 0.0,
     "saturated_time_s": 1.0,
     "longest_saturation_s": 0.3,
-    "max_onboard_current_estimate_m_s": 0.199,
+    "max_onboard_current_estimate_m_s": 0.191,
     "mode_episodes": [
      {
       "mode": "FORMATION_FOLLOW",
       "t0": 0.0,
-      "t1": 19.8
+      "t1": 19.9
      },
      {
       "mode": "SEPARATION_WARNING",
-      "t0": 19.9,
-      "t1": 22.7
+      "t0": 20.0,
+      "t1": 23.6
      },
      {
       "mode": "FORMATION_RECOVERY",
-      "t0": 22.8,
-      "t1": 24.2
+      "t0": 23.7,
+      "t1": 25.4
      },
      {
       "mode": "SEPARATION_WARNING",
-      "t0": 24.3,
-      "t1": 26.4
+      "t0": 25.5,
+      "t1": 27.2
      },
      {
       "mode": "FORMATION_RECOVERY",
-      "t0": 26.5,
-      "t1": 27.6
+      "t0": 27.3,
+      "t1": 28.4
      },
      {
       "mode": "SEPARATION_WARNING",
-      "t0": 27.7,
-      "t1": 29.0
+      "t0": 28.5,
+      "t1": 29.5
      },
      {
       "mode": "FORMATION_RECOVERY",
-      "t0": 29.1,
-      "t1": 41.9
+      "t0": 29.6,
+      "t1": 36.8
      },
      {
       "mode": "FORMATION_FOLLOW",
-      "t0": 42.0,
+      "t0": 36.9,
       "t1": 54.9
      }
     ]
    },
    "drone_3": {
     "max_true_current_at_drone_m_s": 0.1,
-    "max_onboard_form_err_m": 1.166,
-    "at_s": 36.3,
-    "nav_error_max_m": 0.166,
+    "max_onboard_form_err_m": 0.666,
+    "at_s": 34.7,
+    "nav_error_max_m": 0.144,
     "sonar_age_max_s": 0.0,
     "saturated_time_s": 0.0,
     "longest_saturation_s": 0.0,
-    "max_onboard_current_estimate_m_s": 0.127,
+    "max_onboard_current_estimate_m_s": 0.123,
     "mode_episodes": [
      {
       "mode": "FORMATION_FOLLOW",
       "t0": 0.0,
-      "t1": 25.9
+      "t1": 24.0
      },
      {
       "mode": "FORMATION_WAIT_REJOIN",
-      "t0": 26.0,
-      "t1": 37.3
+      "t0": 24.1,
+      "t1": 35.2
      },
      {
       "mode": "FORMATION_FOLLOW",
-      "t0": 37.4,
+      "t0": 35.3,
       "t1": 54.9
      }
     ]
@@ -333,14 +355,14 @@
    "definition": "control-feasible current envelope (DI-27): steady command for the requested velocity within the authority (plant model, tolerance 0.06), current within the exercised range",
    "current_validated_max_m_s": 0.6,
    "current_vertical_max_m_s": 0.25,
-   "max_current_m_s": 0.94,
+   "max_current_m_s": 0.943,
    "max_vertical_m_s": 0.0,
-   "max_required_over_authority": 2.077,
+   "max_required_over_authority": 2.071,
    "worst_step": {
     "drone": "drone_0",
-    "t": 19.1,
-    "head_m_s": 0.717,
-    "lateral_m_s": 0.583,
+    "t": 19.0,
+    "head_m_s": 0.71,
+    "lateral_m_s": 0.588,
     "requested_speed_m_s": 0.4
    },
    "verdict": "OUTSIDE",
@@ -350,10 +372,10 @@
    "coherent_with_vehicles": true,
    "self_declared_events": [
     {
-     "t": 19.1,
+     "t": 19.0,
      "drone": "drone_0",
      "type": "ENVELOPE_VIOLATION",
-     "reason": "thrust saturated (steady command 0.36 of 0.40; head +0.42, lateral 0.31 m/s estimated)"
+     "reason": "thrust saturated (steady command 0.36 of 0.40; head +0.42, lateral 0.32 m/s estimated)"
     },
     {
      "t": 28.3,
