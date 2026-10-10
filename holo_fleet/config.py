@@ -194,17 +194,49 @@ class FormationRule:
     t_reinclude: float = 1.0          # a vacant slot is re-included after its drone is seen there this long [s]
     rejoin_lane_tol_m: float = 1.0    # a recovering drone farther than this from its own lane rejoins from behind
     rejoin_back_m: float = 2.0        # ... through a point on its lane this far behind the rear-most slot [m]
+    # reduced progress while an expected neighbour is missing (control/formation_time.py, DI-31): the formation
+    # reference of a drone that misses a neighbour advances at v_wait instead of the planned speed, reached and
+    # left with a ramp of a_wait.  v_wait = 0.20: the catch-up of a rejoining drone grows from 0.20 to 0.30 m/s
+    # (v_recovery_max - v_wait); the along-track offset between two drones that notice the absence at different
+    # times grows at v_nominal - v_wait = 0.10 m/s, so a detection spread of 7 s (lost-drone runs) stays below
+    # e_ok after the ramp (0.10 * (7 - T_ramp / 2) = 0.45 m); slower than that would trade formation keeping
+    # for catch-up.  Never 0: the fleet keeps surveying and keeps steerage.
+    v_wait: float = 0.20
+    a_wait: float = 0.02              # [m/s^2]: 0.30 -> 0.20 m/s in 5 s, far below the braking capability (a_brake)
+    t_rejoin_margin: float = 5.0      # [s] on top of the catch-up time: ramp-in (~0.8 s), confirmation (<= 1 s) and
+                                      # the proportional final approach (~1.5 s), rounded up
+    t_rejoin_max: float = 60.0        # upper limit of the wait, whatever the configured speeds [s]
+    # keeping the spacing to the drone ahead on the same lane (control/formation_time.py): a drone whose front
+    # neighbour is measured closer than its template distance by more than follow_on slows its reference too, until
+    # the compression is below follow_off; on its slot, a slowing drone keeps slowing until the drone ahead is
+    # farther than planned by follow_on (and does not start while it is).  Drones notice an absence at different
+    # times, or not at all (range-only sensing: an echo of another neighbour can stand in for the missing one);
+    # without this a rear drone at the survey speed behind a slowed one would close on it - the warning band of a
+    # same-lane pair at 3.5 m starts about 0.23 m closer.  follow_on: above the calm-flight residual (one 5 cm range
+    # bin); a_follow = 2.5 a_wait keeps the compression below ~0.14 m when the drone ahead slows at a_wait.
+    follow_on_m: float = 0.08
+    follow_off_m: float = 0.04
+    a_follow: float = 0.05            # [m/s^2]
+
+    @property
+    def catch_up(self) -> float:
+        """Relative speed at which a recovering drone closes on a waiting formation [m/s]."""
+        return self.v_recovery_max - self.v_wait
 
     @property
     def t_rejoin(self) -> float:
         """Missing time after which an expected neighbour's slot is declared vacant [s].
 
-        The time a lost drone that is still at the edge of the sensing range (neighbour_range_m behind its
-        slot) needs to close the gap with the catch-up margin of the recovery speed: 7.5 / (0.5 - 0.3) =
-        37.5 s.  A drone that is still missing after it is either unable to move or farther than the
-        sensing range; the others stop waiting and keep a degraded formation (no reconfiguration).  The slot
-        is re-included if the drone comes back later."""
-        return self.neighbour_range_m / (self.v_recovery_max - self.v_nominal)
+        The time a lost drone that is still at the edge of the sensing range (``neighbour_range_m`` behind its
+        slot) needs to close the gap at the catch-up speed of the waiting formation, plus a margin, capped:
+        min(t_rejoin_max, 7.5 / (0.50 - 0.20) + 5.0) = 30.0 s.  The gap is a configured bound, not an onboard
+        estimate: after its last association the missing drone is not observed at all, and the last residual
+        (within the range gate) says nothing about how far it drifted since.  A drone still missing after
+        t_rejoin is either unable to move or beyond the sensing range; the others stop waiting and keep a
+        degraded formation (no reconfiguration).  The slot is re-included if the drone comes back later."""
+        if self.catch_up <= 0.0:
+            raise ValueError("v_recovery_max must exceed v_wait (no catch-up)")
+        return min(self.t_rejoin_max, self.neighbour_range_m / self.catch_up + self.t_rejoin_margin)
 
 
 @dataclass(frozen=True)

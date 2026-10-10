@@ -19,13 +19,15 @@
   formation_gust         4 drones, temporary 0.85 m/s jet     out-of-envelope stress test: lost and recovered
   gate_single            3 drones, one arena gate (G06)       one at a time through the gate (P2)
   integrated_short       3 drones, cross-current + G06        P1 + P2 + P3 in one short mission
-lost drones and the mutex queue (DI-28, DI-29):
+lost drones and the mutex queue (DI-28, DI-29, DI-31):
   lost_drone_rejoin      4 drones, lateral current 0.35       the rear-left drone loses its thrusters for 7 s and
-                                                              is dragged away; the others wait for it on their
-                                                              slots (FORMATION_WAIT_REJOIN), it rejoins from behind
-  lost_drone_timeout     4 drones, no current                 the same drone loses its thrusters for good: after
-                                                              t_rejoin the others declare its slot vacant and keep
-                                                              a degraded formation (DEGRADED_FORMATION)
+                                                              is dragged away; the others slow the formation down
+                                                              (FORMATION_WAIT_REJOIN), it catches up and rejoins
+                                                              from behind
+  lost_drone_timeout     4 drones, no current                 the same drone loses its thrusters for good: the
+                                                              others slow down, after t_rejoin declare its slot
+                                                              vacant and keep a degraded formation at the survey
+                                                              speed (DEGRADED_FORMATION)
   mutex_deadlock_resolution
                          3 drones, a stacked pair, G06        stacked queue: left first, then top first; the v2 rule
                                                               (static rank with unknown ranks) deadlocked here
@@ -298,23 +300,29 @@ def _lost_drone(name: str, t_on: float, t_off: Optional[float], duration: float,
 
 
 def lost_drone_rejoin(cfg: FleetConfig = DEFAULT) -> Scenario:
+    fr = cfg.form
     return _lost_drone("lost_drone_rejoin", 8.0, 15.0, 60.0, _uniform((0.0, 0.35, 0.0)),
-                       "Lost drone: temporary thruster failure, wait and rejoin from behind",
+                       "Lost drone: temporary thruster failure, reduced progress and rejoin from behind",
                        "4 drones (square), 0.35 m/s lateral current (inside the envelope). The rear-left drone loses "
                        "its thrusters between t = 8 s and 15 s (simulator fault, no controller is told) and is dragged "
                        "off its lane and behind the fleet.",
-                       "the faulty drone detects it onboard (requested velocity not delivered -> FAILSAFE); its "
-                       "neighbours miss it and wait on their slots (FORMATION_WAIT_REJOIN, timer < t_rejoin); it "
-                       "rejoins from behind along its own lane; formation re-established, no communication", cfg)
+                       f"the faulty drone detects it onboard (FAILSAFE); its neighbours miss it and slow the formation "
+                       f"to {fr.v_wait:.2f} m/s (FORMATION_WAIT_REJOIN); it catches up at {fr.catch_up:.2f} m/s, "
+                       "rejoins from behind along its own lane; FOLLOW again, no communication", cfg)
 
 
 def lost_drone_timeout(cfg: FleetConfig = DEFAULT) -> Scenario:
-    return _lost_drone("lost_drone_timeout", 8.0, None, 64.0, CurrentField(),
+    """80 s: every neighbour times the absence from its OWN detection, and a range-only sonar detects late when an
+    echo of another neighbour stands in for the missing drone (the rear-right drone noticed it between 22 and 48 s
+    in the DI-31 probe runs); the run lasts until the latest one can have declared the slot vacant (+ t_rejoin)."""
+    fr = cfg.form
+    return _lost_drone("lost_drone_timeout", 8.0, None, 80.0, CurrentField(),
                        "Lost drone: permanent failure, timeout and degraded formation",
                        "4 drones (square), no current. The rear-left drone loses its thrusters for good at t = 8 s "
                        "(simulator fault, no controller is told).",
-                       "the neighbours miss it (FORMATION_WAIT_REJOIN), after t_rejoin = 37.5 s they declare its slot "
-                       "vacant (DEGRADED_FORMATION) and keep their original slots: no reconfiguration, the hole stays", cfg)
+                       f"the neighbours miss it and slow down to {fr.v_wait:.2f} m/s (FORMATION_WAIT_REJOIN); after "
+                       f"t_rejoin = {fr.t_rejoin:.0f} s they declare its slot vacant (DEGRADED_FORMATION), resume "
+                       f"{fr.v_nominal:.2f} m/s and keep their original slots: no reconfiguration, the hole stays", cfg)
 
 
 # ---------------------------------------------------------------------------------------------- P2

@@ -136,8 +136,10 @@ class DroneController:
 
     def step(self, frame: SensorFrame, dt: float) -> np.ndarray:
         t = frame.t
+        ftime = self.flows.ftime                               # own formation time (reduced progress, DI-31)
         obs = self.perception.update(frame, dt, sigma=self.flows.sigma, env_ok=self.envmon.ok,
-                                     offset=self.flows.offset, in_formation=self.ha.mode in IN_FORMATION)
+                                     offset=self.flows.offset, in_formation=self.ha.mode in IN_FORMATION,
+                                     t_form=ftime.now(t))
         for e in self.perception.events:                       # SLOT_DECLARED_VACANT / SLOT_REOCCUPIED
             self.events.append({**e, "mode": self.ha.mode.value})
         self.perception.events.clear()
@@ -165,7 +167,8 @@ class DroneController:
         if prev == Mode.FAILSAFE_HOLD_OR_RETREAT and mode != prev:
             self.flows.clear_failsafe()
         # ---------------------------------------------------------------- mission velocity of the calm mode
-        if obs.gate.in_zone or self.ha.committed:
+        gate_flow = obs.gate.in_zone or self.ha.committed
+        if gate_flow:
             gmode = mode.value if mode in (Mode.MUTEX_APPROACH, Mode.MUTEX_YIELD, Mode.MUTEX_PASS) else (
                 "MUTEX_PASS" if self.ha.committed else "MUTEX_APPROACH")
             v_mis, yaw_d = self.flows.gate(obs, gmode)
@@ -199,6 +202,13 @@ class DroneController:
             self.events.append({"t": t, "type": "ENVELOPE_VIOLATION", **self.envmon.record()})
         elif ok and not was_ok:
             self.events.append({"t": t, "type": "ENVELOPE_OK", **self.envmon.record()})
+        # own formation time for the next step: reduced progress while an expected neighbour is missing; a drone that
+        # started an episode out of formation keeping and is still away from its slot (it is the one missed) keeps
+        # it until it is back near its slot
+        incomplete = not obs.form.neighbors_ok or (mode not in IN_FORMATION and ftime.episode_t > 0.0
+                                                   and obs.form.slot_err_norm > self.cfg.form.e_ok)
+        ftime.update(t, dt, incomplete=incomplete, mutex=gate_flow, front_residual=obs.form.front_residual,
+                     keeping=mode in IN_FORMATION)
         self.last_obs = obs
         ch = self.flows.last_choice
         self.last_record = {
@@ -227,7 +237,8 @@ class DroneController:
                      "missing": sorted(k for k in obs.form.missing if k not in self.perception.vacant),
                      "missing_t": {k: round(v, 1) for k, v in self.perception.missing_t.items() if v > 0.0},
                      "vacant": sorted(self.perception.vacant), "degraded": bool(self.perception.vacant),
-                     "slot": np.round(obs.slot_pos, 2).tolist(), "rejoin": self.flows.rejoin_phase},
+                     "slot": np.round(obs.slot_pos, 2).tolist(), "rejoin": self.flows.rejoin_phase,
+                     **ftime.record(t, dt)},
             "determinism_violations": self.ha.determinism_violations,
             "obs_consistent": self.obs_consistent, "observation_violations": self.observation_violations,
             "saturated": self.ll.saturated,

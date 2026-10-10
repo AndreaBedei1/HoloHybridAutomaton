@@ -14,6 +14,7 @@ import numpy as np
 
 from holo_fleet.config import DEFAULT, FleetConfig
 from holo_fleet.control.escape import EscapeChoice, EscapePlanner
+from holo_fleet.control.formation_time import FormationTime
 from holo_fleet.mission import MissionPlan
 from holo_fleet.perception.perception import LocalObservation
 from holo_fleet.perception.sonar_processing import OBSTACLE_CLASSES
@@ -55,6 +56,7 @@ class Flows:
         self.cfg = cfg
         self.escape = EscapePlanner(cfg)
         self.sigma = 0.0                      # local along-track progress offset (sonar consensus)
+        self.ftime = FormationTime(plan.clock, cfg)   # local formation time (reduced progress, DI-31)
         self.last_choice: Optional[EscapeChoice] = None
         self.hold_pos: Optional[np.ndarray] = None
         self.offset = np.zeros(3)             # give-way offset of the mission target (world) [m]
@@ -64,19 +66,25 @@ class Flows:
 
     # ------------------------------------------------------------------ give-way (traffic rule)
     def traffic_offset(self, obs: LocalObservation, dt: float, r_trigger: float = 8.0,
-                       offset_max: float = 2.5, rate: float = 0.35, active: bool = True) -> np.ndarray:
+                       offset_max: float = 2.5, rate: float = 0.35, active: bool = True,
+                       decide: bool = True) -> np.ndarray:
         """Head-on rule (as COLREG rule 14): a drone that sees a DYNAMIC echo closing in its FRONT sector
         shifts its mission target to its right; if a neighbour occupies the right side it shifts vertically
         instead (up when heading east-ish, down otherwise: opposite for two drones meeting head-on).
         Decided before the warning band, from sector patterns only; safety does not rely on it (P1 is
         enforced by the warning filter and the escape), it avoids head-on standoffs.  Not ``active`` (the
         drone is in FAILSAFE, holding): no give-way is decided and a running one is cancelled - a decision
-        latched while holding would displace the mission target after the drone resumes (DI-29)."""
+        latched while holding would displace the mission target after the drone resumes (DI-29).  Not
+        ``decide`` (the drone recovers from behind its slot, catching up with its own fleet): no new give-way
+        is decided, a running one ends as usual - the drones ahead close in its FRONT sector at the catch-up
+        speed and, off its slot, it does not recognise them as neighbours (DI-31)."""
         R = obs.R_wb
         if not self.cfg.traffic_rule:
             return self.offset
         front = [tg for tg in obs.targets if tg.cls == "DYNAMIC" and "FRONT" in tg.pattern
                  and tg.r_min < r_trigger and tg.closing_rate >= 0.45 and not tg.possible_neighbour] if active else []
+        if not decide and not self.giveway:
+            front = []
         if not active:
             self.giveway = ""
         if front:
@@ -109,16 +117,23 @@ class Flows:
     def formation(self, obs: LocalObservation, dt: float, recovering: bool = False,
                   traffic: bool = True) -> Tuple[np.ndarray, float]:
         fr = self.cfg.form
-        clock = self.plan.clock
-        t = obs.t
-        v_clock = (clock.s(t + dt) - clock.s(t)) / dt if clock is not None else 0.0
-        # sonar progress consensus: drift sigma towards the neighbours' actual along-track positions
-        self.sigma += dt * (fr.k_progress * obs.form.along_corr - 0.02 * self.sigma)
-        self.sigma = float(np.clip(self.sigma, -fr.progress_max, fr.progress_max))
+        # speed of the own formation reference: the planned speed, reduced while a neighbour is missing (DI-31)
+        v_clock = self.ftime.speed(obs.t, dt)
+        err = obs.slot_pos - obs.p             # slot_pos already includes the give-way offset
+        # sonar progress consensus: drift sigma towards the neighbours' actual along-track positions.  Not while the
+        # drone is far from its own slot (beyond e_lost): there the range residuals mostly measure its own
+        # displacement (a drone left behind sees every neighbour 'ahead') and would carry its reference away from
+        # the fleet (DI-31); near its slot, in any mode, it is what re-aligns the references of the drones
+        if float(np.linalg.norm(err)) < fr.e_lost:
+            self.sigma += dt * (fr.k_progress * obs.form.along_corr - 0.02 * self.sigma)
+            self.sigma = float(np.clip(self.sigma, -fr.progress_max, fr.progress_max))
         _slot, R_form, s_ref = self._slot(obs)
         t_hat, n_hat = R_form[:, 0], R_form[:, 1]
-        self.traffic_offset(obs, dt, active=traffic)
-        err = obs.slot_pos - obs.p             # slot_pos already includes the give-way offset
+        # a recovering drone behind its slot is catching up with its own fleet, not meeting it head-on: the drones
+        # ahead close in its FRONT sector at the catch-up speed and, while it is off its slot, are not recognised
+        # as neighbours; no new give-way is decided then (it would push it towards the next lane, DI-31)
+        catching_up = recovering and float(err @ t_hat) > fr.e_ok
+        self.traffic_offset(obs, dt, active=traffic, decide=not catching_up)
         entry = self.rejoin_entry(obs, R_form, s_ref) if recovering else None
         if not recovering:
             self.rejoin_phase = ""
@@ -161,7 +176,7 @@ class Flows:
 
     def _slot(self, obs):
         clock = self.plan.clock
-        s_ref = (clock.s(obs.t) if clock is not None else 0.0) + self.sigma
+        s_ref = (clock.s(self.ftime.now(obs.t)) if clock is not None else 0.0) + self.sigma
         _p, d0, n0 = self.plan.path.frame_at(s_ref)
         R = np.array([[d0[0], n0[0], 0.0], [d0[1], n0[1], 0.0], [0.0, 0.0, 1.0]])
         return None, R, s_ref

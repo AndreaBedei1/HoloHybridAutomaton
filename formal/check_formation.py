@@ -6,15 +6,19 @@ deployed formation law (holo_fleet.control.flows.Flows.formation), under explici
 environment assumptions; every lemma is a one-step, universally quantified Z3 query, hence valid for
 unbounded time.
 
-Abstraction (per drone, per axis, dt = 0.1 s).  The slot moves with the shared FormationClock at
-v_clock plus the drift of the local progress offset sigma (|sigma_dot| <= s_rate: sigma is driven by
-the along-track sonar residual, capped by range_gate, plus a leak); the drone commands
-v = v_clock t + k_slot e (+ the capped lateral sonar correction), saturated at v_recovery (along)
-and sqrt(v_recovery^2 - v_clock^2) (lateral); the unrejected disturbance after the low-level
-integrator has converged is |w| <= w_res.
+Abstraction (per drone, per axis, dt = 0.1 s).  The slot moves with the drone's own formation reference at
+v_ref plus the drift of the local progress offset sigma (|sigma_dot| <= s_rate: sigma is driven by
+the along-track sonar residual, capped by range_gate, plus a leak).  v_ref is the planned speed v_clock,
+or anything down to v_wait while the reduced progress of a missing neighbour runs (DI-31,
+control/formation_time.py); it is a free variable in [v_wait, v_clock] at every step, so ramps and the
+following of the drone ahead are covered.  The drone commands v = v_ref t + k_slot e (+ the capped lateral
+sonar correction), saturated at v_recovery (along) and sqrt(v_recovery^2 - v_clock^2) (lateral); the
+unrejected disturbance after the low-level integrator has converged is |w| <= w_res.
 
-  along   e' = e + dt (v_clock + sigma_dot - clip(v_clock + k_slot e, -V, V) - w)
+  along   e' = e + dt (v_ref + sigma_dot - clip(v_ref + k_slot e, -V, V) - w),   v_wait <= v_ref <= v_clock
   lateral e' = e + dt (- clip(k_slot e + corr, -V_lat, V_lat) - w),   |corr| <= v_corr_max
+
+The binding case of F1 is v_ref = v_clock (the smallest catch-up margin); a slower reference only adds margin.
 
 F1  far band (saturated): |e| decreases by >= eps_far per step whenever |e| >= e1  (ranking R1);
 F2  near band (linear):   |e| decreases by >= eps_near per step whenever e* <= |e| <= e1 (ranking R2);
@@ -101,13 +105,13 @@ def model(cfg: FleetConfig, v_rec=None, k=None):
     kk = F.k_slot if k is None else k
     s_rate = F.k_progress * F.range_gate_m + 0.02 * F.progress_max       # |sigma_dot| bound
     return {"V": V, "V_lat": math.sqrt(max(V * V - F.v_nominal ** 2, 0.0)), "k": kk, "v_clock": F.v_nominal,
-            "s_rate": s_rate, "w": W_RES, "corr": F.v_corr_max}
+            "v_ref_min": F.v_wait, "s_rate": s_rate, "w": W_RES, "corr": F.v_corr_max}
 
 
 def along_step(p, e):
-    sd, w = z3.Reals("sigma_dot w")
-    e1 = e + DT * (p["v_clock"] + sd - clip(p["v_clock"] + p["k"] * e, -p["V"], p["V"]) - w)
-    return e1, [zabs(sd) <= p["s_rate"], zabs(w) <= p["w"]]
+    sd, w, vr = z3.Reals("sigma_dot w v_ref")
+    e1 = e + DT * (vr + sd - clip(vr + p["k"] * e, -p["V"], p["V"]) - w)
+    return e1, [zabs(sd) <= p["s_rate"], zabs(w) <= p["w"], vr >= p["v_ref_min"], vr <= p["v_clock"]]
 
 
 def lateral_step(p, e):

@@ -8,13 +8,15 @@ residual ``dr = d_measured - d_expected`` is projected on the template direction
 neighbour: its along-track part feeds the progress correction, its lateral part the lateral
 spacing correction (control/flows.py).  Neighbours expected in range but not seen are MISSING; the
 perception (perception.py) times them and declares a slot vacant after ``t_rejoin``: a vacant slot is
-no longer required (DEGRADED_FORMATION) until its drone is seen there again.
+no longer required (DEGRADED_FORMATION) until its drone is seen there again.  The residual of the neighbour
+directly ahead on the same lane (``front_residual``, negative when it is closer than planned with respect to the
+own slot) is what a drone follows when that neighbour slows down (control/formation_time.py, DI-31).
 """
 
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Dict, List
+from typing import Dict, List, Optional
 
 import numpy as np
 
@@ -50,6 +52,15 @@ class FormationObs:
     neighbors_ok: bool = True
     missing: List[int] = field(default_factory=list)      # required (expected nearby, observable), not seen recently
     required: List[int] = field(default_factory=list)     # expected nearby and observable (healthy sectors, unmasked)
+    front_residual: Optional[float] = None                # range residual of the same-lane neighbour ahead (seen now)
+
+
+def same_lane_ahead(plan: MissionPlan, lane_tol: float = 1.0) -> List[int]:
+    """Slots directly ahead of the own slot on the same lane (template: along-track ahead, same lateral offset and
+    depth within ``lane_tol``): the pairs whose spacing an along-track slowdown compresses."""
+    me = plan.slots[plan.slot_index]
+    return [k for k, sl in enumerate(plan.slots) if k != plan.slot_index and sl.along - me.along > lane_tol
+            and abs(sl.lateral - me.lateral) <= lane_tol and abs(sl.dz - me.dz) <= lane_tol]
 
 
 def expected_relative(plan: MissionPlan, R_formation: np.ndarray) -> Dict[int, np.ndarray]:
@@ -173,6 +184,13 @@ def check_formation(plan: MissionPlan, cfg: FleetConfig, slot_err: np.ndarray, R
     if seen:
         o.along_corr = float(np.mean([c.residual * c.along_w for c in seen]))
         o.lateral_corr = float(np.mean([c.residual * c.lateral_w for c in seen]))
+    # residual of the neighbour ahead on the same lane relative to the OWN slot: the own along-track tracking error
+    # (an avoidance manoeuvre, a drone still closing on its slot) changes the range the same way and is removed, so
+    # that the drone compares its reference with the drone ahead (control/formation_time.py)
+    ahead = same_lane_ahead(plan)
+    e_along = float(np.asarray(slot_err, float) @ t_hat)
+    front = [c.residual - e_along for c in seen if c.slot in ahead]
+    o.front_residual = float(min(front)) if front else None
     o.form_err = float(max(errs))
     o.neighbors_ok = not [k for k in o.missing if k not in vacant]
     return o

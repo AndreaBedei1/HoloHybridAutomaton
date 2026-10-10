@@ -29,10 +29,11 @@ def test_controller_has_no_message_channel():
 
 
 def test_perception_and_guards_never_read_messages():
-    from holo_fleet.control import controller, flows
-    from holo_fleet.perception import perception
+    from holo_fleet.control import controller, flows, formation_time
+    from holo_fleet.ha import automaton, spec
+    from holo_fleet.perception import formation_perception, perception
 
-    for mod in (perception, controller, flows):
+    for mod in (perception, formation_perception, controller, flows, formation_time, spec, automaton):
         src = inspect.getsource(mod)
         for word in ("inbox", "heartbeat", "broadcast", "socket", "message"):
             assert word not in src, (mod.__name__, word)
