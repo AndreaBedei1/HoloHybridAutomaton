@@ -40,6 +40,8 @@ def main() -> int:
     ap.add_argument("--no-window", action="store_true", help="no fleet-view window (frames are still saved)")
     ap.add_argument("--out", default=str(OUT))
     ap.add_argument("--duration", type=float, default=None)
+    ap.add_argument("--select", type=int, default=None, metavar="K",
+                    help="drone shown in the fleet view's automaton panel (default: the scenario's choice)")
     a = ap.parse_args()
     if a.list or not a.scenario:
         print("scenarios (one seed each):")
@@ -56,7 +58,7 @@ def main() -> int:
 
         return run_classification_demo(Path(a.out), headless=a.headless, show=not a.no_window)
     sc = SCENARIOS[a.scenario](DEFAULT)
-    ui = DemoUI(sc, DEFAULT, sc.sim.names, show=not a.no_window, draw_viewport=not a.headless)
+    ui = DemoUI(sc, DEFAULT, sc.sim.names, show=not a.no_window, draw_viewport=not a.headless, selected=a.select)
     m = run(a.scenario, Path(a.out), headless=a.headless, run_id=a.scenario, duration=a.duration, ui=ui)
     print_summary(a.scenario, m)
     gif = make_gif((Path(a.out) / a.scenario / "fleet_view").glob("fleet_*.jpg"), Path(a.out) / a.scenario / f"{a.scenario}.gif",

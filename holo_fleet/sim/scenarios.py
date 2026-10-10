@@ -70,6 +70,7 @@ class Scenario:
     disturbance_windows: List[Tuple[float, float]] = field(default_factory=list)
     focus: str = ""                      # what to look at (UI)
     cfg_patch: Dict = field(default_factory=dict)   # FleetConfig fields overridden for this scenario
+    automaton_drone: Optional[int] = None  # drone of the fleet view's automaton panel (UI; default: the camera drone)
 
     @property
     def duration_s(self) -> float:
@@ -296,6 +297,7 @@ def _lost_drone(name: str, t_on: float, t_off: Optional[float], duration: float,
                  cfg=cfg, camera=faulty)
     sc.sim.faults = ({"drone": f"drone_{faulty}", "type": "THRUSTER_FAILURE", "t_on": t_on, "t_off": t_off},)
     sc.sim.chase_offset, sc.sim.side_offset = (-7.0, 0.0, 3.0), (2.0, 10.0, 2.0)
+    sc.automaton_drone = 0               # the faulty drone's neighbour ahead on its lane: it waits for it
     return sc
 
 

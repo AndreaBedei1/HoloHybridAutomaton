@@ -8,8 +8,11 @@
 * fleet panel: P1 / P2 / P3 in one line each, formation error, critical-region occupancy, queue
   progress (or deadlock risk), drones active / missing / assumed failed;
 * one row per drone: state, ok / missing / rejoining / assumed failed, distance only when relevant;
-* readable events ("D0: D2 missing for 37.5 s, slot vacant -> DEGRADED_FORMATION");
-* a timeline of the automaton states of every drone.
+* readable events ("D0: D2 missing for 30.0 s, slot vacant -> DEGRADED_FORMATION");
+* a timeline of the automaton states of every drone;
+* a small automaton panel for one selected drone: its state on the priority layout of the ten states, the
+  transition it just took and the cause logged with it (the guard that fired, holo_fleet/ha/spec.py), and the
+  progress of its formation reference (reduced while a neighbour is missing).
 
 Positions are simulator ground truth (for the viewer); states, missing / vacant slots and queue
 decisions are what the drones' own automata and perception logged.  No drone receives anything from
@@ -28,10 +31,13 @@ import cv2
 import numpy as np
 from PIL import Image, ImageDraw, ImageFont
 
+from holo_fleet.ha.spec import SELF_RECOVERED
+
 W, H = 1600, 900
 MAP = (24, 84, 1030, 690)            # x0, y0, x1, y1 of the map card
 PANEL_X = 1048
-TL = (24, 708, 1576, 884)           # timeline card
+TL = (24, 708, 1030, 884)           # timeline card
+AUT = (1048, 708, 1576, 884)        # automaton card (selected drone)
 
 
 def _rgb(h: str):
@@ -62,6 +68,9 @@ STATE_COLOR = {"FOLLOW": _rgb("#2f9e5b"), "WAIT": _rgb("#e0a21c"), "DEGRADED": _
                "PASS": _rgb("#1c4e9c"), "WARNING": _rgb("#e8577a"), "AVOID": _rgb("#c62828"),
                "FAILSAFE": _rgb("#4b4a46")}
 LEGEND = ["FOLLOW", "WAIT", "DEGRADED", "RECOVERY", "APPROACH", "YIELD", "PASS", "WARNING", "AVOID", "FAILSAFE"]
+# the ten states on the priority layout of the automaton diagram (figures/v2/automaton): hazards, mutex, recovery, keeping
+AUT_LAYOUT = [("FAILSAFE", 0, 0), ("AVOID", 1, 0), ("WARNING", 2, 0), ("APPROACH", 0, 1), ("YIELD", 1, 1),
+              ("PASS", 2, 1), ("RECOVERY", 1, 2), ("WAIT", 0, 3), ("FOLLOW", 1, 3), ("DEGRADED", 2, 3)]
 KEEPING = ("FORMATION_FOLLOW", "FORMATION_WAIT_REJOIN", "DEGRADED_FORMATION")
 
 
@@ -98,6 +107,13 @@ def dname(name: str) -> str:
     return "D" + name.split("_")[-1]
 
 
+def _guard_text(label: str) -> str:
+    """Guard of a logged transition: the spec edge's label (holo_fleet/ha/spec.py), own-slot recovery abbreviated."""
+    if not label:
+        return "-"
+    return label.replace(f"({SELF_RECOVERED})", "self_recovered").replace(SELF_RECOVERED, "self_recovered")
+
+
 # ---------------------------------------------------------------------------------------------- events
 def describe(e: Dict, slot_name: Dict[int, str]) -> Optional[str]:
     """One readable sentence for a logged event (None: not shown)."""
@@ -109,7 +125,7 @@ def describe(e: Dict, slot_name: Dict[int, str]) -> Optional[str]:
     if typ == "FAULT_CLEARED":
         return f"[sim] {d} thrusters work again"
     if typ == "SLOT_DECLARED_VACANT":
-        return f"{d}: {sl(e['slot'])} missing for {e.get('missing_s', 37.5):.1f} s, slot vacant -> DEGRADED_FORMATION"
+        return f"{d}: {sl(e['slot'])} missing for {e.get('missing_s', 0.0):.1f} s, slot vacant -> DEGRADED_FORMATION"
     if typ == "SLOT_REOCCUPIED":
         return f"{d}: {sl(e['slot'])} back in its slot, slot re-included"
     if typ == "ENVELOPE_VIOLATION":
@@ -121,7 +137,7 @@ def describe(e: Dict, slot_name: Dict[int, str]) -> Optional[str]:
     if typ != "decision":
         return None
     dec, to = e.get("decision"), short(e.get("to", ""))
-    text = {"NEIGHBOUR_MISSING": f"{d}: a neighbour is missing -> keeps its slot and waits (WAIT_REJOIN)",
+    text = {"NEIGHBOUR_MISSING": f"{d}: neighbour missing -> WAIT_REJOIN (slot kept, slower)",
             "NEIGHBOUR_REJOINED": f"{d}: missing neighbour back -> FOLLOW",
             "SLOT_VACANT": None,
             "FORMATION_RESTORED": f"{d}: formation complete again -> FOLLOW",
@@ -138,9 +154,14 @@ def describe(e: Dict, slot_name: Dict[int, str]) -> Optional[str]:
 class FleetView:
     """Accumulates the history of a run and renders the fleet view (RGB -> BGR numpy image)."""
 
-    def __init__(self, scenario, cfg, names: Sequence[str], every_trail_s: float = 0.5, trail_s: float = 25.0):
+    def __init__(self, scenario, cfg, names: Sequence[str], every_trail_s: float = 0.5, trail_s: float = 25.0,
+                 selected: Optional[int] = None):
         self.sc, self.cfg, self.names = scenario, cfg, list(names)
         self.n = len(self.names)
+        for k in (selected, getattr(scenario, "automaton_drone", None), getattr(scenario.sim, "camera_drone", None), 0):
+            if k is not None and 0 <= k < self.n:
+                self.sel = int(k)                           # drone of the automaton panel
+                break
         self.plans = list(scenario.plans)
         self.slot_name = {p.slot_index: p.drone_id for p in self.plans} if scenario.template is not None else {}
         self.duration = float(scenario.duration_s)
@@ -321,6 +342,7 @@ class FleetView:
                 "onboard", font=F["s"], fill=MUTED)
         self._panel(dr, pil)
         self._timeline_txt(dr)
+        self._automaton(dr)
         return np.asarray(pil)[:, :, ::-1].copy()
 
     def _card(self, img, x0, y0, x1, y1):
@@ -333,11 +355,23 @@ class FleetView:
         self._card(img, PANEL_X, 342, W - 24, 512)
         self._card(img, PANEL_X, 524, W - 24, 690)
         self._card(img, *TL)
+        self._card(img, *AUT)
 
     def _header_txt(self, dr):
         dr.text((24, 14), self.sc.title, font=F["title"], fill=INK)
         sub = self.sc.focus or self.sc.description
-        dr.text((24, 50), sub[:150] + ("..." if len(sub) > 150 else ""), font=F["sub"], fill=INK2)
+        lines, line = [], ""
+        for word in sub.split(" "):                     # up to two lines left of the status chip
+            if dr.textlength((line + " " + word).strip(), font=F["sub"]) > W - 24 - 470 and line:
+                lines.append(line)
+                line = word
+            else:
+                line = (line + " " + word).strip()
+        lines.append(line)
+        if len(lines) > 2:
+            lines = [lines[0], lines[1].rstrip(".,;") + " ..."]
+        for i, ln in enumerate(lines):
+            dr.text((24, 46 + 17 * i), ln, font=F["sub"], fill=INK2)
         tt = f"t = {self.t:5.1f} s / {self.duration:.0f} s"
         w = dr.textlength(tt, font=F["h"])
         dr.text((W - 24 - w, 16), tt, font=F["h"], fill=INK)
@@ -389,12 +423,16 @@ class FleetView:
         if self.vertical:
             yz = self.side_y
             cv2.line(img, (x0 + 14, yz + int(self.zscale * 0)), (x1 - 14, yz), _bgr(GRID), 1)
-        # planned slots (shared plan, clock s(t)), vacant ones marked
+        # planned slots: shared plan at the fleet's formation time (median delay of the drones keeping their slot,
+        # control/formation_time.py: the formation runs behind the plan after a reduced-progress episode); vacant
+        # slots marked
         _missing, vacant = self.beliefs()
+        taus = [float((r.get("form") or {}).get("tau", 0.0)) for r in self.recs if r.get("mode") in KEEPING]
+        tau = float(np.median(taus)) if taus else 0.0
         for pl in self.plans:
             if pl.clock is None or self.sc.template is None:
                 continue
-            s = pl.clock.s(self.t)
+            s = pl.clock.s(self.t - tau)
             for k, sl in enumerate(pl.slots):
                 pp, _d, nn = pl.path.frame_at(s + sl.along)
                 p3 = np.array([pp[0] + sl.lateral * nn[0], pp[1] + sl.lateral * nn[1], pl.path.depth_z + sl.dz])
@@ -561,7 +599,9 @@ class FleetView:
             elif any(m.startswith("MUTEX") for m in modes):
                 chip, col, det = "GATE", NA_C, "planned: one at a time, re-forms beyond the gate"
             elif r.get("formation") == "LOST":
-                chip, col, det = "LOST", WARN_C, f"error {fe:.2f} m (> {self.cfg.ref.e_lost} m)" if fe is not None else ""
+                chip, col = "LOST", WARN_C
+                det = "" if fe is None else (f"error {fe:.2f} m (lost above {self.cfg.ref.e_lost} m, back below "
+                                             f"{self.cfg.ref.e_ok} m)")
             elif r.get("formation") == "RECOVERING":
                 chip, col, det = "RE-FORMING", WARN_C, f"error {fe:.2f} m" if fe is not None else ""
             else:
@@ -665,5 +705,86 @@ class FleetView:
             X = lx0 + (lx1 - lx0) * tt / T
             dr.text((X - 8, ly0 + self.n * (lh + 4) + 2), f"{tt:.0f}", font=F["xs"], fill=MUTED)
         if self.marks:
-            dr.text((lx1 - 330, y0 + 10), "| red: fault injected / slot declared vacant   green: fault cleared",
+            dr.text((lx1 - 330, y1 - 18), "| red: fault injected / slot declared vacant   green: fault cleared",
                     font=F["xs"], fill=MUTED)
+
+    # ---------------------------------------------------------------- automaton panel (selected drone)
+    def _automaton(self, dr):
+        x0, y0, x1, y1 = AUT
+        k = self.sel
+        rec = self.recs[k] if k < len(self.recs) else {}
+        cur = short(rec.get("mode", "")) or "-"
+        tr = rec.get("transition") or {}
+        dr.text((x0 + 14, y0 + 8), "Automaton", font=F["h"], fill=INK)
+        dr.text((x0 + 104, y0 + 10), f"{dname(self.names[k])} (selected)  ·  onboard state, last transition, cause",
+                font=F["s"], fill=MUTED)
+        # the ten states on the priority layout; current filled, previous outlined, arrow previous -> current
+        cw, ch, gx, gy = 70, 18, 76, 25
+        ox, oy = x0 + 14, y0 + 38
+        centre = {}
+        for st, c, r in AUT_LAYOUT:
+            bx, by = ox + c * gx, oy + r * gy
+            centre[st] = (bx + cw / 2, by + ch / 2)
+            col = STATE_COLOR[st]
+            if st == cur:
+                dr.rounded_rectangle((bx, by, bx + cw, by + ch), radius=8, fill=col)
+                fill = (255, 255, 255)
+            else:
+                dr.rounded_rectangle((bx, by, bx + cw, by + ch), radius=8, fill=CARD,
+                                     outline=col if st == short(tr.get("from", "")) else BORDER,
+                                     width=2 if st == short(tr.get("from", "")) else 1)
+                fill = INK2 if st == short(tr.get("from", "")) else MUTED
+            w = dr.textlength(st, font=F["tag"])
+            dr.text((bx + (cw - w) / 2, by + 2), st, font=F["tag"], fill=fill)
+        prev = short(tr.get("from", ""))
+        if prev in centre and cur in centre and prev != cur and self.t - float(tr.get("t", -1e9)) < 20.0:
+            (ax, ay), (bx, by) = centre[prev], centre[cur]
+            cell = {st: (c, r) for st, c, r in AUT_LAYOUT}
+            (c0, r0), (c1, r1) = cell[prev], cell[cur]
+            if r0 == r1:                                       # same row: route below the row (never across a chip)
+                yb = ay + ch / 2 + 5
+                dr.line([(ax, ay + ch / 2), (ax, yb), (bx, yb), (bx, by + ch / 2 + 6)], fill=INK, width=2)
+                dr.polygon([(bx, by + ch / 2), (bx - 4, by + ch / 2 + 7), (bx + 4, by + ch / 2 + 7)], fill=INK)
+            else:
+                d = math.hypot(bx - ax, by - ay) or 1.0
+                ux, uy = (bx - ax) / d, (by - ay) / d
+                sx, sy, ex, ey = ax + ux * 16, ay + uy * 10, bx - ux * 18, by - uy * 11
+                dr.line((sx, sy, ex, ey), fill=INK, width=2)
+                dr.polygon([(ex + ux * 7, ey + uy * 7), (ex - uy * 4, ey + ux * 4), (ex + uy * 4, ey - ux * 4)],
+                           fill=INK)
+        # text: state, last transition, cause and guard, formation progress
+        tx = x0 + 262
+        segs = self.timeline[k] if k < len(self.timeline) else []
+        since = segs[-1][0] if segs else 0.0
+        dr.text((tx, y0 + 36), "now", font=F["s"], fill=MUTED)
+        nx = self._chip(dr, tx + 54, y0 + 34, cur, STATE_COLOR.get(cur, MUTED))
+        dr.text((nx, y0 + 36), f"for {self.t - since:.1f} s", font=F["s"], fill=INK2)
+        if tr:
+            dr.text((tx, y0 + 62), "last", font=F["s"], fill=MUTED)
+            dr.text((tx + 54, y0 + 62), f"{short(tr['from'])} \u2192 {short(tr['to'])}  at {float(tr['t']):.1f} s",
+                    font=F["sb"], fill=INK)
+            dr.text((tx, y0 + 82), "cause", font=F["s"], fill=MUTED)
+            dr.text((tx + 54, y0 + 82), tr.get("reason") or "-", font=F["sb"], fill=INK)
+            g = _guard_text(tr.get("guard", ""))
+            dr.text((tx, y0 + 102), "guard", font=F["s"], fill=MUTED)
+            lines, line = [], ""
+            for word in g.split(" "):
+                if dr.textlength(line + " " + word, font=F["s"]) > x1 - tx - 70 and line:
+                    lines.append(line)
+                    line = word
+                else:
+                    line = (line + " " + word).strip()
+            for i, ln in enumerate((lines + [line])[:2]):
+                dr.text((tx + 54, y0 + 102 + 16 * i), ln, font=F["s"], fill=INK2)
+        f = rec.get("form") or {}
+        if f.get("v_ref") is not None:
+            if not f.get("reduced"):
+                why = "planned speed"
+            elif f.get("follow") == "slower":
+                why = "reduced: the drone ahead slowed down"
+            else:
+                why = "reduced: a neighbour is missing"
+            dr.text((tx, y0 + 140), "progress", font=F["s"], fill=MUTED)
+            dr.text((tx + 54, y0 + 140), f"{f['v_ref']:.2f} m/s  ·  {f.get('tau', 0.0):.1f} s behind the plan",
+                    font=F["sb"], fill=WARN_C if f.get("reduced") else INK2)
+            dr.text((tx + 54, y0 + 156), why, font=F["s"], fill=MUTED)

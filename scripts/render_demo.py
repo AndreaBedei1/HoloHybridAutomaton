@@ -3,6 +3,7 @@
     python scripts/render_demo.py results/v2/demos/lost_drone_rejoin
     python scripts/render_demo.py results/v2/demos/gate_single --every 0.5 --fps 6
     python scripts/render_demo.py results/v2/demos/lost_drone_timeout --at 30 50     # single frames (PNG)
+    python scripts/render_demo.py results/v2/demos/lost_drone_rejoin --select 2      # automaton panel of drone 2
 
 States, missing / vacant slots and queue decisions come from drone_<k>_state.jsonl and events.jsonl (what
 the controllers logged), positions and the P1 / P2 / P3 status from referee_timeseries.csv (ground
@@ -51,13 +52,14 @@ def referee_live(row, n, gates, state) -> dict:
             "row": {k: v for k, v in row.items() if k[:2] in ("ix", "iy", "iz") and v not in (None, "")}}
 
 
-def replay(run_dir: Path, every: float = 0.5, at=None):
-    """Yield (t, image) of the fleet view along a logged run (every ``every`` s, or only at the times ``at``)."""
+def replay(run_dir: Path, every: float = 0.5, at=None, selected=None):
+    """Yield (t, image) of the fleet view along a logged run (every ``every`` s, or only at the times ``at``);
+    ``selected``: drone of the automaton panel (default: the scenario's choice)."""
     cfg_run = json.loads((run_dir / "run_config.json").read_text(encoding="utf-8"))
     sc = SCENARIOS[cfg_run["scenario"]](DEFAULT)
     n = cfg_run["n_drones"]
     names = [f"drone_{k}" for k in range(n)]
-    view = FleetView(sc, DEFAULT, names)
+    view = FleetView(sc, DEFAULT, names, selected=selected)
     recs = [[json.loads(l) for l in open(run_dir / f"{nm}_state.jsonl", encoding="utf-8")] for nm in names]
     rows = list(csv.DictReader(open(run_dir / "referee_timeseries.csv", encoding="utf-8")))
     events = sorted((json.loads(l) for l in open(run_dir / "events.jsonl", encoding="utf-8")), key=lambda e: e.get("t", 0.0))
@@ -83,12 +85,12 @@ def replay(run_dir: Path, every: float = 0.5, at=None):
             yield t, view.render()
 
 
-def render_run(run_dir: Path, every: float = 0.5, fps: float = 6.0, width: int = 1280) -> Path:
+def render_run(run_dir: Path, every: float = 0.5, fps: float = 6.0, width: int = 1280, selected=None) -> Path:
     out_dir = run_dir / "fleet_view"
     out_dir.mkdir(exist_ok=True)
     for f in out_dir.glob("*.jpg"):
         f.unlink()
-    for t, img in replay(run_dir, every):
+    for t, img in replay(run_dir, every, selected=selected):
         cv2.imwrite(str(out_dir / f"fleet_{int(round(t * 10)):05d}.jpg"), img, [cv2.IMWRITE_JPEG_QUALITY, 90])
     cfg_run = json.loads((run_dir / "run_config.json").read_text(encoding="utf-8"))
     return make_gif(out_dir.glob("fleet_*.jpg"), run_dir / f"{cfg_run['scenario']}.gif", width=width, fps=fps)
@@ -101,15 +103,16 @@ def main() -> int:
     ap.add_argument("--fps", type=float, default=6.0, help="GIF frames per second (6 fps at 0.5 s: 3x real time)")
     ap.add_argument("--width", type=int, default=1280)
     ap.add_argument("--at", type=float, nargs="*", help="only write PNG frames at these times")
+    ap.add_argument("--select", type=int, default=None, metavar="K", help="drone of the automaton panel")
     a = ap.parse_args()
     run_dir = Path(a.run_dir)
     if a.at:
-        for t, img in replay(run_dir, at=a.at):
+        for t, img in replay(run_dir, at=a.at, selected=a.select):
             p = run_dir / f"fleet_t{int(round(t)):03d}.png"
             cv2.imwrite(str(p), img)
             print(p)
         return 0
-    print(render_run(run_dir, a.every, a.fps, a.width))
+    print(render_run(run_dir, a.every, a.fps, a.width, selected=a.select))
     return 0
 
 

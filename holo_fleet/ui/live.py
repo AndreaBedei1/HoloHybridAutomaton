@@ -25,8 +25,8 @@ VP_ESCAPE = [230, 60, 230]
 
 class DemoUI:
     def __init__(self, scenario, cfg, names, show: bool = True, draw_viewport: bool = True,
-                 window: str = "holo_fleet - fleet view"):
-        self.view = FleetView(scenario, cfg, names)
+                 window: str = "holo_fleet - fleet view", selected=None):
+        self.view = FleetView(scenario, cfg, names, selected=selected)
         self.names = list(names)
         self.show = show
         self.draw_viewport = draw_viewport
