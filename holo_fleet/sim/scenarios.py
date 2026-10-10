@@ -365,16 +365,26 @@ def gate_single(cfg: FleetConfig = DEFAULT) -> Scenario:
                          focus="queue relations from sector patterns, CR occupancy belief, occupancy <= 1, entry order")
 
 
+INTEGRATED_GUST = 0.27     # cross-current gust of integrated_short [m/s]
+
+
 def integrated_short(cfg: FleetConfig = DEFAULT) -> Scenario:
+    """The gust was 0.35 m/s until DI-31: drone 0's diagonal gate passage at v_pass 0.5 m/s against it needed up to
+    1.12 x the nominal authority (OUTSIDE the control-feasible envelope, DI-27).  Only the scenario changes, not the
+    controller: replaying the logged passage with the gust scaled gives 1.12 at 0.35, 1.03 at 0.30 (over the
+    authority for 3 s), 1.00 at 0.28 and 0.98 at 0.27 m/s - the first value with a margin (2 %) for the run-to-run
+    differences of HoloOcean.  The cross-current stays well felt (0.27 m/s gust, about 0.22 m/s net of the background)
+    while the drones survey at 0.40 m/s, queue and pass the 1.5 m opening."""
     g6 = {g.gate_id: g for g in load_arena_gates(HORSESHOE_TRACK)}["G06"]
     left = np.array([-g6.axis[1], g6.axis[0]])
-    gust = CurrentComponent("uniform", drift=(round(0.35 * float(left[0]), 3), round(0.35 * float(left[1]), 3), 0.0),
+    w = INTEGRATED_GUST
+    gust = CurrentComponent("uniform", drift=(round(w * float(left[0]), 3), round(w * float(left[1]), 3), 0.0),
                             t_on=5.0, t_off=45.0, ramp=4.0)
     cur = CurrentField([CurrentComponent("uniform", drift=(0.0, -0.05, 0.0)), gust])
     return _gate_mission("integrated_short", "triangle", 92.0, cur, cfg, windows=[(5.0, 45.0)], lead_in=4.0,
                          v_clock=0.40,
                          title="Integrated: survey, cross-current at the gate, one at a time, re-form",
-                         desc="3 drones (triangle) survey towards gate G06; a 0.35 m/s cross-current builds up while "
+                         desc=f"3 drones (triangle) survey towards gate G06; a {w:.2f} m/s cross-current builds up while "
                               "they approach and queue (onboard current estimate, no ground truth); they pass the "
                               "1.5 m opening one at a time and re-form beyond it. No communication.",
                          focus="P1 throughout, current estimate, P2 at the gate under cross-current, P3 re-formation")
