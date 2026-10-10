@@ -1,6 +1,6 @@
 """Lost drones without communication (DI-29, DI-31): missing timers, slot vacancy, the timeout derived from the
-catch-up, the reduced progress of a waiting formation (local formation time), the formation-keeping modes,
-rejoin from behind, the envelope clear rule and the referee's degraded verdict."""
+catch-up, the reduced progress of a waiting formation (local formation time), the formation-keeping modes and
+their transition reasons, rejoin from behind, the envelope clear rule and the referee's degraded verdict."""
 
 import dataclasses
 
@@ -333,6 +333,35 @@ def test_formation_keeping_modes():
     assert ha.mode == Mode.FORMATION_RECOVERY                # not yet recovered for t_ok_hold
     ha.step(_obs(form_err=0.3, t_ok=2.5, neighbors_ok=False), 0.5, DT)
     assert ha.mode == Mode.FORMATION_WAIT_REJOIN             # own slot recovered, the neighbour still missing
+    assert ha.determinism_violations == 0
+
+
+def test_every_mode_change_logs_the_cause_from_the_guard_that_fired():
+    ha = LocalHybridAutomaton()
+    seq = [(_obs(neighbors_ok=False), Mode.FORMATION_WAIT_REJOIN, "neighbor_missing"),
+           (_obs(neighbors_ok=False), Mode.FORMATION_WAIT_REJOIN, ""),
+           (_obs(neighbors_ok=True), Mode.FORMATION_FOLLOW, "neighbor_rejoined"),
+           (_obs(neighbors_ok=False), Mode.FORMATION_WAIT_REJOIN, "neighbor_missing"),
+           (_obs(neighbors_ok=True, degraded=True), Mode.DEGRADED_FORMATION, "rejoin_timeout"),
+           (_obs(neighbors_ok=True, degraded=False), Mode.FORMATION_FOLLOW, "slot_reoccupied"),
+           (_obs(form_err=1.5, t_ok=0.0), Mode.FORMATION_RECOVERY, "own_slot_lost"),
+           (_obs(form_err=0.3, t_ok=2.5), Mode.FORMATION_FOLLOW, "slot_recovered"),
+           (_obs(sense_ok=False), Mode.FAILSAFE_HOLD_OR_RETREAT, "sensor_fault"),
+           (_obs(form_err=0.8, t_ok=0.0), Mode.FORMATION_RECOVERY, "fault_cleared"),
+           (_obs(env_ok=False), Mode.FAILSAFE_HOLD_OR_RETREAT, "envelope_violation"),
+           (_obs(d_min=2.0), Mode.SEPARATION_WARNING, "fault_cleared"),
+           (_obs(d_min=1.5), Mode.COLLISION_AVOIDANCE, "collision_risk"),
+           (_obs(d_min=2.1), Mode.SEPARATION_WARNING, "collision_risk_cleared"),
+           (_obs(mutex_zone=True, at_queue=True, has_prio=False), Mode.MUTEX_YIELD, "separation_clear"),
+           (_obs(mutex_zone=True, at_queue=True, has_prio=True, occ_busy=True), Mode.MUTEX_YIELD, ""),
+           (_obs(mutex_zone=True, at_queue=True, has_prio=True), Mode.MUTEX_PASS, "mutex_priority_and_free"),
+           (_obs(mutex_zone=True, passed=True), Mode.FORMATION_RECOVERY, "mutex_exit_passed"),
+           (_obs(mutex_zone=True, at_queue=False), Mode.MUTEX_APPROACH, "mutex_zone_entered"),
+           (_obs(mutex_zone=True, at_queue=True, occ_busy=True, has_prio=True), Mode.MUTEX_YIELD, "mutex_occupied")]
+    for i, (o, mode, reason) in enumerate(seq):
+        rec = ha.step(o, 0.1 * i, DT)
+        assert (ha.mode, rec.reason) == (mode, reason), i
+        assert rec.label                                      # every edge has a readable guard
     assert ha.determinism_violations == 0
 
 

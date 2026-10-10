@@ -13,7 +13,11 @@ Checks, for every source mode:
       at_queue & !occ_busy & has_prio (local mutual-exclusion entry condition);
   G2  a committed drone never falls back to MUTEX_APPROACH/MUTEX_YIELD (no oscillation PASS->YIELD);
   G3  a hazard (d_min < d_warning) never coexists with a commit decision;
-  M*  mutation tests: deliberately broken automata must produce counterexamples (non-vacuity).
+  L1  readable guards: the ``label`` of every edge (the text of the automaton diagram and of the transition
+      log, holo_fleet/ha/guard_text.py) is exact under the priority order - for every legal observation on
+      which no earlier edge of the mode is enabled, label <-> guard;
+  M*  mutation tests: deliberately broken automata must produce counterexamples (non-vacuity); ML: a wrong
+      label is detected.
 """
 
 from __future__ import annotations
@@ -26,6 +30,7 @@ import z3
 from common import Obs, Report, Z3L, check  # noqa: E402  (formal/ is on sys.path when run as a script)
 
 from holo_fleet.config import DEFAULT
+from holo_fleet.ha import guard_text
 from holo_fleet.ha.spec import MODES, Edge, Mode, Predicates, build_edges
 
 ENC = "holo_fleet/ha/spec.py (shared guards) + formal/check_determinism.py"
@@ -33,6 +38,15 @@ ENC = "holo_fleet/ha/spec.py (shared guards) + formal/check_determinism.py"
 
 def guards_of(edges, o):
     return [(e, e.guard(o, Z3L)) for e in edges]
+
+
+def label_mismatch(gs, o, cfg):
+    """Satisfiable iff some edge's readable label differs from its guard where no earlier edge is enabled."""
+    out = []
+    for k, (e, g) in enumerate(gs):
+        lab = guard_text.evaluate(e.label, o, Z3L, cfg)
+        out.append(z3.And(*[z3.Not(gj) for _, gj in gs[:k]], z3.Xor(g, lab)) if k else z3.Xor(g, lab))
+    return z3.Or(*out)
 
 
 def run(cfg=DEFAULT, verbose=True) -> Report:
@@ -89,6 +103,10 @@ def run(cfg=DEFAULT, verbose=True) -> Report:
             rep.add(check(f"G3 no commit under hazard [{src.value}]",
                           "commit edge enabled -> d_min >= d_warning (or >= d_warning_exit from SW)", ENC,
                           [legal, z3.Or(*commits), o.d_min < cfg.sep.d_warning]), verbose)
+        # L1 the readable guards of the diagram and of the transition log are exact under the priority order
+        rep.add(check(f"L1 readable guards exact [{src.value}]",
+                      "forall legal obs, edge k: no earlier edge enabled -> (label_k <-> guard_k)", ENC,
+                      [legal, label_mismatch(gs, o, cfg)]), verbose)
 
     # ------------------------------------------------------------- mutation tests
     def mutated(drop_prio: bool = False, drop_ca_priority: bool = False):
@@ -124,6 +142,11 @@ def run(cfg=DEFAULT, verbose=True) -> Report:
     rep.add(check("M2 mutation: gate pass ignoring collision risk must violate H2",
                   "expect counterexample", ENC,
                   [o.legal(cfg), z3.Not(P.fault(o, Z3L)), o.d_min < cfg.sep.d_ca, z3.Or(*bad)], expect="sat"), verbose)
+    wrong = [(Edge(e.name, e.guard, e.target, e.set_committed, e.decision,
+                   label="d_min < d_warning" if e.name == "collision_risk" else e.label), g)
+             for e, g in guards_of(edges[Mode.FORMATION_FOLLOW], o)]
+    rep.add(check("ML mutation: a wrong readable guard (collision risk drawn at d_warning) must violate L1",
+                  "expect counterexample", ENC, [o.legal(cfg), label_mismatch(wrong, o, cfg)], expect="sat"), verbose)
     return rep
 
 

@@ -133,6 +133,7 @@ class DroneController:
         self.last_obs: Optional[LocalObservation] = None
         self.last_record: Dict[str, Any] = {}
         self.v_requested = np.zeros(3)             # velocity requested from the low level at the previous step
+        self.last_transition: Optional[Dict[str, Any]] = None     # last mode change (transition log)
 
     def step(self, frame: SensorFrame, dt: float) -> np.ndarray:
         t = frame.t
@@ -157,6 +158,10 @@ class DroneController:
         prev = self.ha.mode
         rec = self.ha.step(obs.ab, t, dt)
         mode = self.ha.mode
+        if rec.target != rec.source:                           # transition log: every mode change, with its cause
+            self.last_transition = {"t": round(t, 2), "from": rec.source, "to": rec.target, "edge": rec.edge,
+                                    "reason": rec.reason, "guard": rec.label}
+            self.events.append({"type": "transition", **self.last_transition})
         if rec.decision:
             self.events.append({"t": t, "type": "decision", "decision": rec.decision, "edge": rec.edge,
                                 "from": rec.source, "to": rec.target,
@@ -239,6 +244,7 @@ class DroneController:
                      "vacant": sorted(self.perception.vacant), "degraded": bool(self.perception.vacant),
                      "slot": np.round(obs.slot_pos, 2).tolist(), "rejoin": self.flows.rejoin_phase,
                      **ftime.record(t, dt)},
+            "transition": self.last_transition,
             "determinism_violations": self.ha.determinism_violations,
             "obs_consistent": self.obs_consistent, "observation_violations": self.observation_violations,
             "saturated": self.ll.saturated,
