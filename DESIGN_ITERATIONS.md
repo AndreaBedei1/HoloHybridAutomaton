@@ -847,3 +847,103 @@ v1 iterations are summarised in REPORT.md section 6.
   * Positions are ground truth (for the viewer); states, missing and vacant slots, queue decisions are the
     drones' own logs.  The same class renders live and from the logs (`scripts/render_demo.py`).
   * The technical dashboard is kept only for the sonar-classification bench.
+
+## DI-31 - Reduced progress while a neighbour is missing (no communication), a timeout derived from the catch-up, the automaton made visible
+
+* **Problem.**  In DI-29 the drones that missed a neighbour kept their slots at the survey speed: a lost drone
+  closed the gap with the bare catch-up margin of the recovery speed (0.50 - 0.30 = 0.20 m/s), and the
+  timeout t_rejoin = 7.5 / 0.2 = 37.5 s was tied to that margin.  Slowing down had been rejected because,
+  without communication, the drones cannot slow down together.  The automaton itself was visible only as
+  code and a priority list: no diagram, and no record of *why* a drone changed mode.
+* **Reduced progress: a local formation time, not a slower vehicle.**  Slowing the vehicle alone would leave
+  its slot moving at the planned speed (a formation error).  Each drone evaluates the shared FormationClock at
+  its OWN formation time `t_f = t - tau` (control/formation_time.py): while its own perception says an
+  expected neighbour is missing (and not vacant), the rate of t_f drops so that its slot advances at
+  `v_wait` = 0.20 m/s instead of 0.30 m/s (ramp `a_wait` = 0.02 m/s^2 into and out of it); the slot of the
+  perception, the slot of the flow and the slot-tracking feed-forward all use t_f.  tau is kept afterwards:
+  the formation stays behind the plan, it does not sprint to recover the schedule.  Planned holds stay as
+  planned; in the mutex zone the rate is nominal (the gate protocol has its own timing).
+* **v_wait = 0.20 m/s, chosen from the configuration, not tuned on a run.**  The catch-up becomes
+  v_recovery_max - v_wait = 0.30 m/s (1.5 times DI-29; 3 times against the residual drift w_drift_max of the
+  envelope).  Two drones that notice the absence at different times drift apart along-track at
+  v_nominal - v_wait = 0.10 m/s: with the 5 s ramp, a detection spread of 7 s (DI-29 runs) gives 0.45 m,
+  below e_ok = 0.5 m.  A slower WAIT would buy catch-up with formation error; 0 would stop the survey and the
+  steerage.
+* **Timeout derived from the catch-up.**  `t_rejoin = min(t_rejoin_max, d_rejoin / (v_recovery_max - v_wait)
+  + t_rejoin_margin) = 7.5 / 0.30 + 5 = 30 s` (cap 60 s).  d_rejoin is the sensing range of the neighbour
+  check (neighbour_range_m), a configured bound: after its last association a missing drone is not observed
+  at all, and the last residual (within the range gate) says nothing about how far it drifted since, so no
+  reliable onboard estimate of the gap exists.  The margin covers the ramp-in (~0.8 s), the confirmation
+  (<= 1 s) and the proportional final approach (~1.5 s), rounded up.  The gap a lost drone can close within
+  t_rejoin - margin is exactly the sensing range, as in DI-29.
+* **Making it consistent without messages** (each item found in a probe run, one seed each):
+  * *The lost drone must slow its own reference too.*  It stopped slowing when it saw its neighbours again,
+    seconds before they confirmed it, and its slot ran 2 m ahead of the fleet.  The "missing" relation is
+    symmetric (range between two drones against their template distance): a drone out of its slot that
+    misses its neighbours is the one the others wait for, and applies the same rule; once started, its
+    episode lasts until it is back near its slot.
+  * *Some drones never notice* (range-only sensing: in `lost_drone_timeout` an echo of the diagonal neighbour
+    stood in for the dead drone of the rear-right drone for 40 s) and kept the survey speed behind a slowed
+    drone: the right lane compressed to the warning band (3.25 m true, the onboard bound below 2.4 m) and
+    the two drones cycled through SEPARATION_WARNING.  Rule: a drone follows the drone directly ahead of it
+    in its lane (same lateral offset and depth in the template) - when that drone is closer than planned by
+    more than 0.08 m (above the calm-flight residual, one 5 cm range bin) it slows its reference too, with a
+    faster ramp (0.05 m/s^2), so the compression stays below ~0.14 m.  The slowdown spreads backward by
+    normal perception.
+  * *Exits in the wrong order.*  A drone abeam of the returning drone confirms it ~2 m before it reaches its
+    slot (range-only: the range of a neighbour abeam barely changes along-track) and resumed while the drone
+    ahead of it was still slow.  Rule: on its slot, a slowing drone keeps slowing until the drone ahead pulls
+    away (farther than planned by 0.08 m), and does not start while it is pulling away: in a lane the
+    slowdown ends front to back, and a late detector does not fall behind.
+  * *Own manoeuvres look like the drone ahead moving.*  Braking in SEPARATION_WARNING made the drone ahead
+    look "pulled away" and released the hold (a 4 s oscillation).  The front residual is now taken relative
+    to the own slot (own along-track slot error removed).
+  * *The progress consensus far from the own slot.*  A drone left behind sees every neighbour "ahead"; sigma
+    integrated that and carried its reference 0.46 m ahead of the fleet.  Sigma now integrates only while
+    the drone is within e_lost of its slot (any mode: near its slot it is what re-aligns the references; a
+    first version that froze it in every mode outside formation keeping left two recovering drones of
+    `formation_gust` 0.7 m apart for good, each stuck in RECOVERY by the other's residual).
+  * *The head-on give-way caught its own fleet.*  At the higher catch-up speed the returning drone saw the
+    drone ahead close in its FRONT sector faster than the head-on threshold (0.45 m/s) and, 3 m behind its
+    slot, did not recognise it as a neighbour: the give-way pushed it 2.3 m towards the next lane.  A
+    recovering drone more than e_ok behind its slot takes no new give-way decision (a running one ends as
+    usual; P1 never relied on the give-way).
+* **Why this is not communication.**  Every quantity is computed by each drone from its own sonar ranges,
+  navigation and the shared plan: missing / confirmed neighbours, the residual of the drone ahead, its own
+  slot error.  No message, no shared variable, no global "slow down"; the simulator state is used only by
+  the referee and the fleet view.
+* **DEGRADED_FORMATION unchanged.**  No reconfiguration: original slots, the hole stays, re-inclusion if the
+  drone comes back; after the timeout the reference returns to the survey speed.
+* **Formal.**  P3 abstraction: the slot moves at any v_ref in [v_wait, v_nominal] at every step (ramps and
+  following included); the binding case of F1 is v_ref = v_nominal (unchanged margin), a slower reference only
+  adds catch-up.  F6 with the derived t_rejoin (300 steps).  Readable guards (below): L1 per mode, ML mutation.
+* **The automaton made visible.**
+  * Every spec edge carries a readable `label` (a Python expression over the observation variables and the
+    configured thresholds, holo_fleet/ha/guard_text.py), proved equal to the executed guard under the priority
+    order (L1, formal/check_determinism.py), and a short `reason`.
+  * Transition log: every mode change writes a `transition` event (from, to, edge, reason, guard), e.g.
+    neighbor_missing, rejoin_timeout, neighbor_rejoined, slot_recovered, own_slot_lost, mutex_priority_and_free,
+    sensor_fault / envelope_violation, fault_cleared, separation_clear.
+  * Diagram generated from build_edges (scripts/make_automaton_diagram.py): figures/v2/automaton/
+    automaton_full (all 120 edges, exact guards, priority bands, compact self-loops) and
+    automaton_presentation (the same automaton in plain words, large text).  A test checks that every edge
+    of the spec is represented and nothing else.
+  * Fleet view: a small automaton card for one drone - its state on the priority layout, the transition it
+    just took with its cause and guard, the speed of its formation reference.
+* **integrated_short inside the envelope.**  Only the scenario changed: the cross-current gust 0.35 -> 0.27
+  m/s (replay of the logged passage: 1.12 x authority at 0.35, 0.98 at 0.27 - the first value with a
+  margin).
+* **Result** (one seed each; the nine demos on which one of these rules acts were redone):
+  * `lost_drone_rejoin`: missing at 13.2 / 13.4 / 15.5 s, fleet 0.30 -> 0.22 -> 0.30 m/s (true speed), the lost
+    drone back in its slot at 35.6 s (DI-29: 44.4 s), the others confirm it at 29.9 / 33.0 / 33.4 s; P3 recovered
+    in 20.7 s (DI-29: 27.3 s); formation error of the others <= 0.20 m; min distance 3.36 m.
+  * `lost_drone_timeout` (80 s: every neighbour times the absence from its own detection, and the latest
+    detection seen in the probe runs was at 48 s): missing at 14.0 / 16.1 / 22.5 s, vacant at 43.9 / 46.0 / 52.4 s
+    (30 s each), fleet 0.30 -> 0.22 -> 0.30 m/s, formation error of the three <= 0.19 m (0.10 m at the end);
+    referee: absent at 43.2 s, P3-deg PASS.
+  * `integrated_short`: inside (0.98 x authority), occupancy <= 1, re-formed 5.2 s after the last passage.
+  * `formation_recovery_head_current` 6.9 s, `formation_gust` 10.0 s (both OUTSIDE and declared, as before);
+    `p1_vertical_escape` recovered within the run (18.0 s); P1 and P2 as before in every redone run.
+  * Formal: 186 checks with the expected verdict (determinism 93 with L1 and ML, P3 22 with the free reference
+    speed and F6 over 300 steps); tests: every edge of the spec in the diagram, the formation time, the
+    same-lane rule, the timeout formula, the transition causes on the runs.

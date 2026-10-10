@@ -32,6 +32,100 @@ controller code and check at runtime which sensor keys reach a controller.
 
 ---
 
+## LOST DRONES: REDUCED-PROGRESS WAIT, DERIVED TIMEOUT, THE AUTOMATON MADE VISIBLE (v2.2)
+
+Still **no communication of any kind**.  Each drone decides from its own sonar ranges, its own navigation and
+the mission plan shared before the dive.
+
+**When a drone is missing, the remaining drones enter a reduced-progress FORMATION_WAIT_REJOIN mode to
+facilitate catch-up while preserving the formation** (DI-31).
+
+* **Why slow down.**  The lost drone closes on its slot at v_recovery - v_wait = 0.50 - 0.20 = 0.30 m/s instead
+  of 0.20 m/s at the survey speed.
+* **Why not stop.**  The survey goes on, the vehicles keep steerage and their current compensation, and a drone
+  that never comes back costs at most t_rejoin x (1 - v_wait / v_nominal) = 10 s of mission time.
+* **Why no message.**  The fleet has no communication channel by design (no modem, no ping, no heartbeat): the
+  coordination comes from the plan shared before the dive and from each drone's own sensing, and a lost drone is
+  the one least likely to be reachable.  So each drone decides on its own, when it notices, and the others see
+  the effect through their sonars.
+* **How, without messages.**  Slowing the vehicle alone would leave its slot running at the planned speed (a
+  formation error).  Each drone runs the shared FormationClock at its **own formation time** t_f = t - tau:
+  while its own perception says an expected neighbour is missing, its slot advances at v_wait (ramp 0.02 m/s^2
+  in and out), and the slot tracking follows.  Nobody tells anybody to slow down:
+  * a drone keeping its slot that misses a neighbour: FORMATION_WAIT_REJOIN, reduced progress;
+  * the lost drone itself: out of its slot it misses its neighbours too (the "missing" relation is symmetric:
+    a range between two drones against their template distance), so it slows its own reference the same way
+    and its slot stays level with the slowed fleet until it is back near it;
+  * a drone that has not noticed (yet) - range-only sensing: an echo of another neighbour can stand in for the
+    missing one - sees the drone ahead of it in its lane come closer than planned and slows down too; in a
+    lane the slowdown ends front to back (a drone keeps slowing until the drone ahead pulls away).  Other
+    pairs only stretch, and the sonar progress consensus re-aligns them.
+* **After the rejoin or the timeout** the reference returns to the survey speed with the same ramp.  The
+  formation stays behind the plan by the accumulated delay: it does not sprint to recover the schedule.
+
+**Timeout derived from the recovery capability.**
+`t_rejoin = min(t_rejoin_max, d_rejoin / (v_recovery - v_wait) + margin) = 7.5 / 0.30 + 5 = 30 s` (cap 60 s).
+* The timeout exists because a lost drone may never come back (a permanent fault): the others must not slow
+  down and wait for ever.
+* It comes from the recovery capability: it is the time a lost drone still at the edge of the sensing range
+  (d_rejoin = 7.5 m, the range of the neighbour check) needs to close the gap at the catch-up speed, plus a
+  margin for the ramp, the confirmation and the final approach.
+* d_rejoin is a configured bound, not an onboard estimate of the gap: after its last association the missing
+  drone is not observed at all, and the last residual says nothing about how far it drifted since.
+* After the timeout: DEGRADED_FORMATION, with the same meaning as before - no reconfiguration, every drone on
+  its original slot, the hole stays open, the drone is re-included if it comes back; the survey speed is
+  resumed.
+
+**The automaton, visible.**
+* **Diagram generated from the spec** (`scripts/make_automaton_diagram.py`, from `build_edges`): every state,
+  every transition and its readable guard, the priority bands, compact self-loops ("otherwise: remain").  The
+  readable guards are labels of the spec edges, proved equal to the executed guards under the priority order
+  (Z3, formal/check_determinism.py L1); a test checks that every edge of the spec is drawn and nothing else.
+
+  | full (120 edges, exact guards) | presentation |
+  |---|---|
+  | ![full](figures/v2/automaton/automaton_full.png) | ![presentation](figures/v2/automaton/automaton_presentation.png) |
+
+* **Transition log**: every mode change writes a `transition` event with the cause taken from the guard that
+  fired (e.g. `neighbor_missing`, `rejoin_timeout`, `neighbor_rejoined`, `own_slot_lost`, `slot_recovered`,
+  `mutex_priority_and_free`, `sensor_fault`, `envelope_violation`, `fault_cleared`, `separation_clear`) and the
+  readable guard.
+* **Fleet view**: a small automaton card for one selected drone - its state on the priority layout of the ten
+  states, the transition it just took, its cause and guard, and the speed of its formation reference
+  (`--select K` in `run_demo.py` / `render_demo.py`).
+
+**integrated_short inside the control-feasible envelope.**  Only the scenario changed (not the controller): the
+cross-current gust 0.35 -> 0.27 m/s, the first value with a margin when the logged gate passage is replayed
+(1.12 x authority at 0.35, 0.98 at 0.27).  The mission keeps a real cross-current, the one-at-a-time passage,
+P1, P2 and the re-formation.
+
+**Results** (one seed each; the nine demos on which a v2.2 rule acts were redone, the seven others - head-on, close
+encounter, the three calm formations, the stacked and the abreast mutex queues - never meet a missing neighbour
+with the clock moving, a progress residual far from the slot or a give-way while catching up, and keep their
+v2.1 runs):
+
+| scenario | what happens | result |
+|---|---|---|
+| `lost_drone_rejoin` | the rear-left drone's thrusters fail from 8.1 to 15.1 s (simulator fault, no drone told); a 0.35 m/s lateral current drags it off its lane | the three others miss it at 13.2 / 13.4 / 15.5 s (`neighbor_missing`) and slow their formation reference to 0.20 m/s: the fleet goes from 0.30 to 0.22 m/s (true speed) and back to 0.30 m/s afterwards; the lost drone detects its fault (FAILSAFE 13.4-21.6 s, `envelope_violation` / `fault_cleared`), catches up from behind along its lane and is back in its slot at 35.6 s (`slot_recovered`; v2.1: 44.4 s); the others see it back at 29.9 / 33.0 / 33.4 s (`neighbor_rejoined`); P3 recovered in 20.7 s (v2.1: 27.3 s); formation error of the others <= 0.20 m; min distance 3.36 m; 0 collisions |
+| `lost_drone_timeout` | the same drone's thrusters fail for good at 8.1 s | the others miss it at 14.0 / 16.1 / 22.5 s and slow down (fleet 0.30 -> 0.22 m/s); each declares the slot vacant 30 s after its own detection (43.9 / 46.0 / 52.4 s, `rejoin_timeout`) and continues in DEGRADED_FORMATION on its original slot at the survey speed (0.30 m/s), the hole left open; formation error of the three <= 0.19 m (0.10 m at the end); referee: absent at 43.2 s, P3-deg PASS; min distance 3.34 m; 0 collisions |
+| `integrated_short` | the cross-current gust is 0.27 m/s (was 0.35), gate G06 | inside the control-feasible envelope: at most 0.98 times the authority (v2.1: 1.12), net cross-current 0.22 m/s; occupancy <= 1, entry order drone 0, 2, 1; min distance 3.34 m; re-formed 5.2 s after the last passage |
+| the others redone | | `formation_recovery_head_current` lost and recovered in 6.9 s (OUTSIDE, declared by the hit drone, as before); `formation_gust` 10.0 s; `p1_vertical_escape` min 2.72 m (vehicle clearance 2.11 m), formation recovered within the run this time (18.0 s); `p1_two_lines` min 3.11 m; `gate_single` occupancy <= 1, min 3.31 m; `lost_drone_mutex` entry order drone 1, drone 2, min 3.01 m |
+
+| lost drone: reduced progress, catch-up, rejoin | the fleet view with the automaton card |
+|---|---|
+| ![rejoin](figures/v2/p3/lost_drone_rejoin.png) | ![card](figures/v2/fleet_view/lost_drone_rejoin.png) |
+| ![timeout](figures/v2/p3/lost_drone_timeout.png) | ![card](figures/v2/fleet_view/lost_drone_timeout.png) |
+
+**What is claimed, prudently.**  P3 is unchanged in form: if the lost drone stays controllable, its path back is
+reachable and the recovery assumptions hold, FORMATION_RECOVERY converges to its slot (the reference now moves at
+any speed between v_wait and v_nominal; a slower reference only adds catch-up).  A drone that never comes back is
+covered by P3-deg: every neighbour leaves FORMATION_WAIT_REJOIN within t_rejoin of formation time (F6) and the
+others keep their original slots.  Not claimed: that every lost drone comes back, that the fleet is deadlock-free
+in every possible geometry, that collisions are impossible, or that all drones learn at the same time that a drone
+is missing - each notices on its own, at its own time, or not at all, and the slowdown is designed for that.
+
+---
+
 ## LOST DRONES, MUTEX ZONE, FLEET VIEW (v2.1)
 
 Still **no communication of any kind**: no inter-drone message, no acoustic ping, no heartbeat.  A drone
@@ -45,23 +139,23 @@ formation keeping (FORMATION_WAIT_REJOIN, DEGRADED_FORMATION, FORMATION_FOLLOW)`
 | mode | when | what the drone does |
 |---|---|---|
 | FORMATION_FOLLOW | own slot ok, every expected neighbour seen | follows its slot on the shared clock |
-| **FORMATION_WAIT_REJOIN** (new) | own slot ok, an expected neighbour missing | keeps its slot, follows the clock at the survey speed, times the absence |
-| **DEGRADED_FORMATION** (new) | the missing neighbour's slot was declared vacant after t_rejoin = 37.5 s | keeps its ORIGINAL slot; the vacant slot stays empty (no reconfiguration); re-included if the drone comes back |
+| **FORMATION_WAIT_REJOIN** (new) | own slot ok, an expected neighbour missing | keeps its slot, times the absence; since v2.2 its formation reference advances at v_wait = 0.20 m/s (reduced progress, above) |
+| **DEGRADED_FORMATION** (new) | the missing neighbour's slot was declared vacant after t_rejoin (30 s since v2.2, derived from the catch-up) | keeps its ORIGINAL slot; the vacant slot stays empty (no reconfiguration); re-included if the drone comes back |
 | FORMATION_RECOVERY | own slot error > e_lost (or after a gate / an avoidance) | recovers its own slot at up to 0.5 m/s, **from behind along its own lane** when it is off its lane |
 | MUTEX_APPROACH / MUTEX_YIELD / MUTEX_PASS | the gate's mutual-exclusion zone (renamed from GATE_*) | queue, wait, pass one at a time |
 
 **Lost drone, step by step.**
 1. A drone that is lost (dragged by a current, thrusters failing, too far behind) is not seen where its
-   neighbours expect it: after 1 s they mark it MISSING and enter FORMATION_WAIT_REJOIN.  They do not slow
-   down: without communication a slowdown could not be applied consistently by the whole fleet.
-2. The lost drone recovers its own slot (FORMATION_RECOVERY, 0.2 m/s faster than the clock); if it is off its
-   lane it lets the fleet pass, moves to its own lane behind the formation and then advances along it.  Its
-   neighbours count it back only when it is confirmed near its slot (three associations within 1 s), then
-   return to FORMATION_FOLLOW.
-3. If it does not come back within t_rejoin = 7.5 m / (0.5 - 0.3) m/s = 37.5 s of formation time (the time a
-   drone at the edge of the sensing range needs to catch up), each neighbour declares its slot vacant on its
-   own and continues in DEGRADED_FORMATION on its original slot.  The timers do not run during planned holds
-   (rendezvous beyond a gate) nor while the drone itself is lost, avoiding or in a gate.
+   neighbours expect it: after 1 s they mark it MISSING and enter FORMATION_WAIT_REJOIN.  In v2.1 they kept the
+   survey speed; since v2.2 they slow the formation down, each from its own perception (section above).
+2. The lost drone recovers its own slot (FORMATION_RECOVERY, up to 0.5 m/s: 0.3 m/s faster than the slowed
+   formation); if it is off its lane it lets the fleet pass, moves to its own lane behind the formation and then
+   advances along it.  Its neighbours count it back only when it is confirmed near its slot (three associations
+   within 1 s), then return to FORMATION_FOLLOW.
+3. If it does not come back within t_rejoin = 7.5 m / (0.5 - 0.2) m/s + 5 s = 30 s (37.5 s in v2.1; the time a
+   drone at the edge of the sensing range needs to catch up, plus a margin), each neighbour declares its slot
+   vacant on its own and continues in DEGRADED_FORMATION on its original slot.  The timers do not run during
+   planned holds (rendezvous beyond a gate) nor while the drone itself is lost, avoiding or in a gate.
 4. A drone whose thrusters fail detects it itself: persistent saturation -> ENVELOPE_VIOLATION -> FAILSAFE.
    In FAILSAFE it adds a small heave probe and clears the violation only when it has really moved as asked
    (DVL), so a dead drone stays in FAILSAFE instead of cycling.
@@ -82,9 +176,12 @@ abreast queues of 2..6; M2v, the stacked queues).
 marked), every drone coloured by its state with a short trail, the gate with its critical region and the
 queue points numbered in precedence order (and a side view for depth layers); P1 / P2 / P3 status, queue
 progress, active / missing / assumed-failed drones; one row per drone; readable events; a timeline of the
-automaton states.
+automaton states; since v2.2 a small automaton card for one selected drone.
 
-| scenario | sim time | what happens | result |
+The results of this table are those of the v2.1 runs; the lost-drone and `lost_drone_mutex` runs were redone
+in v2.2 (section above and section 5).
+
+| scenario | sim time | what happens | result (v2.1) |
 |---|---|---|---|
 | `lost_drone_rejoin` | 60 s | the rear-left drone's thrusters fail from 8.1 to 15.1 s (simulator fault, no drone told); the 0.35 m/s lateral current drags it 2.2 m off its lane | it detects the fault itself (ENVELOPE_VIOLATION at 13.3 s, FAILSAFE until its heave probe is delivered at 21.5 s), returns to its lane behind the fleet (TO_LANE) and advances along it, FOLLOW at 44.4 s; the three others wait on their slots (FORMATION_WAIT_REJOIN from 12.7-13.3 s to 33.9-40.8 s); no slot declared vacant; P3 recovered in 27.3 s; min distance 3.27 m |
 | `lost_drone_timeout` | 64 s | the same drone's thrusters fail for good at 8.1 s | its neighbours miss it from 14.1 / 18.7 / 21.1 s and, each on its own after 37.5 s, declare its slot vacant (51.5 / 56.1 / 58.5 s): DEGRADED_FORMATION on their original slots, the hole left open, formation error of the three 0.06 m; the failed drone stays in FAILSAFE; referee: absent at 50.8 s, P3-deg PASS (the nominal P3 is not claimed) |
@@ -112,8 +209,8 @@ automaton states.
 
 ## V2 BASELINE COMPLETE
 
-*(The numbers of this section are those of the baseline runs at `327f64a`.  The runs were regenerated once
-in v2.1 with the code above; the current numbers are in section 5.)*
+*(The numbers of this section are those of the baseline runs at `327f64a`.  The runs were regenerated in
+v2.1, and nine of them again in v2.2; the current numbers are in section 5.)*
 
 The v2 baseline is frozen.  Each piece of evidence below is one scenario with one seed, run headless by
 `scripts/run_all_demos.py`, judged by the ground-truth referee:
@@ -181,11 +278,12 @@ bound could not tell the two apart.
 Re-evaluated on the logged runs:
 * triangle, square, six-drone line, gate and P1 runs: inside;
 * `formation_recovery_head_current` and `formation_gust`: outside, and in both the hit drone declares it;
-* `integrated_short`: outside at the margin.
+* `integrated_short` (with the 0.35 m/s gust of v2.1): outside at the margin.
   * Drone 0's diagonal gate passage at 0.5 m/s against the 0.30 m/s cross-current needs up to 1.12 times
     the authority for about 5 s.
   * The drone delivers its maximum with a lag of up to 0.07 m/s and does not saturate persistently, so its
     own monitor does not declare it (DI-27).
+  * v2.2 (DI-31): only the scenario changed, the gust is now 0.27 m/s and the run is inside (section 5).
 
 ## 1. Watch the demos
 
@@ -212,8 +310,11 @@ magenta), and the **fleet view** (`holo_fleet/ui/fleet_view.py`, DI-30):
   missing / assumed failed;
 * **one row per drone**: state (FOLLOW, WAIT, DEGRADED, RECOVERY, APPROACH, YIELD, PASS, WARNING, AVOID,
   FAILSAFE), ok / missing / rejoining / assumed failed, the nearest distance only in the warning band;
-* **readable events**, e.g. "D0: D2 missing for 37.5 s, slot vacant -> DEGRADED_FORMATION";
-* **a timeline** of the automaton states of every drone (fault injection and vacancy marks).
+* **readable events**, e.g. "D0: D2 missing for 30.0 s, slot vacant -> DEGRADED_FORMATION";
+* **a timeline** of the automaton states of every drone (fault injection and vacancy marks);
+* **an automaton card** for one selected drone (the scenario's choice, or `--select K`): its state on the
+  priority layout of the ten states, the transition it just took with its cause and readable guard, and the
+  speed of its formation reference (reduced while a neighbour is missing).
 
 Positions are simulator ground truth (for the viewer only); states, missing and vacant slots and queue
 decisions are what the drones logged.  At the end the summary is printed (P1/P2/P3, P3-deg when a drone
@@ -233,9 +334,9 @@ a GIF is written.
 | `formation_recovery_head_current` | 4 | 50 s | a 0.6 m/s jet **against the motion** hits the rear-left drone: outside the control-feasible envelope (DI-27), the drone saturates and declares its own envelope violation; the formation is lost and recovered |
 | `formation_gust` | 4 | 55 s | stress test **outside the envelope**: a 0.85 m/s jet breaks the square; P3 lost and recovered |
 | `gate_single` | 3 | 80 s | arena gate G06 (1.5 m opening): abreast queue, one at a time, re-form beyond the gate |
-| `integrated_short` | 3 | 92 s | survey, 0.35 m/s cross-current at the gate, one at a time, re-form |
-| `lost_drone_rejoin` | 4 | 60 s | the rear-left drone loses its thrusters for 7 s (simulator fault, no drone told) and is dragged off by a 0.35 m/s lateral current: the others wait on their slots (WAIT_REJOIN), it detects its own fault (FAILSAFE), then rejoins from behind |
-| `lost_drone_timeout` | 4 | 64 s | the same drone loses its thrusters for good: after t_rejoin = 37.5 s each neighbour declares its slot vacant and keeps a degraded formation on its original slot (DEGRADED_FORMATION) |
+| `integrated_short` | 3 | 92 s | survey, 0.27 m/s cross-current at the gate, one at a time, re-form |
+| `lost_drone_rejoin` | 4 | 60 s | the rear-left drone loses its thrusters for 7 s (simulator fault, no drone told) and is dragged off by a 0.35 m/s lateral current: the others slow the formation down (WAIT_REJOIN, reduced progress), it detects its own fault (FAILSAFE), catches up and rejoins from behind |
+| `lost_drone_timeout` | 4 | 80 s | the same drone loses its thrusters for good: the others slow down; after t_rejoin = 30 s each neighbour declares its slot vacant, resumes the survey speed and keeps a degraded formation on its original slot (DEGRADED_FORMATION) |
 | `mutex_deadlock_resolution` | 3 | 75 s | a stacked pair (upper / lower) and a third drone queue at G06: left first, then top first; the v2 rule deadlocked here |
 | `line_parallel_mutex` | 3 | 75 s | a line abreast reaches the gate side by side (perfect parity): left first, no static rank |
 | `lost_drone_mutex` | 3 | 72 s | the left drone is lost before the gate: the leftmost drone still present goes first |
@@ -278,7 +379,9 @@ holo_fleet/
   mission.py, formations.py    mission plan, FormationClock (holds, rendezvous jumps), generic templates, queue
                                assignment of the shared plan (abreast columns, vertical stacks, precedence order)
   arena_bridge.py              re-use of ~/Desktop/HoloDroneCompetition/marine_race_arena (tracks, gates, spawner)
-  ha/spec.py, ha/automaton.py  hybrid automaton: edge table written once for Python and Z3, determinism monitor
+  ha/spec.py, ha/automaton.py  hybrid automaton: edge table written once for Python and Z3, determinism monitor,
+                               readable guard and cause of every edge (transition log)
+  ha/guard_text.py             readable guards: parsed, evaluated in Python or Z3 (proved equal to the guards), printed
   ha/mutex_rule.py             sector-pattern precedence of the mutual-exclusion zone: left first, then top
                                first, static rank last (shared with Z3)
   ha/observation_invariants.py semantic invariants of the abstract observation: runtime consistency check
@@ -287,12 +390,13 @@ holo_fleet/
                                run evaluation (referee/envelope.py), tests and Z3 checks (one definition)
   perception/                  sonar geometry and region tables, echo classifier, targets and the sound distance
                                bound, gate perception (occupancy latch), formation perception, dead reckoning
-  control/                     flows, 3-D escape planner, low level
+  control/                     flows, 3-D escape planner, low level, local formation time (reduced progress)
   sim/                         HoloOcean wrapper, patched-engine setup, watchdog, currents, scenarios
   referee/                     ground-truth validator (the only reader of simulator state)
   ui/                          fleet view (live and replay), viewport drawing, GIFs; technical dashboard (sonar bench)
 formal/                        Z3 suites determinism / observation consistency / P1 / P2 / P3 -> formal/results/SUMMARY.md
-scripts/                       demos, figures, assumption validation, sonar bench, plant calibration
+scripts/                       demos, figures, automaton diagram from the spec, assumption validation, sonar bench,
+                               plant calibration
 probe/                         sonar probe, octree regression, benches
 patches/                       HoloOcean octree patch + build/install script
 ```
@@ -360,9 +464,10 @@ visible): see [docs/HOLOOCEAN_OCTREE_PATCH.md](docs/HOLOOCEAN_OCTREE_PATCH.md).
     Each drone tracks its own slot with dead reckoning and a FormationClock that is part of the plan.
   * Sonar range residuals to the expected neighbours correct the lateral spacing and the progress.
   * Own slot lost: FORMATION_RECOVERY at up to 0.5 m/s, from behind along the own lane when off it.
-  * An expected neighbour missing: FORMATION_WAIT_REJOIN (keep the slot, follow the clock, time it);
-    after t_rejoin = 37.5 s its slot is vacant: DEGRADED_FORMATION on the original slot, no
-    reconfiguration; re-included when it comes back.
+  * An expected neighbour missing: FORMATION_WAIT_REJOIN (keep the slot, slow the own formation reference
+    to v_wait = 0.20 m/s, time it); the lost drone slows its own reference the same way, and a drone follows
+    the drone ahead of it in its lane; after t_rejoin = 30 s its slot is vacant: DEGRADED_FORMATION on the
+    original slot at the survey speed, no reconfiguration; re-included when it comes back.
   * Beyond a gate the reference jumps to a rendezvous and waits a planned time budget.
 * **Observation consistency** (perception -> automaton).
   * Every abstract observation is checked against the invariants that the perception guarantees by
@@ -391,28 +496,29 @@ visible): see [docs/HOLOOCEAN_OCTREE_PATCH.md](docs/HOLOOCEAN_OCTREE_PATCH.md).
 | scenario | drones | P1 min distance [m] (d_safe 1.0) | P2 max CR occupancy | P3 episodes: recovery [s] (after the perturbation) | contacts | messages | control-feasible envelope / vehicles | determinism / observation violations | static rank uses | RTF (with cameras) |
 |---|---|---|---|---|---|---|---|---|---|---|
 | `p1_head_on` | 2 | 4.051 | - | n/a | 0 | 0 | inside / ok | 0 / 0 | 0 | 0.851 |
-| `p1_vertical_escape` | 4 | 2.501 (vehicle clearance 2.23) | - | open at the end (lost at 16.9 s, final error 0.52 m) | 0 | 0 | inside / ok | 0 / 0 | 0 | 0.855 |
-| `p1_two_lines` | 6 | 3.209 | - | n/a | 0 | 0 | inside / ok | 0 / 0 | 0 | 0.823 |
+| `p1_vertical_escape` | 4 | 2.722 (vehicle clearance 2.11) | - | 18.0 (10.7) | 0 | 0 | inside / ok | 0 / 0 | 0 | 0.559 |
+| `p1_two_lines` | 6 | 3.114 | - | n/a | 0 | 0 | inside / ok | 0 / 0 | 0 | 0.641 |
 | `p1_close_encounter` | 2 | 2.683 | - | n/a | 0 | 0 | inside / ok | 0 / 0 | 0 | 0.884 |
 | `formation_triangle` | 3 | 4.576 | - | never lost | 0 | 0 | inside / ok | 0 / 0 | 0 | 0.899 |
 | `formation_square` | 4 | 3.454 | - | never lost | 0 | 0 | inside / ok | 0 / 0 | 0 | 0.862 |
 | `formation_six` | 6 | 3.463 | - | never lost | 0 | 0 | inside / ok | 0 / 0 | 0 | 0.923 |
-| `formation_recovery_head_current` | 4 | 3.343 | - | 11.5 (7.7) | 0 | 0 | OUTSIDE (1.52 x authority) / 1 self-declared violation | 0 / 0 | 0 | 0.868 |
-| `formation_gust` | 4 | 2.698 | - | 15.3 (10.5) | 0 | 0 | OUTSIDE (2.08 x authority) / 1 self-declared violation | 0 / 0 | 0 | 0.87 |
-| `gate_single` | 3 | 3.293 | 1 | 68.7 (5.2) | 0 | 0 | inside / ok | 0 / 0 | 0 | 0.907 |
-| `integrated_short` | 3 | 3.335 | 1 | 70.6 (5.6) | 0 | 0 | OUTSIDE (1.12 x authority) / ok | 0 / 0 | 0 | 0.876 |
-| `lost_drone_rejoin` | 4 | 3.268 | - | 27.3 (18.1) | 0 | 0 | inside / 1 declared by the faulty drone | 0 / 0 | 0 | 0.861 |
-| `lost_drone_timeout` | 4 | 3.448 | - | open at the end (lost at 14.7 s, final error 12.30 m); P3-deg: re-formed without drone_2 (absent at 50.8 s, final error 0.06 m) | 0 | 0 | inside / 1 declared by the faulty drone | 0 / 0 | 0 | 0.861 |
+| `formation_recovery_head_current` | 4 | 3.370 | - | 6.9 (4.7) | 0 | 0 | OUTSIDE (1.52 x authority) / 1 self-declared violation | 0 / 0 | 0 | 0.769 |
+| `formation_gust` | 4 | 2.725 | - | 10.0 (5.4) | 0 | 0 | OUTSIDE (2.07 x authority) / 1 self-declared violation | 0 / 0 | 0 | 0.716 |
+| `gate_single` | 3 | 3.313 | 1 | 68.3 (5.1) | 0 | 0 | inside / ok | 0 / 0 | 0 | 0.428 |
+| `integrated_short` | 3 | 3.336 | 1 | 70.2 (5.2) | 0 | 0 | inside / ok | 0 / 0 | 0 | 0.563 |
+| `lost_drone_rejoin` | 4 | 3.364 | - | 20.7 (11.5) | 0 | 0 | inside / 1 declared by the faulty drone | 0 / 0 | 0 | 0.685 |
+| `lost_drone_timeout` | 4 | 3.342 | - | open at the end (lost at 14.6 s, final error 13.67 m); P3-deg: re-formed without drone_2 (absent at 43.2 s, final error 0.10 m) | 0 | 0 | inside / 1 declared by the faulty drone | 0 / 0 | 0 | 0.655 |
 | `mutex_deadlock_resolution` | 3 | 3.424 | 1 | 58.6 (3.7) | 0 | 0 | inside / ok | 0 / 0 | 0 | 0.779 |
 | `line_parallel_mutex` | 3 | 2.943 | 1 | 63.8 (1.8) | 0 | 0 | inside / ok | 0 / 0 | 0 | 0.886 |
-| `lost_drone_mutex` | 3 | 2.897 | 1 | open at the end (lost at 8.1 s, final error 13.36 m) | 0 | 0 | inside / 1 declared by the faulty drone | 0 / 0 | 0 | 0.905 |
+| `lost_drone_mutex` | 3 | 3.014 | 1 | open at the end (lost at 8.3 s, final error 13.41 m) | 0 | 0 | inside / 1 declared by the faulty drone | 0 / 0 | 0 | 0.631 |
 
-All runs are COMPLETE, and no controller uses ground truth.  The 16 runs were regenerated once, one seed each,
-with the v2.1 code (no multi-seed).  HoloOcean is not bit-reproducible (sensor noise): positions differ by a
-few centimetres after a few seconds, so the numbers of the unchanged scenarios differ slightly from the
-baseline.  `p1_vertical_escape`: this time the boxed-in drone escaped mostly backwards (in the baseline run
-upwards), ended 6 m behind its slot and was still closing at 0.25 m/s when the 45 s run ended (formation
-error 0.52 m, down from 3.2 m): P3 is a liveness property, a finite run reports it as "open at the end".
+All runs are COMPLETE, and no controller uses ground truth.  One seed each, no multi-seed.  Nine runs were redone
+with the v2.2 code (the scenarios on which a DI-31 rule acts: `p1_vertical_escape`, `p1_two_lines`, the head-current
+and gust formations, `gate_single`, `integrated_short` and the three lost-drone runs); the other seven are the v2.1
+runs.  HoloOcean is not bit-reproducible (sensor noise): positions differ by a few centimetres after a few seconds.
+`p1_vertical_escape`: in v2.1 the boxed-in drone escaped mostly backwards and its formation was still converging at
+the end of the 45 s run; this time it recovered within the run (18.0 s).  The redone runs shared the machine with
+other jobs, hence their lower real-time factor.
 
 How to read the columns:
 * **P3 recovery** is measured from the loss.  In brackets it is measured from the end of the last
@@ -422,8 +528,8 @@ How to read the columns:
   for (DI-27).  The second part of that column is the drones' own view: a self-declared ENVELOPE_VIOLATION
   means the drone could not deliver the requested velocity for 4 s.
 
-The two views agree on every run except `integrated_short`, where drone 0 was beyond the authority by a few
-per cent.  It lagged instead of saturating persistently (DI-27).
+The two views agree on every run.  (In v2.1 they disagreed on `integrated_short`, where drone 0 was beyond the
+authority by a few per cent and lagged instead of saturating persistently, DI-27; its gust is now 0.27 m/s.)
 
 `p1_close_encounter` (DI-25):
 * both drones enter SEPARATION_WARNING twice: at 24.0 / 23.9 s, then 26.7 / 26.8 s;
@@ -434,13 +540,15 @@ per cent.  It lagged instead of saturating persistently (DI-27).
   LEFT+REAR sectors;
 * collision avoidance is not reached.
 
-Formal verification: **175 checks, all with the expected verdict**:
-* local determinism & priority hierarchy: 82/82 (10 modes);
+Formal verification: **186 checks, all with the expected verdict**:
+* local determinism & priority hierarchy: 93/93 (10 modes; with the readable guards of the diagram proved equal to
+  the executed ones, L1, and a wrong label caught, ML);
 * observation consistency: 31/31;
 * P1 inter-vehicle separation: 13/13;
 * P2 critical-region mutual exclusion and queue progress: 27/27;
-* P3 formation recovery: 22/22, including the current envelope (F5, Fm3, Em1) and the bounded waiting for
-  a missing neighbour (F6, F6r, Fm4).
+* P3 formation recovery: 22/22, including the current envelope (F5, Fm3, Em1), the bounded waiting for
+  a missing neighbour (F6, F6r, Fm4) with the derived t_rejoin = 30 s, and the reference speed anywhere in
+  [v_wait, v_nominal] (reduced progress).
 
 Details are in [formal/results/SUMMARY.md](formal/results/SUMMARY.md).  The assumptions measured on these
 runs are in [results/v2/ASSUMPTIONS.md](results/v2/ASSUMPTIONS.md).  For each run the envelope table gives
@@ -465,7 +573,8 @@ control-feasible verdict and the persistent saturation.
 
 Bench without cameras (`scripts/sonar_bench.py perf`, pinned drones): the six sonars per drone cost
 almost nothing extra; the tick is dominated by the engine.  With the two RGB visualisation cameras of
-the demos (800 x 450, 5 Hz) the real-time factor was 0.84-1.07 in the final runs (table in section 5; about 0.6 on a busier machine).  The
+the demos (800 x 450, 5 Hz) the real-time factor was 0.84-1.07 in the v2.1 runs (table in section 5) and
+0.43-0.77 for the nine v2.2 runs, which shared the machine with other jobs.  The
 controllers of all drones together take 2.5-8.6 ms per 0.1 s step.  Trade-offs kept on purpose:
 6 cm octree leaves (structure echoes accurate to one bin), 234 bins, 10 Hz sonars; cameras are for
 visualisation only and can be removed for speed.
@@ -493,6 +602,8 @@ python -m pytest -q -m "not slow and not holoocean"       # fast tests (~1 min)
 python -m pytest -q                                       # all tests (incl. Z3 P1/P2 suites and the octree regression)
 python scripts/run_all_demos.py                           # every demo, headless -> results/v2/demos/
 python scripts/render_demo.py results/v2/demos/lost_drone_timeout     # fleet-view GIF again, from the logs
+python scripts/render_demo.py results/v2/demos/lost_drone_rejoin --select 2   # ... automaton card of drone 2
+python scripts/make_automaton_diagram.py                  # figures/v2/automaton/ from holo_fleet/ha/spec.py
 python scripts/make_figures_v2.py                         # figures/v2/
 python scripts/validate_assumptions_v2.py                 # results/v2/ASSUMPTIONS.md
 python scripts/experiment_metrics.py results/v2/demos/p1_close_encounter    # per-run P1 / P3 metrics
@@ -502,10 +613,13 @@ python scripts/sonar_bench.py coverage|classify|perf      # sensor benches
 ```
 
 A run folder `results/v2/demos/<scenario>/` holds `run_status.json` (`INCOMPLETE` until the run ends),
-`run_config.json`, `events.jsonl` (automaton decisions, envelope violations), `drone_<k>_state.jsonl`
+`run_config.json`, `events.jsonl` (automaton decisions, every mode change with its cause and guard, envelope
+violations), `drone_<k>_state.jsonl`
 (onboard: mode, pose estimate, sectors, targets, escape, gate belief, formation check),
 `onboard_summary.json`, `referee_timeseries.csv` and `referee_metrics.json` (ground truth),
-`experiment_summary.json` (encounter and recovery metrics), `perf.json`, `summary.csv`, the fleet-view GIF.
+`experiment_summary.json` (encounter and recovery metrics; for a lost drone the waiting, the speed of the
+formation references and the formation error of the drones present), `perf.json`, `summary.csv`, the fleet-view
+GIF.
 `events.jsonl` also holds the slot vacancies / re-inclusions and, in the lost-drone scenarios, the injected
 faults (`FAULT_INJECTED`, `FAULT_CLEARED`: simulator side, never seen by a controller).
 
@@ -552,10 +666,12 @@ faults (`FAULT_INJECTED`, `FAULT_CLEARED`: simulator side, never seen by a contr
 
 **EMPIRICALLY VALIDATED (HoloOcean, ground-truth referee, one seed each):**
 * P1 and P2 hold in all sixteen demos, with zero contacts and zero messages; P3 holds within the run in
-  every demo whose drones all keep working, except `p1_vertical_escape` (still converging at the end);
+  every demo whose drones all keep working (`p1_vertical_escape` too in its v2.2 run; in v2.1 it was still
+  converging at the end);
   P3-deg holds where a drone never came back (`lost_drone_timeout`);
-* lost drones: the neighbours wait (FORMATION_WAIT_REJOIN), a drone that comes back is re-included, a drone
-  that does not is declared vacant after t_rejoin by each neighbour on its own, the fleet continues degraded;
+* lost drones: the neighbours slow down (reduced-progress FORMATION_WAIT_REJOIN), a drone that comes back
+  catches up faster and is re-included, a drone that does not is declared vacant after t_rejoin by each
+  neighbour on its own, the fleet continues degraded at the survey speed;
 * the mutual-exclusion order left first, then top first, the leftmost drone present first; static rank 0;
 * automaton determinism violations 0 and observation consistency violations 0 in every run;
 * the formal assumptions, measured back on the logs (`results/v2/ASSUMPTIONS.md`): onboard distance
@@ -570,8 +686,6 @@ faults (`FAULT_INJECTED`, `FAULT_CLEARED`: simulator side, never seen by a contr
   * It is outside the control-feasible envelope: the head limit at 0.30 m/s is about 0.41 m/s.
   * The hit drone cannot make way and declares its own ENVELOPE_VIOLATION.
   * The P1 assumption w_drift_max and P3's A3 do not hold while it saturates (DI-24, DI-27).
-* `integrated_short`, drone 0's gate passage: at the margin of the envelope for about 5 s, undetected
-  onboard (DI-27).
 * `p1_vertical_escape`: the scripted vehicle does not run the protocol. Its clearance is reported
   separately from P1.
 * Two drones masked at the same time by a mapped structure.  A passing drone near the gate frame may not see a
@@ -590,4 +704,7 @@ faults (`FAULT_INJECTED`, `FAULT_CLEARED`: simulator side, never seen by a contr
 * real-sea acoustics such as multipath, surface reflections and real beam patterns;
 * static-obstacle avoidance beyond the mapped gate;
 * reconfiguration of a degraded formation (the hole is left open on purpose);
-* any form of communication, acoustic ping or heartbeat (none is used).
+* any form of communication, acoustic ping or heartbeat (none is used);
+* that every lost drone comes back, that the fleet is free of deadlock in every possible geometry, that
+  collisions are impossible, or that the drones learn at the same time that a drone is missing (each one
+  notices on its own, at its own time, or not at all).
