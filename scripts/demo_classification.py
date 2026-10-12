@@ -171,7 +171,8 @@ def _path(waypoints, speed, dt=0.1):
     return out
 
 
-def run_classification_demo(out_root: Path, headless: bool = True, show: bool = True) -> int:
+def run_classification_demo(out_root: Path, headless: bool = True, show: bool = True, media: bool = True) -> int:
+    """Run the bench; ``media``: also write the dashboard frames and the GIF (run_demo.py: only with --media)."""
     from holo_fleet.arena_bridge import HORSESHOE_TRACK, load_arena_gates
 
     out = Path(out_root) / "sonar_classification"
@@ -226,7 +227,7 @@ def run_classification_demo(out_root: Path, headless: bool = True, show: bool = 
                          {"center": P_o + 3.0 * g6.axis, "bars": bars, "observer": P_o, "observer_yaw": gyaw, "targets": [P_t]},
                          sim.image("ChaseCamera"))
             k = int(round(t_global * 10))
-            if k % 4 == 0:
+            if media and k % 4 == 0:
                 cv2.imwrite(str(out / "dashboard" / f"dash_{k:05d}.jpg"), img, [cv2.IMWRITE_JPEG_QUALITY, 88])
             if show:
                 cv2.imshow("sonar_classification", img)
@@ -272,7 +273,7 @@ def run_classification_demo(out_root: Path, headless: bool = True, show: bool = 
                          profiles, rd, lines, {"center": P_o + np.array([3.0, 0, 0]), "bars": [], "observer": P_o,
                                                "observer_yaw": 0.0, "targets": [P_t]}, sim.image("ChaseCamera"))
             k = int(round(t_global * 10))
-            if k % 4 == 0:
+            if media and k % 4 == 0:
                 cv2.imwrite(str(out / "dashboard" / f"dash_{k:05d}.jpg"), img, [cv2.IMWRITE_JPEG_QUALITY, 88])
             if show:
                 cv2.imshow("sonar_classification", img)
@@ -283,8 +284,8 @@ def run_classification_demo(out_root: Path, headless: bool = True, show: bool = 
     sim.close()
     (out / "classification_log.json").write_text(json.dumps(log, indent=0), encoding="utf-8")
     (out / "run_status.json").write_text(json.dumps({"status": "COMPLETE", "sim_time_s": round(t_global, 1)}), encoding="utf-8")
-    gif = make_gif((out / "dashboard").glob("dash_*.jpg"), out / "sonar_classification.gif", fps=5.0)
-    print(f"sonar_classification: {t_global:.1f} s simulated, frames in {out / 'dashboard'}, GIF {gif}")
+    gif = make_gif((out / "dashboard").glob("dash_*.jpg"), out / "sonar_classification.gif", fps=5.0) if media else None
+    print(f"sonar_classification: {t_global:.1f} s simulated" + (f", frames in {out / 'dashboard'}, GIF {gif}" if media else ""))
     for cap in dict.fromkeys(e["caption"] for e in log):
         last = [e for e in log if e["caption"] == cap][-1]
         print(f"  {cap}\n      last capture: {last['echoes']}  (true distance {last['true_distance']} m)")

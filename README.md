@@ -190,7 +190,18 @@ are also simulator ground truth (viewer only); states, missing and vacant slots 
 what the drones logged. Click a drone icon or its row to change the automaton card; keys `0`-`9` select
 the corresponding drone. `--select K` sets the initial choice. Closing the Fleet View window disables
 that window for the rest of the run; HoloOcean and the controllers continue. The summary is printed at
-the end and the demo GIF is generated locally.
+the end.
+
+A demo is **live only**: its working files live in a temporary folder deleted at the end, with no GIF, no
+frames and nothing under `results/`. To keep a run:
+
+```bash
+python scripts/run_demo.py --scenario lost_drone_rejoin --save                       # new result only
+python scripts/run_demo.py --scenario lost_drone_rejoin --save --overwrite           # replace results/v2/demos/<scenario>/
+python scripts/run_demo.py --scenario lost_drone_rejoin --save --overwrite --media   # ... with frames and GIF
+```
+
+Only a complete run is saved; `--out DIR` (with `--save`) saves under another folder.
 
 | scenario | drones | sim time | shows |
 |---|---|---|---|
