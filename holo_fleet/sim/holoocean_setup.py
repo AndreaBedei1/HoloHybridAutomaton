@@ -51,6 +51,42 @@ def use_patched_holoocean() -> dict:
     return {"patched": True, "root": str(root), **info}
 
 
+def wait_for_engine_semaphores(timeout_s: float = 10.0) -> None:
+    """Close a start-up race of HoloOcean 2.3.0 on Windows (call after ``use_patched_holoocean``).
+
+    ``UHolodeckServer::Start()`` (engine, HolodeckServer.cpp) releases the loading semaphore *before*
+    it creates the server and client semaphores.  The client, woken by the loading semaphore, can
+    therefore call ``OpenSemaphore`` first and fail with ERROR_FILE_NOT_FOUND (2) while the engine
+    is starting normally; on a busy machine the gap is long enough to hit it.  The client's
+    connection is retried for a few seconds instead (the engine is not killed and restarted).
+    Idempotent; a no-op on other platforms.
+    """
+    if os.name != "nt":
+        return
+    import time
+
+    import pywintypes
+    from holoocean import holooceanclient
+
+    cls = holooceanclient.HoloOceanClient
+    init = cls.__windows_init__                      # trailing "__": not name-mangled
+    if getattr(init, "_waits_for_semaphores", False):
+        return
+
+    def windows_init(self):
+        deadline = time.monotonic() + timeout_s
+        while True:
+            try:
+                return init(self)
+            except pywintypes.error as exc:
+                if exc.winerror != 2 or time.monotonic() >= deadline:     # 2: semaphore not created yet
+                    raise
+                time.sleep(0.05)
+
+    windows_init._waits_for_semaphores = True
+    cls.__windows_init__ = windows_init
+
+
 def client_supports_rebuild() -> bool:
     from holoocean.environments import HoloOceanEnvironment
 

@@ -133,3 +133,33 @@ def test_camera_smoothing_limits_small_update_jump_and_slows_zoom_in():
     assert np.linalg.norm(second[0] - first[0]) < 2.0
     third = smoother.update((np.array([0.0, 0.0, -5.0]), np.array([0.0, -20.0, 0.0]), 8.0), 0.2)
     assert third[2] > 8.0
+
+
+def test_client_waits_for_the_engine_semaphores_instead_of_failing(monkeypatch):
+    """HoloOcean's engine releases the loading semaphore before creating the server semaphores: the
+    client's OpenSemaphore may run first (ERROR_FILE_NOT_FOUND); it is retried, other errors are not."""
+    pywintypes = pytest.importorskip("pywintypes")
+    from holoocean import holooceanclient
+
+    from holo_fleet.sim import holoocean_setup as hs
+
+    calls = {"n": 0}
+
+    def flaky(self):
+        calls["n"] += 1
+        if calls["n"] < 3:
+            raise pywintypes.error(2, "OpenSemaphore", "not found")
+        return "connected"
+
+    monkeypatch.setattr(holooceanclient.HoloOceanClient, "__windows_init__", flaky, raising=True)
+    hs.wait_for_engine_semaphores(timeout_s=5.0)
+    hs.wait_for_engine_semaphores(timeout_s=5.0)                                   # idempotent
+    assert holooceanclient.HoloOceanClient.__windows_init__(object()) == "connected" and calls["n"] == 3
+
+    def denied(self):
+        raise pywintypes.error(5, "OpenSemaphore", "access denied")
+
+    monkeypatch.setattr(holooceanclient.HoloOceanClient, "__windows_init__", denied, raising=True)
+    hs.wait_for_engine_semaphores(timeout_s=5.0)
+    with pytest.raises(pywintypes.error):
+        holooceanclient.HoloOceanClient.__windows_init__(object())

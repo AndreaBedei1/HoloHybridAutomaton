@@ -116,6 +116,8 @@ class HoloFleetSim:
         self.setup_report["holoocean"] = hs.use_patched_holoocean()
         import holoocean
 
+        hs.wait_for_engine_semaphores()           # the client no longer loses the engine's start-up race
+
         from holo_fleet.sim.engine_watchdog import EngineWatchdog
 
         env_min, env_max = (self.spec.env_box if getattr(self.spec, "env_box", None) else (hs.ENV_MIN, hs.ENV_MAX))
@@ -135,7 +137,7 @@ class HoloFleetSim:
                 self.env = holoocean.make(scenario_cfg=scenario, show_viewport=not self.headless,
                                           ticks_per_sec=TICKS_PER_SEC, frames_per_sec=False)
                 break
-            except Exception as exc:  # pragma: no cover - engine start race (OpenSemaphore)
+            except Exception as exc:  # pragma: no cover - fallback: engine did not come up (restart it)
                 last_exc = exc
                 text = f"{type(exc).__name__}: {exc}".lower()
                 LOG.warning("HoloOcean start attempt %d failed: %s", attempt, exc)
