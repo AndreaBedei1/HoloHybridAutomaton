@@ -9,6 +9,7 @@ rebuilds from the logs.
 from __future__ import annotations
 
 import math
+import sys
 from pathlib import Path
 from typing import Dict, List
 
@@ -16,12 +17,44 @@ import cv2
 import numpy as np
 
 from holo_fleet.perception.sonar_geometry import AXES
-from holo_fleet.ui.fleet_camera import FleetCameraSmoother, fleet_camera_pose
+from holo_fleet.ui.fleet_camera import FleetCamera
 from holo_fleet.ui.fleet_view import FleetView
 
 # viewport colours (RGB 0-255) of the echo classes; the escape arrow is magenta
 VP_CLS = {"STRUCTURE": [150, 150, 150], "SEABED": [140, 109, 70], "DYNAMIC": [230, 40, 40], "UNKNOWN": [250, 178, 25]}
 VP_ESCAPE = [230, 60, 230]
+
+
+def _arrow_cursor(title: str) -> None:
+    """Give an OpenCV window the normal arrow cursor.
+
+    OpenCV's Win32 backend registers its window classes ("Main HighGUI class", "HighGUI class") with
+    the crosshair cursor (IDC_CROSS), which makes the fleet view look like a drawing canvas.  Cosmetic
+    only: a no-op on other platforms or if anything fails.
+    """
+    if sys.platform != "win32":
+        return
+    try:
+        import ctypes
+
+        u = ctypes.windll.user32
+        u.FindWindowW.restype = ctypes.c_void_p
+        u.FindWindowW.argtypes = [ctypes.c_wchar_p, ctypes.c_wchar_p]
+        u.FindWindowExW.restype = ctypes.c_void_p
+        u.FindWindowExW.argtypes = [ctypes.c_void_p, ctypes.c_void_p, ctypes.c_wchar_p, ctypes.c_wchar_p]
+        u.LoadCursorW.restype = ctypes.c_void_p
+        u.LoadCursorW.argtypes = [ctypes.c_void_p, ctypes.c_void_p]
+        u.SetClassLongPtrW.restype = ctypes.c_void_p
+        u.SetClassLongPtrW.argtypes = [ctypes.c_void_p, ctypes.c_int, ctypes.c_void_p]
+        main = u.FindWindowW("Main HighGUI class", title)
+        if not main:
+            return
+        arrow = u.LoadCursorW(None, 32512)                             # IDC_ARROW
+        for h in (main, u.FindWindowExW(main, None, "HighGUI class", None)):
+            if h:
+                u.SetClassLongPtrW(h, -12, arrow)                      # GCLP_HCURSOR
+    except Exception:  # noqa: BLE001 - cosmetic only
+        pass
 
 
 class DemoUI:
@@ -35,12 +68,11 @@ class DemoUI:
         self.frames_written = 0
         self._closed = False
         self._window_created = False
-        self._camera = FleetCameraSmoother()
+        self._camera = FleetCamera(scenario.path)
         self._last_camera_t = None
-        if self.show:
-            cv2.namedWindow(self.window, cv2.WINDOW_AUTOSIZE)
-            cv2.setMouseCallback(self.window, self._mouse)
-            self._window_created = True
+        # The window is created with the first frame (_ensure_window), not here: created before HoloOcean
+        # starts, nothing would pump its messages for the whole engine start and Windows would mark it
+        # "not responding".
 
     def __call__(self, sim, scenario, ctrls, referee, truth, t, out, save_frame, events=()) -> None:
         recs = [ctrls[nm].last_record for nm in self.names]
@@ -58,6 +90,7 @@ class DemoUI:
             self.frames_written += 1
         if self.show:
             try:
+                self._ensure_window()
                 cv2.imshow(self.window, img)
                 key = cv2.waitKey(1) & 0xFF
                 if ord("0") <= key <= ord("9"):
@@ -65,6 +98,15 @@ class DemoUI:
                 self._check_window_open()
             except cv2.error:
                 self.show = False
+
+    def _ensure_window(self) -> None:
+        """A plain fixed-size window (1:1 pixels, so a click maps directly to the fleet-view image)."""
+        if self._window_created or self._closed:
+            return
+        cv2.namedWindow(self.window, cv2.WINDOW_AUTOSIZE)
+        cv2.setMouseCallback(self.window, self._mouse)
+        self._window_created = True
+        _arrow_cursor(self.window)
 
     def _mouse(self, event, x, y, flags, _param=None):
         if event == cv2.EVENT_LBUTTONDOWN and self.show:
@@ -112,12 +154,9 @@ class DemoUI:
         G = sim.cfg.gate
         for g in scenario.judged_gates:
             sim.draw_box(g.center, [G.cr_half_len, G.cr_half_width, G.cr_half_height], [60, 130, 230], 4.0, 0.12)
-        if self._last_camera_t is None or t - self._last_camera_t >= 0.2:
-            path = scenario.path.waypoints
-            pose = fleet_camera_pose(truth.positions, np.asarray(path[-1])[:2] - np.asarray(path[0])[:2],
-                                     gate=scenario.judged_gates[0].center if scenario.judged_gates else None,
-                                     intruders=truth.intruders)
-            dt = 0.2 if self._last_camera_t is None else max(0.0, t - self._last_camera_t)
-            location, rotation, _distance = self._camera.update(pose, dt)
+        if self._last_camera_t is None or t - self._last_camera_t >= 0.2:     # fleet camera (fleet_camera.py)
+            dt = 0.0 if self._last_camera_t is None else t - self._last_camera_t
+            location, rotation = self._camera.update(truth.positions, dt, [g.center for g in scenario.judged_gates],
+                                                     truth.intruders)
             sim.set_viewport_camera(location, rotation)
             self._last_camera_t = t

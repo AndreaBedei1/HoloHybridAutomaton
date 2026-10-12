@@ -1,12 +1,14 @@
 from types import SimpleNamespace
 
+import cv2
 import numpy as np
 import pytest
 
 from holo_fleet.config import DEFAULT
 from holo_fleet.runner import run
 from holo_fleet.sim.scenarios import formation_triangle
-from holo_fleet.ui.fleet_camera import FleetCameraSmoother, fleet_camera_pose
+from holo_fleet.ui import fleet_camera as fc
+from holo_fleet.ui.fleet_camera import FleetCamera, camera_pose, framing, viewport_rotation
 from holo_fleet.ui.fleet_view import FleetView
 from holo_fleet.ui.live import DemoUI
 
@@ -39,6 +41,19 @@ def test_initial_selection_can_be_changed_by_click():
     assert view.sel == 1
 
 
+def test_window_is_created_with_the_first_frame_not_before_holoocean_starts(monkeypatch):
+    """Created in the constructor, nothing would pump the window while the engine starts (Windows: "not
+    responding"); it is created when the first frame is shown, as a plain fixed-size window."""
+    calls = []
+    monkeypatch.setattr("holo_fleet.ui.live.cv2.namedWindow", lambda *a: calls.append(("create", a[1])))
+    monkeypatch.setattr("holo_fleet.ui.live.cv2.setMouseCallback", lambda *a: calls.append(("callback",)))
+    ui = DemoUI(formation_triangle(DEFAULT), DEFAULT, ["drone_0", "drone_1", "drone_2"])
+    assert calls == []
+    ui._ensure_window()
+    ui._ensure_window()
+    assert calls == [("create", cv2.WINDOW_AUTOSIZE), ("callback",)]
+
+
 def test_demo_ui_close_is_idempotent(monkeypatch):
     calls = []
     monkeypatch.setattr("holo_fleet.ui.live.cv2.namedWindow", lambda *a: calls.append("create"))
@@ -46,6 +61,7 @@ def test_demo_ui_close_is_idempotent(monkeypatch):
     monkeypatch.setattr("holo_fleet.ui.live.cv2.destroyWindow", lambda *a: calls.append("destroy"))
     monkeypatch.setattr("holo_fleet.ui.live.cv2.waitKey", lambda *a: calls.append("pump") or -1)
     ui = DemoUI(formation_triangle(DEFAULT), DEFAULT, ["drone_0", "drone_1", "drone_2"])
+    ui._ensure_window()
     ui.close()
     ui.close()
     assert calls.count("destroy") == 1
@@ -58,6 +74,7 @@ def test_closed_opencv_window_disables_live_display(monkeypatch):
     monkeypatch.setattr("holo_fleet.ui.live.cv2.setMouseCallback", lambda *a: None)
     monkeypatch.setattr("holo_fleet.ui.live.cv2.getWindowProperty", lambda *a: 0.0)
     ui = DemoUI(formation_triangle(DEFAULT), DEFAULT, ["drone_0", "drone_1", "drone_2"])
+    ui._ensure_window()
     ui._check_window_open()
     assert not ui.show
 
@@ -106,33 +123,59 @@ def test_runner_closes_ui_when_run_raises(tmp_path, monkeypatch):
     assert closed == {"ui": 1, "sim": 1}
 
 
-def test_fleet_camera_distance_covers_wider_fleet_and_near_gate_intruder():
-    direction = [1.0, 0.0]
-    compact = fleet_camera_pose([[0, 0, -5], [1, 0, -5]], direction)
-    line6 = fleet_camera_pose([[x, 0, -5] for x in (-8, -5, -2, 2, 5, 8)], direction)
-    lost = fleet_camera_pose([[0, 0, -5], [1, 0, -5], [0, 10, -5]], direction)
-    assert line6[2] > compact[2]
-    assert lost[2] > compact[2]
-
-    with_gate = fleet_camera_pose([[0, 0, -5], [1, 0, -5]], direction, gate=[12, 0, -5])
-    without_gate = fleet_camera_pose([[0, 0, -5], [1, 0, -5]], direction)
-    assert with_gate[2] > without_gate[2]
-
-    close_intruder = fleet_camera_pose([[0, 0, -5], [1, 0, -5]], direction,
-                                       intruders=[[0, 10, -5]])
-    far_intruder = fleet_camera_pose([[0, 0, -5], [1, 0, -5]], direction,
-                                     intruders=[[0, 100, -5]])
-    np.testing.assert_allclose(far_intruder[0], without_gate[0])
-    assert close_intruder[2] > without_gate[2]
+def test_viewport_rotation_uses_the_measured_holoocean_convention():
+    """move_viewport's rotation is the look direction with the sign inverted (measured on the engine):
+    [0, 0, 10] looks straight down, [30, 0, 0] along -x, [0, 30, 0] along -y."""
+    np.testing.assert_allclose(viewport_rotation([1.0, 0.0, 0.0]), [-1.0, 0.0, 0.0])    # along +x
+    np.testing.assert_allclose(viewport_rotation([0.0, 0.0, -5.0]), [0.0, 0.0, 1.0])    # straight down
+    np.testing.assert_allclose(viewport_rotation([0.0, 2.0, 0.0]), [0.0, -1.0, 0.0])    # along +y
 
 
-def test_camera_smoothing_limits_small_update_jump_and_slows_zoom_in():
-    smoother = FleetCameraSmoother()
-    first = smoother.update((np.array([0.0, 0.0, -5.0]), np.array([0.0, -20.0, 0.0]), 12.0), 0.2)
-    second = smoother.update((np.array([1.0, 0.0, -5.0]), np.array([0.0, -20.0, 0.0]), 13.0), 0.2)
-    assert np.linalg.norm(second[0] - first[0]) < 2.0
-    third = smoother.update((np.array([0.0, 0.0, -5.0]), np.array([0.0, -20.0, 0.0]), 8.0), 0.2)
-    assert third[2] > 8.0
+def test_camera_looks_at_the_fleet_from_behind_below_the_surface():
+    line6 = [[x, y, -5.0] for x, y in zip([0.0] * 6, [-8.75, -5.25, -1.75, 1.75, 5.25, 8.75])]
+    centre, dist = framing(line6, heading=0.0)
+    loc, rot = camera_pose(centre, dist, heading=0.0)
+    assert loc[0] < centre[0] and abs(loc[1] - centre[1]) < 1e-6                  # behind, on the axis
+    assert loc[2] <= -fc.SURFACE_CLEARANCE_M and loc[2] > centre[2]               # above the fleet, below the surface
+    look = -rot                                                                    # measured convention
+    assert look[0] > 0 and abs(look[1]) < 1e-9 and look[2] < 0                     # ahead (+x), tilted down
+    np.testing.assert_allclose(look, (centre - loc) / np.linalg.norm(centre - loc))  # at the framed centre
+    half = np.max(np.abs(np.asarray(line6)[:, 1] - centre[1])) + fc.MARGIN_M
+    assert dist >= half / np.tan(np.radians(fc.HFOV_DEG / 2.0)) - 1e-9             # the whole line is in view
+    assert fc.MIN_DISTANCE_M <= dist <= fc.MAX_DISTANCE_M                          # never lost in the fog
+
+
+def test_camera_does_not_follow_drone_0_and_ignores_a_drone_lost_far_away():
+    fleet = np.array([[0, 0, -5], [0, 3.5, -5], [-3.5, 0, -5], [-3.5, 3.5, -5]], float)
+    a = framing(fleet, 0.0)
+    b = framing(fleet[::-1], 0.0)
+    np.testing.assert_allclose(a[0], b[0])
+    assert a[1] == pytest.approx(b[1])
+    lost = fleet.copy()
+    lost[3] = [-30.0, 25.0, -5.0]
+    c = framing(lost, 0.0)
+    assert np.linalg.norm(c[0] - framing(fleet[:3], 0.0)[0]) < 1e-9               # framed without it
+
+
+def test_camera_includes_a_near_gate_and_moves_smoothly():
+    fleet = np.array([[0, 0, -5], [0, 3.5, -5], [0, -3.5, -5]], float)
+    cam = FleetCamera()
+    loc0, rot0 = cam.update(fleet, 0.0, gates=[[40.0, 0.0, -5.0]])                 # gate far: not framed
+    assert not cam.with_gate
+    near = fleet + [30.0, 0.0, 0.0]
+    cam.update(near, 0.2, gates=[[40.0, 0.0, -5.0]])
+    assert cam.with_gate                                                           # gate within 12 m: framed
+    steps = []
+    prev = cam.update(near, 0.2, gates=[[40.0, 0.0, -5.0]])[0]
+    for _ in range(30):
+        loc = cam.update(near, 0.2, gates=[[40.0, 0.0, -5.0]])[0]
+        steps.append(float(np.linalg.norm(loc - prev)))
+        prev = loc
+    assert max(steps) < 3.0 and steps[-1] < steps[0]                               # converges, no teleport
+    cam.update(near + [23.5, 0.0, 0.0], 0.2, gates=[[40.0, 0.0, -5.0]])            # 13.5 m past it: kept
+    assert cam.with_gate
+    cam.update(near + [26.0, 0.0, 0.0], 0.2, gates=[[40.0, 0.0, -5.0]])            # 16 m: released
+    assert not cam.with_gate
 
 
 def test_client_waits_for_the_engine_semaphores_instead_of_failing(monkeypatch):

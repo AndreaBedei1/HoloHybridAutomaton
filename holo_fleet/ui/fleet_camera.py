@@ -1,88 +1,116 @@
-"""Pure camera geometry and smoothing for the HoloOcean fleet overview (display only)."""
+"""HoloOcean viewport camera that frames the whole fleet (display only).
+
+The camera is moved with HoloOcean's ``env.move_viewport(location, rotation)`` (TeleportCamera).
+Its convention was measured on the patched 2.3.0 engine, because the client documents it in two
+different ways and neither matches:
+
+* ``location`` is in world metres (the client frame, z up, water surface at z = 0);
+* ``rotation`` is not ``[roll, pitch, yaw]`` (TeleportCameraCommand's docstring) but the direction the
+  camera looks along ("the x-axis that the camera should look down", move_viewport's docstring), with
+  the sign inverted by the client-to-engine conversion: ``[a, b, c]`` looks along ``-(a, b, c)``
+  (``[0, 0, 10]`` looks straight down, ``[30, 0, 0]`` along -x, ``[0, 30, 0]`` along -y; ``[0, 0, 0]``
+  keeps the default, +x).  :func:`viewport_rotation` turns a look direction into that argument.
+
+Framing.  Underwater fog hides a drone beyond about 10-12 m, so the camera never backs off further
+than ``MAX_DISTANCE_M``: it frames the drones within ``KEEP_RADIUS_M`` of the fleet median (a drone
+lost far away cannot be shown anyway and does not drag the view), the gate when the fleet is near
+it, and nearby scripted vehicles.  It looks along the local path direction from behind and slightly
+above, stays ``SURFACE_CLEARANCE_M`` below the surface (the surface itself renders as noise), and is
+smoothed with one time constant: no jumps, no sudden zoom.  The pose depends only on the set of
+positions, never on which drone is first (it does not follow drone 0).  Positions are ground truth
+handed over by the live viewer; nothing here reaches a controller.
+"""
 
 from __future__ import annotations
 
 import math
-from typing import Optional, Sequence
+from typing import Optional, Sequence, Tuple
 
 import numpy as np
 
+HFOV_DEG = 90.0              # conservative horizontal field of view of the 1280 x 720 viewport
+MIN_DISTANCE_M = 6.0
+MAX_DISTANCE_M = 11.0        # beyond ~10-12 m the fog hides a drone
+MARGIN_M = 1.5               # around the framed points
+ELEVATION_DEG = 20.0         # camera above the framed centre, looking down
+SURFACE_CLEARANCE_M = 1.5
+KEEP_RADIUS_M = 12.0         # drones / vehicles farther than this from the fleet median are not framed
+GATE_IN_M, GATE_OUT_M = 12.0, 15.0   # the gate joins the frame below GATE_IN_M, leaves above GATE_OUT_M
+TAU_S = 2.0                  # smoothing time constant of centre, distance and heading
 
-def fleet_camera_pose(positions: Sequence[Sequence[float]], path_direction: Sequence[float], *,
-                      gate: Optional[Sequence[float]] = None, intruders=None,
-                      fov_deg: float = 68.0, margin_m: float = 3.0,
-                      min_distance_m: float = 10.0, max_distance_m: float = 65.0,
-                      elevation_deg: float = 28.0, gate_range_m: float = 15.0,
-                      intruder_range_m: float = 14.0):
-    """Return ``(location, rotation, distance)`` for a rear-oblique spectator camera.
 
-    Positions are referee data passed only by the live visualizer. Nearby gates and intruders
-    join the framing bounds; distant ones cannot pull the camera away from the fleet.
-    Rotation uses HoloOcean's ``[roll, pitch, yaw]`` convention.
-    """
-    fleet = np.asarray(positions, dtype=float).reshape((-1, 3))
-    if not len(fleet):
-        raise ValueError("fleet_camera_pose needs at least one drone position")
-    points = list(fleet)
-    if gate is not None:
-        g = np.asarray(gate, dtype=float).reshape(3)
-        if float(np.min(np.linalg.norm(fleet - g, axis=1))) <= gate_range_m:
-            points.append(g)
+def viewport_rotation(look) -> np.ndarray:
+    """``rotation`` argument of ``move_viewport`` that makes the camera look along ``look`` (measured)."""
+    v = np.asarray(look, float).reshape(3)
+    return -v / max(float(np.linalg.norm(v)), 1e-9)
+
+
+def framing(positions, heading: float, gate=None, intruders=None) -> Tuple[np.ndarray, float]:
+    """Centre and viewing distance that fit the fleet (plus gate / vehicles) seen along ``heading`` [rad]."""
+    P = np.asarray(positions, float).reshape((-1, 3))
+    if not len(P):
+        raise ValueError("framing needs at least one drone position")
+    med = np.median(P, axis=0)
+    pts = [p for p in P if np.linalg.norm(p - med) <= KEEP_RADIUS_M] or [med]
     if intruders is not None:
-        for p in np.asarray(intruders, dtype=float).reshape((-1, 3)):
-            if float(np.min(np.linalg.norm(fleet - p, axis=1))) <= intruder_range_m:
-                points.append(p)
-    points = np.asarray(points, dtype=float)
-    center = (points.min(axis=0) + points.max(axis=0)) / 2.0
-    radius = float(np.max(np.linalg.norm(points - center, axis=1))) + margin_m
-    distance = float(np.clip(radius / math.sin(math.radians(fov_deg / 2.0)),
-                             min_distance_m, max_distance_m))
-    direction = np.asarray(path_direction, dtype=float)[:2]
-    norm = float(np.linalg.norm(direction))
-    if norm < 1e-9:
-        direction = np.array([1.0, 0.0])
-    else:
-        direction /= norm
-    elev = math.radians(elevation_deg)
-    back = np.array([-direction[0] * math.cos(elev), -direction[1] * math.cos(elev), math.sin(elev)])
-    location = center + distance * back
-    # Keep the spectator in the water. HoloOcean's open-water surface is z=0.
-    location[2] = min(float(location[2]), -0.35)
-    look = center - location
-    horizontal = math.hypot(float(look[0]), float(look[1]))
-    pitch = math.degrees(math.atan2(float(look[2]), horizontal))
-    yaw = math.degrees(math.atan2(float(look[1]), float(look[0])))
-    return location, np.array([0.0, pitch, yaw]), distance
+        pts += [q for q in np.asarray(intruders, float).reshape((-1, 3)) if np.linalg.norm(q - med) <= KEEP_RADIUS_M]
+    if gate is not None:
+        pts.append(np.asarray(gate, float).reshape(3))
+    pts = np.asarray(pts)
+    centre = (pts.min(axis=0) + pts.max(axis=0)) / 2.0
+    h = np.array([math.cos(heading), math.sin(heading)])
+    lat = np.array([-h[1], h[0]])
+    rel = pts[:, :2] - centre[:2]
+    half_width = float(np.max(np.abs(rel @ lat))) + MARGIN_M
+    behind = max(0.0, float(np.max(-(rel @ h))))         # framed points closer to the camera than the centre
+    distance = half_width / math.tan(math.radians(HFOV_DEG / 2.0)) + behind
+    return centre, float(np.clip(distance, MIN_DISTANCE_M, MAX_DISTANCE_M))
 
 
-class FleetCameraSmoother:
-    """Exponential camera smoothing; zooming out responds faster than zooming back in."""
+def camera_pose(centre, distance: float, heading: float) -> Tuple[np.ndarray, np.ndarray]:
+    """Location behind ``centre`` along ``heading`` and the rotation that looks at ``centre``."""
+    c = np.asarray(centre, float)
+    z = min(c[2] + distance * math.sin(math.radians(ELEVATION_DEG)), -SURFACE_CLEARANCE_M)
+    dz = z - c[2]
+    back = math.sqrt(max(distance ** 2 - dz ** 2, 1.0))
+    loc = np.array([c[0] - back * math.cos(heading), c[1] - back * math.sin(heading), z])
+    return loc, viewport_rotation(c - loc)
 
-    def __init__(self, zoom_out_tau_s: float = 0.45, zoom_in_tau_s: float = 1.8,
-                 rotation_tau_s: float = 0.45):
-        self.zoom_out_tau_s = zoom_out_tau_s
-        self.zoom_in_tau_s = zoom_in_tau_s
-        self.rotation_tau_s = rotation_tau_s
-        self.location = None
-        self.rotation = None
-        self.distance = None
 
-    @staticmethod
-    def _blend_angle(old, new, alpha):
-        delta = (new - old + 180.0) % 360.0 - 180.0
-        return old + alpha * delta
+class FleetCamera:
+    """Smoothed fleet framing for the HoloOcean viewport (see the module docstring)."""
 
-    def update(self, pose, dt_s: float):
-        location, rotation, distance = pose
-        location, rotation = np.asarray(location, float), np.asarray(rotation, float)
-        if self.location is None:
-            self.location, self.rotation, self.distance = location.copy(), rotation.copy(), float(distance)
-            return self.location.copy(), self.rotation.copy(), self.distance
-        dt = max(0.0, float(dt_s))
-        tau = self.zoom_out_tau_s if distance > self.distance else self.zoom_in_tau_s
-        alpha = 1.0 - math.exp(-dt / max(tau, 1e-6))
-        arot = 1.0 - math.exp(-dt / max(self.rotation_tau_s, 1e-6))
-        self.location += alpha * (location - self.location)
-        self.rotation = np.array([self._blend_angle(a, b, arot) for a, b in zip(self.rotation, rotation)])
-        self.distance += alpha * (float(distance) - self.distance)
-        return self.location.copy(), self.rotation.copy(), self.distance
+    def __init__(self, path=None, tau_s: float = TAU_S):
+        self.path = path
+        self.tau_s = tau_s
+        self.centre: Optional[np.ndarray] = None
+        self.distance: Optional[float] = None
+        self.heading: Optional[float] = None
+        self.with_gate = False
+
+    def _path_heading(self, p) -> float:
+        if self.path is None:
+            return 0.0 if self.heading is None else self.heading
+        s, _, _ = self.path.project(np.asarray(p, float)[:2])
+        return float(self.path.heading_at(s))
+
+    def update(self, positions, dt_s: float, gates: Sequence = (), intruders=None):
+        """New ``(location, rotation)`` for ``move_viewport`` after ``dt_s`` seconds."""
+        P = np.asarray(positions, float).reshape((-1, 3))
+        med = np.median(P, axis=0)
+        gate = None
+        if len(gates):
+            g = min((np.asarray(c, float) for c in gates), key=lambda c: float(np.linalg.norm(c[:2] - med[:2])))
+            d = float(np.linalg.norm(g[:2] - med[:2]))
+            self.with_gate = d <= GATE_IN_M or (self.with_gate and d <= GATE_OUT_M)
+            gate = g if self.with_gate else None
+        heading = self._path_heading(med)
+        centre, distance = framing(P, heading, gate=gate, intruders=intruders)
+        if self.centre is None:
+            self.centre, self.distance, self.heading = centre, distance, heading
+        else:
+            a = 1.0 - math.exp(-max(0.0, float(dt_s)) / self.tau_s)
+            self.centre = self.centre + a * (centre - self.centre)
+            self.distance += a * (distance - self.distance)
+            self.heading += a * ((heading - self.heading + math.pi) % (2.0 * math.pi) - math.pi)
+        return camera_pose(self.centre, self.distance, self.heading)
