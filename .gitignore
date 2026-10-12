@@ -25,5 +25,8 @@ results/**/drone_*_observations.jsonl
 results/**/drone_*_actions.jsonl
 results/logs/
 
+# Demo GIFs are regenerated locally from the ignored run frames.
+figures/v2/gifs/
+
 # user's own presentation material (not part of the code base)
 ppt/
