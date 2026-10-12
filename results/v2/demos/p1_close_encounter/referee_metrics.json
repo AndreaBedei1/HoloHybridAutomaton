@@ -1,0 +1,141 @@
+{
+ "P1_separation": {
+  "formula": "G(forall i!=j: d_ij >= d_safe)",
+  "d_safe": 1.0,
+  "min_distance": 2.683,
+  "min_per_pair": {
+   "drone_0-drone_1": {
+    "d": 2.683,
+    "t": 30.099699
+   }
+  },
+  "violations": 0,
+  "first_violation": [],
+  "physical_contacts": 0,
+  "collision_sensor_edges": [],
+  "holds": true,
+  "intruder": null
+ },
+ "P2_mutual_exclusion": {
+  "formula": "G(sum_i inside_CR_i <= 1)",
+  "gates": [],
+  "max_occupancy": {},
+  "entry_order": {},
+  "violations": 0,
+  "first_violation": [],
+  "holds": true
+ },
+ "P3_formation_recovery": {
+  "formula": "G(formation_lost -> F formation_recovered)",
+  "enabled": false,
+  "e_lost": 1.2,
+  "e_ok": 0.5,
+  "t_ok_hold": 2.0,
+  "episodes": [],
+  "n_episodes": 0,
+  "open_at_end": 0,
+  "all_recovered_within_run": true,
+  "final_form_err": null
+ },
+ "P3_degraded": {
+  "formula": "G(neighbour_missing -> F(rejoined or slot_vacant)); remaining drones: G(lost -> F recovered) on their original slots",
+  "enabled": false,
+  "t_rejoin": 37.5,
+  "exercised": false,
+  "absence_log": [],
+  "absent_at_end": [],
+  "episodes_present": [],
+  "open_at_end": 0,
+  "holds": null,
+  "final_form_err_present": null
+ },
+ "envelope": {
+  "max_horizontal_drift": 0.0,
+  "max_vertical_drift": 0.0,
+  "definition": "control-feasible current envelope (DI-27): steady command for the requested velocity within the authority (plant model, tolerance 0.06), current within the exercised range",
+  "current_validated_max_m_s": 0.6,
+  "current_vertical_max_m_s": 0.25,
+  "max_current_m_s": 0.0,
+  "max_vertical_m_s": 0.0,
+  "max_required_over_authority": 0.647,
+  "worst_step": {
+   "drone": "drone_0",
+   "t": 27.5,
+   "head_m_s": -0.0,
+   "lateral_m_s": 0.0,
+   "requested_speed_m_s": 0.5
+  },
+  "verdict": "INSIDE",
+  "inside_envelope": true,
+  "self_declared_envelope_violations": 0,
+  "self_declared_by_faulty_drones": 0,
+  "coherent_with_vehicles": true,
+  "drones": {
+   "drone_0": {
+    "max_current_m_s": 0.0,
+    "max_vertical_m_s": 0.0,
+    "max_required_over_authority": 0.647,
+    "worst_step": {
+     "t": 27.5,
+     "head_m_s": -0.0,
+     "lateral_m_s": 0.0,
+     "requested_speed_m_s": 0.5
+    },
+    "time_over_authority_s": 0.0,
+    "time_over_authority_plus_tolerance_s": 0.0,
+    "persistent_infeasibility_at_s": null,
+    "persistent_limit_at_s": null,
+    "outside_exercised_range": false
+   },
+   "drone_1": {
+    "max_current_m_s": 0.0,
+    "max_vertical_m_s": 0.0,
+    "max_required_over_authority": 0.646,
+    "worst_step": {
+     "t": 28.9,
+     "head_m_s": -0.0,
+     "lateral_m_s": 0.0,
+     "requested_speed_m_s": 0.5
+    },
+    "time_over_authority_s": 0.0,
+    "time_over_authority_plus_tolerance_s": 0.0,
+    "persistent_infeasibility_at_s": null,
+    "persistent_limit_at_s": null,
+    "outside_exercised_range": false
+   }
+  }
+ },
+ "kinematics": {
+  "max_true_speed_m_s": 0.553
+ },
+ "run": {
+  "status": "COMPLETE",
+  "scenario": "p1_close_encounter",
+  "sim_time_s": 40.0,
+  "determinism_violations": {
+   "drone_0": 0,
+   "drone_1": 0
+  },
+  "observation_consistency_violations": {
+   "drone_0": 0,
+   "drone_1": 0
+  },
+  "comms_enabled": false,
+  "inter_agent_messages": 0,
+  "ground_truth_used_by_controllers": false,
+  "static_rank_uses": 0,
+  "occupancy_timeouts": 0,
+  "self_declared_envelope_violations": 0,
+  "perf": {
+   "ticks": 1200,
+   "mean_tick_ms": 37.7,
+   "p95_tick_ms": 74.88,
+   "real_time_factor": 0.884,
+   "controller_ms_mean_all_drones": 2.75,
+   "controller_hz": 10.0,
+   "sonar_hz": 10.0,
+   "wall_s": 61.0,
+   "sim_s": 40.0
+  }
+ }
+}

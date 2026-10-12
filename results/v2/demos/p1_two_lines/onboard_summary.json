@@ -1,0 +1,99 @@
+{
+ "drone_0": {
+  "time_in_mode_s": {
+   "FORMATION_FOLLOW": 27.0,
+   "FORMATION_WAIT_REJOIN": 3.0,
+   "SEPARATION_WARNING": 6.0
+  },
+  "escape_directions": [
+   "FWD+LEFT+UP",
+   "FWD+RIGHT",
+   "LEFT",
+   "RIGHT+UP",
+   "UP"
+  ],
+  "giveway": [
+   "UP"
+  ],
+  "depth_span_m": 1.94,
+  "min_onboard_distance_m": 2.253
+ },
+ "drone_1": {
+  "time_in_mode_s": {
+   "FORMATION_FOLLOW": 24.2,
+   "FORMATION_WAIT_REJOIN": 9.3,
+   "SEPARATION_WARNING": 2.5
+  },
+  "escape_directions": [
+   "RIGHT",
+   "RIGHT+UP"
+  ],
+  "giveway": [
+   "UP"
+  ],
+  "depth_span_m": 1.61,
+  "min_onboard_distance_m": 2.377
+ },
+ "drone_2": {
+  "time_in_mode_s": {
+   "FORMATION_FOLLOW": 26.2,
+   "FORMATION_WAIT_REJOIN": 3.7,
+   "SEPARATION_WARNING": 2.5,
+   "FORMATION_RECOVERY": 3.6
+  },
+  "escape_directions": [
+   "FWD+RIGHT",
+   "RIGHT+UP"
+  ],
+  "giveway": [
+   "RIGHT"
+  ],
+  "depth_span_m": 0.31,
+  "min_onboard_distance_m": 2.354
+ },
+ "drone_3": {
+  "time_in_mode_s": {
+   "FORMATION_FOLLOW": 32.9,
+   "FORMATION_WAIT_REJOIN": 3.1
+  },
+  "escape_directions": [],
+  "giveway": [
+   "DOWN"
+  ],
+  "depth_span_m": 1.86,
+  "min_onboard_distance_m": 2.404
+ },
+ "drone_4": {
+  "time_in_mode_s": {
+   "FORMATION_FOLLOW": 23.9,
+   "FORMATION_WAIT_REJOIN": 9.7,
+   "SEPARATION_WARNING": 2.4
+  },
+  "escape_directions": [
+   "FWD+RIGHT",
+   "RIGHT+DOWN"
+  ],
+  "giveway": [
+   "DOWN"
+  ],
+  "depth_span_m": 1.94,
+  "min_onboard_distance_m": 2.377
+ },
+ "drone_5": {
+  "time_in_mode_s": {
+   "FORMATION_FOLLOW": 27.0,
+   "FORMATION_WAIT_REJOIN": 2.8,
+   "SEPARATION_WARNING": 1.4,
+   "FORMATION_RECOVERY": 4.8
+  },
+  "escape_directions": [
+   "FWD+RIGHT",
+   "RIGHT+DOWN"
+  ],
+  "giveway": [
+   "RIGHT"
+  ],
+  "depth_span_m": 0.33,
+  "min_onboard_distance_m": 2.304
+ }
+}

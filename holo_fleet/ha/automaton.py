@@ -10,7 +10,7 @@ from dataclasses import asdict, dataclass, field
 from typing import Dict, List, Optional
 
 from holo_fleet.config import DEFAULT, FleetConfig
-from holo_fleet.ha.spec import BOOL_VARS, PY_LOGIC, REAL_VARS, Edge, Mode, build_edges
+from holo_fleet.ha.spec import BOOL_VARS, PY_LOGIC, REAL_VARS, Edge, Mode, build_edges, transition_reason
 
 
 @dataclass
@@ -20,12 +20,13 @@ class AbstractObservation:
     t_ok: float = 0.0
     sense_ok: bool = True
     env_ok: bool = True
-    gate_zone: bool = False
+    mutex_zone: bool = False
     at_queue: bool = False
     occ_busy: bool = False
     has_prio: bool = False
     passed: bool = False
     neighbors_ok: bool = True
+    degraded: bool = False
     committed: bool = False
 
     def as_dict(self) -> Dict:
@@ -43,6 +44,8 @@ class TransitionRecord:
     edge: str
     decision: Optional[str]
     enabled_edges: List[str] = field(default_factory=list)
+    reason: str = ""                  # cause of a mode change (spec.transition_reason), empty for a self-loop
+    label: str = ""                   # readable guard of the edge taken (spec Edge.label)
 
 
 class LocalHybridAutomaton:
@@ -63,7 +66,8 @@ class LocalHybridAutomaton:
             # Never expected (proved UNSAT in formal/check_determinism.py); fall back to
             # the conservative mode so the vehicle remains safe, and record it.
             self.determinism_violations += 1
-            chosen = Edge("nondeterminism_fallback", lambda o, L: True, Mode.FAILSAFE_HOLD_OR_RETREAT)
+            chosen = Edge("nondeterminism_fallback", lambda o, L: True, Mode.FAILSAFE_HOLD_OR_RETREAT,
+                          reason="nondeterminism_fallback")
         else:
             chosen = enabled[0]
         source = self.mode
@@ -77,4 +81,5 @@ class LocalHybridAutomaton:
         return TransitionRecord(
             t=t, source=source.value, target=chosen.target.value, edge=chosen.name,
             decision=chosen.decision, enabled_edges=[e.name for e in enabled],
+            reason=transition_reason(chosen, obs) if chosen.target != source else "", label=chosen.label,
         )

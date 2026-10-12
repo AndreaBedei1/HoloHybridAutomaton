@@ -1,0 +1,74 @@
+{
+ "1x6": {
+  "ticks": 180,
+  "mean_tick_ms": 15.28,
+  "p95_tick_ms": 19.38,
+  "real_time_factor": 2.182,
+  "sonars": 6,
+  "sonar_hz_per_sensor_sim_time": 10.0,
+  "wall_s_for_6s_sim": 2.76
+ },
+ "1x6_gate": {
+  "ticks": 180,
+  "mean_tick_ms": 15.97,
+  "p95_tick_ms": 22.25,
+  "real_time_factor": 2.087,
+  "sonars": 6,
+  "sonar_hz_per_sensor_sim_time": 10.0,
+  "wall_s_for_6s_sim": 2.89
+ },
+ "3x6": {
+  "ticks": 180,
+  "mean_tick_ms": 14.73,
+  "p95_tick_ms": 18.0,
+  "real_time_factor": 2.264,
+  "sonars": 18,
+  "sonar_hz_per_sensor_sim_time": 10.0,
+  "wall_s_for_6s_sim": 2.67
+ },
+ "3x6_gate": {
+  "ticks": 180,
+  "mean_tick_ms": 14.33,
+  "p95_tick_ms": 17.63,
+  "real_time_factor": 2.325,
+  "sonars": 18,
+  "sonar_hz_per_sensor_sim_time": 10.0,
+  "wall_s_for_6s_sim": 2.6
+ },
+ "4x6": {
+  "ticks": 180,
+  "mean_tick_ms": 15.27,
+  "p95_tick_ms": 20.25,
+  "real_time_factor": 2.183,
+  "sonars": 24,
+  "sonar_hz_per_sensor_sim_time": 10.0,
+  "wall_s_for_6s_sim": 2.77
+ },
+ "4x6_gate": {
+  "ticks": 180,
+  "mean_tick_ms": 14.92,
+  "p95_tick_ms": 19.42,
+  "real_time_factor": 2.234,
+  "sonars": 24,
+  "sonar_hz_per_sensor_sim_time": 10.0,
+  "wall_s_for_6s_sim": 2.7
+ },
+ "6x6": {
+  "ticks": 180,
+  "mean_tick_ms": 15.09,
+  "p95_tick_ms": 20.8,
+  "real_time_factor": 2.208,
+  "sonars": 36,
+  "sonar_hz_per_sensor_sim_time": 10.0,
+  "wall_s_for_6s_sim": 2.74
+ },
+ "6x6_gate": {
+  "ticks": 180,
+  "mean_tick_ms": 15.46,
+  "p95_tick_ms": 20.46,
+  "real_time_factor": 2.155,
+  "sonars": 36,
+  "sonar_hz_per_sensor_sim_time": 10.0,
+  "wall_s_for_6s_sim": 2.81
+ }
+}

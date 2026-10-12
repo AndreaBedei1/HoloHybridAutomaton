@@ -1,0 +1,43 @@
+{
+ "drone_0": {
+  "time_in_mode_s": {
+   "FORMATION_FOLLOW": 42.8,
+   "FORMATION_WAIT_REJOIN": 7.2
+  },
+  "escape_directions": [],
+  "giveway": [],
+  "depth_span_m": 0.18,
+  "min_onboard_distance_m": 2.504
+ },
+ "drone_1": {
+  "time_in_mode_s": {
+   "FORMATION_FOLLOW": 45.1,
+   "FORMATION_WAIT_REJOIN": 4.9
+  },
+  "escape_directions": [],
+  "giveway": [],
+  "depth_span_m": 0.15,
+  "min_onboard_distance_m": 2.504
+ },
+ "drone_2": {
+  "time_in_mode_s": {
+   "FORMATION_FOLLOW": 38.6,
+   "FORMATION_WAIT_REJOIN": 0.4,
+   "FAILSAFE_HOLD_OR_RETREAT": 4.0,
+   "FORMATION_RECOVERY": 7.0
+  },
+  "escape_directions": [],
+  "giveway": [],
+  "depth_span_m": 0.93,
+  "min_onboard_distance_m": 2.504
+ },
+ "drone_3": {
+  "time_in_mode_s": {
+   "FORMATION_FOLLOW": 50.0
+  },
+  "escape_directions": [],
+  "giveway": [],
+  "depth_span_m": 0.15,
+  "min_onboard_distance_m": 2.504
+ }
+}

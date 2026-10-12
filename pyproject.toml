@@ -14,4 +14,7 @@ include = ["holo_fleet*"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-markers = ["slow: Z3 suites that take more than a few seconds (deselect with -m 'not slow')"]
+markers = [
+    "slow: suites that take more than a few seconds (deselect with -m 'not slow')",
+    "holoocean: needs the (patched) HoloOcean engine; starts a simulation",
+]

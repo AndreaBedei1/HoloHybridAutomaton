@@ -1,56 +1,65 @@
-"""Single source of truth for thresholds, envelope assumptions and controller gains.
+"""Single source of truth for thresholds, envelope assumptions and controller gains (v2).
 
-Every number used by the formal models in ``formal/`` is imported from here, so
-the verified abstraction and the deployed controller cannot silently diverge.
-Plant-capability numbers come from the HoloOcean calibration probes documented
-in DISCOVERY.md (BlueROV2, control scheme 0, marine_race_arena thruster map).
+Every number used by the formal models in ``formal/`` is imported from here, so the verified
+abstraction and the deployed controller cannot silently diverge.  Sensor numbers come from the
+Phase-1 probe (docs/v2/SONAR_PROBE.md), plant numbers from scripts/calibrate_plant.py.
 """
 
 from __future__ import annotations
 
+import math
 from dataclasses import asdict, dataclass, field
 from typing import Dict, Tuple
+
+from holo_fleet.perception.sonar_geometry import DEFAULT_SONAR, R_IN, R_OUT, SonarModel
 
 
 @dataclass(frozen=True)
 class SeparationThresholds:
-    """P1 thresholds, centre-to-centre distances in metres.
+    """P1 thresholds.  ``d_safe``/``d_collision`` are ground-truth centre distances (referee only);
+    the guards compare the *conservative onboard* distance (a lower bound of the centre distance,
+    see Envelope.d_lower_offset) with ``d_ca`` / ``d_warning``.
 
-    d_nominal > d_warning > d_ca > d_safe > d_collision.
-    ``d_ca`` is the hard collision-avoidance entry; the soft warning band
-    [d_ca, d_warning) already removes every closing velocity component.
+    d_nominal > d_warning_exit > d_warning > d_ca_exit > d_ca > d_safe > d_collision.
+    The values of d_warning and d_ca are the smallest ones for which formal/check_separation.py
+    proves G(d >= d_safe) on the pairwise model, plus a margin (see REPORT.md).
     """
 
-    d_nominal: float = 3.0
-    d_warning: float = 2.3
-    d_warning_exit: float = 2.6      # hysteresis for leaving SEPARATION_WARNING
-    d_ca: float = 1.6
-    d_ca_exit: float = 1.9           # hysteresis for leaving COLLISION_AVOIDANCE
+    d_nominal: float = 3.5           # smallest inter-slot distance of every formation template
+    d_warning: float = 2.4
+    d_warning_exit: float = 2.7
+    d_ca: float = 1.7
+    d_ca_exit: float = 2.0
     d_safe: float = 1.0
-    d_collision: float = 0.6         # BlueROV2 hull ~0.58 m long: centre distance at contact
-    r_detect: float = 10.0           # proximity-sonar max range
+    d_collision: float = 0.6         # BlueROV2 hulls touch around this centre distance
 
 
 @dataclass(frozen=True)
 class Envelope:
-    """Operational envelope assumed by the formal proofs (checked at runtime by the referee)."""
+    """Assumptions of the formal proofs (each one measured back on the logs, results/v2/ASSUMPTIONS.md)."""
 
     dt: float = 0.1                  # controller period [s]
-    tau_max: float = 0.2             # max perception staleness accepted as "fresh" [s] (sonar 10 Hz)
-    eps_rel: float = 0.35            # bound on per-component static relative-position error [m]
-                                     # (measured inside the warning band: max 0.32 m; probe: -0.19..+0.09 m)
-    v_max_nominal: float = 0.40      # speed cap in every non-avoidance mode [m/s]
-    v_escape: float = 0.50           # escape speed in COLLISION_AVOIDANCE [m/s]
-    a_brake: float = 0.50            # closing-speed reduction per drone [m/s^2] (calibrated: >= 0.74)
+    tau_max: float = 0.25            # max age of the sonar data used by a guard [s] (one dropped 10 Hz capture)
+    eps_range_far: float = 0.12      # echo may be this much FARTHER than the true near surface [m]
+                                     # (one 5 cm bin + 6 cm octree leaf + the +5 cm threshold bias, Phase 1)
+    eps_range_near: float = 0.08     # ... or this much nearer [m]
+    v_max_nominal: float = 0.50      # speed cap outside avoidance (formation recovery) [m/s]
+    v_escape: float = 0.55           # escape speed in COLLISION_AVOIDANCE [m/s]
+    a_brake: float = 0.50            # closing-speed reduction per drone [m/s^2] (calibrated >= 0.74)
     w_rel_max: float = 0.15          # unrejected differential drift between two drones [m/s]
-    v_open: float = 0.20             # guaranteed opening speed of the SW safety filter [m/s]
-    v_filter_cap: float = 0.60       # speed cap of the SW safety-filter solution [m/s]
-    escape_vertical_weight: float = 0.35  # vertical component of the CA escape (3D escape)
-    struct_keepout: float = 0.70     # never close on structure returns nearer than this [m] (sensor origin)
-    struct_push: float = 0.45        # actively open away from structure returns nearer than this [m]
     w_drift_max: float = 0.15        # unrejected absolute drift of one drone [m/s]
-    current_drift_max: float = 0.6   # largest effective current drift we claim to handle [m/s]
-    z_min: float = -8.0              # operating depth band (world z, up positive)
+                                     # (residuals after compensation: they hold while the requested velocity is
+                                     #  control-feasible, see control/current_envelope.py)
+    g_min: float = 0.50              # certified opening per unit speed of the escape table (single threat), S2a
+    v_open: float = 0.20             # opening speed demanded by the warning filter [m/s]
+    # current envelope (DI-27): a current is acceptable when the requested velocity stays control-feasible
+    # against it (control/current_envelope.py: steady command within the authority, direction-dependent)
+    # AND it lies in the exercised range below.  The range is NOT a controllability bound: against the
+    # motion at 0.30 m/s the authority already stops at about 0.41 m/s.
+    current_validated_max: float = 0.6     # largest horizontal current magnitude exercised (calibration, demos) [m/s]
+    current_vertical_max: float = 0.25     # declared vertical range (separate heave channel, not binding) [m/s]
+    struct_keepout: float = 0.70     # never close on mapped structure nearer than this [m]
+    z_min: float = -9.0              # operating depth band (world z, up positive)
     z_max: float = -1.5
 
     @property
@@ -58,102 +67,207 @@ class Envelope:
         """Worst-case closing speed of a pair: one escaping, one cruising, plus differential drift."""
         return self.v_escape + self.v_max_nominal + self.w_rel_max
 
+    @staticmethod
+    def d_lower_offset(mount_norm: float, eps_far: float = 0.12) -> float:
+        """centre distance >= echo range + this (sensor at |mount| from the centre, target hull >= R_IN)."""
+        return R_IN - mount_norm - eps_far
 
-@dataclass(frozen=True)
-class GateRule:
-    """P2 critical-region protocol parameters, gate frame (s along axis, l lateral, z up).
-
-    The critical region (CR) is s in [-cr_half_len, +cr_half_len], |l|<=cr_half_width.
-    Drones that are not committed hold before ``s_queue``.  A drone may commit only
-    when it is at the queue line, sees nobody in the occupied zone and has robust
-    priority over every perceived queued drone.
-    """
-
-    cr_half_len: float = 1.5
-    cr_half_width: float = 1.5
-    cr_half_height: float = 1.5
-    s_queue: float = -4.0            # queue line (gate-frame along coordinate)
-    commit_window: float = 0.6       # may commit only if s >= s_queue - commit_window
-    occ_gamma: float = 0.6           # occupied zone starts at s_queue + occ_gamma
-    occ_exit_margin: float = 1.0     # occupied zone ends at cr_half_len + occ_exit_margin
-    corridor_half_width: float = 4.5 # lateral extent of approach/occupied corridor
-    approach_len: float = 4.0        # approach zone starts at s_queue - approach_len (kept clear of the
-                                     # arena's previous gate G05, which sits 9 m before G06 on its axis)
-    # robust lexicographic priority (along, then lateral, then vertical) with gap bands;
-    # margins derived in formal/check_mutex.py from eps_rel and the hold tolerances below
-    mu_s_hi: float = 1.7             # > mu_s_lo + 2 eps + mono_tol; > commit_window + hold_tol_s + mono_tol + eps
-    mu_s_lo: float = 0.75            # > 2 eps (robust sign of the along gap)
-    mu_l_hi: float = 2.4             # > mu_l_lo + 2 eps + 4 hold_tol_lat
-    mu_l_lo: float = 0.4             # > eps
-    mu_z: float = 0.75               # > eps + 2 hold_tol_z (vertical tie-break must survive depth holding)
-    # assumptions on position holding (validated empirically by scripts/validate_assumptions.py)
-    hold_tol_lat: float = 0.3        # |lateral - setpoint| while queued or leaving the queue line
-    hold_tol_z: float = 0.15         # |depth - setpoint| idem
-    hold_tol_s: float = 0.3          # queued drones stay at s <= s_queue + hold_tol_s
-    mono_tol: float = 0.15           # committed drone's along progress >= queued drone's - mono_tol
-    queue_lateral: float = 2.6       # queue points of side slots are at |l| = queue_lateral (> d_warning)
-    queue_center_back: float = 2.6   # centre-slot drone holds this far behind s_queue while others queue
-                                     # (> mu_s_hi + 2 eps: it then waits robustly, no needless backoff)
-    v_approach: float = 0.22         # along-axis speed cap while approaching/yielding
-    v_pass: float = 0.30             # along-axis speed while passing (>= v_approach)
-    rally_after_exit: float = 4.0    # passed drones advance at least this far beyond the CR
-    tie_backoff_s: float = 3.0       # last-resort ID-scaled backoff period
-
-
-@dataclass(frozen=True)
-class FormationRule:
-    """P3 formation parameters."""
-
-    e_lost: float = 1.2              # formation error above which formation is lost [m]
-    e_ok: float = 0.6                # formation error below which it is recovered [m]
-                                     # (>= the formally guaranteed steady tolerance, formal/check_formation.py)
-    t_ok_hold: float = 2.0           # e < e_ok must hold this long to declare recovery [s]
-    t_recovery_max: float = 75.0     # P3 deadline T used by the referee [s] (formal worst case: 60 s)
-    k_along: float = 0.18            # along-track consensus gain [1/s]
-    k_lat_lane: float = 0.5          # lane-keeping gain [1/s]
-    k_lat_rel: float = 0.25          # relative lateral consensus gain [1/s]
-    k_depth: float = 0.6             # depth-keeping gain [1/s]
-    v_nominal: float = 0.30          # survey speed [m/s]
-    v_lat_max: float = 0.35
-    v_z_max: float = 0.35
-    neighbor_lost_s: float = 4.0     # missing expected neighbour this long => formation lost
+    @staticmethod
+    def d_upper_offset(mount_norm: float, eps_near: float = 0.08) -> float:
+        """centre distance <= echo range + this."""
+        return mount_norm + R_OUT + eps_near
 
 
 @dataclass(frozen=True)
 class PerceptionConfig:
-    ring_elevations_deg: Tuple[int, ...] = tuple(range(-60, 61, 5))
-    ring_beams: int = 72                 # 5 deg azimuth resolution
-    ring_range_m: float = 10.0
-    ring_hz: int = 10
-    range_noise_std: float = 0.04
-    beam_dropout: float = 0.0            # per-beam dropout probability (stress: >0)
-    cluster_link_m: float = 0.7
-    # Neighbour position = direction of the return cluster's centroid x (NEAREST return range + offset).
-    # Rays return the near surface of a hull; the near-face-to-reference-point offset depends on the
-    # aspect (front ~0.11 m, side ~0.29 m, rear ~0.35 m: probe/probe_calib.py).  0.20 m bounds the
-    # residual bias to ~0.15 m for every aspect.  (A centroid-based range was biased by ~+0.2 m head-on
-    # because returns from the top/bottom of the hull lie behind the near face.)
-    near_face_offset_m: float = 0.20
-    track_gate_m: float = 1.0
-    track_drop_s: float = 2.0
-    structure_mask_m: float = 0.45       # returns closer than this to a mapped gate bar are structure
-    fls_threshold: float = 0.15          # FLS speckle max ~0.09, vehicle echoes ~0.4 (measured)
-    fls_min_blob_px: int = 6
-    fls_hz: int = 5
+    sonar: SonarModel = DEFAULT_SONAR
+    merge_gap_bins: int = 2           # echo segments closer than this are merged
+    vehicle_max_extent_m: float = 0.9 # a single BlueROV2 echo spans less than this in range
+    structure_tol_m: float = 0.30     # echo explained by the gate map if within this of a predicted return
+    structure_tol_far_m: float = 0.70 # ... on the far side: the per-leaf exponential range noise only lengthens
+                                      # echoes (max of ~10^3 leaves ~ 0.05 ln N ~ 0.4 m), DI-14
+    seabed_tol_m: float = 0.70     # rough, vegetated seabed (bench: kelp up to ~0.6 m above the DVL bottom)
+    confirm_captures: int = 2         # a dynamic echo is confirmed after this many of the last 3 captures
+    track_drop_s: float = 1.2         # a sector track without echoes for this long is dropped
+    closing_rate_alpha: float = 0.5   # alpha-beta filter of the range rate
+    v_close_staleness: float = 1.20   # = Envelope.c_max: staleness inflation of the conservative distance
+    beam_dropout: float = 0.0         # per-capture dropout probability of a sonar (stress demos only)
+    blackout_every_s: float = 0.0     # stress demos only
+    blackout_len_s: float = 0.0
     camera_hz: int = 5
 
 
 @dataclass(frozen=True)
-class PlantCalibration:
-    """Measured in probe/probe_motion.py and probe/probe_current.py (see DISCOVERY.md)."""
+class GateRule:
+    """P2 critical-region protocol (gate frame: s along the axis towards the exit, l left, z up).
 
-    surge_speed_per_cmd: float = 2.4     # ~0.77 m/s @0.3, 2.15 m/s @1.0 (feed-forward slope)
+    The CR is |s| <= cr_half_len, |l| <= cr_half_width, |z| <= cr_half_height around the gate centre.
+    Queue points are abreast on the queue line s = queue_s(n), ``queue_spacing`` apart, so that two
+    queued drones see each other in a pure LEFT/RIGHT relation; the line is far enough back that the
+    whole CR lies inside every queued drone's FRONT cone (``queue_cone_deg`` + heading tolerance <
+    60 deg).  Decisions use only sector patterns (ha/mutex_rule.py), the own navigation estimate and
+    the gate map.  A committed drone leaves the queue line on a path that keeps ``merge_clearance``
+    from the queue points on its right (``pass_path``), joins the axis ``merge_ahead`` beyond the
+    queue line, crosses the gate and veers towards its own formation lane after ``veer_s``.
+    """
+
+    cr_half_len: float = 0.8
+    cr_half_width: float = 1.0
+    cr_half_height: float = 1.0
+    queue_spacing: float = 3.5        # > d_warning_exit + estimate margin: queued neighbours never trigger the warning
+    queue_cone_deg: float = 49.0      # CR bearing from every queue sonar <= this (+ heading_tol 6 + hull fuzz 5 = 60)
+    queue_tol: float = 0.35           # |position - queue point| to count as queued
+    heading_tol_deg: float = 6.0      # queued drones face the gate within this
+    approach_len: float = 7.0         # approach zone: s in [queue_s - approach_len, exit_s]
+    corridor_half_width: float = 6.5
+    t_clear: float = 1.0              # PRIORITY / a free CR must persist this long before committing [s]
+    t_occ_max: float = 25.0           # CR seen busy, no exit seen: belief returns FREE after this [s] (logged)
+    merge_angle_deg: float = 55.0     # committed drones descend to the axis on this heading (from the axis)
+    merge_before_cr: float = 0.7      # ... and are on the axis this far before the CR
+    merge_clearance: float = 3.2      # ... keeping at least this from every queue point still occupied
+    veer_s: float = 1.0               # beyond the CR the passing drone veers towards its own lane
+    exit_s: float = 3.5               # a passing drone has passed beyond this s (FORMATION_RECOVERY)
+    rally_s: float = 6.0              # formation reference beyond the gate (rendezvous)
+    v_approach: float = 0.50
+    v_pass: float = 0.50
+    k_track: float = 0.6              # proportional gain of the gate-path tracking [1/s]
+    queue_bracket_m: float = 7.5      # LEFT/RIGHT/REAR neighbours closer than this count for the queue decision
+    # vertically stacked queue (slots that differ only in depth): columns farther apart than the stack spacing,
+    # so that a diagonal neighbour is always seen in LEFT/RIGHT (left first decides) and a neighbour of the same
+    # column only in UP/DOWN (top first decides), within the position / heading tolerances (formal M2v); every
+    # pair stays inside the queue bracket
+    stack_column_spacing: float = 5.0
+    stack_spacing: float = 3.5
+    hold_err_m: float = 0.10          # measured position-holding error of a queued drone (results/v2/ASSUMPTIONS.md)
+
+    @property
+    def merge_s(self) -> float:
+        return -(self.cr_half_len + self.merge_before_cr)
+
+    def queue_s(self, n: int, dz_max: float = 0.0, lats: Tuple[float, ...] = ()) -> float:
+        """Queue line, the smaller of two bounds:
+        (a) the CR lies inside the FRONT cone (``queue_cone_deg``) of every queue point (with a vertical
+            stack of queue points, ``dz_max`` > 0, the off-axis distance includes the vertical offset);
+        (b) a drone left of the axis that descends to the merge point at ``merge_angle_deg`` keeps
+            ``merge_clearance`` from its right neighbour's queue point (the next in the order).
+        ``lats``: the column laterals (default: the abreast queue of n columns)."""
+        lats = tuple(lats) or self.queue_laterals(n)
+        l_max = max(abs(x) for x in lats)
+        # bearing of the far CR corners seen from the FRONT sonar (0.24 m ahead of the centre)
+        need = self.cr_half_len + 0.24 + (l_max + self.cr_half_width) / math.tan(math.radians(self.queue_cone_deg))
+        if dz_max > 0.0:
+            off = math.hypot(l_max + self.cr_half_width, dz_max + self.cr_half_height)
+            need = max(need, self.cr_half_len + 0.24 + off / math.tan(math.radians(self.queue_cone_deg)))
+        a = math.radians(self.merge_angle_deg)
+        for k in range(len(lats) - 1):
+            lq, ln = lats[k], lats[k + 1]
+            if lq <= 0.3:
+                continue                          # right of the axis: it descends away from its right neighbour
+            # distance from (s_q, ln) to the line through (merge_s, 0) with direction (-cos a, sin a):
+            # |(s_q - merge_s) sin a + ln cos a| >= merge_clearance, with s_q < merge_s
+            d = (self.merge_clearance + ln * math.cos(a)) / math.sin(a)
+            need = max(need, -self.merge_s + d)
+        return -need
+
+    def queue_laterals(self, n: int, spacing: float = 0.0) -> Tuple[float, ...]:
+        """Abreast queue points, left (positive) first."""
+        return tuple(((n - 1) / 2.0 - r) * (spacing or self.queue_spacing) for r in range(n))
+
+
+@dataclass(frozen=True)
+class FormationRule:
+    """P3: slot tracking with the own navigation + sonar range-based relative correction."""
+
+    e_lost: float = 1.2               # formation error above which formation is lost [m]
+    e_ok: float = 0.5                 # below this (for t_ok_hold) the formation is recovered [m]
+    t_ok_hold: float = 2.0
+    k_slot: float = 0.45              # slot-tracking gain [1/s]
+    k_sonar: float = 0.20             # gain of the sonar range correction [1/s]
+    v_corr_max: float = 0.10          # cap of the sonar correction [m/s]
+    k_progress: float = 0.08          # along-track progress correction from sonar ranges [1/s]
+    progress_max: float = 2.0         # |local progress offset| cap [m]
+    v_nominal: float = 0.30           # survey speed [m/s]
+    v_slot_max: float = 0.40          # speed cap while following
+    v_recovery_max: float = 0.50      # speed cap while recovering (catch-up margin 0.2 m/s; = Envelope.v_max_nominal)
+    range_gate_m: float = 1.2         # an echo is associated to an expected neighbour within this
+    neighbour_range_m: float = 7.5    # expected neighbours nearer than this must be seen (neighbors_ok)
+    t_reinclude: float = 1.0          # a vacant slot is re-included after its drone is seen there this long [s]
+    rejoin_lane_tol_m: float = 1.0    # a recovering drone farther than this from its own lane rejoins from behind
+    rejoin_back_m: float = 2.0        # ... through a point on its lane this far behind the rear-most slot [m]
+    # reduced progress while an expected neighbour is missing (control/formation_time.py, DI-31): the formation
+    # reference of a drone that misses a neighbour advances at v_wait instead of the planned speed, reached and
+    # left with a ramp of a_wait.  v_wait = 0.20: the catch-up of a rejoining drone grows from 0.20 to 0.30 m/s
+    # (v_recovery_max - v_wait); the along-track offset between two drones that notice the absence at different
+    # times grows at v_nominal - v_wait = 0.10 m/s, so a detection spread of 7 s (lost-drone runs) stays below
+    # e_ok after the ramp (0.10 * (7 - T_ramp / 2) = 0.45 m); slower than that would trade formation keeping
+    # for catch-up.  Never 0: the fleet keeps surveying and keeps steerage.
+    v_wait: float = 0.20
+    a_wait: float = 0.02              # [m/s^2]: 0.30 -> 0.20 m/s in 5 s, far below the braking capability (a_brake)
+    t_rejoin_margin: float = 5.0      # [s] on top of the catch-up time: ramp-in (~0.8 s), confirmation (<= 1 s) and
+                                      # the proportional final approach (~1.5 s), rounded up
+    t_rejoin_max: float = 60.0        # upper limit of the wait, whatever the configured speeds [s]
+    # keeping the spacing to the drone ahead on the same lane (control/formation_time.py): a drone whose front
+    # neighbour is measured closer than its template distance by more than follow_on slows its reference too, until
+    # the compression is below follow_off; on its slot, a slowing drone keeps slowing until the drone ahead is
+    # farther than planned by follow_on (and does not start while it is).  Drones notice an absence at different
+    # times, or not at all (range-only sensing: an echo of another neighbour can stand in for the missing one);
+    # without this a rear drone at the survey speed behind a slowed one would close on it - the warning band of a
+    # same-lane pair at 3.5 m starts about 0.23 m closer.  follow_on: above the calm-flight residual (one 5 cm range
+    # bin); a_follow = 2.5 a_wait keeps the compression below ~0.14 m when the drone ahead slows at a_wait.
+    follow_on_m: float = 0.08
+    follow_off_m: float = 0.04
+    a_follow: float = 0.05            # [m/s^2]
+
+    @property
+    def catch_up(self) -> float:
+        """Relative speed at which a recovering drone closes on a waiting formation [m/s]."""
+        return self.v_recovery_max - self.v_wait
+
+    @property
+    def t_rejoin(self) -> float:
+        """Missing time after which an expected neighbour's slot is declared vacant [s].
+
+        The time a lost drone that is still at the edge of the sensing range (``neighbour_range_m`` behind its
+        slot) needs to close the gap at the catch-up speed of the waiting formation, plus a margin, capped:
+        min(t_rejoin_max, 7.5 / (0.50 - 0.20) + 5.0) = 30.0 s.  The gap is a configured bound, not an onboard
+        estimate: after its last association the missing drone is not observed at all, and the last residual
+        (within the range gate) says nothing about how far it drifted since.  A drone still missing after
+        t_rejoin is either unable to move or beyond the sensing range; the others stop waiting and keep a
+        degraded formation (no reconfiguration).  The slot is re-included if the drone comes back later."""
+        if self.catch_up <= 0.0:
+            raise ValueError("v_recovery_max must exceed v_wait (no catch-up)")
+        return min(self.t_rejoin_max, self.neighbour_range_m / self.catch_up + self.t_rejoin_margin)
+
+
+@dataclass(frozen=True)
+class PlantCalibration:
+    """Measured in probe/probe_motion.py, probe/probe_current.py and scripts/calibrate_plant.py."""
+
+    surge_speed_per_cmd: float = 2.4      # small-signal slope [m/s per unit command]: the low level's linear model
     sway_speed_per_cmd: float = 2.4
-    heave_speed_per_cmd: float = 3.4     # ~1.04 m/s @0.3
+    heave_speed_per_cmd: float = 3.4
     thruster_limit: float = 12.0
-    # commanded set_ocean_currents magnitude -> steady drift of an unactuated BlueROV2
+    # steady command needed per horizontal axis for a through-water speed r [m/s]:
+    #   g(r) = |r| / surge_speed_per_cmd + cmd_quadratic * r^2
+    # fitted on results/calibration/head_current_authority.json (probe/probe_head_current_authority.py);
+    # largest residual on the calibration points: cmd_model_tolerance (relative)
+    cmd_quadratic: float = 0.203
+    cmd_model_tolerance: float = 0.06
+    # commanded set_ocean_currents magnitude -> steady horizontal drift of an unactuated BlueROV2
     current_cmd_to_drift: Tuple[Tuple[float, float], ...] = (
         (0.0, 0.0), (0.3, 0.012), (1.0, 0.117), (2.0, 0.391), (4.0, 1.191))
+    # vertical component (probe/probe_current.py --vertical)
+    current_cmd_to_drift_z: Tuple[Tuple[float, float], ...] = (
+        (0.0, 0.0), (0.3, 0.012), (1.0, 0.117), (2.0, 0.391), (4.0, 1.191))
+
+
+@dataclass(frozen=True)
+class RefereeConfig:
+    """Ground-truth judging (never visible to a controller)."""
+
+    e_lost: float = 1.2
+    e_ok: float = 0.5
+    t_ok_hold: float = 2.0
 
 
 @dataclass(frozen=True)
@@ -164,7 +278,9 @@ class FleetConfig:
     form: FormationRule = field(default_factory=FormationRule)
     perc: PerceptionConfig = field(default_factory=PerceptionConfig)
     plant: PlantCalibration = field(default_factory=PlantCalibration)
-    comms_enabled: bool = False          # inter-agent communication is OFF by default
+    ref: RefereeConfig = field(default_factory=RefereeConfig)
+    comms_enabled: bool = False       # inter-agent communication is OFF by default
+    traffic_rule: bool = True         # head-on give-way rule (liveness aid); off only to exercise the safety layer alone
 
     def to_dict(self) -> Dict:
         return asdict(self)

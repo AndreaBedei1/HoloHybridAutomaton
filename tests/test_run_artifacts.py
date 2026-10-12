@@ -1,79 +1,288 @@
-"""Every demonstrative run in results/ has the required logs, sane referee verdicts and non-empty figures."""
+"""Demonstration runs (results/v2/demos): only COMPLETED runs are judged; an interrupted run never fails
+these tests but stays recognisable (run_status.json says INCOMPLETE and it is excluded)."""
 
 import csv
 import json
 from pathlib import Path
 
-import numpy as np
 import pytest
 
 ROOT = Path(__file__).resolve().parents[1]
-RUNS = sorted(p for p in (ROOT / "results").glob("*") if p.is_dir() and (p / "run_config.json").exists())
-REQUIRED = ["run_config.json", "events.jsonl", "referee_metrics.json", "referee_timeseries.csv", "summary.csv"]
-PER_DRONE = ["state", "observations", "actions"]
-NOMINAL = ("pair_crossing", "formation_current", "gate_arena")
+DEMOS = ROOT / "results" / "v2" / "demos"
 
 
-def _runs():
-    if not RUNS:
-        pytest.skip("no demonstrative runs in results/ yet")
-    return RUNS
+def _status(run: Path) -> str:
+    try:
+        return json.loads((run / "run_status.json").read_text(encoding="utf-8")).get("status", "INCOMPLETE")
+    except (OSError, ValueError):
+        return "INCOMPLETE"
 
 
-@pytest.mark.parametrize("run", RUNS or [None], ids=lambda p: p.name if p else "none")
-def test_required_logs(run):
+ALL = sorted(p for p in DEMOS.glob("*") if p.is_dir() and (p / "run_config.json").exists()) if DEMOS.exists() else []
+COMPLETE = [p for p in ALL if _status(p) == "COMPLETE"]
+REQUIRED = ["run_status.json", "run_config.json", "events.jsonl", "referee_metrics.json", "referee_timeseries.csv",
+            "summary.csv", "perf.json", "onboard_summary.json", "experiment_summary.json"]
+
+
+def complete_runs():
+    return COMPLETE or [None]
+
+
+def test_incomplete_runs_are_excluded_and_labelled():
+    for run in ALL:
+        if run not in COMPLETE:
+            assert _status(run) == "INCOMPLETE"
+            assert run not in COMPLETE
+
+
+def test_selection_logic_on_a_synthetic_interrupted_run(tmp_path):
+    run = tmp_path / "interrupted"
+    run.mkdir()
+    (run / "run_config.json").write_text("{}")
+    (run / "run_status.json").write_text(json.dumps({"status": "INCOMPLETE", "reason": "interrupted by the user"}))
+    assert _status(run) == "INCOMPLETE"
+    (run / "run_status.json").unlink()
+    assert _status(run) == "INCOMPLETE"                      # no status file: never treated as complete
+
+
+@pytest.mark.parametrize("run", complete_runs(), ids=lambda p: p.name if p else "none")
+def test_required_artifacts(run):
     if run is None:
-        pytest.skip("no runs")
+        pytest.skip("no completed demonstration run yet (python scripts/run_all_demos.py)")
     for f in REQUIRED:
         assert (run / f).exists(), f
-    cfg = json.loads((run / "run_config.json").read_text())
-    for k in range(cfg["n_drones"]):
-        for kind in PER_DRONE:
-            p = run / f"drone_{k}_{kind}.jsonl"
-            if not p.exists() and kind in ("observations", "actions"):
-                pytest.skip(f"{p.name} not on disk (bulky logs are not versioned)")
-            assert p.exists(), p.name
-            with open(p) as fh:
-                json.loads(fh.readline())
-    for line in open(run / "events.jsonl"):
+    for line in open(run / "events.jsonl", encoding="utf-8"):
         json.loads(line)
-    rows = list(csv.DictReader(open(run / "referee_timeseries.csv")))
-    assert len(rows) > 50
+    rows = list(csv.DictReader(open(run / "referee_timeseries.csv", encoding="utf-8")))
+    cfg = json.loads((run / "run_config.json").read_text(encoding="utf-8"))
+    assert rows and float(rows[-1]["t"]) >= cfg["duration_s"] - 0.2
 
 
-@pytest.mark.parametrize("run", RUNS or [None], ids=lambda p: p.name if p else "none")
-def test_referee_verdicts_in_nominal_runs(run):
+@pytest.mark.parametrize("run", complete_runs(), ids=lambda p: p.name if p else "none")
+def test_referee_verdicts(run):
     if run is None:
-        pytest.skip("no runs")
-    cfg = json.loads((run / "run_config.json").read_text())
-    m = json.loads((run / "referee_metrics.json").read_text())
-    assert m["run"]["comms_enabled"] is False or cfg["comms_enabled"] is True
-    if not cfg["comms_enabled"]:
-        assert m["run"]["inter_agent_messages_sent"] == 0
-    assert sum(m["run"]["determinism_monitor_violations"].values()) == 0
-    # hard requirements only where the run stayed inside the operational envelope (out-of-envelope
-    # runs must instead be flagged, which the referee does)
-    if cfg["scenario"] in NOMINAL and m["envelope"]["inside_envelope"]:
-        assert m["P1_separation"]["holds"], m["P1_separation"]["first_violation"]
-        if m["P2_mutual_exclusion"]["gates"]:
-            assert m["P2_mutual_exclusion"]["holds"]
-            assert all(m["P2_mutual_exclusion"]["all_drones_traversed"].values())
-        if m["P3_formation_recovery"]["enabled"]:
-            assert m["P3_formation_recovery"]["holds"]
-    if not m["envelope"]["inside_envelope"]:
-        assert m["envelope"]["out_of_envelope_flags"], "an out-of-envelope run must be flagged"
+        pytest.skip("no completed demonstration run yet")
+    m = json.loads((run / "referee_metrics.json").read_text(encoding="utf-8"))
+    r = m["run"]
+    assert r["inter_agent_messages"] == 0 and r["comms_enabled"] is False
+    assert r["ground_truth_used_by_controllers"] is False
+    assert all(v == 0 for v in r["determinism_violations"].values())
+    # no false alarm of the observation consistency check on any final run (the field must exist)
+    assert r["observation_consistency_violations"] and all(v == 0 for v in r["observation_consistency_violations"].values())
+    assert not any('"OBSERVATION_INCONSISTENT"' in line for line in open(run / "events.jsonl", encoding="utf-8"))
+    p1 = m["P1_separation"]
+    assert p1["holds"] and p1["physical_contacts"] == 0 and not p1["collision_sensor_edges"]
+    cfg = json.loads((run / "run_config.json").read_text(encoding="utf-8"))
+    dead = {f["drone"] for f in cfg.get("faults", []) if f.get("t_off") is None}       # permanent injected faults
+    if m["P2_mutual_exclusion"]["gates"]:
+        p2 = m["P2_mutual_exclusion"]
+        assert p2["holds"] and max(p2["max_occupancy"].values()) == 1
+        assert sorted(p2["entry_order"][p2["gates"][0]]) == sorted(f"drone_{k}" for k in range(cfg["n_drones"])
+                                                                   if f"drone_{k}" not in dead)
+    p3 = m["P3_formation_recovery"]
+    if p3["enabled"] and not dead and not p3["all_recovered_within_run"]:
+        # P3 is a liveness property without time bound: a finite run cannot falsify it.  An episode still open at
+        # the end is accepted only while the formation is visibly converging (error at the end below half its peak
+        # in the episode, and lower than 5 s before); it is reported as "not recovered within the run"
+        rows = list(csv.DictReader(open(run / "referee_timeseries.csv", encoding="utf-8")))
+        t_lost = p3["episodes"][-1]["t_lost"]
+        err = [(float(r["t"]), float(r["form_err"])) for r in rows if float(r["t"]) >= t_lost]
+        peak, end = max(e for _t, e in err), err[-1][1]
+        before = [e for t, e in err if t <= err[-1][0] - 5.0][-1]
+        assert end < 0.5 * peak and end < before, (p3["episodes"], peak, end, before)
+    deg = m["P3_degraded"]
+    if deg["exercised"]:                          # a drone never came back: the remaining ones re-formed
+        assert deg["holds"] and sorted(deg["absent_at_end"]) == sorted(dead)
 
 
-@pytest.mark.parametrize("run", RUNS or [None], ids=lambda p: p.name if p else "none")
-def test_figures_not_empty(run):
+def _states(run, k):
+    return [json.loads(l) for l in open(run / f"drone_{k}_state.jsonl", encoding="utf-8")]
+
+
+def _run(name):
+    p = DEMOS / name
+    if p not in COMPLETE:
+        pytest.skip(f"{name}: no completed run")
+    return p
+
+
+def test_vertical_escape_has_an_up_or_down_component():
+    run = _run("p1_vertical_escape")
+    summ = json.loads((run / "onboard_summary.json").read_text(encoding="utf-8"))
+    dirs = [d for v in summ.values() for d in v["escape_directions"]]
+    assert any("UP" in d or "DOWN" in d for d in dirs)
+    assert max(v["depth_span_m"] for v in summ.values()) > 0.8               # a real vertical manoeuvre
+    m = json.loads((run / "referee_metrics.json").read_text(encoding="utf-8"))
+    assert not m["P1_separation"]["intruder"]["below_d_safe"]
+
+
+@pytest.mark.parametrize("name,n", [("formation_triangle", 3), ("formation_square", 4), ("formation_six", 6)])
+def test_formation_scenarios(name, n):
+    run = _run(name)
+    cfg = json.loads((run / "run_config.json").read_text(encoding="utf-8"))
+    m = json.loads((run / "referee_metrics.json").read_text(encoding="utf-8"))
+    assert cfg["n_drones"] == n and m["envelope"]["inside_envelope"]
+    assert m["P3_formation_recovery"]["final_form_err"] < DEFAULT_E_OK
+    summ = json.loads((run / "onboard_summary.json").read_text(encoding="utf-8"))
+    for v in summ.values():                       # the drones themselves declare the formation recovered
+        assert v["time_in_mode_s"].get("FORMATION_FOLLOW", 0.0) > 0.5 * cfg["duration_s"]
+        assert "DEGRADED_FORMATION" not in v["time_in_mode_s"]       # nobody is ever declared missing for good
+
+
+DEFAULT_E_OK = 0.5
+
+
+def test_gust_formation_is_lost_and_recovered():
+    run = _run("formation_gust")
+    p3 = json.loads((run / "referee_metrics.json").read_text(encoding="utf-8"))["P3_formation_recovery"]
+    assert p3["n_episodes"] >= 1 and p3["all_recovered_within_run"]
+
+
+@pytest.mark.parametrize("name", ["gate_single", "integrated_short", "mutex_deadlock_resolution", "line_parallel_mutex",
+                                  "lost_drone_mutex"])
+def test_gate_scenarios_use_the_static_rank_never(name):
+    run = _run(name)
+    m = json.loads((run / "referee_metrics.json").read_text(encoding="utf-8"))
+    assert m["run"]["static_rank_uses"] == 0 and m["run"]["occupancy_timeouts"] == 0
+
+
+@pytest.mark.parametrize("name,order", [("mutex_deadlock_resolution", ["drone_0", "drone_1", "drone_2"]),
+                                        ("line_parallel_mutex", ["drone_0", "drone_1", "drone_2"]),
+                                        ("lost_drone_mutex", ["drone_1", "drone_2"])])
+def test_queue_order_left_first_then_top_first(name, order):
+    """Stacked pair: left-top, left-bottom, right; line abreast: left to right; with the left drone lost, the
+    leftmost drone present goes first - always from sector patterns, without the static rank."""
+    run = _run(name)
+    m = json.loads((run / "referee_metrics.json").read_text(encoding="utf-8"))
+    assert m["P2_mutual_exclusion"]["entry_order"]["G06"] == order
+
+
+def _decisions(run):
+    return [json.loads(l) for l in open(run / "events.jsonl", encoding="utf-8")]
+
+
+def test_lost_drone_rejoins_and_nobody_declares_it_vacant():
+    run = _run("lost_drone_rejoin")
+    ev = _decisions(run)
+    assert not [e for e in ev if e["type"] == "SLOT_DECLARED_VACANT"]
+    waits = {e["drone"] for e in ev if e.get("decision") == "NEIGHBOUR_MISSING"}
+    back = {e["drone"] for e in ev if e.get("decision") == "NEIGHBOUR_REJOINED"}
+    assert waits and waits <= back                                   # every drone that waited saw it come back
+    cfg = json.loads((run / "run_config.json").read_text(encoding="utf-8"))
+    faulty = int(cfg["faults"][0]["drone"].split("_")[1])
+    modes = [r["mode"] for r in _states(run, faulty)]
+    assert "FAILSAFE_HOLD_OR_RETREAT" in modes and modes[-1] == "FORMATION_FOLLOW"
+    m = json.loads((run / "referee_metrics.json").read_text(encoding="utf-8"))
+    assert m["P3_formation_recovery"]["all_recovered_within_run"] and not m["P3_degraded"]["exercised"]
+
+
+def test_lost_drone_timeout_gives_a_stable_degraded_formation():
+    from holo_fleet.config import DEFAULT
+
+    run = _run("lost_drone_timeout")
+    ev = _decisions(run)
+    cfg = json.loads((run / "run_config.json").read_text(encoding="utf-8"))
+    faulty = int(cfg["faults"][0]["drone"].split("_")[1])
+    vac = [e for e in ev if e["type"] == "SLOT_DECLARED_VACANT"]
+    assert {e["drone"] for e in vac} == {f"drone_{k}" for k in range(cfg["n_drones"]) if k != faulty}
+    assert all(e["slot"] == faulty and abs(e["missing_s"] - DEFAULT.form.t_rejoin) < 0.2 for e in vac)
+    for k in range(cfg["n_drones"]):
+        last = _states(run, k)[-1]["mode"]
+        assert last == ("FAILSAFE_HOLD_OR_RETREAT" if k == faulty else "DEGRADED_FORMATION"), (k, last)
+    m = json.loads((run / "referee_metrics.json").read_text(encoding="utf-8"))
+    deg = m["P3_degraded"]
+    assert deg["exercised"] and deg["holds"] and deg["absent_at_end"] == [f"drone_{faulty}"]
+    assert deg["final_form_err_present"] < DEFAULT_E_OK
+
+
+def test_close_encounter_reaches_the_warning_band_without_breaking_p1():
+    run = _run("p1_close_encounter")
+    e = json.loads((run / "experiment_summary.json").read_text(encoding="utf-8"))["p1"]
+    for v in e["drones"].values():               # both drones' conservative distance went below d_warning
+        assert v["SW_entries"] >= 1 and v["min_onboard_conservative_distance_m"] < e["thresholds_m"]["d_warning"]
+    assert e["min_true_pair_distance_m"] >= e["thresholds_m"]["d_safe"] and e["collisions"] == 0 and e["messages"] == 0
+
+
+def test_head_current_is_outside_the_control_feasible_envelope():
+    """0.6 m/s against the motion: within the exercised range, beyond the authority at survey speed (DI-27);
+    the hit drone declares it itself."""
+    run = _run("formation_recovery_head_current")
+    m = json.loads((run / "referee_metrics.json").read_text(encoding="utf-8"))
+    e = m["envelope"]
+    assert e["max_current_m_s"] <= 0.6 + 1e-9 and e["max_vertical_m_s"] <= 0.25 + 1e-9
+    assert e["verdict"] == "OUTSIDE" and e["worst_step"]["head_m_s"] > 0.41
+    assert m["run"]["self_declared_envelope_violations"] >= 1 and e["coherent_with_vehicles"]
+
+
+@pytest.mark.parametrize("run", complete_runs(), ids=lambda p: p.name if p else "none")
+def test_envelope_verdict_and_vehicles(run):
+    """Every run carries the control-feasible verdict; a drone never declares a violation the ground truth
+    does not see (the converse may fail at the margin: a request beyond the authority by a few per cent can
+    show up as a lag instead of a persistent saturation, DI-27)."""
     if run is None:
-        pytest.skip("no runs")
-    figs = sorted((run / "figures").glob("*.png"))
-    if not figs:
-        pytest.skip("figures not generated (python scripts/analyze_results.py --run ...)")
-    import matplotlib.image as mpimg
+        pytest.skip("no completed demonstration run yet")
+    m = json.loads((run / "referee_metrics.json").read_text(encoding="utf-8"))
+    e = m["envelope"]
+    assert e["verdict"] in ("INSIDE", "LIMIT", "OUTSIDE") and e["inside_envelope"] == (e["verdict"] != "OUTSIDE")
+    # a drone with an injected thruster fault declares a violation it cannot attribute to the current
+    if m["run"]["self_declared_envelope_violations"] - e.get("self_declared_by_faulty_drones", 0):
+        assert e["verdict"] == "OUTSIDE"
 
-    for f in figs:
-        img = mpimg.imread(f)
-        assert img.shape[0] > 200 and img.shape[1] > 400, f.name
-        assert float(np.std(img[..., :3])) > 0.02, f"{f.name} looks blank"
+
+# ---------------------------------------------------------------------------------------------- DI-31
+def _reduced_progress(run, k):
+    """(v_ref of the drone's formation reference while it waits, v_ref after its last formation-keeping change)."""
+    st = _states(run, k)
+    wait = [r["form"]["v_ref"] for r in st if r["mode"] == "FORMATION_WAIT_REJOIN" and "v_ref" in r["form"]]
+    return wait, st
+
+
+def test_waiting_drones_slow_the_formation_down_and_resume_the_survey_speed():
+    """lost_drone_rejoin / lost_drone_timeout: a drone that misses a neighbour runs its formation reference at v_wait
+    (reduced progress, not a stop); after the rejoin or the timeout the reference is back at the survey speed."""
+    from holo_fleet.config import DEFAULT
+
+    fr = DEFAULT.form
+    for name in ("lost_drone_rejoin", "lost_drone_timeout"):
+        run = _run(name)
+        cfg = json.loads((run / "run_config.json").read_text(encoding="utf-8"))
+        faulty = int(cfg["faults"][0]["drone"].split("_")[1])
+        for k in range(cfg["n_drones"]):
+            if k == faulty:
+                continue
+            wait, st = _reduced_progress(run, k)
+            assert wait and min(wait) == pytest.approx(fr.v_wait, abs=0.01), (name, k)   # slowed, not stopped
+            assert st[-1]["form"]["v_ref"] == pytest.approx(fr.v_nominal, abs=0.01), (name, k)
+        fleet = json.loads((run / "experiment_summary.json").read_text(encoding="utf-8"))["lost"]["fleet"]
+        assert 0.5 * fr.v_wait < fleet["true_speed_in_wait_m_s"] < fleet["true_speed_before_m_s"] - 0.03   # true speed
+        assert fleet["present_formation_error_max_m"] < fr.e_ok                    # the formation was preserved
+
+
+def test_every_mode_change_is_logged_with_its_cause():
+    for name in ("lost_drone_rejoin", "lost_drone_timeout", "integrated_short"):
+        run = _run(name)
+        cfg = json.loads((run / "run_config.json").read_text(encoding="utf-8"))
+        ev = [e for e in _decisions(run) if e.get("type") == "transition"]
+        for k in range(cfg["n_drones"]):
+            modes = ["FORMATION_FOLLOW"] + [r["mode"] for r in _states(run, k)]       # the automaton starts in FOLLOW
+            changes = [(a, b) for a, b in zip(modes, modes[1:]) if a != b]
+            mine = [e for e in ev if e["drone"] == f"drone_{k}"]
+            assert [(e["from"], e["to"]) for e in mine] == changes, (name, k)
+            assert all(e["reason"] and e["guard"] for e in mine), (name, k)
+
+
+def test_integrated_short_is_inside_the_control_feasible_envelope():
+    """DI-31: only the scenario changed (cross-current gust 0.35 -> 0.27 m/s); the mission keeps a real current, the
+    one-at-a-time passage, P1, P2 and the re-formation."""
+    from holo_fleet.sim.scenarios import INTEGRATED_GUST
+
+    run = _run("integrated_short")
+    cfg = json.loads((run / "run_config.json").read_text(encoding="utf-8"))
+    gust = [c for c in cfg["current"] if c["t_on"] > 0][0]
+    assert abs((gust["drift"][0] ** 2 + gust["drift"][1] ** 2) ** 0.5 - INTEGRATED_GUST) < 0.01
+    m = json.loads((run / "referee_metrics.json").read_text(encoding="utf-8"))
+    e = m["envelope"]
+    assert e["verdict"] == "INSIDE" and e["max_current_m_s"] >= 0.2
+    assert m["P1_separation"]["holds"] and m["P2_mutual_exclusion"]["holds"]
+    assert len(m["P2_mutual_exclusion"]["entry_order"]["G06"]) == cfg["n_drones"]
+    assert m["P3_formation_recovery"]["all_recovered_within_run"]

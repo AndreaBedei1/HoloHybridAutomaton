@@ -1,0 +1,116 @@
+{
+  "authority": 0.4,
+  "survey_speed_m_s": 0.3,
+  "window_s": [
+    14.0,
+    32.0
+  ],
+  "definition": "drift = steady drift of an unactuated BlueROV2 (Envelope convention); through-water speed = |v_ground - drift| (true velocity); saturated = |(surge, sway)| command at the authority limit",
+  "cases": {
+    "head_0.30": {
+      "kind": "head",
+      "drift_m_s": 0.3,
+      "mean_ground_velocity_m_s": [
+        0.3,
+        -0.0
+      ],
+      "along_track_deficit_m_s": -0.0,
+      "mean_through_water_speed_m_s": 0.6,
+      "through_water_speed_when_saturated_m_s": null,
+      "saturated_fraction": 0.0,
+      "longest_saturation_s": 0.0,
+      "monitor_violation_at_s": null,
+      "current_estimate_m_s": 0.444
+    },
+    "head_0.35": {
+      "kind": "head",
+      "drift_m_s": 0.35,
+      "mean_ground_velocity_m_s": [
+        0.301,
+        0.002
+      ],
+      "along_track_deficit_m_s": -0.001,
+      "mean_through_water_speed_m_s": 0.651,
+      "through_water_speed_when_saturated_m_s": null,
+      "saturated_fraction": 0.0,
+      "longest_saturation_s": 0.0,
+      "monitor_violation_at_s": null,
+      "current_estimate_m_s": 0.54
+    },
+    "head_0.40": {
+      "kind": "head",
+      "drift_m_s": 0.4,
+      "mean_ground_velocity_m_s": [
+        0.297,
+        0.0
+      ],
+      "along_track_deficit_m_s": 0.003,
+      "mean_through_water_speed_m_s": 0.697,
+      "through_water_speed_when_saturated_m_s": 0.7,
+      "saturated_fraction": 0.128,
+      "longest_saturation_s": 0.2,
+      "monitor_violation_at_s": null,
+      "current_estimate_m_s": 0.629
+    },
+    "head_0.45": {
+      "kind": "head",
+      "drift_m_s": 0.45,
+      "mean_ground_velocity_m_s": [
+        0.263,
+        0.005
+      ],
+      "along_track_deficit_m_s": 0.037,
+      "mean_through_water_speed_m_s": 0.713,
+      "through_water_speed_when_saturated_m_s": 0.713,
+      "saturated_fraction": 0.906,
+      "longest_saturation_s": 3.5,
+      "monitor_violation_at_s": 16.0,
+      "current_estimate_m_s": 0.64
+    },
+    "head_0.50": {
+      "kind": "head",
+      "drift_m_s": 0.5,
+      "mean_ground_velocity_m_s": [
+        0.211,
+        0.001
+      ],
+      "along_track_deficit_m_s": 0.089,
+      "mean_through_water_speed_m_s": 0.711,
+      "through_water_speed_when_saturated_m_s": 0.711,
+      "saturated_fraction": 0.989,
+      "longest_saturation_s": 9.3,
+      "monitor_violation_at_s": 11.8,
+      "current_estimate_m_s": 0.595
+    },
+    "head_0.60": {
+      "kind": "head",
+      "drift_m_s": 0.6,
+      "mean_ground_velocity_m_s": [
+        0.102,
+        0.002
+      ],
+      "along_track_deficit_m_s": 0.198,
+      "mean_through_water_speed_m_s": 0.702,
+      "through_water_speed_when_saturated_m_s": 0.702,
+      "saturated_fraction": 1.0,
+      "longest_saturation_s": 18.0,
+      "monitor_violation_at_s": 9.6,
+      "current_estimate_m_s": 0.49
+    },
+    "lateral_0.60": {
+      "kind": "lateral",
+      "drift_m_s": 0.6,
+      "mean_ground_velocity_m_s": [
+        0.301,
+        0.033
+      ],
+      "along_track_deficit_m_s": -0.001,
+      "mean_through_water_speed_m_s": 0.642,
+      "through_water_speed_when_saturated_m_s": null,
+      "saturated_fraction": 0.0,
+      "longest_saturation_s": 0.0,
+      "monitor_violation_at_s": null,
+      "current_estimate_m_s": 0.722
+    }
+  }
+}
