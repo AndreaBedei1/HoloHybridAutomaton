@@ -11,7 +11,7 @@
 | formation_gust | 4 | COMPLETE | 2.725 | - | 1 / 10.0 | 0 | 0 | OUTSIDE | 1 | 0 | 0 | 0 | 46.58 | 0.716 |
 | gate_single | 3 | COMPLETE | 3.313 | 1 | 1 / 68.3 | 0 | 0 | INSIDE | 0 | 0 | 0 | 0 | 77.89 | 0.428 |
 | integrated_short | 3 | COMPLETE | 3.336 | 1 | 1 / 70.2 | 0 | 0 | INSIDE | 0 | 0 | 0 | 0 | 59.17 | 0.563 |
-| lost_drone_rejoin | 4 | COMPLETE | 3.364 | - | 1 / 20.7 | 0 | 0 | INSIDE | 1 | 0 | 0 | 0 | 48.68 | 0.685 |
+| lost_drone_rejoin | 4 | COMPLETE | 3.415 | - | 1 / 20.0 | 0 | 0 | INSIDE | 1 | 0 | 0 | 0 | 60.37 | 0.552 |
 | lost_drone_timeout | 4 | COMPLETE | 3.342 | - | 1 / - | 0 | 0 | INSIDE | 1 | 0 | 0 | 0 | 50.87 | 0.655 |
 | mutex_deadlock_resolution | 3 | COMPLETE | 3.424 | 1 | 1 / 58.6 | 0 | 0 | INSIDE | 0 | 0 | 0 | 0 | 42.79 | 0.779 |
 | line_parallel_mutex | 3 | COMPLETE | 2.943 | 1 | 1 / 63.8 | 0 | 0 | INSIDE | 0 | 0 | 0 | 0 | 37.6 | 0.886 |

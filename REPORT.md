@@ -195,7 +195,7 @@ Key numbers:
 | `formation_gust` | 4 | 2.725 | - | 10.0 (5.4) | 0 | 0 | OUTSIDE (2.07 x authority) / 1 self-declared violation | 0 / 0 | 0 | 0.716 |
 | `gate_single` | 3 | 3.313 | 1 | 68.3 (5.1) | 0 | 0 | inside / ok | 0 / 0 | 0 | 0.428 |
 | `integrated_short` | 3 | 3.336 | 1 | 70.2 (5.2) | 0 | 0 | inside / ok | 0 / 0 | 0 | 0.563 |
-| `lost_drone_rejoin` | 4 | 3.364 | - | 20.7 (11.5) | 0 | 0 | inside / 1 declared by the faulty drone | 0 / 0 | 0 | 0.685 |
+| `lost_drone_rejoin` | 4 | 3.415 | - | 20.0 (10.8) | 0 | 0 | inside / 1 declared by the faulty drone | 0 / 0 | 0 | 0.552 |
 | `lost_drone_timeout` | 4 | 3.342 | - | open at the end (lost at 14.6 s, final error 13.67 m); P3-deg: re-formed without drone_2 (absent at 43.2 s, final error 0.10 m) | 0 | 0 | inside / 1 declared by the faulty drone | 0 / 0 | 0 | 0.655 |
 | `mutex_deadlock_resolution` | 3 | 3.424 | 1 | 58.6 (3.7) | 0 | 0 | inside / ok | 0 / 0 | 0 | 0.779 |
 | `line_parallel_mutex` | 3 | 2.943 | 1 | 63.8 (1.8) | 0 | 0 | inside / ok | 0 / 0 | 0 | 0.886 |
@@ -497,13 +497,13 @@ after the last passage.  The onboard view (E2) and the referee (E1) now agree on
 
 | scenario | missing (onboard, per drone) | end of the wait | formation reference / fleet speed | formation error of the others | min distance, collisions |
 |---|---|---|---|---|---|
-| `lost_drone_rejoin` (thrusters of the rear-left drone off 8.1-15.1 s, 0.35 m/s lateral current) | 13.2 / 13.4 / 15.5 s | `neighbor_rejoined` at 29.9 / 33.0 / 33.4 s | v_ref 0.20 m/s (mean in WAIT 0.21-0.23); fleet 0.30 -> 0.22 -> 0.30 m/s | <= 0.20 m (0.07 m at the end) | 3.36 m, 0 |
+| `lost_drone_rejoin` (thrusters of the rear-left drone off 8.1-15.1 s, 0.35 m/s lateral current) | 12.7 / 13.2 / 13.4 s | `neighbor_rejoined` at 29.2 / 31.9 / 33.5 s | v_ref 0.20 m/s (mean in WAIT 0.21-0.22); fleet 0.30 -> 0.21 -> 0.30 m/s | <= 0.12 m (0.07 m at the end) | 3.42 m, 0 |
 | `lost_drone_timeout` (the same drone's thrusters off for good at 8.1 s) | 14.0 / 16.1 / 22.5 s | `rejoin_timeout` at 43.9 / 46.0 / 52.4 s (30 s each) | v_ref 0.20 m/s (mean in WAIT 0.21); fleet 0.30 -> 0.22 -> 0.30 m/s | <= 0.19 m (0.10 m at the end) | 3.34 m, 0 |
 
 * `lost_drone_rejoin`: the lost drone detects its own fault (FORMATION_RECOVERY at 11.3 s `own_slot_lost`,
   FAILSAFE 13.4-21.6 s `envelope_violation` / `fault_cleared`), returns behind the fleet along its lane and is
-  back in its slot at 35.6 s (`slot_recovered`). Referee: P3 recovered in 20.7 s.
-  The others end 5.8-6.7 s behind the plan.
+  back in its slot at 35.7 s (`slot_recovered`). Referee: P3 recovered in 20.0 s.
+  The others end 6.4-7.1 s behind the plan.
 * `lost_drone_timeout`: the three remaining drones end in DEGRADED_FORMATION on their original slots, 10 s
   behind the plan, at the survey speed; the failed drone stays in FAILSAFE.  Referee: absent at 43.2 s, P3-deg
   PASS (final error 0.10 m); the nominal P3 stays open, as expected.

@@ -10,7 +10,7 @@ formation_recovery_head_current,COMPLETE,50.0,True,3.37,True,,1,True,6.9,,,0,0,F
 formation_gust,COMPLETE,55.0,True,2.725,True,,1,True,10.0,,,0,0,False,0,46.58,87.44,0.716,7.92,4,5.4,,1,OUTSIDE,0,0
 gate_single,COMPLETE,80.0,True,3.313,True,1,1,True,68.3,,,0,0,True,0,77.89,134.15,0.428,9.39,3,5.1,,0,INSIDE,0,0
 integrated_short,COMPLETE,92.0,True,3.336,True,1,1,True,70.2,,,0,0,True,0,59.17,101.04,0.563,9.43,3,5.2,,0,INSIDE,0,0
-lost_drone_rejoin,COMPLETE,60.0,True,3.364,True,,1,True,20.7,,,0,0,True,0,48.68,87.12,0.685,7.14,4,11.5,,1,INSIDE,0,0
+lost_drone_rejoin,COMPLETE,60.0,True,3.415,True,,1,True,20.0,,,0,0,True,0,60.37,104.49,0.552,10.3,4,10.8,,1,INSIDE,0,0
 lost_drone_timeout,COMPLETE,80.0,True,3.342,True,,1,False,,True,drone_2,0,0,True,0,50.87,88.81,0.655,7.74,4,0,,1,INSIDE,0,0
 mutex_deadlock_resolution,COMPLETE,75.0,True,3.424,True,1,1,True,58.6,,,0,0,True,0,42.79,85.82,0.779,7.69,3,3.7,,0,INSIDE,0,0
 line_parallel_mutex,COMPLETE,75.0,True,2.943,True,1,1,True,63.8,,,0,0,True,0,37.6,77.83,0.886,7.99,3,1.8,,0,INSIDE,0,0
