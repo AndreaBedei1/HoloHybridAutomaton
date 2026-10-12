@@ -312,6 +312,11 @@ class HoloFleetSim:
         if self.env is not None and not self.headless:
             self.env.draw_box([float(v) for v in center], [float(v) for v in extent], list(color), thickness, lifetime)
 
+    def set_viewport_camera(self, location, rotation) -> None:
+        """Move HoloOcean's spectator viewport; camera data is consumed by display only."""
+        if self.env is not None and not self.headless:
+            self.env.move_viewport([float(v) for v in location], [float(v) for v in rotation])
+
     def perf(self) -> Dict[str, float]:
         w = np.asarray(self.tick_wall_ms) if self.tick_wall_ms else np.array([np.nan])
         return {"ticks": int(len(self.tick_wall_ms)), "mean_tick_ms": round(float(np.nanmean(w)), 2),

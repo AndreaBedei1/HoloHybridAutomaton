@@ -34,10 +34,10 @@ from PIL import Image, ImageDraw, ImageFont
 from holo_fleet.ha.spec import SELF_RECOVERED
 
 W, H = 1600, 900
-MAP = (24, 84, 1030, 690)            # x0, y0, x1, y1 of the map card
+MAP = (24, 64, 1030, 690)            # x0, y0, x1, y1 of the map card
 PANEL_X = 1048
-TL = (24, 708, 1030, 884)           # timeline card
-AUT = (1048, 708, 1576, 884)        # automaton card (selected drone)
+TL = (24, 688, 1030, 884)           # timeline card
+AUT = (1048, 688, 1576, 884)        # automaton card (selected drone)
 
 
 def _rgb(h: str):
@@ -193,6 +193,39 @@ class FleetView:
         dz = [sl.dz for sl in scenario.template.slots] if scenario.template is not None else [0.0]
         self.vertical = (max(dz) - min(dz) > 1.0) or bool(getattr(scenario.sim, "intruders", ()))
         self._fit()
+
+    def select_drone(self, k: int) -> bool:
+        """Select a fleet member for the automaton panel; return whether selection changed."""
+        if not 0 <= int(k) < self.n:
+            return False
+        changed = self.sel != int(k)
+        self.sel = int(k)
+        return changed
+
+    def select_at(self, x: int, y: int) -> Optional[int]:
+        """Select the nearest drone icon in the map or the corresponding sidebar row."""
+        x, y = int(x), int(y)
+        x0, y0, x1, y1 = MAP
+        if x0 <= x <= x1 and y0 <= y <= y1:
+            radius = max(15, max(7, int(round(0.38 * self.scale))) + 8)
+            candidates = []
+            for k in range(self.n):
+                candidates.append((float(np.linalg.norm(np.asarray(self.px(self.P[k])) - [x, y])), k))
+                if self.vertical:
+                    candidates.append((float(np.linalg.norm(np.asarray(self.pz(self.P[k])) - [x, y])), k))
+            distance, k = min(candidates)
+            if distance <= radius:
+                self.select_drone(k)
+                return k
+        row_x0, row_x1 = PANEL_X + 8, W - 24
+        row_y0 = 360
+        row_h = min(26, int(122 / max(1, self.n)))
+        if row_x0 <= x <= row_x1 and row_y0 <= y < row_y0 + row_h * self.n:
+            k = (y - row_y0) // row_h
+            if k < self.n:
+                self.select_drone(k)
+                return k
+        return None
 
     # ------------------------------------------------------------------ geometry
     def uv(self, p) -> np.ndarray:
@@ -351,34 +384,17 @@ class FleetView:
 
     def _cards_cv(self, img):
         self._card(img, *MAP)
-        self._card(img, PANEL_X, 84, W - 24, 330)
-        self._card(img, PANEL_X, 342, W - 24, 512)
-        self._card(img, PANEL_X, 524, W - 24, 690)
+        self._card(img, PANEL_X, 64, W - 24, 310)
+        self._card(img, PANEL_X, 322, W - 24, 492)
+        self._card(img, PANEL_X, 504, W - 24, 670)
         self._card(img, *TL)
         self._card(img, *AUT)
 
     def _header_txt(self, dr):
         dr.text((24, 14), self.sc.title, font=F["title"], fill=INK)
-        sub = self.sc.focus or self.sc.description
-        lines, line = [], ""
-        for word in sub.split(" "):                     # up to two lines left of the status chip
-            if dr.textlength((line + " " + word).strip(), font=F["sub"]) > W - 24 - 470 and line:
-                lines.append(line)
-                line = word
-            else:
-                line = (line + " " + word).strip()
-        lines.append(line)
-        if len(lines) > 2:
-            lines = [lines[0], lines[1].rstrip(".,;") + " ..."]
-        for i, ln in enumerate(lines):
-            dr.text((24, 46 + 17 * i), ln, font=F["sub"], fill=INK2)
         tt = f"t = {self.t:5.1f} s / {self.duration:.0f} s"
         w = dr.textlength(tt, font=F["h"])
         dr.text((W - 24 - w, 16), tt, font=F["h"], fill=INK)
-        chip = "no communication  ·  onboard sensors + shared mission plan"
-        w2 = dr.textlength(chip, font=F["s"]) + 18
-        dr.rounded_rectangle((W - 24 - w2, 44, W - 24, 66), radius=11, fill=_rgb("#e7efe9"), outline=_rgb("#bcd3c3"))
-        dr.text((W - 24 - w2 + 9, 47), chip, font=F["s"], fill=_rgb("#2c6b45"))
 
     # ---------------------------------------------------------------- map
     def _map_cv(self, img):
@@ -570,8 +586,8 @@ class FleetView:
         missing, vacant = self.beliefs()
         modes = [rr.get("mode", "") for rr in recs]
         # ---- fleet card
-        dr.text((x, 96), "Fleet status", font=F["h"], fill=INK)
-        y = 124
+        dr.text((x, 76), "Fleet status", font=F["h"], fill=INK)
+        y = 104
         sep = cfg_sep = self.cfg.sep
         warn = [dname(self.names[k]) for k, m in enumerate(modes) if m in ("SEPARATION_WARNING", "COLLISION_AVOIDANCE")]
         p1_ok = r.get("p1_ok", True)
@@ -632,10 +648,13 @@ class FleetView:
         dr.text((x, y + 4), f"{self.n} drones  ·  {len(active)} active  ·  {len(missing)} missing  ·  "
                             f"{len(vacant)} assumed failed", font=F["bb"], fill=INK)
         # ---- drones card
-        dr.text((x, 354), "Drones", font=F["h"], fill=INK)
-        y = 380
+        dr.text((x, 334), "Drones", font=F["h"], fill=INK)
+        y = 360
         rowh = min(26, int(122 / max(1, self.n)))
         for k in range(self.n):
+            if k == self.sel:
+                dr.rounded_rectangle((x - 8, y - 3, W - 32, y + 21), radius=7,
+                                     fill=_rgb("#edf4f6"), outline=_rgb("#6e9aaa"), width=1)
             st = short(modes[k]) or "-"
             col = STATE_COLOR.get(st, MUTED)
             dr.ellipse((x, y + 4, x + 12, y + 16), fill=col)
@@ -650,8 +669,8 @@ class FleetView:
                 dr.text((x + 330, y + 1), f"nearest {dmin:.1f} m", font=F["b"], fill=WARN_C)
             y += rowh
         # ---- events card
-        dr.text((x, 536), "Events", font=F["h"], fill=INK)
-        y = 562
+        dr.text((x, 516), "Events", font=F["h"], fill=INK)
+        y = 542
         for te, txt in list(self.events)[-6:][::-1]:
             dr.text((x, y), f"{te:5.1f} s", font=F["sb"], fill=MUTED)
             dr.text((x + 52, y), txt[:68] + ("..." if len(txt) > 68 else ""), font=F["s"], fill=INK2)
@@ -715,8 +734,8 @@ class FleetView:
         rec = self.recs[k] if k < len(self.recs) else {}
         cur = short(rec.get("mode", "")) or "-"
         tr = rec.get("transition") or {}
-        dr.text((x0 + 14, y0 + 8), "Automaton", font=F["h"], fill=INK)
-        dr.text((x0 + 104, y0 + 10), f"{dname(self.names[k])} (selected)  ·  onboard state, last transition, cause",
+        dr.text((x0 + 14, y0 + 8), f"Automaton · {dname(self.names[k])}", font=F["h"], fill=INK)
+        dr.text((x0 + 210, y0 + 10), "onboard state, last transition, cause",
                 font=F["s"], fill=MUTED)
         # the ten states on the priority layout; current filled, previous outlined, arrow previous -> current
         cw, ch, gx, gy = 70, 18, 76, 25

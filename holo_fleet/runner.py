@@ -49,7 +49,15 @@ def run(name: str, out_root: Path, headless: bool = True, run_id: Optional[str] 
     (out / "run_status.json").write_text(json.dumps(status), encoding="utf-8")
     sim = HoloFleetSim(sc.sim, cfg, headless=headless)
     wall0 = time.time()
-    sim.start()
+    try:
+        sim.start()
+    except BaseException:
+        try:
+            if ui is not None and hasattr(ui, "close"):
+                ui.close()
+        finally:
+            sim.close()
+        raise
     ctrls = {p.drone_id: DroneController(p, cfg) for p in sc.plans}
     tmpl = sc.template.offsets() if sc.template is not None else None
     ref = Referee(sim.names, tmpl, sc.path, sc.judged_gates, cfg, sc.formation_enabled,
@@ -128,14 +136,20 @@ def run(name: str, out_root: Path, headless: bool = True, run_id: Optional[str] 
     except KeyboardInterrupt:
         status = {"status": "INCOMPLETE", "reason": "interrupted by the user", "t": sim.t}
     finally:
-        ev_f.write(json.dumps({"t": sim.t, "type": "run_finished", **status}) + "\n")
-        ev_f.close()
-        for f in st_f.values():
-            f.close()
-        perf = {**sim.perf(), "controller_ms_mean_all_drones": round(float(np.mean(ctrl_ms)), 2) if ctrl_ms else None,
-                "controller_hz": round(1.0 / DT, 1), "sonar_hz": cfg.perc.sonar.hz,
-                "wall_s": round(time.time() - wall0, 1), "sim_s": round(sim.t, 2)}
-        sim.close()
+        try:
+            ev_f.write(json.dumps({"t": sim.t, "type": "run_finished", **status}) + "\n")
+            ev_f.close()
+            for f in st_f.values():
+                f.close()
+            perf = {**sim.perf(), "controller_ms_mean_all_drones": round(float(np.mean(ctrl_ms)), 2) if ctrl_ms else None,
+                    "controller_hz": round(1.0 / DT, 1), "sonar_hz": cfg.perc.sonar.hz,
+                    "wall_s": round(time.time() - wall0, 1), "sim_s": round(sim.t, 2)}
+        finally:
+            try:
+                if ui is not None and hasattr(ui, "close"):
+                    ui.close()
+            finally:
+                sim.close()
     if rows:
         keys = sorted({k for r in rows for k in r})
         with open(out / "referee_timeseries.csv", "w", newline="", encoding="utf-8") as f:
