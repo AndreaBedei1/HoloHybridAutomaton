@@ -1,8 +1,10 @@
 """Run one scenario in HoloOcean (v2): controllers (onboard only) + referee (ground truth only).
 
 Writes results/<run_id>/: run_config.json, events.jsonl, drone_<k>_state.jsonl,
-referee_timeseries.csv, referee_metrics.json, summary.csv, perf.json and (optionally) camera /
-fleet-view frames for GIFs.  A run that does not reach its end writes ``status: INCOMPLETE``.
+referee_timeseries.csv, referee_metrics.json, sensor_audit.json, summary.csv, perf.json and (optionally)
+camera / fleet-view frames for GIFs.  A run that does not reach its end writes ``status: INCOMPLETE``.
+``noise`` (sim.sensor_noise.NoiseProfile) degrades the onboard sensors, ``seed`` overrides the scenario seed
+(every seeded simulator-side effect); ``cfg.beacon`` enables the optional one-way presence beacon.
 """
 
 from __future__ import annotations
@@ -19,6 +21,7 @@ import numpy as np
 from holo_fleet.config import DEFAULT, FleetConfig
 from holo_fleet.control.controller import DroneController
 from holo_fleet.referee.referee import Referee
+from holo_fleet.referee.sensor_audit import SensorAudit
 from holo_fleet.sim.holo_env import HoloFleetSim
 from holo_fleet.sim.scenarios import SCENARIOS, Scenario
 
@@ -37,13 +40,18 @@ def _jsonable(x):
 
 def run(name: str, out_root: Path, headless: bool = True, run_id: Optional[str] = None,
         duration: Optional[float] = None, ui: Optional[Callable] = None, frame_every_s: float = 0.5,
-        cfg: FleetConfig = DEFAULT) -> Dict:
+        cfg: FleetConfig = DEFAULT, noise=None, seed: Optional[int] = None) -> Dict:
     sc: Scenario = SCENARIOS[name](cfg)
     if sc.cfg_patch:
         cfg = dataclasses.replace(cfg, **sc.cfg_patch)
+    if seed is not None:
+        sc.sim.seed = int(seed)
+    sc.sim.noise = noise
     run_id = run_id or name
     out = Path(out_root) / run_id
-    (out / "frames").mkdir(parents=True, exist_ok=True)
+    out.mkdir(parents=True, exist_ok=True)
+    if frame_every_s != float("inf"):
+        (out / "frames").mkdir(parents=True, exist_ok=True)
     T = float(duration or sc.duration_s)
     status = {"status": "INCOMPLETE", "reason": "started"}
     (out / "run_status.json").write_text(json.dumps(status), encoding="utf-8")
@@ -59,6 +67,12 @@ def run(name: str, out_root: Path, headless: bool = True, run_id: Optional[str] 
             sim.close()
         raise
     ctrls = {p.drone_id: DroneController(p, cfg) for p in sc.plans}
+    if cfg.beacon.enabled:            # pre-mission knowledge: the static beacon identity of every slot's drone
+        ids = {sim.names.index(p.drone_id): p.slot_index for p in sc.plans}
+        for c in ctrls.values():
+            c.perception.presence.set_identities(ids)
+    audit = SensorAudit(sim.names, cfg, DT)
+    truth_prev = None
     tmpl = sc.template.offsets() if sc.template is not None else None
     ref = Referee(sim.names, tmpl, sc.path, sc.judged_gates, cfg, sc.formation_enabled,
                   clock=sc.plans[0].clock if sc.formation_enabled else None)
@@ -67,6 +81,8 @@ def run(name: str, out_root: Path, headless: bool = True, run_id: Optional[str] 
                 "gates": [g.gate_id for g in sc.judged_gates], "current": sc.sim.current.describe(),
                 "intruders": list(getattr(sc.sim, "intruders", ())), "cfg_patch": sc.cfg_patch,
                 "faults": list(getattr(sc.sim, "faults", ())),
+                "seed": sc.sim.seed, "noise": None if noise is None else noise.as_dict(),
+                "heading_bias_deg": [round(float(b), 2) for b in getattr(sim, "heading_bias", ())],
                 "disturbance_windows": sc.disturbance_windows, "stress": sc.sim.stress.__dict__,
                 "setup": sim.setup_report, "comms_enabled": cfg.comms_enabled, "fleet_config": cfg.to_dict(),
                 "plans": [{"drone": p.drone_id, "slot": p.slot_index, "queue_lateral": p.queue_lateral,
@@ -103,8 +119,11 @@ def run(name: str, out_root: Path, headless: bool = True, run_id: Optional[str] 
             for nm, c in ctrls.items():
                 cmds[nm] = c.step(frames[nm], DT)
             ctrl_ms.append(1000.0 * (time.perf_counter() - c0))
+            if truth_prev is not None:               # referee side: frames vs the truth at the frame time
+                audit.update(truth_prev, frames, ctrls)
             sim.step(cmds, DT)
             truth = sim.truth()
+            truth_prev = truth
             modes = [ctrls[nm].ha.mode.value for nm in sim.names]
             row = ref.update(truth, modes, sc.disturbance_active(sim.t))
             for nm, c in ctrls.items():
@@ -171,7 +190,11 @@ def run(name: str, out_root: Path, headless: bool = True, run_id: Optional[str] 
                       "comms_enabled": cfg.comms_enabled, "inter_agent_messages": 0,
                       "ground_truth_used_by_controllers": any(c.uses_ground_truth for c in ctrls.values()),
                       "static_rank_uses": rank_uses, "occupancy_timeouts": occ_timeouts,
-                      "self_declared_envelope_violations": env_violations, "perf": perf}
+                      "self_declared_envelope_violations": env_violations, "perf": perf,
+                      "seed": sc.sim.seed, "noise_profile": None if noise is None else noise.name,
+                      "noise_wrapper_stats": dict(getattr(sim, "noise_stats", {})),
+                      "beacon": None if getattr(sim, "beacon", None) is None else sim.beacon.summary()}
+    metrics["sensor_audit"] = audit.summary()
     metrics["envelope"] = envelope_block(out, metrics["envelope"], cfg)
     (out / "referee_metrics.json").write_text(json.dumps(metrics, indent=1, default=_jsonable), encoding="utf-8")
     (out / "perf.json").write_text(json.dumps(perf, indent=1), encoding="utf-8")

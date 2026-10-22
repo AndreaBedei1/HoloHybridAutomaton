@@ -30,3 +30,6 @@ figures/v2/gifs/
 
 # user's own presentation material (not part of the code base)
 ppt/
+
+# sensor-robustness / beacon campaign: raw per-run data stays local (summaries are versioned)
+results/robustness/raw/
