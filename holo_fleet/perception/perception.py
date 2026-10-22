@@ -33,6 +33,7 @@ from holo_fleet.perception.formation_perception import NEIGHBOUR_MEMORY_S, Forma
 CONFIRM_N = 3              # associations ...
 CONFIRM_WINDOW_S = 1.0     # ... within this window confirm that a missing neighbour is back,
 CONFIRM_GATE = 0.5         # ... each within this fraction of the range gate (near its slot)
+from holo_fleet.perception.beacon_presence import PresenceTracker
 from holo_fleet.perception.frame import SensorFrame
 from holo_fleet.perception.gate_perception import GateObs, GatePerception
 from holo_fleet.perception.nav import DeadReckoning
@@ -116,6 +117,7 @@ class Perception:
         self.missing_t: Dict[int, float] = {}          # slot -> missing time (own slot held, clock moving)
         self.vacant: Dict[int, float] = {}             # slot -> time it was declared vacant (latch)
         self.events: List[Dict] = []                   # vacancy / re-inclusion events (drained by the controller)
+        self.presence = PresenceTracker(cfg)           # optional one-way presence beacon (variant B1, OFF by default)
 
     # ------------------------------------------------------------------ formation reference
     def slot_reference(self, t_form: float, sigma: float = 0.0):
@@ -178,6 +180,7 @@ class Perception:
         d = frame.data
         env = self.cfg.env
         nav = self.nav.update(t, dt, d.get("Compass"), d.get("DVLSensor"), d.get("DepthSensor"), d.get("IMUSensor"))
+        self.presence.update(frame)
         self.att.update(d.get("IMUSensor"))
         roll, pitch = (self.att.roll, self.att.pitch) if self.use_attitude else (0.0, 0.0)
         R_wb = rot_world_body(roll, pitch, nav.yaw)

@@ -271,6 +271,30 @@ class RefereeConfig:
 
 
 @dataclass(frozen=True)
+class BeaconConfig:
+    """Optional one-way presence beacon (variant B1; OFF in the communication-free baseline).
+
+    Every drone emits a ping every ``period_s`` (+- ``jitter_s`` uniform, so that pingers do not stay in step)
+    carrying nothing but its static, pre-assigned identity (a pinger signature).  No handshake, no reply, no
+    payload: a reception only means "drone k is currently detectable".  Transport: HoloOcean's
+    AcousticBeaconSensor (engine range limit and line-of-sight check) driven by sim/beacon.py, plus the
+    propagation delay d / sound_speed and a reception dropout (noise profile).  ``ttl_s``: a neighbour heard
+    within this is "recently heard" (2.5 periods: two consecutive pings may be lost)."""
+
+    mode: str = "NONE"               # NONE | ACOUSTIC_PRESENCE
+    period_s: float = 1.0
+    jitter_s: float = 0.1
+    max_range_m: float = 50.0
+    check_visible: bool = True
+    sound_speed: float = 1500.0
+    ttl_s: float = 2.5
+
+    @property
+    def enabled(self) -> bool:
+        return self.mode != "NONE"
+
+
+@dataclass(frozen=True)
 class FleetConfig:
     sep: SeparationThresholds = field(default_factory=SeparationThresholds)
     env: Envelope = field(default_factory=Envelope)
@@ -279,6 +303,7 @@ class FleetConfig:
     perc: PerceptionConfig = field(default_factory=PerceptionConfig)
     plant: PlantCalibration = field(default_factory=PlantCalibration)
     ref: RefereeConfig = field(default_factory=RefereeConfig)
+    beacon: BeaconConfig = field(default_factory=BeaconConfig)   # optional one-way presence beacon (OFF)
     comms_enabled: bool = False       # inter-agent communication is OFF by default
     traffic_rule: bool = True         # head-on give-way rule (liveness aid); off only to exercise the safety layer alone
 

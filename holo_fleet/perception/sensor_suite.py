@@ -14,6 +14,7 @@ Conventions measured on HoloOcean 2.3.0 / BlueROV2 (DISCOVERY.md, docs/v2/SONAR_
 
 from __future__ import annotations
 
+import math
 from dataclasses import dataclass
 from typing import Dict, List
 
@@ -23,7 +24,9 @@ from holo_fleet.perception.sonar_geometry import MOUNTS, ROTATIONS, SECTORS, son
 SONAR_NAMES = tuple(sonar_sensor_name(s) for s in SECTORS)
 # Keys a controller is allowed to receive.  Everything else (PoseSensor, VelocitySensor,
 # CollisionSensor, visualisation cameras, ...) is stripped by the simulator wrapper.
-ONBOARD_NAMES = ("DepthSensor", "IMUSensor", "DVLSensor", "Compass") + SONAR_NAMES
+# "BeaconRx": receptions of the optional one-way presence beacon (static identities only, sim/beacon.py); absent
+# unless the beacon variant is enabled.
+ONBOARD_NAMES = ("DepthSensor", "IMUSensor", "DVLSensor", "Compass") + SONAR_NAMES + ("BeaconRx",)
 PRIVILEGED_NAMES = ("PoseSensor", "VelocitySensor", "CollisionSensor", "ChaseCamera", "SideCamera", "TopCamera")
 
 
@@ -43,28 +46,55 @@ class SensorDoc:
     role: str
 
 
-def sonar_sensor_configs(cfg: FleetConfig = DEFAULT, view_region: bool = False) -> List[Dict]:
+# noise parameters of the deployed (CLEAN) suite; sim.sensor_noise.CLEAN must equal them (tests)
+DEPLOYED_NOISE = {"imu_accel_sigma": 0.01, "imu_gyro_sigma": 0.005, "imu_accel_bias_sigma": 0.0,
+                  "imu_gyro_bias_sigma": 0.0, "mag_sigma": 0.005, "depth_sigma": 0.02, "dvl_vel_sigma": 0.01,
+                  "dvl_range_sigma": 0.02}
+
+
+def sonar_sensor_configs(cfg: FleetConfig = DEFAULT, view_region: bool = False, noise=None) -> List[Dict]:
+    """``noise`` (sim.sensor_noise.NoiseProfile, None = deployed values) sets only the HoloOcean noise parameters;
+    the onboard processing keeps its own model (threshold, bins) whatever the profile."""
     m = cfg.perc.sonar
     out = []
     for s in SECTORS:
+        conf = m.holoocean_configuration(view_region)
+        if noise is not None:
+            conf.update({"AddSigma": noise.sonar_add_sigma, "MultSigma": noise.sonar_mult_sigma,
+                         "RangeSigma": noise.sonar_range_sigma})
         out.append({"sensor_type": "SinglebeamSonar", "sensor_name": sonar_sensor_name(s), "socket": "",
                     "location": [float(v) for v in MOUNTS[s]], "rotation": list(ROTATIONS[s]), "Hz": int(m.hz),
-                    "configuration": m.holoocean_configuration(view_region)})
+                    "configuration": conf})
     return out
 
 
-def onboard_sensor_configs(cfg: FleetConfig = DEFAULT, view_region: bool = False) -> List[Dict]:
+def onboard_sensor_configs(cfg: FleetConfig = DEFAULT, view_region: bool = False, noise=None,
+                           heading_bias_deg: float = 0.0) -> List[Dict]:
+    """HoloOcean sensor list of one drone.  ``noise`` = sim.sensor_noise.NoiseProfile (None: the deployed values,
+    identical to CLEAN); ``heading_bias_deg`` rotates the magnetometer's reference vector (constant compass bias)."""
+    def v(field: str):
+        return DEPLOYED_NOISE[field] if noise is None else getattr(noise, field)
+
+    imu = {"AccelSigma": v("imu_accel_sigma"), "AngVelSigma": v("imu_gyro_sigma"), "ReturnBias": False}
+    if v("imu_accel_bias_sigma"):
+        imu["AccelBiasSigma"] = v("imu_accel_bias_sigma")
+    if v("imu_gyro_bias_sigma"):
+        imu["AngVelBiasSigma"] = v("imu_gyro_bias_sigma")
+    mag = {"Sigma": v("mag_sigma")}
+    if heading_bias_deg:
+        b = math.radians(heading_bias_deg)
+        mag["MagneticVector"] = [math.cos(b), math.sin(b), 0.0]
     return [
         {"sensor_type": "DepthSensor", "sensor_name": "DepthSensor", "socket": "DepthSocket", "Hz": 30,
-         "configuration": {"Sigma": 0.02}},
+         "configuration": {"Sigma": v("depth_sigma")}},
         {"sensor_type": "IMUSensor", "sensor_name": "IMUSensor", "socket": "IMUSocket", "Hz": 30,
-         "configuration": {"AccelSigma": 0.01, "AngVelSigma": 0.005, "ReturnBias": False}},
+         "configuration": imu},
         {"sensor_type": "DVLSensor", "sensor_name": "DVLSensor", "socket": "DVLSocket", "Hz": 10,
-         "configuration": {"Elevation": 22.5, "VelSigma": 0.01, "ReturnRange": True, "MaxRange": 50,
-                           "RangeSigma": 0.02}},
+         "configuration": {"Elevation": 22.5, "VelSigma": v("dvl_vel_sigma"), "ReturnRange": True, "MaxRange": 50,
+                           "RangeSigma": v("dvl_range_sigma")}},
         {"sensor_type": "MagnetometerSensor", "sensor_name": "Compass", "socket": "IMUSocket", "Hz": 30,
-         "configuration": {"Sigma": 0.005}},
-    ] + sonar_sensor_configs(cfg, view_region)
+         "configuration": mag},
+    ] + sonar_sensor_configs(cfg, view_region, noise)
 
 
 def sensor_documentation(cfg: FleetConfig = DEFAULT) -> List[SensorDoc]:

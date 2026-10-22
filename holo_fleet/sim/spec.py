@@ -41,6 +41,9 @@ class SimSpec:
     # injected faults (simulator side, never visible to a controller): each dict has drone, type
     # ("THRUSTER_FAILURE": the 8 thruster commands of that drone are zeroed), t_on and t_off (None: permanent)
     faults: Tuple[Dict[str, Any], ...] = ()
+    # sensor degradation (sim.sensor_noise.NoiseProfile): HoloOcean noise parameters + seeded wrapper effects on
+    # the onboard streams; None = the deployed sensors (the baseline)
+    noise: Optional[Any] = None
 
     def fault_active(self, name: str, t: float) -> bool:
         return any(f["drone"] == name and f["t_on"] <= t and (f.get("t_off") is None or t < f["t_off"])
