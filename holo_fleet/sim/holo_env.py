@@ -172,6 +172,7 @@ class HoloFleetSim:
         self.watchdog = EngineWatchdog(self.env).start()
         self.setup_report["engine_start_s"] = round(time.time() - t0, 1)
         self._spawn_static_scene()
+        self.setup_report["engine"] = self._engine_identity()
         self._plan_blackouts()
         self.t = 0.0
 
@@ -206,6 +207,22 @@ class HoloFleetSim:
             for n in self.names + self.intruder_names:
                 self.env.act(n, np.zeros(8))
             self._tick(record=False)
+
+    def _engine_identity(self) -> Dict[str, Any]:
+        """Which engine this simulation talks to: HoloOcean's client and engine share memory and named semaphores
+        scoped by a per-instance UUID (no network port), so instances of other projects cannot collide with it.  The
+        engine's only listening socket is Unreal's TraceLog control port (1985, or a free high port when 1985 is
+        taken); it is recorded, not used."""
+        proc = getattr(self.env, "_world_process", None)
+        pid = getattr(proc, "pid", None)
+        ports = []
+        try:
+            import psutil
+
+            ports = sorted(c.laddr.port for c in psutil.Process(pid).net_connections(kind="inet") if c.status == "LISTEN")
+        except Exception:  # noqa: BLE001 - informative only
+            pass
+        return {"ipc_uuid": getattr(self.env, "_uuid", None), "pid": pid, "listen_ports": ports}
 
     @staticmethod
     def _kill_own_engines() -> None:
