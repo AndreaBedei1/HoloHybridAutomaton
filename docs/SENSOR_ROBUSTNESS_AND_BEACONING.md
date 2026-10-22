@@ -43,19 +43,24 @@ existing stress stream.
 ### Probes before the levels
 
 `probe/probe_sensor_noise.py` (ten pinned BlueROV2 probes, targets at 3 m and 6 m) and
-`probe/probe_beacon_api.py` measure what the HoloOcean parameters actually do.  A first pass ran on the
-**unpatched** engine (the patched root was already missing), so its numbers are provisional and must be
-re-measured; qualitatively:
+`probe/probe_beacon_api.py` measure what the HoloOcean parameters actually do.  Measured on the patched engine
+(restored 2026-10-22 from the same build, SHA-256 a5e9aa1f...fa028; results in `results/robustness/probe/`); a
+first pass on the unpatched engine gave the same picture:
 
-* `AddSigma` is the Rayleigh scale of the open-water intensity (fitted 0.050 / 0.070 / 0.080 / 0.090 / 0.110
-  for the configured values); with the 0.30 threshold the fraction of captures with a false segment grows
-  steeply (about 0 at 0.05, 0.3-2 % at 0.07, 2-8 % at 0.08, 10-32 % at 0.09, 60-89 % at 0.11);
+* `AddSigma` is the Rayleigh scale of the open-water intensity (fitted 0.0496 / 0.0698 / 0.0804 / 0.0895 / 0.110
+  for 0.05 / 0.07 / 0.08 / 0.09 / 0.11); with the 0.30 threshold the fraction of captures with a false segment
+  (front / rear sonar) grows steeply: 0 / 0 at 0.05, 0.3 / 0.5 % at 0.07, 2.8 / 7.2 % at 0.08, 14 / 35 % at 0.09,
+  59 / 91 % at 0.11 (the rear sonar sees a longer open-water span before its target);
 * `RangeSigma` (exponential per octree leaf, up to 0.40) and `MultSigma` (up to 0.60) move the leading edge of
-  a hull echo by at most one or two 5 cm bins: the first bin is the minimum over many leaves.  HoloOcean alone
-  cannot stress `eps_range_far`, hence the wrapper range jitter;
-* target peaks are 0.9-1.2 at 3 and 6 m (no range attenuation), so a fade gain of 0.2 removes a return;
-* DVL `VelSigma` sigma gives a body-axis std of about 1.9 sigma (x, y) and 0.55 sigma (z); IMU and depth sigmas
-  map one to one; magnetometer `Sigma` sigma gives a heading std of about 57 sigma degrees.
+  a hull echo by at most one or two 5 cm bins (p95 0.044 m, max 0.094 m): the first bin is the minimum over many
+  leaves.  HoloOcean alone cannot stress `eps_range_far`, hence the wrapper range jitter;
+* target peaks are 0.9-1.3 at 3 and 6 m (no range attenuation), so a fade gain of 0.2 removes a return;
+* DVL `VelSigma` sigma gives a body-axis std of about 1.85 sigma (x, y) and 0.54 sigma (z); IMU and depth sigmas
+  map one to one; magnetometer `Sigma` sigma gives a heading std of about 58 sigma degrees.
+* The beacon probe confirms the facts of section 3 (range limit, line of sight blocked by a hull, result in the
+  tick of the ping or the next, azimuth only with OWAYU).
+
+The probe does not contradict the anchors, so the levels below are unchanged.
 
 ### Profiles (simulation stress levels, not real sensor accuracy)
 
