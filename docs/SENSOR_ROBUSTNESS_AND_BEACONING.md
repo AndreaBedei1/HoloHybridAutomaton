@@ -1,10 +1,9 @@
 # Sensor robustness and one-way presence beaconing
 
-Status (2026-10-22): **methodology and infrastructure only; the campaign has not been run.**  The patched
-HoloOcean engine root (`F:\Andrea\holoocean_patched_root`, docs/HOLOOCEAN_OCTREE_PATCH.md) disappeared from
-the machine during this session, and the campaign refuses to run on an unpatched engine (its octree differs
-from the baseline: runtime props may be invisible to the sonars).  No robustness or beacon result is reported
-here.  See "Next steps".
+Status (2026-10-23): the pre-freeze baseline campaign is complete (isolation, CLEAN/LOW/MEDIUM/HIGH; every
+invalid run repeated), its failure cases are diagnosed (no real bug, so no protocol fix), the B1 rule is fixed
+(rule R1, section 3) and the implementation is frozen; the official campaign (B0 and B1 on one frozen commit)
+is in progress.  Results will be in `results/robustness/SUMMARY.md` and `results/beaconing/SUMMARY.md`.
 
 Terminology.  BASELINE: decentralized, communication-free coordination driven by shared mission constraints
 and local sensing.  ENHANCED (variant B1): the same protocol augmented with periodic one-way presence beacons:
@@ -100,12 +99,21 @@ recovery times, formation error, false missing, missing detection delay, false r
 DEGRADED, re-inclusions, WAIT_REJOIN time), automaton (determinism and observation violations, transitions
 per minute, chattering A-B-A within 1 s, FAILSAFE entries by cause and time).
 
-Classes: INVALID (simulator / infrastructure), SAFETY_FAILURE (P1 or P2 violated or a contact),
-LIVENESS_FAILURE (safe, a required outcome missing without a conservative declaration), SAFE_DEGRADED (safe,
-a slot falsely declared vacant, or a required outcome missing while healthy drones entered FAILSAFE on a
-sensor fault), PASS (every outcome of the scenario's committed CLEAN reference run holds again: P3 recovered
-or P3-deg, every healthy drone through the gate, end within 3 m of the reference end positions, no healthy
-drone in FAILSAFE at the end).  The 16 committed reference runs classify PASS against themselves.
+Classes: INVALID (simulator / infrastructure: excluded from every scientific denominator and run again),
+SAFETY_FAILURE (P1 or P2 violated, a contact with a drone, the gate or the non-cooperative vehicle, or that
+vehicle closer than d_safe), LIVENESS_FAILURE (safe, a required outcome missing without a conservative
+declaration), SAFE_DEGRADED (safe, a slot falsely declared vacant, or a required outcome missing while healthy
+drones entered FAILSAFE on a sensor fault), PASS (every outcome of the scenario's committed CLEAN reference run
+holds again: P3 recovered or P3-deg, every healthy drone through the gate, end within 3 m of the reference end
+positions, no healthy drone in FAILSAFE at the end).  The 16 committed reference runs classify PASS against
+themselves.  P1 in the tables is the property among the drones; the clearance from the non-cooperative vehicle
+of `p1_vertical_escape` is reported apart (a contact with it is still a safety failure).
+
+Every run that is not PASS gets a category: A real bug, B assumption exceeded, C conservative false positive,
+D liveness issue (e.g. the finite horizon of a run), E simulation artifact.  The categories come from rules on the
+run's evidence (`diagnose` in `scripts/analyze_sensor_robustness.py`: FAILSAFE entries on sensor faults and the
+longest sonar gap, navigation error, false dynamic associations, the isolated factor); a case the rules do not
+explain is marked "?" and analysed by hand (`results/robustness/diagnoses.json` overrides the rules).
 
 Ground truth stays referee-only: the audit reads the controllers' perception output and never writes to it.
 
@@ -132,13 +140,32 @@ beacons, S4, B8): an optical presence beacon is kept as literature and design on
 
 Onboard (`holo_fleet/perception/beacon_presence.py`): receptions update "last heard" per slot (identity ->
 slot is pre-mission knowledge, like the template); a slot heard within `ttl_s` = 2.5 s has evidence of
-presence.  Rules: evidence of presence may only delay a declaration of absence or make a decision more
+presence.  General rules: evidence of presence may only delay a declaration of absence or make a decision more
 conservative; absence of receptions means nothing; the beacon never sets `occ_busy = False`, never sets
-`has_prio = True`, never clears a collision risk.  The way the evidence enters the missing-neighbour logic is
-deliberately **not fixed yet**: it is to be chosen from the failure modes the baseline campaign shows (a
-presence ping cannot tell a drone near its slot from a disabled drone still within acoustic range, so a naive
-"heard => not missing" rule would block the lost-drone timeout).  With the beacon disabled (default) the
-receptions are ignored and the automaton, guards and abstraction are unchanged.
+`has_prio = True`, never clears a collision risk.  With the beacon disabled (default, B0) the receptions are
+ignored and the automaton, guards and abstraction are unchanged.
+
+**Rule R1, the only onboard use** (`holo_fleet/perception/perception.py`, `track_missing`), chosen after the
+baseline campaign: a neighbour whose ping was received within `ttl_s` is declared MISSING after
+`NEIGHBOUR_MEMORY_S + missing_grace_s` = 1.0 + 2.0 s without a sonar match, instead of 1.0 s.
+
+* Why: in the baseline most false MISSING declarations follow short sonar gaps (dropouts, fades, a hull or a
+  bar shadowing the neighbour for one to three seconds) of a drone that is still in its slot.  A recent ping says
+  that the neighbour is alive and within acoustic range: evidence, not proof, that a short gap is not a
+  departure.
+* What it cannot do: R1 defers a declaration by at most `missing_grace_s`; it never clears a MISSING state
+  (only a sonar confirmation near the slot does), never touches the vacancy timer of a neighbour already missing,
+  and has no input into `d_min`, `sense_ok`, `occ_busy`, `has_prio` or `passed`.  So it cannot authorize a
+  passage, free a critical region, declare a safe separation or override a safety mode.  Tests:
+  `tests/test_beacon_presence.py` (deferral bounded by the grace, silence means nothing, expiry after the TTL,
+  no clearing, identical safety and gate inputs with every neighbour heard or none, and a structural check that
+  no safety, gate or classifier module reads the beacon).
+* Bounded cost: a lost drone that keeps pinging within range is declared missing at most 2 s later, and its slot
+  vacant at most 2 s later (`t_rejoin` 30 s).  The referee measures it ("stale presence": a deferral while the
+  neighbour was really away from its slot, beyond `e_lost`).
+* Rejected: R2, holding the vacancy timer while a neighbour is heard (a ping cannot tell a drone near its slot
+  from a disabled drone still within acoustic range, so R2 would block the lost-drone timeout for as long as the
+  disabled drone pings); any use in occupancy, priority or separation (presence is not position).
 
 Dev smoke (unpatched engine, numbers not results): in a six-drone line, 64 % of pings were received, 12 %
 lost to the collision rule and 24 % to blocked line of sight (drones in line shadow each other), latency

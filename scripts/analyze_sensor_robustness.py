@@ -1,17 +1,23 @@
 """Analysis of the sensor-robustness campaign and of the beacon ablation (raw runs -> versioned summaries).
 
-    python scripts/analyze_sensor_robustness.py [--raw results/robustness/raw]
+    python scripts/analyze_sensor_robustness.py [--raw results/robustness/raw_final] [--pre results/robustness/raw]
 
-Reads every results/robustness/raw/<protocol>/<profile>/<scenario>/s<seed>/run_metrics.json written by
-scripts/run_sensor_robustness_campaign.py and writes:
+Reads every <raw>/<protocol>/<profile>/<scenario>/s<seed>/run_metrics.json written by
+scripts/run_sensor_robustness_campaign.py.  ``--raw``: the official campaign (one frozen commit, checked in the
+Provenance section); ``--pre``: the pre-freeze campaign, used only for the isolation diagnosis (one factor at a
+time) and for a run-to-run agreement check of the baseline.  Writes:
 
-* results/robustness/  summary.csv (one row per run), sensor_metrics.csv, noise_profiles.json,
+* results/robustness/  summary.csv (one row per official run), sensor_metrics.csv, isolation_summary.csv (pre-freeze
+                       isolation runs), noise_profiles.json,
                        failure_cases.json (every run that is not PASS, with its evidence and timeline),
-                       SUMMARY.md, figures/*.png;
-* results/beaconing/   comparison.csv, beacon_metrics.csv, SUMMARY.md, figures/*.png (when B1 runs exist).
+                       SUMMARY.md; figures in figures/robustness/;
+* results/beaconing/   comparison.csv, beacon_metrics.csv, SUMMARY.md; figures in figures/beaconing/ (when B1 runs
+                       exist).  (results/**/figures/ is git-ignored: the versioned figures live under figures/.)
 
-Hand-written diagnoses of failure cases (category A-E, cause, responsible sensor) are read from
-results/robustness/diagnoses.json and merged into failure_cases.json.  Proportions carry a Wilson 95 %
+Every run that is not PASS gets a diagnosis (category A real bug, B assumption exceeded, C conservative false
+positive, D liveness issue, E simulation artifact; INFRA for an invalid run) from the rules of ``diagnose`` applied
+to its evidence; a case the rules do not explain is marked "?" for manual analysis.  Hand-written diagnoses in
+results/robustness/diagnoses.json (key: run id, "pre:" + run id for the pre-freeze runs) override the rules.  Proportions carry a Wilson 95 %
 interval; B0 / B1 differences are paired by (profile, scenario, seed) with a seeded bootstrap 95 % interval and
 a Wilcoxon signed-rank test.  Three seeds per configuration: small samples, read the intervals.
 """
@@ -39,10 +45,15 @@ import matplotlib.pyplot as plt  # noqa: E402
 
 from make_figures_v2 import INK, SERIES, STATUS, style  # noqa: E402
 
-RAW = ROOT / "results" / "robustness" / "raw"
+RAW = ROOT / "results" / "robustness" / "raw_final"
+RAW_PRE = ROOT / "results" / "robustness" / "raw"
 OUT = ROOT / "results" / "robustness"
 BOUT = ROOT / "results" / "beaconing"
+FIG = ROOT / "figures" / "robustness"
+BFIG = ROOT / "figures" / "beaconing"
 LEVELS = ("CLEAN", "LOW", "MEDIUM", "HIGH")
+# position of each level with respect to the sensing assumptions of the verified design (docs, "Profiles")
+ASSUMPTIONS = {"CLEAN": "INSIDE", "LOW": "INSIDE", "MEDIUM": "NEAR", "HIGH": "OUTSIDE"}
 CLASSES = ("PASS", "SAFE_DEGRADED", "LIVENESS_FAILURE", "SAFETY_FAILURE", "INVALID")
 LETTER = {"PASS": "P", "SAFE_DEGRADED": "D", "LIVENESS_FAILURE": "L", "SAFETY_FAILURE": "S", "INVALID": "I"}
 CLASS_COLOR = {"PASS": STATUS["good"], "SAFE_DEGRADED": STATUS["warning"], "LIVENESS_FAILURE": STATUS["serious"],
@@ -94,6 +105,11 @@ def load(raw: Path):
         m = json.loads(p.read_text(encoding="utf-8"))
         m["_dir"] = p.parent
         m["_id"] = f"{m['protocol']}/{m['profile']}/{m['scenario']}/s{m['seed']}"
+        try:
+            sep = json.loads((p.parent / "referee_metrics.json").read_text(encoding="utf-8"))["P1_separation"]
+            m["_drone_contacts"] = int(sep.get("physical_contacts") or 0)
+        except (OSError, ValueError, KeyError):
+            m["_drone_contacts"] = None
         runs.append(m)
     return runs
 
@@ -105,7 +121,11 @@ def flat(m) -> dict:
         "run": m["_id"], "phase": phase(m), "protocol": m["protocol"], "profile": m["profile"],
         "scenario": m["scenario"], "family": family(m["scenario"]), "seed": m["seed"], "class": m["class"],
         "failed_requirements": " ".join(m.get("failed_requirements") or []),
-        "p1_ok": bool(g(m, "P1", "holds")) and g(m, "P1", "collisions", default=0) == 0,
+        # P1 is the property among the drones (no drone closer than d_safe, no drone-drone contact); contacts with
+        # the gate or a non-cooperative vehicle and that vehicle closer than d_safe are safety failures as well
+        "p1_ok": bool(g(m, "P1", "holds")) and not m.get("_drone_contacts"),
+        "vehicle_clear": None if g(m, "P1", "intruder_min_m") is None else
+        bool(g(m, "P1", "intruder_min_m") >= 1.0 and not g(m, "P1", "collisions")),
         "min_sep_m": g(m, "P1", "min_true_separation_m"), "intruder_min_m": g(m, "P1", "intruder_min_m"),
         "collisions": g(m, "P1", "collisions"), "warning_entries": g(m, "P1", "warning_entries"),
         "ca_entries": g(m, "P1", "ca_entries"), "time_warning_s": g(m, "P1", "time_warning_s"),
@@ -134,6 +154,12 @@ def flat(m) -> dict:
         "failsafe_sensor_healthy": g(m, "automaton", "failsafe_entries_sensor_fault_healthy"),
         "failsafe_time_healthy_s": g(m, "automaton", "failsafe_time_healthy_s"),
         "end_err_max_m": max(m.get("end_position_error_m") or [math.nan]),
+        "r1_held_episodes": g(m, "P3", "beacon_r1", "held_episodes"),
+        "r1_held_then_missing": g(m, "P3", "beacon_r1", "held_then_missing"),
+        "r1_stale_presence_episodes": g(m, "P3", "beacon_r1", "stale_presence_episodes"),
+        "r1_stale_presence_s": g(m, "P3", "beacon_r1", "stale_presence_s"),
+        "r1_held_s": g(m, "P3", "beacon_r1", "held_s"), "r1_heard_fraction": g(m, "P3", "beacon_r1", "heard_fraction"),
+        "code_sha": g(m, "code_version", "sha"), "code_dirty": bool(g(m, "code_version", "dirty_files")),
         "wall_s": m.get("wall_s"), "exit_code": m.get("exit_code"),
     }
 
@@ -204,6 +230,70 @@ def evidence(m) -> dict:
     return ev
 
 
+GATE_SCENARIOS = ("gate_single", "integrated_short", "mutex_deadlock_resolution", "line_parallel_mutex", "lost_drone_mutex")
+
+
+def diagnose(m) -> dict:
+    """Rule-based category and cause of a non-PASS run (see the module docstring)."""
+    prof, sc, cls = m["profile"], m["scenario"], m["class"]
+    level = "HIGH" if prof.startswith("ISO_") else prof
+    where = ASSUMPTIONS.get(level, "OUTSIDE")
+    nav = g(m, "sensor", "navigation", "pos_err_max_m")
+    stale = g(m, "sensor", "sonar", "longest_stale_s")
+    fs_n = g(m, "automaton", "failsafe_entries_sensor_fault_healthy", default=0)
+    fs_t = g(m, "automaton", "failsafe_time_healthy_s", default=0)
+    fails = set(m.get("failed_requirements") or [])
+    out = {"assumptions": where, "source": "rule"}
+    if cls == "INVALID":
+        return {**out, "category": "INFRA", "cause": f"infrastructure ({m.get('invalid_reason')}): excluded, retried"}
+    if cls == "SAFETY_FAILURE":
+        if g(m, "P1", "intruder_min_m") is not None and g(m, "P1", "holds") and not m.get("_drone_contacts"):
+            return {**out, "category": "B", "cause":
+                    f"the non-cooperative vehicle came within {g(m, 'P1', 'intruder_min_m')} m of a drone: sonar data older "
+                    f"than tau_max (longest gap {stale} s) kept healthy drones in sensor-fault FAILSAFE for {fs_t} s and the "
+                    "noisy ranging changed the escape direction between captures; P1 among the drones holds"}
+        return {**out, "category": "?", "cause": "safety failure among the drones or with the gate: manual analysis"}
+    if cls == "SAFE_DEGRADED":
+        cat = "B" if where == "OUTSIDE" else "C"
+        if g(m, "P3", "false_vacancy"):
+            return {**out, "category": cat, "cause":
+                    f"false vacancy: with a navigation error up to {nav} m a returning or present neighbour was not "
+                    "confirmed near its slot before t_rejoin, then re-included"}
+        return {**out, "category": cat, "cause":
+                f"{fs_n} sensor-fault FAILSAFE entries of healthy drones ({fs_t} s): sonar data older than tau_max "
+                f"(longest gap {stale} s); missing outcome: {', '.join(sorted(fails)) or '-'}"}
+    if cls == "LIVENESS_FAILURE":
+        factor = prof[4:] if prof.startswith("ISO_") else None
+        fdyn = g(m, "sensor", "sonar", "false_dynamic_frac") or 0.0
+        if sc == "p1_vertical_escape":
+            return {**out, "category": "D", "cause":
+                    "finite horizon: formation recovery after the vertical escape not completed within the run "
+                    "(also in CLEAN); safe"}
+        if factor == "imu_bias":
+            return {**out, "category": "B", "cause":
+                    "gyro bias far beyond a calibrated IMU (random walk to several deg/s): the heading hold damps with "
+                    "the raw gyro rate, so it holds the heading off by (k_r / k_psi) x bias, beyond the 6 deg heading "
+                    "tolerance of the queue point; the drone waits at its queue point without ever counting as there "
+                    "(safe, no PASS)"}
+        if factor == "latency":
+            return {**out, "category": "B", "cause":
+                    f"sonar latency 0.12 s: echoes ranged from a pose 0.12 s old (range error beyond eps_far in "
+                    f"{100 * (g(m, 'sensor', 'sonar', 'frac_beyond_eps_far') or 0):.0f} % of the samples), false busy "
+                    f"critical region {g(m, 'P2', 'false_busy_s')} s: slower gate passage, formation still recovering "
+                    "at the end of the run (safe)"}
+        if fdyn > 0.2:
+            return {**out, "category": "B", "cause":
+                    f"spurious echoes: {100 * fdyn:.0f} % of the dynamic associations are false (intensity noise beyond "
+                    f"the detection threshold), {g(m, 'P1', 'ca_entries')} COLLISION_AVOIDANCE entries and a false busy "
+                    f"critical region ({g(m, 'P2', 'false_busy_s')} s); the fleet stays safe but does not complete"}
+        if sc in GATE_SCENARIOS and nav is not None and nav > 0.30:
+            return {**out, "category": "B", "cause":
+                    f"navigation error up to {nav} m beyond the gate-map tolerance (0.30 m): bar echoes are not "
+                    "explained by the map and stay obstacles, the avoidance keeps the drone off the gate (safe livelock)"}
+        return {**out, "category": "?", "cause": f"liveness failure ({', '.join(sorted(fails))}): manual analysis"}
+    return {**out, "category": "?", "cause": "manual analysis"}
+
+
 # ------------------------------------------------------------------------------------------------ tables
 def class_counts(rows):
     c = Counter(r["class"] for r in rows)
@@ -218,8 +308,10 @@ def frac(k, n):
 
 
 def table_overview(rows, protocols=("B0",)):
-    lines = ["| noise | protocol | runs | P1 pass | P2 pass | P3 pass | PASS | safe degraded | liveness failures | "
-             "safety failures | invalid |", "|" + "---|" * 11]
+    """Profile | Valid runs | P1 / P2 / P3 pass | classes.  INVALID runs (infrastructure) are excluded from every
+    denominator and counted in the last column only."""
+    lines = ["| Profile | Assumptions | Protocol | Valid runs | P1 pass (drones) | P2 pass | P3 pass | PASS | Safe degraded | "
+             "Liveness failures | Safety failures | Invalid (excluded) |", "|" + "---|" * 12]
     for prof in LEVELS:
         for pr in protocols:
             sel = [r for r in rows if r["profile"] == prof and r["protocol"] == pr and r["class"] != "INVALID"]
@@ -229,10 +321,74 @@ def table_overview(rows, protocols=("B0",)):
             gate = [r for r in sel if r["gate"]]
             p3 = [r for r in sel if r["p3_required"]]
             cc = class_counts(allr)
-            lines.append(f"| {prof} | {pr} | {len(allr)} | {frac(sum(r['p1_ok'] for r in sel), len(sel))} | "
+            lines.append(f"| {prof} | {ASSUMPTIONS.get(prof, '-')} | {pr} | {len(sel)} | {frac(sum(r['p1_ok'] for r in sel), len(sel))} | "
                          f"{frac(sum(r['p2_ok'] for r in gate), len(gate))} | {frac(sum(r['p3_ok'] for r in p3), len(p3))} | "
                          f"{cc[0]} | {cc[1]} | {cc[2]} | {cc[3]} | {cc[4]} |")
     return "\n".join(lines)
+
+
+FIRST_FAILURE = (
+    ("P1: drones never closer than d_safe, no drone-drone contact", lambda r: True, lambda r: r["p1_ok"]),
+    ("clearance from the non-cooperative vehicle (>= d_safe, no contact)", lambda r: r["vehicle_clear"] is not None,
+     lambda r: r["vehicle_clear"]),
+    ("P2: at most one drone in a critical region", lambda r: r["gate"], lambda r: r["p2_ok"]),
+    ("P3: formation requirement of the scenario (recovered / degraded holds)", lambda r: r["p3_required"],
+     lambda r: r["p3_ok"]),
+    ("gate completed by every drone (liveness)", lambda r: r["gate"], lambda r: "gate_completed" not in r["failed_requirements"]),
+    ("mission progress within 3 m of the reference end (liveness)", lambda r: True,
+     lambda r: "progress" not in r["failed_requirements"]),
+    ("no healthy drone in FAILSAFE at the end", lambda r: True, lambda r: "no_failsafe_at_end" not in r["failed_requirements"]),
+    ("no false vacancy (no false DEGRADED_FORMATION)", lambda r: True, lambda r: not r["false_vacancy"]),
+    ("run classified PASS", lambda r: True, lambda r: r["class"] == "PASS"),
+)
+
+
+def table_first_failure(rows):
+    """First noise level at which each property fails in at least one valid run, and where that level stands with
+    respect to the assumptions."""
+    lines = ["| property | first failing level | assumptions at that level | failing / valid runs there | scenarios |",
+             "|---|---|---|---|---|"]
+    for label, applies, ok in FIRST_FAILURE:
+        first = None
+        for prof in LEVELS:
+            sel = [r for r in rows if r["profile"] == prof and r["class"] != "INVALID" and applies(r)]
+            bad = [r for r in sel if not ok(r)]
+            if bad:
+                first = (prof, len(bad), len(sel), sorted({r["scenario"] for r in bad}))
+                break
+        if first is None:
+            lines.append(f"| {label} | none (holds at every level) | - | - | - |")
+        else:
+            prof, nb, ns, scs = first
+            lines.append(f"| {label} | {prof} | {ASSUMPTIONS.get(prof, '-')} | {nb}/{ns} | "
+                         + ", ".join(f"`{x}`" for x in scs[:6]) + (" ..." if len(scs) > 6 else "") + " |")
+    return "\n".join(lines)
+
+
+def table_provenance(runs, label):
+    by = Counter((g(m, "code_version", "sha") or "?", bool(g(m, "code_version", "dirty_files"))) for m in runs)
+    lines = [f"| {label}: commit | working tree | runs |", "|---|---|---|"]
+    for (sha, dirty), n in sorted(by.items(), key=lambda kv: -kv[1]):
+        lines.append(f"| `{sha[:12]}` | {'dirty' if dirty else 'clean'} | {n} |")
+    return "\n".join(lines)
+
+
+def table_agreement(rows, pre_rows):
+    """Run-to-run agreement of the baseline: the same (profile, scenario, seed) in the pre-freeze campaign and in
+    the official one (HoloOcean is not bit-reproducible, so an identical class is not guaranteed)."""
+    pre = {(r["profile"], r["scenario"], r["seed"]): r for r in pre_rows if r["protocol"] == "B0" and r["phase"] != "isolation"}
+    pairs = [(pre[k], r) for r in rows if r["protocol"] == "B0" for k in [(r["profile"], r["scenario"], r["seed"])]
+             if k in pre and pre[k]["class"] != "INVALID" and r["class"] != "INVALID"]
+    if not pairs:
+        return "(no common runs)", []
+    diff = [(a, b) for a, b in pairs if a["class"] != b["class"]]
+    lines = ["| profile | common runs | same class | different class |", "|---|---|---|---|"]
+    for prof in LEVELS:
+        sel = [(a, b) for a, b in pairs if b["profile"] == prof]
+        if sel:
+            nd = sum(a["class"] != b["class"] for a, b in sel)
+            lines.append(f"| {prof} | {len(sel)} | {len(sel) - nd} | {nd} |")
+    return "\n".join(lines), diff
 
 
 def table_matrix(rows, scenarios, profiles, protocol="B0"):
@@ -387,6 +543,7 @@ def save(fig, path: Path):
 
 # ------------------------------------------------------------------------------------------------ beacon A/B
 AB_METRICS = (("false_missing_episodes", "false missing episodes per run", -1),
+              ("missing_episodes", "missing declarations per run (true and false)", -1),
               ("false_vacancy", "false vacancies (false DEGRADED) per run", -1),
               ("degraded_entries", "DEGRADED_FORMATION entries per run", -1),
               ("wait_rejoin_s_mean", "time in WAIT_REJOIN per drone [s]", -1),
@@ -396,6 +553,7 @@ AB_METRICS = (("false_missing_episodes", "false missing episodes per run", -1),
               ("completion_time_s", "gate completion time [s]", -1),
               ("failsafe_entries", "FAILSAFE entries per run", -1),
               ("chattering", "chattering events per run", -1),
+              ("ca_entries", "COLLISION_AVOIDANCE entries per run", -1),
               ("min_sep_m", "min true separation [m]", +1))
 
 
@@ -472,7 +630,10 @@ def beacon_section(rows, runs):
                       **{k: v for k, v in b.items() if not isinstance(v, (list, dict))}})
     write_csv(BOUT / "beacon_metrics.csv", brows)
     scen = sorted({r["scenario"] for r in b1})
-    lines = ["# One-way presence beaconing: B0 (communication-free) vs B1 (one-way presence beacon)", "",
+    lines = ["# One-way acoustic presence beaconing: B0 communication-free vs B1 beacon-assisted", "",
+             "B0: decentralized, communication-free coordination driven by shared mission constraints and local "
+             "sensing.  B1: the same architecture augmented with periodic one-way acoustic presence beacons (static "
+             "identity only; one onboard use, rule R1).", "",
              "Generated by `scripts/analyze_sensor_robustness.py` from the raw runs; same scenarios, noise profiles and "
              "seeds for both protocols (pairs keyed by profile, scenario and seed).  Differences B1 - B0 with a seeded "
              "bootstrap 95 % interval and a Wilcoxon signed-rank p-value; \"better\" or \"worse\" only when the interval "
@@ -480,50 +641,104 @@ def beacon_section(rows, runs):
              table_overview([r for r in rows if r["scenario"] in scen and r["profile"] in profiles], ("B0", "B1")), "",
              "Paired PASS outcomes (both / only B0 / only B1 / neither): " +
              "; ".join(f"{p}: {v[0]} / {v[1]} / {v[2]} / {v[3]}" for p, v in sorted(pass_pairs.items())), "",
-             "## Paired metrics", "", "| profiles | metric | pairs | B0 mean | B1 mean | B1 - B0 [95 % CI] | Wilcoxon p | verdict |",
-             "|---|---|---|---|---|---|---|---|"]
+             "## Paired metrics (all noise levels)", "",
+             "| Metric | B0 communication-free | B1 beacon-assisted | Difference B1 - B0 [95 % CI] | pairs | Wilcoxon p | verdict |",
+             "|---|---|---|---|---|---|---|"]
     for c in comp:
-        lines.append(f"| {c['profiles']} | {c['label']} | {c['n_pairs']} | {c['mean_B0']} | {c['mean_B1']} | "
-                     f"{c['mean_diff']:+g} [{c['ci95_lo']:+g}, {c['ci95_hi']:+g}] | {c['wilcoxon_p'] if c['wilcoxon_p'] is not None else '-'} | "
-                     f"{c['verdict']} |")
+        if c["profiles"] != "all":
+            continue
+        lines.append(f"| {c['label']} | {c['mean_B0']} | {c['mean_B1']} | {c['mean_diff']:+g} [{c['ci95_lo']:+g}, {c['ci95_hi']:+g}] | "
+                     f"{c['n_pairs']} | {c['wilcoxon_p'] if c['wilcoxon_p'] is not None else '-'} | {c['verdict']} |")
+    lines += ["", "## Paired metrics by noise level", "",
+              "| profile | Metric | B0 communication-free | B1 beacon-assisted | Difference B1 - B0 [95 % CI] | pairs | Wilcoxon p | verdict |",
+              "|---|---|---|---|---|---|---|---|"]
+    for c in comp:
+        if c["profiles"] == "all":
+            continue
+        lines.append(f"| {c['profiles']} | {c['label']} | {c['mean_B0']} | {c['mean_B1']} | "
+                     f"{c['mean_diff']:+g} [{c['ci95_lo']:+g}, {c['ci95_hi']:+g}] | {c['n_pairs']} | "
+                     f"{c['wilcoxon_p'] if c['wilcoxon_p'] is not None else '-'} | {c['verdict']} |")
     if brows:
-        keys = [k for k in ("transmissions", "receptions", "reception_rate", "lost_collision", "lost_channel",
-                            "lost_dropout", "latency_mean_s", "latency_p95_s") if k in brows[0]]
+        keys = [k for k in ("transmissions", "expected_receptions", "receptions", "reception_rate", "lost_collision",
+                            "lost_channel", "lost_dropout", "latency_mean_ms", "latency_max_ms", "longest_absence_s")
+                if k in brows[0]]
         lines += ["", "## Beacon channel (per run, mean by profile)", "", "| profile | " + " | ".join(keys) + " |",
                   "|---|" + "---|" * len(keys)]
         for p in profiles:
             sel = [r for r in brows if r["profile"] == p]
             lines.append(f"| {p} | " + " | ".join(f"{nanmean([r.get(k) for r in sel]):.4g}" if nanmean([r.get(k) for r in sel]) is not None else "-"
                                                   for k in keys) + " |")
+    r1keys = ("r1_held_episodes", "r1_held_then_missing", "r1_stale_presence_episodes", "r1_stale_presence_s",
+              "r1_held_s", "r1_heard_fraction")
+    lines += ["", "## Rule R1 onboard (per run, mean by profile)", "",
+              "Episodes in which presence deferred a MISSING declaration; *then missing*: the deferral ended in the "
+              "declaration (delayed by at most missing_grace_s), the others ended with the sonar finding the neighbour "
+              "again; *stale presence*: deferred while the neighbour was really away from its slot (beyond e_lost).", "",
+              "| profile | " + " | ".join(k[3:].replace("_", " ") for k in r1keys) + " |", "|---|" + "---|" * len(r1keys)]
+    for p in profiles:
+        sel = [r for r in b1 if r["profile"] == p and r["class"] != "INVALID"]
+        vals = [nanmean([r.get(k) for r in sel]) for k in r1keys]
+        lines.append(f"| {p} | " + " | ".join("-" if v is None else f"{v:.3g}" for v in vals) + " |")
     lines += ["", "## Class matrix (seeds 0, 1, 2; P pass, D safe degraded, L liveness failure, S safety failure, I invalid)", ""]
     for pr in ("B0", "B1"):
         lines += [f"**{pr}**", "", table_matrix(rows, scen, profiles, pr), ""]
-    lines += ["## Figures", "", "![classes](figures/classes_b0_b1.png)", "", "![false missing](figures/false_missing_b0_b1.png)", "",
-              "![recovery](figures/recovery_b0_b1.png)", "", "![gate wait](figures/gate_wait_b0_b1.png)", ""]
+    lines += ["## Figures", ""] + [f"![{lab}](../../figures/beaconing/{fn})\n" for fn, lab in (
+        ("classes_b0_b1.png", "classes"), ("false_missing_b0_b1.png", "false missing"), ("recovery_b0_b1.png", "recovery"),
+        ("gate_wait_b0_b1.png", "gate wait"))]
     (BOUT / "SUMMARY.md").write_text("\n".join(lines), encoding="utf-8")
     ab = [r for r in rows if r["scenario"] in scen and r["profile"] in profiles]
-    fig_classes(ab, BOUT / "figures" / "classes_b0_b1.png", ("B0", "B1"), "Run classes, B0 vs B1")
+    fig_classes(ab, BFIG / "classes_b0_b1.png", ("B0", "B1"), "Run classes, B0 vs B1")
     fig_metric(ab, "false_missing_episodes", "false missing episodes per run", "False missing, B0 vs B1",
-               BOUT / "figures" / "false_missing_b0_b1.png", protocols=("B0", "B1"))
+               BFIG / "false_missing_b0_b1.png", protocols=("B0", "B1"))
     fig_metric(ab, "recovery_mean_s", "P3 recovery time [s]", "Recovery time, B0 vs B1",
-               BOUT / "figures" / "recovery_b0_b1.png", protocols=("B0", "B1"))
+               BFIG / "recovery_b0_b1.png", protocols=("B0", "B1"))
     fig_metric(ab, "queue_wait_mean_s", "queue wait per drone [s]", "Gate queue wait, B0 vs B1",
-               BOUT / "figures" / "gate_wait_b0_b1.png", protocols=("B0", "B1"), only=lambda r: r["gate"])
+               BFIG / "gate_wait_b0_b1.png", protocols=("B0", "B1"), only=lambda r: r["gate"])
     print("  ", (BOUT / "SUMMARY.md").relative_to(ROOT))
+
+
+def fig_properties(rows, path: Path):
+    """P1 / P2 / P3 pass rates and the PASS rate per noise level (B0, Wilson 95 % intervals)."""
+    spec = [("P1 (drones)", lambda r: True, lambda r: r["p1_ok"]), ("P2", lambda r: r["gate"], lambda r: r["p2_ok"]),
+            ("P3", lambda r: r["p3_required"], lambda r: r["p3_ok"]), ("PASS", lambda r: True, lambda r: r["class"] == "PASS")]
+    fig, ax = plt.subplots(figsize=(5.6, 3.4))
+    x = np.arange(len(LEVELS))
+    for i, (lab, applies, ok) in enumerate(spec):
+        ks, lo, hi = [], [], []
+        for p in LEVELS:
+            sel = [r for r in rows if r["protocol"] == "B0" and r["profile"] == p and r["class"] != "INVALID" and applies(r)]
+            k = sum(bool(ok(r)) for r in sel)
+            ks.append(k / len(sel) if sel else np.nan)
+            a, b = wilson(k, len(sel))
+            lo.append(a)
+            hi.append(b)
+        ks, lo, hi = np.array(ks), np.array(lo), np.array(hi)
+        ax.errorbar(x + (i - 1.5) * 0.08, ks, yerr=[ks - lo, hi - ks], marker="o", ms=5, capsize=2, color=SERIES[i], label=lab)
+    ax.set_xticks(x)
+    ax.set_xticklabels([f"{p}\n{ASSUMPTIONS[p].lower()}" for p in LEVELS])
+    ax.set_ylim(-0.05, 1.05)
+    ax.set_ylabel("pass rate (Wilson 95 %)")
+    ax.set_title("Properties vs noise level (B0)")
+    ax.legend(fontsize=8, loc="lower left")
+    save(fig, path)
 
 
 # ------------------------------------------------------------------------------------------------ main
 def main() -> int:
     ap = argparse.ArgumentParser()
-    ap.add_argument("--raw", default=str(RAW))
+    ap.add_argument("--raw", default=str(RAW), help="official campaign (one frozen commit)")
+    ap.add_argument("--pre", default=str(RAW_PRE), help="pre-freeze campaign: isolation diagnosis, agreement check")
     a = ap.parse_args()
     style()
     runs = load(Path(a.raw))
     if not runs:
         print("no runs")
         return 1
+    pre_runs = load(Path(a.pre)) if Path(a.pre).resolve() != Path(a.raw).resolve() else []
     rows = [flat(m) for m in runs]
     srows = [sensor_row(m) for m in runs]
+    pre_rows = [flat(m) for m in pre_runs]
+    pre_srows = [sensor_row(m) for m in pre_runs]
     write_csv(OUT / "summary.csv", rows)
     write_csv(OUT / "sensor_metrics.csv", srows)
 
@@ -531,56 +746,95 @@ def main() -> int:
 
     (OUT / "noise_profiles.json").write_text(json.dumps(
         {"note": "simulation stress levels, not real sensor accuracy (docs/SENSOR_ROBUSTNESS_AND_BEACONING.md)",
+         "assumptions": ASSUMPTIONS,
          "profiles": {k: p.as_dict() for k, p in PROFILES.items()},
          "isolation_factors": {f: {"fields": list(v), "profile": isolated(f).as_dict()} for f, v in FACTORS.items()}},
         indent=1), encoding="utf-8")
     diag_path = OUT / "diagnoses.json"
     diag = json.loads(diag_path.read_text(encoding="utf-8")) if diag_path.exists() else {}
-    fails = [{"run": m["_id"], "phase": phase(m), "class": m["class"], "failed_requirements": m.get("failed_requirements"),
-              "invalid_reason": m.get("invalid_reason"), "diagnosis": diag.get(m["_id"]), "evidence": evidence(m),
-              "timeline": timeline(m["_dir"])} for m in runs if m["class"] != "PASS"]
+
+    def case(m, source):
+        return {"run": m["_id"], "source": source, "phase": phase(m), "class": m["class"],
+                "failed_requirements": m.get("failed_requirements"), "invalid_reason": m.get("invalid_reason"),
+                "diagnosis": diag.get(m["_id"] if source == "official" else "pre:" + m["_id"]) or diagnose(m),
+                "evidence": evidence(m), "timeline": timeline(m["_dir"])}
+
+    fails = [case(m, "official") for m in runs if m["class"] != "PASS"]
+    fails += [case(m, "pre-freeze isolation") for m in pre_runs if phase(m) == "isolation" and m["class"] != "PASS"]
     (OUT / "failure_cases.json").write_text(json.dumps(fails, indent=1, default=str), encoding="utf-8")
 
     base = [r for r in rows if r["protocol"] == "B0"]
     sbase = [r for r in srows if r["protocol"] == "B0"]
-    scen = list(dict.fromkeys(r["scenario"] for r in sorted(base, key=lambda r: r["scenario"])))
     from run_sensor_robustness_campaign import ALL_SCENARIOS
 
-    scen = [s for s in ALL_SCENARIOS if s in scen]
+    scen = [s for s in ALL_SCENARIOS if any(r["scenario"] == s for r in base)]
     profs = [p for p in LEVELS if any(r["profile"] == p for r in base)]
     n_inv = sum(r["class"] == "INVALID" for r in rows)
+    iso_rows = [r for r in pre_rows if r["phase"] == "isolation" or (r["profile"] == "CLEAN" and r["protocol"] == "B0")]
+    write_csv(OUT / "isolation_summary.csv", [r for r in iso_rows if r["phase"] == "isolation"])
+    agree, diffs = table_agreement(rows, pre_rows)
+    veh = [r for r in base if r["vehicle_clear"] is not None]
     lines = ["# Sensor robustness of the communication-free baseline (B0)", "",
              "Generated by `scripts/analyze_sensor_robustness.py` from the raw runs of "
-             "`scripts/run_sensor_robustness_campaign.py` (patched HoloOcean engine, headless, seeds 0, 1, 2).  Noise "
-             "levels are simulation stress levels, not real sensor accuracy ([noise_profiles.json](noise_profiles.json), "
-             "[method](../../docs/SENSOR_ROBUSTNESS_AND_BEACONING.md)).", "",
-             f"Runs: {len(rows)} ({len(base)} B0, {len(rows) - len(base)} B1), {n_inv} invalid.  Classes: PASS, safe degraded "
-             "(no safety violation, conservative degradation), liveness failure (safe, a required outcome missing), safety "
-             "failure (P1 or P2 violated or a contact), invalid (infrastructure).", "",
-             "## Overview (B0)", "", table_overview(base), "",
-             "## Class matrix (B0; seeds 0, 1, 2; P pass, D safe degraded, L liveness failure, S safety failure, I invalid)",
-             "", table_matrix(base, scen, profs), "", "## Isolation of the phenomena (one factor at its HIGH level)", "",
-             table_isolation(rows, srows), "", "## Sensor and behaviour metrics by noise level (B0)", "",
-             table_metrics(base, sbase, profs), "", "## Failure cases", ""]
+             "`scripts/run_sensor_robustness_campaign.py` (patched HoloOcean engine, headless, seeds 0, 1, 2).  B0: "
+             "decentralized, communication-free coordination driven by shared mission constraints and local sensing.  "
+             "Noise levels are simulation stress levels, not real sensor accuracy ([noise_profiles.json](noise_profiles.json), "
+             "[method](../../docs/SENSOR_ROBUSTNESS_AND_BEACONING.md)).  Empirical robustness, not formal verification: "
+             "the formal results hold under their assumptions and are not re-proved here.", "",
+             f"Runs: {len(rows)} ({len(base)} B0, {len(rows) - len(base)} B1), {n_inv} invalid (infrastructure, excluded "
+             "from every denominator).  Classes: PASS; safe degraded (no safety violation, a conservative reaction to the "
+             "sensors: false vacancy, or an outcome missing while healthy drones entered FAILSAFE on a sensor fault); "
+             "liveness failure (safe, a required outcome missing); safety failure (P1 or P2 violated, a contact, or the "
+             "non-cooperative vehicle closer than d_safe); invalid.", "",
+             "## Provenance", "", table_provenance(runs, "official runs"), ""]
+    if pre_runs:
+        lines += [table_provenance(pre_runs, "pre-freeze runs (diagnostics only)"), ""]
+    lines += ["## Overview (B0)", "", table_overview(base), "",
+              "Assumptions: INSIDE = every anchor respected (sonar staleness <= tau_max 0.25 s, range errors within eps, "
+              "navigation error within the structure tolerance); NEAR = short excursions beyond them (sonar blackouts "
+              "and latency push the staleness to 0.30 s); OUTSIDE = exceeded on purpose.  P1 is the property among the "
+              "drones; the clearance from the non-cooperative vehicle of `p1_vertical_escape` is reported apart: "
+              + ("; ".join(f"{p} {sum(bool(r['vehicle_clear']) for r in veh if r['profile'] == p and r['class'] != 'INVALID')}/"
+                           f"{sum(1 for r in veh if r['profile'] == p and r['class'] != 'INVALID')}" for p in profs)) + " runs clear.", "",
+              "## First failure level per property (B0)", "", table_first_failure(base), "",
+              "## Class matrix (B0; seeds 0, 1, 2; P pass, D safe degraded, L liveness failure, S safety failure, I invalid)",
+              "", table_matrix(base, scen, profs), "", "## Isolation of the phenomena (one factor at its HIGH level, pre-freeze runs)", "",
+              table_isolation(iso_rows, pre_srows), "", "## Sensor and behaviour metrics by noise level (B0)", "",
+              table_metrics(base, sbase, profs), "",
+              "## Run-to-run agreement (pre-freeze vs official baseline runs, same profile, scenario and seed)", "",
+              "HoloOcean is not bit-reproducible (sensor noise of the engine), so a configuration can take a different "
+              "branch from one run to the next; the B0 code path did not change between the two campaigns.", "", agree, ""]
+    if diffs:
+        lines += ["Different classes: " + "; ".join(f"`{b['run']}` {a['class'].lower()} -> {b['class'].lower()}"
+                                                     for a, b in diffs[:30]) + (" ..." if len(diffs) > 30 else ""), ""]
+    lines += ["## Failure cases", ""]
     if fails:
-        lines += ["| run | class | failed requirements | diagnosis |", "|---|---|---|---|"]
+        cats = Counter((f["source"], (f["diagnosis"] or {}).get("category", "?")) for f in fails)
+        lines += ["Categories: A real bug, B assumption exceeded, C conservative false positive, D liveness issue, "
+                  "E simulation artifact, INFRA invalid run.  " + "; ".join(f"{src} {cat}: {n}" for (src, cat), n in sorted(cats.items())),
+                  "", "| run | source | class | failed requirements | category | assumptions | cause | diagnosed by |",
+                  "|---|---|---|---|---|---|---|---|"]
         for f in fails:
             dg = f["diagnosis"] or {}
-            lines.append(f"| `{f['run']}` | {f['class']} | {' '.join(f['failed_requirements'] or []) or f['invalid_reason'] or '-'} | "
-                         f"{(dg.get('category', '') + ' ' + dg.get('cause', '')).strip() or 'not yet diagnosed'} |")
+            lines.append(f"| `{f['run']}` | {f['source']} | {f['class']} | "
+                         f"{' '.join(f['failed_requirements'] or []) or f['invalid_reason'] or '-'} | {dg.get('category', '?')} | "
+                         f"{dg.get('assumptions', '-')} | {dg.get('cause', '-')} | {dg.get('source', 'manual')} |")
     else:
         lines.append("None.")
     lines += ["", "Evidence and automaton timelines of every case: [failure_cases.json](failure_cases.json); per-run "
               "metrics: [summary.csv](summary.csv), [sensor_metrics.csv](sensor_metrics.csv).", "", "## Figures", ""]
-    figs = [("success_rate_vs_noise.png", "success rate vs noise"), ("classes_vs_noise.png", "failure-mode distribution"),
+    figs = [("properties_vs_noise.png", "P1, P2, P3 vs noise"), ("classes_vs_noise.png", "failure-mode distribution"),
+            ("success_rate_vs_noise.png", "success rate by family vs noise"),
             ("min_separation_vs_noise.png", "minimum separation vs noise"), ("recovery_time_vs_noise.png", "recovery time vs noise"),
-            ("gate_vs_noise.png", "gate completion time vs noise"), ("false_missing_vs_noise.png", "false missing vs noise")]
-    lines += [f"![{lab}](figures/{fn})" for fn, lab in figs]
+            ("gate_vs_noise.png", "gate completion time vs noise"), ("false_missing_vs_noise.png", "false missing vs noise"),
+            ("false_vacancy_vs_noise.png", "false vacancy vs noise")]
+    lines += [f"![{lab}](../../figures/robustness/{fn})\n" for fn, lab in figs]
     (OUT / "SUMMARY.md").write_text("\n".join(lines) + "\n", encoding="utf-8")
     print("  ", (OUT / "SUMMARY.md").relative_to(ROOT))
 
     main_rows = [r for r in base if r["phase"] in ("main", "high")]
-    F = OUT / "figures"
+    F = FIG
+    fig_properties(main_rows, F / "properties_vs_noise.png")
     fig_success_by_family(main_rows, F / "success_rate_vs_noise.png")
     fig_classes(main_rows, F / "classes_vs_noise.png")
     fig_metric(main_rows, "min_sep_m", "min true separation [m]", "Minimum separation vs noise (B0)",
@@ -590,6 +844,8 @@ def main() -> int:
                F / "gate_vs_noise.png", only=lambda r: r["gate"])
     fig_metric(main_rows, "false_missing_episodes", "false missing episodes per run", "False missing vs noise (B0)",
                F / "false_missing_vs_noise.png")
+    fig_metric(main_rows, "false_vacancy", "false vacancies per run", "False vacancy vs noise (B0)",
+               F / "false_vacancy_vs_noise.png")
     beacon_section(rows, runs)
     return 0
 

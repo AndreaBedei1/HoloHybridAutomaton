@@ -2,6 +2,7 @@
 
     python scripts/run_sensor_robustness_campaign.py --phase isolation|main|high|beacon [--dry-run]
     python scripts/run_sensor_robustness_campaign.py --phase main --only gate_single --seeds 0
+    python scripts/run_sensor_robustness_campaign.py --phase isolation --only p1_vertical_escape --seeds 0
 
 Every run executes in its own Python process (holo_fleet.runner.run, no frames, no GIF) and writes a run
 directory under the raw root (default results/robustness/raw/, git-ignored):
@@ -12,7 +13,8 @@ run_metrics.json exists is skipped, so an interrupted campaign resumes where it 
 the Holodeck.exe processes started by that run (and only those) are checked and, if still alive, terminated.
 
 Phases (same seeds 0, 1, 2 everywhere; protocol B0 = communication-free baseline, B1 = one-way presence beacon):
-* isolation: CLEAN + one phenomenon at its HIGH level (sim/sensor_noise.FACTORS) on ISOLATION_SCENARIOS;
+* isolation: CLEAN + one phenomenon at its HIGH level (sim/sensor_noise.FACTORS) on ISOLATION_SCENARIOS
+             (or on the --only scenarios: diagnosis of a failure found in another scenario);
 * main:      the 16 scenarios x CLEAN, LOW, MEDIUM;
 * high:      HIGH on HIGH_SCENARIOS (all 16 with --all-high);
 * beacon:    B1 on BEACON_SCENARIOS x LOW, MEDIUM, HIGH (B0 comes from main/high).
@@ -57,7 +59,7 @@ def plan(phase: str, seeds, only=None, all_high=False):
     runs = []
     if phase == "isolation":
         for f in FACTORS:
-            for sc in ISOLATION_SCENARIOS:
+            for sc in (tuple(only) if only else ISOLATION_SCENARIOS):
                 runs += [("B0", f"ISO_{f}", sc, s) for s in seeds]
     elif phase == "main":
         for prof in ("CLEAN", "LOW", "MEDIUM"):
