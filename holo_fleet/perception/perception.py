@@ -1,7 +1,9 @@
 """Onboard perception of one drone (v2): six sonar profiles + DVL + IMU + compass + depth -> observation.
 
 Only data a real vehicle has is used: its own sensors and the mission plan (survey line, formation
-template, gate map).  No simulator state, no neighbour identity, no communication.
+template, gate map).  No simulator state, no neighbour identity, no communication.  The optional variant B1
+adds one input, the one-way presence beacon (perception/beacon_presence.py), and exactly one use of it (rule R1
+below); with the beacon OFF (the baseline) this module behaves as without it.
 
 Missing neighbours (lost-drone handling, DI-29).  Every expected neighbour that should be visible and
 is not seen is MISSING; its timer runs only while the drone itself holds its slot (FORMATION_FOLLOW,
@@ -15,6 +17,13 @@ associations within the last ``CONFIRM_WINDOW_S``, each with a range residual wi
 gate): an echo of another neighbour that happens to fit the missing one's (wide) range gate does not reset
 the timer.  A vacant slot is re-included after its drone has been confirmed there for ``t_reinclude``.
 At launch the formation is complete by plan (every neighbour counts as seen at the first update).
+
+Rule R1 (variant B1 only).  A neighbour whose ping was heard within the beacon ``ttl_s`` becomes MISSING after
+NEIGHBOUR_MEMORY_S + ``missing_grace_s`` without a sonar match instead of NEIGHBOUR_MEMORY_S (a short sonar
+occlusion of a drone that is still there).  The rule only defers the declaration, by a bounded time: it never
+clears a MISSING state (only a sonar confirmation near the slot does), never touches the vacancy timer of a
+neighbour already missing, and has no input into separation, collision avoidance or the gate (``d_min``,
+``sense_ok``, ``occ_busy``, ``has_prio`` and ``passed`` do not depend on it).
 """
 
 from __future__ import annotations
@@ -118,6 +127,7 @@ class Perception:
         self.vacant: Dict[int, float] = {}             # slot -> time it was declared vacant (latch)
         self.events: List[Dict] = []                   # vacancy / re-inclusion events (drained by the controller)
         self.presence = PresenceTracker(cfg)           # optional one-way presence beacon (variant B1, OFF by default)
+        self.presence_held: List[int] = []            # slots whose MISSING declaration rule R1 defers now
 
     # ------------------------------------------------------------------ formation reference
     def slot_reference(self, t_form: float, sigma: float = 0.0):
@@ -140,6 +150,12 @@ class Perception:
         fr = self.cfg.form
         clock = self.plan.clock
         moving = clock is None or clock.moving(t if t_form is None else t_form)
+        self.presence_held = []
+        if self.presence.enabled:                          # rule R1 (module docstring): defer, never clear
+            grace = NEIGHBOUR_MEMORY_S + self.cfg.beacon.missing_grace_s
+            self.presence_held = [k for k in form.missing if not self.missing_state.get(k)
+                                  and self.presence.heard(k, t) and t - self.neighbour_seen.get(k, -1e9) <= grace]
+            form.missing = [k for k in form.missing if k not in self.presence_held]
         for chk in form.checks:
             k = chk.slot
             sight = [x for x in self.sightings.get(k, []) if t - x <= CONFIRM_WINDOW_S]

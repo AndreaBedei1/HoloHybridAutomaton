@@ -45,6 +45,9 @@ class BeaconTransport:
         self.tx_log: List[Tuple[float, str]] = []
         self.stats = {"transmissions": 0, "receptions": 0, "lost_collision": 0, "lost_channel": 0,
                       "lost_dropout": 0, "latency_s": []}
+        self.last_rx: Dict[Tuple[str, int], float] = {}                          # (receiver, sender id) -> t_rx
+        self.longest_gap = 0.0
+        self.t_now = 0.0
 
     def sensor_config(self, k: int) -> Dict:
         return {"sensor_type": "AcousticBeaconSensor", "sensor_name": SENSOR_NAME, "socket": "",
@@ -70,6 +73,7 @@ class BeaconTransport:
 
     def after_tick(self, env, t: float) -> None:
         """Resolve the engine results of this tick into receptions (or losses)."""
+        self.t_now = t
         win = 2.0 / self.tps + 1e-6                       # a result appears in the tick of the ping or the next one
         for r in self.names:
             pend = self.pending.get(r)
@@ -108,6 +112,11 @@ class BeaconTransport:
         for item in self.due:
             if item[0] <= t + 1e-9:
                 out[item[1]].append((item[2], round(item[0], 4)))
+                key = (item[1], item[2])
+                prev = self.last_rx.get(key, 0.0)
+                if item[0] > prev:
+                    self.longest_gap = max(self.longest_gap, item[0] - prev)
+                    self.last_rx[key] = item[0]
             else:
                 keep.append(item)
         self.due = keep
@@ -117,6 +126,9 @@ class BeaconTransport:
         lat = self.stats["latency_s"]
         tx, n = self.stats["transmissions"], len(self.names)
         expected = tx * max(0, n - 1)
+        # longest interval without a reception over all (receiver, sender) pairs, mission start and end included
+        open_gaps = [self.t_now - self.last_rx.get((r, k), 0.0) for r in self.names for k in range(n)
+                     if self.names[k] != r]
         return {"mode": self.cfg.mode, "period_s": self.cfg.period_s, "jitter_s": self.cfg.jitter_s,
                 "max_range_m": self.cfg.max_range_m, "check_visible": self.cfg.check_visible,
                 "dropout": self.dropout, "transmissions": tx, "expected_receptions": expected,
@@ -125,4 +137,5 @@ class BeaconTransport:
                 "lost_collision": self.stats["lost_collision"], "lost_channel": self.stats["lost_channel"],
                 "lost_dropout": self.stats["lost_dropout"],
                 "latency_mean_ms": round(1000.0 * float(np.mean(lat)), 2) if lat else None,
-                "latency_max_ms": round(1000.0 * float(np.max(lat)), 2) if lat else None}
+                "latency_max_ms": round(1000.0 * float(np.max(lat)), 2) if lat else None,
+                "longest_absence_s": round(max([self.longest_gap] + open_gaps), 2)}

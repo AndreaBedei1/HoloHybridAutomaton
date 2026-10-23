@@ -243,7 +243,11 @@ class DroneController:
                      "missing_t": {k: round(v, 1) for k, v in self.perception.missing_t.items() if v > 0.0},
                      "vacant": sorted(self.perception.vacant), "degraded": bool(self.perception.vacant),
                      "slot": np.round(obs.slot_pos, 2).tolist(), "rejoin": self.flows.rejoin_phase,
-                     **ftime.record(t, dt)},
+                     **ftime.record(t, dt),
+                     **({"beacon_heard": sorted(k for k in range(len(self.perception.plan.slots))
+                                                if self.perception.presence.heard(k, t)),
+                         "beacon_held": sorted(self.perception.presence_held)}
+                        if self.perception.presence.enabled else {})},
             "transition": self.last_transition,
             "determinism_violations": self.ha.determinism_violations,
             "obs_consistent": self.obs_consistent, "observation_violations": self.observation_violations,

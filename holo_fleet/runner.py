@@ -185,15 +185,18 @@ def run(name: str, out_root: Path, headless: bool = True, run_id: Optional[str] 
         for line in f:
             if '"ENVELOPE_VIOLATION"' in line:
                 env_violations += 1
+    beacon = None if getattr(sim, "beacon", None) is None else sim.beacon.summary()
     metrics["run"] = {**status, "scenario": name, "sim_time_s": round(sim.t, 2), "determinism_violations": det,
                       "observation_consistency_violations": obs_inc,
-                      "comms_enabled": cfg.comms_enabled, "inter_agent_messages": 0,
+                      # B0: no message at all; B1: every one-way presence ping counts (static identity, no reply)
+                      "comms_enabled": cfg.comms_enabled, "inter_agent_messages": 0 if beacon is None else beacon["transmissions"],
+                      "message_content": "none" if beacon is None else "static identity only (one-way presence ping)",
                       "ground_truth_used_by_controllers": any(c.uses_ground_truth for c in ctrls.values()),
                       "static_rank_uses": rank_uses, "occupancy_timeouts": occ_timeouts,
                       "self_declared_envelope_violations": env_violations, "perf": perf,
                       "seed": sc.sim.seed, "noise_profile": None if noise is None else noise.name,
                       "noise_wrapper_stats": dict(getattr(sim, "noise_stats", {})),
-                      "beacon": None if getattr(sim, "beacon", None) is None else sim.beacon.summary()}
+                      "beacon": beacon}
     metrics["sensor_audit"] = audit.summary()
     metrics["envelope"] = envelope_block(out, metrics["envelope"], cfg)
     (out / "referee_metrics.json").write_text(json.dumps(metrics, indent=1, default=_jsonable), encoding="utf-8")
@@ -283,7 +286,9 @@ def print_summary(name: str, m: Dict, assumptions: Optional[str] = None) -> str:
     coll = p1["physical_contacts"] + len(p1["collision_sensor_edges"])
     det = sum((m["run"].get("determinism_violations") or {}).values())
     inc = m["run"].get("observation_consistency_violations")
-    lines += ["COLLISIONS", str(coll), "", "COMMUNICATION", f"{m['run']['inter_agent_messages']} messages", "",
+    comm = (f"{m['run']['inter_agent_messages']} messages" if not m["run"].get("beacon") else
+            f"{m['run']['inter_agent_messages']} one-way presence pings (static identity only, no reply)")
+    lines += ["COLLISIONS", str(coll), "", "COMMUNICATION", comm, "",
               f"AUTOMATON DETERMINISM VIOLATIONS: {det}",
               f"OBSERVATION CONSISTENCY VIOLATIONS: {'n/a' if inc is None else sum(inc.values())}", "",
               "GROUND TRUTH USED BY CONTROLLERS", "YES" if m["run"]["ground_truth_used_by_controllers"] else "NO", "",

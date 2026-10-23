@@ -279,7 +279,9 @@ class BeaconConfig:
     payload: a reception only means "drone k is currently detectable".  Transport: HoloOcean's
     AcousticBeaconSensor (engine range limit and line-of-sight check) driven by sim/beacon.py, plus the
     propagation delay d / sound_speed and a reception dropout (noise profile).  ``ttl_s``: a neighbour heard
-    within this is "recently heard" (2.5 periods: two consecutive pings may be lost)."""
+    within this is "recently heard" (2.5 periods: two consecutive pings may be lost).  ``missing_grace_s``: the
+    only onboard use of the evidence (rule R1, perception.py) - a neighbour recently heard is declared MISSING
+    after NEIGHBOUR_MEMORY_S + missing_grace_s without a sonar match instead of NEIGHBOUR_MEMORY_S."""
 
     mode: str = "NONE"               # NONE | ACOUSTIC_PRESENCE
     period_s: float = 1.0
@@ -288,6 +290,7 @@ class BeaconConfig:
     check_visible: bool = True
     sound_speed: float = 1500.0
     ttl_s: float = 2.5
+    missing_grace_s: float = 2.0
 
     @property
     def enabled(self) -> bool:
