@@ -40,13 +40,25 @@ def _jsonable(x):
 
 def run(name: str, out_root: Path, headless: bool = True, run_id: Optional[str] = None,
         duration: Optional[float] = None, ui: Optional[Callable] = None, frame_every_s: float = 0.5,
-        cfg: FleetConfig = DEFAULT, noise=None, seed: Optional[int] = None) -> Dict:
+        cfg: FleetConfig = DEFAULT, noise=None, seed: Optional[int] = None, noise_drones=None,
+        terminal: Optional[Dict] = None) -> Dict:
+    """``noise_drones``: indices of the drones that receive ``noise`` (None: all; the others keep the deployed
+    sensors).  ``terminal``: {"reference": load_reference(...), "deadline_s": ...} ends the run on SUCCESS, FAILURE
+    or DEADLINE (referee/terminal.py) instead of at the scenario duration; the horizon is then the deadline."""
     sc: Scenario = SCENARIOS[name](cfg)
     if sc.cfg_patch:
         cfg = dataclasses.replace(cfg, **sc.cfg_patch)
     if seed is not None:
         sc.sim.seed = int(seed)
     sc.sim.noise = noise
+    sc.sim.noise_drones = None if noise_drones is None else tuple(int(k) for k in noise_drones)
+    monitor = None
+    if terminal is not None:
+        from holo_fleet.referee.terminal import TerminalMonitor, clean_horizon_s
+
+        t_ref = float(sc.duration_s)
+        duration = float(terminal.get("deadline_s") or clean_horizon_s(t_ref))
+        sc.sim.duration_s = duration                # noise windows, stress and logs cover the whole horizon
     run_id = run_id or name
     out = Path(out_root) / run_id
     out.mkdir(parents=True, exist_ok=True)
@@ -76,12 +88,16 @@ def run(name: str, out_root: Path, headless: bool = True, run_id: Optional[str] 
     tmpl = sc.template.offsets() if sc.template is not None else None
     ref = Referee(sim.names, tmpl, sc.path, sc.judged_gates, cfg, sc.formation_enabled,
                   clock=sc.plans[0].clock if sc.formation_enabled else None)
+    if terminal is not None:
+        monitor = TerminalMonitor(sc, cfg, sim.names, terminal["reference"], t_ref, duration)
     cfg_dump = {"scenario": name, "title": sc.title, "description": sc.description, "focus": sc.focus,
                 "duration_s": T, "n_drones": len(sim.names), "template": None if sc.template is None else sc.template.name,
                 "gates": [g.gate_id for g in sc.judged_gates], "current": sc.sim.current.describe(),
                 "intruders": list(getattr(sc.sim, "intruders", ())), "cfg_patch": sc.cfg_patch,
                 "faults": list(getattr(sc.sim, "faults", ())),
                 "seed": sc.sim.seed, "noise": None if noise is None else noise.as_dict(),
+                "noise_drones": None if noise is None else sorted(getattr(sim, "noisy_idx", range(len(sim.names)))),
+                "terminal": None if monitor is None else {"t_ref": monitor.t_ref, "deadline_s": monitor.deadline},
                 "heading_bias_deg": [round(float(b), 2) for b in getattr(sim, "heading_bias", ())],
                 "disturbance_windows": sc.disturbance_windows, "stress": sc.sim.stress.__dict__,
                 "setup": sim.setup_report, "comms_enabled": cfg.comms_enabled, "fleet_config": cfg.to_dict(),
@@ -151,6 +167,13 @@ def run(name: str, out_root: Path, headless: bool = True, run_id: Optional[str] 
 
                     cv2.imwrite(str(out / "frames" / f"chase_{int(round(sim.t * 10)):05d}.jpg"),
                                 np.asarray(img)[:, :, :3], [cv2.IMWRITE_JPEG_QUALITY, 85])
+            if monitor is not None and monitor.update(sim.t, truth.positions, ref,
+                                                      [ctrls[nm].last_record for nm in sim.names]):
+                ev_f.write(json.dumps({"t": sim.t, "type": "TERMINAL", **monitor.summary()}, default=_jsonable) + "\n")
+                break
+        if monitor is not None and monitor.outcome is None:
+            monitor.finalize(sim.t, ref, [ctrls[nm].last_record for nm in sim.names])
+            ev_f.write(json.dumps({"t": sim.t, "type": "TERMINAL", **monitor.summary()}, default=_jsonable) + "\n")
         status = {"status": "COMPLETE"}
     except KeyboardInterrupt:
         status = {"status": "INCOMPLETE", "reason": "interrupted by the user", "t": sim.t}
@@ -196,7 +219,7 @@ def run(name: str, out_root: Path, headless: bool = True, run_id: Optional[str] 
                       "self_declared_envelope_violations": env_violations, "perf": perf,
                       "seed": sc.sim.seed, "noise_profile": None if noise is None else noise.name,
                       "noise_wrapper_stats": dict(getattr(sim, "noise_stats", {})),
-                      "beacon": beacon}
+                      "beacon": beacon, "terminal": None if monitor is None else monitor.summary()}
     metrics["sensor_audit"] = audit.summary()
     metrics["envelope"] = envelope_block(out, metrics["envelope"], cfg)
     (out / "referee_metrics.json").write_text(json.dumps(metrics, indent=1, default=_jsonable), encoding="utf-8")

@@ -251,6 +251,11 @@ def analyze_run(run_dir: Path, reference: Optional[Dict] = None, cfg=DEFAULT) ->
             r1["stale_presence_s"] = round(r1.pop("stale_presence_steps") * dt, 1)
             r1["heard_fraction"] = round(heard_n / heard_d, 4) if heard_d else None
             fm["beacon_r1"] = r1
+        if m:                                     # a slot still declared vacant at the end while its drone is there
+            fm["false_vacancy_at_end"] = sum(
+                1 for k in healthy for sl in ((states[k][m - 1].get("form") or {}).get("vacant") or [])
+                if slot_drone.get(sl) is not None and dev[m - 1, slot_drone[sl]] <= e_lost
+                and not faulted(slot_drone[sl], t[m - 1]))
         ti = {round(float(x), 2): i for i, x in enumerate(t)}
         for e in events:
             if e.get("type") not in ("SLOT_DECLARED_VACANT", "SLOT_REOCCUPIED"):
@@ -306,7 +311,23 @@ def analyze_run(run_dir: Path, reference: Optional[Dict] = None, cfg=DEFAULT) ->
 
     # ------------------------------------------------------------------ verdict
     req: Dict[str, bool] = {}
-    if reference is not None:
+    term = run.get("terminal")
+    out["terminal"] = term
+    if term is not None:
+        # terminal criterion (referee/terminal.py): liveness = reached before the deadline, not the state at an
+        # arbitrary last instant; transient FAILSAFE is reported, not required away
+        reached = term.get("reached_reference_end_t") or {}
+        req["progress"] = all(reached.get(names[k]) is not None for k in healthy) if reached else True
+        if sc.judged_gates:
+            req["gate_completed"] = bool(p2o.get("completed"))
+        if reference is not None and reference["P3_recovered"]:
+            req["P3_recovered"] = bool(p3["all_recovered_within_run"])
+        if reference is not None and reference["P3_degraded_holds"]:
+            req["P3_degraded_holds"] = deg.get("holds") is True
+        req["no_permanent_false_vacancy"] = not fm.get("false_vacancy_at_end")
+        req["terminal_success"] = term.get("outcome") == "SUCCESS"
+        out["failsafe_at_end"] = any(modes[-1, k] == FS for k in healthy) if m else False
+    elif reference is not None:
         if reference["P3_recovered"]:
             req["P3_recovered"] = bool(p3["all_recovered_within_run"])
         if reference["P3_degraded_holds"]:
@@ -315,16 +336,19 @@ def analyze_run(run_dir: Path, reference: Optional[Dict] = None, cfg=DEFAULT) ->
             dist_end = [float(np.linalg.norm(P[-1, k] - np.asarray(reference["end"][k]))) for k in healthy]
             out["end_position_error_m"] = [round(d, 2) for d in dist_end]
             req["progress"] = max(dist_end, default=0.0) <= PROGRESS_TOL_M
-    if sc.judged_gates:
-        req["gate_completed"] = bool(p2o.get("completed"))
-    req["no_failsafe_at_end"] = not any(modes[-1, k] == FS for k in healthy) if m else True
+    if term is None:
+        if sc.judged_gates:
+            req["gate_completed"] = bool(p2o.get("completed"))
+        req["no_failsafe_at_end"] = not any(modes[-1, k] == FS for k in healthy) if m else True
+    req["automaton_consistent"] = (out["automaton"]["determinism_violations"] == 0
+                                   and not out["automaton"]["observation_consistency_violations"])
     out["requirements"] = req
     safe = out["P1"]["holds"] and contacts == 0 and p2o["holds"] and not (intr.get("below_d_safe") or False)
     live = all(req.values())
     conservative = fm["false_vacancy"] > 0 or len(fs_sensor) > 0
     if not safe:
         cls = "SAFETY_FAILURE"
-    elif fm["false_vacancy"] > 0 or (not live and conservative):
+    elif (fm["false_vacancy"] > 0 and term is None) or (not live and conservative):
         cls = "SAFE_DEGRADED"
     elif not live:
         cls = "LIVENESS_FAILURE"

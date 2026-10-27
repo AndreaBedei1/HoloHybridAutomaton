@@ -17,7 +17,10 @@ Phases (same seeds 0, 1, 2 everywhere; protocol B0 = communication-free baseline
              (or on the --only scenarios: diagnosis of a failure found in another scenario);
 * main:      the 16 scenarios x CLEAN, LOW, MEDIUM;
 * high:      HIGH on HIGH_SCENARIOS (all 16 with --all-high);
-* beacon:    B1 on BEACON_SCENARIOS x LOW, MEDIUM, HIGH (B0 comes from main/high).
+* beacon:    B1 on BEACON_SCENARIOS x LOW, MEDIUM, HIGH (B0 comes from main/high);
+* validation: the realistic operating domain: VALIDATION_SCENARIOS x (CLEAN, LOW and MEDIUM x ONE / SUBSET / ALL,
+             scope_drones) x 3 seeds, each run ending on SUCCESS / FAILURE / DEADLINE (referee/terminal.py).
+             main / high / beacon are the exploratory stress campaign (first version of the levels, STRESS_V1).
 """
 
 from __future__ import annotations
@@ -50,7 +53,61 @@ HIGH_SCENARIOS = ("p1_head_on", "p1_vertical_escape", "p1_two_lines", "p1_close_
                   "lost_drone_mutex")
 BEACON_SCENARIOS = ("formation_six", "gate_single", "integrated_short", "mutex_deadlock_resolution",
                     "line_parallel_mutex", "lost_drone_rejoin", "lost_drone_timeout", "lost_drone_mutex")
+# validation of the realistic operating domain (LOW / MEDIUM, sim/sensor_noise.py): representative scenarios (P1
+# collision avoidance, P2 gate / mutex, P3 formation and recovery, lost drones, integrated) x scope x 3 seeds
+VALIDATION_SCENARIOS = ("p1_vertical_escape", "p1_two_lines", "formation_six", "formation_recovery_head_current",
+                        "integrated_short", "line_parallel_mutex", "lost_drone_rejoin", "lost_drone_mutex")
 PY = sys.executable
+
+
+def clean_completion(protocol_root: Path, scenario: str):
+    """T_clean: the slowest completion (SUCCESS time) of the CLEAN runs of ``scenario`` (None if none succeeded)."""
+    ts = []
+    for p in sorted((protocol_root / "CLEAN" / scenario).glob("s*/run_metrics.json")):
+        term = json.loads(p.read_text(encoding="utf-8")).get("terminal") or {}
+        if term.get("outcome") == "SUCCESS":
+            ts.append(float(term["t_end"]))
+    return max(ts) if ts else None
+
+
+def scope_drones(scenario: str, scope: str) -> list:
+    """Drones that receive the degraded profile (deterministic, from the committed CLEAN reference run):
+    ONE    = the healthy drone that comes closest to another vehicle (drone or non-cooperative vehicle) or to a gate
+             bar in the reference (the drone whose sensing matters most; ties: lowest index);
+    SUBSET = ceil(n / 2) healthy drones: ONE and the next healthy drones by index (cyclic);
+    ALL    = every drone."""
+    import csv
+
+    import numpy as np
+
+    from holo_fleet.config import DEFAULT
+    from holo_fleet.sim.scenarios import SCENARIOS
+
+    sc = SCENARIOS[scenario](DEFAULT)
+    n = len(sc.sim.names)
+    if scope == "ALL":
+        return list(range(n))
+    lost = {f["drone"] for f in getattr(sc.sim, "faults", ()) or () if f.get("t_off") is None}
+    healthy = [k for k in range(n) if sc.sim.names[k] not in lost]
+    rows = list(csv.DictReader(open(DEMOS / scenario / "referee_timeseries.csv", encoding="utf-8")))
+    P = np.array([[[float(r[f"{a}{k}"]) for a in "xyz"] for k in range(n)] for r in rows])
+    bars = [b for st in sc.plans[0].structures for b in st.bars]
+    near = np.full(n, 1e9)
+    for k in range(n):
+        for j in range(n):
+            if j != k:
+                near[k] = min(near[k], np.linalg.norm(P[:, k] - P[:, j], axis=1).min())
+        if rows[0].get("ix0"):
+            q = np.array([[float(r["ix0"]), float(r["iy0"]), float(r["iz0"])] for r in rows])
+            near[k] = min(near[k], np.linalg.norm(P[:, k] - q, axis=1).min())
+        for b in bars:
+            d = np.maximum(np.abs((P[:, k] - b.center) @ b.axes) - b.half, 0.0)
+            near[k] = min(near[k], np.linalg.norm(d, axis=1).min())
+    one = min(healthy, key=lambda k: (round(float(near[k]), 2), k))
+    if scope == "ONE":
+        return [one]
+    order = [(one + i) % n for i in range(n)]
+    return sorted([k for k in order if k in healthy][:(n + 1) // 2])
 
 
 def plan(phase: str, seeds, only=None, all_high=False):
@@ -72,6 +129,15 @@ def plan(phase: str, seeds, only=None, all_high=False):
         for prof in ("LOW", "MEDIUM", "HIGH"):
             for sc in BEACON_SCENARIOS:
                 runs += [("B1", prof, sc, s) for s in seeds]
+    elif phase == "validation":
+        from holo_fleet.sim.sensor_noise import SCOPES
+
+        for sc in VALIDATION_SCENARIOS:                 # CLEAN first: it fixes the deadline of the degraded runs
+            runs += [("B0", "CLEAN", sc, s) for s in seeds]
+        for sc in VALIDATION_SCENARIOS:
+            for prof in ("LOW", "MEDIUM"):
+                for scope in SCOPES:
+                    runs += [("B0", f"{prof}-{scope}", sc, s) for s in seeds]
     elif phase == "beacon_clean":
         for sc in BEACON_SCENARIOS:
             runs += [("B1", "CLEAN", sc, s) for s in seeds]
@@ -102,8 +168,24 @@ def worker(args) -> int:
     if args.protocol == "B1":
         cfg = dataclasses.replace(DEFAULT, beacon=BeaconConfig(mode="ACOUSTIC_PRESENCE"))
     d = Path(args.run_dir)
+    prof, _, scope = args.profile.partition("-")
+    terminal = None
+    if args.terminal:
+        from holo_fleet.referee.robustness_metrics import load_reference
+
+        terminal = {"reference": load_reference(DEMOS / args.scenario)}
+        if prof != "CLEAN":
+            t_clean = clean_completion(Path(args.run_dir).parents[2], args.scenario)
+            if t_clean is None:
+                print(f"no successful CLEAN run of {args.scenario} under {Path(args.run_dir).parents[2]}: run CLEAN "
+                      "first (it fixes the deadline)", file=sys.stderr)
+                return 5
+            from holo_fleet.referee.terminal import deadline_s
+
+            terminal["deadline_s"] = deadline_s(t_clean)
     runner.run(args.scenario, d.parent, headless=True, run_id=d.name, frame_every_s=float("inf"), cfg=cfg,
-               noise=profile(args.profile), seed=args.seed)
+               noise=profile(prof), seed=args.seed, noise_drones=scope_drones(args.scenario, scope) if scope else None,
+               terminal=terminal)
     return 0
 
 
@@ -268,6 +350,7 @@ def main() -> int:
     ap.add_argument("--raw", default=str(RAW))
     ap.add_argument("--seeds", type=int, nargs="*", default=list(SEEDS))
     ap.add_argument("--only", nargs="*")
+    ap.add_argument("--profiles", nargs="*", help="keep only these profile labels (e.g. CLEAN MEDIUM-ALL)")
     ap.add_argument("--all-high", action="store_true")
     ap.add_argument("--dry-run", action="store_true")
     ap.add_argument("--max-runs", type=int, default=0)
@@ -285,6 +368,7 @@ def main() -> int:
     ap.add_argument("--seed", type=int)
     ap.add_argument("--protocol", default="B0")
     ap.add_argument("--run-dir")
+    ap.add_argument("--terminal", action="store_true", help="end on SUCCESS / FAILURE / DEADLINE (referee/terminal.py)")
     ap.add_argument("--allow-unpatched", action="store_true", help="development smoke only, never for results")
     args = ap.parse_args()
     if args.worker:
@@ -300,6 +384,8 @@ def main() -> int:
         return 4
     raw = Path(args.raw)
     runs = plan(args.phase, args.seeds, args.only, args.all_high)
+    if args.profiles:
+        runs = [r for r in runs if r[1] in args.profiles]
     todo = pending(raw, runs)
     print(f"phase {args.phase}: {len(runs)} runs, {len(runs) - len(todo)} done, {len(todo)} to do", flush=True)
     if args.dry_run:
@@ -326,6 +412,10 @@ def main() -> int:
         if sc not in refs:
             refs[sc] = load_reference(DEMOS / sc)
         dur = SCENARIOS[sc](__import__("holo_fleet.config", fromlist=["DEFAULT"]).DEFAULT).duration_s
+        if args.phase == "validation":
+            from holo_fleet.referee.terminal import clean_horizon_s
+
+            dur = clean_horizon_s(dur)
         res, attempt = None, 0
         while attempt <= args.retries:
             attempt += 1
@@ -337,7 +427,7 @@ def main() -> int:
             t0 = time.time()
             seen: dict = {}
             cmd = [PY, str(Path(__file__).resolve()), "--worker", "--scenario", sc, "--profile", prof, "--seed",
-                   str(seed), "--protocol", protocol, "--run-dir", str(d)] + (["--allow-unpatched"] if args.allow_unpatched else [])
+                   str(seed), "--protocol", protocol, "--run-dir", str(d)] + (["--allow-unpatched"] if args.allow_unpatched else [])                 + (["--terminal"] if args.phase == "validation" else [])
             with open(d.parent / f"{d.name}_worker.log", "w", encoding="utf-8") as wl:
                 proc = subprocess.Popen(cmd, stdout=wl, stderr=subprocess.STDOUT, cwd=str(ROOT),
                                         env={**os.environ, "PYTHONUNBUFFERED": "1"})
@@ -357,6 +447,7 @@ def main() -> int:
                 res.setdefault("invalid_reason", code)
             if res["class"] != "INVALID":
                 break
+        d.mkdir(parents=True, exist_ok=True)              # a worker that refused to start leaves no run dir
         (d / "run_metrics.json").write_text(json.dumps(res, indent=1, default=str), encoding="utf-8")
         wl_path = d.parent / f"{d.name}_worker.log"
         if wl_path.exists():
