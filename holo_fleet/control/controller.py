@@ -248,6 +248,8 @@ class DroneController:
                                                 if self.perception.presence.heard(k, t)),
                          "beacon_held": sorted(self.perception.presence_held)}
                         if self.perception.presence.enabled else {})},
+            "nav_aid": None if self.perception.aiding.last is None else {**self.perception.aiding.last,
+                                                                         "applied_m": round(self.perception.aiding.applied_m, 3)},
             "transition": self.last_transition,
             "determinism_violations": self.ha.determinism_violations,
             "obs_consistent": self.obs_consistent, "observation_violations": self.observation_violations,

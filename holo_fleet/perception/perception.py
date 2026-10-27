@@ -1,7 +1,8 @@
 """Onboard perception of one drone (v2): six sonar profiles + DVL + IMU + compass + depth -> observation.
 
 Only data a real vehicle has is used: its own sensors and the mission plan (survey line, formation
-template, gate map).  No simulator state, no neighbour identity, no communication.  The optional variant B1
+template, gate map).  No simulator state, no neighbour identity, no communication.  Near a mapped gate the
+dead-reckoning position is corrected against the gate map (perception/structure_aiding.py).  The optional variant B1
 adds one input, the one-way presence beacon (perception/beacon_presence.py), and exactly one use of it (rule R1
 below); with the beacon OFF (the baseline) this module behaves as without it.
 
@@ -48,6 +49,7 @@ from holo_fleet.perception.gate_perception import GateObs, GatePerception
 from holo_fleet.perception.nav import DeadReckoning
 from holo_fleet.perception.sonar_geometry import SECTORS, sonar_sensor_name
 from holo_fleet.perception.sonar_processing import EchoClassifier, SectorReading, dvl_altitude
+from holo_fleet.perception.structure_aiding import StructureAiding
 from holo_fleet.perception.targets import SectorTracker, Target, build_targets
 
 
@@ -116,6 +118,7 @@ class Perception:
         self.use_attitude = use_attitude
         bars = [b for g in plan.structures for b in g.bars]
         self.clf = EchoClassifier(gate_bars=bars, cfg=cfg)
+        self.aiding = StructureAiding(self.clf, cfg)     # map-aided position correction near the gate
         self.tracker = SectorTracker(cfg)
         self.gp = GatePerception(plan, cfg)
         self.ok_since: Optional[float] = None
@@ -207,6 +210,9 @@ class Perception:
             key = sonar_sensor_name(s)
             profiles[s] = d.get(key)
             ages[s] = frame.age(key) if key in d else 1e9
+        corr = self.aiding.update(nav.p, R_wb, profiles, ages, env.tau_max)
+        if corr is not None:                      # dead-reckoning drift bounded by the mapped gate (structure_aiding)
+            self.nav.state.p += corr
         readings = self.clf.classify(profiles, ages, nav.p, R_wb, seabed_z, tau_healthy=env.tau_max)
         tracks = self.tracker.update(t, readings)
         targets = build_targets(t, readings, tracks, self.cfg)
