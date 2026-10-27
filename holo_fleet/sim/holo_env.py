@@ -81,8 +81,12 @@ class HoloFleetSim:
         # sensor degradation (sim/sensor_noise.py): its own generator, so the stress stream above is unchanged
         self.noise = getattr(spec, "noise", None)
         self.nrng = np.random.default_rng([int(spec.seed), 7919])
+        nd = getattr(spec, "noise_drones", None)
+        self.noisy_idx = set(range(len(self.names))) if nd is None else {int(k) for k in nd}
+        self.noisy = {self.names[k] for k in self.noisy_idx} if self.noise is not None else set()
         self.heading_bias = (heading_biases(self.noise, len(self.names), spec.seed) if self.noise is not None
                              else np.zeros(len(self.names)))
+        self.heading_bias = np.array([b if k in self.noisy_idx else 0.0 for k, b in enumerate(self.heading_bias)])
         self.noise_windows: Dict[str, Dict[str, List[tuple]]] = {}
         self.delayed: Dict[str, List[tuple]] = {n: [] for n in self.names}      # (t_due, key, value, t_capture)
         self.noise_stats = {"sonar_dropped": 0, "sonar_blackout": 0, "sonar_faded": 0, "sonar_shifted": 0,
@@ -99,7 +103,8 @@ class HoloFleetSim:
     # ------------------------------------------------------------------ setup
     def _agent_cfg(self, k: int) -> Dict[str, Any]:
         name = self.names[k]
-        sensors = onboard_sensor_configs(self.cfg, view_region=self.view_region, noise=self.noise,
+        sensors = onboard_sensor_configs(self.cfg, view_region=self.view_region,
+                                         noise=self.noise if name in self.noisy else None,
                                          heading_bias_deg=float(self.heading_bias[k]))
         if self.beacon is not None:
             sensors.append(self.beacon.sensor_config(k))
@@ -251,6 +256,8 @@ class HoloFleetSim:
         nz = self.noise
         if nz is not None:
             for n in self.names:
+                if n not in self.noisy:
+                    continue
                 self.noise_windows[n] = {
                     "sonar": plan_windows(self.nrng, nz.sonar_blackout_every_s, nz.sonar_blackout_len_s,
                                           self.spec.duration_s),
@@ -322,7 +329,7 @@ class HoloFleetSim:
                     # simply not delivered (its age grows); a blackout drops every sonar of the drone
                     if self._blackout(n, tick_t) or (st.beam_dropout > 0 and self.rng.random() < st.beam_dropout):
                         continue
-                if record and self.noise is not None and n in self.delayed and is_onboard(key):
+                if record and n in self.noisy and n in self.delayed and is_onboard(key):
                     val = self._degrade(n, key, val, tick_t)
                     if val is None:
                         continue

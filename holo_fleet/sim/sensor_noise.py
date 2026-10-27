@@ -1,4 +1,4 @@
-"""Reproducible sensor-degradation profiles (simulation stress levels, NOT real sensor accuracy).
+"""Reproducible sensor-degradation profiles: a realistic operating domain (LOW, MEDIUM) and exploratory stress.
 
 Every disturbance acts on the SENSOR, before a controller receives the data; ground truth (PoseSensor,
 VelocitySensor, CollisionSensor) stays clean and goes to the referee only.
@@ -19,8 +19,8 @@ Two mechanisms:
 
 The four levels are anchored to the project's declared assumptions (config.Envelope: sonar 10 Hz, tau_max 0.25 s,
 eps_range_far 0.12 m / eps_range_near 0.08 m; FormationRule e_ok 0.5 / e_lost 1.2 m; GateRule queue_tol 0.35 m):
-LOW stays clearly inside them, MEDIUM puts the high percentiles near them, HIGH deliberately exceeds them to find
-the failure boundary (docs/SENSOR_ROBUSTNESS_AND_BEACONING.md, results/robustness/noise_profiles.json).
+LOW and MEDIUM are the realistic operating domain (datasheet / literature anchored, see below); HIGH and the *_V1
+levels are the exploratory stress levels of the first campaign (docs/SENSOR_ROBUSTNESS_AND_BEACONING.md).
 """
 
 from __future__ import annotations
@@ -71,23 +71,42 @@ class NoiseProfile:
 
 CLEAN = NoiseProfile()
 
+# Realistic operating domain (the validation campaign).  Every value is tied to a datasheet or a paper in
+# docs/SENSOR_ROBUSTNESS_LITERATURE.md (table in docs/SENSOR_ROBUSTNESS_AND_BEACONING.md, section 1).  CLEAN (the
+# deployed suite) is already at or above the datasheet white noise of the IMU (ICM-20602, A6), the depth sensor
+# (Bar30, A10) and the DVL (Nortek single ping ~0.8 cm/s, A2), so those channels stay at CLEAN in LOW and grow
+# only moderately in MEDIUM; the degradations that matter are heading (calibration, A8/A9), DVL bottom-lock loss
+# (A1/A3/A4), sonar range resolution and spurious / missed echoes (A11/A12/A16).  Sonar dropout and blackouts,
+# DVL outages and latency have no measured statistics for this hardware: they are conservative operational
+# perturbations, not measured sensor accuracy.
 LOW = NoiseProfile(
     name="LOW",
     sonar_add_sigma=0.06, sonar_mult_sigma=0.15, sonar_range_sigma=0.05,
-    dvl_vel_sigma=0.02, dvl_range_sigma=0.05,
-    imu_accel_sigma=0.02, imu_gyro_sigma=0.01, imu_accel_bias_sigma=0.0005, imu_gyro_bias_sigma=0.0002,
-    mag_sigma=0.01, heading_bias_deg=0.5, depth_sigma=0.03,
-    sonar_dropout=0.02, sonar_range_jitter_m=0.015, sonar_fade_prob=0.01,
-    dvl_dropout=0.01, beacon_dropout=0.05)
+    dvl_vel_sigma=0.01, dvl_range_sigma=0.02,
+    imu_accel_sigma=0.01, imu_gyro_sigma=0.005, imu_accel_bias_sigma=0.0002, imu_gyro_bias_sigma=0.0001,
+    mag_sigma=0.01, heading_bias_deg=0.5, depth_sigma=0.02,
+    sonar_dropout=0.005, sonar_range_jitter_m=0.015, sonar_fade_prob=0.01,
+    dvl_dropout=0.01, latency_s=0.02, beacon_dropout=0.05)
 
 MEDIUM = NoiseProfile(
     name="MEDIUM",
     sonar_add_sigma=0.075, sonar_mult_sigma=0.25, sonar_range_sigma=0.10,
-    dvl_vel_sigma=0.04, dvl_range_sigma=0.15,
-    imu_accel_sigma=0.05, imu_gyro_sigma=0.02, imu_accel_bias_sigma=0.002, imu_gyro_bias_sigma=0.0005,
-    mag_sigma=0.03, heading_bias_deg=1.5, depth_sigma=0.06,
-    sonar_dropout=0.05, sonar_blackout_every_s=30.0, sonar_blackout_len_s=0.15, sonar_range_jitter_m=0.03,
-    sonar_fade_prob=0.03, dvl_dropout=0.03, latency_s=0.05, beacon_dropout=0.20)
+    dvl_vel_sigma=0.015, dvl_range_sigma=0.05,
+    imu_accel_sigma=0.02, imu_gyro_sigma=0.01, imu_accel_bias_sigma=0.0005, imu_gyro_bias_sigma=0.0003,
+    mag_sigma=0.02, heading_bias_deg=2.0, depth_sigma=0.03,
+    sonar_dropout=0.01, sonar_blackout_every_s=60.0, sonar_blackout_len_s=0.15, sonar_range_jitter_m=0.03,
+    sonar_fade_prob=0.03, dvl_dropout=0.03, dvl_outage_every_s=60.0, dvl_outage_len_s=1.0, latency_s=0.05,
+    beacon_dropout=0.20)
+
+# Exploratory stress levels of the first campaign (2026-10-22/25), deliberately beyond the assumptions: kept to
+# read those results and for the single-factor screens; NOT part of the validation.
+LOW_V1 = replace(LOW, name="LOW_V1", dvl_vel_sigma=0.02, dvl_range_sigma=0.05, imu_accel_sigma=0.02, imu_gyro_sigma=0.01,
+                 imu_accel_bias_sigma=0.0005, imu_gyro_bias_sigma=0.0002, depth_sigma=0.03, sonar_dropout=0.02,
+                 latency_s=0.0)
+MEDIUM_V1 = replace(MEDIUM, name="MEDIUM_V1", dvl_vel_sigma=0.04, dvl_range_sigma=0.15, imu_accel_sigma=0.05,
+                    imu_gyro_sigma=0.02, imu_accel_bias_sigma=0.002, imu_gyro_bias_sigma=0.0005, mag_sigma=0.03,
+                    heading_bias_deg=1.5, depth_sigma=0.06, sonar_dropout=0.05, sonar_blackout_every_s=30.0,
+                    dvl_outage_every_s=0.0, dvl_outage_len_s=0.0)
 
 HIGH = NoiseProfile(
     name="HIGH",
@@ -99,7 +118,11 @@ HIGH = NoiseProfile(
     sonar_fade_prob=0.10, dvl_dropout=0.08, dvl_outage_every_s=30.0, dvl_outage_len_s=1.0, latency_s=0.12,
     beacon_dropout=0.50)
 
-PROFILES: Dict[str, NoiseProfile] = {p.name: p for p in (CLEAN, LOW, MEDIUM, HIGH)}
+STRESS_V1: Dict[str, NoiseProfile] = {"LOW": LOW_V1, "MEDIUM": MEDIUM_V1, "HIGH": HIGH}
+
+PROFILES: Dict[str, NoiseProfile] = {p.name: p for p in (CLEAN, LOW, MEDIUM, HIGH, LOW_V1, MEDIUM_V1)}
+VALIDATION_LEVELS = ("CLEAN", "LOW", "MEDIUM")          # the realistic operating domain
+SCOPES = ("ONE", "SUBSET", "ALL")                         # which drones receive the degraded profile
 
 # Isolation: CLEAN plus ONE phenomenon at its HIGH level (the combined case is the HIGH profile itself).
 FACTORS: Dict[str, Tuple[str, ...]] = {

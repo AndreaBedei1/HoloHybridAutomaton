@@ -61,31 +61,44 @@ first pass on the unpatched engine gave the same picture:
 
 The probe does not contradict the anchors, so the levels below are unchanged.
 
-### Profiles (simulation stress levels, not real sensor accuracy)
+### Realistic operating domain: CLEAN, LOW, MEDIUM
 
-Anchors: sonar 10 Hz and `tau_max` = 0.25 s; `eps_range_far` 0.12 m / `eps_range_near` 0.08 m; formation
-`e_ok` 0.5 m / `e_lost` 1.2 m; gate `queue_tol` 0.35 m; warning/CA thresholds 2.4 / 1.7 m.  LOW stays clearly
-inside them, MEDIUM puts the high percentiles near them, HIGH exceeds them on purpose.  Values: the code above
-(CLEAN = the deployed suite, byte-identical HoloOcean configuration, tested).
+The validation uses only CLEAN (the deployed sensors), LOW and MEDIUM.  Each value is tied to a datasheet or a paper
+of [SENSOR_ROBUSTNESS_LITERATURE.md](SENSOR_ROBUSTNESS_LITERATURE.md) (ids A1-A16, S1-S3) through the probe mapping
+above (HoloOcean parameter -> physical quantity).  A source rarely gives our sigma; it gives a range, an accuracy, a
+resolution or a failure mode, and the level stays inside it.  Perturbations without measured statistics for this
+hardware (sonar capture dropout and blackout, DVL outage, latency) are **conservative operational perturbations**,
+not measured accuracy.
 
-| parameter | CLEAN | LOW | MEDIUM | HIGH | anchor |
-|---|---|---|---|---|---|
-| sonar AddSigma / MultSigma / RangeSigma | 0.05 / 0.10 / 0.05 | 0.06 / 0.15 / 0.05 | 0.075 / 0.25 / 0.10 | 0.09 / 0.40 / 0.20 | threshold 0.30 |
-| sonar range jitter sigma [m] | 0 | 0.015 | 0.03 | 0.07 | eps 0.08 / 0.12 |
-| sonar fade probability | 0 | 0.01 | 0.03 | 0.10 | 2-of-3 confirmation |
-| sonar dropout / blackout | 0 | 2 % / - | 5 % / 0.15 s per 30 s | 12 % / 0.5 s per 20 s | tau_max 0.25 s |
-| latency [s] | 0 | 0 | 0.05 | 0.12 | tau_max 0.25 s |
-| DVL VelSigma / RangeSigma | 0.01 / 0.02 | 0.02 / 0.05 | 0.04 / 0.15 | 0.08 / 0.40 | DVL freshness 0.35 s |
-| DVL dropout / outage | 0 | 1 % | 3 % | 8 % + 1 s per 30 s | |
-| IMU accel / gyro sigma | 0.01 / 0.005 | 0.02 / 0.01 | 0.05 / 0.02 | 0.10 / 0.05 | |
-| IMU bias step accel / gyro | 0 | 0.0005 / 0.0002 | 0.002 / 0.0005 | 0.005 / 0.002 | |
-| magnetometer sigma / heading bias [deg] | 0.005 / 0 | 0.01 / 0.5 | 0.03 / 1.5 | 0.07 / 4 | |
-| depth sigma [m] | 0.02 | 0.03 | 0.06 | 0.15 | |
-| beacon reception dropout (B1 only) | 0 | 5 % | 20 % | 50 % | |
+| Sensor | Disturbance | Literature / datasheet evidence | Reported range | LOW | MEDIUM | Justification |
+|---|---|---|---|---|---|---|
+| Single-beam sonar | range error of the leading edge | Ping sonar range resolution 0.5 % of range (A11) | 1.5-3 cm at 3-6 m | jitter sigma 1.5 cm | jitter sigma 3 cm | 0.5 % at 3 m (LOW) and at 6 m (MEDIUM); HoloOcean RangeSigma 0.05 / 0.10 moves the edge by at most one or two 5 cm bins (probe) |
+| Single-beam sonar | spurious echoes (intensity noise) | false alarms coupled to the detection threshold (A16); multipath / outliers in acoustic ranging, 10 % in a published simulation setting (A12), > 25 % in field LBL data (A13) | up to tens of % for ranging | AddSigma 0.06 (~0.1 % of captures with a false segment, probe) | AddSigma 0.075 (~1-3 %) | well below the outlier rates reported for acoustic ranging; isolated false echoes are filtered by the 2-of-3 confirmation |
+| Single-beam sonar | missed return (fade) | "no detection, creating gaps" (A12, 10 % as a simulation setting) | 0-10 % | 1 % | 3 % | below the published stress setting |
+| Single-beam sonar | capture not delivered / short blackout | none for this hardware | - | dropout 0.5 % | dropout 1 %, 0.15 s blackout every ~60 s | conservative operational perturbation (link / processing hiccup); a blackout exceeds tau_max and exercises the FAILSAFE path |
+| DVL | velocity noise | Nortek single-ping std 0.8 cm/s (A2); A50 long-term accuracy +-1.01 % standard, +-0.1 % performance (A1) | ~1 cm/s; 0.1-1 % | VelSigma 0.01 = CLEAN (body std ~1.9 cm/s, probe) | VelSigma 0.015 (~2.8 cm/s) | CLEAN is already twice the single-ping figure; MEDIUM stays within a few cm/s at 0.3-0.5 m/s survey speed |
+| DVL | bottom-lock loss | lock is a first-class DVL state (A1); no velocity at all when lock is lost (A3); DVL denial in field operations (A4) | occurs, no rate published | 1 % sample dropout | 3 % dropout + 1 s outage every ~60 s | outage length and rate: conservative operational perturbation |
+| DVL | altitude noise | - | - | RangeSigma 0.02 = CLEAN | 0.05 | feeds the seabed classifier only |
+| IMU (ICM-20602) | gyro / accelerometer white noise | 0.004 deg/s/sqrt(Hz), 100 ug/sqrt(Hz) (A6) | ~0.016 deg/s, ~4 mm/s^2 at 15 Hz bandwidth | = CLEAN (0.005 rad/s, 0.01 m/s^2) | 0.01 rad/s, 0.02 m/s^2 | CLEAN is already above the datasheet white noise (thruster vibration); MEDIUM doubles it |
+| IMU (ICM-20602) | gyro bias | zero-rate output tolerance +-1 deg/s (A6; read from a partly scrambled table extraction, to re-check in the PDF); white noise + random-walk bias structure (A7) | +-1 deg/s | random walk 0.0001 rad/s per sample (~0.3 deg/s spread after 100 s) | 0.0003 (~0.9 deg/s after 100 s) | the spread over a run stays within the datasheet tolerance |
+| Compass / AHRS | heading noise and bias | ~1 deg RMS after careful calibration, "several degrees" otherwise (A8); 6.21 -> 0.55 deg and 34 -> < 3.4 deg after calibration (A9) | sub-degree to a few degrees calibrated | sigma 0.01 (~0.6 deg) + constant 0.5 deg bias | sigma 0.02 (~1.2 deg) + 2 deg bias (total ~2.3 deg) | LOW: well calibrated; MEDIUM: an imperfect calibration within the calibrated literature range |
+| Depth (Bar30) | depth noise | resolution 2 mm; relative accuracy of the class +-2 cm (A10) | mm - cm | 0.02 m = CLEAN | 0.03 m | CLEAN already 10x the resolution; MEDIUM at the cm level of the relative accuracy |
+| All onboard streams | latency | acoustic position fixes 0.1 s to seconds (A14, S1) - a different, slower modality | - | 20 ms | 50 ms | onboard sensors on a wired bus: conservative operational perturbation, kept small |
 
-Isolation: CLEAN plus one phenomenon at its HIGH level (`FACTORS`, 13 factors: sonar_intensity, sonar_range,
-sonar_fading, sonar_dropout, sonar_blackout, dvl_velocity, dvl_dropout, dvl_range, imu_white, imu_bias,
-heading, depth, latency); the combined case is HIGH.
+What the levels mean for the protocol: at LOW every anchor of the verified design holds (sonar data never older than
+tau_max = 0.25 s, range errors within eps_range, navigation drift small); MEDIUM adds rare excursions beyond tau_max
+(the short blackout, the DVL outage: the drone enters FAILSAFE as designed) and a heading bias whose dead-reckoning
+drift reaches ~0.5 m on the approach to a gate (this is what the structure aiding of section 3b bounds).
+
+Scope: the degraded profile is applied to ONE drone, to a SUBSET (half of the fleet) or to ALL drones; the others
+keep the deployed sensors.  ONE is chosen deterministically from the committed CLEAN reference run: the healthy drone
+that comes closest to another vehicle or to a gate bar (its sensing matters most); SUBSET is ONE and the next healthy
+drones by index up to ceil(n/2) (`scope_drones` in `scripts/run_sensor_robustness_campaign.py`; the choice per
+scenario is listed in `results/validation/noise_profiles.json`).
+
+Exploratory stress levels.  The first campaign (2026-10-22/25) used stronger levels (`STRESS_V1` in
+`sim/sensor_noise.py`: DVL 0.02 / 0.04 per beam, sonar dropout 2-5 %, blackouts every 30 s, HIGH beyond every
+anchor).  They are kept only as an out-of-envelope stress test (section 7) and are not used to validate the protocol.
 
 ## 2. Referee metrics and run classes
 

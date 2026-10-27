@@ -44,6 +44,7 @@ class SimSpec:
     # sensor degradation (sim.sensor_noise.NoiseProfile): HoloOcean noise parameters + seeded wrapper effects on
     # the onboard streams; None = the deployed sensors (the baseline)
     noise: Optional[Any] = None
+    noise_drones: Optional[Any] = None   # indices of the drones that receive ``noise`` (None: all of them)
 
     def fault_active(self, name: str, t: float) -> bool:
         return any(f["drone"] == name and f["t_on"] <= t and (f.get("t_off") is None or t < f["t_off"])
