@@ -118,7 +118,7 @@ class Perception:
         self.use_attitude = use_attitude
         bars = [b for g in plan.structures for b in g.bars]
         self.clf = EchoClassifier(gate_bars=bars, cfg=cfg)
-        self.aiding = StructureAiding(self.clf, cfg)     # map-aided position correction near the gate
+        self.aiding = StructureAiding(self.clf, cfg, gates=plan.structures)     # map-aided position correction near the gate
         self.tracker = SectorTracker(cfg)
         self.gp = GatePerception(plan, cfg)
         self.ok_since: Optional[float] = None
@@ -210,7 +210,7 @@ class Perception:
             key = sonar_sensor_name(s)
             profiles[s] = d.get(key)
             ages[s] = frame.age(key) if key in d else 1e9
-        corr = self.aiding.update(nav.p, R_wb, profiles, ages, env.tau_max)
+        corr = self.aiding.update(nav.p, R_wb, profiles, ages, env.tau_max, t=t)
         if corr is not None:                      # dead-reckoning drift bounded by the mapped gate (structure_aiding)
             self.nav.state.p += corr
         readings = self.clf.classify(profiles, ages, nav.p, R_wb, seabed_z, tau_healthy=env.tau_max)
@@ -221,6 +221,7 @@ class Perception:
         sense_ok = (not unhealthy and frame.fresh("DVLSensor", 0.35) and frame.fresh("Compass", 0.2)
                     and frame.fresh("DepthSensor", 0.2))
         gate = self.gp.update(t, nav.p, nav.yaw, targets, readings)
+        gate.loc_ok = self.aiding.valid(t)
         slot, R_form, _s_ref = self.slot_reference(t_form, sigma)
         if offset is not None:
             slot = slot + offset                  # intentional give-way deviation is not a formation error

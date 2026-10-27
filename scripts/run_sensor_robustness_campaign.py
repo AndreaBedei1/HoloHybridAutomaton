@@ -57,6 +57,8 @@ BEACON_SCENARIOS = ("formation_six", "gate_single", "integrated_short", "mutex_d
 # collision avoidance, P2 gate / mutex, P3 formation and recovery, lost drones, integrated) x scope x 3 seeds
 VALIDATION_SCENARIOS = ("p1_vertical_escape", "p1_two_lines", "formation_six", "formation_recovery_head_current",
                         "integrated_short", "line_parallel_mutex", "lost_drone_rejoin", "lost_drone_mutex")
+# targeted check of the gate localization (relocalization hold, robust clearance) on the gate scenarios
+GATE_CHECK_SCENARIOS = ("line_parallel_mutex", "lost_drone_mutex", "gate_single", "integrated_short")
 PY = sys.executable
 
 
@@ -129,12 +131,13 @@ def plan(phase: str, seeds, only=None, all_high=False):
         for prof in ("LOW", "MEDIUM", "HIGH"):
             for sc in BEACON_SCENARIOS:
                 runs += [("B1", prof, sc, s) for s in seeds]
-    elif phase == "validation":
+    elif phase in ("validation", "gate_check"):
         from holo_fleet.sim.sensor_noise import SCOPES
 
-        for sc in VALIDATION_SCENARIOS:                 # CLEAN first: it fixes the deadline of the degraded runs
+        scen = VALIDATION_SCENARIOS if phase == "validation" else GATE_CHECK_SCENARIOS
+        for sc in scen:                                 # CLEAN first: it fixes the deadline of the degraded runs
             runs += [("B0", "CLEAN", sc, s) for s in seeds]
-        for sc in VALIDATION_SCENARIOS:
+        for sc in scen:
             for prof in ("LOW", "MEDIUM"):
                 for scope in SCOPES:
                     runs += [("B0", f"{prof}-{scope}", sc, s) for s in seeds]
@@ -412,7 +415,7 @@ def main() -> int:
         if sc not in refs:
             refs[sc] = load_reference(DEMOS / sc)
         dur = SCENARIOS[sc](__import__("holo_fleet.config", fromlist=["DEFAULT"]).DEFAULT).duration_s
-        if args.phase == "validation":
+        if args.phase in ("validation", "gate_check"):
             from holo_fleet.referee.terminal import clean_horizon_s
 
             dur = clean_horizon_s(dur)
@@ -427,7 +430,7 @@ def main() -> int:
             t0 = time.time()
             seen: dict = {}
             cmd = [PY, str(Path(__file__).resolve()), "--worker", "--scenario", sc, "--profile", prof, "--seed",
-                   str(seed), "--protocol", protocol, "--run-dir", str(d)] + (["--allow-unpatched"] if args.allow_unpatched else [])                 + (["--terminal"] if args.phase == "validation" else [])
+                   str(seed), "--protocol", protocol, "--run-dir", str(d)] + (["--allow-unpatched"] if args.allow_unpatched else [])                 + (["--terminal"] if args.phase in ("validation", "gate_check") else [])
             with open(d.parent / f"{d.name}_worker.log", "w", encoding="utf-8") as wl:
                 proc = subprocess.Popen(cmd, stdout=wl, stderr=subprocess.STDOUT, cwd=str(ROOT),
                                         env={**os.environ, "PYTHONUNBUFFERED": "1"})

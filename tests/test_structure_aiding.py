@@ -1,7 +1,8 @@
 """Map-aided correction of the dead-reckoning position at the gate (perception/structure_aiding.py).
 
-Synthetic sonar profiles are generated from the TRUE pose (leading edge of each sector at the true nearest-bar range);
-the drone's estimate carries a lateral error, as the compass bias of the realistic MEDIUM level produces at the gate.
+Synthetic sonar profiles are generated from the TRUE pose (leading edge of each sector at the true nearest-bar range
+within the nominal cone, the model the CLEAN runs support: structure_aiding._pred); the drone's estimate carries a
+lateral error, as the compass bias of the realistic MEDIUM level produces at the gate.
 """
 
 import math
@@ -31,14 +32,23 @@ def _R():
     return np.array([[c, -s, 0.0], [s, c, 0.0], [0.0, 0.0, 1.0]])
 
 
+def _first_bar_echo(clf, pos, a):
+    d = np.asarray(clf.struct_pts) - pos
+    r = np.linalg.norm(d, axis=1)
+    ang = np.arccos(np.clip((d @ a) / np.maximum(r, 1e-9), -1.0, 1.0))
+    m = clf.model
+    sel = (ang <= np.radians(m.half_angle_deg)) & (r >= m.range_min) & (r <= m.range_max)
+    return float(r[sel].min()) if sel.any() else None
+
+
 def _profiles(clf, p_true, R, extra=None):
     out = {}
     for s in sg.SECTORS:
         prof = np.zeros_like(RANGES)
         a, _ = clf._sector_frame(s, R)
-        w = clf.structure_window(p_true + R @ sg.MOUNTS[s], a)
+        w = _first_bar_echo(clf, p_true + R @ sg.MOUNTS[s], a)
         if w is not None:
-            prof[(RANGES >= w[0]) & (RANGES <= w[0] + 0.15)] = 0.9
+            prof[(RANGES >= w) & (RANGES <= w + 0.15)] = 0.9
         if extra and s in extra:
             r = extra[s]
             prof[(RANGES >= r) & (RANGES <= r + 0.15)] = 0.9
@@ -64,6 +74,43 @@ def test_lateral_drift_at_the_gate_is_corrected():
     p = _run(aid, clf, p_true, p_est, R)
     assert np.linalg.norm(p[:2] - p_true[:2]) < 0.15, (p - p_true)
     assert aid.applied_m <= MAX_CORR_M
+
+
+def test_the_lateral_drift_is_removed_during_the_approach_before_the_bars():
+    """Closed loop: the drone keeps its estimate on the centre line while it advances through the passage; its true
+    lateral offset is the navigation error.  It is corrected before the drone reaches the gate plane, and no
+    accepted correction ever increases the error."""
+    clf = EchoClassifier(gate_bars=BARS, cfg=DEFAULT)
+    R = _R()
+    for e0 in (-0.55, -0.35, 0.45):
+        aid = StructureAiding(clf, DEFAULT)
+        e = e0                                              # true lateral position - estimated (estimate held at 0)
+        for s_gate in np.arange(-2.2, -0.3, 0.03):         # 0.3 m/s at 10 Hz
+            p_est = _world(s_gate, 0.0)
+            corr = aid.update(p_est, R, _profiles(clf, _world(s_gate, e), R), {s: 0.0 for s in sg.SECTORS}, 0.25)
+            if corr is not None:
+                c_l = float(corr @ np.array([-R[1, 0], R[0, 0], 0.0]))
+                assert abs(e - c_l) <= abs(e) + 0.05, (e0, s_gate, e, c_l)
+                e -= c_l                                    # the drone re-centres its corrected estimate
+        assert abs(e) < 0.15, (e0, e, aid.last)
+
+
+def test_a_silent_sector_does_not_block_a_well_matched_correction():
+    """A vertical sonar that does not return the bar (a weak grazing return, a fade): the other sectors match the
+    corrected pose closely, the silent one costs every candidate the same and does not inflate the fit RMS."""
+    clf = EchoClassifier(gate_bars=BARS, cfg=DEFAULT)
+    R = _R()
+    p_true = _world(-1.25, -0.76)
+    for mute in ("DOWN", "UP"):
+        aid = StructureAiding(clf, DEFAULT)
+        p = _world(-1.25, -0.21)
+        for _ in range(12):
+            profs = _profiles(clf, p_true, R)
+            profs[mute] = np.zeros_like(RANGES)
+            corr = aid.update(p, R, profs, {s: 0.0 for s in sg.SECTORS}, 0.25)
+            if corr is not None:
+                p = p + corr
+        assert np.linalg.norm(p[:2] - p_true[:2]) < 0.15, (mute, p - p_true, aid.last)
 
 
 def test_no_structure_in_range_means_no_correction():
@@ -144,3 +191,54 @@ def test_a_missing_bar_echo_never_moves_a_correct_estimate():
                 profs = _profiles(clf, p, R)
                 profs[missing] = np.zeros_like(RANGES)
                 assert aid.update(p, R, profs, {s: 0.0 for s in sg.SECTORS}, 0.25) is None, (s_gate, missing, aid.last)
+
+
+GATES = list(SC.plans[0].structures)
+
+
+def test_a_fit_that_puts_the_hull_outside_the_opening_is_rejected():
+    """Robust clearance: the drone is really 0.6 m off the axis (hull beyond the free opening).  Whatever the fit says,
+    no correction is applied and the gate localization is never valid: the drone must not enter."""
+    clf = EchoClassifier(gate_bars=BARS, cfg=DEFAULT)
+    aid = StructureAiding(clf, DEFAULT, gates=GATES)
+    R = _R()
+    p_true, p_est = _world(-1.1, -0.6), _world(-1.1, 0.0)
+    for k in range(12):
+        corr = aid.update(p_est, R, _profiles(clf, p_true, R), {s: 0.0 for s in sg.SECTORS}, 0.25, t=0.1 * k)
+        assert corr is None
+        assert not aid.valid(0.1 * k)
+
+
+def test_a_centred_drone_has_a_valid_gate_localization():
+    clf = EchoClassifier(gate_bars=BARS, cfg=DEFAULT)
+    aid = StructureAiding(clf, DEFAULT, gates=GATES)
+    R = _R()
+    p = _world(-1.18, 0.05)
+    for k in range(6):
+        aid.update(p, R, _profiles(clf, p, R), {s: 0.0 for s in sg.SECTORS}, 0.25, t=0.1 * k)
+    assert aid.valid(0.5), aid.last
+    assert not aid.valid(0.5 + 1.2)                    # a confirmation expires
+
+
+def test_an_equally_good_far_position_makes_the_fit_ambiguous():
+    """Logged echoes (MEDIUM-ALL integrated_short seed 2, drone 1, t = 85.9 s): the estimate is on the axis, the drone
+    really 0.56 m to the left.  The estimate explains three sectors and the true pose explains them as well (total cost
+    0.818 vs 0.820): the echoes cannot separate them, so the localization must not be confirmed."""
+    sc = SCENARIOS["integrated_short"](DEFAULT)
+    gates = list(sc.plans[0].structures)
+    g = gates[0]
+    clf = EchoClassifier(gate_bars=[b for gg in gates for b in gg.bars], cfg=DEFAULT)
+    aid = StructureAiding(clf, DEFAULT, gates=gates)
+    p_est = g.from_gate_frame([-0.44, 0.0, 0.04])
+    yaw = math.radians(5.6)
+    R = np.array([[math.cos(yaw), -math.sin(yaw), 0.0], [math.sin(yaw), math.cos(yaw), 0.0], [0.0, 0.0, 1.0]])
+    edges = {"FRONT": [0.42, 6.57, 9.18], "RIGHT": [0.52, 1.17, 2.12], "UP": [0.72], "DOWN": [0.77]}
+    profs = {}
+    for s in sg.SECTORS:
+        prof = np.zeros_like(RANGES)
+        for r in edges.get(s, []):
+            prof[(RANGES >= r) & (RANGES <= r + 0.15)] = 0.9
+        profs[s] = prof
+    for k in range(6):
+        assert aid.update(p_est, R, profs, {s: 0.0 for s in sg.SECTORS}, 0.25, t=0.1 * k) is None
+        assert not aid.valid(0.1 * k), aid.last

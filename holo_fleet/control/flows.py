@@ -18,6 +18,12 @@ from holo_fleet.control.formation_time import FormationTime
 from holo_fleet.mission import MissionPlan
 from holo_fleet.perception.perception import LocalObservation
 from holo_fleet.perception.sonar_processing import OBSTACLE_CLASSES
+from holo_fleet.perception.sonar_geometry import HULL_HALF
+
+RELOC_MARGIN_M = 0.15     # hold point: the hull this far before the critical region
+RELOC_ZONE_M = 0.4        # a gate localization confirmed this close to the hold point clears the entry
+RELOC_PERIOD_S = 6.0      # relocalization: hold, then back off for a new viewing geometry, alternately
+RELOC_BACK_M = 0.6
 
 
 def _cap(v: np.ndarray, vmax_xy: float, vmax_z: float) -> np.ndarray:
@@ -56,10 +62,15 @@ class Flows:
         self.cfg = cfg
         self.escape = EscapePlanner(cfg)
         self.sigma = 0.0                      # local along-track progress offset (sonar consensus)
+        self.lam = 0.0                        # local lateral slot offset (sonar consensus) [m]
+        self.lat_offset = np.zeros(3)         # ... as a world vector, added to the slot reference
         self.ftime = FormationTime(plan.clock, cfg)   # local formation time (reduced progress, DI-31)
         self.last_choice: Optional[EscapeChoice] = None
         self.hold_pos: Optional[np.ndarray] = None
         self.offset = np.zeros(3)             # give-way offset of the mission target (world) [m]
+        self.cr_cleared = False               # gate localization valid at the hold point: may enter the CR
+        self.reloc_hold = False               # holding before the CR for the gate localization (logged)
+        self.hold_since: Optional[float] = None   # relocalization hold before the CR started at
         self.giveway: str = ""                # "", "RIGHT", "UP", "DOWN"
         self.giveway_t = -1e9                 # last time the head-on condition held
         self.rejoin_phase = ""                # "", "DROP_BACK", "TO_LANE" (rejoin from behind, recovering only)
@@ -124,11 +135,19 @@ class Flows:
         # drone is far from its own slot (beyond e_lost): there the range residuals mostly measure its own
         # displacement (a drone left behind sees every neighbour 'ahead') and would carry its reference away from
         # the fleet (DI-31); near its slot, in any mode, it is what re-aligns the references of the drones
-        if float(np.linalg.norm(err)) < fr.e_lost:
+        # lateral consensus, the same integral on the lateral residual: the dead reckoning drifts sideways (a compass
+        # bias turns into a lateral error of a few percent of the distance run) and the drone, on its slot in its own
+        # estimate, is really beside it; the proportional sonar term below only shares that error with the slot
+        # tracking, the integrated offset moves the slot reference until the neighbours' ranges agree
+        near = float(np.linalg.norm(err)) < fr.e_lost
+        if near:
             self.sigma += dt * (fr.k_progress * obs.form.along_corr - 0.02 * self.sigma)
             self.sigma = float(np.clip(self.sigma, -fr.progress_max, fr.progress_max))
+            self.lam += dt * (fr.k_lateral * obs.form.lateral_corr - 0.02 * self.lam)
+            self.lam = float(np.clip(self.lam, -fr.progress_max, fr.progress_max))
         _slot, R_form, s_ref = self._slot(obs)
         t_hat, n_hat = R_form[:, 0], R_form[:, 1]
+        self.lat_offset = self.lam * np.array([n_hat[0], n_hat[1], 0.0])
         # a recovering drone behind its slot is catching up with its own fleet, not meeting it head-on: the drones
         # ahead close in its FRONT sector at the catch-up speed and, while it is off its slot, are not recognised
         # as neighbours; no new give-way is decided then (it would push it towards the next lane, DI-31)
@@ -219,15 +238,31 @@ class Flows:
         g = self.plan.gates[min(obs.gate_index, len(self.plan.gates) - 1)]
         go = obs.gate
         yaw = math.atan2(g.axis[1], g.axis[0])
+        hold = False
         if mode == "MUTEX_PASS":
             c = self._carrot(self.pass_path(go.queue_s, go.queue_l, go.queue_dz), np.array([go.s, go.l, go.dz]))
+            # relocalization hold: the critical region is entered only with a valid gate localization (the hull plus
+            # the uncertainty of a map fit inside the free opening: perception/structure_aiding.py).  Short of it the
+            # committed drone holds on its path before the CR, where the bars are observed, and every RELOC_PERIOD_S
+            # backs off by RELOC_BACK_M and returns (a new viewing geometry); queued drones see it in FRONT, nearer
+            # than the CR, and wait (WAIT relation): mutex, priority and the automaton are unchanged
+            s_hold = -(G.cr_half_len + float(HULL_HALF[0]) + RELOC_MARGIN_M)
+            if go.loc_ok and go.s >= s_hold - RELOC_ZONE_M:
+                self.cr_cleared = True
+            if not self.cr_cleared and c[0] > s_hold:
+                self.hold_since = obs.t if self.hold_since is None else self.hold_since
+                back = int((obs.t - self.hold_since) / RELOC_PERIOD_S) % 2 == 1
+                c = np.array([s_hold - (RELOC_BACK_M if back else 0.0), 0.0, c[2]])
+                hold = True
             tgt = g.from_gate_frame(c)
             vmax = G.v_pass
         else:  # MUTEX_APPROACH / MUTEX_YIELD: go to / hold the own queue point
+            self.cr_cleared, self.hold_since = False, None
             tgt = g.from_gate_frame([go.queue_s, go.queue_l, go.queue_dz])
             vmax = G.v_approach
+        self.reloc_hold = hold
         v = G.k_track * (tgt - obs.p)
-        if mode == "MUTEX_PASS":                                    # carrot: keep the cruise speed
+        if mode == "MUTEX_PASS" and not hold:                       # carrot: keep the cruise speed
             n = float(np.linalg.norm(v[:2]))
             if n > 1e-6:
                 v[:2] *= vmax / n

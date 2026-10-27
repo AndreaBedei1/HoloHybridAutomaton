@@ -279,7 +279,7 @@ def main() -> int:
              "validation` (patched HoloOcean engine, headless).  Levels: CLEAN (the deployed sensors), LOW and MEDIUM "
              "(datasheet / literature anchored, [docs](../../docs/SENSOR_ROBUSTNESS_AND_BEACONING.md)), each applied to "
              "ONE drone, a SUBSET (half of the fleet) or ALL drones; seeds 0, 1, 2.  Every run ends on SUCCESS (every "
-             "required outcome reached), FAILURE (a safety violation) or DEADLINE (1.5 x the reference time + 20 s).", "",
+             "required outcome reached), FAILURE (a safety violation) or DEADLINE (1.5 x the slowest CLEAN completion time of the scenario + 20 s).", "",
              f"Runs: {len(rows)} ({n_inv} invalid, excluded).  Code: {', '.join(shas)}.", "",
              "## Main result", "", table_main(rows), "",
              "P1: no two drones closer than d_safe, no contact, the non-cooperative vehicle never closer than d_safe.  "

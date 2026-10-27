@@ -53,6 +53,7 @@ class GateObs:
     occ_busy: bool = False
     rank_used: bool = False
     occ_timeouts: int = 0
+    loc_ok: bool = False                                     # gate localization confirmed (structure_aiding.valid)
 
 
 class GatePerception:

@@ -139,7 +139,7 @@ class DroneController:
         t = frame.t
         ftime = self.flows.ftime                               # own formation time (reduced progress, DI-31)
         obs = self.perception.update(frame, dt, sigma=self.flows.sigma, env_ok=self.envmon.ok,
-                                     offset=self.flows.offset, in_formation=self.ha.mode in IN_FORMATION,
+                                     offset=self.flows.offset + self.flows.lat_offset, in_formation=self.ha.mode in IN_FORMATION,
                                      t_form=ftime.now(t))
         for e in self.perception.events:                       # SLOT_DECLARED_VACANT / SLOT_REOCCUPIED
             self.events.append({**e, "mode": self.ha.mode.value})
@@ -234,9 +234,10 @@ class DroneController:
             "current_est": np.round(self.ll.current_estimate(), 3).tolist(),
             "gate": {"id": obs.gate.gate_id, "s": round(obs.gate.s, 2), "l": round(obs.gate.l, 2),
                      "at_queue": obs.gate.at_queue, "decision": obs.gate.decision, "has_prio": obs.gate.has_prio,
-                     "occ": obs.gate.occ_state, "relations": obs.gate.relations, "rank_used": obs.gate.rank_used},
+                     "occ": obs.gate.occ_state, "relations": obs.gate.relations, "rank_used": obs.gate.rank_used,
+                     "loc_ok": obs.gate.loc_ok, "reloc_hold": self.flows.reloc_hold},
             "form": {"form_err": round(obs.form.form_err, 3), "slot_err": round(obs.form.slot_err_norm, 3),
-                     "neighbors_ok": obs.form.neighbors_ok, "sigma": round(self.flows.sigma, 3),
+                     "neighbors_ok": obs.form.neighbors_ok, "sigma": round(self.flows.sigma, 3), "lam": round(self.flows.lam, 3),
                      "checks": [(c.slot, round(c.expected_d, 2), None if not c.seen else round(c.residual, 2))
                                 for c in obs.form.checks],
                      "missing": sorted(k for k in obs.form.missing if k not in self.perception.vacant),

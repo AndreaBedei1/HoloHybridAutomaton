@@ -186,6 +186,7 @@ class FormationRule:
     v_corr_max: float = 0.10          # cap of the sonar correction [m/s]
     k_progress: float = 0.08          # along-track progress correction from sonar ranges [1/s]
     progress_max: float = 2.0         # |local progress offset| cap [m]
+    k_lateral: float = 0.08           # lateral counterpart of k_progress: integrated lateral slot offset [1/s]
     v_nominal: float = 0.30           # survey speed [m/s]
     v_slot_max: float = 0.40          # speed cap while following
     v_recovery_max: float = 0.50      # speed cap while recovering (catch-up margin 0.2 m/s; = Envelope.v_max_nominal)
