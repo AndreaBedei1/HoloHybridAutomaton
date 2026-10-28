@@ -1,6 +1,6 @@
 {
   "check": "mutex",
-  "all_passed": true,
+  "all_passed": false,
   "results": [
     {
       "prop": "M1 never both PRIORITY (|delta| <= 12 deg, fuzz 9 deg)",
@@ -9,7 +9,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 0.011,
+      "seconds": 0.012,
       "counterexample": null,
       "note": ""
     },
@@ -66,7 +66,7 @@
       "expect": "sat",
       "verdict": "sat",
       "passed": true,
-      "seconds": 0.01,
+      "seconds": 0.069,
       "counterexample": {
         "ad_iB": 68.0,
         "ad_iF": 112.0,
@@ -111,7 +111,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 0.012,
+      "seconds": 0.01,
       "counterexample": null,
       "note": "queue line s = -4.18 m, adjacent bearing deviation <= 20.0 deg; no deadlock (a leader exists) and no double priority"
     },
@@ -122,7 +122,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 0.059,
+      "seconds": 0.111,
       "counterexample": null,
       "note": "queue line s = -5.41 m, adjacent bearing deviation <= 20.0 deg; no deadlock (a leader exists) and no double priority"
     },
@@ -133,7 +133,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 0.247,
+      "seconds": 0.327,
       "counterexample": null,
       "note": "queue line s = -6.63 m, adjacent bearing deviation <= 20.0 deg; no deadlock (a leader exists) and no double priority"
     },
@@ -144,7 +144,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 0.651,
+      "seconds": 0.853,
       "counterexample": null,
       "note": "queue line s = -7.99 m, adjacent bearing deviation <= 20.0 deg; no deadlock (a leader exists) and no double priority"
     },
@@ -155,7 +155,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 1.558,
+      "seconds": 2.729,
       "counterexample": null,
       "note": "queue line s = -9.52 m, adjacent bearing deviation <= 20.0 deg; no deadlock (a leader exists) and no double priority"
     },
@@ -166,7 +166,7 @@
       "expect": "sat",
       "verdict": "sat",
       "passed": true,
-      "seconds": 0.213,
+      "seconds": 0.349,
       "counterexample": {
         "ad_q4_0_1_B": 90.0,
         "ad_q4_0_1_F": 90.0,
@@ -486,6 +486,61 @@
       "note": "n=2: s=-4.18; n=3: s=-5.41; n=4: s=-6.63; n=5: s=-7.99; n=6: s=-9.52; stack 2x2: s=-5.71; stack_pair: s=-4.91. Scope of M2 (hidden, excluded): n=3: pair(s) [(0, 2)] around a vacant point"
     },
     {
+      "prop": "M4g exit observable, n=2: beyond the CR every passing drone gives every queued drone an exit witness (any sector, bars' occlusion, measured detection range) for >= 3 captures",
+      "formula": "exists path interval: in cone, line of sight clear, outside the structure window, range <= 10.0 m, W1 at the worst echo error",
+      "encoding": "perception/exit_witness.py",
+      "expect": "holds",
+      "verdict": "holds",
+      "passed": true,
+      "seconds": 0.0,
+      "counterexample": null,
+      "note": "min 8.0 s (observer l=+1.75, passer lane -1.75, first at s=1.96, FRONT 6.02 m)"
+    },
+    {
+      "prop": "M4g exit observable, n=3: beyond the CR every passing drone gives every queued drone an exit witness (any sector, bars' occlusion, measured detection range) for >= 3 captures",
+      "formula": "exists path interval: in cone, line of sight clear, outside the structure window, range <= 10.0 m, W1 at the worst echo error",
+      "encoding": "perception/exit_witness.py",
+      "expect": "holds",
+      "verdict": "holds",
+      "passed": true,
+      "seconds": 0.0,
+      "counterexample": null,
+      "note": "min 1.6 s (observer l=+3.50, passer lane +0.00, first at s=3.8, FRONT 9.31 m)"
+    },
+    {
+      "prop": "M4g exit observable, n=4: beyond the CR every passing drone gives every queued drone an exit witness (any sector, bars' occlusion, measured detection range) for >= 3 captures",
+      "formula": "exists path interval: in cone, line of sight clear, outside the structure window, range <= 10.0 m, W1 at the worst echo error",
+      "encoding": "perception/exit_witness.py",
+      "expect": "holds",
+      "verdict": "violated",
+      "passed": false,
+      "seconds": 0.0,
+      "counterexample": null,
+      "note": "min 0.0 s (observer l=+5.25, passer lane +1.75, first at s=None, None None m); no witness within 10.0 m for the observers at l = +5.25, -5.25: release only by the t_occ_max fallback"
+    },
+    {
+      "prop": "M4g exit observable, n=5: beyond the CR every passing drone gives every queued drone an exit witness (any sector, bars' occlusion, measured detection range) for >= 3 captures",
+      "formula": "exists path interval: in cone, line of sight clear, outside the structure window, range <= 10.0 m, W1 at the worst echo error",
+      "encoding": "perception/exit_witness.py",
+      "expect": "holds",
+      "verdict": "violated",
+      "passed": false,
+      "seconds": 0.0,
+      "counterexample": null,
+      "note": "min 0.0 s (observer l=+7.00, passer lane +3.50, first at s=None, None None m); no witness within 10.0 m for the observers at l = +3.50, +7.00, -3.50, -7.00: release only by the t_occ_max fallback"
+    },
+    {
+      "prop": "M4g exit observable, n=6: beyond the CR every passing drone gives every queued drone an exit witness (any sector, bars' occlusion, measured detection range) for >= 3 captures",
+      "formula": "exists path interval: in cone, line of sight clear, outside the structure window, range <= 10.0 m, W1 at the worst echo error",
+      "encoding": "perception/exit_witness.py",
+      "expect": "holds",
+      "verdict": "violated",
+      "passed": false,
+      "seconds": 0.0,
+      "counterexample": null,
+      "note": "min 0.0 s (observer l=+8.75, passer lane +5.25, first at s=None, None None m); no witness within 10.0 m for the observers at l = +1.75, +5.25, +8.75, -1.75, -5.25, -8.75: release only by the t_occ_max fallback"
+    },
+    {
       "prop": "M4fm mutation: the stacked queue at the cone-only line (no structure clearance) hides the diagonal neighbours",
       "formula": "expect violation",
       "encoding": "mission.queue_line",
@@ -514,7 +569,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 12.114,
+      "seconds": 21.972,
       "counterexample": null,
       "note": "masked s in (-0.5499999999999998, 2.0250000000000004), beyond s > 1.7400000000000002, B needs >= 67 steps to the CR, A crosses at >= 0.12 m/s"
     },
@@ -525,7 +580,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 9.856,
+      "seconds": 10.646,
       "counterexample": null,
       "note": "masked s in (-0.9349999999999996, 2.285), beyond s > 1.9300000000000006, B needs >= 92 steps to the CR, A crosses at >= 0.12 m/s"
     },
@@ -536,7 +591,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 7.1,
+      "seconds": 10.78,
       "counterexample": null,
       "note": "masked s in (-0.05999999999999961, 1.4299999999999997), beyond s > 1.3399999999999999, B needs >= 92 steps to the CR, A crosses at >= 0.12 m/s"
     },
@@ -547,7 +602,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 6.591,
+      "seconds": 8.797,
       "counterexample": null,
       "note": "masked s in (-1.17, 2.4700000000000006), beyond s > 2.0649999999999995, B needs >= 116 steps to the CR, A crosses at >= 0.12 m/s"
     },
@@ -558,7 +613,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 9.836,
+      "seconds": 14.094,
       "counterexample": null,
       "note": "masked s in (-0.3849999999999998, 1.7199999999999998), beyond s > 1.5549999999999997, B needs >= 116 steps to the CR, A crosses at >= 0.12 m/s"
     },
@@ -569,7 +624,7 @@
       "expect": "sat",
       "verdict": "sat",
       "passed": true,
-      "seconds": 6.227,
+      "seconds": 8.129,
       "counterexample": {
         "beyond_0": false,
         "beyond_1": false,

@@ -12,8 +12,10 @@
   handled by the WAIT relation).
   A drone in the gate opening is masked by the bars (its echo falls inside the structure window),
   so the belief is a latch: BUSY as soon as an unexplained corridor echo is seen, BUSY while it is
-  seen or masked, EXITING when an echo is seen beyond R_far with the corridor empty, FREE after
-  ``t_clear`` more - or after ``t_occ_max`` without corridor echoes (logged as a timeout).
+  seen or masked, EXITING on a positive exit witness with the corridor empty (an echo in any sonar
+  sector that no hull in the CR can produce and a hull leaving it on the exit side can: exit_witness.py;
+  the FRONT echo beyond R_far is the FRONT case), FREE after ``t_clear`` more - or after ``t_occ_max``
+  without corridor echoes (logged as a timeout).  No echo is never evidence of an exit.
 """
 
 from __future__ import annotations
@@ -27,6 +29,7 @@ import numpy as np
 from holo_fleet.config import DEFAULT, FleetConfig
 from holo_fleet.ha import mutex_rule
 from holo_fleet.mission import GateSpec, MissionPlan, queue_assignment, queue_order
+from holo_fleet.perception.exit_witness import ExitWitness
 from holo_fleet.perception.sonar_geometry import MOUNTS, R_OUT
 from holo_fleet.perception.sonar_processing import DYNAMIC
 
@@ -53,6 +56,7 @@ class GateObs:
     occ_busy: bool = False
     rank_used: bool = False
     occ_timeouts: int = 0
+    exit_witness: Optional[Dict] = None                      # {sector, range} of this capture's exit witness
     loc_ok: bool = False                                     # gate localization confirmed (structure_aiding.valid)
 
 
@@ -67,6 +71,8 @@ class GatePerception:
         self.busy_since = -1e9
         self.exit_seen_t = -1e9
         self.occ_timeouts = 0
+        self.exit = ExitWitness(cfg)
+        self.exit_witness: Optional[Dict] = None              # the witness that moved the latch to EXITING
         self.rank_uses = 0
         self._rank_prev = False
         self.prev_targets = []
@@ -86,6 +92,7 @@ class GatePerception:
         self.idx += 1
         self.prio_since = None
         self.occ_state, self.last_corridor_t, self.exit_seen_t = "FREE", -1e9, -1e9
+        self.exit.reset()
 
     def cr_ranges(self, g: GateSpec, p: np.ndarray, yaw: float):
         """Smallest and largest distance from the own FRONT sonar to a point of the CR (gate map + own pose)."""
@@ -152,20 +159,26 @@ class GatePerception:
         o.has_prio = self.prio_since is not None and (t - self.prio_since) >= G.t_clear
         # ---------------------------------------------------------------- occupancy belief
         corridor = [tg for tg in targets if "FRONT" in tg.pattern and r_near <= tg.r_min <= r_far]
-        beyond = [tg for tg in targets if "FRONT" in tg.pattern and tg.r_min > r_far]
         if corridor:
             self.last_corridor_t = t
             if self.occ_state == "FREE":
                 self.busy_since = t
             self.occ_state = "BUSY"
+        witness = None
+        if self.occ_state != "FREE":
+            healthy = {sec: bool(rd.healthy) for sec, rd in readings.items()}
+            witness = self.exit.update(t, g, p, yaw, targets, bool(corridor), self.last_corridor_t, healthy)
+        o.exit_witness = witness
         if self.occ_state == "BUSY":
-            if beyond and not corridor:
-                self.occ_state, self.exit_seen_t = "EXITING", t
+            if witness is not None and not corridor:
+                self.occ_state, self.exit_seen_t, self.exit_witness = "EXITING", t, witness
             elif t - self.last_corridor_t > G.t_occ_max:
-                self.occ_state = "FREE"
+                self.occ_state, self.exit_witness = "FREE", None
                 self.occ_timeouts += 1
         if self.occ_state == "EXITING" and not corridor and t - max(self.exit_seen_t, self.last_corridor_t) >= G.t_clear:
             self.occ_state = "FREE"
+        if self.occ_state == "FREE":
+            self.exit.reset()
         o.occ_state = self.occ_state
         o.occ_busy = self.occ_state != "FREE"
         o.occ_timeouts = self.occ_timeouts

@@ -341,6 +341,100 @@ def geometry(cfg: FleetConfig, n: int, queue_line=None) -> dict:
     return out
 
 
+# ------------------------------------------------------------------------------------- M4g exit observability
+# Range within which the sonar of a queued drone detects a hull that has left the CR when the line of sight is
+# clear: >= 29 % of the captures up to 10 m, 19 % at 10-11 m, 7 % at 11-12 m (CLEAN gate runs, observers at a lateral
+# queue point, results/gate/exit_detection.json).
+R_DETECT_M = 10.0
+
+
+def _segment_hits_box(a, b, box) -> bool:
+    A, B = box.axes.T @ (a - box.center), box.axes.T @ (b - box.center)
+    d, t0, t1 = B - A, 0.0, 1.0
+    for k in range(3):
+        if abs(d[k]) < 1e-12:
+            if abs(A[k]) > box.half[k]:
+                return False
+        else:
+            u, v = (-box.half[k] - A[k]) / d[k], (box.half[k] - A[k]) / d[k]
+            t0, t1 = max(t0, min(u, v)), min(t1, max(u, v))
+            if t0 > t1:
+                return False
+    return True
+
+
+def exit_observability(cfg: FleetConfig, n: int, step: float = 0.1) -> list:
+    """For every queued observer and every other drone of the abreast queue of n: the part of the passing drone's
+    path beyond the CR (control/flows.pass_path_points, veering to its own lane) over which some sonar sector of
+    the observer gives an exit witness (perception/exit_witness.py, W1 at the worst echo error), its hull being in
+    the nominal cone, the line of sight clear of every bar (hull sampled over its width and height), its echo outside
+    the classifier's structure window and within R_DETECT_M.  W2 holds for the true position (speed <= v_bound);
+    W3 (a drone already beyond) is not modelled.  Returns one row per (observer, passer) pair."""
+    from holo_fleet.arena_bridge import HORSESHOE_TRACK, load_arena_gates
+    from holo_fleet.perception.exit_witness import ExitWitness
+    from holo_fleet.perception.sonar_geometry import HULL_HALF, SECTORS
+    from holo_fleet.perception.sonar_processing import EchoClassifier
+
+    G, env, pc = cfg.gate, cfg.env, cfg.perc
+    g = load_arena_gates(HORSESHOE_TRACK, ["G06"])[0]
+    clf, wit = EchoClassifier(gate_bars=list(g.bars), cfg=cfg), ExitWitness(cfg)
+    yaw = math.atan2(g.axis[1], g.axis[0])
+    Rq = np.array([[math.cos(yaw), -math.sin(yaw), 0.0], [math.sin(yaw), math.cos(yaw), 0.0], [0.0, 0.0, 1.0]])
+    half_nom = math.radians(pc.sonar.half_angle_deg)
+    q_s, lats = queue_points(G, n, cfg.perc)
+    hull = np.array([[x, y, z] for x in np.linspace(-1, 1, 3) for y in np.linspace(-1, 1, 3) for z in np.linspace(-1, 1, 3)
+                     if max(abs(x), abs(y), abs(z)) == 1.0]) * HULL_HALF
+    left = np.array([-g.axis[1], g.axis[0], 0.0])
+    rows = []
+    for li in lats:
+        p = g.from_gate_frame([q_s, li, 0.0])
+        cones = {}
+        for sec in SECTORS:
+            son, ax = p + Rq @ MOUNTS[sec], Rq @ AXES[sec]
+            cones[sec] = (son, ax, clf.structure_window(son, ax), wit.r_far(g, p, yaw, sec) + env.eps_range_far)
+        for lj in lats:
+            if lj == li:
+                continue
+            path = pass_path_points(G, q_s, lj, 0.0, lane=lj, lane_dz=0.0)
+            pts = []
+            for a, b in zip(path[:-1], path[1:]):
+                k = max(1, int(np.linalg.norm(b - a) / step))
+                pts += [(a + (b - a) * i / k, b - a) for i in range(k)]
+            seen = []
+            for cg, dirg in pts:
+                if cg[0] <= G.cr_half_len:
+                    continue
+                c = g.from_gate_frame(cg)
+                dw = dirg[0] * g.axis + dirg[1] * left
+                hy = math.atan2(dw[1], dw[0]) if np.linalg.norm(dw[:2]) > 1e-9 else yaw
+                Rh = np.array([[math.cos(hy), -math.sin(hy), 0.0], [math.sin(hy), math.cos(hy), 0.0], [0.0, 0.0, 1.0]])
+                surf = c + hull @ Rh.T
+                sight = [c + dl * left + np.array([0.0, 0.0, dz]) for dl in (-HULL_HALF[1], 0.0, HULL_HALF[1])
+                         for dz in (-HULL_HALF[2], 0.0, HULL_HALF[2])]
+                for sec, (son, ax, sw, bound) in cones.items():
+                    d = surf - son
+                    r = np.linalg.norm(d, axis=1)
+                    inc = np.arccos(np.clip((d @ ax) / r, -1.0, 1.0)) <= half_nom
+                    if not inc.any():
+                        continue
+                    rr = float(r[inc].min())
+                    if rr > R_DETECT_M or rr - env.eps_range_near <= bound:
+                        continue
+                    if not all(wit.ahead(g, p, yaw, sec, x) for x in (rr - env.eps_range_near, rr + env.eps_range_far)):
+                        continue
+                    if sw is not None and sw[0] - pc.structure_tol_m <= rr <= sw[1] + pc.structure_tol_far_m:
+                        continue
+                    if any(_segment_hits_box(son, q, b) for q in sight for b in g.bars):
+                        continue
+                    seen.append((round(float(cg[0]), 2), sec, round(rr, 2)))
+                    break
+            first = seen[0] if seen else (None, None, None)
+            rows.append({"observer_l": li, "passer_lane": lj, "window_s": len(seen) * step / G.v_pass,
+                         "first_s": first[0], "first_sector": first[1], "first_range": first[2],
+                         "sectors": sorted({x[1] for x in seen})})
+    return rows
+
+
 # ---------------------------------------------------------------------------------------------- M3 timed latch model
 def latch_bmc(cfg: FleetConfig, geo: dict, steps: int = 420, latch: bool = True, v_lo: float = V_LO, view=None):
     """A crosses on the axis; B (queue view ``view``) decides with the deployed belief logic (incl. t_occ_max)."""
@@ -521,6 +615,23 @@ def run(cfg: FleetConfig = DEFAULT, verbose: bool = True) -> Report:
                         note="; ".join(rows) + (". Scope of M2 (hidden, excluded): " + "; ".join(scope) if scope else "")),
             verbose)
     rep.scope_hidden = scope
+    # M4g after leaving the CR, the passing drone is seen by a sonar of every queued drone as an exit witness
+    rep.exit_observability = {}
+    for n in range(2, 7):
+        res = exit_observability(cfg, n)
+        rep.exit_observability[n] = res
+        worst = min(res, key=lambda x: x["window_s"])
+        blind = sorted({f"{x['observer_l']:+.2f}" for x in res if x["window_s"] < 0.3})
+        ok_g = not blind
+        rep.add(CheckResult(f"M4g exit observable, n={n}: beyond the CR every passing drone gives every queued drone an "
+                            "exit witness (any sector, bars' occlusion, measured detection range) for >= 3 captures",
+                            "exists path interval: in cone, line of sight clear, outside the structure window, "
+                            f"range <= {R_DETECT_M} m, W1 at the worst echo error", "perception/exit_witness.py", "holds",
+                            verdict="holds" if ok_g else "violated", passed=ok_g,
+                            note=(f"min {worst['window_s']:.1f} s (observer l={worst['observer_l']:+.2f}, passer lane "
+                                  f"{worst['passer_lane']:+.2f}, first at s={worst['first_s']}, {worst['first_sector']} "
+                                  f"{worst['first_range']} m)") + (f"; no witness within {R_DETECT_M} m for the observers at "
+                                  f"l = {', '.join(blind)}: release only by the t_occ_max fallback" if blind else "")), verbose)
     qa_st = queue_assignment(STACK_2X2, G)
     lats_st = tuple(sorted({l for l, _dz in qa_st}, reverse=True))
     q_an = G.queue_s(2, max(abs(dz) for _l, dz in qa_st), lats=lats_st)
