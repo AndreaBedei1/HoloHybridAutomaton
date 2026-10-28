@@ -98,13 +98,15 @@ def test_the_lateral_drift_is_removed_during_the_approach_before_the_bars():
 
 def test_a_silent_sector_does_not_block_a_well_matched_correction():
     """A vertical sonar that does not return the bar (a weak grazing return, a fade): the other sectors match the
-    corrected pose closely, the silent one costs every candidate the same and does not inflate the fit RMS."""
+    corrected pose closely, the silent one costs every candidate the same and does not inflate the fit RMS.  The drone
+    is 0.25 m inside the side bar's inner edge, the estimate 0.55 m off towards the axis."""
     clf = EchoClassifier(gate_bars=BARS, cfg=DEFAULT)
     R = _R()
-    p_true = _world(-1.25, -0.76)
+    l_true = -(GATE.inner_width / 2.0 - 0.25)
+    p_true = _world(-1.25, l_true)
     for mute in ("DOWN", "UP"):
         aid = StructureAiding(clf, DEFAULT)
-        p = _world(-1.25, -0.21)
+        p = _world(-1.25, l_true + 0.55)
         for _ in range(12):
             profs = _profiles(clf, p_true, R)
             profs[mute] = np.zeros_like(RANGES)
