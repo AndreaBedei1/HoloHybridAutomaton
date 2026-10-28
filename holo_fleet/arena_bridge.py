@@ -8,6 +8,7 @@ Only static map geometry crosses this bridge; no simulator state does.
 
 from __future__ import annotations
 
+import dataclasses
 import math
 import os
 import sys
@@ -18,6 +19,12 @@ import numpy as np
 
 DEFAULT_ARENA_ROOT = Path.home() / "Desktop" / "HoloDroneCompetition"
 HORSESHOE_TRACK = "marine_race_arena/tracks/marine_race_horseshoe_bay.json"
+# Inner opening (width, height) [m] of the gates the scenarios spawn, overriding the track (1.5 x 1.5 m).  G06 is
+# 2.0 m wide: the free lateral margin of the hull centre grows from 0.44 to 0.69 m, above the 0.30-0.58 m lateral
+# dead-reckoning error measured at the gate under MEDIUM (raw_gate_check), and the opening still ends at the edge
+# of the critical region (cr_half_width 1.0 m), so the mutex geometry is unchanged.  The perception map and the
+# spawned bars are built from the same overridden config.
+GATE_INNER_SIZE_M = {"G06": (2.0, 1.5)}
 
 
 def arena_root() -> Path:
@@ -50,14 +57,23 @@ def load_track(track_rel: str = HORSESHOE_TRACK):
     return load_track_config(str(root / track_rel), benchmark_task="clean_gate", current_profile="none", seed=0)
 
 
-def load_arena_gates(track_rel: str = HORSESHOE_TRACK, gate_ids: Optional[Sequence[str]] = None):
-    from holo_fleet.mission import BarBox, GateSpec
-
+def _gate_factory(track_rel: str, inner_size: Optional[dict] = None):
+    """Arena GateFactory on the track config with the GATE_INNER_SIZE_M openings."""
     arena_root()
     from marine_race_arena.arena.gate_factory import GateFactory  # type: ignore
 
+    sizes = GATE_INNER_SIZE_M if inner_size is None else inner_size
     cfg = load_track(track_rel)
-    factory = GateFactory(cfg)
+    gates = [dataclasses.replace(g, inner_size_m=tuple(float(v) for v in sizes[g.id])) if g.id in sizes else g
+             for g in cfg.gates]
+    return GateFactory(dataclasses.replace(cfg, gates=gates))
+
+
+def load_arena_gates(track_rel: str = HORSESHOE_TRACK, gate_ids: Optional[Sequence[str]] = None,
+                     inner_size: Optional[dict] = None):
+    from holo_fleet.mission import BarBox, GateSpec
+
+    factory = _gate_factory(track_rel, inner_size)
     gates = factory.build_gates()
     wanted = list(gate_ids) if gate_ids is not None else [g.id for g in gates]
     by_id = {g.id: g for g in gates}
@@ -80,11 +96,7 @@ def load_arena_gates(track_rel: str = HORSESHOE_TRACK, gate_ids: Optional[Sequen
 
 def visual_gates(track_rel: str = HORSESHOE_TRACK, gate_ids: Optional[Sequence[str]] = None):
     """Arena VisualGate objects (bars) for spawning with the arena's HoloOcean spawner."""
-    arena_root()
-    from marine_race_arena.arena.gate_factory import GateFactory  # type: ignore
-
-    cfg = load_track(track_rel)
-    factory = GateFactory(cfg)
+    factory = _gate_factory(track_rel)
     gates = [g for g in factory.build_gates() if gate_ids is None or g.id in gate_ids]
     return factory.build_visual_gates(gates)
 

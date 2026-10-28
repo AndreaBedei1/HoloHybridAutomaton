@@ -359,7 +359,7 @@ def _gate_mission(name: str, template_name: str, duration: float, current: Curre
 def gate_single(cfg: FleetConfig = DEFAULT) -> Scenario:
     return _gate_mission("gate_single", "triangle", 80.0, _uniform((0.0, -0.05, 0.0)), cfg,
                          title="P2: one at a time through arena gate G06",
-                         desc="3 drones in triangle reach Marine Race Arena gate G06 (only this gate spawned, 1.5 x 1.5 m "
+                         desc="3 drones in triangle reach Marine Race Arena gate G06 (only this gate spawned, 2.0 x 1.5 m "
                               "opening), queue abreast, pass one at a time (left first, sector rule), re-form beyond "
                               "the gate. No communication.",
                          focus="queue relations from sector patterns, CR occupancy belief, occupancy <= 1, entry order")

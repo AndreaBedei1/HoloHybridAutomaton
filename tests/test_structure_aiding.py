@@ -9,6 +9,7 @@ import math
 
 import numpy as np
 
+from holo_fleet.arena_bridge import HORSESHOE_TRACK, load_arena_gates
 from holo_fleet.config import DEFAULT
 from holo_fleet.perception import sonar_geometry as sg
 from holo_fleet.perception.sonar_processing import DYNAMIC, EchoClassifier
@@ -223,9 +224,9 @@ def test_a_centred_drone_has_a_valid_gate_localization():
 def test_an_equally_good_far_position_makes_the_fit_ambiguous():
     """Logged echoes (MEDIUM-ALL integrated_short seed 2, drone 1, t = 85.9 s): the estimate is on the axis, the drone
     really 0.56 m to the left.  The estimate explains three sectors and the true pose explains them as well (total cost
-    0.818 vs 0.820): the echoes cannot separate them, so the localization must not be confirmed."""
-    sc = SCENARIOS["integrated_short"](DEFAULT)
-    gates = list(sc.plans[0].structures)
+    0.818 vs 0.820): the echoes cannot separate them, so the localization must not be confirmed.  The echoes were
+    recorded at the track's 1.5 m wide G06, so that gate is the map here."""
+    gates = load_arena_gates(HORSESHOE_TRACK, ["G06"], inner_size={})
     g = gates[0]
     clf = EchoClassifier(gate_bars=[b for gg in gates for b in gg.bars], cfg=DEFAULT)
     aid = StructureAiding(clf, DEFAULT, gates=gates)
