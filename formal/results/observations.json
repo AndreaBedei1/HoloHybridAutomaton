@@ -9,7 +9,7 @@
       "expect": "sat",
       "verdict": "sat",
       "passed": true,
-      "seconds": 0.003,
+      "seconds": 0.001,
       "counterexample": {
         "at_queue": false,
         "d_min": 0.125,
@@ -47,7 +47,7 @@
       "expect": "sat",
       "verdict": "sat",
       "passed": true,
-      "seconds": 0.0,
+      "seconds": 0.002,
       "counterexample": {
         "at_queue": false,
         "d_min": 0.125,
@@ -66,7 +66,7 @@
       "expect": "sat",
       "verdict": "sat",
       "passed": true,
-      "seconds": 0.001,
+      "seconds": 0.0,
       "counterexample": {
         "at_queue": true,
         "d_min": 0.125,
@@ -83,7 +83,7 @@
       "expect": "sat",
       "verdict": "sat",
       "passed": true,
-      "seconds": 0.0,
+      "seconds": 0.003,
       "counterexample": {
         "at_queue": false,
         "d_min": 0.125,
@@ -102,7 +102,7 @@
       "expect": "sat",
       "verdict": "sat",
       "passed": true,
-      "seconds": 0.001,
+      "seconds": 0.005,
       "counterexample": {
         "at_queue": false,
         "d_min": 0.5,
@@ -121,7 +121,7 @@
       "expect": "sat",
       "verdict": "sat",
       "passed": true,
-      "seconds": 0.021,
+      "seconds": 0.024,
       "counterexample": null,
       "note": "12 edges"
     },
@@ -132,7 +132,7 @@
       "expect": "sat",
       "verdict": "sat",
       "passed": true,
-      "seconds": 0.025,
+      "seconds": 0.019,
       "counterexample": null,
       "note": "12 edges"
     },
@@ -143,7 +143,7 @@
       "expect": "sat",
       "verdict": "sat",
       "passed": true,
-      "seconds": 0.023,
+      "seconds": 0.017,
       "counterexample": null,
       "note": "12 edges"
     },
@@ -154,7 +154,7 @@
       "expect": "sat",
       "verdict": "sat",
       "passed": true,
-      "seconds": 0.02,
+      "seconds": 0.043,
       "counterexample": null,
       "note": "12 edges"
     },
@@ -165,7 +165,7 @@
       "expect": "sat",
       "verdict": "sat",
       "passed": true,
-      "seconds": 0.022,
+      "seconds": 0.02,
       "counterexample": null,
       "note": "12 edges"
     },
@@ -176,7 +176,7 @@
       "expect": "sat",
       "verdict": "sat",
       "passed": true,
-      "seconds": 0.018,
+      "seconds": 0.016,
       "counterexample": null,
       "note": "12 edges"
     },
@@ -198,7 +198,7 @@
       "expect": "sat",
       "verdict": "sat",
       "passed": true,
-      "seconds": 0.018,
+      "seconds": 0.033,
       "counterexample": null,
       "note": "12 edges"
     },
@@ -209,7 +209,7 @@
       "expect": "sat",
       "verdict": "sat",
       "passed": true,
-      "seconds": 0.034,
+      "seconds": 0.021,
       "counterexample": null,
       "note": "12 edges"
     },
@@ -220,7 +220,7 @@
       "expect": "sat",
       "verdict": "sat",
       "passed": true,
-      "seconds": 0.025,
+      "seconds": 0.016,
       "counterexample": null,
       "note": "12 edges"
     },
@@ -231,7 +231,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 0.001,
+      "seconds": 0.0,
       "counterexample": null,
       "note": ""
     },
@@ -242,7 +242,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 0.001,
+      "seconds": 0.004,
       "counterexample": null,
       "note": ""
     },
@@ -253,7 +253,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 0.0,
+      "seconds": 0.002,
       "counterexample": null,
       "note": ""
     },
@@ -264,7 +264,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 0.002,
+      "seconds": 0.005,
       "counterexample": null,
       "note": ""
     },
@@ -275,7 +275,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 0.003,
+      "seconds": 0.002,
       "counterexample": null,
       "note": ""
     },
@@ -286,7 +286,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 0.002,
+      "seconds": 0.0,
       "counterexample": null,
       "note": ""
     },
@@ -308,7 +308,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 0.001,
+      "seconds": 0.0,
       "counterexample": null,
       "note": ""
     },
@@ -330,7 +330,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 0.001,
+      "seconds": 0.002,
       "counterexample": null,
       "note": ""
     },
@@ -341,7 +341,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 0.004,
+      "seconds": 0.002,
       "counterexample": null,
       "note": ""
     },
@@ -352,7 +352,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 0.004,
+      "seconds": 0.001,
       "counterexample": null,
       "note": ""
     },
@@ -387,7 +387,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 0.001,
+      "seconds": 0.0,
       "counterexample": null,
       "note": "v1 formal/common.Obs.legal had passed -> at_queue; with I2 and I3 no 'passed' observation remains, so a proof over that domain says nothing about the exit edge"
     },
@@ -398,7 +398,7 @@
       "expect": "sat",
       "verdict": "sat",
       "passed": true,
-      "seconds": 0.005,
+      "seconds": 0.0,
       "counterexample": {
         "at_queue": false,
         "committed": false,

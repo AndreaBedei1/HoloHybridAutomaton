@@ -374,7 +374,7 @@ def integrated_short(cfg: FleetConfig = DEFAULT) -> Scenario:
     controller: replaying the logged passage with the gust scaled gives 1.12 at 0.35, 1.03 at 0.30 (over the
     authority for 3 s), 1.00 at 0.28 and 0.98 at 0.27 m/s - the first value with a margin (2 %) for the run-to-run
     differences of HoloOcean.  The cross-current stays well felt (0.27 m/s gust, about 0.22 m/s net of the background)
-    while the drones survey at 0.40 m/s, queue and pass the 1.5 m opening."""
+    while the drones survey at 0.40 m/s, queue and pass the gate opening."""
     g6 = {g.gate_id: g for g in load_arena_gates(HORSESHOE_TRACK)}["G06"]
     left = np.array([-g6.axis[1], g6.axis[0]])
     w = INTEGRATED_GUST

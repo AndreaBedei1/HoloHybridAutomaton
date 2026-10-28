@@ -9,7 +9,7 @@
       "expect": "holds",
       "verdict": "holds",
       "passed": true,
-      "seconds": 14.3,
+      "seconds": 13.9,
       "counterexample": null,
       "note": "105000 samples; min(d - d_hat) = 0.051 m; looseness p50 0.79, p95 1.03, max 1.18 m (affects liveness only)"
     },
@@ -31,7 +31,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 2.244,
+      "seconds": 2.349,
       "counterexample": null,
       "note": ""
     },
@@ -42,7 +42,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 0.009,
+      "seconds": 0.008,
       "counterexample": null,
       "note": ""
     },
@@ -253,7 +253,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 50.198,
+      "seconds": 50.211,
       "counterexample": null,
       "note": "nonlinear real arithmetic: about 50 s alone, longer under load"
     },
@@ -264,7 +264,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 0.006,
+      "seconds": 0.004,
       "counterexample": null,
       "note": "d_blackout = 2.34 m"
     }

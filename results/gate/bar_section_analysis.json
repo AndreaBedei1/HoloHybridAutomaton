@@ -1,0 +1,214 @@
+{
+ "description": "G06 bar section analysis (opening 2.0 x 2.0 m, 120 deg beams, no posts); scripts/analyze_gate_bar_section.py; formal M4e = max s at which a crossing drone is visible again (limit cr_half_len + 2 m = 2.8 m)",
+ "offline": {
+  "('obs', (0.18, 0.22), True)": {
+   "n": 624,
+   "validated": 221,
+   "unsafe_valid": 0,
+   "wrong_applied": 0,
+   "fixed": 107,
+   "sectors_seen": 2176
+  },
+  "('obs', (0.18, 0.22), False)": {
+   "n": 624,
+   "validated": 226,
+   "unsafe_valid": 0,
+   "wrong_applied": 0,
+   "fixed": 199,
+   "sectors_seen": 2176
+  },
+  "('obs', (0.25, 0.3), False)": {
+   "n": 624,
+   "validated": 260,
+   "unsafe_valid": 0,
+   "wrong_applied": 0,
+   "fixed": 218,
+   "sectors_seen": 2568
+  },
+  "('obs', (0.25, 0.3), True)": {
+   "n": 624,
+   "validated": 289,
+   "unsafe_valid": 0,
+   "wrong_applied": 0,
+   "fixed": 134,
+   "sectors_seen": 2568
+  },
+  "('obs', (0.3, 0.4), True)": {
+   "n": 624,
+   "validated": 292,
+   "unsafe_valid": 0,
+   "wrong_applied": 0,
+   "fixed": 144,
+   "sectors_seen": 2656
+  },
+  "('obs', (0.3, 0.4), False)": {
+   "n": 624,
+   "validated": 297,
+   "unsafe_valid": 0,
+   "wrong_applied": 0,
+   "fixed": 258,
+   "sectors_seen": 2656
+  },
+  "('obs', (0.4, 0.5), False)": {
+   "n": 624,
+   "validated": 311,
+   "unsafe_valid": 0,
+   "wrong_applied": 0,
+   "fixed": 281,
+   "sectors_seen": 2776
+  },
+  "('obs', (0.4, 0.5), True)": {
+   "n": 624,
+   "validated": 303,
+   "unsafe_valid": 0,
+   "wrong_applied": 0,
+   "fixed": 166,
+   "sectors_seen": 2776
+  },
+  "('obs', (0.5, 0.6), True)": {
+   "n": 624,
+   "validated": 308,
+   "unsafe_valid": 0,
+   "wrong_applied": 0,
+   "fixed": 186,
+   "sectors_seen": 2904
+  },
+  "('obs', (0.5, 0.6), False)": {
+   "n": 624,
+   "validated": 326,
+   "unsafe_valid": 0,
+   "wrong_applied": 1,
+   "fixed": 289,
+   "sectors_seen": 2904
+  },
+  "('mask', (0.18, 0.22))": {
+   "pairs": 180405,
+   "seen": 180365,
+   "masked_any": 86677,
+   "hidden": 78189,
+   "cr_pairs": 27687,
+   "cr_hidden": 20995
+  },
+  "('mask', (0.25, 0.3))": {
+   "pairs": 180405,
+   "seen": 180365,
+   "masked_any": 91532,
+   "hidden": 82914,
+   "cr_pairs": 27687,
+   "cr_hidden": 21522
+  },
+  "('mask', (0.3, 0.4))": {
+   "pairs": 180405,
+   "seen": 180365,
+   "masked_any": 96217,
+   "hidden": 87501,
+   "cr_pairs": 27687,
+   "cr_hidden": 22123
+  },
+  "('mask', (0.4, 0.5))": {
+   "pairs": 180405,
+   "seen": 180365,
+   "masked_any": 102520,
+   "hidden": 93600,
+   "cr_pairs": 27687,
+   "cr_hidden": 22770
+  },
+  "('mask', (0.5, 0.6))": {
+   "pairs": 180405,
+   "seen": 180365,
+   "masked_any": 108819,
+   "hidden": 99613,
+   "cr_pairs": 27687,
+   "cr_hidden": 23388
+  },
+  "('phantom', (0.18, 0.22), 0.5)": {
+   "n": 1920,
+   "echoes": 3248,
+   "unexplained": 872,
+   "unexplained_warn": 472,
+   "poses_warn": 250
+  },
+  "('phantom', (0.18, 0.22), 1.0)": {
+   "n": 1920,
+   "echoes": 3248,
+   "unexplained": 1329,
+   "unexplained_warn": 813,
+   "poses_warn": 357
+  },
+  "('phantom', (0.25, 0.3), 0.5)": {
+   "n": 1920,
+   "echoes": 3584,
+   "unexplained": 916,
+   "unexplained_warn": 512,
+   "poses_warn": 258
+  },
+  "('phantom', (0.25, 0.3), 1.0)": {
+   "n": 1920,
+   "echoes": 3584,
+   "unexplained": 1461,
+   "unexplained_warn": 937,
+   "poses_warn": 365
+  },
+  "('phantom', (0.3, 0.4), 0.5)": {
+   "n": 1920,
+   "echoes": 3696,
+   "unexplained": 952,
+   "unexplained_warn": 556,
+   "poses_warn": 282
+  },
+  "('phantom', (0.3, 0.4), 1.0)": {
+   "n": 1920,
+   "echoes": 3696,
+   "unexplained": 1513,
+   "unexplained_warn": 995,
+   "poses_warn": 385
+  },
+  "('phantom', (0.4, 0.5), 0.5)": {
+   "n": 1920,
+   "echoes": 4160,
+   "unexplained": 1064,
+   "unexplained_warn": 648,
+   "poses_warn": 302
+  },
+  "('phantom', (0.4, 0.5), 1.0)": {
+   "n": 1920,
+   "echoes": 4160,
+   "unexplained": 1715,
+   "unexplained_warn": 1163,
+   "poses_warn": 417
+  },
+  "('phantom', (0.5, 0.6), 0.5)": {
+   "n": 1920,
+   "echoes": 4592,
+   "unexplained": 1130,
+   "unexplained_warn": 672,
+   "poses_warn": 306
+  },
+  "('phantom', (0.5, 0.6), 1.0)": {
+   "n": 1920,
+   "echoes": 4592,
+   "unexplained": 1890,
+   "unexplained_warn": 1204,
+   "poses_warn": 420
+  }
+ },
+ "formal_m4e_visible_again_s": {
+  "[0.18, 0.22]": 2.545,
+  "[0.25, 0.3]": 2.65,
+  "[0.3, 0.4]": 2.74,
+  "[0.35, 0.45]": 2.815,
+  "[0.4, 0.5]": 2.885
+ },
+ "formal_mutex_failed": {
+  "[0.18, 0.22]": [],
+  "[0.25, 0.3]": [],
+  "[0.3, 0.4]": [],
+  "[0.4, 0.5]": [
+   "M4e masking interval is bounded and starts after the corridor is entered"
+  ]
+ },
+ "chosen": [
+  0.25,
+  0.3
+ ]
+}

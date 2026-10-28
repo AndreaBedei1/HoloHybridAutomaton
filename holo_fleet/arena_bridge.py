@@ -25,15 +25,16 @@ HORSESHOE_TRACK = "marine_race_arena/tracks/marine_race_horseshoe_bay.json"
 # the opening still ends at the edges of the critical region (cr_half_width = cr_half_height = 1.0 m), so the mutex
 # geometry is unchanged.  The perception map and the spawned bars are built from the same overridden config.
 GATE_INNER_SIZE_M = {"G06": (2.0, 2.0)}
-# Two passive vertical lead-in posts per gate, at (s, +-|l|) in the gate frame [m], with the side bars' section and
-# height.  At the relocalization hold before the critical region (s ~ -1.2) the LEFT/RIGHT sonars see them near their
-# axis, a direct lateral range; the side bars alone fall at the edge of those cones there.  In the closed-loop replay
-# of synthetic echoes at the hold zone (s -1.8..-1.2, |l| <= 0.6, +-5 deg yaw, 0.3-0.5 m lateral error, 0.05 m range
-# noise, 8 % fades) the gate localization is confirmed in 84 % of the poses instead of 47 %, with no confirmation of
-# a hull outside the opening; one noise-free pose (s -1.8, a post at the FRONT cone edge) took a correction that
-# fixed the lateral error but moved the estimate 0.48 m along the axis.  Mapped like the bars (STRUCTURE), outside the critical region,
-# 1.6 m from the axis (beyond struct_keepout of a drone on the passage path).
-GATE_MARKERS_M = {"G06": (-1.2, 1.6)}
+# Bar section (thickness across the bar, depth along the passage axis) [m] of the gates the scenarios spawn,
+# overriding the track (0.18 x 0.22 m).  The arena factory places every bar outside the inner opening (centre at
+# inner/2 + thickness/2), so a thicker bar grows outwards and the free opening stays GATE_INNER_SIZE_M.
+# G06: 0.25 x 0.30 m, chosen offline (scripts/analyze_gate_bar_section.py, results/gate/bar_section_analysis.json)
+# among 0.18x0.22 ... 0.50x0.60.  Closed-loop localization before the critical region (s -2.0..-1.2, 0.3-0.5 m
+# lateral error, MEDIUM-like noise) is confirmed in 46 % of the poses instead of 35 %, with no unsafe confirmation and
+# no wrong correction; the larger sections add little (47-49 %) while the structure window of the classifier hides a
+# drone crossing the gate longer: formal M4e (visible again within cr_half_len + 2 m) holds up to 0.30 x 0.40 (2.74 m
+# of 2.80) and fails from 0.35 x 0.45; at 0.25 x 0.30 it is 2.65 m.
+GATE_BAR_SECTION_M = {"G06": (0.25, 0.30)}
 
 
 def arena_root() -> Path:
@@ -66,47 +67,42 @@ def load_track(track_rel: str = HORSESHOE_TRACK):
     return load_track_config(str(root / track_rel), benchmark_task="clean_gate", current_profile="none", seed=0)
 
 
-def _gate_factory(track_rel: str, inner_size: Optional[dict] = None):
-    """Arena GateFactory on the track config with the GATE_INNER_SIZE_M openings."""
+def _gate_factory(track_rel: str, inner_size: Optional[dict] = None, bar_section: Optional[dict] = None):
+    """Arena GateFactory on the track config with the GATE_INNER_SIZE_M openings and GATE_BAR_SECTION_M thicknesses."""
     arena_root()
     from marine_race_arena.arena.gate_factory import GateFactory  # type: ignore
 
     sizes = GATE_INNER_SIZE_M if inner_size is None else inner_size
+    sections = GATE_BAR_SECTION_M if bar_section is None else bar_section
     cfg = load_track(track_rel)
     gates = [dataclasses.replace(g, inner_size_m=tuple(float(v) for v in sizes[g.id])) if g.id in sizes else g
              for g in cfg.gates]
+    gates = [dataclasses.replace(g, bar_thickness_m=float(sections[g.id][0])) if g.id in sections else g for g in gates]
     return GateFactory(dataclasses.replace(cfg, gates=gates))
 
 
-def _visual_gate(factory, g, markers: Optional[dict] = None):
-    """The arena's four bars of gate g plus its GATE_MARKERS_M lead-in posts (copies of a side bar, moved)."""
-    vis = factory.build_visual_gate(g)
-    markers = GATE_MARKERS_M if markers is None else markers
-    if g.id not in markers:
-        return vis
-    s_m, l_m = markers[g.id]
-    side = next(b for b in vis.bars if b.part in ("left", "right"))
-    axis = np.array([g.passage_direction[0], g.passage_direction[1], 0.0], dtype=float)
-    axis /= np.linalg.norm(axis)
-    left = np.array([-axis[1], axis[0], 0.0])
-    extra = [dataclasses.replace(side, id=f"{g.id}_marker_{name}", part="marker",
-                                 position=tuple(float(v) for v in np.asarray(g.center, float) + s_m * axis + sign * l_m * left))
-             for name, sign in (("left", 1.0), ("right", -1.0))]
-    return dataclasses.replace(vis, bars=list(vis.bars) + extra)
+def _visual_gate(factory, g, bar_section: Optional[dict] = None):
+    """The arena's four bars of gate g, with the GATE_BAR_SECTION_M depth (a track-wide value in the arena)."""
+    sections = GATE_BAR_SECTION_M if bar_section is None else bar_section
+    if g.id in sections:
+        cfg = factory.config
+        track = dataclasses.replace(cfg.track, gate_depth_m=float(sections[g.id][1]))
+        factory = type(factory)(dataclasses.replace(cfg, track=track))
+    return factory.build_visual_gate(g)
 
 
 def load_arena_gates(track_rel: str = HORSESHOE_TRACK, gate_ids: Optional[Sequence[str]] = None,
-                     inner_size: Optional[dict] = None, markers: Optional[dict] = None):
+                     inner_size: Optional[dict] = None, bar_section: Optional[dict] = None):
     from holo_fleet.mission import BarBox, GateSpec
 
-    factory = _gate_factory(track_rel, inner_size)
+    factory = _gate_factory(track_rel, inner_size, bar_section)
     gates = factory.build_gates()
     wanted = list(gate_ids) if gate_ids is not None else [g.id for g in gates]
     by_id = {g.id: g for g in gates}
     out: List[GateSpec] = []
     for gid in wanted:
         g = by_id[gid]
-        vis = _visual_gate(factory, g, markers)
+        vis = _visual_gate(factory, g, bar_section)
         bars = []
         for bar in vis.bars:
             axes = _rotation_axes(bar.rotation_rpy_deg)

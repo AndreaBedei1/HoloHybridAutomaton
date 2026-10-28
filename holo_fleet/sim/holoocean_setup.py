@@ -28,7 +28,7 @@ from pathlib import Path
 from typing import Iterable, Optional, Sequence
 
 DEFAULT_PATCHED_ROOT = Path(r"F:\Andrea\holoocean_patched_root")
-OCTREE_MIN = 0.06            # leaf size [m] (arena bars are 0.18 m thick)
+OCTREE_MIN = 0.06            # leaf size [m] (below the thinnest gate bar, arena_bridge.GATE_BAR_SECTION_M)
 OCTREE_MAX = 5.0             # mid-level size [m] -> engine folder "min6_max768"
 # One environment box for every arena-area scenario: it bounds the octree root (fast to rebuild)
 # and contains the Horseshoe Bay arena and the open-water test areas around it.

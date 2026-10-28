@@ -86,7 +86,7 @@ def _top(ax, g, errs, title):
 
 
 def main(out, holds=None):
-    old = load_arena_gates(HORSESHOE_TRACK, ["G06"], inner_size={}, markers={})[0]
+    old = load_arena_gates(HORSESHOE_TRACK, ["G06"], inner_size={}, bar_section={})[0]
     new = load_arena_gates(HORSESHOE_TRACK, ["G06"])[0]
     errs = []
     if holds:
@@ -96,7 +96,7 @@ def main(out, holds=None):
     for col, (g, tag) in enumerate(((old, "BEFORE"), (new, "AFTER"))):
         m = g.inner_width / 2.0 - HULL_LAT_M
         _front(axs[0, col], g, worst, f"{tag}: opening {g.inner_width:.2f} x {g.inner_height:.2f} m, margin ±{m:.2f} m")
-        _top(axs[1, col], g, errs, f"{tag}: top view through the gate" + (" (lead-in posts at the hold point)" if len(g.bars) > 4 else ""))
+        _top(axs[1, col], g, errs, f"{tag}: top view through the gate")
     fig.suptitle(f"Gate G06 enlarged from {old.inner_width:.1f} x {old.inner_height:.1f} m to {new.inner_width:.1f} x "
                  f"{new.inner_height:.1f} m: hull-centre margin lateral {old.inner_width / 2 - HULL_LAT_M:.2f} -> "
                  f"{new.inner_width / 2 - HULL_LAT_M:.2f} m, vertical {old.inner_height / 2 - HULL_HALF[2]:.2f} -> "

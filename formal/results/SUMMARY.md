@@ -1,10 +1,10 @@
 # Formal verification summary
 
-Generated 2026-10-10 20:16:23 by `formal/check_properties.py`.
+Generated 2026-10-28 17:00:06 by `formal/check_properties.py`.
 
 UNSAT = the negated property has no model in the abstraction, i.e. the property HOLDS for the model; SAT is expected for the satisfiability / non-vacuity checks (a witness must exist) and for the mutation tests (deliberately broken designs must yield a counterexample); mutation Om2 expects UNSAT (a broken observation domain loses the reachability of an edge).  The observation domain of every suite is the conjunction of the invariants of holo_fleet/ha/observation_invariants.py.
 
-## Local determinism & priority hierarchy  (93/93 as expected, 0.6 s)
+## Local determinism & priority hierarchy  (93/93 as expected, 0.4 s)
 
 Encoding: `holo_fleet/ha/spec.py`
 
@@ -104,7 +104,7 @@ Encoding: `holo_fleet/ha/spec.py`
 | M2 mutation: gate pass ignoring collision risk must violate H2 | expect counterexample | SAT | SAT | yes |
 | ML mutation: a wrong readable guard (collision risk drawn at d_warning) must violate L1 | expect counterexample | SAT | SAT | yes |
 
-## Observation consistency (perception -> automaton interface)  (31/31 as expected, 1.0 s)
+## Observation consistency (perception -> automaton interface)  (31/31 as expected, 0.9 s)
 
 Encoding: `holo_fleet/ha/observation_invariants.py + holo_fleet/ha/spec.py`
 
@@ -142,7 +142,7 @@ Encoding: `holo_fleet/ha/observation_invariants.py + holo_fleet/ha/spec.py`
 | Om2 mutation: v1 constraint passed -> at_queue makes pass_done unreachable | expect UNSAT (reachability lost) | UNSAT | UNSAT | yes |
 | Om3 mutation: no monitor -> an inconsistent observation drives a mission edge | expect counterexample | SAT | SAT | yes |
 
-## P1 inter-vehicle separation  (13/13 as expected, 95.5 s)
+## P1 inter-vehicle separation  (13/13 as expected, 94.3 s)
 
 Encoding: `formal/check_separation.py`
 
@@ -162,7 +162,7 @@ Encoding: `formal/check_separation.py`
 | S3 at most one vertex angle >= 90 deg (pairwise d >= d_safe) | d_ij >= d_safe -> not(angle_i >= 90 and angle_j >= 90) | UNSAT | UNSAT | yes |
 | S4 blackout <= 0.8s starting at d >= 2.34 m keeps d >= d_safe | FAILSAFE hold with unrejected drift w_rel | UNSAT | UNSAT | yes |
 
-## P2 critical-region mutual exclusion  (27/27 as expected, 104.8 s)
+## P2 critical-region mutual exclusion  (27/27 as expected, 118.7 s)
 
 Encoding: `holo_fleet/ha/mutex_rule.py + formal/check_mutex.py`
 
@@ -196,7 +196,7 @@ Encoding: `holo_fleet/ha/mutex_rule.py + formal/check_mutex.py`
 | M3 occupancy latch, n=4, observer at l=+1.75: never both in the CR (42 s BMC) | latch + persistence + exit + t_clear + t_occ_max -> not(A in CR and B in CR) | UNSAT | UNSAT | yes |
 | M3m mutation: belief without latch (FREE when nothing is seen) must violate P2 | expect counterexample | SAT | SAT | yes |
 
-## P3 formation recovery (liveness, ranking functions)  (22/22 as expected, 3.0 s)
+## P3 formation recovery (liveness, ranking functions)  (22/22 as expected, 2.9 s)
 
 Encoding: `formal/check_formation.py`
 

@@ -121,7 +121,8 @@ class Bench:
 def g06_view(d=3.0):
     g = {x.gate_id: x for x in load_arena_gates(HORSESHOE_TRACK)}["G06"]
     left = np.array([-g.axis[1], g.axis[0], 0.0])
-    sonar = g.center - d * g.axis + 0.84 * left
+    side_l = max(abs(g.to_gate_frame(b.center)[1]) for b in g.bars)     # side-bar centre line
+    sonar = g.center - d * g.axis + side_l * left
     yaw = math.degrees(math.atan2(g.axis[1], g.axis[0]))
     return sonar - SONAR_X * g.axis, (0, 0, yaw)
 

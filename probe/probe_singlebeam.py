@@ -236,7 +236,8 @@ def face_gate_poses(g, d: float, lateral: float = 0.0, dz: float = 0.0):
 
 def exp_gate(b: Bench, distances=(1.5, 2.0, 3.0, 4.0, 6.0, 8.0)):
     g = gate_g06()
-    for aim, lat, dz in (("left_pillar", 0.84, 0.0), ("centre", 0.0, 0.0), ("top_bar", 0.0, 0.84)):
+    side = max(abs(g.to_gate_frame(b.center)[1]) for b in g.bars)        # bar centre line
+    for aim, lat, dz in (("left_pillar", side, 0.0), ("centre", 0.0, 0.0), ("top_bar", 0.0, side)):
         for d in distances:
             loc, rpy = face_gate_poses(g, d, lat, dz)
             b.place(loc, rpy)

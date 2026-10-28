@@ -134,7 +134,7 @@ def plan(phase: str, seeds, only=None, all_high=False):
     elif phase in ("validation", "gate_check"):
         from holo_fleet.sim.sensor_noise import SCOPES
 
-        scen = VALIDATION_SCENARIOS if phase == "validation" else GATE_CHECK_SCENARIOS
+        scen = tuple(only) if only else VALIDATION_SCENARIOS if phase == "validation" else GATE_CHECK_SCENARIOS
         for sc in scen:                                 # CLEAN first: it fixes the deadline of the degraded runs
             runs += [("B0", "CLEAN", sc, s) for s in seeds]
         for sc in scen:

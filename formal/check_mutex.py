@@ -75,7 +75,7 @@ import itertools
 from holo_fleet.config import DEFAULT, FleetConfig
 from holo_fleet.control.flows import pass_path_points
 from holo_fleet.ha import mutex_rule
-from holo_fleet.mission import (Slot, abreast_slots, queue_assignment, queue_line, queue_order,
+from holo_fleet.mission import (Slot, abreast_slots, gate_frame_points, queue_assignment, queue_line, queue_order,
                                 structure_masked_pairs)
 from holo_fleet.perception.sonar_geometry import AXES, MOUNTS, R_IN, R_OUT, centre_distance_lower
 
@@ -314,9 +314,8 @@ def geometry(cfg: FleetConfig, n: int, queue_line=None) -> dict:
         near = float(np.linalg.norm(q - np.clip(q, -half, half)))
         far = max(float(np.linalg.norm(q - half * np.array([x, y, z]))) for x in (-1, 1) for y in (-1, 1) for z in (-1, 1))
         lo_corr, hi_corr = near - R_OUT - env.eps_range_far, far + env.eps_range_near
-        # gate bars seen from this sonar: posts at l = +-(inner/2 + 0.09), top/bottom bars at dz = +-(inner/2 + 0.09)
-        bar_pts = [np.array([x, y, z]) for x in (-0.11, 0.11) for y in np.linspace(-0.93, 0.93, 25) for z in (-0.93, 0.93)] + \
-                  [np.array([x, y, z]) for x in (-0.11, 0.11) for y in (-0.93, 0.93) for z in np.linspace(-0.93, 0.93, 25)]
+        # gate bars seen from this sonar: the judged gate's mapped bars (arena geometry, gate frame)
+        bar_pts = gate_frame_points()
         rb = [float(np.linalg.norm(p - son)) for p in bar_pts if
               math.degrees(math.acos(np.clip((p - son)[0] / np.linalg.norm(p - son), -1, 1))) <= HALF + 3.0]
         m_lo, m_hi = min(rb) - perc.structure_tol_m, max(rb) + perc.structure_tol_far_m
