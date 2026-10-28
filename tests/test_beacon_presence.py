@@ -114,7 +114,9 @@ def test_beacon_cannot_authorize_pass_clear_cr_or_override_safety(scenario):
 
 ALLOWED = {"config.py", "runner.py", "sim/beacon.py", "sim/holo_env.py", "sim/sensor_noise.py",
            "perception/beacon_presence.py", "perception/perception.py", "perception/sensor_suite.py",
-           "control/controller.py", "referee/robustness_metrics.py"}
+           "control/controller.py", "referee/robustness_metrics.py",
+           # variant B2 (range-bearing beacon) modules; what B2 may reach is checked by formal/check_acoustic.py (B2-S)
+           "perception/acoustic.py", "sim/acoustic_channel.py"}
 
 
 def test_no_safety_or_gate_module_reads_the_beacon():

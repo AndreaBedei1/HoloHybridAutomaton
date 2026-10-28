@@ -236,7 +236,9 @@ class DroneController:
                      "at_queue": obs.gate.at_queue, "decision": obs.gate.decision, "has_prio": obs.gate.has_prio,
                      "occ": obs.gate.occ_state, "exit_witness": obs.gate.exit_witness, "relations": obs.gate.relations,
                      "rank_used": obs.gate.rank_used,
-                     "loc_ok": obs.gate.loc_ok, "reloc_hold": self.flows.reloc_hold},
+                     "loc_ok": obs.gate.loc_ok, "reloc_hold": self.flows.reloc_hold,
+                     **({"acoustic": {k: v for k, v in self.perception.gp.acoustic_exit.last.items() if v}}
+                        if self.perception.gp.acoustic_exit is not None and obs.gate.occ_state == "BUSY" else {})},
             "form": {"form_err": round(obs.form.form_err, 3), "slot_err": round(obs.form.slot_err_norm, 3),
                      "neighbors_ok": obs.form.neighbors_ok, "sigma": round(self.flows.sigma, 3), "lam": round(self.flows.lam, 3),
                      "checks": [(c.slot, round(c.expected_d, 2), None if not c.seen else round(c.residual, 2))
@@ -249,7 +251,13 @@ class DroneController:
                      **({"beacon_heard": sorted(k for k in range(len(self.perception.plan.slots))
                                                 if self.perception.presence.heard(k, t)),
                          "beacon_held": sorted(self.perception.presence_held)}
-                        if self.perception.presence.enabled else {})},
+                        if self.perception.presence.enabled else {}),
+                     **({"acoustic_present": sorted(self.perception.acoustic_present),
+                         "acoustic_displaced": sorted(self.perception.acoustic_displaced),
+                         "acoustic_corr": sorted(self.perception.acoustic_corr),
+                         "acoustic_fixed": sorted(k for k in range(len(self.perception.plan.slots))
+                                                  if self.perception.acoustic.latest(k, t, self.cfg.acoustic.fresh_s))}
+                        if self.perception.acoustic.enabled else {})},
             "nav_aid": None if self.perception.aiding.last is None else {**self.perception.aiding.last,
                                                                          "applied_m": round(self.perception.aiding.applied_m, 3)},
             "transition": self.last_transition,

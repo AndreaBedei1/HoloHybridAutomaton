@@ -83,6 +83,7 @@ def run(name: str, out_root: Path, headless: bool = True, run_id: Optional[str] 
         ids = {sim.names.index(p.drone_id): p.slot_index for p in sc.plans}
         for c in ctrls.values():
             c.perception.presence.set_identities(ids)
+            c.perception.acoustic.set_identities(ids)
     audit = SensorAudit(sim.names, cfg, DT)
     truth_prev = None
     tmpl = sc.template.offsets() if sc.template is not None else None
@@ -213,7 +214,14 @@ def run(name: str, out_root: Path, headless: bool = True, run_id: Optional[str] 
                       "observation_consistency_violations": obs_inc,
                       # B0: no message at all; B1: every one-way presence ping counts (static identity, no reply)
                       "comms_enabled": cfg.comms_enabled, "inter_agent_messages": 0 if beacon is None else beacon["transmissions"],
-                      "message_content": "none" if beacon is None else "static identity only (one-way presence ping)",
+                      "message_content": "none" if beacon is None else (
+                          "static identity only (one-way ping; receiver-side OWTT range + array bearing)"
+                          if cfg.beacon.range_bearing else "static identity only (one-way presence ping)"),
+                      "acoustic_exit_witnesses": sum(c.perception.gp.exit_kind["ACOUSTIC"] for c in ctrls.values()),
+                      "sonar_exit_witnesses": sum(c.perception.gp.exit_kind["SONAR"] for c in ctrls.values()),
+                      "acoustic_tracker": ({k: sum(c.perception.acoustic.stats[k] for c in ctrls.values())
+                                            for k in next(iter(ctrls.values())).perception.acoustic.stats}
+                                           if cfg.beacon.range_bearing else None),
                       "ground_truth_used_by_controllers": any(c.uses_ground_truth for c in ctrls.values()),
                       "static_rank_uses": rank_uses, "occupancy_timeouts": occ_timeouts,
                       "self_declared_envelope_violations": env_violations, "perf": perf,

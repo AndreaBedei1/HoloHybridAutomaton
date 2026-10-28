@@ -59,6 +59,12 @@ VALIDATION_SCENARIOS = ("p1_vertical_escape", "p1_two_lines", "formation_six", "
                         "integrated_short", "line_parallel_mutex", "lost_drone_rejoin", "lost_drone_mutex")
 # targeted check of the gate localization (relocalization hold, robust clearance) on the gate scenarios
 GATE_CHECK_SCENARIOS = ("line_parallel_mutex", "lost_drone_mutex", "gate_single", "integrated_short")
+# variant B2 (range-bearing beacon; protocol label B2_<channel level>, sim/acoustic_channel.py)
+GATE5_SCENARIOS = ("gate_single", "integrated_short", "mutex_deadlock_resolution", "line_parallel_mutex",
+                   "lost_drone_mutex")
+FORMATION_B2_SCENARIOS = ("formation_six", "formation_recovery_head_current", "lost_drone_rejoin", "lost_drone_timeout",
+                          "p1_vertical_escape")
+TERMINAL_PHASES = ("validation", "gate_check", "b2_gate", "b2_formation", "b2_degraded", "b2_final")
 PY = sys.executable
 
 
@@ -141,6 +147,16 @@ def plan(phase: str, seeds, only=None, all_high=False):
             for prof in ("LOW", "MEDIUM"):
                 for scope in SCOPES:
                     runs += [("B0", f"{prof}-{scope}", sc, s) for s in seeds]
+    elif phase == "b2_gate":                        # B0 and B2 on the five gate scenarios, CLEAN sensors and channel
+        for sc in (tuple(only) if only else GATE5_SCENARIOS):
+            runs += [(proto, "CLEAN", sc, s) for proto in ("B2_CLEAN", "B0") for s in seeds]
+    elif phase == "b2_formation":                   # targeted formation checks, CLEAN and MEDIUM-ALL sensors
+        for sc in (tuple(only) if only else FORMATION_B2_SCENARIOS):
+            for prof in ("CLEAN", "MEDIUM-ALL"):
+                runs += [(proto, prof, sc, s) for proto in ("B0", "B2_CLEAN" if prof == "CLEAN" else "B2_MEDIUM")
+                         for s in seeds]
+    elif phase == "b2_final":                       # the documented matrix (docs/B2_ACOUSTIC_AIDED_COORDINATION.md)
+        runs += final_matrix(seeds, only)
     elif phase == "beacon_clean":
         for sc in BEACON_SCENARIOS:
             runs += [("B1", "CLEAN", sc, s) for s in seeds]
@@ -149,6 +165,31 @@ def plan(phase: str, seeds, only=None, all_high=False):
     if only:
         runs = [r for r in runs if r[2] in only]
     return runs
+
+
+def final_matrix(seeds, only=None) -> list:
+    """B0 vs B2 on the same scenarios and seeds (docs/B2_ACOUSTIC_AIDED_COORDINATION.md, section 6):
+    * sensors CLEAN / LOW-{ONE,SUBSET,ALL} / MEDIUM-{ONE,SUBSET,ALL}, B0 and B2 with the channel at the sensors' level
+      (CLEAN with CLEAN, LOW with LOW, MEDIUM with MEDIUM);
+    * the channel alone: sensors CLEAN with the channel LOW, MEDIUM and BLACKOUT;
+    * channel BLACKOUT with MEDIUM-ALL sensors (B2 must fall back to B0)."""
+    from holo_fleet.sim.sensor_noise import SCOPES
+
+    scen = tuple(only) if only else FINAL_SCENARIOS
+    runs = []
+    for sc in scen:                                 # CLEAN first: B0 CLEAN fixes the deadline of every degraded run
+        runs += [(proto, "CLEAN", sc, s) for proto in ("B0", "B2_CLEAN") for s in seeds]
+    for sc in scen:
+        for prof in ("LOW", "MEDIUM"):
+            for scope in SCOPES:
+                runs += [(proto, f"{prof}-{scope}", sc, s) for proto in ("B0", f"B2_{prof}") for s in seeds]
+        runs += [(f"B2_{ch}", "CLEAN", sc, s) for ch in ("LOW", "MEDIUM", "BLACKOUT") for s in seeds]
+        runs += [("B2_BLACKOUT", "MEDIUM-ALL", sc, s) for s in seeds]
+    return runs
+
+
+FINAL_SCENARIOS = ("p1_vertical_escape", "p1_two_lines", "formation_six", "formation_recovery_head_current",
+                   "lost_drone_rejoin", "lost_drone_timeout") + GATE5_SCENARIOS
 
 
 def run_dir(raw: Path, protocol: str, prof: str, sc: str, seed: int) -> Path:
@@ -170,6 +211,8 @@ def worker(args) -> int:
     cfg = DEFAULT
     if args.protocol == "B1":
         cfg = dataclasses.replace(DEFAULT, beacon=BeaconConfig(mode="ACOUSTIC_PRESENCE"))
+    elif args.protocol.startswith("B2_"):            # range-bearing beacon, channel level after the underscore
+        cfg = dataclasses.replace(DEFAULT, beacon=BeaconConfig(mode="ACOUSTIC_RB", channel=args.protocol[3:]))
     d = Path(args.run_dir)
     prof, _, scope = args.profile.partition("-")
     terminal = None
@@ -178,7 +221,8 @@ def worker(args) -> int:
 
         terminal = {"reference": load_reference(DEMOS / args.scenario)}
         if prof != "CLEAN":
-            t_clean = clean_completion(Path(args.run_dir).parents[2], args.scenario)
+            # the deadline of every protocol comes from the B0 CLEAN runs (one success criterion for B0 and B2)
+            t_clean = clean_completion(Path(args.run_dir).parents[3] / "B0", args.scenario)
             if t_clean is None:
                 print(f"no successful CLEAN run of {args.scenario} under {Path(args.run_dir).parents[2]}: run CLEAN "
                       "first (it fixes the deadline)", file=sys.stderr)
@@ -415,7 +459,7 @@ def main() -> int:
         if sc not in refs:
             refs[sc] = load_reference(DEMOS / sc)
         dur = SCENARIOS[sc](__import__("holo_fleet.config", fromlist=["DEFAULT"]).DEFAULT).duration_s
-        if args.phase in ("validation", "gate_check"):
+        if args.phase in TERMINAL_PHASES:
             from holo_fleet.referee.terminal import clean_horizon_s
 
             dur = clean_horizon_s(dur)
@@ -430,7 +474,7 @@ def main() -> int:
             t0 = time.time()
             seen: dict = {}
             cmd = [PY, str(Path(__file__).resolve()), "--worker", "--scenario", sc, "--profile", prof, "--seed",
-                   str(seed), "--protocol", protocol, "--run-dir", str(d)] + (["--allow-unpatched"] if args.allow_unpatched else [])                 + (["--terminal"] if args.phase in ("validation", "gate_check") else [])
+                   str(seed), "--protocol", protocol, "--run-dir", str(d)] + (["--allow-unpatched"] if args.allow_unpatched else [])                 + (["--terminal"] if args.phase in TERMINAL_PHASES else [])
             with open(d.parent / f"{d.name}_worker.log", "w", encoding="utf-8") as wl:
                 proc = subprocess.Popen(cmd, stdout=wl, stderr=subprocess.STDOUT, cwd=str(ROOT),
                                         env={**os.environ, "PYTHONUNBUFFERED": "1"})

@@ -99,6 +99,22 @@ class HoloFleetSim:
             self.beacon = BeaconTransport(self.names, cfg.beacon, spec.seed,
                                           dropout=0.0 if self.noise is None else self.noise.beacon_dropout,
                                           ticks_per_sec=TICKS_PER_SEC)
+            if self.beacon.rb:
+                self.beacon.scene = self._beacon_scene
+
+    def _beacon_scene(self):
+        """Simulator truth for the B2 channel model (never onboard): agent origins, headings, gate bars."""
+        P, Y = [], []
+        for name in self.names:
+            pose = self.latest[name].get("PoseSensor")
+            if pose is None:
+                P.append(np.full(3, 1e6))
+                Y.append(0.0)
+                continue
+            pose = np.asarray(pose, dtype=float)
+            P.append(agent_origin_from_pose(pose))
+            Y.append(math.atan2(pose[1, 0], pose[0, 0]))
+        return np.array(P), np.array(Y), getattr(self, "scene_bars", [])
 
     # ------------------------------------------------------------------ setup
     def _agent_cfg(self, k: int) -> Dict[str, Any]:
@@ -191,6 +207,7 @@ class HoloFleetSim:
             spawner = make_spawner(self.env)
             spawner.spawn_gate_bars(bars)
             self.setup_report["gate_spawn"] = getattr(spawner.report, "__dict__", {})
+        self.scene_bars = bars
         for prop in getattr(self.spec, "props", ()) or ():
             self.env.spawn_prop(prop.get("type", "box"), location=list(prop["location"]),
                                 rotation=list(prop.get("rotation", (0, 0, 0))), scale=prop.get("scale", 1.0),
@@ -386,8 +403,9 @@ class HoloFleetSim:
             stamp = {k: v for k, v in self.stamp[name].items() if is_onboard(k)}
             if self.beacon is not None:                # receptions since the previous frame (identities only)
                 rx = self.beacon_inbox[name]
-                data["BeaconRx"] = tuple(rx)
-                stamp["BeaconRx"] = max((x[1] for x in rx), default=-1e9)
+                key = "AcousticRx" if self.beacon.rb else "BeaconRx"     # B2: (identity, t_arrival, range, az, el)
+                data[key] = tuple(rx)
+                stamp[key] = max((x[1] for x in rx), default=-1e9)
                 self.beacon_inbox[name] = []
             out[name] = SensorFrame(t=self.t, data=data, stamp=stamp)
         return out

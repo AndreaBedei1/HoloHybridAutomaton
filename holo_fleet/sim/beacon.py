@@ -1,4 +1,10 @@
-"""Simulator side of the optional one-way presence beacon (variant B1): who hears whose ping, and when.
+"""Simulator side of the optional one-way beacon: who hears whose ping, when, and (B2) what the receiver measures.
+
+Variant B1 (``ACOUSTIC_PRESENCE``): a reception is only "drone k was heard" (below).  Variant B2
+(``ACOUSTIC_RB``): drone k pings on a fixed TDMA schedule (slot k of every period, slots aligned to simulator
+ticks so that the scheduled emission instant is exact), and every reception becomes a range-bearing measurement
+through the channel model of sim/acoustic_channel.py (noise, biases, NLOS reflections, dropouts, outages,
+latency).  The ping still carries only the static identity.
 
 Every drone carries a HoloOcean ``AcousticBeaconSensor`` (id = drone index, engine range limit ``MaxDistance``
 and line-of-sight check ``CheckVisible``).  A drone pings every ``period_s`` +- ``jitter_s`` (uniform, seeded).
@@ -40,6 +46,17 @@ class BeaconTransport:
         self.tps = ticks_per_sec
         self.rng = np.random.default_rng([int(seed), 4243])
         self.next_ping = {n: float(self.rng.uniform(0.0, cfg.period_s)) for n in self.names}
+        self.rb = bool(getattr(cfg, "range_bearing", False))
+        self.channel = None
+        if self.rb:                       # B2: TDMA slots aligned to ticks, channel model (sim/acoustic_channel.py)
+            from holo_fleet.sim.acoustic_channel import ChannelModel, channel
+
+            self.period_ticks = max(1, int(round(cfg.period_s * ticks_per_sec)))
+            self.slot_ticks = max(1, self.period_ticks // max(1, len(self.names)))
+            self.channel = ChannelModel(channel(cfg.channel), len(self.names), seed, cfg.max_range_m)
+            self.last_clear: Dict[Tuple[str, int], Tuple[float, Tuple[float, float, float]]] = {}
+            self.rb_log: List[Tuple] = []           # (t_tx, receiver, sender, r_true, r_meas, az_err, el_err, nlos)
+        self.scene = None                 # B2: callable -> (positions (n,3), yaws (n,), gate bars), simulator truth
         self.pending: Dict[str, List[Tuple[str, float]]] = defaultdict(list)   # receiver -> [(sender, t_tx)]
         self.due: List[Tuple[float, str, int, float]] = []                     # (t_rx, receiver, sender id, t_tx)
         self.tx_log: List[Tuple[float, str]] = []
@@ -59,10 +76,15 @@ class BeaconTransport:
         """Emit the pings due at onboard time t (one engine command per receiver)."""
         from holoocean.command import SendAcousticMessageCommand
 
-        for n in self.names:
-            if t + 1e-9 < self.next_ping[n]:
+        tick = int(round(t * self.tps))
+        for k, n in enumerate(self.names):
+            if self.rb:
+                if (tick - k * self.slot_ticks) % self.period_ticks != 0:
+                    continue
+            elif t + 1e-9 < self.next_ping[n]:
                 continue
-            self.next_ping[n] += self.cfg.period_s + float(self.rng.uniform(-self.cfg.jitter_s, self.cfg.jitter_s))
+            else:
+                self.next_ping[n] += self.cfg.period_s + float(self.rng.uniform(-self.cfg.jitter_s, self.cfg.jitter_s))
             self.stats["transmissions"] += 1
             self.tx_log.append((round(t, 4), n))
             for r in self.names:
@@ -93,7 +115,9 @@ class BeaconTransport:
                 else:
                     sender, t_tx = live[0]
                     pend = []
-                    if np.all(buf == -1.0):
+                    if self.rb:
+                        self._measure(r, sender, t_tx, buf)
+                    elif np.all(buf == -1.0):
                         self.stats["lost_channel"] += 1    # out of range or line of sight blocked (engine)
                     elif self.dropout > 0.0 and self.rng.random() < self.dropout:
                         self.stats["lost_dropout"] += 1
@@ -105,13 +129,75 @@ class BeaconTransport:
                         self.stats["latency_s"].append(t_rx - t_tx)
             self.pending[r] = pend
 
+    def _measure(self, r: str, sender: str, t_tx: float, buf: np.ndarray) -> None:
+        """B2: engine geometry of the direct path -> delivered measurement (identity, t_arrival, range, az, el)."""
+        k_s, k_r = self.names.index(sender), self.names.index(r)
+        ch = self.channel
+        m = ch.measure(t_tx, k_s, k_r, buf)
+        geom = None
+        if m is None and np.all(buf == -1.0):
+            geom, shadow = self._blocked_geometry(k_s, k_r)
+            if geom is not None and shadow:                     # a hull or a bar on the ray: diffracted direct path
+                m = ch.shadowed(t_tx, k_s, k_r, geom)
+            elif geom is not None:                              # anything else: a reflected arrival, or nothing
+                m = ch.reflected(t_tx, k_s, k_r, geom)
+        elif not np.all(buf == -1.0):
+            geom = (float(buf[0]), float(buf[1]), float(buf[2]))
+            self.last_clear[(r, k_s)] = (t_tx, geom)
+        if m is None:
+            if np.all(buf == -1.0):
+                self.stats["lost_channel"] += 1
+            else:
+                self.stats["lost_dropout"] += 1
+            return
+        rng_m, az_m, el_m, nlos = m
+        t_arr = t_tx + geom[2] / self.cfg.sound_speed
+        self.due.append((t_arr + ch.ch.latency_s, r, k_s, t_tx, (round(t_arr, 4), float(rng_m), float(az_m), float(el_m))))
+        self.stats["receptions"] += 1
+        self.stats["latency_s"].append(t_arr + ch.ch.latency_s - t_tx)
+        self.rb_log.append((round(t_tx, 4), k_r, k_s, round(geom[2], 3), round(float(rng_m), 3),
+                            round(math.degrees(az_m - geom[0]), 2), round(math.degrees(el_m - geom[1]), 2), nlos))
+
+    def _blocked_geometry(self, k_s: int, k_r: int):
+        """Direct-path geometry (receiver body frame, level) of a blocked ping from the simulator truth, and whether
+        a drone hull or a gate bar lies on the ray (sim/acoustic_channel.py, H4)."""
+        from holo_fleet.perception.sonar_geometry import HULL_HALF
+        from holo_fleet.sim.acoustic_channel import segment_hits_box
+
+        if self.scene is None:
+            return None, False
+        P, Y, bars = self.scene()
+        a, b = P[k_s], P[k_r]
+        d = a - b
+        c, s = math.cos(Y[k_r]), math.sin(Y[k_r])
+        body = np.array([c * d[0] + s * d[1], -s * d[0] + c * d[1], d[2]])
+        dist = float(np.linalg.norm(body))
+        if dist < 1e-6:
+            return None, False
+        geom = (math.atan2(body[1], body[0]), math.asin(float(np.clip(body[2] / dist, -1.0, 1.0))), dist)
+        half = np.asarray(HULL_HALF, float)
+        for k in range(len(P)):
+            if k in (k_s, k_r):
+                continue
+            ck, sk = math.cos(Y[k]), math.sin(Y[k])
+            axes = np.array([[ck, -sk, 0.0], [sk, ck, 0.0], [0.0, 0.0, 1.0]])
+            if segment_hits_box(a, b, P[k], axes, half):
+                return geom, True
+        for bar in bars or ():
+            if segment_hits_box(a, b, bar.center, bar.axes, bar.half):
+                return geom, True
+        return geom, False
+
     def deliver(self, t: float) -> Dict[str, List[Tuple[int, float]]]:
         """Receptions whose time has come: receiver -> [(sender identity, reception time)]."""
         out: Dict[str, List[Tuple[int, float]]] = defaultdict(list)
         keep = []
         for item in self.due:
             if item[0] <= t + 1e-9:
-                out[item[1]].append((item[2], round(item[0], 4)))
+                if self.rb:                                       # (identity, t_arrival, range, azimuth, elevation)
+                    out[item[1]].append((item[2],) + tuple(item[4]))
+                else:
+                    out[item[1]].append((item[2], round(item[0], 4)))
                 key = (item[1], item[2])
                 prev = self.last_rx.get(key, 0.0)
                 if item[0] > prev:
@@ -138,4 +224,25 @@ class BeaconTransport:
                 "lost_dropout": self.stats["lost_dropout"],
                 "latency_mean_ms": round(1000.0 * float(np.mean(lat)), 2) if lat else None,
                 "latency_max_ms": round(1000.0 * float(np.max(lat)), 2) if lat else None,
-                "longest_absence_s": round(max([self.longest_gap] + open_gaps), 2)}
+                "longest_absence_s": round(max([self.longest_gap] + open_gaps), 2),
+                **({} if not self.rb else {"channel": self.channel.ch.as_dict(), "channel_stats": dict(self.channel.stats),
+                                           "sound_speed_scale": round(self.channel.scale, 5),
+                                           "clock_offset_m": [round(float(x), 3) for x in self.channel.offset],
+                                           "nlos_received": int(sum(1 for x in self.rb_log if x[7])),
+                                           **_error_summary(self.rb_log)})}
+
+
+def _error_summary(log) -> Dict:
+    """Measurement errors of the delivered B2 receptions (direct path / reflected), from the simulator truth."""
+    out = {}
+    for tag, rows in (("los", [x for x in log if not x[7]]), ("nlos", [x for x in log if x[7]])):
+        if not rows:
+            continue
+        dr = np.array([x[4] - x[3] for x in rows])
+        da = np.abs(np.array([((x[5] + 180.0) % 360.0) - 180.0 for x in rows]))
+        de = np.abs(np.array([x[6] for x in rows]))
+        out[f"{tag}_range_err_p50_m"] = round(float(np.median(np.abs(dr))), 3)
+        out[f"{tag}_range_err_p99_m"] = round(float(np.percentile(np.abs(dr), 99)), 3)
+        out[f"{tag}_az_err_p99_deg"] = round(float(np.percentile(da, 99)), 2)
+        out[f"{tag}_el_err_p99_deg"] = round(float(np.percentile(de, 99)), 2)
+    return out

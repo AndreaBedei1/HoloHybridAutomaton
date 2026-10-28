@@ -25,6 +25,22 @@ occlusion of a drone that is still there).  The rule only defers the declaration
 clears a MISSING state (only a sonar confirmation near the slot does), never touches the vacancy timer of a
 neighbour already missing, and has no input into separation, collision avoidance or the gate (``d_min``,
 ``sense_ok``, ``occ_busy``, ``has_prio`` and ``passed`` do not depend on it).
+
+Variant B2 (range-bearing beacon, perception/acoustic.py).  Identified fixes enter the perception only, and never
+``d_min``, ``sense_ok`` or ``has_prio``:
+* gate: a second way to an exit witness of the CR latch (perception/acoustic_gate.py);
+* association: a sonar echo is associated with a neighbour where its fix places it (formation_perception);
+* presence (rule A-P): a fresh accepted fix within ``e_lost`` of the neighbour's expected position counts as a
+  sighting for the NEIGHBOUR_MEMORY_S timer (a drone occluded for the sonar but heard where it should be is not
+  missing); it never confirms a MISSING neighbour back (only the sonar confirmation does) and never clears a
+  vacancy;
+* displacement (rule A-D): ``A_CONFIRM`` consecutive accepted fixes whose whole error region lies farther than
+  ``e_lost`` + ``A_DISPLACED_MARGIN`` from the neighbour's expected position declare it MISSING at once (and
+  keep it so: no sonar confirmation while the fixes say otherwise);
+* relative formation error: for a neighbour with a fresh fix, the full relative-position residual (fix minus
+  template, map axes) replaces the range residual in the along-track / lateral consensus (``along_corr``,
+  ``lateral_corr``): the along-track offset of an abreast neighbour, unobservable from ranges, becomes observable.
+Without receptions (B0, a silent channel) every one of these is inactive and the perception is the sonar one.
 """
 
 from __future__ import annotations
@@ -38,11 +54,16 @@ import numpy as np
 from holo_fleet.config import DEFAULT, FleetConfig
 from holo_fleet.ha.automaton import AbstractObservation
 from holo_fleet.mission import MissionPlan
-from holo_fleet.perception.formation_perception import NEIGHBOUR_MEMORY_S, FormationObs, check_formation
+from holo_fleet.perception.formation_perception import (NEIGHBOUR_MEMORY_S, FormationObs, check_formation,
+                                                       expected_relative)
 
 CONFIRM_N = 3              # associations ...
 CONFIRM_WINDOW_S = 1.0     # ... within this window confirm that a missing neighbour is back,
 CONFIRM_GATE = 0.5         # ... each within this fraction of the range gate (near its slot)
+A_CONFIRM = 2              # B2 rule A-D: consecutive accepted fixes ...
+A_DISPLACED_MARGIN = 1.0   # ... whose region lies beyond e_lost + this from the expected position [m]
+A_CORR_AGE_S = 1.5         # a fix this recent feeds the relative formation residual
+from holo_fleet.perception.acoustic import AcousticTracker
 from holo_fleet.perception.beacon_presence import PresenceTracker
 from holo_fleet.perception.frame import SensorFrame
 from holo_fleet.perception.gate_perception import GateObs, GatePerception
@@ -120,7 +141,8 @@ class Perception:
         self.clf = EchoClassifier(gate_bars=bars, cfg=cfg)
         self.aiding = StructureAiding(self.clf, cfg, gates=plan.structures)     # map-aided position correction near the gate
         self.tracker = SectorTracker(cfg)
-        self.gp = GatePerception(plan, cfg)
+        self.acoustic = AcousticTracker(cfg)           # B2 range-bearing beacon (OFF unless ACOUSTIC_RB)
+        self.gp = GatePerception(plan, cfg, acoustic=self.acoustic)
         self.ok_since: Optional[float] = None
         self.neighbour_seen: Dict[int, float] = {}     # slot -> last time it was matched by sonar
         self.sightings: Dict[int, List[float]] = {}     # slot -> association times within CONFIRM_WINDOW_S
@@ -131,6 +153,9 @@ class Perception:
         self.events: List[Dict] = []                   # vacancy / re-inclusion events (drained by the controller)
         self.presence = PresenceTracker(cfg)           # optional one-way presence beacon (variant B1, OFF by default)
         self.presence_held: List[int] = []            # slots whose MISSING declaration rule R1 defers now
+        self.acoustic_present: List[int] = []          # B2 rule A-P: sightings from fixes this step
+        self.acoustic_displaced: List[int] = []        # B2 rule A-D: neighbours positively away from their slot
+        self.acoustic_corr: List[int] = []             # neighbours whose fix fed the relative residual
 
     # ------------------------------------------------------------------ formation reference
     def slot_reference(self, t_form: float, sigma: float = 0.0):
@@ -159,10 +184,17 @@ class Perception:
             self.presence_held = [k for k in form.missing if not self.missing_state.get(k)
                                   and self.presence.heard(k, t) and t - self.neighbour_seen.get(k, -1e9) <= grace]
             form.missing = [k for k in form.missing if k not in self.presence_held]
+        for k in self.acoustic_displaced:                  # rule A-D: positively away from its slot
+            if k not in form.missing:
+                form.missing.append(k)
+            if k not in form.required:
+                form.required.append(k)
         for chk in form.checks:
             k = chk.slot
             sight = [x for x in self.sightings.get(k, []) if t - x <= CONFIRM_WINDOW_S]
-            if chk.seen and abs(chk.residual) <= CONFIRM_GATE * fr.range_gate_m:
+            if k in self.acoustic_displaced:
+                sight = []                                 # the fixes contradict a sonar confirmation near the slot
+            elif chk.seen and abs(chk.residual) <= CONFIRM_GATE * fr.range_gate_m:
                 sight.append(t)                            # near its slot: counts toward the confirmation
             self.sightings[k] = sight
             if len(sight) >= CONFIRM_N:
@@ -190,6 +222,52 @@ class Perception:
         form.missing = [k for k in form.required if self.missing_state.get(k)]
         form.neighbors_ok = not [k for k in form.missing if k not in self.vacant]
 
+    # ------------------------------------------------------------------ B2: identified neighbours
+    def acoustic_neighbours(self, t: float, slot_err: np.ndarray, R_form: np.ndarray) -> Optional[Dict[int, np.ndarray]]:
+        """Rules A-P and A-D (module docstring); returns the fresh relative positions used for the association."""
+        self.acoustic_present, self.acoustic_displaced = [], []
+        if not self.acoustic.enabled:
+            return None
+        a, fr = self.cfg.acoustic, self.cfg.form
+        out = {}
+        for k, d_world in expected_relative(self.plan, R_form).items():
+            f = self.acoustic.latest(k, t, a.fresh_s)
+            if f is None:
+                continue
+            out[k] = f.rel
+            exp = d_world + np.asarray(slot_err, float)          # where k should be, relative to me
+            if float(np.linalg.norm(f.rel - exp)) <= fr.e_lost:
+                self.acoustic_present.append(k)
+                self.neighbour_seen[k] = max(self.neighbour_seen.get(k, -1e9), f.t)
+            acc = [g for g in self.acoustic.all_fixes(k, t - a.fresh_s, t) if g.accepted][-A_CONFIRM:]
+            if (len(acc) == A_CONFIRM and len({g.track for g in acc}) == 1
+                    and all(float(np.linalg.norm(g.rel - exp)) - g.extent > fr.e_lost + A_DISPLACED_MARGIN for g in acc)):
+                self.acoustic_displaced.append(k)
+        return out
+
+    def acoustic_residuals(self, t: float, form: FormationObs, R_form: np.ndarray) -> None:
+        """Relative formation residual from the fresh fixes of neighbours near their expected position (B2)."""
+        self.acoustic_corr = []
+        if not self.acoustic.enabled:
+            return
+        t_hat, n_hat = R_form[:, 0], R_form[:, 1]
+        exp_rel = expected_relative(self.plan, R_form)
+        along, lat = [], []
+        for chk in form.checks:
+            k = chk.slot
+            f = self.acoustic.latest(k, t, A_CORR_AGE_S)
+            if f is not None and k in self.acoustic_present and k not in self.acoustic_displaced:
+                e = f.rel - exp_rel[k]
+                along.append(float(e @ t_hat))
+                lat.append(float(e @ n_hat))
+                self.acoustic_corr.append(k)
+            elif chk.seen:
+                along.append(chk.residual * chk.along_w)
+                lat.append(chk.residual * chk.lateral_w)
+        if self.acoustic_corr:
+            form.along_corr = float(np.mean(along))
+            form.lateral_corr = float(np.mean(lat))
+
     # ------------------------------------------------------------------ main update
     def update(self, frame: SensorFrame, dt: float, sigma: float = 0.0, env_ok: bool = True,
                offset: Optional[np.ndarray] = None, in_formation: bool = True,
@@ -213,6 +291,7 @@ class Perception:
         corr = self.aiding.update(nav.p, R_wb, profiles, ages, env.tau_max, t=t)
         if corr is not None:                      # dead-reckoning drift bounded by the mapped gate (structure_aiding)
             self.nav.state.p += corr
+        self.acoustic.update(t, d.get("AcousticRx"), nav.p, nav.yaw)     # B2 fixes (own pose after the aiding)
         readings = self.clf.classify(profiles, ages, nav.p, R_wb, seabed_z, tau_healthy=env.tau_max)
         tracks = self.tracker.update(t, readings)
         targets = build_targets(t, readings, tracks, self.cfg)
@@ -230,8 +309,10 @@ class Perception:
             for k in range(len(self.plan.slots)):
                 if k != self.plan.slot_index:
                     self.neighbour_seen[k], self.missing_state[k] = t, False
+        ac_rel = self.acoustic_neighbours(t, slot - nav.p, R_form)
         form = check_formation(self.plan, self.cfg, slot - nav.p, R_form, R_wb, targets, healthy, t, self.neighbour_seen,
-                               readings, vacant=self.vacant)
+                               readings, vacant=self.vacant, acoustic=ac_rel)
+        self.acoustic_residuals(t, form, R_form)
         self.track_missing(t, dt, form, in_formation, t_form)
         fr = self.cfg.form
         if form.form_err < fr.e_ok:

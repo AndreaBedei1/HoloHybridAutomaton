@@ -105,7 +105,8 @@ def masked_by_structure(expected_d: float, exp_pat, u_body: np.ndarray, readings
 
 def check_formation(plan: MissionPlan, cfg: FleetConfig, slot_err: np.ndarray, R_formation: np.ndarray,
                     R_world_body: np.ndarray, targets, healthy: Dict[str, bool], t: float = 0.0,
-                    last_seen: Dict[int, float] = None, readings=None, vacant=()) -> FormationObs:
+                    last_seen: Dict[int, float] = None, readings=None, vacant=(),
+                    acoustic: Optional[Dict[int, np.ndarray]] = None) -> FormationObs:
     """Expected neighbours vs sonar echoes, one-to-one per (target, sector).
 
     Association is done per sector of a target, not per target: two neighbours at similar ranges
@@ -117,7 +118,12 @@ def check_formation(plan: MissionPlan, cfg: FleetConfig, slot_err: np.ndarray, R
     window (a range-only sensor classifies it STRUCTURE: unobservable, not missing).  Neighbours whose echoes
     cannot be separated (same expected sectors and range) are confirmed as a group.  Slots in ``vacant``
     (declared vacant by the perception after t_rejoin) are still associated when an echo fits them, but
-    they are not required."""
+    they are not required.
+
+    B2 only: ``acoustic`` maps a slot to the relative position of its drone from a fresh accepted acoustic fix
+    (map-frame axes).  For those neighbours an echo is associated where the IDENTIFIED drone is (sector pattern
+    compatible with the fix direction, range within the range gate of the fix distance) instead of where the
+    template expects it; the residual stays the one against the template (it is the formation error)."""
     fr = cfg.form
     o = FormationObs(slot_err=slot_err, slot_err_norm=float(np.linalg.norm(slot_err)))
     t_hat, n_hat = R_formation[:, 0], R_formation[:, 1]
@@ -133,19 +139,29 @@ def check_formation(plan: MissionPlan, cfg: FleetConfig, slot_err: np.ndarray, R
         exp_pat = far_field_pattern(u_body)
         expected.append((NeighbourCheck(slot=k, expected_d=dist, expected_pattern="+".join(sorted(exp_pat))),
                          d_world, dist, u_body, exp_pat))
+    assoc = []                                     # where to look for each neighbour: (distance, body direction, sectors)
+    for chk, _dw, dist, u_body, exp_pat in expected:
+        v = None if not acoustic else acoustic.get(chk.slot)
+        if v is not None and float(np.linalg.norm(v)) > 0.3:
+            da = float(np.linalg.norm(v))
+            ua = R_world_body.T @ (np.asarray(v, float) / da)
+            assoc.append((da, ua, far_field_pattern(ua)))
+        else:
+            assoc.append((dist, u_body, exp_pat))
     cands = []                                     # (|residual|, neighbour index, target index, sector, d_measured)
-    for i, (_chk, _dw, dist, u_body, exp_pat) in enumerate(expected):
+    for i, (_chk, _dw, dist, _u, _p) in enumerate(expected):
+        d_a, u_a, pat_a = assoc[i]
         for j, tg in enumerate(targets):
-            if not (set(tg.pattern) & set(exp_pat)) or not compatible(tg.pattern, u_body):
+            if not (set(tg.pattern) & set(pat_a)) or not compatible(tg.pattern, u_a):
                 continue
             for sec in tg.pattern:
-                if sec not in exp_pat:
+                if sec not in pat_a:
                     continue
-                d_m = estimate_centre_distance(tg.ranges.get(sec, tg.r_min), sec, u_body)
-                if abs(d_m - dist) <= 3.0:
+                d_m = estimate_centre_distance(tg.ranges.get(sec, tg.r_min), sec, u_a)
+                if abs(d_m - d_a) <= 3.0:
                     tg.possible_neighbour = True
-                if abs(d_m - dist) <= fr.range_gate_m:
-                    cands.append((abs(d_m - dist), i, j, sec, d_m))
+                if abs(d_m - d_a) <= fr.range_gate_m:
+                    cands.append((abs(d_m - d_a), i, j, sec, d_m))
     used_n, used_ts = set(), set()
     for _r, i, j, sec, d_m in sorted(cands):
         if i in used_n or (j, sec) in used_ts:

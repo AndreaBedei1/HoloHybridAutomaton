@@ -16,6 +16,9 @@
   sector that no hull in the CR can produce and a hull leaving it on the exit side can: exit_witness.py;
   the FRONT echo beyond R_far is the FRONT case), FREE after ``t_clear`` more - or after ``t_occ_max``
   without corridor echoes (logged as a timeout).  No echo is never evidence of an exit.
+  Variant B2 only: an acoustic exit evidence (identified range-bearing fixes, perception/acoustic_gate.py) is a
+  second way into EXITING, under the same "corridor empty" condition; without it (B0, a silent channel) the latch
+  is exactly the sonar one.
 """
 
 from __future__ import annotations
@@ -61,9 +64,15 @@ class GateObs:
 
 
 class GatePerception:
-    def __init__(self, plan: MissionPlan, cfg: FleetConfig = DEFAULT):
+    def __init__(self, plan: MissionPlan, cfg: FleetConfig = DEFAULT, acoustic=None):
         self.plan = plan
         self.cfg = cfg
+        self.acoustic_exit = None                              # B2 only (perception/acoustic_gate.py)
+        if acoustic is not None and acoustic.enabled:
+            from holo_fleet.perception.acoustic_gate import AcousticExit
+
+            self.acoustic_exit = AcousticExit(cfg, acoustic, [k for k in range(len(plan.slots)) if k != plan.slot_index])
+        self.exit_kind = {"SONAR": 0, "ACOUSTIC": 0}           # what moved the latch to EXITING (counts)
         self.idx = 0                                          # index of the current gate in plan.gates
         self.prio_since: Optional[float] = None
         self.occ_state = "FREE"
@@ -93,6 +102,8 @@ class GatePerception:
         self.prio_since = None
         self.occ_state, self.last_corridor_t, self.exit_seen_t = "FREE", -1e9, -1e9
         self.exit.reset()
+        if self.acoustic_exit is not None:
+            self.acoustic_exit.reset()
 
     def cr_ranges(self, g: GateSpec, p: np.ndarray, yaw: float):
         """Smallest and largest distance from the own FRONT sonar to a point of the CR (gate map + own pose)."""
@@ -161,6 +172,8 @@ class GatePerception:
         corridor = [tg for tg in targets if "FRONT" in tg.pattern and r_near <= tg.r_min <= r_far]
         if corridor:
             self.last_corridor_t = t
+            if self.acoustic_exit is not None:
+                self.acoustic_exit.note_corridor(t, g, p, yaw, [tg.r_min for tg in corridor])
             if self.occ_state == "FREE":
                 self.busy_since = t
             self.occ_state = "BUSY"
@@ -168,10 +181,13 @@ class GatePerception:
         if self.occ_state != "FREE":
             healthy = {sec: bool(rd.healthy) for sec, rd in readings.items()}
             witness = self.exit.update(t, g, p, yaw, targets, bool(corridor), self.last_corridor_t, healthy)
+            if witness is None and not corridor and self.occ_state == "BUSY" and self.acoustic_exit is not None:
+                witness = self.acoustic_exit.evaluate(t, g)
         o.exit_witness = witness
         if self.occ_state == "BUSY":
             if witness is not None and not corridor:
                 self.occ_state, self.exit_seen_t, self.exit_witness = "EXITING", t, witness
+                self.exit_kind["ACOUSTIC" if witness.get("sector") == "ACOUSTIC" else "SONAR"] += 1
             elif t - self.last_corridor_t > G.t_occ_max:
                 self.occ_state, self.exit_witness = "FREE", None
                 self.occ_timeouts += 1
@@ -179,6 +195,8 @@ class GatePerception:
             self.occ_state = "FREE"
         if self.occ_state == "FREE":
             self.exit.reset()
+            if self.acoustic_exit is not None:
+                self.acoustic_exit.reset()
         o.occ_state = self.occ_state
         o.occ_busy = self.occ_state != "FREE"
         o.occ_timeouts = self.occ_timeouts

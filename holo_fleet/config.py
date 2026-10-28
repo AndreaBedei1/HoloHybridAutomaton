@@ -284,7 +284,7 @@ class BeaconConfig:
     only onboard use of the evidence (rule R1, perception.py) - a neighbour recently heard is declared MISSING
     after NEIGHBOUR_MEMORY_S + missing_grace_s without a sonar match instead of NEIGHBOUR_MEMORY_S."""
 
-    mode: str = "NONE"               # NONE | ACOUSTIC_PRESENCE
+    mode: str = "NONE"               # NONE | ACOUSTIC_PRESENCE (B1) | ACOUSTIC_RB (B2, AcousticConfig below)
     period_s: float = 1.0
     jitter_s: float = 0.1
     max_range_m: float = 50.0
@@ -292,10 +292,44 @@ class BeaconConfig:
     sound_speed: float = 1500.0
     ttl_s: float = 2.5
     missing_grace_s: float = 2.0
+    channel: str = "CLEAN"           # B2 only: simulator-side channel level (sim/acoustic_channel.py), never onboard
 
     @property
     def enabled(self) -> bool:
         return self.mode != "NONE"
+
+    @property
+    def range_bearing(self) -> bool:
+        return self.mode == "ACOUSTIC_RB"
+
+
+@dataclass(frozen=True)
+class AcousticConfig:
+    """Onboard side of the B2 range-bearing beacon (perception/acoustic.py): the DECLARED measurement envelope.
+
+    The perception does not know the channel level of a run: it uses these bounds everywhere, fixed before any B2
+    result (docs/B2_ACOUSTIC_AIDED_COORDINATION.md, section 3).  A reception inside the envelope has
+    |range error| <= k_sigma * sigma_range_m + sound_speed_err * r + clock_offset_m and direction errors within
+    k_sigma * sigma + the own attitude error bound; anything else (a reflected arrival) is an outlier that the
+    kinematic gate and the depth check must reject or the fix must not be used.  The envelope is the MEDIUM channel
+    (sim/acoustic_channel.py) at k_sigma = 3, the heading bound the MEDIUM compass bias (sim/sensor_noise.py) plus
+    its noise, the pitch / roll bound the unestimated attitude of a BlueROV2 holding depth."""
+
+    k_sigma: float = 3.0
+    sigma_range_m: float = 0.15
+    sound_speed_err: float = 0.03        # 3 x 1 % (one scale factor per run)
+    clock_offset_m: float = 0.21         # 3 x sqrt(2) x 0.05 m: the bias between two drones' clocks
+    sigma_az_deg: float = 2.5
+    sigma_el_deg: float = 2.5
+    heading_err_deg: float = 3.0         # own compass bias + noise (MEDIUM 2.0 deg bias)
+    tilt_err_deg: float = 3.0            # own unestimated roll / pitch
+    latency_max_s: float = 0.40          # a delivery later than this after its arrival is not used
+    nav_err_gate_m: float = 1.0          # own position error in the gate frame (a queued drone, bounded by aiding)
+    track_gate_m: float = 0.5            # extra slack of the kinematic consistency gate of a track
+    exit_confirm: int = 2                # consecutive accepted fixes beyond the CR for an acoustic exit
+    tie_window_s: float = 3.0            # fixes this close to the last corridor sighting account for a drone
+    fresh_s: float = 2.5                 # a fix this recent counts for the neighbours (formation)
+    depth_tol_m: float = 1.5             # a fix this far outside the operating depth band is a reflection
 
 
 @dataclass(frozen=True)
@@ -308,6 +342,7 @@ class FleetConfig:
     plant: PlantCalibration = field(default_factory=PlantCalibration)
     ref: RefereeConfig = field(default_factory=RefereeConfig)
     beacon: BeaconConfig = field(default_factory=BeaconConfig)   # optional one-way presence beacon (OFF)
+    acoustic: AcousticConfig = field(default_factory=AcousticConfig)   # B2 onboard envelope (used only with ACOUSTIC_RB)
     comms_enabled: bool = False       # inter-agent communication is OFF by default
     traffic_rule: bool = True         # head-on give-way rule (liveness aid); off only to exercise the safety layer alone
 

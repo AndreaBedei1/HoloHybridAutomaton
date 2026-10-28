@@ -18,7 +18,7 @@ from holo_fleet.config import DEFAULT, FleetConfig
 class PresenceTracker:
     def __init__(self, cfg: FleetConfig = DEFAULT):
         self.cfg = cfg.beacon
-        self.enabled = cfg.beacon.enabled
+        self.enabled = cfg.beacon.mode == "ACOUSTIC_PRESENCE"     # B1 only (B2: perception/acoustic.py)
         self.slot_of: Dict[int, int] = {}            # static identity -> slot (pre-mission plan)
         self.last_heard: Dict[int, float] = {}       # slot -> reception time of its latest ping
         self.receptions = 0
