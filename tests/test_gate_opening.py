@@ -18,7 +18,7 @@ def _side_bar_inner_edges(g):
 
 def test_the_map_has_the_widened_opening():
     g = load_arena_gates(HORSESHOE_TRACK, ["G06"])[0]
-    assert (g.inner_width, g.inner_height) == GATE_INNER_SIZE_M["G06"] == (2.0, 1.5)
+    assert (g.inner_width, g.inner_height) == GATE_INNER_SIZE_M["G06"] == (2.0, 2.0)
     assert np.allclose(_side_bar_inner_edges(g), g.inner_width / 2.0, atol=1e-6)
 
 
@@ -40,5 +40,6 @@ def test_the_track_opening_is_still_available():
 def test_the_opening_ends_at_the_critical_region_and_widens_the_hull_margin():
     g = load_arena_gates(HORSESHOE_TRACK, ["G06"])[0]
     assert g.inner_width / 2.0 <= DEFAULT.gate.cr_half_width + 1e-9    # a drone in the opening is in the CR
+    assert g.inner_height / 2.0 <= DEFAULT.gate.cr_half_height + 1e-9
     assert g.inner_width / 2.0 - HULL_LAT_M > 0.58                     # MEDIUM lateral DR error at the gate
     assert 1.5 / 2.0 - HULL_LAT_M < 0.45

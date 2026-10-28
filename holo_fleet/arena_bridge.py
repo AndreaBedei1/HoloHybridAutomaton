@@ -20,11 +20,11 @@ import numpy as np
 DEFAULT_ARENA_ROOT = Path.home() / "Desktop" / "HoloDroneCompetition"
 HORSESHOE_TRACK = "marine_race_arena/tracks/marine_race_horseshoe_bay.json"
 # Inner opening (width, height) [m] of the gates the scenarios spawn, overriding the track (1.5 x 1.5 m).  G06 is
-# 2.0 m wide: the free lateral margin of the hull centre grows from 0.44 to 0.69 m, above the 0.30-0.58 m lateral
-# dead-reckoning error measured at the gate under MEDIUM (raw_gate_check), and the opening still ends at the edge
-# of the critical region (cr_half_width 1.0 m), so the mutex geometry is unchanged.  The perception map and the
-# spawned bars are built from the same overridden config.
-GATE_INNER_SIZE_M = {"G06": (2.0, 1.5)}
+# 2.0 x 2.0 m: the free lateral margin of the hull centre grows from 0.44 to 0.69 m, above the 0.30-0.58 m lateral
+# dead-reckoning error measured at the gate under MEDIUM (raw_gate_check), the vertical one from 0.62 to 0.87 m, and
+# the opening still ends at the edges of the critical region (cr_half_width = cr_half_height = 1.0 m), so the mutex
+# geometry is unchanged.  The perception map and the spawned bars are built from the same overridden config.
+GATE_INNER_SIZE_M = {"G06": (2.0, 2.0)}
 
 
 def arena_root() -> Path:

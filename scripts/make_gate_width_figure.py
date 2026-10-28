@@ -33,7 +33,7 @@ def _front(ax, g, err, title):
     cw = DEFAULT.gate.cr_half_width
     for x in (-cw, cw):
         ax.axvline(x, color=CR, ls="--", lw=1.0, zorder=1)
-    ax.text(cw, 1.13, "CR edge", color=CR, fontsize=8, ha="center")
+    ax.text(cw, 1.28, "CR edge", color=CR, fontsize=8, ha="center")
     ax.add_patch(Rectangle((-margin, -0.06), 2 * margin, 0.12, color=OK, alpha=0.25, zorder=1))
     ax.annotate("", xy=(margin, 0.0), xytext=(-margin, 0.0), arrowprops=dict(arrowstyle="<->", color=OK, lw=1.4))
     ax.text(0.0, -0.17, f"hull-centre corridor ±{margin:.2f} m", color=OK, fontsize=9, ha="center", weight="bold")
@@ -48,7 +48,7 @@ def _front(ax, g, err, title):
             color=c, fontsize=8, ha="right", weight="bold")
     ax.set_title(title, fontsize=11, color=INK, loc="left")
     ax.set_xlim(-1.45, 1.45)
-    ax.set_ylim(-1.05, 1.25)
+    ax.set_ylim(-1.3, 1.4)
     ax.set_aspect("equal")
     ax.set_xlabel("lateral l [m]  (front view, looking along the passage)")
     ax.set_ylabel("dz [m]")
@@ -97,8 +97,10 @@ def main(out, holds=None):
         m = g.inner_width / 2.0 - HULL_LAT_M
         _front(axs[0, col], g, worst, f"{tag}: opening {g.inner_width:.2f} x {g.inner_height:.2f} m, margin ±{m:.2f} m")
         _top(axs[1, col], g, errs, f"{tag}: top view through the gate")
-    fig.suptitle("Gate G06 widened from 1.5 m to 2.0 m (height unchanged): hull-centre lateral margin "
-                 f"{old.inner_width / 2 - HULL_LAT_M:.2f} -> {new.inner_width / 2 - HULL_LAT_M:.2f} m",
+    fig.suptitle(f"Gate G06 enlarged from {old.inner_width:.1f} x {old.inner_height:.1f} m to {new.inner_width:.1f} x "
+                 f"{new.inner_height:.1f} m: hull-centre margin lateral {old.inner_width / 2 - HULL_LAT_M:.2f} -> "
+                 f"{new.inner_width / 2 - HULL_LAT_M:.2f} m, vertical {old.inner_height / 2 - HULL_HALF[2]:.2f} -> "
+                 f"{new.inner_height / 2 - HULL_HALF[2]:.2f} m",
                  fontsize=12.5, color=INK)
     fig.text(0.5, 0.01, f"Hull half-width with 5 deg yaw allowance {HULL_LAT_M:.3f} m; bars 0.18 m; CR |s| <= "
              f"{DEFAULT.gate.cr_half_len} m, |l| <= {DEFAULT.gate.cr_half_width} m (unchanged).  Dots: lateral DR error "
