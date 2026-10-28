@@ -25,6 +25,15 @@ HORSESHOE_TRACK = "marine_race_arena/tracks/marine_race_horseshoe_bay.json"
 # the opening still ends at the edges of the critical region (cr_half_width = cr_half_height = 1.0 m), so the mutex
 # geometry is unchanged.  The perception map and the spawned bars are built from the same overridden config.
 GATE_INNER_SIZE_M = {"G06": (2.0, 2.0)}
+# Two passive vertical lead-in posts per gate, at (s, +-|l|) in the gate frame [m], with the side bars' section and
+# height.  At the relocalization hold before the critical region (s ~ -1.2) the LEFT/RIGHT sonars see them near their
+# axis, a direct lateral range; the side bars alone fall at the edge of those cones there.  In the closed-loop replay
+# of synthetic echoes at the hold zone (s -1.8..-1.2, |l| <= 0.6, +-5 deg yaw, 0.3-0.5 m lateral error, 0.05 m range
+# noise, 8 % fades) the gate localization is confirmed in 84 % of the poses instead of 47 %, with no confirmation of
+# a hull outside the opening; one noise-free pose (s -1.8, a post at the FRONT cone edge) took a correction that
+# fixed the lateral error but moved the estimate 0.48 m along the axis.  Mapped like the bars (STRUCTURE), outside the critical region,
+# 1.6 m from the axis (beyond struct_keepout of a drone on the passage path).
+GATE_MARKERS_M = {"G06": (-1.2, 1.6)}
 
 
 def arena_root() -> Path:
@@ -69,8 +78,25 @@ def _gate_factory(track_rel: str, inner_size: Optional[dict] = None):
     return GateFactory(dataclasses.replace(cfg, gates=gates))
 
 
+def _visual_gate(factory, g, markers: Optional[dict] = None):
+    """The arena's four bars of gate g plus its GATE_MARKERS_M lead-in posts (copies of a side bar, moved)."""
+    vis = factory.build_visual_gate(g)
+    markers = GATE_MARKERS_M if markers is None else markers
+    if g.id not in markers:
+        return vis
+    s_m, l_m = markers[g.id]
+    side = next(b for b in vis.bars if b.part in ("left", "right"))
+    axis = np.array([g.passage_direction[0], g.passage_direction[1], 0.0], dtype=float)
+    axis /= np.linalg.norm(axis)
+    left = np.array([-axis[1], axis[0], 0.0])
+    extra = [dataclasses.replace(side, id=f"{g.id}_marker_{name}", part="marker",
+                                 position=tuple(float(v) for v in np.asarray(g.center, float) + s_m * axis + sign * l_m * left))
+             for name, sign in (("left", 1.0), ("right", -1.0))]
+    return dataclasses.replace(vis, bars=list(vis.bars) + extra)
+
+
 def load_arena_gates(track_rel: str = HORSESHOE_TRACK, gate_ids: Optional[Sequence[str]] = None,
-                     inner_size: Optional[dict] = None):
+                     inner_size: Optional[dict] = None, markers: Optional[dict] = None):
     from holo_fleet.mission import BarBox, GateSpec
 
     factory = _gate_factory(track_rel, inner_size)
@@ -80,7 +106,7 @@ def load_arena_gates(track_rel: str = HORSESHOE_TRACK, gate_ids: Optional[Sequen
     out: List[GateSpec] = []
     for gid in wanted:
         g = by_id[gid]
-        vis = factory.build_visual_gate(g)
+        vis = _visual_gate(factory, g, markers)
         bars = []
         for bar in vis.bars:
             axes = _rotation_axes(bar.rotation_rpy_deg)
@@ -98,7 +124,7 @@ def visual_gates(track_rel: str = HORSESHOE_TRACK, gate_ids: Optional[Sequence[s
     """Arena VisualGate objects (bars) for spawning with the arena's HoloOcean spawner."""
     factory = _gate_factory(track_rel)
     gates = [g for g in factory.build_gates() if gate_ids is None or g.id in gate_ids]
-    return factory.build_visual_gates(gates)
+    return [_visual_gate(factory, g) for g in gates]
 
 
 def make_spawner(env):

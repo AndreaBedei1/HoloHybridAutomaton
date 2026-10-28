@@ -46,8 +46,8 @@ def main(out):
         # the camera sits on the BlueROV2 IMUSocket, which is rolled 180 deg about the body x axis (its PoseSensor
         # z axis points down): the frame comes out rotated by 180 deg
         img = cv2.rotate(np.ascontiguousarray(img[:, :, :3]), cv2.ROTATE_180)
-        cv2.putText(img, f"G06 {g6.inner_width:.1f} x {g6.inner_height:.1f} m opening, BlueROV2 at the gate centre "
-                    "(camera 4.5 m before the gate)", (12, img.shape[0] - 14), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 1,
+        cv2.putText(img, f"G06 {g6.inner_width:.1f} x {g6.inner_height:.1f} m + lead-in posts, BlueROV2 at the centre "
+                    "(camera 4.5 m before)", (12, img.shape[0] - 14), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 1,
                     cv2.LINE_AA)
         cv2.imwrite(out, img)
         print(out, img.shape)

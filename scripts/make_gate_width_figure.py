@@ -47,7 +47,7 @@ def _front(ax, g, err, title):
     ax.text(err + hy, 0.30 + hz + 0.04, "hull touches the bar" if touch else f"{W / 2 - err - HULL_LAT_M:.2f} m to the bar",
             color=c, fontsize=8, ha="right", weight="bold")
     ax.set_title(title, fontsize=11, color=INK, loc="left")
-    ax.set_xlim(-1.45, 1.45)
+    ax.set_xlim(-1.95, 1.95)
     ax.set_ylim(-1.3, 1.4)
     ax.set_aspect("equal")
     ax.set_xlabel("lateral l [m]  (front view, looking along the passage)")
@@ -74,19 +74,19 @@ def _top(ax, g, errs, title):
         ax.plot([s_hold - 0.55], [e], marker="o", ms=5, color=c, zorder=4)
     ax.text(s_hold - 0.55, 0.62, "true l of the\nheld drones", fontsize=7.5, ha="center", color=INK)
     n_bad = sum(abs(e) + HULL_LAT_M > W / 2.0 for e in errs)
-    ax.text(-2.15, -1.32, f"{n_bad}/{len(errs)} held drones would touch", fontsize=8.5, color=BAD if n_bad else OK,
+    ax.text(-0.75, -1.72, f"{n_bad}/{len(errs)} held drones would touch", fontsize=8.5, color=BAD if n_bad else OK,
             weight="bold")
     ax.annotate("", xy=(2.1, 0.0), xytext=(-2.1, 0.0), arrowprops=dict(arrowstyle="->", color=INK, lw=0.8))
     ax.set_title(title, fontsize=11, color=INK, loc="left")
     ax.set_xlim(-2.2, 2.2)
-    ax.set_ylim(-1.45, 1.45)
+    ax.set_ylim(-1.85, 1.85)
     ax.set_aspect("equal")
     ax.set_xlabel("along the passage s [m]  (top view)")
     ax.set_ylabel("lateral l [m]")
 
 
 def main(out, holds=None):
-    old = load_arena_gates(HORSESHOE_TRACK, ["G06"], inner_size={})[0]
+    old = load_arena_gates(HORSESHOE_TRACK, ["G06"], inner_size={}, markers={})[0]
     new = load_arena_gates(HORSESHOE_TRACK, ["G06"])[0]
     errs = []
     if holds:
@@ -96,7 +96,7 @@ def main(out, holds=None):
     for col, (g, tag) in enumerate(((old, "BEFORE"), (new, "AFTER"))):
         m = g.inner_width / 2.0 - HULL_LAT_M
         _front(axs[0, col], g, worst, f"{tag}: opening {g.inner_width:.2f} x {g.inner_height:.2f} m, margin ±{m:.2f} m")
-        _top(axs[1, col], g, errs, f"{tag}: top view through the gate")
+        _top(axs[1, col], g, errs, f"{tag}: top view through the gate" + (" (lead-in posts at the hold point)" if len(g.bars) > 4 else ""))
     fig.suptitle(f"Gate G06 enlarged from {old.inner_width:.1f} x {old.inner_height:.1f} m to {new.inner_width:.1f} x "
                  f"{new.inner_height:.1f} m: hull-centre margin lateral {old.inner_width / 2 - HULL_LAT_M:.2f} -> "
                  f"{new.inner_width / 2 - HULL_LAT_M:.2f} m, vertical {old.inner_height / 2 - HULL_HALF[2]:.2f} -> "

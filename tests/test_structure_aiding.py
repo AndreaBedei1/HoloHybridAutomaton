@@ -13,7 +13,7 @@ from holo_fleet.arena_bridge import HORSESHOE_TRACK, load_arena_gates
 from holo_fleet.config import DEFAULT
 from holo_fleet.perception import sonar_geometry as sg
 from holo_fleet.perception.sonar_processing import DYNAMIC, EchoClassifier
-from holo_fleet.perception.structure_aiding import MAX_CORR_M, StructureAiding
+from holo_fleet.perception.structure_aiding import HULL_LAT_M, MAX_CORR_M, StructureAiding
 from holo_fleet.sim.scenarios import SCENARIOS
 
 RANGES = DEFAULT.perc.sonar.ranges()
@@ -200,12 +200,13 @@ GATES = list(SC.plans[0].structures)
 
 
 def test_a_fit_that_puts_the_hull_outside_the_opening_is_rejected():
-    """Robust clearance: the drone is really 0.6 m off the axis (hull beyond the free opening).  Whatever the fit says,
-    no correction is applied and the gate localization is never valid: the drone must not enter."""
+    """Robust clearance: the drone's hull is really 0.1 m beyond the free opening.  Whatever the fit says, no
+    correction is applied and the gate localization is never valid: the drone must not enter."""
     clf = EchoClassifier(gate_bars=BARS, cfg=DEFAULT)
     aid = StructureAiding(clf, DEFAULT, gates=GATES)
     R = _R()
-    p_true, p_est = _world(-1.1, -0.6), _world(-1.1, 0.0)
+    l_true = -(GATE.inner_width / 2.0 - HULL_LAT_M + 0.1)
+    p_true, p_est = _world(-1.1, l_true), _world(-1.1, 0.0)
     for k in range(12):
         corr = aid.update(p_est, R, _profiles(clf, p_true, R), {s: 0.0 for s in sg.SECTORS}, 0.25, t=0.1 * k)
         assert corr is None
@@ -227,8 +228,8 @@ def test_an_equally_good_far_position_makes_the_fit_ambiguous():
     """Logged echoes (MEDIUM-ALL integrated_short seed 2, drone 1, t = 85.9 s): the estimate is on the axis, the drone
     really 0.56 m to the left.  The estimate explains three sectors and the true pose explains them as well (total cost
     0.818 vs 0.820): the echoes cannot separate them, so the localization must not be confirmed.  The echoes were
-    recorded at the track's 1.5 m wide G06, so that gate is the map here."""
-    gates = load_arena_gates(HORSESHOE_TRACK, ["G06"], inner_size={})
+    recorded at the track's 1.5 m wide G06 without posts, so that gate is the map here."""
+    gates = load_arena_gates(HORSESHOE_TRACK, ["G06"], inner_size={}, markers={})
     g = gates[0]
     clf = EchoClassifier(gate_bars=[b for gg in gates for b in gg.bars], cfg=DEFAULT)
     aid = StructureAiding(clf, DEFAULT, gates=gates)
