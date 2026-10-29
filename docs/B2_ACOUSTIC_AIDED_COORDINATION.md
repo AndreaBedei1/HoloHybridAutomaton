@@ -101,14 +101,31 @@ beacon is not a remedy for them: identities never enter the precedence decision.
 ## 5. Formation (P3)
 
 * association: a sonar echo is associated with a neighbour where its fix places it (pattern and range gate around
-  the fix) instead of where the template expects it; the residual stays the one against the template;
-* rule A-P (presence): a fresh fix within e_lost of the expected position counts as a sighting (no false MISSING
-  for a drone hidden from the sonar); it never confirms a MISSING neighbour back and never clears a vacancy;
+  the fix) instead of where the template expects it, and only if it also lies within the B0 range gate of the
+  template distance; the residual stays the one against the template.  The fix chooses WHICH echo is the
+  neighbour; it never makes a drone far from its slot count as seen there;
+* rule A-P (presence): while the latest fix is fresh (`fresh_s` = 2.5 s: one lost ping plus the latency) and lies
+  within e_lost of the expected position, the neighbour counts as sighted (no false MISSING for a drone hidden from
+  the sonar); it never confirms a MISSING neighbour back and never clears a vacancy;
 * rule A-D (displacement): two consecutive accepted fixes whose whole region lies farther than e_lost + 1 m from the
   expected position declare the neighbour MISSING at once and block its sonar re-confirmation while they last;
 * relative formation error: the full fix-minus-template residual replaces the range residual in the along-track /
   lateral consensus (same gains, same leak and caps): the along-track offset of an abreast neighbour, unobservable
   from ranges, becomes observable.
+
+Two defects of the first implementation were found by the `b2_formation` phase and corrected before any further
+run (commit 27ed79c; pre-fix runs archived in `results/robustness/raw_b2_prefix_8aacabc`, tables in
+`results/b2/formation_prefix`):
+
+* the fix-guided association had no slot gate: the echo of a drone with failed thrusters, still heard and drifting
+  away, stayed associated with its slot with a residual growing to 8 m, and its neighbours took the guard
+  `form_err > e_lost` (FORMATION_RECOVERY, own slot lost) instead of the missing / vacancy path of B0, so the slot was
+  never declared vacant (`lost_drone_timeout`, B2 CLEAN: LIVENESS_FAILURE 3/3, B0 PASS 3/3);
+* rule A-P stamped the sighting at the arrival of the fix, so that the 1 s ping period against the 1 s neighbour
+  memory left a gap at every lost ping or late delivery, and a neighbour heard in its slot but missed by the sonar
+  was declared MISSING (more false-missing episodes than B0 in CLEAN: 9 against 3 on `formation_six`).
+
+Neither correction changes a threshold, a guard or the automaton; both make the code match the rules above.
 
 Without receptions (BLACKOUT) every rule is inactive and the perception is the B0 one (tests:
 `tests/test_acoustic_b2.py::test_a_silent_channel_is_the_baseline`).
