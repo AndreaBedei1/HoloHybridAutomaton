@@ -345,4 +345,35 @@ def analyze_run(run_dir: Path, reference: Optional[Dict] = None, cfg=DEFAULT) ->
     out["class"] = cls
     out["conservative_events"] = {"false_vacancy": fm["false_vacancy"], "failsafe_sensor_fault_entries": len(fs_sensor)}
     out["failed_requirements"] = [k for k, v in req.items() if not v]
+    out["cause_tags"] = cause_tags(out, fm, fs_sensor, term, states, healthy, m, dt, met)
     return out
+
+
+def cause_tags(out: Dict, fm: Dict, fs_sensor, term, states, healthy, m: int, dt: float, met: Dict) -> List[str]:
+    """Diagnostic mechanism tags of a run (never used by the class, fixed before the final campaign): which known
+    mechanisms were active, so that a non-PASS run can be read without re-deriving its cause by hand."""
+    tags = []
+    if not out["P1"]["holds"] or out["P1"]["collisions"]:
+        tags.append("P1_violation")
+    if not out["P2"]["holds"]:
+        tags.append("P2_violation")
+    if fm.get("false_rejoin"):
+        tags.append("false_reoccupation")                 # a vacant slot re-included while its drone was away (C3)
+    if fm.get("false_vacancy"):
+        tags.append("false_vacancy")
+    if fs_sensor:
+        tags.append("sensor_fault_failsafe")
+    hold = max((sum(1 for i in range(m) if ((states[k][i].get("gate") or {}).get("reloc_hold"))) * dt for k in healthy),
+               default=0.0)
+    if hold >= 10.0:
+        tags.append("relocalization_hold")               # held before the CR without a gate localization (C5)
+    if int(met.get("occupancy_timeouts") or 0) > 0:
+        tags.append("occupancy_timeout_release")         # CR released by the t_occ_max fallback (assumption A-cross)
+    reason = (term or {}).get("reason") or ""
+    if "still waiting" in reason:
+        tags.append("waiting_for_missing_neighbour")
+    if "P3-deg vacancy" in reason:
+        tags.append("vacancy_not_declared")
+    if out.get("failed_requirements") and "gate_completed" in out["failed_requirements"]:
+        tags.append("gate_not_completed")
+    return tags

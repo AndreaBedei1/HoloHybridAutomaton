@@ -5,7 +5,7 @@
         --protocols B0 B2_CLEAN --profiles CLEAN LOW-ALL --seeds 0 --raw <root>
 
 Every run executes in its own Python process (holo_fleet.runner.run, no frames, no GIF) and writes a run
-directory under the raw root (default results/robustness/raw/, git-ignored):
+directory under the raw root (default results/robustness/raw_final/, git-ignored):
     <protocol>/<profile>/<scenario>/s<seed>/
 followed by run_metrics.json (holo_fleet.referee.robustness_metrics: metrics + class).  A run whose
 run_metrics.json exists (and is not INVALID) is skipped, so an interrupted campaign resumes where it stopped.
@@ -31,11 +31,12 @@ import subprocess
 import sys
 import time
 from pathlib import Path
+from typing import Optional
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
-RAW = ROOT / "results" / "robustness" / "raw"
+RAW = ROOT / "results" / "robustness" / "raw_final"        # the one authoritative output location
 DEMOS = ROOT / "results" / "reference"
 SEEDS = (0, 1, 2)
 ALL_SCENARIOS = ("p1_head_on", "p1_vertical_escape", "p1_two_lines", "p1_close_encounter", "formation_triangle",
@@ -339,6 +340,42 @@ def code_version() -> dict:
     return {"sha": git("rev-parse", "HEAD").strip(), "dirty_files": dirty}
 
 
+def engine_build() -> dict:
+    """The engine every run of this campaign uses: the patched HoloOcean root (holoocean_setup), its PATCH_INFO and the
+    sha256 of its binaries."""
+    import hashlib
+
+    from holo_fleet.sim import holoocean_setup as hs
+
+    root = hs.patched_root()
+    if root is None:
+        return {"patched_root": None}
+    info = json.loads((root / "PATCH_INFO.json").read_text(encoding="utf-8-sig"))
+    out = {"patched_root": str(root), "patch_info": info, "binaries": {}}
+    world = root / str(info.get("holoocean", "2.3.0")) / "worlds" / "Ocean" / "Windows"
+    for exe in (world / "Holodeck.exe", world / "Holodeck" / "Binaries" / "Win64" / "Holodeck.exe"):
+        if exe.exists():
+            h = hashlib.sha256()
+            with open(exe, "rb") as f:
+                for chunk in iter(lambda: f.read(1 << 20), b""):
+                    h.update(chunk)
+            out["binaries"][str(exe.relative_to(world))] = h.hexdigest()
+    return out
+
+
+def config_hash(d: Path) -> Optional[str]:
+    """sha256 of the fleet configuration a run used (run_config.json, keys sorted)."""
+    import hashlib
+
+    try:
+        rc = json.loads((d / "run_config.json").read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return None
+    blob = json.dumps({"fleet_config": rc.get("fleet_config"), "noise": rc.get("noise"), "cfg_patch": rc.get("cfg_patch")},
+                      sort_keys=True, default=str)
+    return hashlib.sha256(blob.encode("utf-8")).hexdigest()
+
+
 def pending(raw: Path, runs) -> list:
     """Runs still to do: no run_metrics.json yet, or an INVALID one (infrastructure: engine start, killed worker,
     missing logs...), which is tried again.  COMPLETE runs, scientific failures included, are kept as they are."""
@@ -443,7 +480,11 @@ def main() -> int:
     refs = {}
     done = 0
     version = code_version()
-    say(f"{time.strftime('%H:%M:%S')} phase {args.phase} start: orchestrator pid {os.getpid()}, shard {args.shard}/{args.nshards}, code {version}")
+    if args.phase == "final" and version["dirty_files"]:
+        say(f"refused: the final campaign runs only from a clean commit; modified: {version['dirty_files']}")
+        return 2
+    build = engine_build()
+    say(f"{time.strftime('%H:%M:%S')} phase {args.phase} start: orchestrator pid {os.getpid()}, shard {args.shard}/{args.nshards}, code {version}, engine {build}")
     for (protocol, prof, sc, seed) in todo:
         if args.max_runs and done >= args.max_runs:
             break
@@ -475,7 +516,7 @@ def main() -> int:
             res = finish(d, refs[sc]) if (d / "run_status.json").exists() else {"class": "INVALID", "invalid_reason": "no run dir"}
             res.update({"protocol": protocol, "profile": prof, "scenario": sc, "seed": seed, "exit_code": code,
                         "wall_s": wall, "attempt": attempt, "reaped_holodeck": killed, "host_load_at_start": host,
-                        "code_version": version,
+                        "code_version": version, "engine_build": build, "config_sha256": config_hash(d),
                         "process": {"orchestrator_pid": os.getpid(), "shard": [args.shard, args.nshards], "worker_pid": proc.pid,
                                     "holodeck_pids": sorted(seen.get("holodeck_pids", ())),
                                     "engine_listen_ports": sorted(seen.get("listen_ports", ())),
