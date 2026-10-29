@@ -461,3 +461,20 @@ def test_blocked_geometry_uses_the_map_bars_and_hulls():
     assert tr._blocked_geometry(0, 1)[1]
     tr.scene = lambda: (np.array([a, b, gate_world(-8.0, 6.0)]), np.zeros(3), [])
     assert not tr._blocked_geometry(0, 1)[1]
+
+
+def test_beacon_identities_cover_only_the_receivers_own_formation():
+    """Two formations (p1_two_lines) reuse slot indices 0..2: a receiver must map only its own formation's pinger
+    codes to slots, never the other line's drone that holds the same slot index."""
+    from holo_fleet.runner import beacon_identities
+    from holo_fleet.sim.scenarios import SCENARIOS
+
+    sc = SCENARIOS["p1_two_lines"](DEFAULT)
+    names = sc.sim.names
+    for p in sc.plans:
+        ids = beacon_identities(sc.plans, names, p)
+        mates = [q for q in sc.plans if q.path is p.path]
+        assert ids == {names.index(q.drone_id): q.slot_index for q in mates}
+    single = SCENARIOS["formation_six"](DEFAULT)
+    full = {single.sim.names.index(q.drone_id): q.slot_index for q in single.plans}
+    assert all(beacon_identities(single.plans, single.sim.names, p) == full for p in single.plans)

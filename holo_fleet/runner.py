@@ -38,6 +38,13 @@ def _jsonable(x):
     return str(x)
 
 
+def beacon_identities(plans, names, plan) -> dict:
+    """Pinger code (drone index) -> slot, for the receiver flying ``plan``: only the drones of its own formation (the
+    plans built for one formation share its path).  Slot indices restart in every formation, so a code of another
+    formation is not a neighbour and is ignored by the receiver."""
+    return {names.index(q.drone_id): q.slot_index for q in plans if q.path is plan.path}
+
+
 def run(name: str, out_root: Path, headless: bool = True, run_id: Optional[str] = None,
         duration: Optional[float] = None, ui: Optional[Callable] = None, frame_every_s: float = 0.5,
         cfg: FleetConfig = DEFAULT, noise=None, seed: Optional[int] = None, noise_drones=None,
@@ -80,10 +87,10 @@ def run(name: str, out_root: Path, headless: bool = True, run_id: Optional[str] 
         raise
     ctrls = {p.drone_id: DroneController(p, cfg) for p in sc.plans}
     if cfg.beacon.enabled:            # pre-mission knowledge: the static beacon identity of every slot's drone
-        ids = {sim.names.index(p.drone_id): p.slot_index for p in sc.plans}
-        for c in ctrls.values():
-            c.perception.presence.set_identities(ids)
-            c.perception.acoustic.set_identities(ids)
+        for p in sc.plans:
+            ids = beacon_identities(sc.plans, sim.names, p)
+            ctrls[p.drone_id].perception.presence.set_identities(ids)
+            ctrls[p.drone_id].perception.acoustic.set_identities(ids)
     audit = SensorAudit(sim.names, cfg, DT)
     truth_prev = None
     tmpl = sc.template.offsets() if sc.template is not None else None
