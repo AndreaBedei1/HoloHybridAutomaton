@@ -262,7 +262,7 @@ def summary_row(name: str, m: Dict) -> Dict:
 
 
 def envelope_block(run_dir: Path, raw: Dict, cfg: FleetConfig = DEFAULT) -> Dict:
-    """referee_metrics['envelope']: raw current statistics + the control-feasible verdict (DI-27)."""
+    """referee_metrics['envelope']: raw current statistics + the control-feasible verdict."""
     from holo_fleet.referee.envelope import evaluate_run
 
     ev = evaluate_run(Path(run_dir), cfg)
@@ -271,7 +271,7 @@ def envelope_block(run_dir: Path, raw: Dict, cfg: FleetConfig = DEFAULT) -> Dict
 
 
 def _envelope_line(m: Dict) -> str:
-    """Envelope verdict (control-feasible, DI-27) next to the vehicles' own view (self-declared
+    """Envelope verdict (control-feasible) next to the vehicles' own view (self-declared
     ENVELOPE_VIOLATION: persistent thrust saturation or a steady command beyond the authority)."""
     e = m["envelope"]
     n_self = m["run"]["self_declared_envelope_violations"]

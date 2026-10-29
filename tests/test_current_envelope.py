@@ -1,4 +1,4 @@
-"""Control-feasible current envelope (DI-27): one definition for runtime, run evaluation and formal checks."""
+"""Control-feasible current envelope: one definition for runtime, run evaluation and formal checks."""
 
 import json
 import sys

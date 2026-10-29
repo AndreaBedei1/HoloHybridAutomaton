@@ -52,7 +52,7 @@ R_IN = float(HULL_HALF.min())                 # inscribed ball of a BlueROV2 hul
 R_OUT = float(np.linalg.norm(HULL_HALF))      # circumscribed ball
 RHO_MIN = 1.0                                 # regions are built for centre distances >= this (= d_safe)
 OCTREE_LEAF_M = 0.06                          # sonar octree leaf (= sim.holoocean_setup.OCTREE_MIN): cone-edge resolution
-NEAR_FIELD_WIDEN_M = 0.25                     # near-field beam widening (see sonar_processing, DI-12)
+NEAR_FIELD_WIDEN_M = 0.25                     # near-field beam widening (see sonar_processing)
 
 
 @dataclass(frozen=True)

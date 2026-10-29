@@ -28,7 +28,7 @@ AVOIDANCE = (Mode.SEPARATION_WARNING, Mode.COLLISION_AVOIDANCE)
 
 class EnvelopeMonitor:
     """Onboard envelope status, ENVELOPE_OK / ENVELOPE_VIOLATION, from the control-feasibility of the
-    velocity the drone is asked to deliver (DI-27; control/current_envelope.py).
+    velocity the drone is asked to deliver (control/current_envelope.py).
 
     A control step is out of envelope when the low level cannot deliver the requested velocity: its
     horizontal command is saturated, or the steady command it needs against the estimated current
@@ -40,7 +40,7 @@ class EnvelopeMonitor:
     estimate alone could under-report a current stronger than the drone.
 
     A declared violation is cleared only after t_exit of steps in which the vehicle DELIVERS a velocity it
-    requests (DVL navigation; DI-29): a vehicle whose thrusters do not respond (a thruster failure) holding
+    requests (DVL navigation): a vehicle whose thrusters do not respond (a thruster failure) holding
     still in FAILSAFE is neither saturated nor infeasible, and requesting nothing it cannot be told from a
     healthy one.  So while the violation lasts the FAILSAFE flow adds a small heave probe (Flows.failsafe),
     and a step counts toward the clear only when, over the last ``window_s``, the vehicle delivered the
@@ -137,7 +137,7 @@ class DroneController:
 
     def step(self, frame: SensorFrame, dt: float) -> np.ndarray:
         t = frame.t
-        ftime = self.flows.ftime                               # own formation time (reduced progress, DI-31)
+        ftime = self.flows.ftime                               # own formation time (reduced progress)
         obs = self.perception.update(frame, dt, sigma=self.flows.sigma, env_ok=self.envmon.ok,
                                      offset=self.flows.offset + self.flows.lat_offset, in_formation=self.ha.mode in IN_FORMATION,
                                      t_form=ftime.now(t))

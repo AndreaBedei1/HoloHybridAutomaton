@@ -1,4 +1,4 @@
-"""Envelope verdict of a run (DI-27), from its logs and the true current.
+"""Envelope verdict of a run, from its logs and the true current.
 
 For every drone and control step:
 
@@ -51,7 +51,7 @@ def evaluate_run(run: Path, cfg: FleetConfig = DEFAULT) -> Dict:
     rows = list(csv.DictReader(open(run / "referee_timeseries.csv", encoding="utf-8")))
     field = CurrentField([CurrentComponent(**c) for c in rc.get("current", [])])
     tol = cfg.plant.cmd_model_tolerance
-    # a drone with an injected actuator fault (simulator side, DI-29) declares a violation because its thrusters do
+    # a drone with an injected actuator fault (simulator side) declares a violation because its thrusters do
     # not respond, not because of the current: those declarations do not count for the current envelope
     faulty = {f["drone"] for f in rc.get("faults", []) or []}
     declared = [json.loads(line).get("drone") for line in open(run / "events.jsonl", encoding="utf-8")
@@ -106,7 +106,7 @@ def evaluate_run(run: Path, cfg: FleetConfig = DEFAULT) -> Dict:
     verdict = "OUTSIDE" if (any_out_range or any_out) else ("LIMIT" if any_over else "INSIDE")
     wname, wd = max(drones.items(), key=lambda kv: kv[1]["max_required_over_authority"])
     return {
-        "definition": "control-feasible current envelope (DI-27): steady command for the requested velocity within "
+        "definition": "control-feasible current envelope: steady command for the requested velocity within "
                       "the authority (plant model, tolerance %.2f), current within the exercised range" % tol,
         "current_validated_max_m_s": cfg.env.current_validated_max,
         "current_vertical_max_m_s": cfg.env.current_vertical_max,

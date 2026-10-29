@@ -204,7 +204,7 @@ def test_close_encounter_reaches_the_warning_band_without_breaking_p1():
 
 
 def test_head_current_is_outside_the_control_feasible_envelope():
-    """0.6 m/s against the motion: within the exercised range, beyond the authority at survey speed (DI-27);
+    """0.6 m/s against the motion: within the exercised range, beyond the authority at survey speed;
     the hit drone declares it itself."""
     run = _run("formation_recovery_head_current")
     m = json.loads((run / "referee_metrics.json").read_text(encoding="utf-8"))
@@ -218,7 +218,7 @@ def test_head_current_is_outside_the_control_feasible_envelope():
 def test_envelope_verdict_and_vehicles(run):
     """Every run carries the control-feasible verdict; a drone never declares a violation the ground truth
     does not see (the converse may fail at the margin: a request beyond the authority by a few per cent can
-    show up as a lag instead of a persistent saturation, DI-27)."""
+    show up as a lag instead of a persistent saturation)."""
     if run is None:
         pytest.skip("no completed demonstration run yet")
     m = json.loads((run / "referee_metrics.json").read_text(encoding="utf-8"))
@@ -229,7 +229,7 @@ def test_envelope_verdict_and_vehicles(run):
         assert e["verdict"] == "OUTSIDE"
 
 
-# ---------------------------------------------------------------------------------------------- DI-31
+# ----------------------------------------------------------------------------------------------
 def _reduced_progress(run, k):
     """(v_ref of the drone's formation reference while it waits, v_ref after its last formation-keeping change)."""
     st = _states(run, k)
@@ -272,7 +272,7 @@ def test_every_mode_change_is_logged_with_its_cause():
 
 
 def test_integrated_short_is_inside_the_control_feasible_envelope():
-    """DI-31: only the scenario changed (cross-current gust 0.35 -> 0.27 m/s); the mission keeps a real current, the
+    """The cross-current gust is 0.27 m/s (0.35 m/s is outside the control-feasible envelope); the mission keeps a real current, the
     one-at-a-time passage, P1, P2 and the re-formation."""
     from holo_fleet.sim.scenarios import INTEGRATED_GUST
 

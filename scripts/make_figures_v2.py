@@ -572,7 +572,7 @@ def fig_p3_overview():
     save(fig, FIG / "p3" / "formations_triangle_square_six.png")
 
 
-# ---------------------------------------------------------------------------------------------- lost drones / mutex (DI-28..30)
+# ---------------------------------------------------------------------------------------------- lost drones / mutex
 def _events(name):
     p = DEMOS / name / "events.jsonl"
     return [json.loads(l) for l in open(p, encoding="utf-8")] if p.exists() else []
@@ -645,7 +645,7 @@ def _top_view(ax, run, sc, faulty=None, gate=False, title=""):
 
 def _dev_from_fleet(run, sc, k):
     """Ground-truth distance of drone k from its slot in the formation of the OTHER drones (robust fit, as the
-    referee): the formation may run behind the plan after a reduced-progress episode (DI-31)."""
+    referee): the formation may run behind the plan after a reduced-progress episode."""
     from holo_fleet.referee.referee import Referee
 
     n = run["n"]
@@ -680,7 +680,7 @@ def fig_lost(name):
     mode_timeline(ax2, run)
     _marks(ax2, ev)
     ax2.set_title("automaton states (red: fault injected, green: cleared,\nviolet: slot vacant)")
-    # formation reference speed of every drone (onboard: its own formation time, DI-31)
+    # formation reference speed of every drone (onboard: its own formation time)
     ax4 = fig.add_subplot(gs[1, 1])
     for k in range(run["n"]):
         tt = [r["t"] for r in run["states"][k] if "v_ref" in (r.get("form") or {})]

@@ -64,7 +64,7 @@ class Flows:
         self.sigma = 0.0                      # local along-track progress offset (sonar consensus)
         self.lam = 0.0                        # local lateral slot offset (sonar consensus) [m]
         self.lat_offset = np.zeros(3)         # ... as a world vector, added to the slot reference
-        self.ftime = FormationTime(plan.clock, cfg)   # local formation time (reduced progress, DI-31)
+        self.ftime = FormationTime(plan.clock, cfg)   # local formation time (reduced progress)
         self.last_choice: Optional[EscapeChoice] = None
         self.hold_pos: Optional[np.ndarray] = None
         self.offset = np.zeros(3)             # give-way offset of the mission target (world) [m]
@@ -85,10 +85,10 @@ class Flows:
         Decided before the warning band, from sector patterns only; safety does not rely on it (P1 is
         enforced by the warning filter and the escape), it avoids head-on standoffs.  Not ``active`` (the
         drone is in FAILSAFE, holding): no give-way is decided and a running one is cancelled - a decision
-        latched while holding would displace the mission target after the drone resumes (DI-29).  Not
+        latched while holding would displace the mission target after the drone resumes.  Not
         ``decide`` (the drone recovers from behind its slot, catching up with its own fleet): no new give-way
         is decided, a running one ends as usual - the drones ahead close in its FRONT sector at the catch-up
-        speed and, off its slot, it does not recognise them as neighbours (DI-31)."""
+        speed and, off its slot, it does not recognise them as neighbours."""
         R = obs.R_wb
         if not self.cfg.traffic_rule:
             return self.offset
@@ -128,13 +128,13 @@ class Flows:
     def formation(self, obs: LocalObservation, dt: float, recovering: bool = False,
                   traffic: bool = True) -> Tuple[np.ndarray, float]:
         fr = self.cfg.form
-        # speed of the own formation reference: the planned speed, reduced while a neighbour is missing (DI-31)
+        # speed of the own formation reference: the planned speed, reduced while a neighbour is missing
         v_clock = self.ftime.speed(obs.t, dt)
         err = obs.slot_pos - obs.p             # slot_pos already includes the give-way offset
         # sonar progress consensus: drift sigma towards the neighbours' actual along-track positions.  Not while the
         # drone is far from its own slot (beyond e_lost): there the range residuals mostly measure its own
         # displacement (a drone left behind sees every neighbour 'ahead') and would carry its reference away from
-        # the fleet (DI-31); near its slot, in any mode, it is what re-aligns the references of the drones
+        # the fleet; near its slot, in any mode, it is what re-aligns the references of the drones
         # lateral consensus, the same integral on the lateral residual: the dead reckoning drifts sideways (a compass
         # bias turns into a lateral error of a few percent of the distance run) and the drone, on its slot in its own
         # estimate, is really beside it; the proportional sonar term below only shares that error with the slot
@@ -150,7 +150,7 @@ class Flows:
         self.lat_offset = self.lam * np.array([n_hat[0], n_hat[1], 0.0])
         # a recovering drone behind its slot is catching up with its own fleet, not meeting it head-on: the drones
         # ahead close in its FRONT sector at the catch-up speed and, while it is off its slot, are not recognised
-        # as neighbours; no new give-way is decided then (it would push it towards the next lane, DI-31)
+        # as neighbours; no new give-way is decided then (it would push it towards the next lane)
         catching_up = recovering and float(err @ t_hat) > fr.e_ok
         self.traffic_offset(obs, dt, active=traffic, decide=not catching_up)
         entry = self.rejoin_entry(obs, R_form, s_ref) if recovering else None
@@ -172,7 +172,7 @@ class Flows:
         return v, math.atan2(t_hat[1], t_hat[0])
 
     def rejoin_entry(self, obs: LocalObservation, R_form: np.ndarray, s_ref: float) -> Optional[np.ndarray]:
-        """Rejoin from behind (DI-29).  A recovering drone that is off its own lane does not head straight for
+        """Rejoin from behind.  A recovering drone that is off its own lane does not head straight for
         its slot, which could take it across the lanes of the drones in formation: it first falls behind the
         formation (DROP_BACK: along-track correction only, no lateral motion, while it is level with the
         fleet), then moves to its own lane at ``rejoin_back_m`` behind the rear-most slot (TO_LANE), and from
@@ -306,7 +306,7 @@ class Flows:
         """Hold the position at the own failsafe layer.  With ``probe`` (an envelope violation is declared) the
         held depth oscillates by +-``amp`` (period ``period``, twice the monitor's window): the vehicle shows,
         with its own DVL, that it moves when asked to before the violation is cleared
-        (controller.EnvelopeMonitor, DI-29)."""
+        (controller.EnvelopeMonitor)."""
         if self.hold_pos is None:
             self.hold_pos = obs.p.copy()
             self.hold_pos[2] = float(np.clip(obs.p[2] + self.plan.failsafe_layer_dz, self.cfg.env.z_min + 0.5,

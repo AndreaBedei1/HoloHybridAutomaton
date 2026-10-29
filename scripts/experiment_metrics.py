@@ -187,7 +187,7 @@ def p3_section(R) -> Dict:
 
 
 def lost_section(R) -> Dict:
-    """Runs with an injected thruster fault (DI-29, DI-31): when the others missed the faulty drone, how long they
+    """Runs with an injected thruster fault: when the others missed the faulty drone, how long they
     waited and how it ended (rejoined / timeout), the speed of their formation reference while waiting (onboard
     v_ref) and the true speed of the fleet, the formation error of the drones present, the lost drone's way back."""
     from holo_fleet.referee.referee import Referee

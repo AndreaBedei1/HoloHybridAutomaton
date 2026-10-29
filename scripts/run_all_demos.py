@@ -57,7 +57,7 @@ def onboard_summary(run: Path) -> dict:
 
 
 def refresh_envelope(run: Path) -> None:
-    """(Re-)evaluate the control-feasible envelope of a logged run (DI-27) into referee_metrics.json and
+    """(Re-)evaluate the control-feasible envelope of a logged run into referee_metrics.json and
     summary.csv; the same evaluation the runner performs at the end of a new run."""
     from holo_fleet.runner import envelope_block
 

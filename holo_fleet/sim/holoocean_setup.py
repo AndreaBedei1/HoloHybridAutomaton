@@ -1,7 +1,7 @@
 """Which HoloOcean installation the project runs on, and how the sonar octree is kept consistent.
 
 HoloOcean 2.3.0 sonars see the static scene through an octree that the engine builds once and
-caches on disk per level and octree size (DESIGN_ITERATIONS.md DI-1/DI-2).  The project runs on a
+caches on disk per level and octree size.  The project runs on a
 *patched* HoloOcean root (docs/HOLOOCEAN_OCTREE_PATCH.md) whose engine understands the
 ``RebuildSonarOctree`` command and whose client exposes ``env.rebuild_sonar_octree()``:
 

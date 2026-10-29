@@ -1,4 +1,4 @@
-"""Local formation time: reduced progress while an expected neighbour is missing (DI-31).
+"""Local formation time: reduced progress while an expected neighbour is missing.
 
 The formation reference of every drone is the shared FormationClock of the mission plan.  When a drone is
 lost, the others slow the formation down - they do not stop - so that it catches up faster, without any

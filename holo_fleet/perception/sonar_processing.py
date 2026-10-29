@@ -132,7 +132,7 @@ class EchoClassifier:
         d = self.struct_pts - sonar_pos
         r = np.linalg.norm(d, axis=1)
         ang = np.arccos(np.clip((d @ boresight) / np.maximum(r, 1e-9), -1.0, 1.0))
-        # near-field widening (DI-12): strong reflectors close to the sonar are detected beyond the nominal
+        # near-field widening: strong reflectors close to the sonar are detected beyond the nominal
         # cone (seen in HoloOcean: a gate post at 0.63 m and 78 deg off-axis; a real wide beam does the
         # same through its side lobes), so the predicted structure window uses a cone widened by
         # atan(NEAR_FIELD_WIDEN_M / r): 22 deg at 0.6 m, 5 deg at 3 m, 2 deg at 7 m

@@ -10,7 +10,7 @@ spacing correction (control/flows.py).  Neighbours expected in range but not see
 perception (perception.py) times them and declares a slot vacant after ``t_rejoin``: a vacant slot is
 no longer required (DEGRADED_FORMATION) until its drone is seen there again.  The residual of the neighbour
 directly ahead on the same lane (``front_residual``, negative when it is closer than planned with respect to the
-own slot) is what a drone follows when that neighbour slows down (control/formation_time.py, DI-31).
+own slot) is what a drone follows when that neighbour slows down (control/formation_time.py).
 """
 
 from __future__ import annotations
@@ -202,7 +202,7 @@ def check_formation(plan: MissionPlan, cfg: FleetConfig, slot_err: np.ndarray, R
         last_seen[chk.slot] = t
     # neighbours a range-only sonar cannot separate (same expected sector pattern, expected distances within the
     # range gate: e.g. a stacked pair seen from the side, one echo for both) are observable only as a group: an
-    # association of one member confirms the group (DI-29)
+    # association of one member confirms the group
     for chk, d_world, dist, _u, _p in expected:
         if chk.seen:
             continue

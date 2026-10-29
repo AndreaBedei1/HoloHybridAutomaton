@@ -1,4 +1,4 @@
-"""Fleet-centred demo view (DI-30): one clean picture of the whole fleet for a supervisor.
+"""Fleet-centred demo view: one clean picture of the whole fleet for a supervisor.
 
 * main map, top-down: the common survey path, the formation slots of the shared plan (empty rings; a
   slot declared vacant is marked), every drone at its true position coloured by its automaton state

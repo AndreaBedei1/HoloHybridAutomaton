@@ -1,4 +1,4 @@
-"""Lost drones without communication (DI-29, DI-31): missing timers, slot vacancy, the timeout derived from the
+"""Lost drones without communication: missing timers, slot vacancy, the timeout derived from the
 catch-up, the reduced progress of a waiting formation (local formation time), the formation-keeping modes and
 their transition reasons, rejoin from behind, the envelope clear rule and the referee's degraded verdict."""
 
@@ -455,7 +455,7 @@ def test_referee_declares_a_drone_absent_and_judges_the_degraded_formation():
 
 
 def test_no_give_way_while_catching_up_with_the_own_fleet():
-    """Seen in a lost_drone_rejoin probe (DI-31): a drone rejoining from behind at the catch-up speed sees the drone
+    """Seen in a lost_drone_rejoin probe: a drone rejoining from behind at the catch-up speed sees the drone
     ahead close in its FRONT sector faster than the head-on threshold and, 3 m behind its slot, does not recognise
     it as a neighbour; a give-way decided then pushed it 2 m towards the next lane."""
     plan = _plan(2)
