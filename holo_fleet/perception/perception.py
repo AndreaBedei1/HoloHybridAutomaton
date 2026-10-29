@@ -2,9 +2,7 @@
 
 Only data a real vehicle has is used: its own sensors and the mission plan (survey line, formation
 template, gate map).  No simulator state, no neighbour identity, no communication.  Near a mapped gate the
-dead-reckoning position is corrected against the gate map (perception/structure_aiding.py).  The optional variant B1
-adds one input, the one-way presence beacon (perception/beacon_presence.py), and exactly one use of it (rule R1
-below); with the beacon OFF (the baseline) this module behaves as without it.
+dead-reckoning position is corrected against the gate map (perception/structure_aiding.py).
 
 Missing neighbours (lost-drone handling, DI-29).  Every expected neighbour that should be visible and
 is not seen is MISSING; its timer runs only while the drone itself holds its slot (FORMATION_FOLLOW,
@@ -18,13 +16,6 @@ associations within the last ``CONFIRM_WINDOW_S``, each with a range residual wi
 gate): an echo of another neighbour that happens to fit the missing one's (wide) range gate does not reset
 the timer.  A vacant slot is re-included after its drone has been confirmed there for ``t_reinclude``.
 At launch the formation is complete by plan (every neighbour counts as seen at the first update).
-
-Rule R1 (variant B1 only).  A neighbour whose ping was heard within the beacon ``ttl_s`` becomes MISSING after
-NEIGHBOUR_MEMORY_S + ``missing_grace_s`` without a sonar match instead of NEIGHBOUR_MEMORY_S (a short sonar
-occlusion of a drone that is still there).  The rule only defers the declaration, by a bounded time: it never
-clears a MISSING state (only a sonar confirmation near the slot does), never touches the vacancy timer of a
-neighbour already missing, and has no input into separation, collision avoidance or the gate (``d_min``,
-``sense_ok``, ``occ_busy``, ``has_prio`` and ``passed`` do not depend on it).
 
 Variant B2 (range-bearing beacon, perception/acoustic.py).  Identified fixes enter the perception only, and never
 ``d_min``, ``sense_ok`` or ``has_prio``:
@@ -65,7 +56,6 @@ A_CONFIRM = 2              # B2 rule A-D: consecutive accepted fixes ...
 A_DISPLACED_MARGIN = 1.0   # ... whose region lies beyond e_lost + this from the expected position [m]
 A_CORR_AGE_S = 1.5         # a fix this recent feeds the relative formation residual
 from holo_fleet.perception.acoustic import AcousticTracker
-from holo_fleet.perception.beacon_presence import PresenceTracker
 from holo_fleet.perception.frame import SensorFrame
 from holo_fleet.perception.gate_perception import GateObs, GatePerception
 from holo_fleet.perception.nav import DeadReckoning
@@ -142,7 +132,7 @@ class Perception:
         self.clf = EchoClassifier(gate_bars=bars, cfg=cfg)
         self.aiding = StructureAiding(self.clf, cfg, gates=plan.structures)     # map-aided position correction near the gate
         self.tracker = SectorTracker(cfg)
-        self.acoustic = AcousticTracker(cfg)           # B2 range-bearing beacon (OFF unless ACOUSTIC_RB)
+        self.acoustic = AcousticTracker(cfg)           # B2 range-bearing beacon (inactive in B0)
         self.gp = GatePerception(plan, cfg, acoustic=self.acoustic)
         self.ok_since: Optional[float] = None
         self.neighbour_seen: Dict[int, float] = {}     # slot -> last time it was matched by sonar
@@ -152,8 +142,6 @@ class Perception:
         self.missing_t: Dict[int, float] = {}          # slot -> missing time (own slot held, clock moving)
         self.vacant: Dict[int, float] = {}             # slot -> time it was declared vacant (latch)
         self.events: List[Dict] = []                   # vacancy / re-inclusion events (drained by the controller)
-        self.presence = PresenceTracker(cfg)           # optional one-way presence beacon (variant B1, OFF by default)
-        self.presence_held: List[int] = []            # slots whose MISSING declaration rule R1 defers now
         self.acoustic_present: List[int] = []          # B2 rule A-P: sightings from fixes this step
         self.acoustic_displaced: List[int] = []        # B2 rule A-D: neighbours positively away from their slot
         self.acoustic_corr: List[int] = []             # neighbours whose fix fed the relative residual
@@ -179,12 +167,6 @@ class Perception:
         fr = self.cfg.form
         clock = self.plan.clock
         moving = clock is None or clock.moving(t if t_form is None else t_form)
-        self.presence_held = []
-        if self.presence.enabled:                          # rule R1 (module docstring): defer, never clear
-            grace = NEIGHBOUR_MEMORY_S + self.cfg.beacon.missing_grace_s
-            self.presence_held = [k for k in form.missing if not self.missing_state.get(k)
-                                  and self.presence.heard(k, t) and t - self.neighbour_seen.get(k, -1e9) <= grace]
-            form.missing = [k for k in form.missing if k not in self.presence_held]
         for k in self.acoustic_displaced:                  # rule A-D: positively away from its slot
             if k not in form.missing:
                 form.missing.append(k)
@@ -278,7 +260,6 @@ class Perception:
         d = frame.data
         env = self.cfg.env
         nav = self.nav.update(t, dt, d.get("Compass"), d.get("DVLSensor"), d.get("DepthSensor"), d.get("IMUSensor"))
-        self.presence.update(frame)
         self.att.update(d.get("IMUSensor"))
         roll, pitch = (self.att.roll, self.att.pitch) if self.use_attitude else (0.0, 0.0)
         R_wb = rot_world_body(roll, pitch, nav.yaw)

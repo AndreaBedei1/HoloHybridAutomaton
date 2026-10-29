@@ -4,7 +4,7 @@ Writes results/<run_id>/: run_config.json, events.jsonl, drone_<k>_state.jsonl,
 referee_timeseries.csv, referee_metrics.json, sensor_audit.json, summary.csv, perf.json and (optionally)
 camera / fleet-view frames for GIFs.  A run that does not reach its end writes ``status: INCOMPLETE``.
 ``noise`` (sim.sensor_noise.NoiseProfile) degrades the onboard sensors, ``seed`` overrides the scenario seed
-(every seeded simulator-side effect); ``cfg.beacon`` enables the optional one-way presence beacon.
+(every seeded simulator-side effect); ``cfg.beacon`` enables the B2 one-way acoustic beacon (identity pings only).
 """
 
 from __future__ import annotations
@@ -88,9 +88,7 @@ def run(name: str, out_root: Path, headless: bool = True, run_id: Optional[str] 
     ctrls = {p.drone_id: DroneController(p, cfg) for p in sc.plans}
     if cfg.beacon.enabled:            # pre-mission knowledge: the static beacon identity of every slot's drone
         for p in sc.plans:
-            ids = beacon_identities(sc.plans, sim.names, p)
-            ctrls[p.drone_id].perception.presence.set_identities(ids)
-            ctrls[p.drone_id].perception.acoustic.set_identities(ids)
+            ctrls[p.drone_id].perception.acoustic.set_identities(beacon_identities(sc.plans, sim.names, p))
     audit = SensorAudit(sim.names, cfg, DT)
     truth_prev = None
     tmpl = sc.template.offsets() if sc.template is not None else None
@@ -219,16 +217,15 @@ def run(name: str, out_root: Path, headless: bool = True, run_id: Optional[str] 
     beacon = None if getattr(sim, "beacon", None) is None else sim.beacon.summary()
     metrics["run"] = {**status, "scenario": name, "sim_time_s": round(sim.t, 2), "determinism_violations": det,
                       "observation_consistency_violations": obs_inc,
-                      # B0: no message at all; B1: every one-way presence ping counts (static identity, no reply)
+                      # B0: no message at all; B2: every one-way identity ping counts (no payload, no reply)
                       "comms_enabled": cfg.comms_enabled, "inter_agent_messages": 0 if beacon is None else beacon["transmissions"],
-                      "message_content": "none" if beacon is None else (
-                          "static identity only (one-way ping; receiver-side OWTT range + array bearing)"
-                          if cfg.beacon.range_bearing else "static identity only (one-way presence ping)"),
+                      "message_content": "none" if beacon is None else
+                          "static identity only (one-way ping; receiver-side OWTT range + array bearing)",
                       "acoustic_exit_witnesses": sum(c.perception.gp.exit_kind["ACOUSTIC"] for c in ctrls.values()),
                       "sonar_exit_witnesses": sum(c.perception.gp.exit_kind["SONAR"] for c in ctrls.values()),
                       "acoustic_tracker": ({k: sum(c.perception.acoustic.stats[k] for c in ctrls.values())
                                             for k in next(iter(ctrls.values())).perception.acoustic.stats}
-                                           if cfg.beacon.range_bearing else None),
+                                           if cfg.beacon.enabled else None),
                       "ground_truth_used_by_controllers": any(c.uses_ground_truth for c in ctrls.values()),
                       "static_rank_uses": rank_uses, "occupancy_timeouts": occ_timeouts,
                       "self_declared_envelope_violations": env_violations, "perf": perf,
@@ -325,7 +322,7 @@ def print_summary(name: str, m: Dict, assumptions: Optional[str] = None) -> str:
     det = sum((m["run"].get("determinism_violations") or {}).values())
     inc = m["run"].get("observation_consistency_violations")
     comm = (f"{m['run']['inter_agent_messages']} messages" if not m["run"].get("beacon") else
-            f"{m['run']['inter_agent_messages']} one-way presence pings (static identity only, no reply)")
+            f"{m['run']['inter_agent_messages']} one-way identity pings (no payload, no reply)")
     lines += ["COLLISIONS", str(coll), "", "COMMUNICATION", comm, "",
               f"AUTOMATON DETERMINISM VIOLATIONS: {det}",
               f"OBSERVATION CONSISTENCY VIOLATIONS: {'n/a' if inc is None else sum(inc.values())}", "",

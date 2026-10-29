@@ -1,12 +1,11 @@
-"""Sensor-degradation profiles, beacon presence semantics and the campaign plan (no simulator)."""
+"""Sensor-degradation profiles, the beacon default (off) and the campaign plan (no simulator)."""
 
 import dataclasses
 
 import numpy as np
 
-from holo_fleet.config import DEFAULT, BeaconConfig
-from holo_fleet.perception.beacon_presence import PresenceTracker
-from holo_fleet.perception.frame import SensorFrame
+from holo_fleet.config import DEFAULT
+from holo_fleet.perception.acoustic import AcousticTracker
 from holo_fleet.perception.sensor_suite import DEPLOYED_NOISE, onboard_sensor_configs
 from holo_fleet.sim.sensor_noise import CLEAN, FACTORS, HIGH, LOW, MEDIUM, heading_biases, isolated, plan_windows, profile
 
@@ -22,7 +21,7 @@ def test_clean_is_the_deployed_suite():
 
 def test_levels_are_monotone():
     for f in ("sonar_add_sigma", "dvl_vel_sigma", "mag_sigma", "depth_sigma", "sonar_dropout", "latency_s",
-              "sonar_range_jitter_m", "beacon_dropout"):
+              "sonar_range_jitter_m"):
         assert getattr(CLEAN, f) <= getattr(LOW, f) <= getattr(MEDIUM, f) <= getattr(HIGH, f), f
 
 
@@ -55,18 +54,11 @@ def test_seeded_effects_are_reproducible():
     assert not heading_biases(CLEAN, 3, 0).any()
 
 
-def test_presence_beacon_is_identity_only_and_off_by_default():
+def test_acoustic_beacon_is_off_by_default_and_ignored_by_the_baseline():
     assert not DEFAULT.beacon.enabled
-    off = PresenceTracker(DEFAULT)
+    off = AcousticTracker(DEFAULT)
     off.set_identities({1: 1})
-    off.update(SensorFrame(t=1.0, data={"BeaconRx": ((1, 0.9),)}, stamp={}))
-    assert not off.heard(1, 1.0)                     # the baseline ignores receptions entirely
-    cfg = dataclasses.replace(DEFAULT, beacon=BeaconConfig(mode="ACOUSTIC_PRESENCE"))
-    pt = PresenceTracker(cfg)
-    pt.set_identities({0: 2, 1: 0})
-    pt.update(SensorFrame(t=5.0, data={"BeaconRx": ((0, 4.9), (7, 4.95))}, stamp={}))     # unknown id ignored
-    assert pt.heard(2, 5.0) and not pt.heard(0, 5.0)
-    assert pt.heard(2, 4.9 + cfg.beacon.ttl_s) and not pt.heard(2, 4.9 + cfg.beacon.ttl_s + 0.1)
+    assert off.update(1.0, ((1, 0.95, 3.0, 0.0, 0.0),), np.zeros(3), 0.0) == []   # B0 ignores receptions entirely
 
 
 def test_campaign_plan_sizes():
@@ -77,7 +69,9 @@ def test_campaign_plan_sizes():
                                                   "run_sensor_robustness_campaign.py")
     camp = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(camp)
-    assert len(camp.plan("main", (0, 1, 2))) == 144
-    assert len(camp.plan("beacon", (0, 1, 2))) == 72
-    assert len(camp.plan("isolation", (0, 1, 2))) == len(FACTORS) * 3 * 3
-    assert {r[3] for r in camp.plan("high", (0, 1, 2))} == {0, 1, 2}
+    runs = camp.plan("targeted", (0, 1), only=["gate_single"], protocols=["B2_LOW"], profiles=["LOW-ALL"])
+    assert runs[:2] == [("B0", "CLEAN", "gate_single", 0), ("B0", "CLEAN", "gate_single", 1)]   # deadline source first
+    assert runs[2:] == [("B2_LOW", "LOW-ALL", "gate_single", 0), ("B2_LOW", "LOW-ALL", "gate_single", 1)]
+    final = camp.plan("final", (0, 1, 2))
+    first_degraded = next(i for i, r in enumerate(final) if r[1] != "CLEAN")
+    assert all(r[1] == "CLEAN" for r in final[:first_degraded]) and len(set(final)) == len(final)

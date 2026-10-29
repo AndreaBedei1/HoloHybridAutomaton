@@ -1,26 +1,22 @@
-"""Sensor-robustness and beacon-ablation campaign (headless, serial HoloOcean, resumable).
+"""B0 / B2 robustness campaign orchestrator (headless HoloOcean, resumable, optionally sharded).
 
-    python scripts/run_sensor_robustness_campaign.py --phase isolation|main|high|beacon [--dry-run]
-    python scripts/run_sensor_robustness_campaign.py --phase main --only gate_single --seeds 0
-    python scripts/run_sensor_robustness_campaign.py --phase isolation --only p1_vertical_escape --seeds 0
+    python scripts/run_sensor_robustness_campaign.py --phase final [--dry-run]
+    python scripts/run_sensor_robustness_campaign.py --phase targeted --only lost_drone_timeout \
+        --protocols B0 B2_CLEAN --profiles CLEAN LOW-ALL --seeds 0 --raw <root>
 
 Every run executes in its own Python process (holo_fleet.runner.run, no frames, no GIF) and writes a run
 directory under the raw root (default results/robustness/raw/, git-ignored):
     <protocol>/<profile>/<scenario>/s<seed>/
 followed by run_metrics.json (holo_fleet.referee.robustness_metrics: metrics + class).  A run whose
-run_metrics.json exists is skipped, so an interrupted campaign resumes where it stopped.  Bulky per-step logs
-(drone_*_state.jsonl) are gzip-compressed after the analysis.  One HoloOcean instance at a time; after every run
-the Holodeck.exe processes started by that run (and only those) are checked and, if still alive, terminated.
+run_metrics.json exists (and is not INVALID) is skipped, so an interrupted campaign resumes where it stopped.
+Bulky per-step logs (drone_*_state.jsonl) are gzip-compressed after the analysis.  Each orchestrator runs one
+HoloOcean instance at a time (``--shard i --nshards n``: n orchestrators on disjoint slices); after every run the
+Holodeck.exe processes started by that run (and only those) are terminated if still alive.
 
-Phases (same seeds 0, 1, 2 everywhere; protocol B0 = communication-free baseline, B1 = one-way presence beacon):
-* isolation: CLEAN + one phenomenon at its HIGH level (sim/sensor_noise.FACTORS) on ISOLATION_SCENARIOS
-             (or on the --only scenarios: diagnosis of a failure found in another scenario);
-* main:      the 16 scenarios x CLEAN, LOW, MEDIUM;
-* high:      HIGH on HIGH_SCENARIOS (all 16 with --all-high);
-* beacon:    B1 on BEACON_SCENARIOS x LOW, MEDIUM, HIGH (B0 comes from main/high);
-* validation: the realistic operating domain: VALIDATION_SCENARIOS x (CLEAN, LOW and MEDIUM x ONE / SUBSET / ALL,
-             scope_drones) x 3 seeds, each run ending on SUCCESS / FAILURE / DEADLINE (referee/terminal.py).
-             main / high / beacon are the exploratory stress campaign (first version of the levels, STRESS_V1).
+Protocols: B0 (communication-free) and B2_<channel level> (one-way acoustic identity beacon, sim/acoustic_channel.py).
+Profiles: CLEAN or <LEVEL>-<SCOPE> (sim/sensor_noise.py; scope ONE / SUBSET / ALL, scope_drones).  Every run ends
+on SUCCESS / FAILURE / DEADLINE (referee/terminal.py); the deadline of a degraded run comes from the B0 CLEAN runs
+of the same raw root, so CLEAN runs are planned first.
 """
 
 from __future__ import annotations
@@ -46,25 +42,6 @@ ALL_SCENARIOS = ("p1_head_on", "p1_vertical_escape", "p1_two_lines", "p1_close_e
                  "formation_square", "formation_six", "formation_recovery_head_current", "formation_gust", "gate_single",
                  "integrated_short", "lost_drone_rejoin", "lost_drone_timeout", "mutex_deadlock_resolution",
                  "line_parallel_mutex", "lost_drone_mutex")
-ISOLATION_SCENARIOS = ("p1_close_encounter", "line_parallel_mutex", "lost_drone_rejoin")
-HIGH_SCENARIOS = ("p1_head_on", "p1_vertical_escape", "p1_two_lines", "p1_close_encounter", "formation_six",
-                  "formation_recovery_head_current", "formation_gust", "gate_single", "integrated_short",
-                  "mutex_deadlock_resolution", "line_parallel_mutex", "lost_drone_rejoin", "lost_drone_timeout",
-                  "lost_drone_mutex")
-BEACON_SCENARIOS = ("formation_six", "gate_single", "integrated_short", "mutex_deadlock_resolution",
-                    "line_parallel_mutex", "lost_drone_rejoin", "lost_drone_timeout", "lost_drone_mutex")
-# validation of the realistic operating domain (LOW / MEDIUM, sim/sensor_noise.py): representative scenarios (P1
-# collision avoidance, P2 gate / mutex, P3 formation and recovery, lost drones, integrated) x scope x 3 seeds
-VALIDATION_SCENARIOS = ("p1_vertical_escape", "p1_two_lines", "formation_six", "formation_recovery_head_current",
-                        "integrated_short", "line_parallel_mutex", "lost_drone_rejoin", "lost_drone_mutex")
-# targeted check of the gate localization (relocalization hold, robust clearance) on the gate scenarios
-GATE_CHECK_SCENARIOS = ("line_parallel_mutex", "lost_drone_mutex", "gate_single", "integrated_short")
-# variant B2 (range-bearing beacon; protocol label B2_<channel level>, sim/acoustic_channel.py)
-GATE5_SCENARIOS = ("gate_single", "integrated_short", "mutex_deadlock_resolution", "line_parallel_mutex",
-                   "lost_drone_mutex")
-FORMATION_B2_SCENARIOS = ("formation_six", "formation_recovery_head_current", "lost_drone_rejoin", "lost_drone_timeout",
-                          "p1_vertical_escape")
-TERMINAL_PHASES = ("validation", "gate_check", "b2_gate", "b2_formation", "b2_degraded", "b2_final")
 PY = sys.executable
 
 
@@ -118,64 +95,34 @@ def scope_drones(scenario: str, scope: str) -> list:
     return sorted([k for k in order if k in healthy][:(n + 1) // 2])
 
 
-def plan(phase: str, seeds, only=None, all_high=False):
-    from holo_fleet.sim.sensor_noise import FACTORS
-
-    runs = []
-    if phase == "isolation":
-        for f in FACTORS:
-            for sc in (tuple(only) if only else ISOLATION_SCENARIOS):
-                runs += [("B0", f"ISO_{f}", sc, s) for s in seeds]
-    elif phase == "main":
-        for prof in ("CLEAN", "LOW", "MEDIUM"):
-            for sc in ALL_SCENARIOS:
-                runs += [("B0", prof, sc, s) for s in seeds]
-    elif phase == "high":
-        for sc in (ALL_SCENARIOS if all_high else HIGH_SCENARIOS):
-            runs += [("B0", "HIGH", sc, s) for s in seeds]
-    elif phase == "beacon":
-        for prof in ("LOW", "MEDIUM", "HIGH"):
-            for sc in BEACON_SCENARIOS:
-                runs += [("B1", prof, sc, s) for s in seeds]
-    elif phase in ("validation", "gate_check"):
-        from holo_fleet.sim.sensor_noise import SCOPES
-
-        scen = tuple(only) if only else VALIDATION_SCENARIOS if phase == "validation" else GATE_CHECK_SCENARIOS
-        for sc in scen:                                 # CLEAN first: it fixes the deadline of the degraded runs
-            runs += [("B0", "CLEAN", sc, s) for s in seeds]
-        for sc in scen:
-            for prof in ("LOW", "MEDIUM"):
-                for scope in SCOPES:
-                    runs += [("B0", f"{prof}-{scope}", sc, s) for s in seeds]
-    elif phase == "b2_gate":                        # B0 and B2 on the five gate scenarios, CLEAN sensors and channel
-        for sc in (tuple(only) if only else GATE5_SCENARIOS):
-            runs += [(proto, "CLEAN", sc, s) for proto in ("B2_CLEAN", "B0") for s in seeds]
-    elif phase == "b2_formation":                   # targeted formation checks, CLEAN and MEDIUM-ALL sensors
-        for sc in (tuple(only) if only else FORMATION_B2_SCENARIOS):
-            for prof in ("CLEAN", "MEDIUM-ALL"):
-                runs += [(proto, prof, sc, s) for proto in ("B0", "B2_CLEAN" if prof == "CLEAN" else "B2_MEDIUM")
-                         for s in seeds]
-    elif phase == "b2_final":                       # the documented matrix (docs/B2_ACOUSTIC_AIDED_COORDINATION.md)
-        runs += final_matrix(seeds, only)
-    elif phase == "beacon_clean":
-        for sc in BEACON_SCENARIOS:
-            runs += [("B1", "CLEAN", sc, s) for s in seeds]
+def plan(phase: str, seeds, only=None, protocols=None, profiles=None):
+    """Runs (protocol, profile, scenario, seed), B0 CLEAN first (it fixes the deadline of every degraded run).
+    ``final``: the campaign matrix; ``targeted``: --only scenarios x --protocols x --profiles (targeted validation)."""
+    if phase == "final":
+        runs = final_matrix(seeds, only)
+    elif phase == "targeted":
+        if not (only and protocols and profiles):
+            raise SystemExit("--phase targeted needs --only, --protocols and --profiles")
+        runs = [(proto, prof, sc, s) for sc in only for prof in profiles for proto in protocols for s in seeds]
+        if any(prof != "CLEAN" for prof in profiles) and "B0" not in protocols:
+            runs = [("B0", "CLEAN", sc, s) for sc in only for s in seeds] + runs
     else:
         raise SystemExit(f"unknown phase {phase}")
     if only:
         runs = [r for r in runs if r[2] in only]
-    return runs
+    if profiles:
+        runs = [r for r in runs if r[1] in profiles or (r[0], r[1]) == ("B0", "CLEAN")]
+    clean0 = [r for r in runs if (r[0], r[1]) == ("B0", "CLEAN")]
+    return list(dict.fromkeys(clean0 + [r for r in runs if r not in clean0]))
 
 
 def final_matrix(seeds, only=None) -> list:
-    """B0 vs B2 on the same scenarios and seeds (docs/B2_ACOUSTIC_AIDED_COORDINATION.md, section 7), reduced matrix
-    fixed before any B2 run with degraded sensors or channel:
+    """B0 vs B2 on the same scenarios and seeds (provisional: redefined when the final plan is frozen):
     * sensors CLEAN, LOW-ALL and MEDIUM-{ONE,SUBSET,ALL}: B0, and B2 with the channel at the sensors' level (LOW-ONE
       and LOW-SUBSET are dropped: LOW-ALL is the most degraded LOW case and the LOW scopes are characterised for B0
       in the sensor-robustness campaign);
     * the channel alone: sensors CLEAN with the channel MEDIUM and BLACKOUT (LOW lies between CLEAN and MEDIUM);
-    * channel BLACKOUT with MEDIUM-ALL sensors (B2 must fall back to B0).
-    Runs of the b2_gate and b2_formation phases in the same raw root are reused (same code, same cells)."""
+    * channel BLACKOUT with MEDIUM-ALL sensors (B2 must fall back to B0)."""
     scen = tuple(only) if only else FINAL_SCENARIOS
     runs = []
     for sc in scen:                                 # CLEAN first: B0 CLEAN fixes the deadline of every degraded run
@@ -188,8 +135,7 @@ def final_matrix(seeds, only=None) -> list:
     return runs
 
 
-FINAL_SCENARIOS = ("p1_vertical_escape", "p1_two_lines", "formation_six", "formation_recovery_head_current",
-                   "lost_drone_rejoin", "lost_drone_timeout") + GATE5_SCENARIOS
+FINAL_SCENARIOS = ALL_SCENARIOS
 
 
 def run_dir(raw: Path, protocol: str, prof: str, sc: str, seed: int) -> Path:
@@ -209,9 +155,7 @@ def worker(args) -> int:
               "(the baseline needs the octree patch, docs/HOLOOCEAN_OCTREE_PATCH.md)", file=sys.stderr)
         return 4
     cfg = DEFAULT
-    if args.protocol == "B1":
-        cfg = dataclasses.replace(DEFAULT, beacon=BeaconConfig(mode="ACOUSTIC_PRESENCE"))
-    elif args.protocol.startswith("B2_"):            # range-bearing beacon, channel level after the underscore
+    if args.protocol.startswith("B2_"):            # range-bearing beacon, channel level after the underscore
         cfg = dataclasses.replace(DEFAULT, beacon=BeaconConfig(mode="ACOUSTIC_RB", channel=args.protocol[3:]))
     d = Path(args.run_dir)
     prof, _, scope = args.profile.partition("-")
@@ -435,12 +379,12 @@ def finish(d: Path, reference) -> dict:
 
 def main() -> int:
     ap = argparse.ArgumentParser()
-    ap.add_argument("--phase", default="main")
+    ap.add_argument("--phase", default="final", choices=("final", "targeted"))
     ap.add_argument("--raw", default=str(RAW))
     ap.add_argument("--seeds", type=int, nargs="*", default=list(SEEDS))
     ap.add_argument("--only", nargs="*")
-    ap.add_argument("--profiles", nargs="*", help="keep only these profile labels (e.g. CLEAN MEDIUM-ALL)")
-    ap.add_argument("--all-high", action="store_true")
+    ap.add_argument("--profiles", nargs="*", help="profile labels (e.g. CLEAN MEDIUM-ALL); B0 CLEAN is always kept")
+    ap.add_argument("--protocols", nargs="*", help="--phase targeted: protocols (e.g. B0 B2_CLEAN)")
     ap.add_argument("--dry-run", action="store_true")
     ap.add_argument("--max-runs", type=int, default=0)
     # parallel campaign: N orchestrators on disjoint slices of the same pending list, one engine each (HoloOcean's
@@ -477,9 +421,7 @@ def main() -> int:
         print(f"patched HoloOcean root not found ({hs.DEFAULT_PATCHED_ROOT}): campaign not started", flush=True)
         return 4
     raw = Path(args.raw)
-    runs = plan(args.phase, args.seeds, args.only, args.all_high)
-    if args.profiles:
-        runs = [r for r in runs if r[1] in args.profiles]
+    runs = plan(args.phase, args.seeds, args.only, args.protocols, args.profiles)
     todo = pending(raw, runs)
     print(f"phase {args.phase}: {len(runs)} runs, {len(runs) - len(todo)} done, {len(todo)} to do", flush=True)
     if args.nshards > 1:
@@ -509,10 +451,9 @@ def main() -> int:
         if sc not in refs:
             refs[sc] = load_reference(DEMOS / sc)
         dur = SCENARIOS[sc](__import__("holo_fleet.config", fromlist=["DEFAULT"]).DEFAULT).duration_s
-        if args.phase in TERMINAL_PHASES:
-            from holo_fleet.referee.terminal import clean_horizon_s
+        from holo_fleet.referee.terminal import clean_horizon_s
 
-            dur = clean_horizon_s(dur)
+        dur = clean_horizon_s(dur)
         res, attempt = None, 0
         while attempt <= args.retries:
             attempt += 1
@@ -524,7 +465,7 @@ def main() -> int:
             t0 = time.time()
             seen: dict = {}
             cmd = [PY, str(Path(__file__).resolve()), "--worker", "--scenario", sc, "--profile", prof, "--seed",
-                   str(seed), "--protocol", protocol, "--run-dir", str(d)] + (["--allow-unpatched"] if args.allow_unpatched else [])                 + (["--terminal"] if args.phase in TERMINAL_PHASES else [])
+                   str(seed), "--protocol", protocol, "--run-dir", str(d)] + (["--allow-unpatched"] if args.allow_unpatched else [])                 + ["--terminal"]
             with open(d.parent / f"{d.name}_worker.log", "w", encoding="utf-8") as wl:
                 proc = subprocess.Popen(cmd, stdout=wl, stderr=subprocess.STDOUT, cwd=str(ROOT),
                                         env={**os.environ, "PYTHONUNBUFFERED": "1"})

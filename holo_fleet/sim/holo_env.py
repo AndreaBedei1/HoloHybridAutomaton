@@ -57,7 +57,7 @@ class HoloFleetSim:
     stress (beam_dropout, blackout_every_s, blackout_len_s), release_s, duration_s, seed,
     camera_drone (index or None), env_box (or None); optionally ``noise`` (sim.sensor_noise.NoiseProfile:
     HoloOcean noise parameters + seeded wrapper degradation of the onboard streams, None = deployed sensors).
-    ``cfg.beacon`` enables the optional one-way presence beacon (sim/beacon.py)."""
+    ``cfg.beacon`` enables the B2 one-way acoustic beacon (sim/beacon.py)."""
 
     def __init__(self, spec, cfg: FleetConfig = DEFAULT, headless: bool = True, view_region: bool = False):
         self.spec = spec
@@ -96,11 +96,8 @@ class HoloFleetSim:
         if cfg.beacon.enabled:
             from holo_fleet.sim.beacon import BeaconTransport
 
-            self.beacon = BeaconTransport(self.names, cfg.beacon, spec.seed,
-                                          dropout=0.0 if self.noise is None else self.noise.beacon_dropout,
-                                          ticks_per_sec=TICKS_PER_SEC)
-            if self.beacon.rb:
-                self.beacon.scene = self._beacon_scene
+            self.beacon = BeaconTransport(self.names, cfg.beacon, spec.seed, ticks_per_sec=TICKS_PER_SEC)
+            self.beacon.scene = self._beacon_scene
 
     def _beacon_scene(self):
         """Simulator truth for the B2 channel model (never onboard): agent origins, headings, gate bars."""
@@ -405,9 +402,8 @@ class HoloFleetSim:
             stamp = {k: v for k, v in self.stamp[name].items() if is_onboard(k)}
             if self.beacon is not None:                # receptions since the previous frame (identities only)
                 rx = self.beacon_inbox[name]
-                key = "AcousticRx" if self.beacon.rb else "BeaconRx"     # B2: (identity, t_arrival, range, az, el)
-                data[key] = tuple(rx)
-                stamp[key] = max((x[1] for x in rx), default=-1e9)
+                data["AcousticRx"] = tuple(rx)          # (identity, t_arrival, range, azimuth, elevation)
+                stamp["AcousticRx"] = max((x[1] for x in rx), default=-1e9)
                 self.beacon_inbox[name] = []
             out[name] = SensorFrame(t=self.t, data=data, stamp=stamp)
         return out

@@ -8,7 +8,7 @@
     python scripts/run_demo.py --scenario lost_drone_rejoin --save --overwrite   # replace the canonical result
     python scripts/run_demo.py --scenario lost_drone_rejoin --save --overwrite --media   # ... with GIF / frames
     python scripts/run_demo.py --scenario lost_drone_rejoin --profile MEDIUM --seed 1    # noisy sensors (live)
-    python scripts/run_demo.py --scenario lost_drone_rejoin --profile MEDIUM --beacon    # + presence beacon (B1)
+    python scripts/run_demo.py --scenario lost_drone_rejoin --profile MEDIUM --b2 MEDIUM  # + B2 acoustic beacon
 
 Two windows: the HoloOcean viewport (the onboard belief is drawn on it: nearest echo per sonar
 sector coloured by class - grey structure, brown seabed, red possible vehicle, amber unknown - and
@@ -24,8 +24,8 @@ saved.  ``--media`` (with ``--save``) also keeps the fleet-view / chase frames a
 (with ``--save``) saves under another folder, for tests and smoke runs.
 
 ``--profile`` runs with a sensor-noise profile of the robustness campaign (sim/sensor_noise.py) and ``--seed``
-fixes its seeded effects; ``--beacon`` enables the one-way acoustic presence beacon (variant B1,
-docs/SENSOR_ROBUSTNESS_AND_BEACONING.md).  Such runs are not reference demos: they are saved only with ``--out``.
+fixes its seeded effects; ``--b2 LEVEL`` enables the variant-B2 one-way acoustic identity beacon with that channel
+level (sim/acoustic_channel.py).  Such runs are not reference demos: they are saved only with ``--out``.
 """
 
 from __future__ import annotations
@@ -110,8 +110,8 @@ def _run_scenario(a, stage: Path) -> str:
         except (OSError, ValueError, KeyError):
             return "INCOMPLETE"
     cfg = DEFAULT
-    if a.beacon:
-        cfg = dataclasses.replace(DEFAULT, beacon=BeaconConfig(mode="ACOUSTIC_PRESENCE"))
+    if a.b2:
+        cfg = dataclasses.replace(DEFAULT, beacon=BeaconConfig(mode="ACOUSTIC_RB", channel=a.b2))
     noise = None
     if a.profile:
         from holo_fleet.sim.sensor_noise import profile
@@ -146,7 +146,8 @@ def main(argv=None) -> int:
     ap.add_argument("--profile", choices=("CLEAN", "LOW", "MEDIUM", "HIGH"), default=None,
                     help="sensor-noise profile of the robustness campaign (default: the deployed sensors)")
     ap.add_argument("--seed", type=int, default=None, help="seed of the noise profile's effects")
-    ap.add_argument("--beacon", action="store_true", help="one-way acoustic presence beacon (variant B1)")
+    ap.add_argument("--b2", choices=("CLEAN", "LOW", "MEDIUM", "BLACKOUT"), default=None,
+                    help="variant B2: one-way acoustic identity beacon with this channel level (default: B0)")
     a = ap.parse_args(argv)
     if a.list or not a.scenario:
         print("scenarios (one seed each):")
@@ -159,8 +160,8 @@ def main(argv=None) -> int:
         return 0
     if not a.save and (a.overwrite or a.media or a.out):
         ap.error("--overwrite, --media and --out apply only with --save (a plain demo keeps nothing)")
-    if a.save and (a.profile or a.beacon) and not a.out:
-        ap.error("a run with --profile or --beacon is not a reference demo: save it only with --out")
+    if a.save and (a.profile or a.b2) and not a.out:
+        ap.error("a run with --profile or --b2 is not a reference demo: save it only with --out")
     dest = Path(a.out or OUT) / a.scenario
     if a.save and dest.exists() and not a.overwrite:
         print(f"{dest} already exists and was not touched; add --overwrite to replace it.", file=sys.stderr)

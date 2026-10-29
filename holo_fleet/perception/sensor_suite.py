@@ -24,9 +24,9 @@ from holo_fleet.perception.sonar_geometry import MOUNTS, ROTATIONS, SECTORS, son
 SONAR_NAMES = tuple(sonar_sensor_name(s) for s in SECTORS)
 # Keys a controller is allowed to receive.  Everything else (PoseSensor, VelocitySensor,
 # CollisionSensor, visualisation cameras, ...) is stripped by the simulator wrapper.
-# "BeaconRx": receptions of the optional one-way presence beacon (static identities only, sim/beacon.py); absent
-# unless the beacon variant is enabled.
-ONBOARD_NAMES = ("DepthSensor", "IMUSensor", "DVLSensor", "Compass") + SONAR_NAMES + ("BeaconRx",)
+# "AcousticRx": variant B2 only, the receiver-side measurements of the one-way identity pings (identity, arrival
+# time, range, azimuth, elevation; sim/beacon.py through the channel model); absent in the baseline B0.
+ONBOARD_NAMES = ("DepthSensor", "IMUSensor", "DVLSensor", "Compass") + SONAR_NAMES + ("AcousticRx",)
 PRIVILEGED_NAMES = ("PoseSensor", "VelocitySensor", "CollisionSensor", "ChaseCamera", "SideCamera", "TopCamera")
 
 

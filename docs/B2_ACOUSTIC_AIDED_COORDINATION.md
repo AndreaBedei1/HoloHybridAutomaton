@@ -3,8 +3,7 @@
 B0 is the communication-free baseline: the same decentralised hybrid automaton on every drone, driven by the shared
 mission plan and local sensing (six single-beam sonars, DVL, IMU, compass, depth).  B2 keeps that automaton, its
 guards and thresholds unchanged and adds one input to the PERCEPTION: a one-way acoustic ping carrying only a static
-identity, from which the receiver itself derives range and bearing.  B1 (presence only, rule R1) is documented in
-`SENSOR_ROBUSTNESS_AND_BEACONING.md` and is not part of B2.
+identity, from which the receiver itself derives range and bearing.
 
 ## 1. What the simulator really provides
 

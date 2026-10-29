@@ -96,7 +96,7 @@ def test_tdma_slots_are_tick_aligned_and_disjoint():
 
     names = [f"d{k}" for k in range(6)]
     tr = BeaconTransport(names, B2.beacon, seed=0)
-    assert tr.rb and tr.slot_ticks * len(names) <= tr.period_ticks and tr.slot_ticks >= 2
+    assert tr.slot_ticks * len(names) <= tr.period_ticks and tr.slot_ticks >= 2
     ticks = {n: [t for t in range(90) if (t - k * tr.slot_ticks) % tr.period_ticks == 0] for k, n in enumerate(names)}
     all_t = sorted(x for v in ticks.values() for x in v)
     assert len(all_t) == len(set(all_t)) and all(len(v) == 3 for v in ticks.values())

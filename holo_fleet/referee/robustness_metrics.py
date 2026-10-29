@@ -239,37 +239,6 @@ def analyze_run(run_dir: Path, reference: Optional[Dict] = None, cfg=DEFAULT) ->
                     if j is not None and not vac and dev[i, j] > e_lost:
                         fm["false_rejoin"] += 1
                 prev = miss
-        if any("beacon_held" in (states[k][0].get("form") or {}) for k in healthy if states[k]):
-            # variant B1, rule R1 (perception.py); judged like the missing states, while the observer keeps its slot
-            r1 = {"held_steps": 0, "held_episodes": 0, "held_then_missing": 0, "stale_presence_steps": 0,
-                  "stale_presence_episodes": 0}
-            heard_n = heard_d = 0
-            for k in healthy:
-                prev = set()
-                for i in range(m):
-                    if modes[i, k] not in KEEPING:
-                        prev = set()
-                        continue
-                    f = states[k][i].get("form") or {}
-                    held, miss = set(f.get("beacon_held") or []), set(f.get("missing") or [])
-                    for sl in held:
-                        j = slot_drone.get(sl)
-                        stale = j is not None and (dev[i, j] > e_lost or faulted(j, t[i]))
-                        r1["held_steps"] += 1
-                        r1["stale_presence_steps"] += int(stale)
-                        if sl not in prev:
-                            r1["held_episodes"] += 1
-                            r1["stale_presence_episodes"] += int(stale)
-                    r1["held_then_missing"] += len((prev - held) & miss)
-                    prev = held
-                    for sl, j in slot_drone.items():
-                        if j != k and j in healthy:
-                            heard_d += 1
-                            heard_n += int(sl in (f.get("beacon_heard") or []))
-            r1["held_s"] = round(r1.pop("held_steps") * dt, 1)
-            r1["stale_presence_s"] = round(r1.pop("stale_presence_steps") * dt, 1)
-            r1["heard_fraction"] = round(heard_n / heard_d, 4) if heard_d else None
-            fm["beacon_r1"] = r1
         if m:                                     # a slot still declared vacant at the end while its drone is there
             fm["false_vacancy_at_end"] = sum(
                 1 for k in healthy for sl in ((states[k][m - 1].get("form") or {}).get("vacant") or [])

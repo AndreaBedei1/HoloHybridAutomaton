@@ -1,15 +1,12 @@
-"""Simulator side of the optional one-way beacon: who hears whose ping, when, and (B2) what the receiver measures.
+"""Simulator side of the variant-B2 one-way acoustic beacon: who hears whose ping, when, and what the receiver measures.
 
-Variant B1 (``ACOUSTIC_PRESENCE``): a reception is only "drone k was heard" (below).  Variant B2
-(``ACOUSTIC_RB``): drone k pings on a fixed TDMA schedule (slot k of every period, slots aligned to simulator
-ticks so that the scheduled emission instant is exact), and every reception becomes a range-bearing measurement
-through the channel model of sim/acoustic_channel.py (noise, biases, NLOS reflections, dropouts, outages,
-latency).  The ping still carries only the static identity.
+Drone k pings on a fixed TDMA schedule (slot k of every period, slots aligned to simulator ticks so that the
+scheduled emission instant is exact), and every reception becomes a range-bearing measurement through the channel
+model of sim/acoustic_channel.py (noise, biases, NLOS reflections, dropouts, outages, latency).  A ping carries
+only the sender's static identity: no position, velocity, heading, mode, queue or sensor data, and nobody replies.
 
 Every drone carries a HoloOcean ``AcousticBeaconSensor`` (id = drone index, engine range limit ``MaxDistance``
-and line-of-sight check ``CheckVisible``).  A drone pings every ``period_s`` +- ``jitter_s`` (uniform, seeded).
-A ping carries only the sender's static identity: no position, velocity, heading, mode, queue or sensor data,
-and nobody replies.
+and line-of-sight check ``CheckVisible``).
 
 HoloOcean 2.3 facts this module is built on (calibration/probe_beacon_api.py, results/calibration/):
 * the engine computes, per (sender, receiver) command, [azimuth, elevation, distance, depth] into the receiver's
@@ -22,9 +19,9 @@ HoloOcean 2.3 facts this module is built on (calibration/probe_beacon_api.py, re
   results could arrive in the same tick at a receiver are ALL lost at that receiver (a crude, conservative
   collision model; real receivers may separate distinct pinger codes).
 
-On top of the engine: propagation delay distance / sound_speed (stamped on the reception), and a reception
-dropout (noise profile ``beacon_dropout``, seeded).  The azimuth/elevation the engine computes are NOT passed on
-(presence only).
+On top of the engine: the propagation delay distance / sound_speed (the arrival time stamped on the reception) and
+the receiver-side measurement model of sim/acoustic_channel.py; the engine's exact geometry never reaches a
+controller.
 """
 
 from __future__ import annotations
@@ -39,24 +36,18 @@ SENSOR_NAME = "Beacon"
 
 
 class BeaconTransport:
-    def __init__(self, names: Sequence[str], cfg, seed: int, dropout: float = 0.0, ticks_per_sec: int = 30):
+    def __init__(self, names: Sequence[str], cfg, seed: int, ticks_per_sec: int = 30):
+        from holo_fleet.sim.acoustic_channel import ChannelModel, channel
+
         self.names = list(names)
         self.cfg = cfg
-        self.dropout = float(dropout)
         self.tps = ticks_per_sec
-        self.rng = np.random.default_rng([int(seed), 4243])
-        self.next_ping = {n: float(self.rng.uniform(0.0, cfg.period_s)) for n in self.names}
-        self.rb = bool(getattr(cfg, "range_bearing", False))
-        self.channel = None
-        if self.rb:                       # B2: TDMA slots aligned to ticks, channel model (sim/acoustic_channel.py)
-            from holo_fleet.sim.acoustic_channel import ChannelModel, channel
-
-            self.period_ticks = max(1, int(round(cfg.period_s * ticks_per_sec)))
-            self.slot_ticks = max(1, self.period_ticks // max(1, len(self.names)))
-            self.channel = ChannelModel(channel(cfg.channel), len(self.names), seed, cfg.max_range_m)
-            self.last_clear: Dict[Tuple[str, int], Tuple[float, Tuple[float, float, float]]] = {}
-            self.rb_log: List[Tuple] = []           # (t_tx, receiver, sender, r_true, r_meas, az_err, el_err, nlos)
-        self.scene = None                 # B2: callable -> (positions (n,3), yaws (n,), gate bars), simulator truth
+        self.period_ticks = max(1, int(round(cfg.period_s * ticks_per_sec)))      # TDMA slots aligned to ticks
+        self.slot_ticks = max(1, self.period_ticks // max(1, len(self.names)))
+        self.channel = ChannelModel(channel(cfg.channel), len(self.names), seed, cfg.max_range_m)
+        self.last_clear: Dict[Tuple[str, int], Tuple[float, Tuple[float, float, float]]] = {}
+        self.rb_log: List[Tuple] = []           # (t_tx, receiver, sender, r_true, r_meas, az_err, el_err, nlos)
+        self.scene = None                 # callable -> (positions (n,3), yaws (n,), gate bars), simulator truth
         self.pending: Dict[str, List[Tuple[str, float]]] = defaultdict(list)   # receiver -> [(sender, t_tx)]
         self.due: List[Tuple[float, str, int, float]] = []                     # (t_rx, receiver, sender id, t_tx)
         self.tx_log: List[Tuple[float, str]] = []
@@ -78,13 +69,8 @@ class BeaconTransport:
 
         tick = int(round(t * self.tps))
         for k, n in enumerate(self.names):
-            if self.rb:
-                if (tick - k * self.slot_ticks) % self.period_ticks != 0:
-                    continue
-            elif t + 1e-9 < self.next_ping[n]:
+            if (tick - k * self.slot_ticks) % self.period_ticks != 0:
                 continue
-            else:
-                self.next_ping[n] += self.cfg.period_s + float(self.rng.uniform(-self.cfg.jitter_s, self.cfg.jitter_s))
             self.stats["transmissions"] += 1
             self.tx_log.append((round(t, 4), n))
             for r in self.names:
@@ -115,22 +101,11 @@ class BeaconTransport:
                 else:
                     sender, t_tx = live[0]
                     pend = []
-                    if self.rb:
-                        self._measure(r, sender, t_tx, buf)
-                    elif np.all(buf == -1.0):
-                        self.stats["lost_channel"] += 1    # out of range or line of sight blocked (engine)
-                    elif self.dropout > 0.0 and self.rng.random() < self.dropout:
-                        self.stats["lost_dropout"] += 1
-                    else:
-                        dist = float(buf[2])
-                        t_rx = max(t, t_tx + dist / self.cfg.sound_speed)
-                        self.due.append((t_rx, r, self.names.index(sender), t_tx))
-                        self.stats["receptions"] += 1
-                        self.stats["latency_s"].append(t_rx - t_tx)
+                    self._measure(r, sender, t_tx, buf)
             self.pending[r] = pend
 
     def _measure(self, r: str, sender: str, t_tx: float, buf: np.ndarray) -> None:
-        """B2: engine geometry of the direct path -> delivered measurement (identity, t_arrival, range, az, el)."""
+        """Engine geometry of the direct path -> delivered measurement (identity, t_arrival, range, az, el)."""
         k_s, k_r = self.names.index(sender), self.names.index(r)
         ch = self.channel
         m = ch.measure(t_tx, k_s, k_r, buf)
@@ -189,15 +164,12 @@ class BeaconTransport:
         return geom, False
 
     def deliver(self, t: float) -> Dict[str, List[Tuple[int, float]]]:
-        """Receptions whose time has come: receiver -> [(sender identity, reception time)]."""
+        """Receptions whose time has come: receiver -> [(sender identity, t_arrival, range, azimuth, elevation)]."""
         out: Dict[str, List[Tuple[int, float]]] = defaultdict(list)
         keep = []
         for item in self.due:
             if item[0] <= t + 1e-9:
-                if self.rb:                                       # (identity, t_arrival, range, azimuth, elevation)
-                    out[item[1]].append((item[2],) + tuple(item[4]))
-                else:
-                    out[item[1]].append((item[2], round(item[0], 4)))
+                out[item[1]].append((item[2],) + tuple(item[4]))
                 key = (item[1], item[2])
                 prev = self.last_rx.get(key, 0.0)
                 if item[0] > prev:
@@ -215,9 +187,9 @@ class BeaconTransport:
         # longest interval without a reception over all (receiver, sender) pairs, mission start and end included
         open_gaps = [self.t_now - self.last_rx.get((r, k), 0.0) for r in self.names for k in range(n)
                      if self.names[k] != r]
-        return {"mode": self.cfg.mode, "period_s": self.cfg.period_s, "jitter_s": self.cfg.jitter_s,
+        return {"mode": self.cfg.mode, "period_s": self.cfg.period_s,
                 "max_range_m": self.cfg.max_range_m, "check_visible": self.cfg.check_visible,
-                "dropout": self.dropout, "transmissions": tx, "expected_receptions": expected,
+                "transmissions": tx, "expected_receptions": expected,
                 "receptions": self.stats["receptions"],
                 "reception_rate": round(self.stats["receptions"] / expected, 4) if expected else None,
                 "lost_collision": self.stats["lost_collision"], "lost_channel": self.stats["lost_channel"],
@@ -225,11 +197,10 @@ class BeaconTransport:
                 "latency_mean_ms": round(1000.0 * float(np.mean(lat)), 2) if lat else None,
                 "latency_max_ms": round(1000.0 * float(np.max(lat)), 2) if lat else None,
                 "longest_absence_s": round(max([self.longest_gap] + open_gaps), 2),
-                **({} if not self.rb else {"channel": self.channel.ch.as_dict(), "channel_stats": dict(self.channel.stats),
-                                           "sound_speed_scale": round(self.channel.scale, 5),
-                                           "clock_offset_m": [round(float(x), 3) for x in self.channel.offset],
-                                           "nlos_received": int(sum(1 for x in self.rb_log if x[7])),
-                                           **_error_summary(self.rb_log)})}
+                "channel": self.channel.ch.as_dict(), "channel_stats": dict(self.channel.stats),
+                "sound_speed_scale": round(self.channel.scale, 5),
+                "clock_offset_m": [round(float(x), 3) for x in self.channel.offset],
+                "nlos_received": int(sum(1 for x in self.rb_log if x[7])), **_error_summary(self.rb_log)}
 
 
 def _error_summary(log) -> Dict:

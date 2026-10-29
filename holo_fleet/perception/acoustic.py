@@ -114,7 +114,7 @@ class PoseHistory:
 class AcousticTracker:
     def __init__(self, cfg: FleetConfig = DEFAULT):
         self.cfg = cfg
-        self.enabled = cfg.beacon.range_bearing
+        self.enabled = cfg.beacon.enabled
         self.v_bound = speed_bound(cfg)
         self.slot_of: Dict[int, int] = {}
         self.fixes: Dict[int, List[Fix]] = {}             # slot -> fixes (accepted and rejected), oldest first

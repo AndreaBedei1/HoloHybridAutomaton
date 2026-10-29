@@ -14,13 +14,12 @@ Two mechanisms:
   the way we need: sonar capture dropout, burst blackouts, whole-profile range jitter (timing / sound-speed
   fluctuation; HoloOcean's RangeSigma only lengthens echoes, it barely moves their leading edge), deep fades
   (missed detections: the capture arrives, the target echo does not), DVL dropout and outages (bottom-lock loss),
-  latency of every onboard stream (data delivered late with its true capture time stamp), and the reception
-  dropout of the optional one-way presence beacon.
+  latency of every onboard stream (data delivered late with its true capture time stamp).
 
 The four levels are anchored to the project's declared assumptions (config.Envelope: sonar 10 Hz, tau_max 0.25 s,
 eps_range_far 0.12 m / eps_range_near 0.08 m; FormationRule e_ok 0.5 / e_lost 1.2 m; GateRule queue_tol 0.35 m):
-LOW and MEDIUM are the realistic operating domain (datasheet / literature anchored, see below); HIGH and the *_V1
-levels are the exploratory stress levels of the first campaign (docs/SENSOR_ROBUSTNESS_AND_BEACONING.md).
+LOW and MEDIUM are the realistic operating domain (datasheet / literature anchored, see below); HIGH is a stress level
+beyond it (out-of-envelope checks).
 """
 
 from __future__ import annotations
@@ -58,7 +57,6 @@ class NoiseProfile:
     dvl_outage_every_s: float = 0.0      # mean period of DVL outages (bottom-lock loss)
     dvl_outage_len_s: float = 0.0
     latency_s: float = 0.0               # every onboard stream delivered this late (stamped with its capture time)
-    beacon_dropout: float = 0.0          # per beacon reception (only with the optional one-way presence beacon)
 
     @property
     def wrapper_active(self) -> bool:
@@ -86,7 +84,7 @@ LOW = NoiseProfile(
     imu_accel_sigma=0.01, imu_gyro_sigma=0.005, imu_accel_bias_sigma=0.0002, imu_gyro_bias_sigma=0.0001,
     mag_sigma=0.01, heading_bias_deg=0.5, depth_sigma=0.02,
     sonar_dropout=0.005, sonar_range_jitter_m=0.015, sonar_fade_prob=0.01,
-    dvl_dropout=0.01, latency_s=0.02, beacon_dropout=0.05)
+    dvl_dropout=0.01, latency_s=0.02)
 
 MEDIUM = NoiseProfile(
     name="MEDIUM",
@@ -95,19 +93,9 @@ MEDIUM = NoiseProfile(
     imu_accel_sigma=0.02, imu_gyro_sigma=0.01, imu_accel_bias_sigma=0.0005, imu_gyro_bias_sigma=0.0003,
     mag_sigma=0.02, heading_bias_deg=2.0, depth_sigma=0.03,
     sonar_dropout=0.01, sonar_blackout_every_s=60.0, sonar_blackout_len_s=0.15, sonar_range_jitter_m=0.03,
-    sonar_fade_prob=0.03, dvl_dropout=0.03, dvl_outage_every_s=60.0, dvl_outage_len_s=1.0, latency_s=0.05,
-    beacon_dropout=0.20)
+    sonar_fade_prob=0.03, dvl_dropout=0.03, dvl_outage_every_s=60.0, dvl_outage_len_s=1.0, latency_s=0.05)
 
-# Exploratory stress levels of the first campaign (2026-10-22/25), deliberately beyond the assumptions: kept to
-# read those results and for the single-factor screens; NOT part of the validation.
-LOW_V1 = replace(LOW, name="LOW_V1", dvl_vel_sigma=0.02, dvl_range_sigma=0.05, imu_accel_sigma=0.02, imu_gyro_sigma=0.01,
-                 imu_accel_bias_sigma=0.0005, imu_gyro_bias_sigma=0.0002, depth_sigma=0.03, sonar_dropout=0.02,
-                 latency_s=0.0)
-MEDIUM_V1 = replace(MEDIUM, name="MEDIUM_V1", dvl_vel_sigma=0.04, dvl_range_sigma=0.15, imu_accel_sigma=0.05,
-                    imu_gyro_sigma=0.02, imu_accel_bias_sigma=0.002, imu_gyro_bias_sigma=0.0005, mag_sigma=0.03,
-                    heading_bias_deg=1.5, depth_sigma=0.06, sonar_dropout=0.05, sonar_blackout_every_s=30.0,
-                    dvl_outage_every_s=0.0, dvl_outage_len_s=0.0)
-
+# Stress level beyond the declared operating domain (out-of-envelope checks only, not a validation level).
 HIGH = NoiseProfile(
     name="HIGH",
     sonar_add_sigma=0.09, sonar_mult_sigma=0.40, sonar_range_sigma=0.20,
@@ -115,12 +103,9 @@ HIGH = NoiseProfile(
     imu_accel_sigma=0.10, imu_gyro_sigma=0.05, imu_accel_bias_sigma=0.005, imu_gyro_bias_sigma=0.002,
     mag_sigma=0.07, heading_bias_deg=4.0, depth_sigma=0.15,
     sonar_dropout=0.12, sonar_blackout_every_s=20.0, sonar_blackout_len_s=0.5, sonar_range_jitter_m=0.07,
-    sonar_fade_prob=0.10, dvl_dropout=0.08, dvl_outage_every_s=30.0, dvl_outage_len_s=1.0, latency_s=0.12,
-    beacon_dropout=0.50)
+    sonar_fade_prob=0.10, dvl_dropout=0.08, dvl_outage_every_s=30.0, dvl_outage_len_s=1.0, latency_s=0.12)
 
-STRESS_V1: Dict[str, NoiseProfile] = {"LOW": LOW_V1, "MEDIUM": MEDIUM_V1, "HIGH": HIGH}
-
-PROFILES: Dict[str, NoiseProfile] = {p.name: p for p in (CLEAN, LOW, MEDIUM, HIGH, LOW_V1, MEDIUM_V1)}
+PROFILES: Dict[str, NoiseProfile] = {p.name: p for p in (CLEAN, LOW, MEDIUM, HIGH)}
 VALIDATION_LEVELS = ("CLEAN", "LOW", "MEDIUM")          # the realistic operating domain
 SCOPES = ("ONE", "SUBSET", "ALL")                         # which drones receive the degraded profile
 

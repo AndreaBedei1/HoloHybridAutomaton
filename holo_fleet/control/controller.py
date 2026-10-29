@@ -248,10 +248,6 @@ class DroneController:
                      "vacant": sorted(self.perception.vacant), "degraded": bool(self.perception.vacant),
                      "slot": np.round(obs.slot_pos, 2).tolist(), "rejoin": self.flows.rejoin_phase,
                      **ftime.record(t, dt),
-                     **({"beacon_heard": sorted(k for k in range(len(self.perception.plan.slots))
-                                                if self.perception.presence.heard(k, t)),
-                         "beacon_held": sorted(self.perception.presence_held)}
-                        if self.perception.presence.enabled else {}),
                      **({"acoustic_present": sorted(self.perception.acoustic_present),
                          "acoustic_displaced": sorted(self.perception.acoustic_displaced),
                          "acoustic_corr": sorted(self.perception.acoustic_corr),

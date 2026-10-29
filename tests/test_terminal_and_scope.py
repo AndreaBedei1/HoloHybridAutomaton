@@ -82,7 +82,7 @@ def camp():
 
 
 def test_degraded_drones_are_deterministic_and_nested(camp):
-    for sc in camp.VALIDATION_SCENARIOS:
+    for sc in camp.ALL_SCENARIOS:
         one, sub, al = (camp.scope_drones(sc, s) for s in ("ONE", "SUBSET", "ALL"))
         assert len(one) == 1 and set(one) <= set(sub) <= set(al)
         n = len(SCENARIOS[sc](DEFAULT).sim.names)
@@ -92,8 +92,9 @@ def test_degraded_drones_are_deterministic_and_nested(camp):
         assert camp.scope_drones(sc, "ONE") == one                    # same choice every time
 
 
-def test_validation_plan_has_clean_first_and_no_high(camp):
-    runs = camp.plan("validation", (0, 1, 2))
-    assert len(runs) == 8 * 3 * (1 + 2 * 3)
+def test_final_plan_has_clean_first_and_no_high(camp):
+    runs = camp.plan("final", (0, 1, 2))
     labels = [r[1] for r in runs]
-    assert labels[:24] == ["CLEAN"] * 24 and not any("HIGH" in lab for lab in labels)
+    n_clean = labels.index(next(lab for lab in labels if lab != "CLEAN"))
+    assert set(labels[:n_clean]) == {"CLEAN"} and not any("HIGH" in lab for lab in labels)
+    assert {r[2] for r in runs} == set(camp.ALL_SCENARIOS)

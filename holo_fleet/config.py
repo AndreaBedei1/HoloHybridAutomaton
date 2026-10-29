@@ -273,33 +273,23 @@ class RefereeConfig:
 
 @dataclass(frozen=True)
 class BeaconConfig:
-    """Optional one-way presence beacon (variant B1; OFF in the communication-free baseline).
+    """Variant B2 one-way acoustic beacon (OFF in the communication-free baseline B0).
 
-    Every drone emits a ping every ``period_s`` (+- ``jitter_s`` uniform, so that pingers do not stay in step)
-    carrying nothing but its static, pre-assigned identity (a pinger signature).  No handshake, no reply, no
-    payload: a reception only means "drone k is currently detectable".  Transport: HoloOcean's
-    AcousticBeaconSensor (engine range limit and line-of-sight check) driven by sim/beacon.py, plus the
-    propagation delay d / sound_speed and a reception dropout (noise profile).  ``ttl_s``: a neighbour heard
-    within this is "recently heard" (2.5 periods: two consecutive pings may be lost).  ``missing_grace_s``: the
-    only onboard use of the evidence (rule R1, perception.py) - a neighbour recently heard is declared MISSING
-    after NEIGHBOUR_MEMORY_S + missing_grace_s without a sonar match instead of NEIGHBOUR_MEMORY_S."""
+    Every drone emits, on a pre-assigned TDMA schedule of period ``period_s``, a coded ping carrying nothing but its
+    static identity.  No handshake, no reply, no payload; receivers measure range (one-way travel time, synchronised
+    clocks) and direction (receiving array) themselves.  Transport: HoloOcean's AcousticBeaconSensor driven by
+    sim/beacon.py, measurement model sim/acoustic_channel.py (level ``channel``, simulator side only), onboard use
+    perception/acoustic.py with the declared envelope AcousticConfig."""
 
-    mode: str = "NONE"               # NONE | ACOUSTIC_PRESENCE (B1) | ACOUSTIC_RB (B2, AcousticConfig below)
+    mode: str = "NONE"               # NONE (B0) | ACOUSTIC_RB (B2)
     period_s: float = 1.0
-    jitter_s: float = 0.1
     max_range_m: float = 50.0
     check_visible: bool = True
     sound_speed: float = 1500.0
-    ttl_s: float = 2.5
-    missing_grace_s: float = 2.0
-    channel: str = "CLEAN"           # B2 only: simulator-side channel level (sim/acoustic_channel.py), never onboard
+    channel: str = "CLEAN"           # simulator-side channel level (sim/acoustic_channel.py), never onboard
 
     @property
     def enabled(self) -> bool:
-        return self.mode != "NONE"
-
-    @property
-    def range_bearing(self) -> bool:
         return self.mode == "ACOUSTIC_RB"
 
 
@@ -342,8 +332,8 @@ class FleetConfig:
     perc: PerceptionConfig = field(default_factory=PerceptionConfig)
     plant: PlantCalibration = field(default_factory=PlantCalibration)
     ref: RefereeConfig = field(default_factory=RefereeConfig)
-    beacon: BeaconConfig = field(default_factory=BeaconConfig)   # optional one-way presence beacon (OFF)
-    acoustic: AcousticConfig = field(default_factory=AcousticConfig)   # B2 onboard envelope (used only with ACOUSTIC_RB)
+    beacon: BeaconConfig = field(default_factory=BeaconConfig)   # B2 one-way acoustic beacon (OFF in B0)
+    acoustic: AcousticConfig = field(default_factory=AcousticConfig)   # B2 onboard envelope (used only when beacon.enabled)
     comms_enabled: bool = False       # inter-agent communication is OFF by default
     traffic_rule: bool = True         # head-on give-way rule (liveness aid); off only to exercise the safety layer alone
 
