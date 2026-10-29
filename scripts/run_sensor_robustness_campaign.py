@@ -315,6 +315,7 @@ def watch(proc, d: Path, dur: float, args, seen: dict):
     import psutil
 
     t0, last_size, last_change = time.time(), -1, time.time()
+    cpu_at_change = 0.0
     cap = args.timeout_factor * dur + 1200.0
     while True:
         try:
@@ -332,18 +333,35 @@ def watch(proc, d: Path, dur: float, args, seen: dict):
                     pass
         st = d / "drone_0_state.jsonl"
         size = st.stat().st_size if st.exists() else 0
+        cpu = _tree_cpu(proc.pid, seen.get("holodeck_pids", ()))
         if size != last_size:
-            last_size, last_change = size, time.time()
+            last_size, last_change, cpu_at_change = size, time.time(), cpu
         reason = None
-        if time.time() - t0 > cap:
+        # a worker starved by other (higher-priority) jobs makes no progress without being stuck: it is stalled only
+        # if it (and its engine) got at least a minute of CPU since the last log growth; the time cap counts CPU too
+        if time.time() - t0 > cap and cpu > 0.25 * cap:
             reason = "timeout"
-        elif time.time() - last_change > 60.0 * args.stall_min:
+        elif time.time() - last_change > 60.0 * args.stall_min and cpu - cpu_at_change > 60.0:
             reason = "stalled"
         elif psutil.virtual_memory().available / 2**30 < args.critical_ram_gb:
             reason = "low_memory"
         if reason:
             proc.kill()
             return reason
+
+
+def _tree_cpu(worker_pid: int, engine_pids) -> float:
+    """CPU seconds used so far by the worker and the Holodeck.exe it started."""
+    import psutil
+
+    tot = 0.0
+    for pid in [worker_pid, *engine_pids]:
+        try:
+            ct = psutil.Process(pid).cpu_times()
+            tot += ct.user + ct.system
+        except Exception:  # noqa: BLE001
+            pass
+    return tot
 
 
 def code_version() -> dict:
@@ -501,7 +519,10 @@ def main() -> int:
         (d / "run_metrics.json").write_text(json.dumps(res, indent=1, default=str), encoding="utf-8")
         wl_path = d.parent / f"{d.name}_worker.log"
         if wl_path.exists():
-            shutil.move(str(wl_path), str(d / "worker.log"))
+            try:
+                shutil.move(str(wl_path), str(d / "worker.log"))
+            except OSError:                               # still held by a dying process: copy it, leave the original
+                shutil.copy(str(wl_path), str(d / "worker.log"))
         done += 1
         line = (f"{time.strftime('%H:%M:%S')} {protocol} {prof:22s} {sc:32s} s{seed} {res['class']:16s} "
                 f"P1 {res.get('P1', {}).get('min_true_separation_m')} fail {res.get('failed_requirements')} "
