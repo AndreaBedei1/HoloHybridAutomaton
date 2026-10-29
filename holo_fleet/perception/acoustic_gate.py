@@ -15,18 +15,19 @@ which a hull in or at the CR was seen; since then the corridor has been empty):
      corridor echo of that sighting (the FRONT cone shell of each echo range, grown by R_OUT), and no rejected
      (contradictory) fix of j in that window that could - or a POSSIBLE OCCUPANT.  A drone without fixes is a
      possible occupant (absence is no evidence).
-(A2) exit of every possible occupant.  Each possible occupant j has ``exit_confirm`` consecutive accepted fixes
-     after t_lc, on one track, each with its whole region beyond the CR exit face (s - nav error > cr_half_len +
-     R_OUT), the latest one still beyond it when grown by v_bound (t - t_fix); and no rejected fix of j since the
-     first of them that could place it in the CR.
-(A3) at least one possible occupant (an episode none of whose occupants is a drone of the plan is left to the
-     sonar rules).
+(A2) every possible occupant is positively OUTSIDE the CR now: ``exit_confirm`` consecutive accepted fixes after
+     t_lc, on one track, each region clear of the CR (grown by R_OUT and the own gate-frame navigation error) at its
+     own time, the latest still clear when grown by v_bound (t - t_fix); no rejected fix since the first of them that
+     could place it in the CR.
+(A3) at least one possible occupant is positively BEYOND the exit face (the same, with the whole region at s >
+     cr_half_len + R_OUT + nav error): the occupant has left.  An episode none of whose possible occupants is a drone
+     of the plan is left to the sonar rules.
 
 Soundness argument (docs/B2_ACOUSTIC_AIDED_COORDINATION.md, section 4): under the B0 assumption that every
 entry into the CR crosses the FRONT corridor visibly (formal M3/M4), a drone in the CR at t either was in it or
 produced the corridor echo at t_lc, or entered later visibly (a new t_lc).  (A1) leaves every such drone among
 the possible occupants unless its fixes, inside the declared envelope, place it elsewhere; (A2) places every
-possible occupant beyond the CR now.  The argument needs the envelope (config.AcousticConfig) to hold for the
+possible occupant outside the CR now.  The argument needs the envelope (config.AcousticConfig) to hold for the
 accepted fixes: reflected arrivals that pass the kinematic and depth gates twice in a row on the same track are
 the residual risk, quantified in scripts/analyze_b2_channel.py.
 """

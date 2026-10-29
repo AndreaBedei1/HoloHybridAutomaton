@@ -16,7 +16,9 @@ sender is known.  This module turns receptions into FIXES:
 * a fix whose nominal depth lies outside the operating depth band by more than ``depth_tol_m`` is a reflection
   (a surface or bottom bounce arrives from above or below) and is rejected;
 * a track per identity: a fix is ACCEPTED when it is kinematically consistent with the previous accepted fix of
-  that identity (displacement <= v_bound dt + k sqrt(2) sigma_white + ``track_gate_m``).  An inconsistent fix is
+  that identity (displacement <= v_bound dt + k sqrt(2) sigma_white + ``track_gate_m``, and range change <= the
+  sender's motion + the own displacement + k sqrt(2) sigma_range + RANGE_SLACK_M: a reflection is always longer).
+  An inconsistent fix is
   REJECTED but kept (the gate uses the white part of the errors only: the biases are common to two fixes); it is contradictory evidence, and whatever a rejected fix could mean is never ignored by a
   decision that relies on the identity's absence (gate_perception).  Two mutually consistent rejected fixes, while
   the track has had no accepted fix for ``REINIT_S``, start a new track (a new track id: whatever was established
@@ -40,6 +42,7 @@ from holo_fleet.perception.exit_witness import speed_bound
 _N = 7                 # samples per axis of the error box
 REINIT_S = 3.0         # a track with no accepted fix for this long may be restarted by consistent rejected fixes
 _KEEP_S = 30.0         # fixes older than this are forgotten
+RANGE_SLACK_M = 0.15   # range-continuity slack: the diffracted excess of a shadowed path (sim H4) and quantisation
 
 
 def _rot(yaw: float) -> np.ndarray:
@@ -167,10 +170,16 @@ class AcousticTracker:
         (<= v_bound dt) plus the white part of the errors, k sqrt(2) sigma_w(r), sigma_w the white position std."""
         a = self.cfg.acoustic
         r = max(f.r, g.r)
+        dt = abs(f.t - g.t)
         sw = math.sqrt(a.sigma_range_m ** 2 + (r * math.radians(a.sigma_az_deg)) ** 2
                        + (r * math.radians(a.sigma_el_deg)) ** 2)
-        return float(np.linalg.norm(f.p - g.p)) <= (self.v_bound * abs(f.t - g.t) + a.k_sigma * math.sqrt(2.0) * sw
-                                                    + a.track_gate_m)
+        if float(np.linalg.norm(f.p - g.p)) > self.v_bound * dt + a.k_sigma * math.sqrt(2.0) * sw + a.track_gate_m:
+            return False
+        # range continuity: the sharpest test against a reflected arrival, whose range is always LONGER than the
+        # direct path's (H4).  The range changes by at most the sender's motion plus the own displacement (from the
+        # pose history) plus the white range noise of two fixes
+        own = float(np.linalg.norm((f.p - f.rel) - (g.p - g.rel)))
+        return abs(f.r - g.r) <= self.v_bound * dt + own + a.k_sigma * math.sqrt(2.0) * a.sigma_range_m + RANGE_SLACK_M
 
     def _gate(self, f: Fix) -> None:
         lst = self.fixes.get(f.slot, [])

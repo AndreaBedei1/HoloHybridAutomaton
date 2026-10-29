@@ -165,6 +165,24 @@ def analyze_run(run_dir: Path, reference: Optional[Dict] = None, cfg=DEFAULT) ->
                 in_cr = any(inside[i, j] for j in others)
                 false_busy += int(occ not in (None, "FREE") and not near)
                 false_free += int(occ == "FREE" and in_cr)
+        # releases of the latch (BUSY -> EXITING on a witness, -> FREE on the t_occ_max fallback) while another drone
+        # is truly in the CR: false releases, by kind of evidence (SONAR, ACOUSTIC = variant B2, TIMEOUT)
+        rel = {"releases": {"SONAR": 0, "ACOUSTIC": 0, "TIMEOUT": 0}, "false": {"SONAR": 0, "ACOUSTIC": 0, "TIMEOUT": 0}}
+        for k in healthy:
+            others = [j for j in range(n) if j != k]
+            prev = None
+            for i in range(m):
+                gs = states[k][i].get("gate") or {}
+                occ = gs.get("occ")
+                if prev == "BUSY" and occ in ("EXITING", "FREE"):
+                    w = gs.get("exit_witness") or {}
+                    kind = "TIMEOUT" if occ == "FREE" else ("ACOUSTIC" if w.get("sector") == "ACOUSTIC" else "SONAR")
+                    rel["releases"][kind] += 1
+                    rel["false"][kind] += int(any(inside[i, j] for j in others))
+                prev = occ
+        p2o["latch_releases"] = rel["releases"]
+        p2o["false_releases"] = rel["false"]
+        p2o["false_release_total"] = sum(rel["false"].values())
         p2o.update({"max_occupancy": max(p2["max_occupancy"].values(), default=0), "entry_order": p2["entry_order"],
                     "passed": sorted(passed_t), "completed": all(names[k] in passed_t for k in healthy),
                     "completion_time_s": round(max(passed_t.values()), 1) if passed_t and len(passed_t) == len(healthy) else None,

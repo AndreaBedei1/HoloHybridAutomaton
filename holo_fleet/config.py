@@ -326,7 +326,8 @@ class AcousticConfig:
     latency_max_s: float = 0.40          # a delivery later than this after its arrival is not used
     nav_err_gate_m: float = 1.0          # own position error in the gate frame (a queued drone, bounded by aiding)
     track_gate_m: float = 0.5            # extra slack of the kinematic consistency gate of a track
-    exit_confirm: int = 2                # consecutive accepted fixes beyond the CR for an acoustic exit
+    exit_confirm: int = 3                # consecutive accepted fixes (outside / beyond the CR) for an acoustic exit;
+                                         # 3 not 2: scripts/analyze_b2_channel.py, persistent reflections (results/b2)
     tie_window_s: float = 3.0            # fixes this close to the last corridor sighting account for a drone
     fresh_s: float = 2.5                 # a fix this recent counts for the neighbours (formation)
     depth_tol_m: float = 1.5             # a fix this far outside the operating depth band is a reflection
