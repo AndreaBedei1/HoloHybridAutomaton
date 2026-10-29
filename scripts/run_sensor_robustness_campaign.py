@@ -240,9 +240,12 @@ def holodeck_pids():
     import psutil
 
     out = {}
-    for p in psutil.process_iter(["pid", "ppid", "name"]):
+    for p in psutil.process_iter(["name"]):        # the name first: ppid of every process is slow on Windows
         if str(p.info.get("name") or "").lower() == "holodeck.exe":
-            out[p.info["pid"]] = p.info.get("ppid")
+            try:
+                out[p.pid] = p.ppid()
+            except Exception:  # noqa: BLE001 - gone meanwhile
+                pass
     return out
 
 
