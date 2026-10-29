@@ -5,9 +5,12 @@ UNKNOWN) with its age and a filtered closing rate; echoes of adjacent sectors at
 are associated into one *target* whose sector pattern P (e.g. FRONT+LEFT) narrows its direction
 to ``sonar_geometry.regions()[P]``.
 
-Conservative distance: ``sonar_geometry.centre_distance_lower`` lower-bounds the true centre
-distance from the echo range, the mounting and the hull geometry; the guards also subtract
-c_max * age, so a stale reading can only make the drone more cautious.
+Conservative distance: perception/distance_bound.py lower-bounds the centre distance of every object from the nearest
+obstacle echo of each sector, whatever the grouping of the echoes into targets (two drones merged into one target
+are bounded like any other scene); a target is given the bound of the candidate touch sets that include one of its
+sectors, so the smallest target bound is the bound of the nearest object.  The staleness allowance c_max * age
+makes a stale reading only more cautious.  With an unhealthy sector the per-sector bound B is used (no region
+knowledge).
 """
 
 from __future__ import annotations
@@ -18,7 +21,8 @@ from typing import Dict, FrozenSet, List, Optional
 import numpy as np
 
 from holo_fleet.config import DEFAULT, FleetConfig
-from holo_fleet.perception.sonar_geometry import MIRROR, SECTORS, target_distance_lower
+from holo_fleet.perception.distance_bound import conservative_bound, sectors_bound, touch_set_bounds
+from holo_fleet.perception.sonar_geometry import MIRROR, SECTORS
 from holo_fleet.perception.sonar_processing import DYNAMIC, OBSTACLE_CLASSES, SectorReading
 
 ADJACENT = {s: frozenset(x for x in SECTORS if x != s and x != MIRROR[s]) for s in SECTORS}
@@ -90,6 +94,16 @@ def build_targets(t: float, readings: Dict[str, SectorReading], tracks: Dict[str
         if rd.blind_from is not None and rd.healthy and rd.blind_from <= blind_relevant_m:
             echoes.append((s, rd.blind_from, "UNKNOWN", rd.age))
     echoes.sort(key=lambda x: x[1])
+    # nearest obstacle echo and reading age per sector: the input of the association-free distance bound
+    nearest: Dict[str, float] = {}
+    ages: Dict[str, float] = {}
+    for s, r, _c, age in echoes:
+        if s not in nearest:
+            nearest[s], ages[s] = r, age
+    healthy = all(rd.healthy for rd in readings.values() if rd is not None)
+    vc = cfg.perc.v_close_staleness
+    bounds = touch_set_bounds(nearest, ages, env.eps_range_far, vc, cfg.perc.sonar) if healthy else {}
+    fallback = conservative_bound(nearest, ages, env.eps_range_far, vc, cfg.perc.sonar)
     targets: List[Target] = []
     used = [False] * len(echoes)
     for i, (s, r, cls, age) in enumerate(echoes):
@@ -104,9 +118,8 @@ def build_targets(t: float, readings: Dict[str, SectorReading], tracks: Dict[str
             if all(s2 in ADJACENT[m] for m in members):
                 members[s2] = (r2, c2, a2)
                 used[j] = True
-        d_lower = (target_distance_lower({sec: rr for sec, (rr, _c, _a) in members.items()}, env.eps_range_far,
-                                         cfg.perc.sonar)
-                   - cfg.perc.v_close_staleness * max(aa for (_r, _c, aa) in members.values()))
+        d_lower = sectors_bound(members, bounds) if healthy else None
+        d_lower = fallback if d_lower is None else d_lower
         rates = [tracks[sec].rate for sec in members if tracks.get(sec) is not None]
         closing = max([-x for x in rates] + [0.0])
         targets.append(Target(pattern=frozenset(members), r_min=min(v[0] for v in members.values()),

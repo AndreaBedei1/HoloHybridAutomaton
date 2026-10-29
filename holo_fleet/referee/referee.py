@@ -76,6 +76,7 @@ class Referee:
         self.max_drift = 0.0
         self.max_vertical_drift = 0.0
         self.max_speed = 0.0
+        self.max_rel_tilt = 0.0                    # largest angle between the z axes of two hulls [deg]
         self.rows: List[Dict] = []
         self.intruder_min_d = 1e9                  # fleet drone <-> scripted non-fleet vehicle
         self.intruder_min_t: Optional[float] = None
@@ -237,6 +238,11 @@ class Referee:
         self.max_drift = max(self.max_drift, float(np.max(np.linalg.norm(drift[:, :2], axis=1))))
         self.max_vertical_drift = max(self.max_vertical_drift, float(np.max(np.abs(drift[:, 2]))))
         self.max_speed = max(self.max_speed, float(np.max(np.linalg.norm(truth.velocities, axis=1))))
+        rot = getattr(truth, "rotations", None)                    # hull-tilt assumption of perception/distance_bound.py
+        Rz = np.zeros((0, 3)) if rot is None else np.asarray(rot, float)[:, :, 2]   # body z axes in the world frame
+        if len(Rz) > 1:
+            c = np.clip(Rz @ Rz.T, -1.0, 1.0)
+            self.max_rel_tilt = max(self.max_rel_tilt, float(np.degrees(np.arccos(c.min()))))
         row["max_drift"] = round(float(np.max(np.linalg.norm(drift, axis=1))), 3)
         for k in range(self.n):
             row[f"x{k}"], row[f"y{k}"], row[f"z{k}"] = (round(float(v), 3) for v in P[k])
@@ -312,5 +318,6 @@ class Referee:
             # DI-27) needs the controllers' logs and is added by referee/envelope.evaluate_run at the end of a run
             "envelope": {"max_horizontal_drift": round(self.max_drift, 3),
                          "max_vertical_drift": round(self.max_vertical_drift, 3)},
-            "kinematics": {"max_true_speed_m_s": round(self.max_speed, 3)},
+            "kinematics": {"max_true_speed_m_s": round(self.max_speed, 3),
+                           "max_relative_tilt_deg": round(self.max_rel_tilt, 2)},
         }
