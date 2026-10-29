@@ -376,6 +376,33 @@ def config_hash(d: Path) -> Optional[str]:
     return hashlib.sha256(blob.encode("utf-8")).hexdigest()
 
 
+def claim(d: Path) -> Optional[Path]:
+    """Exclusive claim of a run directory (``<run>.lock`` next to it, created atomically with the orchestrator pid);
+    None if a live orchestrator holds it.  A stale claim (its process is gone) is taken over."""
+    import psutil
+
+    d.parent.mkdir(parents=True, exist_ok=True)
+    lock = d.parent / f"{d.name}.lock"
+    for _ in range(2):
+        try:
+            fd = os.open(str(lock), os.O_CREAT | os.O_EXCL | os.O_WRONLY)
+            os.write(fd, str(os.getpid()).encode())
+            os.close(fd)
+            return lock
+        except FileExistsError:
+            try:
+                pid = int(lock.read_text().strip() or "0")
+            except (OSError, ValueError):
+                pid = 0
+            if pid and pid != os.getpid() and psutil.pid_exists(pid):
+                return None
+            try:
+                lock.unlink()
+            except OSError:
+                return None
+    return None
+
+
 def pending(raw: Path, runs) -> list:
     """Runs still to do: no run_metrics.json yet, or an INVALID one (infrastructure: engine start, killed worker,
     missing logs...), which is tried again.  COMPLETE runs, scientific failures included, are kept as they are."""
@@ -462,7 +489,10 @@ def main() -> int:
     todo = pending(raw, runs)
     print(f"phase {args.phase}: {len(runs)} runs, {len(runs) - len(todo)} done, {len(todo)} to do", flush=True)
     if args.nshards > 1:
-        todo = todo[args.shard::args.nshards]
+        # slice the PLAN, not what is still pending: orchestrators started at different times then still own disjoint
+        # runs (slicing the pending list made two shards run the same run into the same directory)
+        mine = set(runs[args.shard::args.nshards])
+        todo = [r for r in todo if r in mine]
         print(f"shard {args.shard}/{args.nshards}: {len(todo)} runs", flush=True)
     if args.dry_run:
         for r in todo:
@@ -489,6 +519,10 @@ def main() -> int:
         if args.max_runs and done >= args.max_runs:
             break
         d = run_dir(raw, protocol, prof, sc, seed)
+        lock = claim(d)
+        if lock is None:
+            say(f"{time.strftime('%H:%M:%S')} {protocol} {prof} {sc} s{seed}: claimed by another orchestrator, skipped")
+            continue
         if sc not in refs:
             refs[sc] = load_reference(DEMOS / sc)
         dur = SCENARIOS[sc](__import__("holo_fleet.config", fromlist=["DEFAULT"]).DEFAULT).duration_s
@@ -534,6 +568,10 @@ def main() -> int:
                 shutil.move(str(wl_path), str(d / "worker.log"))
             except OSError:                               # still held by a dying process: copy it, leave the original
                 shutil.copy(str(wl_path), str(d / "worker.log"))
+        try:
+            lock.unlink()                                 # the run is finished (its run_metrics.json is written)
+        except OSError:
+            pass
         done += 1
         line = (f"{time.strftime('%H:%M:%S')} {protocol} {prof:22s} {sc:32s} s{seed} {res['class']:16s} "
                 f"P1 {res.get('P1', {}).get('min_true_separation_m')} fail {res.get('failed_requirements')} "
