@@ -30,9 +30,10 @@ Variant B2 (range-bearing beacon, perception/acoustic.py).  Identified fixes ent
 ``d_min``, ``sense_ok`` or ``has_prio``:
 * gate: a second way to an exit witness of the CR latch (perception/acoustic_gate.py);
 * association: a sonar echo is associated with a neighbour where its fix places it (formation_perception);
-* presence (rule A-P): a fresh accepted fix within ``e_lost`` of the neighbour's expected position counts as a
-  sighting for the NEIGHBOUR_MEMORY_S timer (a drone occluded for the sonar but heard where it should be is not
-  missing); it never confirms a MISSING neighbour back (only the sonar confirmation does) and never clears a
+* presence (rule A-P): while the latest accepted fix is fresh (``acoustic.fresh_s``: one lost ping plus the
+  latency) and within ``e_lost`` of the neighbour's expected position, the neighbour counts as sighted now for the
+  NEIGHBOUR_MEMORY_S timer (a drone occluded for the sonar but heard where it should be is not missing); it never
+  confirms a MISSING neighbour back (only the sonar confirmation does) and never clears a
   vacancy;
 * displacement (rule A-D): ``A_CONFIRM`` consecutive accepted fixes whose whole error region lies farther than
   ``e_lost`` + ``A_DISPLACED_MARGIN`` from the neighbour's expected position declare it MISSING at once (and
@@ -238,7 +239,7 @@ class Perception:
             exp = d_world + np.asarray(slot_err, float)          # where k should be, relative to me
             if float(np.linalg.norm(f.rel - exp)) <= fr.e_lost:
                 self.acoustic_present.append(k)
-                self.neighbour_seen[k] = max(self.neighbour_seen.get(k, -1e9), f.t)
+                self.neighbour_seen[k] = t                       # sighted while the fix is fresh (rule A-P)
             acc = [g for g in self.acoustic.all_fixes(k, t - a.fresh_s, t) if g.accepted][-A_CONFIRM:]
             if (len(acc) == A_CONFIRM and len({g.track for g in acc}) == 1
                     and all(float(np.linalg.norm(g.rel - exp)) - g.extent > fr.e_lost + A_DISPLACED_MARGIN for g in acc)):

@@ -123,7 +123,9 @@ def check_formation(plan: MissionPlan, cfg: FleetConfig, slot_err: np.ndarray, R
     B2 only: ``acoustic`` maps a slot to the relative position of its drone from a fresh accepted acoustic fix
     (map-frame axes).  For those neighbours an echo is associated where the IDENTIFIED drone is (sector pattern
     compatible with the fix direction, range within the range gate of the fix distance) instead of where the
-    template expects it; the residual stays the one against the template (it is the formation error)."""
+    template expects it, and only when that echo also lies within the range gate of the template distance, as in B0
+    (the fix chooses WHICH echo is the neighbour, never makes a drone far from its slot count as seen there); the
+    residual stays the one against the template (it is the formation error)."""
     fr = cfg.form
     o = FormationObs(slot_err=slot_err, slot_err_norm=float(np.linalg.norm(slot_err)))
     t_hat, n_hat = R_formation[:, 0], R_formation[:, 1]
@@ -160,7 +162,9 @@ def check_formation(plan: MissionPlan, cfg: FleetConfig, slot_err: np.ndarray, R
                 d_m = estimate_centre_distance(tg.ranges.get(sec, tg.r_min), sec, u_a)
                 if abs(d_m - d_a) <= 3.0:
                     tg.possible_neighbour = True
-                if abs(d_m - d_a) <= fr.range_gate_m:
+                # B2: near the fix AND, as in B0, within the range gate of the slot (a drone heard far from its
+                # slot is not seen at it: no formation residual from it, the missing / vacancy path as in B0)
+                if abs(d_m - d_a) <= fr.range_gate_m and abs(d_m - dist) <= fr.range_gate_m:
                     cands.append((abs(d_m - d_a), i, j, sec, d_m))
     used_n, used_ts = set(), set()
     for _r, i, j, sec, d_m in sorted(cands):

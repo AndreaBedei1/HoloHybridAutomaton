@@ -380,6 +380,13 @@ def test_heard_where_expected_a_sonar_occluded_neighbour_is_not_missing():
     assert b2 == {}                                                    # rule A-P: present by its fixes
 
 
+def test_one_lost_ping_does_not_make_a_heard_neighbour_missing():
+    # pings every 1 s, the one of t = 3 s lost: the latest fix stays fresh (fresh_s) and near its slot
+    lossy = lambda t: (1, 2, 3) if abs(t - round(t)) < 1e-6 and round(t) != 3 else ()
+    _c, b2, _ = _run_form(B2, lossy)
+    assert b2 == {}
+
+
 def test_a_silent_channel_is_the_baseline():
     assert _run_form(B2, lambda t: ())[1] == _run_form(DEFAULT, lambda t: ())[1]
 
@@ -405,6 +412,39 @@ def test_the_along_track_offset_of_a_neighbour_feeds_the_progress_consensus():
     assert c.flows.sigma > 0.0                                         # my reference moves ahead
     c0, _f, _r = _run_form(DEFAULT, _every(1.0), offset=off, steps=30)
     assert c0.flows.sigma == 0.0                                       # B0: nothing seen, nothing corrected
+
+
+def _square_rear():
+    """Square, front-left drone (slot 0): its rear neighbour, 3.5 m straight behind, and the REAR echo of a drone."""
+    from holo_fleet.perception.formation_perception import check_formation
+    from holo_fleet.formations import TEMPLATES
+    plan = MissionPlan(drone_id="drone_0", slot_index=0, slots=list(TEMPLATES["square"].slots),
+                       path=Path(np.array([[0, 0], [50.0, 0]]), -5), gates=[], structures=[],
+                       launch_position=np.zeros(3), launch_yaw_deg=0.0, static_rank=0, s_end=40)
+    rear = next(k for k, d in expected_relative(plan, np.eye(3)).items() if d[0] < -1.0 and abs(d[1]) < 0.5)
+    healthy = {s: True for s in SECTORS}
+    echo = lambda d: Target(pattern=frozenset({"REAR"}), r_min=d - 0.48, d_lower=d - 0.48, age=0.0, closing_rate=0.0,
+                            cls="DYNAMIC", ranges={"REAR": d - 0.48})
+    return plan, rear, healthy, echo, check_formation
+
+
+def test_an_identified_neighbour_far_from_its_slot_is_not_seen_at_it():
+    plan, rear, healthy, echo, check_formation = _square_rear()
+    far = np.array([-8.5, 0.0, 0.0])                                   # 5 m behind its slot, heard there
+    b0 = check_formation(plan, DEFAULT, np.zeros(3), np.eye(3), np.eye(3), [echo(8.5)], healthy)
+    b2 = check_formation(plan, B2, np.zeros(3), np.eye(3), np.eye(3), [echo(8.5)], healthy, acoustic={rear: far})
+    c0, c2 = (next(c for c in o.checks if c.slot == rear) for o in (b0, b2))
+    assert not c0.seen and not c2.seen                                 # outside the range gate of its slot: not there
+    assert b2.form_err == pytest.approx(b0.form_err)                   # no formation residual from a displaced drone
+
+
+def test_the_fix_picks_the_identified_echo_inside_the_slot_gate():
+    plan, rear, healthy, echo, check_formation = _square_rear()
+    near = np.array([-4.3, 0.0, 0.0])                                  # 0.8 m behind its slot, heard there
+    o = check_formation(plan, B2, np.zeros(3), np.eye(3), np.eye(3), [echo(3.5), echo(4.3)], healthy,
+                        acoustic={rear: near})
+    c = next(c for c in o.checks if c.slot == rear)
+    assert c.seen and c.measured_d == pytest.approx(4.3, abs=0.1)      # the identified drone, not the nearer echo
 
 
 def test_blocked_geometry_uses_the_map_bars_and_hulls():
