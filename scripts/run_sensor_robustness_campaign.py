@@ -265,9 +265,10 @@ def reap(worker_pid: int, before: dict) -> list:
     return killed
 
 
-def be_nice() -> None:
+def be_nice(cpus=None) -> None:
     """Shared machine: the campaign and every process it starts (they inherit it) yield CPU and disk to other
-    work: below-normal priority class and low I/O priority on Windows, nice 10 elsewhere."""
+    work: below-normal priority class and low I/O priority on Windows, nice 10 elsewhere; with ``cpus`` the
+    orchestrator (and so its workers and engines) is also kept on those logical cores."""
     import psutil
 
     try:
@@ -275,8 +276,21 @@ def be_nice() -> None:
         me.nice(psutil.BELOW_NORMAL_PRIORITY_CLASS if os.name == "nt" else 10)
         if os.name == "nt":
             me.ionice(psutil.IOPRIO_LOW)
+        if cpus:
+            me.cpu_affinity(list(cpus))
     except Exception:  # noqa: BLE001 - courtesy only
         pass
+
+
+def parse_cpus(text):
+    """'0-19' or '0,2,4-7' -> sorted list of logical cores (None when empty)."""
+    if not text:
+        return None
+    out = set()
+    for part in text.split(","):
+        a, _, b = part.partition("-")
+        out.update(range(int(a), int(b or a) + 1))
+    return sorted(out)
 
 
 def lower_children(worker_pid: int) -> None:
@@ -422,6 +436,11 @@ def main() -> int:
     ap.add_argument("--all-high", action="store_true")
     ap.add_argument("--dry-run", action="store_true")
     ap.add_argument("--max-runs", type=int, default=0)
+    # parallel campaign: N orchestrators on disjoint slices of the same pending list, one engine each (HoloOcean's
+    # client / engine channel is shared memory + semaphores scoped by a per-instance UUID: instances cannot cross)
+    ap.add_argument("--shard", type=int, default=0)
+    ap.add_argument("--nshards", type=int, default=1)
+    ap.add_argument("--cpus", default="", help="logical cores for this orchestrator and its children, e.g. 0-19")
     ap.add_argument("--retries", type=int, default=1)
     # shared-machine courtesy (other heavy jobs have priority): see be_nice / wait_for_room / watch
     ap.add_argument("--min-free-ram-gb", type=float, default=8.0)
@@ -456,12 +475,15 @@ def main() -> int:
         runs = [r for r in runs if r[1] in args.profiles]
     todo = pending(raw, runs)
     print(f"phase {args.phase}: {len(runs)} runs, {len(runs) - len(todo)} done, {len(todo)} to do", flush=True)
+    if args.nshards > 1:
+        todo = todo[args.shard::args.nshards]
+        print(f"shard {args.shard}/{args.nshards}: {len(todo)} runs", flush=True)
     if args.dry_run:
         for r in todo:
             print(" ", *r)
         return 0
     raw.mkdir(parents=True, exist_ok=True)
-    be_nice()
+    be_nice(parse_cpus(args.cpus))
     log = open(raw / "campaign_log.txt", "a", encoding="utf-8")
 
     def say(msg: str) -> None:
@@ -472,7 +494,7 @@ def main() -> int:
     refs = {}
     done = 0
     version = code_version()
-    say(f"{time.strftime('%H:%M:%S')} phase {args.phase} start: orchestrator pid {os.getpid()}, code {version}")
+    say(f"{time.strftime('%H:%M:%S')} phase {args.phase} start: orchestrator pid {os.getpid()}, shard {args.shard}/{args.nshards}, code {version}")
     for (protocol, prof, sc, seed) in todo:
         if args.max_runs and done >= args.max_runs:
             break
@@ -506,7 +528,7 @@ def main() -> int:
             res.update({"protocol": protocol, "profile": prof, "scenario": sc, "seed": seed, "exit_code": code,
                         "wall_s": wall, "attempt": attempt, "reaped_holodeck": killed, "host_load_at_start": host,
                         "code_version": version,
-                        "process": {"orchestrator_pid": os.getpid(), "worker_pid": proc.pid,
+                        "process": {"orchestrator_pid": os.getpid(), "shard": [args.shard, args.nshards], "worker_pid": proc.pid,
                                     "holodeck_pids": sorted(seen.get("holodeck_pids", ())),
                                     "engine_listen_ports": sorted(seen.get("listen_ports", ())),
                                     "start_time": time.strftime("%Y-%m-%dT%H:%M:%S", time.localtime(t0))},
