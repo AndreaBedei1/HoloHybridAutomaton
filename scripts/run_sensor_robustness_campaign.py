@@ -168,22 +168,22 @@ def plan(phase: str, seeds, only=None, all_high=False):
 
 
 def final_matrix(seeds, only=None) -> list:
-    """B0 vs B2 on the same scenarios and seeds (docs/B2_ACOUSTIC_AIDED_COORDINATION.md, section 6):
-    * sensors CLEAN / LOW-{ONE,SUBSET,ALL} / MEDIUM-{ONE,SUBSET,ALL}, B0 and B2 with the channel at the sensors' level
-      (CLEAN with CLEAN, LOW with LOW, MEDIUM with MEDIUM);
-    * the channel alone: sensors CLEAN with the channel LOW, MEDIUM and BLACKOUT;
-    * channel BLACKOUT with MEDIUM-ALL sensors (B2 must fall back to B0)."""
-    from holo_fleet.sim.sensor_noise import SCOPES
-
+    """B0 vs B2 on the same scenarios and seeds (docs/B2_ACOUSTIC_AIDED_COORDINATION.md, section 7), reduced matrix
+    fixed before any B2 run with degraded sensors or channel:
+    * sensors CLEAN, LOW-ALL and MEDIUM-{ONE,SUBSET,ALL}: B0, and B2 with the channel at the sensors' level (LOW-ONE
+      and LOW-SUBSET are dropped: LOW-ALL is the most degraded LOW case and the LOW scopes are characterised for B0
+      in the sensor-robustness campaign);
+    * the channel alone: sensors CLEAN with the channel MEDIUM and BLACKOUT (LOW lies between CLEAN and MEDIUM);
+    * channel BLACKOUT with MEDIUM-ALL sensors (B2 must fall back to B0).
+    Runs of the b2_gate and b2_formation phases in the same raw root are reused (same code, same cells)."""
     scen = tuple(only) if only else FINAL_SCENARIOS
     runs = []
     for sc in scen:                                 # CLEAN first: B0 CLEAN fixes the deadline of every degraded run
         runs += [(proto, "CLEAN", sc, s) for proto in ("B0", "B2_CLEAN") for s in seeds]
     for sc in scen:
-        for prof in ("LOW", "MEDIUM"):
-            for scope in SCOPES:
-                runs += [(proto, f"{prof}-{scope}", sc, s) for proto in ("B0", f"B2_{prof}") for s in seeds]
-        runs += [(f"B2_{ch}", "CLEAN", sc, s) for ch in ("LOW", "MEDIUM", "BLACKOUT") for s in seeds]
+        for prof, lvl in (("LOW-ALL", "LOW"), ("MEDIUM-ONE", "MEDIUM"), ("MEDIUM-SUBSET", "MEDIUM"), ("MEDIUM-ALL", "MEDIUM")):
+            runs += [(proto, prof, sc, s) for proto in ("B0", f"B2_{lvl}") for s in seeds]
+        runs += [(f"B2_{ch}", "CLEAN", sc, s) for ch in ("MEDIUM", "BLACKOUT") for s in seeds]
         runs += [("B2_BLACKOUT", "MEDIUM-ALL", sc, s) for s in seeds]
     return runs
 

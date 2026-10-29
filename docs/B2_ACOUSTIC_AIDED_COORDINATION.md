@@ -124,9 +124,16 @@ Without receptions (BLACKOUT) every rule is inactive and the perception is the B
 
 ## 7. Experimental matrix (`scripts/run_sensor_robustness_campaign.py --phase b2_final`)
 
-Same scenarios and seeds (0, 1, 2) for B0 and B2; protocol label `B2_<channel level>`:
+Same scenarios (`FINAL_SCENARIOS`: the five gate scenarios, the formation scenarios and the two P1 scenarios) and
+seeds (0, 1, 2) for B0 and B2; protocol label `B2_<channel level>`.  The matrix below was fixed after the CLEAN gate
+phase and before any B2 run with degraded sensors or channel (429 runs):
 
-* sensors CLEAN, LOW-{ONE, SUBSET, ALL}, MEDIUM-{ONE, SUBSET, ALL}: B0, and B2 with the channel at the sensors' level;
-* the channel alone: sensors CLEAN, channel LOW, MEDIUM, BLACKOUT;
-* channel BLACKOUT with sensors MEDIUM-ALL (B2 must fall back to B0);
+* sensors CLEAN, LOW-ALL, MEDIUM-ONE, MEDIUM-SUBSET, MEDIUM-ALL: B0, and B2 with the channel at the sensors' level;
+  LOW-ONE and LOW-SUBSET are left out (LOW-ALL is the most degraded LOW case; the LOW scopes are characterised for
+  B0 in `SENSOR_ROBUSTNESS_AND_BEACONING.md`);
+* the channel alone: sensors CLEAN with the channel MEDIUM and BLACKOUT (LOW lies between CLEAN and MEDIUM);
+* channel BLACKOUT with MEDIUM-ALL sensors (B2 must fall back to B0);
 * one deadline for both protocols: from the B0 CLEAN runs (referee/terminal.py).
+
+Phases before it, in the same raw root and reused by it: `b2_gate` (five gate scenarios, CLEAN, B0 and B2_CLEAN)
+and `b2_formation` (formation scenarios, CLEAN and MEDIUM-ALL, B0 and B2).
