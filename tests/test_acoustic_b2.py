@@ -405,3 +405,19 @@ def test_the_along_track_offset_of_a_neighbour_feeds_the_progress_consensus():
     assert c.flows.sigma > 0.0                                         # my reference moves ahead
     c0, _f, _r = _run_form(DEFAULT, _every(1.0), offset=off, steps=30)
     assert c0.flows.sigma == 0.0                                       # B0: nothing seen, nothing corrected
+
+
+def test_blocked_geometry_uses_the_map_bars_and_hulls():
+    """The transport's shadow test runs on the scene the simulator hands it (map bars: centre / axes / half)."""
+    from holo_fleet.sim.beacon import BeaconTransport
+
+    tr = BeaconTransport(["a", "b", "c"], B2.beacon, seed=0)
+    bars = list(G06.bars)
+    a, b = gate_world(-3.0, 1.1), gate_world(3.0, 1.1)            # a ray through the left side bar
+    tr.scene = lambda: (np.array([a, b, gate_world(-8.0, 6.0)]), np.zeros(3), bars)
+    geom, shadow = tr._blocked_geometry(0, 1)
+    assert shadow and geom[2] == pytest.approx(float(np.linalg.norm(a - b)))
+    tr.scene = lambda: (np.array([a, b, (a + b) / 2.0]), np.zeros(3), [])   # a hull halfway
+    assert tr._blocked_geometry(0, 1)[1]
+    tr.scene = lambda: (np.array([a, b, gate_world(-8.0, 6.0)]), np.zeros(3), [])
+    assert not tr._blocked_geometry(0, 1)[1]

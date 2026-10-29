@@ -198,7 +198,7 @@ class HoloFleetSim:
         self.t = 0.0
 
     def _spawn_static_scene(self) -> None:
-        from holo_fleet.arena_bridge import HORSESHOE_TRACK, make_spawner, visual_gates
+        from holo_fleet.arena_bridge import HORSESHOE_TRACK, load_arena_gates, make_spawner, visual_gates
 
         t0 = time.time()
         bars = []
@@ -207,7 +207,9 @@ class HoloFleetSim:
             spawner = make_spawner(self.env)
             spawner.spawn_gate_bars(bars)
             self.setup_report["gate_spawn"] = getattr(spawner.report, "__dict__", {})
-        self.scene_bars = bars
+        # the same bars as the map's oriented boxes (centre, axes, half extents: arena_bridge, one geometry)
+        self.scene_bars = ([b for g in load_arena_gates(HORSESHOE_TRACK, list(self.spec.gate_ids)) for b in g.bars]
+                           if self.spec.gate_ids else [])
         for prop in getattr(self.spec, "props", ()) or ():
             self.env.spawn_prop(prop.get("type", "box"), location=list(prop["location"]),
                                 rotation=list(prop.get("rotation", (0, 0, 0))), scale=prop.get("scale", 1.0),
