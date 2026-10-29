@@ -17,14 +17,17 @@ which a hull in or at the CR was seen; since then the corridor has been empty):
      (contradictory) fix of j in that window that could - or a POSSIBLE OCCUPANT.  A drone without fixes is a
      possible occupant (absence is no evidence).
 (A2) every possible occupant is positively OUTSIDE the CR now: ``exit_confirm`` consecutive accepted fixes after
-     t_lc, on one track, each region clear of the CR (grown by R_OUT and the own gate-frame navigation error) at its
-     own time, the latest still clear when grown by v_bound (t - t_fix); no rejected fix since the first of them that
-     could place it in the CR.
-(A3) at least one possible occupant is positively BEYOND the exit face (the same, with the whole region at s >
-     cr_half_len + R_OUT + nav error): the occupant has left.  An episode none of whose possible occupants is a drone
-     of the plan is left to the sonar rules.
+     t_lc, on one track, each clear of the CR (grown by R_OUT and the own gate-frame navigation error) at its own
+     time, the latest still clear when grown by v_bound (t - t_fix); no rejected fix since the first of them that
+     could place it in the CR.  A fix is clear of the CR when its whole region is, or - whatever its direction - when
+     its smallest possible true range (measured range minus the range envelope and the one-sided multipath excess)
+     exceeds the largest distance from the own position to the grown CR: a drone heard far enough away cannot be in
+     it, and the direction of arrival, the least precise part of a fix at these ranges, is not needed.
+(A3) progress, not safety: at least one possible occupant was heard beyond the exit face (the nominal positions of
+     those fixes at s > cr_half_len + R_OUT): the occupant has passed, not backed out.  An episode none of whose
+     possible occupants is a drone of the plan is left to the sonar rules.
 
-Soundness argument (docs/B2_ACOUSTIC_AIDED_COORDINATION.md, section 4): under the B0 assumption that every
+Soundness argument (mutual exclusion rests on A1 and A2 only): under the B0 assumption that every
 entry into the CR crosses the FRONT corridor visibly (formal M3/M4), a drone in the CR at t either was in it or
 produced the corridor echo at t_lc, or entered later visibly (a new t_lc).  (A1) leaves every such drone among
 the possible occupants unless its fixes, inside the declared envelope, place it elsewhere; (A2) places every
@@ -41,7 +44,7 @@ from typing import Dict, List, Optional, Sequence
 import numpy as np
 
 from holo_fleet.config import DEFAULT, FleetConfig
-from holo_fleet.perception.acoustic import AcousticTracker, Fix
+from holo_fleet.perception.acoustic import AcousticTracker, Fix, box_bounds
 from holo_fleet.perception.exit_witness import speed_bound
 from holo_fleet.perception.sonar_geometry import AXES, MOUNTS, NEAR_FIELD_WIDEN_M, R_OUT
 
@@ -106,6 +109,21 @@ class AcousticExit:
         rho = self.v_bound * abs(f.t - t_lc) + f.slack
         return self._cr_possible(q, rho) or self._echo_possible(q, rho)
 
+    def clear_by_range(self, g, f: Fix, t: float) -> bool:
+        """The drone of fix f cannot be in the CR (grown by R_OUT) at t, from the range alone: its smallest possible
+        true range, less its motion since the fix, exceeds the largest distance from the own position (at the fix
+        time, within the own gate-frame navigation error) to the grown CR."""
+        a = self.cfg.acoustic
+        r_lo = f.r - box_bounds(f.r, self.cfg)[0] - a.los_excess_max_m - self.v_bound * max(t - f.t, 0.0)
+        own = gate_points(g, (f.p - f.rel)[None, :])[0]
+        corners = (self.half + R_OUT) * np.array([[x, y, z] for x in (-1, 1) for y in (-1, 1) for z in (-1, 1)])
+        return r_lo > float(np.max(np.linalg.norm(corners - own, axis=1))) + a.nav_err_gate_m
+
+    def clear_of_cr(self, g, f: Fix, t: float) -> bool:
+        """A2 for one fix at time t (module docstring): its region, grown by the motion since the fix, or its range."""
+        grow = f.slack + self.v_bound * max(t - f.t, 0.0)
+        return not self._cr_possible(gate_points(g, f.pts), grow) or self.clear_by_range(g, f, t)
+
     def s_lower(self, g, f: Fix, t: float) -> float:
         """Smallest gate-frame s the drone of fix f can have at t (region, slack, own nav error, motion since)."""
         q = gate_points(g, f.pts)
@@ -123,12 +141,11 @@ class AcousticExit:
         tail = acc[-a.exit_confirm:]
         if len({f.track for f in tail}) != 1:
             return None
-        if beyond:
+        if beyond:                                  # A3, progress: heard beyond the exit face (nominal positions)
             s_exit = self.half[0] + R_OUT
-            ok = all(self.s_lower(g, f, f.t) > s_exit for f in tail) and self.s_lower(g, tail[-1], t) > s_exit
-        else:
-            ok = (all(not self._cr_possible(gate_points(g, f.pts), f.slack) for f in tail)
-                  and not self._cr_possible(gate_points(g, tail[-1].pts), tail[-1].slack + self.v_bound * (t - tail[-1].t)))
+            ok = all(float(gate_points(g, f.p[None, :])[0][0]) > s_exit for f in tail)
+        else:                                       # A2, safety: clear of the CR at its time, the latest also now
+            ok = all(self.clear_of_cr(g, f, f.t) for f in tail) and self.clear_of_cr(g, tail[-1], t)
         contra = [f for f in after if not f.accepted and f.t >= tail[0].t
                   and self._cr_possible(gate_points(g, f.pts), f.slack + self.v_bound * max(t - f.t, 0.0))]
         return tail[-1] if ok and not contra else None
@@ -148,9 +165,9 @@ class AcousticExit:
     def evaluate(self, t: float, g) -> Optional[Dict]:
         """The acoustic exit evidence (``{sector: ACOUSTIC, slots, range}``) or None; call with the corridor empty.
 
-        (A1) accounting at t_lc (module docstring); (A2') every possible occupant is positively OUTSIDE the CR now
-        (``exit_confirm`` accepted fixes); (A3) at least one of them positively BEYOND its exit face: the occupant
-        has left.  Drones excluded at t_lc need nothing more."""
+        (A1) accounting at t_lc (module docstring); (A2) every possible occupant is positively OUTSIDE the CR now
+        (``exit_confirm`` accepted fixes, by region or by range); (A3, progress) at least one of them heard beyond its
+        exit face.  Drones excluded at t_lc need nothing more."""
         a = self.cfg.acoustic
         self.last = {"possible": [], "not_outside": [], "excluded": [], "exited": []}
         if self.sighting is None:

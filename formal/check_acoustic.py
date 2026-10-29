@@ -70,11 +70,13 @@ def _fix(p_obs, yaw, r, az, el, cfg, t=0.0) -> Fix:
 
 
 def _corners(r, az, el, cfg):
+    """Extreme measurements of a true (r, az, el) inside the envelope: the white range bound both ways, and the
+    one-sided clear-path multipath excess on top (a measured range up to los_excess_max_m longer)."""
     br, ba, be = box_bounds(r, cfg)
-    for sr in (-1, 0, 1):
+    for rr in (r - br, r, r + br, r + br + cfg.acoustic.los_excess_max_m):
         for sa in (-1, 0, 1):
             for se in (-1, 0, 1):
-                yield max(r + sr * br, 0.05), az + sa * ba, el + se * be
+                yield max(rr, 0.05), az + sa * ba, el + se * be
 
 
 def queue_points(G, n, perc=DEFAULT.perc):
@@ -89,7 +91,9 @@ def coverage(cfg: FleetConfig, n_samples: int = 4000, seed: int = 0) -> float:
         r, az, el = rng.uniform(0.5, 30.0), rng.uniform(-math.pi, math.pi), rng.uniform(-1.0, 1.0)
         br, ba, be = box_bounds(r, cfg)
         pts, slack = region_samples(r, az, el, cfg)
-        tr, ta, te = max(r + rng.uniform(-br, br), 0.0), az + rng.uniform(-ba, ba), el + rng.uniform(-be, be)
+        # a true range up to br longer, or up to br + the multipath excess shorter, than the measured one
+        tr = max(r + rng.uniform(-br - cfg.acoustic.los_excess_max_m, br), 0.0)
+        ta, te = az + rng.uniform(-ba, ba), el + rng.uniform(-be, be)
         truth = tr * np.array([math.cos(te) * math.cos(ta), math.cos(te) * math.sin(ta), math.sin(te)])
         worst = max(worst, float(np.min(np.linalg.norm(pts - truth, axis=1))) - slack)
     return worst
@@ -104,7 +108,8 @@ def decision_soundness(cfg: FleetConfig, g) -> dict:
     grid = [np.array([a, b, c]) * half for a in np.linspace(-1, 1, 5) for b in np.linspace(-1, 1, 5)
             for c in np.linspace(-1, 1, 3)]
     yaw0 = math.atan2(g.axis[1], g.axis[0])
-    out = {"cases": 0, "exit_passed": 0, "outside_passed": 0, "excluded": 0, "worst_s_lower_margin": -1e9}
+    out = {"cases": 0, "exit_passed": 0, "outside_passed": 0, "range_clear_passed": 0, "excluded": 0,
+           "worst_s_lower_margin": -1e9}
     s_exit = G.cr_half_len + R_OUT
     for n in range(2, 7):
         q_s, lats = queue_points(G, n, cfg.perc)
@@ -120,8 +125,9 @@ def decision_soundness(cfg: FleetConfig, g) -> dict:
                         out["cases"] += 1
                         sl = ae.s_lower(g, f, 0.0)
                         out["worst_s_lower_margin"] = max(out["worst_s_lower_margin"], sl - s_exit)
-                        out["exit_passed"] += int(sl > s_exit)
-                        out["outside_passed"] += int(not ae._cr_possible(gate_points(g, f.pts), f.slack))
+                        out["exit_passed"] += int(sl > s_exit)              # progress only (A3), reported
+                        out["outside_passed"] += int(ae.clear_of_cr(g, f, 0.0))
+                        out["range_clear_passed"] += int(ae.clear_by_range(g, f, 0.0))
                         out["excluded"] += int(not ae._could_be_occupant(g, f, 0.0))
     out["worst_s_lower_margin"] = round(out["worst_s_lower_margin"], 3)
     return out
@@ -185,7 +191,7 @@ def exit_observability(cfg: FleetConfig, g, n: int, ds: float = 0.05) -> list:
             ae = AcousticExit(cfg, tr, [1])
             c_lc = g.from_gate_frame(pts[i_out])
             ae.note_corridor(0.0, g, p, yaw, [float(np.linalg.norm(c_lc - p)) - R_OUT])
-            accountable, acc_shadowed = True, 0
+            accountable, acc_shadowed, others_clear = True, 0, True
             for l in others:
                 c = g.from_gate_frame([q_s, l, 0.0])
                 block = [h for h in hulls if not np.allclose(h.center, c)]
@@ -193,6 +199,7 @@ def exit_observability(cfg: FleetConfig, g, n: int, ds: float = 0.05) -> list:
                 r, az, el = _meas(p, yaw, c)
                 excl = all(not ae._could_be_occupant(g, _fix(p, yaw, *m, cfg), 0.0) for m in _corners(r, az, el, cfg))
                 accountable &= excl
+                others_clear &= all(ae.clear_of_cr(g, _fix(p, yaw, *m, cfg), 0.0) for m in _corners(r, az, el, cfg))
             # the earliest exit evidence over every ping phase (worst phase reported)
             worst_t, worst_s, shadowed = -1e9, None, 0
             for phase in np.linspace(0.0, period, 5, endpoint=False):
@@ -202,7 +209,9 @@ def exit_observability(cfg: FleetConfig, g, n: int, ds: float = 0.05) -> list:
                     i = int(np.searchsorted(tt, tk))
                     i = min(i, len(pts) - 1)
                     c = g.from_gate_frame(pts[i])
-                    good = _worst_s_lower(ae, g, p, yaw, c, cfg, tk, tk) > s_exit
+                    r_c, az_c, el_c = _meas(p, yaw, c)
+                    good = (pts[i][0] > s_exit and all(ae.clear_of_cr(g, _fix(p, yaw, *m, cfg, t=tk), tk)
+                                                       for m in _corners(r_c, az_c, el_c, cfg)))
                     ok_count = ok_count + 1 if good else 0
                     sh = (sh + [any(_segment_hits_box(p, c, b) for b in bars + hulls)])[-a.exit_confirm:] if good else []
                     if ok_count >= a.exit_confirm:
@@ -216,7 +225,9 @@ def exit_observability(cfg: FleetConfig, g, n: int, ds: float = 0.05) -> list:
                     worst_t, worst_s = t_ok, float(pts[min(int(np.searchsorted(tt, t_ok)), len(pts) - 1)][0])
                     shadowed = sum(sh)
             rows.append({"observer_l": li, "passer_lane": lj, "t_exit_s": None if math.isinf(worst_t) else round(worst_t, 1),
-                         "s_at_evidence": None if worst_s is None else round(worst_s, 2), "accountable": accountable,
+                         "s_at_evidence": None if worst_s is None else round(worst_s, 2),
+                         "accountable": accountable or others_clear, "others_excluded": accountable,
+                         "others_clear": others_clear,
                          "confirm_pings_shadowed": shadowed, "accounting_paths_shadowed": acc_shadowed,
                          "path_end_t_s": round(float(tt[-1]), 1)})
     return rows
@@ -255,13 +266,15 @@ def run(cfg: FleetConfig = B2, verbose: bool = True) -> Report:
                         "holds", verdict="holds" if w <= 1e-9 else "violated", passed=w <= 1e-9,
                         note=f"4000 random measurements 0.5-30 m, worst {w:+.3f} m"), verbose)
     ds = decision_soundness(cfg, g)
-    ok = ds["exit_passed"] == 0 and ds["outside_passed"] == 0 and ds["excluded"] == 0
-    rep.add(CheckResult("B2-A2/A3 decision soundness: no measurement inside the envelope of a hull in the CR (any queue "
-                        "point n=2..6, heading within heading_tol) passes the exit, the outside or the exclusion test",
-                        "forall CR grid x envelope corners: s_lower <= exit face, region meets the CR, could be occupant",
+    ok = ds["outside_passed"] == 0 and ds["excluded"] == 0
+    rep.add(CheckResult("B2-A2 decision soundness: no measurement inside the envelope (multipath excess included) of a "
+                        "hull in the CR (any queue point n=2..6, heading within heading_tol) passes the outside test "
+                        "(by region or by range) or the exclusion test",
+                        "forall CR grid x envelope corners: region or range clear of the CR -> false; could be occupant",
                         ENC, "holds", verdict="holds" if ok else "violated", passed=ok,
-                        note=f"{ds['cases']} cases; exit {ds['exit_passed']}, outside {ds['outside_passed']}, excluded "
-                             f"{ds['excluded']}; best s_lower {ds['worst_s_lower_margin']:+.2f} m from the exit face"), verbose)
+                        note=f"{ds['cases']} cases; outside {ds['outside_passed']} (by range {ds['range_clear_passed']}), "
+                             f"excluded {ds['excluded']}; the progress test A3 is not a safety condition (it passed in "
+                             f"{ds['exit_passed']} cases with the strict region bound)"), verbose)
     rep.exit_observability = {}
     for n in range(2, 7):
         rows = exit_observability(cfg, g, n)

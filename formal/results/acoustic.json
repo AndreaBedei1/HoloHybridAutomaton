@@ -11,51 +11,51 @@
       "passed": true,
       "seconds": 0.0,
       "counterexample": null,
-      "note": "4000 random measurements 0.5-30 m, worst -0.017 m"
+      "note": "4000 random measurements 0.5-30 m, worst -0.021 m"
     },
     {
-      "prop": "B2-A2/A3 decision soundness: no measurement inside the envelope of a hull in the CR (any queue point n=2..6, heading within heading_tol) passes the exit, the outside or the exclusion test",
-      "formula": "forall CR grid x envelope corners: s_lower <= exit face, region meets the CR, could be occupant",
+      "prop": "B2-A2 decision soundness: no measurement inside the envelope (multipath excess included) of a hull in the CR (any queue point n=2..6, heading within heading_tol) passes the outside test (by region or by range) or the exclusion test",
+      "formula": "forall CR grid x envelope corners: region or range clear of the CR -> false; could be occupant",
       "encoding": "perception/acoustic.py + perception/acoustic_gate.py",
       "expect": "holds",
       "verdict": "holds",
       "passed": true,
       "seconds": 0.0,
       "counterexample": null,
-      "note": "121500 cases; exit 0, outside 0, excluded 0; best s_lower -4.61 m from the exit face"
+      "note": "162000 cases; outside 0 (by range 0), excluded 0; the progress test A3 is not a safety condition (it passed in 0 cases with the strict region bound)"
     },
     {
       "prop": "B2-M4g availability (reported), n=2: every queued drone gets an acoustic exit evidence of every passing drone (bars' and queued hulls' occlusion, worst envelope error, worst ping phase) and can account for the other queued drones",
       "formula": "exists 3 consecutive clear fixes with s_lower > exit face before the path end; queued drones excluded at t_lc",
       "encoding": "perception/acoustic.py + perception/acoustic_gate.py",
-      "expect": "violated",
-      "verdict": "violated",
+      "expect": "holds",
+      "verdict": "holds",
       "passed": true,
       "seconds": 0.0,
       "counterexample": null,
-      "note": "no evidence; falls back to the sonar latch for: observer +1.75/passer -1.75 (no evidence), observer -1.75/passer +1.75 (no evidence)"
+      "note": "2 pairs; confirmation through a shadowed ray for 0, accounting through a shadowed ray for 0 (probable, not certain); worst exit evidence 17.2 s after the exit face (observer l=+1.75, passer lane -1.75, passer at s=9.2)"
     },
     {
       "prop": "B2-M4g availability (reported), n=3: every queued drone gets an acoustic exit evidence of every passing drone (bars' and queued hulls' occlusion, worst envelope error, worst ping phase) and can account for the other queued drones",
       "formula": "exists 3 consecutive clear fixes with s_lower > exit face before the path end; queued drones excluded at t_lc",
       "encoding": "perception/acoustic.py + perception/acoustic_gate.py",
-      "expect": "violated",
-      "verdict": "violated",
+      "expect": "holds",
+      "verdict": "holds",
       "passed": true,
       "seconds": 0.0,
       "counterexample": null,
-      "note": "no evidence; falls back to the sonar latch for: observer +3.50/passer +0.00 (no evidence, queue not accountable), observer +3.50/passer -3.50 (no evidence), observer +0.00/passer +3.50 (no evidence, queue not accountable), observer +0.00/passer -3.50 (no evidence, queue not accountable), observer -3.50/passer +3.50 (no evidence), observer -3.50/passer +0.00 (no evidence, queue not accountable)"
+      "note": "6 pairs; confirmation through a shadowed ray for 0, accounting through a shadowed ray for 0 (probable, not certain); worst exit evidence 18.4 s after the exit face (observer l=+3.50, passer lane +0.00, passer at s=10.05)"
     },
     {
       "prop": "B2-M4g domain boundary, n=4: refused by the planner (queue points beyond queue_lateral_max), reported",
       "formula": "exists 3 consecutive clear fixes with s_lower > exit face before the path end; queued drones excluded at t_lc",
       "encoding": "perception/acoustic.py + perception/acoustic_gate.py",
-      "expect": "violated",
-      "verdict": "violated",
+      "expect": "holds",
+      "verdict": "holds",
       "passed": true,
       "seconds": 0.0,
       "counterexample": null,
-      "note": "no evidence; falls back to the sonar latch for: observer +5.25/passer +1.75 (no evidence, queue not accountable), observer +5.25/passer -1.75 (no evidence, queue not accountable), observer +5.25/passer -5.25 (no evidence, queue not accountable), observer +1.75/passer +5.25 (no evidence, queue not accountable), observer +1.75/passer -1.75 (no evidence, queue not accountable), observer +1.75/passer -5.25 (no evidence), observer -1.75/passer +5.25 (no evidence), observer -1.75/passer +1.75 (no evidence, queue not accountable), observer -1.75/passer -5.25 (no evidence, queue not accountable), observer -5.25/passer +5.25 (no evidence, queue not accountable), observer -5.25/passer +1.75 (no evidence, queue not accountable), observer -5.25/passer -1.75 (no evidence, queue not accountable)"
+      "note": "12 pairs; confirmation through a shadowed ray for 0, accounting through a shadowed ray for 8 (probable, not certain); worst exit evidence 21.0 s after the exit face (observer l=+5.25, passer lane +1.75, passer at s=11.1)"
     },
     {
       "prop": "B2-M4g domain boundary, n=5: refused by the planner (queue points beyond queue_lateral_max), reported",
@@ -66,7 +66,7 @@
       "passed": true,
       "seconds": 0.0,
       "counterexample": null,
-      "note": "no evidence; falls back to the sonar latch for: observer +7.00/passer +3.50 (no evidence, queue not accountable), observer +7.00/passer +0.00 (no evidence, queue not accountable), observer +7.00/passer -3.50 (no evidence, queue not accountable), observer +7.00/passer -7.00 (no evidence, queue not accountable), observer +3.50/passer +7.00 (no evidence, queue not accountable), observer +3.50/passer +0.00 (no evidence, queue not accountable), observer +3.50/passer -3.50 (no evidence, queue not accountable), observer +3.50/passer -7.00 (no evidence, queue not accountable), observer +0.00/passer +7.00 (no evidence, queue not accountable), observer +0.00/passer +3.50 (no evidence, queue not accountable), observer +0.00/passer -3.50 (no evidence, queue not accountable), observer +0.00/passer -7.00 (no evidence, queue not accountable), observer -3.50/passer +7.00 (no evidence, queue not accountable), observer -3.50/passer +3.50 (no evidence, queue not accountable), observer -3.50/passer +0.00 (no evidence, queue not accountable), observer -3.50/passer -7.00 (no evidence, queue not accountable), observer -7.00/passer +7.00 (no evidence, queue not accountable), observer -7.00/passer +3.50 (no evidence, queue not accountable), observer -7.00/passer +0.00 (no evidence, queue not accountable), observer -7.00/passer -3.50 (no evidence, queue not accountable)"
+      "note": "20 pairs; confirmation through a shadowed ray for 0, accounting through a shadowed ray for 20 (probable, not certain); worst exit evidence 24.8 s after the exit face (observer l=+3.50, passer lane +7.00, passer at s=9.85); falls back to the sonar latch for: observer +7.00/passer +3.50 (no evidence), observer -7.00/passer -3.50 (no evidence)"
     },
     {
       "prop": "B2-M4g domain boundary, n=6: refused by the planner (queue points beyond queue_lateral_max), reported",
@@ -77,7 +77,7 @@
       "passed": true,
       "seconds": 0.0,
       "counterexample": null,
-      "note": "no evidence; falls back to the sonar latch for: observer +8.75/passer +5.25 (no evidence, queue not accountable), observer +8.75/passer +1.75 (no evidence, queue not accountable), observer +8.75/passer -1.75 (no evidence, queue not accountable), observer +8.75/passer -5.25 (no evidence, queue not accountable), observer +8.75/passer -8.75 (no evidence, queue not accountable), observer +5.25/passer +8.75 (no evidence, queue not accountable), observer +5.25/passer +1.75 (no evidence, queue not accountable), observer +5.25/passer -1.75 (no evidence, queue not accountable), observer +5.25/passer -5.25 (no evidence, queue not accountable), observer +5.25/passer -8.75 (no evidence, queue not accountable), observer +1.75/passer +8.75 (no evidence, queue not accountable), observer +1.75/passer +5.25 (no evidence, queue not accountable), observer +1.75/passer -1.75 (no evidence, queue not accountable), observer +1.75/passer -5.25 (no evidence, queue not accountable), observer +1.75/passer -8.75 (no evidence), observer -1.75/passer +8.75 (no evidence), observer -1.75/passer +5.25 (no evidence, queue not accountable), observer -1.75/passer +1.75 (no evidence, queue not accountable), observer -1.75/passer -5.25 (no evidence, queue not accountable), observer -1.75/passer -8.75 (no evidence, queue not accountable), observer -5.25/passer +8.75 (no evidence, queue not accountable), observer -5.25/passer +5.25 (no evidence, queue not accountable), observer -5.25/passer +1.75 (no evidence, queue not accountable), observer -5.25/passer -1.75 (no evidence, queue not accountable), observer -5.25/passer -8.75 (no evidence, queue not accountable), observer -8.75/passer +8.75 (no evidence, queue not accountable), observer -8.75/passer +5.25 (no evidence, queue not accountable), observer -8.75/passer +1.75 (no evidence, queue not accountable), observer -8.75/passer -1.75 (no evidence, queue not accountable), observer -8.75/passer -5.25 (no evidence, queue not accountable)"
+      "note": "30 pairs; confirmation through a shadowed ray for 4, accounting through a shadowed ray for 30 (probable, not certain); worst exit evidence 28.6 s after the exit face (observer l=+5.25, passer lane +8.75, passer at s=10.35); falls back to the sonar latch for: observer +8.75/passer +5.25 (no evidence), observer +8.75/passer +1.75 (no evidence), observer -8.75/passer -1.75 (no evidence), observer -8.75/passer -5.25 (no evidence)"
     },
     {
       "prop": "B2-S acoustic fixes never reach separation, collision avoidance, precedence or the sonar witness; the latch uses them only with the FRONT corridor empty",

@@ -225,6 +225,24 @@ def test_a_multipath_episode_never_gives_an_exit_from_inside_the_cr():
         assert ae.evaluate(b.t, G06) is None
 
 
+def test_deployed_envelope_gives_the_exit_by_range_once_the_drone_is_far_beyond():
+    """Deployed envelope (multipath excess and array bias included): the direction of a fix 10-14 m away is too
+    uncertain to place it beyond the exit face, but its range alone shows that it cannot be in the CR any more (rule
+    A2 by range); the queued drones heard at their queue points are clear of the CR too.  The exit is confirmed once the
+    drone is far enough beyond, never while it is still near the gate."""
+    b, ae = exit_bench(cfg=B2)
+    corridor(b, ae, gate_world(-0.6, 0.0))
+    got = None
+    for s in np.linspace(-0.6, 14.0, 30):
+        b.ping(1, gate_world(float(s), 0.0))
+        queued_others(b, k_occ=1)
+        b.step(0.9)
+        ev = ae.evaluate(b.t, G06)
+        if ev is not None and got is None:
+            got = float(s)
+    assert got is not None and got > G.cr_half_len + 6.0, got
+
+
 def _pass(b, ae, k_occ=1, s_end=9.0, steps=12, others=True):
     corridor(b, ae, gate_world(-0.6, 0.0))
     if others:
