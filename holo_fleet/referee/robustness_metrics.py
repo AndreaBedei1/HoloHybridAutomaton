@@ -173,10 +173,11 @@ def analyze_run(run_dir: Path, reference: Optional[Dict] = None, cfg=DEFAULT) ->
             prev = None
             for i in range(m):
                 gs = states[k][i].get("gate") or {}
-                occ = gs.get("occ")
-                if prev == "BUSY" and occ in ("EXITING", "FREE"):
+                occ = (gs.get("occ"), gs.get("id"))
+                # same gate: BUSY -> FREE on advancing to the next gate (the observer's own passage) is no release
+                if prev is not None and prev[0] == "BUSY" and prev[1] == occ[1] and occ[0] in ("EXITING", "FREE"):
                     w = gs.get("exit_witness") or {}
-                    kind = "TIMEOUT" if occ == "FREE" else ("ACOUSTIC" if w.get("sector") == "ACOUSTIC" else "SONAR")
+                    kind = "TIMEOUT" if occ[0] == "FREE" else ("ACOUSTIC" if w.get("sector") == "ACOUSTIC" else "SONAR")
                     rel["releases"][kind] += 1
                     rel["false"][kind] += int(any(inside[i, j] for j in others))
                 prev = occ
