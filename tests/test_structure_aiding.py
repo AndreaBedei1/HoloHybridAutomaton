@@ -8,6 +8,7 @@ lateral error, as the compass bias of the realistic MEDIUM level produces at the
 import math
 
 import numpy as np
+import pytest
 
 from holo_fleet.arena_bridge import HORSESHOE_TRACK, load_arena_gates
 from holo_fleet.config import DEFAULT
@@ -246,3 +247,38 @@ def test_an_equally_good_far_position_makes_the_fit_ambiguous():
     for k in range(6):
         assert aid.update(p_est, R, profs, {s: 0.0 for s in sg.SECTORS}, 0.25, t=0.1 * k) is None
         assert not aid.valid(0.1 * k), aid.last
+
+
+# ---------------------------------------------------------------------------------------------- acquisition region (C5)
+def test_the_acquisition_region_is_derived_and_covers_the_warning_band_of_the_bars():
+    """The fit can be accepted from tan(half angle) * (outer half-extent + MAX_CORR_M) before the gate plane (module
+    docstring), which must include the band in which an unexplained bar echo holds the drone (d_warning_exit from the
+    bar, plus the hull)."""
+    from holo_fleet.perception.structure_aiding import acquisition_distance
+
+    d = acquisition_distance(DEFAULT, GATE)
+    outer = GATE.inner_width / 2.0 + 0.25
+    assert d == pytest.approx(math.tan(math.radians(DEFAULT.perc.sonar.half_angle_deg)) * (outer + MAX_CORR_M), abs=1e-6)
+    assert d >= DEFAULT.sep.d_warning_exit + float(sg.HULL_HALF[0]) + 0.5
+
+
+def test_a_longitudinal_error_is_corrected():
+    clf = EchoClassifier(gate_bars=BARS, cfg=DEFAULT)
+    R = _R()
+    p_true, p_est = _world(-2.0, -0.5), _world(-2.4, -0.5)        # 0.4 m along the axis, plus a lateral offset
+    aid = StructureAiding(clf, DEFAULT, gates=GATES)
+    p = _run(aid, clf, p_true, p_est, R, n=12)
+    assert np.linalg.norm(p[:2] - p_true[:2]) < 0.15, (p - p_true, aid.last)
+
+
+def test_another_drone_ahead_does_not_move_a_correct_estimate():
+    """The previous drone in the opening or just beyond it, seen in FRONT at the ranges of the bars or in between:
+    the estimate (= truth) is never moved by more than the consistency band."""
+    clf = EchoClassifier(gate_bars=BARS, cfg=DEFAULT)
+    R = _R()
+    for s_gate in (-3.6, -2.6, -1.6):
+        p = _world(s_gate, 0.2)
+        for r_other in np.arange(abs(s_gate) - 0.6, abs(s_gate) + 1.2, 0.15):
+            aid = StructureAiding(clf, DEFAULT, gates=GATES)
+            q = _run(aid, clf, p, p.copy(), R, n=8, extra={"FRONT": float(r_other)})
+            assert np.linalg.norm(q[:2] - p[:2]) <= 0.15, (s_gate, r_other, q - p, aid.last)

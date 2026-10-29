@@ -16,8 +16,7 @@ bar costs the cap for a candidate that moves the bar out of it (no offset is rew
 away: fades and occlusions are ordinary); other sectors add nothing, since their echoes may be vehicles or the
 seabed.  The best offset is accepted only if
 
-* at least two sectors are matched within ``FIT_RMS_M`` RMS, within ``AID_RANGE_M`` of the bars only (a single echo never moves
-  the estimate),
+* at least two sectors are matched within ``FIT_RMS_M`` RMS (a single echo never moves the estimate),
 * it explains the echoes clearly better than the current estimate and is unique (every candidate within
   ``AMBIGUITY`` of the best cost lies within ``UNIQUE_M`` of it: the geometry observes both horizontal directions),
 * it is bounded (|d| <= ``MAX_CORR_M``, the drift a run can accumulate) and
@@ -27,13 +26,31 @@ it is then applied with gain ``GAIN`` to the estimate, and only if it is geometr
 
 Robust clearance and gate localization.  A fit locates the drone with an uncertainty ``u``: the radius of the set of
 near-optimal offsets (the positions the echoes cannot tell apart) plus the RMS of the matched ranges.  Before the gate
-(s <= the end of the critical region) a fit is usable only if the HULL (lateral half-extent ``HULL_LAT_M``, the BlueROV2
-half-width plus the yaw allowance) plus ``u``, around the fitted position, lies entirely inside the free opening
-(inner half-width of the gate); otherwise it is rejected, whatever its RMS: the fits that moved the estimate the wrong
-way in the replay of the MEDIUM runs all placed the drone beside the opening.  A usable fit whose offset is within
+(s <= the end of the critical region) a fit validates the localization only if the HULL (lateral half-extent
+``HULL_LAT_M``, the BlueROV2 half-width plus the yaw allowance) plus ``u``, around the fitted position, lies entirely
+inside the free opening (inner half-width of the gate); a fit that places the hull beside the opening is not applied
+either, whatever its RMS.  Replay of the archived MEDIUM runs with such fits applied (scratch evidence summarised in
+docs): they were wrong by 0.4-1.2 m, resting on the echo of another drone taken for a bar in a side sector, and even
+four well-matched sectors determine the lateral position beside the opening only to ~0.3 m, more than the near-optimal
+spread reports.  A drone whose drift brought it in front of a bar therefore cannot be relocalized there by a range-only
+fit without an assumption on the identity of an echo: it holds (safe), the documented C5 limitation.  A usable fit
+whose offset is within
 ``CONSIST_M`` of the current estimate CONFIRMS it; an applied correction confirms the corrected estimate.  The gate
 localization is valid for ``LOC_TTL_S`` after a confirmation (``valid``): a committed drone enters the critical region
 only with a valid gate localization (control/flows.py, the relocalization hold before the critical region).
+
+Acquisition region.  A fit needs MIN_MATCHED sectors that see a bar.  Before the gate plane, at distance x, the FRONT
+cone sees the frame from far away; a side (up / down) cone sees a bar point at offset c from the gate axis only when
+x <= tan(half_angle) * |c - e|, e the drone's true offset from the axis.  Over the true positions the fit considers
+(|e| <= MAX_CORR_M) the farthest distance at which a drift can be observed at all is therefore
+``acquisition_distance`` = tan(half_angle) * (outer half-extent of the frame + MAX_CORR_M) (4.2 m for the 2.0 m opening
+and 0.25 m bars): the aiding runs from there to the critical region.  With a small drift the side cones see the bars
+only within ~2.2 m, where the bars are also where the map predicts them (explained, no warning); with a drift large
+enough to leave a bar unexplained, the far bar enters the far side cone farther away, before the warning band of that
+bar (d_warning_exit, tests/test_structure_aiding.py): the fit is no longer acquired only after the drone has been
+stopped by the echo it cannot explain.  Nothing is assumed about the identity of an echo: every accepted offset rests
+on several sectors matching the bars within FIT_RMS_M, uniquely and consistently over CONSIST_N captures, and the queue
+points, beside the opening, never pass the robust clearance below.
 
 The correction changes the drone's OWN position estimate only: the collision-avoidance distance bound uses the raw echo
 ranges in the body frame and does not depend on it, and the structure test keeps its tolerance (structure_tol_m is not
@@ -42,6 +59,8 @@ widened), so a vehicle in front of a bar stays an obstacle (tests/test_structure
 
 from __future__ import annotations
 
+import itertools
+import math
 from collections import deque
 from typing import Deque, Dict, Optional
 
@@ -50,10 +69,9 @@ import numpy as np
 from holo_fleet.perception.sonar_geometry import HULL_HALF, MOUNTS, SECTORS
 from holo_fleet.perception.sonar_processing import segment
 
-AID_RANGE_M = 2.0        # active only in the passage: within this of a mapped bar (one drone there, P2)
 ASSOC_GATE_M = 0.9       # cap of the residual of one sector (predicted bar not seen / matched to a far echo)
 FIT_RMS_M = 0.10         # the matched echoes are explained after the correction
-MIN_MATCHED = 2         # within AID_RANGE_M of the bars (the passage: one drone, P2); the queue is excluded
+MIN_MATCHED = 2         # sectors matched to the bars (a single echo never moves the estimate)
 GAIN_MIN = 0.05          # the best offset must lower the total squared residual by at least this [m^2]
 AMBIGUITY = 0.005        # [m^2] candidates this close to the best total cost must lie within UNIQUE_M of it
 UNIQUE_M = 0.4           # ranges near the gate plane change little with the offset: bounded, not zero ambiguity
@@ -65,8 +83,19 @@ COARSE_M, FINE_M = 0.3, 0.05
 POINT_STRIDE = 3        # bar sample points used (every 3rd of the classifier's, ~3 cm apart)
 HULL_LAT_M = float(HULL_HALF[1] + HULL_HALF[0] * np.sin(np.radians(5.0)))   # lateral half-extent, yaw within 5 deg
 LOC_TTL_S = 1.0          # a confirmation of the gate localization is valid this long
-CLEARANCE_GATES_CORRECTION = True   # a fit that puts the hull outside the opening is not applied either (else it
-                                    # corrects the estimate but never validates the entry)
+
+
+def acquisition_distance(cfg, gate=None, pts=None) -> float:
+    """Farthest distance before the gate plane at which a fit can be accepted (module docstring, acquisition region).
+    Without a gate map (bar points only) the half-extent is bounded by the largest distance of a point from their
+    centroid."""
+    if gate is not None:
+        corners = [gate.to_gate_frame(b.center + b.axes @ (np.array(sg) * b.half)) for b in gate.bars
+                   for sg in itertools.product((-1.0, 1.0), repeat=3)]
+        outer = max(max(abs(float(c[1])), abs(float(c[2]))) for c in corners)   # lateral / vertical half-extent
+    else:
+        outer = float(np.max(np.linalg.norm(pts - pts.mean(axis=0), axis=1)))
+    return min(cfg.perc.sonar.range_max, math.tan(math.radians(cfg.perc.sonar.half_angle_deg)) * (outer + MAX_CORR_M))
 
 
 class StructureAiding:
@@ -74,12 +103,15 @@ class StructureAiding:
         self.clf = clf
         self.cfg = cfg
         self.gates = list(gates)                 # GateSpecs: the free opening of the robust clearance
+        self.acq = {g.gate_id: acquisition_distance(cfg, g) for g in self.gates}
         self.loc_t = -1e9                        # last confirmation of the gate localization
         self.loc_u: Optional[float] = None       # its uncertainty [m]
         self.recent: Deque[np.ndarray] = deque(maxlen=CONSIST_N)
         self.applied_m = 0.0                     # total applied correction (for the log)
         self.last: Optional[Dict] = None
         self.pts = np.asarray(clf.struct_pts)[::POINT_STRIDE]
+        self.acq_pts = acquisition_distance(cfg, pts=self.pts) if len(self.pts) else 0.0
+        self.pp = np.einsum("ij,ij->i", self.pts, self.pts) if len(self.pts) else np.zeros(0)
 
     def _pred(self, C: np.ndarray, R_wb: np.ndarray, s: str) -> np.ndarray:
         """Predicted nearest-bar range of sector s for every candidate position C (K, 3); NaN: no bar in the cone.
@@ -91,10 +123,22 @@ class StructureAiding:
         bar that is not seen in 0-2 % of the samples; the widened cone gives 0.03-0.05 m and 10-17 %."""
         a, _M = self.clf._sector_frame(s, R_wb)
         m = self.clf.model
-        d = self.pts[None, :, :] - (C + R_wb @ MOUNTS[s])[:, None, :]
-        r = np.linalg.norm(d, axis=2)
-        ang = np.arccos(np.clip((d @ a) / np.maximum(r, 1e-9), -1.0, 1.0))
-        cone = ang <= np.radians(m.half_angle_deg)
+        q = C + R_wb @ MOUNTS[s]                                    # sonar position of every candidate
+        # exact pre-filter: seen from any candidate within ``rad`` of their centre q0, a point's direction differs from
+        # the one seen from q0 by at most asin(rad / |x - q0|); points outside the cone grown by that are never in it
+        q0 = q.mean(axis=0)
+        rad = float(np.max(np.linalg.norm(q - q0, axis=1)))
+        d0 = self.pts - q0
+        r0 = np.linalg.norm(d0, axis=1)
+        grow = np.arcsin(np.clip(rad / np.maximum(r0, 1e-9), 0.0, 1.0))
+        keep = ((d0 @ a >= np.cos(np.minimum(np.radians(m.half_angle_deg) + grow, np.pi)) * r0)
+                & (r0 <= m.range_max + rad) & (r0 >= m.range_min - rad))
+        P, pp = self.pts[keep], self.pp[keep]
+        if len(P) == 0:
+            return np.full(len(C), np.nan)
+        r = np.sqrt(np.maximum(pp[None, :] - 2.0 * (q @ P.T) + np.einsum("ij,ij->i", q, q)[:, None], 0.0))
+        along = (P @ a)[None, :] - (q @ a)[:, None]                 # (point - sonar) . axis, without the K x N x 3 array
+        cone = along >= np.cos(np.radians(m.half_angle_deg)) * r
         out = np.where(cone & (r >= m.range_min) & (r <= m.range_max), r, np.inf).min(axis=1)
         return np.where(np.isfinite(out), out, np.nan)
 
@@ -126,6 +170,26 @@ class StructureAiding:
         rms = np.where(used > 0, np.sqrt(sq / np.maximum(used, 1)), np.inf)
         return total, rms, matched
 
+    def _fit(self, p: np.ndarray, R_wb: np.ndarray, obs, must):
+        """Best offset on a coarse-to-fine grid within MAX_CORR_M and its statistics (offset, total cost, RMS, matched
+        sectors, spread of the near-optimal candidates on the fine AND the whole coarse grid: an equally good position
+        far from the best one is the ambiguity that matters most), or None."""
+        g = np.arange(-MAX_CORR_M, MAX_CORR_M + 1e-9, COARSE_M)
+        D_coarse = np.array([[x, y, 0.0] for x in g for y in g])
+        cost_c, _r, _m = self._score(p + D_coarse, R_wb, obs, must)
+        f = np.arange(-COARSE_M, COARSE_M + 1e-9, FINE_M)
+        D = D_coarse[int(np.argmin(cost_c))] + np.array([[x, y, 0.0] for x in f for y in f])
+        D = D[np.linalg.norm(D[:, :2], axis=1) <= MAX_CORR_M]
+        if len(D) == 0:                           # the coarse best lies beyond the bound: nothing to accept
+            return None
+        cost, rms, matched = self._score(p + D, R_wb, obs, must)
+        if not np.isfinite(cost).any():
+            return None
+        k = int(np.argmin(cost))
+        d = D[k, :2]
+        near = np.vstack([D[cost <= cost[k] + AMBIGUITY, :2], D_coarse[cost_c <= cost[k] + AMBIGUITY, :2]])
+        return d, float(cost[k]), float(rms[k]), int(matched[k]), float(np.max(np.linalg.norm(near - d, axis=1)))
+
     def _gate_frame(self, q: np.ndarray):
         g = min(self.gates, key=lambda gg: float(np.linalg.norm(np.asarray(gg.center)[:2] - q[:2])))
         return g, g.to_gate_frame(q)
@@ -149,11 +213,16 @@ class StructureAiding:
         """Horizontal correction to add to the position estimate now (None: nothing accepted)."""
         self.last = None
         pts = self.pts
-        if len(pts) == 0 or np.min(np.linalg.norm(pts[:, :2] - p[:2], axis=1)) > AID_RANGE_M:
+        if len(pts) == 0:
             self.recent.clear()
             return None
-        if self.gates and self._gate_frame(p)[1][0] > -self.cfg.gate.cr_half_len:
-            self.recent.clear()                  # inside / beyond the critical region: the drone passes as validated
+        if self.gates:
+            g, (s_g, _l, _dz) = self._gate_frame(p)
+            outside = s_g < -self.acq[g.gate_id] or s_g > -self.cfg.gate.cr_half_len   # from the CR on: passes as validated
+        else:                                    # bar points without a gate map: the same distance from the bars
+            outside = float(np.min(np.linalg.norm(pts[:, :2] - p[:2], axis=1))) > self.acq_pts
+        if outside:
+            self.recent.clear()
             return None
         obs = {}
         for s in SECTORS:
@@ -164,44 +233,28 @@ class StructureAiding:
         if len(obs) < MIN_MATCHED:
             self.recent.clear()
             return None
-        g = np.arange(-MAX_CORR_M, MAX_CORR_M + 1e-9, COARSE_M)
-        D = np.array([[x, y, 0.0] for x in g for y in g])
         must = {s for s in obs if not np.isnan(self._pred(p[None, :], R_wb, s)[0])}
-        cost, _r, _m = self._score(p + D, R_wb, obs, must)
-        D_coarse, cost_coarse = D, cost
-        best = D[int(np.argmin(cost))]
-        f = np.arange(-COARSE_M, COARSE_M + 1e-9, FINE_M)
-        D = best + np.array([[x, y, 0.0] for x in f for y in f])  # fine grid around the coarse best
-        D = D[np.linalg.norm(D[:, :2], axis=1) <= MAX_CORR_M]
-        if len(D) == 0:                           # the coarse best lies beyond the bound: nothing to accept
+        fit = self._fit(p, R_wb, obs, must)
+        if fit is None:
             self.recent.clear()
             return None
-        cost, rms, matched = self._score(p + D, R_wb, obs, must)
-        if not np.isfinite(cost).any():
-            self.recent.clear()
-            return None
-        k = int(np.argmin(cost))
-        c0, r0, _m0 = self._score(p[None, :], R_wb, obs, must)
-        d = D[k, :2]
-        # near-optimal candidates, the positions the echoes cannot separate: on the fine grid AND on the whole coarse
-        # grid (an equally good position far from the best one is the ambiguity that matters most)
-        near = np.vstack([D[cost <= cost[k] + AMBIGUITY, :2], D_coarse[cost_coarse <= cost[k] + AMBIGUITY, :2]])
-        spread = float(np.max(np.linalg.norm(near - d, axis=1)))
-        u = spread + float(rms[k])                  # uncertainty of the fitted position
+        d, cost_k, rms_k, matched_k, spread = fit
+        c0, _r0, _m0 = self._score(p[None, :], R_wb, obs, must)
+        u = spread + rms_k                          # uncertainty of the fitted position
         margin = self.clearance(p + np.array([d[0], d[1], 0.0]), u)
-        self.last = {"matched": int(matched[k]), "offset": np.round(d, 3).tolist(), "rms": round(float(rms[k]), 3),
-                     "cost": round(float(cost[k]), 4), "cost_current": round(float(c0[0]), 4), "u": round(u, 3),
+        self.last = {"matched": matched_k, "offset": np.round(d, 3).tolist(), "rms": round(rms_k, 3),
+                     "cost": round(cost_k, 4), "cost_current": round(float(c0[0]), 4), "u": round(u, 3),
                      "clearance": None if margin is None else round(margin, 3)}
         # with a gate map: only before the critical region, where the localization is needed
-        fit_ok = (matched[k] >= MIN_MATCHED and rms[k] <= FIT_RMS_M and spread <= UNIQUE_M
+        fit_ok = (matched_k >= MIN_MATCHED and rms_k <= FIT_RMS_M and spread <= UNIQUE_M
                   and (margin is not None or not self.gates))
         safe = margin is None or margin >= 0.0          # the hull + uncertainty inside the free opening
-        if not fit_ok or (CLEARANCE_GATES_CORRECTION and not safe):
+        if not fit_ok or not safe:                       # a fit beside the opening is never applied (docstring)
             self.recent.clear()
             return None
         if safe and float(np.linalg.norm(d)) <= CONSIST_M:   # the current estimate is confirmed (consistency band)
             self.loc_t, self.loc_u = t, u
-        if not (np.isfinite(c0[0]) and c0[0] - cost[k] >= GAIN_MIN):
+        if not (np.isfinite(c0[0]) and c0[0] - cost_k >= GAIN_MIN):
             self.recent.clear()
             return None
         self.recent.append(d)
