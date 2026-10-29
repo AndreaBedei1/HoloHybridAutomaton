@@ -1,10 +1,10 @@
 # Formal verification summary
 
-Generated 2026-10-28 18:52:39 by `formal/check_properties.py`.
+Generated 2026-10-29 22:53:48 by `formal/check_properties.py`.
 
 UNSAT = the negated property has no model in the abstraction, i.e. the property HOLDS for the model; SAT is expected for the satisfiability / non-vacuity checks (a witness must exist) and for the mutation tests (deliberately broken designs must yield a counterexample); mutation Om2 expects UNSAT (a broken observation domain loses the reachability of an edge).  The observation domain of every suite is the conjunction of the invariants of holo_fleet/ha/observation_invariants.py.
 
-## Local determinism & priority hierarchy  (93/93 as expected, 0.5 s)
+## Local determinism & priority hierarchy  (93/93 as expected, 0.3 s)
 
 Encoding: `holo_fleet/ha/spec.py`
 
@@ -104,7 +104,7 @@ Encoding: `holo_fleet/ha/spec.py`
 | M2 mutation: gate pass ignoring collision risk must violate H2 | expect counterexample | SAT | SAT | yes |
 | ML mutation: a wrong readable guard (collision risk drawn at d_warning) must violate L1 | expect counterexample | SAT | SAT | yes |
 
-## Observation consistency (perception -> automaton interface)  (31/31 as expected, 1.3 s)
+## Observation consistency (perception -> automaton interface)  (31/31 as expected, 0.7 s)
 
 Encoding: `holo_fleet/ha/observation_invariants.py + holo_fleet/ha/spec.py`
 
@@ -142,14 +142,14 @@ Encoding: `holo_fleet/ha/observation_invariants.py + holo_fleet/ha/spec.py`
 | Om2 mutation: v1 constraint passed -> at_queue makes pass_done unreachable | expect UNSAT (reachability lost) | UNSAT | UNSAT | yes |
 | Om3 mutation: no monitor -> an inconsistent observation drives a mission edge | expect counterexample | SAT | SAT | yes |
 
-## P1 inter-vehicle separation  (13/13 as expected, 102.7 s)
+## P1 inter-vehicle separation  (13/13 as expected, 135.1 s)
 
 Encoding: `formal/check_separation.py`
 
 | check | formula | expected | verdict | ok |
 |---|---|---|---|---|
-| S0 onboard distance never above the true centre distance (numeric) | forall sampled poses/errors: d_hat <= d | HOLDS | HOLDS | yes |
-| S0m mutation: uncertified bound (centre assumed inside every member cone) must overestimate | expect: some sample with d_hat > d | VIOLATED | VIOLATED | yes |
+| S0 onboard distance never above the true distance of the nearest hull (numeric, multi-hull scenes) | forall sampled scenes/errors/detection boundaries: d_hat <= min_O d(O) | HOLDS | HOLDS | yes |
+| S0m mutation: uncertified bound (centre assumed inside every member cone) must overestimate | expect: some scene with d_hat > d | VIOLATED | VIOLATED | yes |
 | S1a BMC: no violation within 4 s from any start with d_hat >= d_warning | Init & T^K -> G_[0,K] d >= d_safe | UNSAT | UNSAT | yes |
 | S1b k-induction: G(d >= d_safe) for all time (k=13) | P(s_0..s_{k-1}) & T -> P(s_k), base case covered by S1a (K >= k) | UNSAT | UNSAT | yes |
 | S1c configured d_warning above the smallest verified one | d_warning >= d_warning_min | HOLDS | HOLDS | yes |
@@ -162,7 +162,7 @@ Encoding: `formal/check_separation.py`
 | S3 at most one vertex angle >= 90 deg (pairwise d >= d_safe) | d_ij >= d_safe -> not(angle_i >= 90 and angle_j >= 90) | UNSAT | UNSAT | yes |
 | S4 blackout <= 0.8s starting at d >= 2.34 m keeps d >= d_safe | FAILSAFE hold with unrejected drift w_rel | UNSAT | UNSAT | yes |
 
-## P2 critical-region mutual exclusion  (29/32 as expected, 175.1 s)
+## P2 critical-region mutual exclusion  (38/38 as expected, 163.9 s)
 
 Encoding: `holo_fleet/ha/mutex_rule.py + formal/check_mutex.py`
 
@@ -187,11 +187,16 @@ Encoding: `holo_fleet/ha/mutex_rule.py + formal/check_mutex.py`
 | M4d a crossing drone is seen unmasked in the corridor for >= 3 captures | exposure / v_pass >= 0.3 s | HOLDS | HOLDS | yes |
 | M4e masking interval is bounded and starts after the corridor is entered | corridor_from < mask_from and visible_again <= cr_half_len + 2 m | HOLDS | HOLDS | yes |
 | M4f queue neighbours a decision needs are never hidden in the gate's structure window (abreast: adjacent pairs, n = 2..6; stacked: every pair; +-hold_err) | echo of the neighbour outside [window - tol, window + tol_far] of every sector that sees it | HOLDS | HOLDS | yes |
-| M4g exit observable, n=2: beyond the CR every passing drone gives every queued drone an exit witness (any sector, bars' occlusion, measured detection range) for >= 3 captures | exists path interval: in cone, line of sight clear, outside the structure window, range <= 10.0 m, W1 at the worst echo error | HOLDS | HOLDS | yes |
-| M4g exit observable, n=3: beyond the CR every passing drone gives every queued drone an exit witness (any sector, bars' occlusion, measured detection range) for >= 3 captures | exists path interval: in cone, line of sight clear, outside the structure window, range <= 10.0 m, W1 at the worst echo error | HOLDS | HOLDS | yes |
-| M4g exit observable, n=4: beyond the CR every passing drone gives every queued drone an exit witness (any sector, bars' occlusion, measured detection range) for >= 3 captures | exists path interval: in cone, line of sight clear, outside the structure window, range <= 10.0 m, W1 at the worst echo error | HOLDS | VIOLATED | **NO** |
-| M4g exit observable, n=5: beyond the CR every passing drone gives every queued drone an exit witness (any sector, bars' occlusion, measured detection range) for >= 3 captures | exists path interval: in cone, line of sight clear, outside the structure window, range <= 10.0 m, W1 at the worst echo error | HOLDS | VIOLATED | **NO** |
-| M4g exit observable, n=6: beyond the CR every passing drone gives every queued drone an exit witness (any sector, bars' occlusion, measured detection range) for >= 3 captures | exists path interval: in cone, line of sight clear, outside the structure window, range <= 10.0 m, W1 at the worst echo error | HOLDS | VIOLATED | **NO** |
+| M4g exit observable, abreast n=2: beyond the CR every passing drone gives every queued drone an exit witness (any sector, bars' occlusion, measured detection range) for >= 3 captures | exists path interval: in cone, line of sight clear, outside the structure window, range <= 10.0 m, W1 at the worst echo error | HOLDS | HOLDS | yes |
+| M4g exit observable, abreast n=3: beyond the CR every passing drone gives every queued drone an exit witness (any sector, bars' occlusion, measured detection range) for >= 3 captures | exists path interval: in cone, line of sight clear, outside the structure window, range <= 10.0 m, W1 at the worst echo error | HOLDS | HOLDS | yes |
+| M4g domain boundary, abreast n=4: refused by the planner (queue points beyond queue_lateral_max) | outside the validated domain: no obligation; reported | VIOLATED | VIOLATED | yes |
+| M4g domain boundary, abreast n=5: refused by the planner (queue points beyond queue_lateral_max) | outside the validated domain: no obligation; reported | VIOLATED | VIOLATED | yes |
+| M4g domain boundary, abreast n=6: refused by the planner (queue points beyond queue_lateral_max) | outside the validated domain: no obligation; reported | VIOLATED | VIOLATED | yes |
+| M4g exit observable, stack 2 x 2 (n=4): beyond the CR every passing drone gives every queued drone an exit witness (any sector, bars' occlusion, measured detection range) for >= 3 captures | exists path interval: in cone, line of sight clear, outside the structure window, range <= 10.0 m, W1 at the worst echo error | HOLDS | HOLDS | yes |
+| M4g exit observable, stack_pair (n=3, demo): beyond the CR every passing drone gives every queued drone an exit witness (any sector, bars' occlusion, measured detection range) for >= 3 captures | exists path interval: in cone, line of sight clear, outside the structure window, range <= 10.0 m, W1 at the worst echo error | HOLDS | HOLDS | yes |
+| M4g exit observable, template triangle (n=3, gate scenarios): beyond the CR every passing drone gives every queued drone an exit witness (any sector, bars' occlusion, measured detection range) for >= 3 captures | exists path interval: in cone, line of sight clear, outside the structure window, range <= 10.0 m, W1 at the worst echo error | HOLDS | HOLDS | yes |
+| M4g exit observable, template line3 (n=3, gate scenarios): beyond the CR every passing drone gives every queued drone an exit witness (any sector, bars' occlusion, measured detection range) for >= 3 captures | exists path interval: in cone, line of sight clear, outside the structure window, range <= 10.0 m, W1 at the worst echo error | HOLDS | HOLDS | yes |
+| M4g domain boundary, stack 3 + 2 (n=5): refused by the planner (queue points beyond queue_lateral_max) | outside the validated domain: no obligation; reported | VIOLATED | VIOLATED | yes |
 | M4fm mutation: the stacked queue at the cone-only line (no structure clearance) hides the diagonal neighbours | expect violation | VIOLATED | VIOLATED | yes |
 | M4m mutation: n=4 queue line at s = -4 m must violate M4a | expect violation | VIOLATED | VIOLATED | yes |
 | M3 occupancy latch, n=2, observer at l=+1.75: never both in the CR (42 s BMC) | latch + persistence + exit + t_clear + t_occ_max -> not(A in CR and B in CR) | UNSAT | UNSAT | yes |
@@ -200,8 +205,9 @@ Encoding: `holo_fleet/ha/mutex_rule.py + formal/check_mutex.py`
 | M3 occupancy latch, n=4, observer at l=+5.25: never both in the CR (42 s BMC) | latch + persistence + exit + t_clear + t_occ_max -> not(A in CR and B in CR) | UNSAT | UNSAT | yes |
 | M3 occupancy latch, n=4, observer at l=+1.75: never both in the CR (42 s BMC) | latch + persistence + exit + t_clear + t_occ_max -> not(A in CR and B in CR) | UNSAT | UNSAT | yes |
 | M3m mutation: belief without latch (FREE when nothing is seen) must violate P2 | expect counterexample | SAT | SAT | yes |
+| M3f scope: an occupant that stops inside the CR (fault) is released by the t_occ_max fallback | expect counterexample: crossing speed >= V_LO is an assumption of M3 | SAT | SAT | yes |
 
-## P3 formation recovery (liveness, ranking functions)  (22/22 as expected, 4.6 s)
+## P3 formation recovery (liveness, ranking functions)  (22/22 as expected, 4.2 s)
 
 Encoding: `formal/check_formation.py`
 
@@ -230,4 +236,19 @@ Encoding: `formal/check_formation.py`
 | Fm1 mutation: no catch-up margin (v_recovery = v_clock) must break F1 (along) | expect counterexample | SAT | SAT | yes |
 | Fm2 mutation: k_slot = 0 must break F2 (lateral) | expect counterexample | SAT | SAT | yes |
 
-**Overall: SOME CHECKS FAILED**
+## Variant B2 range-bearing beacon (own assumptions; B0 checks unchanged)  (8/8 as expected, 36.4 s)
+
+Encoding: `perception/acoustic.py + perception/acoustic_gate.py + formal/check_acoustic.py`
+
+| check | formula | expected | verdict | ok |
+|---|---|---|---|---|
+| B2-A1 envelope coverage: every position compatible with a measurement inside the envelope lies in the region the perception builds | max over draws of (distance to samples - slack) <= 0 | HOLDS | HOLDS | yes |
+| B2-A2/A3 decision soundness: no measurement inside the envelope of a hull in the CR (any queue point n=2..6, heading within heading_tol) passes the exit, the outside or the exclusion test | forall CR grid x envelope corners: s_lower <= exit face, region meets the CR, could be occupant | HOLDS | HOLDS | yes |
+| B2-M4g availability (reported), n=2: every queued drone gets an acoustic exit evidence of every passing drone (bars' and queued hulls' occlusion, worst envelope error, worst ping phase) and can account for the other queued drones | exists 3 consecutive clear fixes with s_lower > exit face before the path end; queued drones excluded at t_lc | VIOLATED | VIOLATED | yes |
+| B2-M4g availability (reported), n=3: every queued drone gets an acoustic exit evidence of every passing drone (bars' and queued hulls' occlusion, worst envelope error, worst ping phase) and can account for the other queued drones | exists 3 consecutive clear fixes with s_lower > exit face before the path end; queued drones excluded at t_lc | VIOLATED | VIOLATED | yes |
+| B2-M4g domain boundary, n=4: refused by the planner (queue points beyond queue_lateral_max), reported | exists 3 consecutive clear fixes with s_lower > exit face before the path end; queued drones excluded at t_lc | VIOLATED | VIOLATED | yes |
+| B2-M4g domain boundary, n=5: refused by the planner (queue points beyond queue_lateral_max), reported | exists 3 consecutive clear fixes with s_lower > exit face before the path end; queued drones excluded at t_lc | VIOLATED | VIOLATED | yes |
+| B2-M4g domain boundary, n=6: refused by the planner (queue points beyond queue_lateral_max), reported | exists 3 consecutive clear fixes with s_lower > exit face before the path end; queued drones excluded at t_lc | VIOLATED | VIOLATED | yes |
+| B2-S acoustic fixes never reach separation, collision avoidance, precedence or the sonar witness; the latch uses them only with the FRONT corridor empty | AST: no acoustic name in the safety / precedence modules; guarded call | HOLDS | HOLDS | yes |
+
+**Overall: ALL CHECKS AS EXPECTED**

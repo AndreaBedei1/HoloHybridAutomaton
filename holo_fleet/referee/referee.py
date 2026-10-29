@@ -8,7 +8,7 @@ never returns anything to a controller.  It judges, on agent-origin (hull-centre
 * P3  G(formation_lost -> F formation_recovered) - episodes of formation loss with their recovery
   times.  A finite run cannot falsify a liveness property: an episode still open at the end of a
   run is reported as "not recovered within the run", never as a counterexample.
-* P3-deg (DI-29)  a drone farther than e_lost from its slot (robust fit of the others) for t_rejoin of
+* P3-deg  a drone farther than e_lost from its slot (robust fit of the others) for t_rejoin of
   mission time (the shared clock moving) is ABSENT (ground truth: it is not coming back on its own);
   the formation of the PRESENT drones on their original slots is then judged with the same episode
   logic: the degraded formation is stable when every such episode is recovered.  A drone back within
@@ -314,8 +314,8 @@ class Referee:
                                       "all_recovered_within_run": not self._lost,
                                       "final_form_err": self.rows[-1].get("form_err") if self.rows else None},
             "P3_degraded": self._degraded_metrics(),
-            # raw current statistics; the envelope verdict (control-feasibility of the requested velocities,
-            # DI-27) needs the controllers' logs and is added by referee/envelope.evaluate_run at the end of a run
+            # raw current statistics; the envelope verdict (control-feasibility of the requested velocities)
+            # needs the controllers' logs and is added by referee/envelope.evaluate_run at the end of a run
             "envelope": {"max_horizontal_drift": round(self.max_drift, 3),
                          "max_vertical_drift": round(self.max_vertical_drift, 3)},
             "kinematics": {"max_true_speed_m_s": round(self.max_speed, 3),

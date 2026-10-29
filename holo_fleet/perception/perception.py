@@ -4,7 +4,7 @@ Only data a real vehicle has is used: its own sensors and the mission plan (surv
 template, gate map).  No simulator state, no neighbour identity, no communication.  Near a mapped gate the
 dead-reckoning position is corrected against the gate map (perception/structure_aiding.py).
 
-Missing neighbours (lost-drone handling, DI-29).  Every expected neighbour that should be visible and
+Missing neighbours (lost-drone handling).  Every expected neighbour that should be visible and
 is not seen is MISSING; its timer runs only while the drone itself holds its slot (FORMATION_FOLLOW,
 FORMATION_WAIT_REJOIN, DEGRADED_FORMATION: a drone that is itself lost or avoiding cannot judge the
 others) and while the shared clock moves at the drone's own formation time (planned holds such as the
@@ -158,7 +158,7 @@ class Perception:
     # ------------------------------------------------------------------ formation reference
     def slot_reference(self, t_form: float, sigma: float = 0.0):
         """World position of the own slot and the formation frame (tangent, left normal, up) at the own formation
-        time ``t_form`` (= mission time minus the local delay of the reduced progress, DI-31)."""
+        time ``t_form`` (= mission time minus the local delay of the reduced progress)."""
         plan = self.plan
         clock = plan.clock
         s_ref = (clock.s(t_form) if clock is not None else 0.0) + sigma
@@ -236,8 +236,9 @@ class Perception:
                 self.acoustic_present.append(k)
                 self.neighbour_seen[k] = t                       # sighted while the fix is fresh (rule A-P)
             acc = [g for g in self.acoustic.all_fixes(k, t - a.fresh_s, t) if g.accepted][-A_CONFIRM:]
-            if (len(acc) == A_CONFIRM and len({g.track for g in acc}) == 1
-                    and all(float(np.linalg.norm(g.rel - exp)) - g.extent > fr.e_lost + A_DISPLACED_MARGIN for g in acc)):
+            if (len(acc) == A_CONFIRM and len({g.track for g in acc}) == 1      # every region point farther than that
+                    and all(float(np.min(np.linalg.norm(g.pts - (g.p - g.rel) - exp, axis=1))) - g.slack
+                            > fr.e_lost + A_DISPLACED_MARGIN for g in acc)):
                 self.acoustic_displaced.append(k)
         return out
 

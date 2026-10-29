@@ -15,7 +15,12 @@
   seen or masked, EXITING on a positive exit witness with the corridor empty (an echo in any sonar
   sector that no hull in the CR can produce and a hull leaving it on the exit side can: exit_witness.py;
   the FRONT echo beyond R_far is the FRONT case), FREE after ``t_clear`` more - or after ``t_occ_max``
-  without corridor echoes (logged as a timeout).  No echo is never evidence of an exit.
+  without corridor echoes (logged as a timeout).  No echo is never evidence of an exit: the timeout is a fallback
+  whose safety rests on an explicit assumption, a healthy occupant crosses the CR in less than t_occ_max (formal M3,
+  crossing speed >= V_LO); a drone stopped inside the CR by a fault, masked by the bars, is outside that guarantee
+  (formal M3f gives the counterexample).  In the gate scenarios the sonar witness from a lateral queue point is rare
+  in HoloOcean (the passing drone is lost behind the frame and beyond the detection range), so most releases are this
+  fallback (counted as occupancy timeouts in the run metrics).
   Variant B2 only: an acoustic exit evidence (identified range-bearing fixes, perception/acoustic_gate.py) is a
   second way into EXITING, under the same "corridor empty" condition; without it (B0, a silent channel) the latch
   is exactly the sonar one.
@@ -188,8 +193,9 @@ class GatePerception:
             if witness is not None and not corridor:
                 self.occ_state, self.exit_seen_t, self.exit_witness = "EXITING", t, witness
                 self.exit_kind["ACOUSTIC" if witness.get("sector") == "ACOUSTIC" else "SONAR"] += 1
-            elif t - self.last_corridor_t > G.t_occ_max:
-                self.occ_state, self.exit_witness = "FREE", None
+            elif t - self.last_corridor_t > G.t_occ_max and not (self.acoustic_exit is not None
+                                                                   and self.acoustic_exit.heard_inside(t, g)):
+                self.occ_state, self.exit_witness = "FREE", None      # fallback: bounded crossing assumed (docstring)
                 self.occ_timeouts += 1
         if self.occ_state == "EXITING" and not corridor and t - max(self.exit_seen_t, self.last_corridor_t) >= G.t_clear:
             self.occ_state = "FREE"

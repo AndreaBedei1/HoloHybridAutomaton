@@ -3,26 +3,26 @@
   "all_passed": true,
   "results": [
     {
-      "prop": "S0 onboard distance never above the true centre distance (numeric)",
-      "formula": "forall sampled poses/errors: d_hat <= d",
-      "encoding": "perception/targets.py + sonar_geometry.target_distance_lower",
+      "prop": "S0 onboard distance never above the true distance of the nearest hull (numeric, multi-hull scenes)",
+      "formula": "forall sampled scenes/errors/detection boundaries: d_hat <= min_O d(O)",
+      "encoding": "perception/distance_bound.py (perception/targets.py)",
       "expect": "holds",
       "verdict": "holds",
       "passed": true,
-      "seconds": 17.3,
+      "seconds": 48.7,
       "counterexample": null,
-      "note": "105000 samples; min(d - d_hat) = 0.051 m; looseness p50 0.79, p95 1.03, max 1.18 m (affects liveness only)"
+      "note": "34991 scenes, hull tilt <= distance_bound.MAX_REL_TILT_DEG; single hull, 1-8 m: min(d - d_hat) 0.096, p50 0.43; single hull near the cube corners, 1-3 m: min(d - d_hat) 0.232, p50 0.82; single hull near the cube edges, 1-4 m: min(d - d_hat) 0.186, p50 0.78; near field, 0.7-1.6 m: min(d - d_hat) 0.576, p50 0.80; 2-3 hulls, 1-6 m: min(d - d_hat) 0.111, p50 0.78; 2-3 hulls at cube edges, 1.5-4 m: min(d - d_hat) 0.234, p50 0.83; square-formation neighbours 90 deg apart, 2.5-4.5 m: min(d - d_hat) 0.241, p50 0.52; square-formation neighbours, extreme range errors: min(d - d_hat) 0.205, p50 0.58; worst case (narrowest boundary, +eps_far): corners 0.7-3 m: min(d - d_hat) 0.209, p50 0.70; worst case: edges 0.7-4 m: min(d - d_hat) 0.164, p50 0.70; worst case: square neighbours: min(d - d_hat) 0.204, p50 0.39"
     },
     {
       "prop": "S0m mutation: uncertified bound (centre assumed inside every member cone) must overestimate",
-      "formula": "expect: some sample with d_hat > d",
+      "formula": "expect: some scene with d_hat > d",
       "encoding": "formal/check_separation.py",
       "expect": "violated",
       "verdict": "violated",
       "passed": true,
       "seconds": 0.0,
       "counterexample": null,
-      "note": "worst overestimate 0.432 m in 887 of 13125 samples"
+      "note": "worst overestimate 0.189 m in 94 of 3500 scenes"
     },
     {
       "prop": "S1a BMC: no violation within 4 s from any start with d_hat >= d_warning",
@@ -31,7 +31,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 2.9,
+      "seconds": 2.223,
       "counterexample": null,
       "note": ""
     },
@@ -42,7 +42,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 0.014,
+      "seconds": 0.008,
       "counterexample": null,
       "note": ""
     },
@@ -64,7 +64,7 @@
       "expect": "sat",
       "verdict": "sat",
       "passed": true,
-      "seconds": 0.031,
+      "seconds": 0.042,
       "counterexample": {
         "c_0": -0.04502563476562498,
         "c_1": 0.04502563476562498,
@@ -253,7 +253,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 50.344,
+      "seconds": 50.195,
       "counterexample": null,
       "note": "nonlinear real arithmetic: about 50 s alone, longer under load"
     },
@@ -264,7 +264,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 0.005,
+      "seconds": 0.006,
       "counterexample": null,
       "note": "d_blackout = 2.34 m"
     }

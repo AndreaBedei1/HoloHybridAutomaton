@@ -16,10 +16,11 @@ Two mechanisms:
   (missed detections: the capture arrives, the target echo does not), DVL dropout and outages (bottom-lock loss),
   latency of every onboard stream (data delivered late with its true capture time stamp).
 
-The four levels are anchored to the project's declared assumptions (config.Envelope: sonar 10 Hz, tau_max 0.25 s,
-eps_range_far 0.12 m / eps_range_near 0.08 m; FormationRule e_ok 0.5 / e_lost 1.2 m; GateRule queue_tol 0.35 m):
-LOW and MEDIUM are the realistic operating domain (datasheet / literature anchored, see below); HIGH is a stress level
-beyond it (out-of-envelope checks).
+The levels are related to the project's declared assumptions (config.Envelope: sonar 10 Hz, tau_max 0.25 s,
+eps_range_far 0.12 m / eps_range_near 0.08 m; FormationRule e_ok 0.5 / e_lost 1.2 m; GateRule queue_tol 0.35 m) but are
+stress levels, not a hardware characterisation: LOW stays inside the sonar range envelope, MEDIUM exceeds it in about
+1.2 % of captures (+-2-bin jitter) and exceeds tau_max with its outages; their provenance is in
+docs/PARAMETER_PROVENANCE.md and docs/SENSOR_DEGRADATION_REFERENCES.md.
 """
 
 from __future__ import annotations
@@ -69,8 +70,8 @@ class NoiseProfile:
 
 CLEAN = NoiseProfile()
 
-# Realistic operating domain (the validation campaign).  Every value is tied to a datasheet or a paper in
-# docs/SENSOR_ROBUSTNESS_LITERATURE.md (table in docs/SENSOR_ROBUSTNESS_AND_BEACONING.md, section 1).  CLEAN (the
+# Validation levels of the campaign.  The provenance of every value (datasheet, paper, or stress assumption) is in
+# docs/SENSOR_DEGRADATION_REFERENCES.md and docs/PARAMETER_PROVENANCE.md.  CLEAN (the
 # deployed suite) is already at or above the datasheet white noise of the IMU (ICM-20602, A6), the depth sensor
 # (Bar30, A10) and the DVL (Nortek single ping ~0.8 cm/s, A2), so those channels stay at CLEAN in LOW and grow
 # only moderately in MEDIUM; the degradations that matter are heading (calibration, A8/A9), DVL bottom-lock loss

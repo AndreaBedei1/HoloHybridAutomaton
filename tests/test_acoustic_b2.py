@@ -17,6 +17,12 @@ from holo_fleet.perception.targets import Target
 from holo_fleet.sim import acoustic_channel as ac
 
 B2 = dataclasses.replace(DEFAULT, beacon=BeaconConfig(mode="ACOUSTIC_RB"))
+DEFAULT_ACOUSTIC_FRESH = DEFAULT.acoustic.fresh_s
+# The decision logic of the acoustic exit (A1-A3) does not depend on the width of the envelope; it is exercised with
+# an envelope without the clear-path multipath extension, under which the evidence is reachable on these short paths.
+# The deployed envelope also covers that excess, and then the evidence is not available in the gate geometry (formal
+# B2-M4g): test_a_multipath_episode_never_gives_an_exit_from_inside_the_cr checks that it stays sound.
+B2_LOGIC = dataclasses.replace(B2, acoustic=dataclasses.replace(B2.acoustic, los_excess_max_m=0.0))
 G = B2.gate
 G06 = load_arena_gates(HORSESHOE_TRACK, ["G06"])[0]
 YAW = math.atan2(G06.axis[1], G06.axis[0])
@@ -67,18 +73,24 @@ def test_channel_levels_are_ordered_and_blackout_delivers_nothing():
     assert all(m.measure(1.0, 0, 1, np.array([0.1, 0.0, 5.0, -4.0])) is None for _ in range(50))
 
 
-def test_clean_direct_path_errors_stay_inside_the_onboard_envelope():
+def test_clear_path_errors_stay_inside_the_onboard_envelope():
+    """MEDIUM, clear direct path: every delivered range lies in the one-sided envelope (a multipath episode only makes
+    it longer, by at most los_excess_max_m) and every direction within 3 sigma + the array bias; the episodes are
+    persistent on a link (one excess per episode)."""
     m = ac.ChannelModel(ac.MEDIUM, 6, 3, 50.0)
     br, ba, be = box_bounds(10.0, B2)
-    out = 0
+    out, episodes, prev = 0, 0, None
     for i in range(4000):
-        x = m.measure(200.0 + i * 0.0, 1, 2, np.array([0.3, -0.1, 10.0, -4.0]))     # outside the outages
+        x = m.measure(200.0, 1, 2, np.array([0.3, -0.1, 10.0, -4.0]))               # outside the outages
         if x is None:
             continue
         r, az, el, nlos = x
-        assert not nlos
-        out += (abs(r - 10.0) > br) or (abs(az - 0.3) > ba) or (abs(el + 0.1) > be)
-    assert out == 0                                   # 3 sigma + bias bounds: none in 4000 draws at this seed
+        out += (r - 10.0 > br + B2.acoustic.los_excess_max_m) or (10.0 - r > br) or abs(az - 0.3) > ba or abs(el + 0.1) > be
+        if nlos and not prev:
+            episodes += 1
+        prev = nlos
+    assert out == 0
+    assert 20 < episodes < 200                         # 3 % per reception, ~5 receptions each, over ~3200 receptions
 
 
 def test_blocked_path_is_lost_or_a_longer_reflection():
@@ -157,9 +169,9 @@ def test_two_consistent_rejected_fixes_restart_a_track_with_a_new_id():
 
 
 # ---------------------------------------------------------------------------------------------- gate (P2)
-def exit_bench(lat=LATS[0], n=N):
-    b = Bench(lat, n)
-    ae = AcousticExit(B2, b.tr, list(range(1, n)))
+def exit_bench(lat=LATS[0], n=N, cfg=B2_LOGIC):
+    b = Bench(lat, n, cfg)
+    ae = AcousticExit(cfg, b.tr, list(range(1, n)))
     return b, ae
 
 
@@ -184,6 +196,33 @@ def test_occupant_without_fixes_never_releases():
         b.step(0.5)
         assert ae.evaluate(b.t, G06) is None
     assert 1 in ae.last["possible"]
+
+
+def test_a_drone_heard_inside_the_cr_blocks_the_timeout_fallback():
+    """A drone stopped in the gate (a fault) that still pings: its fresh fixes inside the CR are positive evidence of
+    occupancy, so the t_occ_max fallback must not release (gate_perception); queued drones heard at their queue points,
+    a drone heard well beyond the exit, or no fixes at all, do not block it."""
+    b, ae = exit_bench()
+    b.ping(1, gate_world(0.0, 0.0))                                    # inside the CR
+    assert ae.heard_inside(b.t, G06)
+    b.step(DEFAULT_ACOUSTIC_FRESH + 0.1)
+    assert not ae.heard_inside(b.t, G06)                               # the fix is no longer fresh
+    b, ae = exit_bench()
+    queued_others(b, k_occ=-1)
+    b.ping(1, gate_world(8.0, 0.0))
+    assert not ae.heard_inside(b.t, G06)
+
+
+def test_a_multipath_episode_never_gives_an_exit_from_inside_the_cr():
+    """Deployed envelope: the occupant stopped at the exit face of the CR, heard with the largest clear-path multipath
+    excess for a whole episode (consistent fixes on one track): never an acoustic exit evidence."""
+    b, ae = exit_bench(cfg=B2)
+    corridor(b, ae, gate_world(-0.6, 0.0))
+    for _ in range(8):
+        b.ping(1, gate_world(G.cr_half_len, 0.0), err=(ac.MEDIUM.reflect_extra_m[1], 0.0, 0.0))
+        queued_others(b, k_occ=1)
+        b.step(0.9)
+        assert ae.evaluate(b.t, G06) is None
 
 
 def _pass(b, ae, k_occ=1, s_end=9.0, steps=12, others=True):
@@ -285,8 +324,8 @@ def test_gate_latch_ignores_acoustics_while_the_corridor_is_occupied():
                        path=Path(np.array([[-20.0, 0], [20.0, 0]]), 0.0), gates=[G06], structures=[G06],
                        launch_position=gate_world(QS, LATS[0]), launch_yaw_deg=math.degrees(YAW), static_rank=0,
                        s_end=40.0, queue_lateral=LATS[0], queue_s=QS)
-    b = Bench()
-    gp = GatePerception(plan, B2, acoustic=b.tr)
+    b = Bench(cfg=B2_LOGIC)
+    gp = GatePerception(plan, B2_LOGIC, acoustic=b.tr)
     tg = lambda r: Target(pattern=frozenset({"FRONT"}), r_min=r, d_lower=r, age=0.0, closing_rate=0.0, cls="DYNAMIC", ranges={})
     occ = gate_world(-0.6, 0.0)
     r_occ = float(np.linalg.norm(occ - b.p)) - 0.3
@@ -399,7 +438,9 @@ def test_presence_never_confirms_a_missing_neighbour_back():
 
 
 def test_a_neighbour_heard_far_from_its_slot_is_declared_missing_on_the_second_fix():
-    off = {2: np.array([-6.0, 0.0, 0.0])}                              # 6 m behind its slot, the others in place
+    off = {2: np.array([-8.0, 0.0, 0.0])}                              # 8 m behind its slot, the others in place: the
+    # envelope allows a range up to los_excess_max_m too long, so along the line of sight only beyond ~5.5 m is the
+    # whole region farther than e_lost + A_DISPLACED_MARGIN from the slot
     c, first, recs = _run_form(B2, _every(1.0), offset=off)
     assert set(first) == {2} and first[2] <= 2.0 + 1e-9               # fixes at 1.0 and 2.0 s
     assert 2 in recs[-1]["form"]["acoustic_displaced"]

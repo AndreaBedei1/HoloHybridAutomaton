@@ -2,9 +2,10 @@
 
 The sonar latch of gate_perception.py stays as it is: BUSY on an unexplained FRONT corridor echo, EXITING on a
 sonar exit witness with the corridor empty, FREE after t_clear more (or the t_occ_max fallback).  B2 adds ONE more
-way into EXITING, under the same "corridor empty" condition, and nothing else: an acoustic observation never
-moves the latch while a corridor echo is seen, never touches the precedence decision, and its absence means
-nothing.
+way into EXITING, under the same "corridor empty" condition, and one restriction: the t_occ_max fallback does not
+release the CR while a fresh accepted fix places a drone possibly inside it (``heard_inside``: a drone stopped in
+the gate by a fault that still pings).  An acoustic observation never moves the latch while a corridor echo is seen,
+never touches the precedence decision, and its absence means nothing.
 
 Acoustic exit evidence at time t, for the episode whose last corridor sighting was at t_lc (the latest instant at
 which a hull in or at the CR was seen; since then the corridor has been empty):
@@ -131,6 +132,17 @@ class AcousticExit:
         contra = [f for f in after if not f.accepted and f.t >= tail[0].t
                   and self._cr_possible(gate_points(g, f.pts), f.slack + self.v_bound * max(t - f.t, 0.0))]
         return tail[-1] if ok and not contra else None
+
+    def heard_inside(self, t: float, g) -> bool:
+        """A fresh accepted fix places some drone possibly inside the CR now (its region grown by the motion since the
+        fix): positive evidence of occupancy, so the t_occ_max fallback of the sonar latch must not release the CR
+        (gate_perception).  Without fixes nothing changes: their absence is no evidence."""
+        a = self.cfg.acoustic
+        for j in self.others:
+            f = self.tracker.latest(j, t, a.fresh_s)
+            if f is not None and self._cr_possible(gate_points(g, f.pts), f.slack + self.v_bound * max(t - f.t, 0.0)):
+                return True
+        return False
 
     # ------------------------------------------------------------------ decision
     def evaluate(self, t: float, g) -> Optional[Dict]:

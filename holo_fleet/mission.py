@@ -189,6 +189,15 @@ def queue_assignment(slots: Sequence[Slot], G) -> List[Tuple[float, float]]:
     return out
 
 
+def check_gate_domain(slots: Sequence[Slot], G) -> None:
+    """Refuse a gate passage whose queue lies outside the validated domain (config.GateRule.queue_lateral_max: the
+    queue points from which a sonar exit witness of every passing drone exists, formal M4g)."""
+    worst = max(abs(lat) for lat, _dz in queue_assignment(slots, G))
+    if worst > G.queue_lateral_max + 1e-9:
+        raise ValueError(f"gate passage outside the validated domain: queue point {worst:.2f} m off the axis > "
+                         f"queue_lateral_max {G.queue_lateral_max:.2f} m (no sonar exit witness, formal M4g)")
+
+
 def queue_order(slots: Sequence[Slot], G) -> List[int]:
     """Static rank of every slot = its position in the queue precedence of the shared plan (left first, then
     top first).  It is the same order the sector rule produces geometrically, so the static-rank fallback

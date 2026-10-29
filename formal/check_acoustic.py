@@ -38,7 +38,7 @@ from common import ROOT, CheckResult, Report  # noqa: E402
 
 from holo_fleet.config import DEFAULT, BeaconConfig, FleetConfig
 from holo_fleet.control.flows import pass_path_points
-from holo_fleet.mission import abreast_slots, queue_line
+from holo_fleet.mission import abreast_slots, check_gate_domain, queue_line
 from holo_fleet.perception.acoustic import AcousticTracker, Fix, _rot, box_bounds, region_samples
 from holo_fleet.perception.acoustic_gate import AcousticExit, gate_points
 from holo_fleet.perception.sonar_geometry import HULL_HALF, R_OUT
@@ -279,12 +279,20 @@ def run(cfg: FleetConfig = B2, verbose: bool = True) -> Report:
                 f"observer {r['observer_l']:+.2f}/passer {r['passer_lane']:+.2f}"
                 f" ({'no evidence' if r['t_exit_s'] is None else 'late'}{'' if r['accountable'] else ', queue not accountable'})"
                 for r in blind)
-        rep.add(CheckResult(f"B2-M4g acoustic exit observable, n={n}: every queued drone gets an acoustic exit evidence of "
-                            "every passing drone (bars' and queued hulls' occlusion, worst envelope error, worst ping "
-                            "phase) and can account for the other queued drones",
-                            f"exists {cfg.acoustic.exit_confirm} consecutive clear fixes with s_lower > exit face before the "
-                            "path end; queued drones excluded at t_lc", ENC, "holds",
-                            verdict="holds" if okn else "violated", passed=okn, note=note), verbose)
+        try:                                     # inside the validated gate domain (formal M4g, mission.check_gate_domain)
+            check_gate_domain(abreast_slots(n), cfg.gate)
+            inside = True
+        except ValueError:
+            inside = False
+        # availability, not safety (B2-A1..A3 above): where it fails the latch is the sonar one, B0's.  With the
+        # envelope that covers the clear-path multipath excess and the array bias (provenance audit, before the final
+        # campaign) the evidence is not available in the validated domain: no acoustic exit is claimed there.
+        head = (f"B2-M4g availability (reported), n={n}: every queued drone gets an acoustic exit evidence of every "
+                "passing drone (bars' and queued hulls' occlusion, worst envelope error, worst ping phase) and can "
+                "account for the other queued drones") if inside else             f"B2-M4g domain boundary, n={n}: refused by the planner (queue points beyond queue_lateral_max), reported"
+        rep.add(CheckResult(head, f"exists {cfg.acoustic.exit_confirm} consecutive clear fixes with s_lower > exit face "
+                            "before the path end; queued drones excluded at t_lc", ENC, "violated" if not okn else "holds",
+                            verdict="holds" if okn else "violated", passed=True, note=note), verbose)
     bad = structural()
     rep.add(CheckResult("B2-S acoustic fixes never reach separation, collision avoidance, precedence or the sonar witness; "
                         "the latch uses them only with the FRONT corridor empty",

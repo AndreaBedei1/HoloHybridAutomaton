@@ -54,15 +54,15 @@ def box_bounds(r: float, cfg: FleetConfig = DEFAULT) -> Tuple[float, float, floa
     """Half-widths of the error box (range [m], azimuth [rad], elevation [rad]) of a fix at range r."""
     a = cfg.acoustic
     br = a.k_sigma * a.sigma_range_m + a.sound_speed_err * r + a.clock_offset_m
-    ba = math.radians(a.k_sigma * a.sigma_az_deg + a.heading_err_deg)
-    be = math.radians(a.k_sigma * a.sigma_el_deg + a.tilt_err_deg)
+    ba = math.radians(a.k_sigma * a.sigma_az_deg + a.doa_bias_deg + a.heading_err_deg)
+    be = math.radians(a.k_sigma * a.sigma_el_deg + a.doa_bias_deg + a.tilt_err_deg)
     return br, ba, be
 
 
 def region_samples(r: float, az: float, el: float, cfg: FleetConfig = DEFAULT) -> Tuple[np.ndarray, float]:
     """Samples of the error box of a measurement (body frame, relative) and the slack that covers the box."""
     br, ba, be = box_bounds(r, cfg)
-    rr = np.linspace(max(r - br, 0.0), r + br, _N)
+    rr = np.linspace(max(r - br - cfg.acoustic.los_excess_max_m, 0.0), r + br, _N)    # one-sided multipath excess
     aa = np.linspace(az - ba, az + ba, _N)
     ee = np.linspace(el - be, el + be, _N)
     R, A, E = np.meshgrid(rr, aa, ee, indexing="ij")

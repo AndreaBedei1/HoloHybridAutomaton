@@ -15,11 +15,11 @@
   formation_six          6 drones, lateral + vertical current survey line (6 swaths), current with w_z
   formation_recovery_head_current
                          4 drones, 0.6 m/s head jet           a 0.6 m/s jet against the motion on the rear-left
-                                                              drone: not control-feasible (DI-27), lost, recovered
+                                                              drone: not control-feasible, lost, recovered
   formation_gust         4 drones, temporary 0.85 m/s jet     out-of-envelope stress test: lost and recovered
   gate_single            3 drones, one arena gate (G06)       one at a time through the gate (P2)
   integrated_short       3 drones, cross-current + G06        P1 + P2 + P3 in one short mission
-lost drones and the mutex queue (DI-28, DI-29, DI-31):
+lost drones and the mutex queue:
   lost_drone_rejoin      4 drones, lateral current 0.35       the rear-left drone loses its thrusters for 7 s and
                                                               is dragged away; the others slow the formation down
                                                               (FORMATION_WAIT_REJOIN), it catches up and rejoins
@@ -48,7 +48,8 @@ import numpy as np
 from holo_fleet.arena_bridge import HORSESHOE_TRACK, load_arena_gates
 from holo_fleet.config import DEFAULT, FleetConfig
 from holo_fleet.formations import TEMPLATES, FormationTemplate
-from holo_fleet.mission import FormationClock, GateSpec, MissionPlan, Path, Slot, queue_assignment, queue_line, queue_order
+from holo_fleet.mission import (FormationClock, GateSpec, MissionPlan, Path, Slot, check_gate_domain, queue_assignment,
+                                queue_line, queue_order)
 from holo_fleet.sim.currents import CurrentComponent, CurrentField
 from holo_fleet.sim.spec import SimSpec, StressSpec
 
@@ -83,6 +84,8 @@ class Scenario:
 def _fleet(name: str, template: FormationTemplate, path: Path, clock: FormationClock, gates: Sequence[GateSpec],
            structures: Sequence[GateSpec], cfg: FleetConfig, s_start: float = 0.0, formation: bool = True):
     plans, spawns, yaws = [], [], []
+    if gates:
+        check_gate_domain(template.slots, cfg.gate)
     qa = queue_assignment(template.slots, cfg.gate)
     q_s = queue_line(template.slots, cfg.gate)
     rank = queue_order(template.slots, cfg.gate)
@@ -248,7 +251,7 @@ def formation_six(cfg: FleetConfig = DEFAULT) -> Scenario:
 
 def formation_recovery_head_current(cfg: FleetConfig = DEFAULT) -> Scenario:
     """P3 under a 0.6 m/s current against the motion: the old scalar bound, which this scenario showed to be
-    too general (DI-24, DI-27).  0.6 m/s is the largest current exercised (Envelope.current_validated_max); against
+    too general.  0.6 m/s is the largest current exercised (Envelope.current_validated_max); against
     the motion at the 0.30 m/s survey speed the control-feasible limit is about 0.41 m/s, so the hit drone is
     outside the envelope and declares it (ENVELOPE_VIOLATION).
 
@@ -288,7 +291,7 @@ def formation_gust(cfg: FleetConfig = DEFAULT) -> Scenario:
                    windows=[(12.0, 22.0)])
 
 
-# ---------------------------------------------------------------------------------------------- lost drones (DI-29)
+# ---------------------------------------------------------------------------------------------- lost drones
 def _lost_drone(name: str, t_on: float, t_off: Optional[float], duration: float, current: CurrentField, title: str,
                 desc: str, focus: str, cfg: FleetConfig, faulty: int = 2) -> Scenario:
     """Square survey; drone ``faulty`` (rear-left: nobody runs into it when it stops) loses its thrusters
@@ -316,7 +319,7 @@ def lost_drone_rejoin(cfg: FleetConfig = DEFAULT) -> Scenario:
 def lost_drone_timeout(cfg: FleetConfig = DEFAULT) -> Scenario:
     """80 s: every neighbour times the absence from its OWN detection, and a range-only sonar detects late when an
     echo of another neighbour stands in for the missing drone (the rear-right drone noticed it between 22 and 48 s
-    in the DI-31 probe runs); the run lasts until the latest one can have declared the slot vacant (+ t_rejoin)."""
+    in probe runs); the run lasts until the latest one can have declared the slot vacant (+ t_rejoin)."""
     fr = cfg.form
     return _lost_drone("lost_drone_timeout", 8.0, None, 80.0, CurrentField(),
                        "Lost drone: permanent failure, timeout and degraded formation",
@@ -369,8 +372,8 @@ INTEGRATED_GUST = 0.27     # cross-current gust of integrated_short [m/s]
 
 
 def integrated_short(cfg: FleetConfig = DEFAULT) -> Scenario:
-    """The gust was 0.35 m/s until DI-31: drone 0's diagonal gate passage at v_pass 0.5 m/s against it needed up to
-    1.12 x the nominal authority (OUTSIDE the control-feasible envelope, DI-27).  Only the scenario changes, not the
+    """A 0.35 m/s gust would make drone 0's diagonal gate passage at v_pass 0.5 m/s against it need up to
+    1.12 x the nominal authority (OUTSIDE the control-feasible envelope).  Only the scenario changes, not the
     controller: replaying the logged passage with the gust scaled gives 1.12 at 0.35, 1.03 at 0.30 (over the
     authority for 3 s), 1.00 at 0.28 and 0.98 at 0.27 m/s - the first value with a margin (2 %) for the run-to-run
     differences of HoloOcean.  The cross-current stays well felt (0.27 m/s gust, about 0.22 m/s net of the background)

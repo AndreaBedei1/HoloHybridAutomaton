@@ -62,7 +62,7 @@ def test_lost_drone_scenarios_inject_one_simulator_fault_on_a_rear_drone():
 
 def test_currents_inside_the_envelope_except_declared_disturbances():
     """Outside the declared disturbance windows every current is control-feasible for the survey velocity
-    (DI-27, along the mission path at the planned clock speed) and inside the exercised range."""
+    (along the mission path at the planned clock speed) and inside the exercised range."""
     from holo_fleet.control.current_envelope import check_current
 
     for name in EXPECTED:
@@ -97,7 +97,7 @@ def test_close_encounter_is_a_simultaneous_right_angle_crossing():
 
 def test_head_current_is_in_range_but_not_control_feasible():
     """The jet stays within the exercised range (0.6 m/s) but, against the 0.30 m/s survey velocity, it is
-    beyond the control-feasible head limit (about 0.41 m/s): outside the corrected envelope (DI-27)."""
+    beyond the control-feasible head limit (about 0.41 m/s): outside the corrected envelope."""
     from holo_fleet.control.current_envelope import check_current, head_limit
 
     sc = SCENARIOS["formation_recovery_head_current"](DEFAULT)
@@ -112,3 +112,21 @@ def test_head_current_is_in_range_but_not_control_feasible():
 
 def norm_head(jet):
     return -float(jet.drift[0])
+
+
+def test_gate_passages_stay_inside_the_validated_queue_domain():
+    """Every queued drone has a sonar exit witness of the drone that passes only for queue points within
+    GateRule.queue_lateral_max (formal M4g): the planner refuses larger queues (the abreast queue of 4-6) and every gate
+    scenario is inside the domain."""
+    import pytest
+    from holo_fleet.mission import abreast_slots, check_gate_domain
+
+    for n in (2, 3):
+        check_gate_domain(abreast_slots(n), DEFAULT.gate)
+    for n in (4, 5, 6):
+        with pytest.raises(ValueError, match="validated domain"):
+            check_gate_domain(abreast_slots(n), DEFAULT.gate)
+    for name, make in SCENARIOS.items():
+        sc = make(DEFAULT)
+        if sc.plans and sc.plans[0].gates:
+            check_gate_domain(sc.plans[0].slots, DEFAULT.gate)

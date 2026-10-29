@@ -40,8 +40,10 @@ class Envelope:
 
     dt: float = 0.1                  # controller period [s]
     tau_max: float = 0.25            # max age of the sonar data used by a guard [s] (one dropped 10 Hz capture)
-    eps_range_far: float = 0.12      # echo may be this much FARTHER than the true near surface [m]
-                                     # (one 5 cm bin + 6 cm octree leaf + the +5 cm threshold bias, Phase 1)
+    eps_range_far: float = 0.12      # echo may be this much FARTHER than the true near surface [m]: measured in
+                                     # HoloOcean (largest +0.054 m, Phase 1 probe) plus margin; the MEDIUM profile's
+                                     # +-2-bin range jitter exceeds it in ~0.6 % of captures per side (docs/
+                                     # PARAMETER_PROVENANCE.md): outside the proved P1 envelope
     eps_range_near: float = 0.08     # ... or this much nearer [m]
     v_max_nominal: float = 0.50      # speed cap outside avoidance (formation recovery) [m/s]
     v_escape: float = 0.55           # escape speed in COLLISION_AVOIDANCE [m/s]
@@ -52,7 +54,7 @@ class Envelope:
                                      #  control-feasible, see control/current_envelope.py)
     g_min: float = 0.50              # certified opening per unit speed of the escape table (single threat), S2a
     v_open: float = 0.20             # opening speed demanded by the warning filter [m/s]
-    # current envelope (DI-27): a current is acceptable when the requested velocity stays control-feasible
+    # current envelope: a current is acceptable when the requested velocity stays control-feasible
     # against it (control/current_envelope.py: steady command within the authority, direction-dependent)
     # AND it lies in the exercised range below.  The range is NOT a controllability bound: against the
     # motion at 0.30 m/s the authority already stops at about 0.41 m/s.
@@ -85,7 +87,7 @@ class PerceptionConfig:
     vehicle_max_extent_m: float = 0.9 # a single BlueROV2 echo spans less than this in range
     structure_tol_m: float = 0.30     # echo explained by the gate map if within this of a predicted return
     structure_tol_far_m: float = 0.70 # ... on the far side: the per-leaf exponential range noise only lengthens
-                                      # echoes (max of ~10^3 leaves ~ 0.05 ln N ~ 0.4 m), DI-14
+                                      # echoes (max of ~10^3 leaves ~ 0.05 ln N ~ 0.4 m)
     seabed_tol_m: float = 0.70     # rough, vegetated seabed (bench: kelp up to ~0.6 m above the DVL bottom)
     confirm_captures: int = 2         # a dynamic echo is confirmed after this many of the last 3 captures
     track_drop_s: float = 1.2         # a sector track without echoes for this long is dropped
@@ -138,6 +140,11 @@ class GateRule:
     # pair stays inside the queue bracket
     stack_column_spacing: float = 5.0
     stack_spacing: float = 3.5
+    # validated domain of the gate passage: every queued drone gets a sonar exit witness of the drone that passes
+    # (formal M4g) only for queue points within this lateral offset of the axis - the abreast queue up to 3 drones,
+    # the 2 x 2 and 3-drone stacks; beyond it (the abreast queue of 4-6, a 3-column stack) the outer drones see no
+    # exit and the planner refuses the passage (mission.check_gate_domain)
+    queue_lateral_max: float = 3.5
     hold_err_m: float = 0.10          # measured position-holding error of a queued drone (results/reference/ASSUMPTIONS.md)
 
     @property
@@ -195,7 +202,7 @@ class FormationRule:
     t_reinclude: float = 1.0          # a vacant slot is re-included after its drone is seen there this long [s]
     rejoin_lane_tol_m: float = 1.0    # a recovering drone farther than this from its own lane rejoins from behind
     rejoin_back_m: float = 2.0        # ... through a point on its lane this far behind the rear-most slot [m]
-    # reduced progress while an expected neighbour is missing (control/formation_time.py, DI-31): the formation
+    # reduced progress while an expected neighbour is missing (control/formation_time.py): the formation
     # reference of a drone that misses a neighbour advances at v_wait instead of the planned speed, reached and
     # left with a ramp of a_wait.  v_wait = 0.20: the catch-up of a rejoining drone grows from 0.20 to 0.30 m/s
     # (v_recovery_max - v_wait); the along-track offset between two drones that notice the absence at different
@@ -300,7 +307,8 @@ class AcousticConfig:
     The perception does not know the channel level of a run: it uses these bounds everywhere, fixed before any B2
     result (docs/B2_ACOUSTIC_AIDED_COORDINATION.md, section 3).  A reception inside the envelope has
     |range error| <= k_sigma * sigma_range_m + sound_speed_err * r + clock_offset_m and direction errors within
-    k_sigma * sigma + the own attitude error bound; anything else (a reflected arrival) is an outlier that the
+    k_sigma * sigma + the array calibration bias + the own attitude error bound; anything else (a reflected
+    arrival, a clear-path multipath episode) is an outlier that the
     kinematic gate and the depth check must reject or the fix must not be used.  The envelope is the MEDIUM channel
     (sim/acoustic_channel.py) at k_sigma = 3, the heading bound the MEDIUM compass bias (sim/sensor_noise.py) plus
     its noise, the pitch / roll bound the unestimated attitude of a BlueROV2 holding depth."""
@@ -311,6 +319,9 @@ class AcousticConfig:
     clock_offset_m: float = 0.21         # 3 x sqrt(2) x 0.05 m: the bias between two drones' clocks
     sigma_az_deg: float = 2.5
     sigma_el_deg: float = 2.5
+    doa_bias_deg: float = 3.0            # calibration residual of the receiving array (MEDIUM amplitude)
+    los_excess_max_m: float = 3.0        # a clear-path multipath episode can make a range this much too long (one-sided:
+                                         # the region reaches this much nearer; channel reflect_extra_m upper bound)
     heading_err_deg: float = 3.0         # own compass bias + noise (MEDIUM 2.0 deg bias)
     tilt_err_deg: float = 3.0            # own unestimated roll / pitch
     latency_max_s: float = 0.40          # a delivery later than this after its arrival is not used
