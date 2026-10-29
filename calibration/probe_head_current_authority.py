@@ -1,6 +1,6 @@
 """Head-current authority of the deployed low-level loop (HoloOcean, BlueROV2, one short session).
 
-    python probe/probe_head_current_authority.py
+    python calibration/probe_head_current_authority.py
 
 Seven BlueROV2s in one OpenWater session, no sonars.  Each one runs the deployed LowLevelController
 (DVL velocity loop + compass heading, NOMINAL authority) with the survey velocity as desired velocity:
@@ -18,7 +18,7 @@ Measured on t in [14, 32] s (more than five integrator time constants after the 
 The through-water speed of the saturated drones measures the speed available at the nominal authority
 (Envelope.v_tw_nominal); the unsaturated ones show where the survey velocity is still held.
 Writes results/calibration/head_current_authority.json (+ _log.json, 2 Hz samples).  Ground truth
-(PoseSensor, VelocitySensor) is used here for measuring only, as in scripts/calibrate_plant.py.
+(PoseSensor, VelocitySensor) is used here for measuring only, as in calibration/calibrate_plant.py.
 """
 
 from __future__ import annotations

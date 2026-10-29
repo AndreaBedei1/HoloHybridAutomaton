@@ -10,7 +10,7 @@ this project through a separate HoloOcean root; the official installation is nev
 | source checkout | `F:\Andrea\holoocean-octree-patch`, branch `sonar-octree-rebuild` on top of `pristine-2.3.0` (4 commits) |
 | build / install | `patches/build_and_install_patched_holoocean.ps1` (UE 5.3.2, Win64 Development) |
 | installed root | `F:\Andrea\holoocean_patched_root` (`HOLODECKPATH`), `PATCH_INFO.json` with source commit and exe SHA-256 |
-| regression | `probe/octree_rebuild_regression.py` -> `results/v2/octree_patch/regression.json` (pytest: `tests/test_octree_patch.py`, marker `holoocean`) |
+| regression | `calibration/octree_rebuild_regression.py` -> `results/calibration/octree_patch/regression.json` (pytest: `tests/test_octree_patch.py`, marker `holoocean`) |
 | status | not submitted upstream (an upstream PR is left to the author) |
 
 ## 1. Problem
@@ -35,7 +35,7 @@ cell boundary are lost.**  Example: a box face at x = 324 cm with 6 cm leaves.
 
 ## 2. Reproduction (unpatched 2.3.0)
 
-`probe/octree_debug_box.py` and `probe/sonar_probe_lib.py` (sessions k1-k3,
+`probe/octree_debug_box.py` and `calibration/sonar_probe_lib.py` (sessions k1-k3,
 `docs/v2/SONAR_PROBE.md`):
 
 * **k1:** reset, spawn the arena gate G06 and a 0.5 m steel box 3 m ahead of a SinglebeamSonar.
@@ -105,7 +105,7 @@ ends the Python process with a clear message if the engine dies instead of hangi
 
 ## 6. Regression test
 
-`python probe/octree_rebuild_regression.py`, about 1 minute, all checks must be true:
+`python calibration/octree_rebuild_regression.py`, about 1 minute, all checks must be true:
 
 * **Hard case:** the sonar is created first, then a box, the arena gate and a late BlueROV2 are spawned.
   * All three are invisible before the rebuild.
@@ -120,7 +120,7 @@ ends the Python process with a clear message if the engine dies instead of hangi
 
 ## 7. Benchmark
 
-128 x 128 x 40 m environment box, 6 cm leaves, `results/v2/octree_patch/regression.json`:
+128 x 128 x 40 m environment box, 6 cm leaves, `results/calibration/octree_patch/regression.json`:
 
 | operation | ticks | wall time (build 1934564) | wall time (build a8d3070, current) |
 |---|---|---|---|
@@ -135,7 +135,7 @@ median 23 ms instead of 14 ms), so the absolute times reflect the machine load a
 either way the rebuild is a one-off cost of about a second after a scene change.
 
 A rebuild is a one-off cost after a scene change.  Steady-state cost with six sonars per drone is in
-`README.md` (performance) and `results/v2/sonar_bench/perf.json`.
+`README.md` (performance) and `results/calibration/sonar_bench/perf.json`.
 
 ## 8. Compatibility
 

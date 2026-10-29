@@ -6,7 +6,7 @@ VelocitySensor, CollisionSensor) stays clean and goes to the referee only.
 Two mechanisms:
 
 * HoloOcean-native noise (engine side, set in the sensor ``configuration``): SinglebeamSonar AddSigma (Rayleigh
-  intensity noise, its scale: probe/probe_sensor_noise.py), MultSigma, RangeSigma (exponential per octree leaf);
+  intensity noise, its scale: calibration/probe_sensor_noise.py), MultSigma, RangeSigma (exponential per octree leaf);
   DVL VelSigma (per beam), RangeSigma; IMU AccelSigma, AngVelSigma, AccelBiasSigma, AngVelBiasSigma (random walk);
   Magnetometer Sigma and MagneticVector (a rotated reference vector = a constant heading bias, hard-iron like);
   DepthSensor Sigma.  The engine draws these with its own unseeded generator: runs are not bit-reproducible.

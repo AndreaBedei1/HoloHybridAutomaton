@@ -61,7 +61,7 @@ def _files(path: Path):
 
 def test_default_demo_keeps_nothing(demo):
     assert demo.main(["--scenario", "formation_triangle"]) == 0
-    assert _files(demo.OUT) == []                                   # nothing under results/v2/demos
+    assert _files(demo.OUT) == []                                   # nothing under results/reference
     assert _files(demo.tmp) == []                                   # the staging folder is gone
     assert demo.calls["run"] == [math.inf] and demo.calls["gif"] == []
 

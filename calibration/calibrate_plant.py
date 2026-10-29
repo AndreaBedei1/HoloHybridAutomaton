@@ -9,7 +9,7 @@ Measures, with the *deployed* low-level controller (DVL velocity loop + compass 
    effective drift 0.25/0.40/0.60/0.80 m/s -> residual drift velocity (feeds
    ``Envelope.w_drift_max`` / ``current_drift_max``).
 
-Writes results/calibration/plant_calibration.json and figures/calibration_plant.png.
+Writes results/calibration/plant_calibration.json and figures/calibration/plant.png.
 """
 
 from __future__ import annotations
@@ -157,8 +157,8 @@ def main() -> int:
     ax[1].set_xlabel("time [s]"); ax[1].set_ylabel("lateral displacement [m]"); ax[1].set_title("Station keeping in lateral current (nominal authority)")
     ax[1].legend(fontsize=8); ax[1].grid(alpha=0.3)
     fig.tight_layout()
-    (ROOT / "figures").mkdir(exist_ok=True)
-    fig.savefig(ROOT / "figures" / "calibration_plant.png", dpi=140)
+    (ROOT / "figures" / "calibration").mkdir(parents=True, exist_ok=True)
+    fig.savefig(ROOT / "figures" / "calibration" / "plant.png", dpi=140)
     return 0
 
 

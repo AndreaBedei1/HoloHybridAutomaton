@@ -82,7 +82,7 @@ from holo_fleet.perception.sonar_geometry import AXES, MOUNTS, R_IN, R_OUT, cent
 ENC = "holo_fleet/ha/mutex_rule.py (shared relation) + formal/check_mutex.py"
 AXIS = {"F": 0.0, "L": 90.0, "B": 180.0, "R": -90.0}
 HALF = 60.0
-HOLD_ERR = DEFAULT.gate.hold_err_m   # measured position-holding error of a queued drone (results/v2/ASSUMPTIONS.md)
+HOLD_ERR = DEFAULT.gate.hold_err_m   # measured position-holding error of a queued drone (results/reference/ASSUMPTIONS.md)
 V_LO = 0.12           # a committed drone crosses the masked part of the CR within t_occ_max (2.7 m / 25 s)
 
 
@@ -344,7 +344,7 @@ def geometry(cfg: FleetConfig, n: int, queue_line=None) -> dict:
 # ------------------------------------------------------------------------------------- M4g exit observability
 # Range within which the sonar of a queued drone detects a hull that has left the CR when the line of sight is
 # clear: >= 29 % of the captures up to 10 m, 19 % at 10-11 m, 7 % at 11-12 m (CLEAN gate runs, observers at a lateral
-# queue point, results/gate/exit_detection.json).
+# queue point, results/calibration/gate/exit_detection.json).
 R_DETECT_M = 10.0
 
 

@@ -1,6 +1,6 @@
-"""Figures and numbers for the single-beam sonar probe (probe/probe_singlebeam.py output).
+"""Figures and numbers for the single-beam sonar probe (calibration/probe_singlebeam.py output).
 
-Writes figures/v2/sonar_probe/*.png and results/v2/sonar_probe/summary.json.  Ground truth is used freely:
+Writes figures/calibration/sonar_probe/*.png and results/calibration/sonar_probe/summary.json.  Ground truth is used freely:
 this is the calibration bench, not the controller.
 """
 
@@ -14,15 +14,15 @@ from pathlib import Path
 import numpy as np
 
 ROOT = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(ROOT / "probe"))
+sys.path.insert(0, str(ROOT / "calibration"))
 sys.path.insert(0, str(ROOT))
 
 from sonar_probe_lib import (BIN_W, RANGES, first_return, group, hull_near_distance, load,  # noqa: E402
                              sonar_origin)
 
-OUT_RAW = ROOT / "probe" / "out" / "sonar_probe"
-FIG = ROOT / "figures" / "v2" / "sonar_probe"
-RES = ROOT / "results" / "v2" / "sonar_probe"
+OUT_RAW = ROOT / "calibration" / "out" / "sonar_probe"
+FIG = ROOT / "figures" / "calibration" / "sonar_probe"
+RES = ROOT / "results" / "calibration" / "sonar_probe"
 THR_CLEAN = 1e-3          # noise-free output: any echo
 INK = {"primary": "#1f2328", "secondary": "#59636e", "muted": "#8c959f", "grid": "#e6e8eb"}
 SERIES = ["#2a78d6", "#eb6834", "#1baf7a", "#4a3aa7", "#e87ba4", "#008300"]

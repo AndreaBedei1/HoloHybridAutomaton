@@ -15,8 +15,7 @@ inside ``reset()``) and the static scene changes afterwards.
   H  no ghost echo from the removed props; a box spawned at a new place is visible, the old place silent
 
 Also measures the cost of full and region rebuilds and checks that the official HoloOcean
-installation's octree cache is not touched.  Writes results/v2/octree_patch/regression.json and
-figures/v2/octree_patch/regression.png.  Exit code 0 iff every expectation holds.
+installation's octree cache is not touched.  Writes results/calibration/octree_patch/regression.json (``--out PATH``: elsewhere).  Exit code 0 iff every expectation holds.
 """
 
 from __future__ import annotations
@@ -40,8 +39,7 @@ PATCH = use_patched_holoocean()
 from holo_fleet.arena_bridge import HORSESHOE_TRACK, load_arena_gates, make_spawner, visual_gates  # noqa: E402
 from holo_fleet.sim.engine_watchdog import EngineWatchdog  # noqa: E402
 
-OUT_JSON = ROOT / "results" / "v2" / "octree_patch" / "regression.json"
-OUT_FIG = ROOT / "figures" / "v2" / "octree_patch" / "regression.png"
+OUT_JSON = ROOT / "results" / "calibration" / "octree_patch" / "regression.json"
 TPS, HZ = 30, 10
 SONAR_X = 0.24
 R_MIN, R_MAX, BINS = 0.3, 12.0, 234
@@ -218,8 +216,9 @@ def main() -> int:
     res["costs"]["tick_ms_max"] = round(float(tm.max()), 1)
     res["looks"] = b.looks
     res["all_passed"] = all(chk.values())
-    OUT_JSON.parent.mkdir(parents=True, exist_ok=True)
-    OUT_JSON.write_text(json.dumps(res, indent=1, default=str), encoding="utf-8")
+    out = Path(sys.argv[sys.argv.index("--out") + 1]) if "--out" in sys.argv else OUT_JSON   # tests: a temporary file
+    out.parent.mkdir(parents=True, exist_ok=True)
+    out.write_text(json.dumps(res, indent=1, default=str), encoding="utf-8")
     print(json.dumps(res, indent=1, default=str))
     return 0 if res["all_passed"] else 1
 

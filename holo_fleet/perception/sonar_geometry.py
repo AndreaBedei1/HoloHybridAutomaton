@@ -6,7 +6,7 @@ face of the BlueROV2 hull, all with the same model; only position and orientatio
 
 Conventions (body frame of the agent origin, HoloOcean client axes): x forward, y left, z up.
 Sensor rotations are HoloOcean ``[roll, pitch, yaw]`` degrees; pitch is positive *downward*
-(probe/probe_singlebeam.py: an agent pitched -90 deg looks up).
+(calibration/probe_singlebeam.py: an agent pitched -90 deg looks up).
 
 What a sector pattern tells about the direction of a target
 -----------------------------------------------------------

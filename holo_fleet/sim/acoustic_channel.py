@@ -1,7 +1,7 @@
 """Measurement model of the one-way acoustic range-bearing beacon (variant B2), simulator side.
 
 What the HoloOcean 2.3 engine computes (engine/Source/Holodeck/Sensors/Private/AcousticBeaconSensor.cpp, read
-in the patched engine source, and results/robustness/probe/beacon_api_probe.json): for a (sender, receiver)
+in the patched engine source, and results/calibration/beacon_api_probe.json): for a (sender, receiver)
 command, the sender's sensor position in the RECEIVER's sensor frame (``InverseTransformLocation`` of the receiver
 component transform: body frame, roll and pitch included, client axes x forward, y left, z up) as
 [azimuth, elevation, distance, receiver depth]; exact values, no noise; -1 in every field when the distance exceeds

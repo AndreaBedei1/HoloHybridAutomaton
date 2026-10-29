@@ -18,7 +18,7 @@ holo_fleet/ui/fleet_view.py).  The post-run summary is printed at the end.  Ctrl
 
 By default a demo is LIVE ONLY: the files the run needs (logs read back for the summary) live in a
 temporary folder that is deleted at the end; no GIF, no frames, nothing under results/, nothing in
-git status.  ``--save`` keeps a COMPLETE run in results/v2/demos/<scenario>/ (logs and metrics) and
+git status.  ``--save`` keeps a COMPLETE run in results/reference/<scenario>/ (logs and metrics) and
 refuses to replace an existing result unless ``--overwrite`` is given; an incomplete run is never
 saved.  ``--media`` (with ``--save``) also keeps the fleet-view / chase frames and the GIF.  ``--out``
 (with ``--save``) saves under another folder, for tests and smoke runs.
@@ -50,7 +50,7 @@ from holo_fleet.sim.scenarios import SCENARIOS  # noqa: E402
 from holo_fleet.ui.gif import make_gif  # noqa: E402
 from holo_fleet.ui.live import DemoUI  # noqa: E402
 
-OUT = ROOT / "results" / "v2" / "demos"
+OUT = ROOT / "results" / "reference"
 STAGE_PREFIX = "holo_fleet_demo_"
 MEDIA_DIRS = ("fleet_view", "frames", "dashboard")       # frame sequences (GIFs: *.gif)
 
@@ -136,10 +136,10 @@ def main(argv=None) -> int:
     ap.add_argument("--list", action="store_true")
     ap.add_argument("--headless", action="store_true", help="no HoloOcean viewport")
     ap.add_argument("--no-window", action="store_true", help="no fleet-view window")
-    ap.add_argument("--save", action="store_true", help="keep a complete run in results/v2/demos/<scenario>/")
+    ap.add_argument("--save", action="store_true", help="keep a complete run in results/reference/<scenario>/")
     ap.add_argument("--overwrite", action="store_true", help="with --save: replace an existing result")
     ap.add_argument("--media", action="store_true", help="with --save: also keep frames and the GIF")
-    ap.add_argument("--out", default=None, help="with --save: save under this folder instead of results/v2/demos")
+    ap.add_argument("--out", default=None, help="with --save: save under this folder instead of results/reference")
     ap.add_argument("--duration", type=float, default=None)
     ap.add_argument("--select", type=int, default=None, metavar="K",
                     help="drone shown in the fleet view's automaton panel (default: the scenario's choice)")
@@ -171,7 +171,7 @@ def main(argv=None) -> int:
         (stage / "owner.pid").write_text(str(os.getpid()), encoding="utf-8")
         status = _run_scenario(a, stage)
         if not a.save:
-            print("live demo: nothing kept (--save keeps the run in results/v2/demos/<scenario>/)")
+            print("live demo: nothing kept (--save keeps the run in results/reference/<scenario>/)")
         elif status != "COMPLETE":
             print(f"run {status}: not saved, {dest} unchanged")
         else:

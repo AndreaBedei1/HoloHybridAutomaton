@@ -12,7 +12,7 @@ and the run class:
                     or a required outcome missing while healthy drones entered FAILSAFE on a sensor fault;
 * PASS              every property the scenario's reference run achieves holds again.
 
-The required outcomes are those of the scenario's committed CLEAN reference run (results/v2/demos/<scenario>):
+The required outcomes are those of the scenario's committed CLEAN reference run (results/reference/<scenario>):
 P3 recovered / P3-deg holds when the reference achieves it, every healthy drone through the gate, healthy drones
 ending within ``PROGRESS_TOL_M`` of the reference end positions and not in FAILSAFE.
 """

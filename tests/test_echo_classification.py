@@ -100,10 +100,10 @@ def test_seabed_clutter_is_a_conservative_unknown_target():
     assert pseudo and all(t.cls == UNKNOWN for t in pseudo)
 
 
-BENCH = ROOT / "results" / "v2" / "sonar_bench" / "classify.json"
+BENCH = ROOT / "results" / "calibration" / "sonar_bench" / "classify.json"
 
 
-@pytest.mark.skipif(not BENCH.exists(), reason="HoloOcean classification bench not run (scripts/sonar_bench.py classify)")
+@pytest.mark.skipif(not BENCH.exists(), reason="HoloOcean classification bench not run (calibration/sonar_bench.py classify)")
 def test_holoocean_bench_cases():
     cases = {c["case"]: c["echoes"] for c in json.loads(BENCH.read_text())["cases"]}
     front = {k: [e["cls"] for e in v.get("FRONT", [])] for k, v in cases.items()}

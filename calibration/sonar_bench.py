@@ -1,10 +1,10 @@
 """Six-sonar bench in HoloOcean (pinned agents, ground truth allowed: this is a test bench).
 
-  python scripts/sonar_bench.py coverage   # second BlueROV2 along 26 directions (8 diagonals) x distances
-  python scripts/sonar_bench.py perf       # tick cost with 1 / 3 / 4 / 6 drones x 6 sonars
-  python scripts/sonar_bench.py shot       # screenshot of the six cones (ViewRegion) around one drone
+  python calibration/sonar_bench.py coverage   # second BlueROV2 along 26 directions (8 diagonals) x distances
+  python calibration/sonar_bench.py perf       # tick cost with 1 / 3 / 4 / 6 drones x 6 sonars
+  python calibration/sonar_bench.py shot       # screenshot of the six cones (ViewRegion) around one drone
 
-Writes results/v2/sonar_bench/<mode>.json (+ figures/v2/sensor/*.png for ``shot``).
+Writes results/calibration/sonar_bench/<mode>.json (+ figures/calibration/sensor/*.png for ``shot``).
 """
 
 from __future__ import annotations
@@ -27,8 +27,8 @@ from holo_fleet.perception.sensor_suite import SONAR_NAMES  # noqa: E402
 from holo_fleet.sim.holo_env import HoloFleetSim, TICKS_PER_SEC, agent_origin_from_pose  # noqa: E402
 from holo_fleet.sim.spec import bench_spec  # noqa: E402
 
-OUT = ROOT / "results" / "v2" / "sonar_bench"
-FIG = ROOT / "figures" / "v2" / "sensor"
+OUT = ROOT / "results" / "calibration" / "sonar_bench"
+FIG = ROOT / "figures" / "calibration" / "sensor"
 RANGES = DEFAULT.perc.sonar.ranges()
 THR = DEFAULT.perc.sonar.threshold
 O = np.array([0.0, -20.0, -8.0])          # deep enough to stage targets 6 m above

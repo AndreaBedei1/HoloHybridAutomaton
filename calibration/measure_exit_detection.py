@@ -1,4 +1,4 @@
-"""Empirical detection of a drone that has left the CR (results/gate/exit_detection.json; run from results/robustness).
+"""Empirical detection of a drone that has left the CR (results/calibration/gate/exit_detection.json; run from results/robustness).
 in CLEAN runs.  Truth positions (referee) only judge; observer heading from its log (CLEAN, compass error ~0).
 Per (sector, range bin, line-of-sight clear fraction): captures with the target in the cone vs captures with an echo
 within 0.6 m of the true near-surface range (any class; and obstacle classes only)."""

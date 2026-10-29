@@ -1,4 +1,4 @@
-"""Demonstration runs (results/v2/demos): only COMPLETED runs are judged; an interrupted run never fails
+"""Demonstration runs (results/reference): only COMPLETED runs are judged; an interrupted run never fails
 these tests but stays recognisable (run_status.json says INCOMPLETE and it is excluded)."""
 
 import csv
@@ -8,7 +8,7 @@ from pathlib import Path
 import pytest
 
 ROOT = Path(__file__).resolve().parents[1]
-DEMOS = ROOT / "results" / "v2" / "demos"
+DEMOS = ROOT / "results" / "reference"
 
 
 def _status(run: Path) -> str:

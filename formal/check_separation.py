@@ -36,7 +36,7 @@ S3  Triangle lemma (Z3, nonlinear): with all pairwise distances >= d_safe at mos
 S4  Blackout lemma (Z3): a sonar blackout of <= T_b s starting at d >= d_blackout keeps d >= d_safe
     (FAILSAFE holds position; unrejected drift w_rel).
 
-NOT proved here (assumptions, measured in results/v2/ASSUMPTIONS.md): the sonar detects a BlueROV2
+NOT proved here (assumptions, measured in results/reference/ASSUMPTIONS.md): the sonar detects a BlueROV2
 anywhere in its 60 deg cone within range (probe F), both drones of a pair detect each other (six
 cones cover the sphere), a_brake, w_rel_max (a RESIDUAL drift after the low-level compensation: it holds
 while the commanded velocities are control-feasible against the raw current, control/current_envelope.py, and

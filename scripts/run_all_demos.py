@@ -3,7 +3,7 @@
     python scripts/run_all_demos.py                  # all scenarios + sonar_classification
     python scripts/run_all_demos.py gate_single      # a subset
 
-Writes results/v2/demos/<scenario>/ and results/v2/demos/SUMMARY.{csv,md}.  To watch a scenario live
+Writes results/reference/<scenario>/ and results/reference/SUMMARY.{csv,md}.  To watch a scenario live
 use scripts/run_demo.py instead.
 """
 
@@ -25,7 +25,7 @@ from holo_fleet.sim.scenarios import SCENARIOS  # noqa: E402
 from holo_fleet.ui.gif import make_gif  # noqa: E402
 from holo_fleet.ui.live import DemoUI  # noqa: E402
 
-OUT = ROOT / "results" / "v2" / "demos"
+OUT = ROOT / "results" / "reference"
 ORDER = ["p1_head_on", "p1_vertical_escape", "p1_two_lines", "p1_close_encounter", "formation_triangle",
          "formation_square", "formation_six", "formation_recovery_head_current", "formation_gust", "gate_single",
          "integrated_short", "lost_drone_rejoin", "lost_drone_timeout", "mutex_deadlock_resolution",
@@ -77,11 +77,11 @@ def small_gif(name: str) -> None:
     sonar_classification bench keeps its own dashboard)."""
     frames = sorted((OUT / name / "fleet_view").glob("fleet_*.jpg"))
     if frames:
-        make_gif(frames, ROOT / "figures" / "v2" / "gifs" / f"{name}.gif", width=800, fps=5.0, every=2, colors=64)
+        make_gif(frames, ROOT / "figures" / "gifs" / f"{name}.gif", width=800, fps=5.0, every=2, colors=64)
         return
     frames = sorted((OUT / name / "dashboard").glob("dash_*.jpg"))
     if frames:
-        make_gif(frames, ROOT / "figures" / "v2" / "gifs" / f"{name}.gif", width=640, fps=4.0, every=3, colors=80)
+        make_gif(frames, ROOT / "figures" / "gifs" / f"{name}.gif", width=640, fps=4.0, every=3, colors=80)
 
 
 def summary_table() -> None:

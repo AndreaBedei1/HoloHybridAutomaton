@@ -40,7 +40,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
 RAW = ROOT / "results" / "robustness" / "raw"
-DEMOS = ROOT / "results" / "v2" / "demos"
+DEMOS = ROOT / "results" / "reference"
 SEEDS = (0, 1, 2)
 ALL_SCENARIOS = ("p1_head_on", "p1_vertical_escape", "p1_two_lines", "p1_close_encounter", "formation_triangle",
                  "formation_square", "formation_six", "formation_recovery_head_current", "formation_gust", "gate_single",

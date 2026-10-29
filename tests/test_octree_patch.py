@@ -1,6 +1,6 @@
 """The HoloOcean sonar-octree patch is installed and passes its regression test.
 
-The regression (probe/octree_rebuild_regression.py) needs the patched engine and takes about a
+The regression (calibration/octree_rebuild_regression.py) needs the patched engine and takes about a
 minute: it is marked ``holoocean`` and ``slow``.
 """
 
@@ -48,10 +48,11 @@ def test_patched_client_exposes_rebuild_api():
 @pytest.mark.holoocean
 @pytest.mark.slow
 @pytest.mark.skipif(patched_root() is None, reason="patched HoloOcean root not installed")
-def test_octree_rebuild_regression():
-    proc = subprocess.run([sys.executable, str(ROOT / "probe" / "octree_rebuild_regression.py")],
+def test_octree_rebuild_regression(tmp_path):
+    out = tmp_path / "regression.json"            # never overwrite the versioned calibration record
+    proc = subprocess.run([sys.executable, str(ROOT / "calibration" / "octree_rebuild_regression.py"), "--out", str(out)],
                           capture_output=True, text=True, timeout=1200)
-    res = json.loads((ROOT / "results" / "v2" / "octree_patch" / "regression.json").read_text(encoding="utf-8"))
+    res = json.loads(out.read_text(encoding="utf-8"))
     assert proc.returncode == 0, proc.stdout[-3000:] + proc.stderr[-3000:]
     assert res["all_passed"], {k: v for k, v in res["checks"].items() if not v}
     # the hazard the patch removes is real: before the rebuild, a reset leaves a ghost box behind

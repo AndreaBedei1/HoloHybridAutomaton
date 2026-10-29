@@ -24,7 +24,7 @@ from holo_fleet.config import DEFAULT, FleetConfig
 from holo_fleet.perception.sonar_geometry import AXES, HULL_HALF, MOUNTS, R_IN, R_OUT, SECTORS, ball_touches_cone, sonar_sensor_name
 from holo_fleet.perception.sonar_processing import OBSTACLE_CLASSES, UNCONFIRMED
 
-R_EXPECT = 5.0          # completeness region of A1 (results/v2/ASSUMPTIONS.md)
+R_EXPECT = 5.0          # completeness region of A1 (results/reference/ASSUMPTIONS.md)
 MATCH_TOL = 0.6         # an echo within this of a hull's near-surface range is that hull's echo
 BORESIGHT_DEG = 45.0
 

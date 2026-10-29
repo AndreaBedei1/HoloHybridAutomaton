@@ -1,6 +1,6 @@
 """Per-run experiment metrics for P1 encounters and P3 recoveries (offline, ground truth allowed).
 
-    python scripts/experiment_metrics.py results/v2/demos/p1_close_encounter
+    python scripts/experiment_metrics.py results/reference/p1_close_encounter
 
 Writes <run>/experiment_summary.json.  The P1 section is computed for every run, the P3 section for runs
 that judge a formation.  Onboard quantities come from drone_<k>_state.jsonl (what the controllers logged),

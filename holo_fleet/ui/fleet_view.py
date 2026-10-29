@@ -68,7 +68,7 @@ STATE_COLOR = {"FOLLOW": _rgb("#2f9e5b"), "WAIT": _rgb("#e0a21c"), "DEGRADED": _
                "PASS": _rgb("#1c4e9c"), "WARNING": _rgb("#e8577a"), "AVOID": _rgb("#c62828"),
                "FAILSAFE": _rgb("#4b4a46")}
 LEGEND = ["FOLLOW", "WAIT", "DEGRADED", "RECOVERY", "APPROACH", "YIELD", "PASS", "WARNING", "AVOID", "FAILSAFE"]
-# the ten states on the priority layout of the automaton diagram (figures/v2/automaton): hazards, mutex, recovery, keeping
+# the ten states on the priority layout of the automaton diagram (figures/automaton): hazards, mutex, recovery, keeping
 AUT_LAYOUT = [("FAILSAFE", 0, 0), ("AVOID", 1, 0), ("WARNING", 2, 0), ("APPROACH", 0, 1), ("YIELD", 1, 1),
               ("PASS", 2, 1), ("RECOVERY", 1, 2), ("WAIT", 0, 3), ("FOLLOW", 1, 3), ("DEGRADED", 2, 3)]
 KEEPING = ("FORMATION_FOLLOW", "FORMATION_WAIT_REJOIN", "DEGRADED_FORMATION")

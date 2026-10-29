@@ -29,7 +29,7 @@ produced the corridor echo at t_lc, or entered later visibly (a new t_lc).  (A1)
 the possible occupants unless its fixes, inside the declared envelope, place it elsewhere; (A2) places every
 possible occupant outside the CR now.  The argument needs the envelope (config.AcousticConfig) to hold for the
 accepted fixes: reflected arrivals that pass the kinematic and depth gates twice in a row on the same track are
-the residual risk, quantified in scripts/analyze_b2_channel.py.
+the residual risk, quantified in calibration/analyze_b2_channel.py.
 """
 
 from __future__ import annotations

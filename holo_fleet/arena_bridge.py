@@ -28,7 +28,7 @@ GATE_INNER_SIZE_M = {"G06": (2.0, 2.0)}
 # Bar section (thickness across the bar, depth along the passage axis) [m] of the gates the scenarios spawn,
 # overriding the track (0.18 x 0.22 m).  The arena factory places every bar outside the inner opening (centre at
 # inner/2 + thickness/2), so a thicker bar grows outwards and the free opening stays GATE_INNER_SIZE_M.
-# G06: 0.25 x 0.30 m, chosen offline (scripts/analyze_gate_bar_section.py, results/gate/bar_section_analysis.json)
+# G06: 0.25 x 0.30 m, chosen offline (calibration/analyze_gate_bar_section.py, results/calibration/gate/bar_section_analysis.json)
 # among 0.18x0.22 ... 0.50x0.60.  Closed-loop localization before the critical region (s -2.0..-1.2, 0.3-0.5 m
 # lateral error, MEDIUM-like noise) is confirmed in 46 % of the poses instead of 35 %, with no unsafe confirmation and
 # no wrong correction; the larger sections add little (47-49 %) while the structure window of the classifier hides a

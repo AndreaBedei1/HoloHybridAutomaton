@@ -1,12 +1,12 @@
 """Probe: what HoloOcean 2.3's AcousticBeaconSensor and OpticalModemSensor really deliver.
 
-    python probe/probe_beacon_api.py
+    python calibration/probe_beacon_api.py
 
 Pinned BlueROV2s on a line at 0, 5, 20 and 45 m (z = -5), plus one hidden behind a box prop.  Each carries
 an AcousticBeaconSensor (MaxDistance 40 m, CheckVisible on) and an OpticalModemSensor (MaxDistance 8 m,
 LaserAngle 60 deg).  A scripted sequence sends one-way acoustic messages (OWAY, OWAYU), two simultaneous
 transmissions, and optical messages, and records at every tick what each receiver returns (client data and the
-raw engine buffer).  Writes results/robustness/probe/beacon_api_probe.json.
+raw engine buffer).  Writes results/calibration/beacon_api_probe.json.
 """
 
 from __future__ import annotations
@@ -23,7 +23,7 @@ sys.path.insert(0, str(ROOT))
 
 from holo_fleet.sim import holoocean_setup as hs  # noqa: E402
 
-OUT = ROOT / "results" / "robustness" / "probe"
+OUT = ROOT / "results" / "calibration"
 POS = {"a0": [0.0, 0.0, -5.0], "a5": [5.0, 0.0, -5.0], "a20": [20.0, 0.0, -5.0], "a45": [45.0, 0.0, -5.0],
        "hid": [0.0, 12.0, -5.0], "side": [3.0, 3.0, -5.0], "behind": [-4.0, 0.0, -5.0]}
 BOX = {"type": "box", "location": [0.0, 6.0, -5.0], "scale": [3.0, 0.5, 3.0]}

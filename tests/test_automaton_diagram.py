@@ -14,7 +14,7 @@ from holo_fleet.ha.spec import BOOL_VARS, IN_FORMATION, MODES, REAL_VARS, Mode, 
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "scripts"))
-FIG = ROOT / "figures" / "v2" / "automaton"
+FIG = ROOT / "figures" / "automaton"
 
 
 @pytest.fixture(scope="module")

@@ -9,7 +9,7 @@ identity, from which the receiver itself derives range and bearing.  B1 (presenc
 ## 1. What the simulator really provides
 
 Read in the patched engine source (`engine/Source/Holodeck/Sensors/Private/AcousticBeaconSensor.cpp`) and checked
-against the probe `results/robustness/probe/beacon_api_probe.json`:
+against the probe `results/calibration/beacon_api_probe.json`:
 
 * per (sender, receiver) command the engine writes `[azimuth, elevation, distance, depth]`, where azimuth and
   elevation are those of the SENDER's sensor position in the RECEIVER's sensor frame (`InverseTransformLocation`
@@ -83,9 +83,9 @@ drone in the CR now was in it at t_lc, produced the corridor echo at t_lc, or en
 (A2) places every possible occupant outside the CR now.  The argument needs the envelope to hold for the accepted
 fixes.  Formal B2-A2/A3 check exhaustively that no measurement inside the envelope of a hull in the CR passes any of
 the three tests; what lies outside the envelope (Gaussian tails, reflections that pass the gates) is the residual
-risk, measured by `scripts/analyze_b2_channel.py` (`results/b2/channel_risk.json`).
+risk, measured by `calibration/analyze_b2_channel.py` (`results/calibration/b2_channel/channel_risk.json`).
 
-Residual risk (`scripts/analyze_b2_channel.py`, 20 000 trials per level, an occupant moving inside the CR observed
+Residual risk (`calibration/analyze_b2_channel.py`, 20 000 trials per level, an occupant moving inside the CR observed
 from a random queue point, half of the trials with the direct path PERSISTENTLY blocked by a non-thin obstacle so
 that every received ping is a reflection - a stress beyond the gate scenarios, where only hulls and bars, which
 shadow and do not block, lie on the rays).  A wrong "outside the CR" decision needs consecutive accepted
@@ -95,7 +95,7 @@ requires, never occurred (0 in ~200 000 receptions).  A false release would need
 occupants at once (a drone entering while the previous one is still within reach of the exit face).
 
 Precedence for N = 4-6 is not changed by B2.  The abreast queue keeps its formal M2 guarantees (check_mutex); the
-compact layouts of `results/gate/queue_layouts.json` that would fail precedence for N = 5, 6 are not used, and the
+compact layouts of `results/calibration/gate/queue_layouts.json` that would fail precedence for N = 5, 6 are not used, and the
 beacon is not a remedy for them: identities never enter the precedence decision.
 
 ## 5. Formation (P3)

@@ -1,6 +1,6 @@
 """Residual risk of the B2 acoustic exit evidence under the channel model (offline Monte Carlo, no simulator).
 
-    python scripts/analyze_b2_channel.py [--trials 20000] [--workers 20]
+    python calibration/analyze_b2_channel.py [--trials 20000] [--workers 20]
 
 The formal checks (formal/check_acoustic.py) prove the decision sound for measurements INSIDE the declared envelope.
 Two things fall outside it: Gaussian tails beyond 3 sigma, and reflected (NLOS) arrivals that pass the depth and
@@ -15,7 +15,7 @@ a hull that is still in the CR produces an acoustic "outside the CR" or "beyond 
 * the decision is evaluated after every reception; any positive decision while the hull is in the CR is a FALSE
   EXIT (it would be a false release if every other drone were also accounted for).
 
-Writes results/b2/channel_risk.json.
+Writes results/calibration/b2_channel/channel_risk.json.
 """
 
 from __future__ import annotations
@@ -33,7 +33,7 @@ import numpy as np
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
-OUT = ROOT / "results" / "b2" / "channel_risk.json"
+OUT = ROOT / "results" / "calibration" / "b2_channel" / "channel_risk.json"
 
 
 def _trial_block(args):

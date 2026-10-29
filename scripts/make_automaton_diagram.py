@@ -2,7 +2,7 @@
 
     python scripts/make_automaton_diagram.py
 
-Writes figures/v2/automaton/automaton_full.{png,svg} (every mode, every transition, the exact readable guards)
+Writes figures/automaton/automaton_full.{png,svg} (every mode, every transition, the exact readable guards)
 and automaton_presentation.{png,svg} (the same automaton, fewer words, large text).
 
 Nothing is drawn by hand: the states, the transitions and their guards come from ``build_edges`` (the edge table
@@ -33,7 +33,7 @@ from holo_fleet.config import DEFAULT, FleetConfig  # noqa: E402
 from holo_fleet.ha.guard_text import pretty, thresholds, UNITS  # noqa: E402
 from holo_fleet.ha.spec import IN_FORMATION, MODES, PRIORITY_ORDER, SELF_RECOVERED, Mode, build_edges  # noqa: E402
 
-OUT = ROOT / "figures" / "v2" / "automaton"
+OUT = ROOT / "figures" / "automaton"
 # the state colours of the fleet view and of the v2 figures (holo_fleet/ui/fleet_view.py, make_figures_v2.py)
 COLOR = {Mode.FORMATION_FOLLOW: "#2f9e5b", Mode.FORMATION_WAIT_REJOIN: "#e0a21c", Mode.DEGRADED_FORMATION: "#8a63c9",
          Mode.FORMATION_RECOVERY: "#ef7d32", Mode.MUTEX_APPROACH: "#7fb2e5", Mode.MUTEX_YIELD: "#3d85c6",

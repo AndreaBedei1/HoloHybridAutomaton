@@ -1,9 +1,9 @@
-"""v2 figures from the demonstration runs (results/v2/demos) and the sensor geometry.
+"""v2 figures from the demonstration runs (results/reference) and the sensor geometry.
 
     python scripts/make_figures_v2.py            # all figures that have data
     python scripts/make_figures_v2.py sensor     # only the sensor figures (no runs needed)
 
-Writes figures/v2/{sensor,p1,p2,p3,fleet_view}/*.png and copies the demo GIFs to figures/v2/gifs/.  Ground truth
+Writes figures/v2/{sensor,p1,p2,p3,fleet_view}/*.png and copies the demo GIFs to figures/gifs/.  Ground truth
 is read here for judging and plotting only (offline), never by a controller.
 """
 
@@ -31,7 +31,7 @@ from holo_fleet.config import DEFAULT  # noqa: E402
 from holo_fleet.perception import sonar_geometry as sg  # noqa: E402
 from holo_fleet.sim.scenarios import SCENARIOS  # noqa: E402
 
-DEMOS = ROOT / "results" / "v2" / "demos"
+DEMOS = ROOT / "results" / "reference"
 FIG = ROOT / "figures" / "v2"
 SERIES = ["#2a78d6", "#eb6834", "#1baf7a", "#eda100", "#e87ba4", "#008300", "#4a3aa7", "#e34948"]
 INK = {"primary": "#0b0b0b", "secondary": "#52514e", "muted": "#898781", "grid": "#e1e0d9", "axis": "#c3c2b7",

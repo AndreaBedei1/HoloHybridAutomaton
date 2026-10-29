@@ -2,7 +2,7 @@
 
 Every number used by the formal models in ``formal/`` is imported from here, so the verified
 abstraction and the deployed controller cannot silently diverge.  Sensor numbers come from the
-Phase-1 probe (docs/v2/SONAR_PROBE.md), plant numbers from scripts/calibrate_plant.py.
+Phase-1 probe (docs/v2/SONAR_PROBE.md), plant numbers from calibration/calibrate_plant.py.
 """
 
 from __future__ import annotations
@@ -36,7 +36,7 @@ class SeparationThresholds:
 
 @dataclass(frozen=True)
 class Envelope:
-    """Assumptions of the formal proofs (each one measured back on the logs, results/v2/ASSUMPTIONS.md)."""
+    """Assumptions of the formal proofs (each one measured back on the logs, results/reference/ASSUMPTIONS.md)."""
 
     dt: float = 0.1                  # controller period [s]
     tau_max: float = 0.25            # max age of the sonar data used by a guard [s] (one dropped 10 Hz capture)
@@ -138,7 +138,7 @@ class GateRule:
     # pair stays inside the queue bracket
     stack_column_spacing: float = 5.0
     stack_spacing: float = 3.5
-    hold_err_m: float = 0.10          # measured position-holding error of a queued drone (results/v2/ASSUMPTIONS.md)
+    hold_err_m: float = 0.10          # measured position-holding error of a queued drone (results/reference/ASSUMPTIONS.md)
 
     @property
     def merge_s(self) -> float:
@@ -242,7 +242,7 @@ class FormationRule:
 
 @dataclass(frozen=True)
 class PlantCalibration:
-    """Measured in probe/probe_motion.py, probe/probe_current.py and scripts/calibrate_plant.py."""
+    """Measured in calibration/probe_motion.py, calibration/probe_current.py and calibration/calibrate_plant.py."""
 
     surge_speed_per_cmd: float = 2.4      # small-signal slope [m/s per unit command]: the low level's linear model
     sway_speed_per_cmd: float = 2.4
@@ -250,14 +250,14 @@ class PlantCalibration:
     thruster_limit: float = 12.0
     # steady command needed per horizontal axis for a through-water speed r [m/s]:
     #   g(r) = |r| / surge_speed_per_cmd + cmd_quadratic * r^2
-    # fitted on results/calibration/head_current_authority.json (probe/probe_head_current_authority.py);
+    # fitted on results/calibration/head_current_authority.json (calibration/probe_head_current_authority.py);
     # largest residual on the calibration points: cmd_model_tolerance (relative)
     cmd_quadratic: float = 0.203
     cmd_model_tolerance: float = 0.06
     # commanded set_ocean_currents magnitude -> steady horizontal drift of an unactuated BlueROV2
     current_cmd_to_drift: Tuple[Tuple[float, float], ...] = (
         (0.0, 0.0), (0.3, 0.012), (1.0, 0.117), (2.0, 0.391), (4.0, 1.191))
-    # vertical component (probe/probe_current.py --vertical)
+    # vertical component (calibration/probe_current.py --vertical)
     current_cmd_to_drift_z: Tuple[Tuple[float, float], ...] = (
         (0.0, 0.0), (0.3, 0.012), (1.0, 0.117), (2.0, 0.391), (4.0, 1.191))
 
@@ -327,7 +327,7 @@ class AcousticConfig:
     nav_err_gate_m: float = 1.0          # own position error in the gate frame (a queued drone, bounded by aiding)
     track_gate_m: float = 0.5            # extra slack of the kinematic consistency gate of a track
     exit_confirm: int = 3                # consecutive accepted fixes (outside / beyond the CR) for an acoustic exit;
-                                         # 3 not 2: scripts/analyze_b2_channel.py, persistent reflections (results/b2)
+                                         # 3 not 2: calibration/analyze_b2_channel.py, persistent reflections (results/b2)
     tie_window_s: float = 3.0            # fixes this close to the last corridor sighting account for a drone
     fresh_s: float = 2.5                 # a fix this recent counts for the neighbours (formation)
     depth_tol_m: float = 1.5             # a fix this far outside the operating depth band is a reflection

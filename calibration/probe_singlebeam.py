@@ -19,7 +19,7 @@ was first computed.  The sessions below test exactly that:
                                                            keyed by the static scene)
 
 The probe uses ground truth freely (it is a calibration bench, not a controller).  Raw output goes to
-``probe/out/sonar_probe/<session>/``; ``probe/analyze_sonar_probe.py`` turns it into figures and numbers.
+``calibration/out/sonar_probe/<session>/``; ``calibration/analyze_sonar_probe.py`` turns it into figures and numbers.
 """
 
 from __future__ import annotations
@@ -40,7 +40,7 @@ sys.path.insert(0, str(ROOT))
 
 from holo_fleet.arena_bridge import HORSESHOE_TRACK, load_arena_gates, make_spawner, visual_gates  # noqa: E402
 
-OUT = ROOT / "probe" / "out" / "sonar_probe"
+OUT = ROOT / "calibration" / "out" / "sonar_probe"
 TPS = 30
 SONAR_HZ = 10
 OCTREE_MIN, OCTREE_MAX = 0.06, 5.0           # project-specific cache folder (min6_max768), never shared

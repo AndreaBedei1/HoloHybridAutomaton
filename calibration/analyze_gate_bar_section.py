@@ -1,4 +1,4 @@
-"""Choose the G06 bar section (thickness, depth) offline (result: results/gate/bar_section_analysis.json).  Opening 2.0 x 2.0 m, 120 deg beams.
+"""Choose the G06 bar section (thickness, depth) offline (result: results/calibration/gate/bar_section_analysis.json).  Opening 2.0 x 2.0 m, 120 deg beams.
 (1) observability: closed-loop gate localization at the hold zone (synthetic nominal-cone echoes, MEDIUM-like noise);
 (2) masking: a real drone near the gate whose echo falls in the observer's structure window (classified STRUCTURE);
 (3) phantoms: a true bar echo NOT explained by the map at a wrong estimated pose (-> DYNAMIC/UNKNOWN), within d_warning.

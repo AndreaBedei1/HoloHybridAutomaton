@@ -11,7 +11,7 @@ and line-of-sight check ``CheckVisible``).  A drone pings every ``period_s`` +- 
 A ping carries only the sender's static identity: no position, velocity, heading, mode, queue or sensor data,
 and nobody replies.
 
-HoloOcean 2.3 facts this module is built on (probe/probe_beacon_api.py, results/robustness/probe/):
+HoloOcean 2.3 facts this module is built on (calibration/probe_beacon_api.py, results/calibration/):
 * the engine computes, per (sender, receiver) command, [azimuth, elevation, distance, depth] into the receiver's
   buffer, or -1 when the receiver is out of range or the line of sight is blocked (a hull or a prop in between);
   the result appears in the tick of the transmission or the next one (no further propagation model);

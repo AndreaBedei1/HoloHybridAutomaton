@@ -293,4 +293,4 @@ def run_classification_demo(out_root: Path, headless: bool = True, show: bool = 
 
 
 if __name__ == "__main__":
-    raise SystemExit(run_classification_demo(ROOT / "results" / "v2" / "demos", headless=True, show=False))
+    raise SystemExit(run_classification_demo(ROOT / "results" / "reference", headless=True, show=False))

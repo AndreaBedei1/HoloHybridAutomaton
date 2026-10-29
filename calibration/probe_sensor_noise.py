@@ -1,6 +1,6 @@
 """Probe: what do HoloOcean 2.3's native noise parameters actually do to our sensors?
 
-    python probe/probe_sensor_noise.py [--seconds 40]
+    python calibration/probe_sensor_noise.py [--seconds 40]
 
 One HoloOcean session, ten pinned "probe" BlueROV2s, each with a different noise setting, each with two
 pinned target hulls: one 3.0 m in front (FRONT sonar) and one 6.0 m behind (REAR sonar).  The pairs are
@@ -14,7 +14,7 @@ Sonar statistics use the onboard segmentation (perception.sonar_processing.segme
 * false alarm = fraction of captures with any segment nearer than (face - 0.5 m) (open water there);
 * open-water intensity samples give the effective Rayleigh scale of AddSigma.
 
-Writes results/robustness/probe/sensor_noise_probe.json.  Nothing here feeds a controller.
+Writes results/calibration/sensor_noise_probe.json.  Nothing here feeds a controller.
 """
 
 from __future__ import annotations
@@ -35,7 +35,7 @@ from holo_fleet.perception.sonar_geometry import DEFAULT_SONAR, HULL_HALF, MOUNT
 from holo_fleet.perception.sonar_processing import segment  # noqa: E402
 from holo_fleet.sim import holoocean_setup as hs  # noqa: E402
 
-OUT = ROOT / "results" / "robustness" / "probe"
+OUT = ROOT / "results" / "calibration"
 DEPTH = -5.0
 SPACING = 25.0
 D_FRONT, D_REAR = 3.0, 6.0
