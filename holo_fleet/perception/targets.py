@@ -11,12 +11,18 @@ are bounded like any other scene); a target is given the bound of the candidate 
 sectors, so the smallest target bound is the bound of the nearest object.  The staleness allowance c_max * age
 makes a stale reading only more cautious.  With an unhealthy sector the per-sector bound B is used (no region
 knowledge).
+
+Missed detections (EchoHold).  A capture can miss a vehicle that is there (a faded profile); the bound then rests on
+the farther echoes and may exceed the true distance for that capture.  The nearest obstacle echo of every healthy
+sector is therefore held for ``tau_max`` (the data age the P1 proof budgets) and used, aged with the staleness
+allowance, while no capture shows a nearer one: a single missed capture becomes a stale reading.  Consecutive misses
+longer than tau_max are outside the declared envelope.
 """
 
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Dict, FrozenSet, List, Optional
+from typing import Dict, FrozenSet, List, Optional, Tuple
 
 import numpy as np
 
@@ -49,6 +55,33 @@ class Target:
     possible_neighbour: bool = False  # in an expected neighbour's sectors within 3 m of its expected distance
 
 
+class EchoHold:
+    """Nearest obstacle echo of every healthy sector over the last ``hold_s`` (see the module docstring)."""
+
+    def __init__(self, hold_s: float):
+        self.hold_s = float(hold_s)
+        self.last: Dict[str, Tuple[float, str, float]] = {}       # sector -> (range, class, capture time)
+
+    def update(self, t: float, readings: Dict[str, SectorReading]) -> Dict[str, Tuple[float, str, float]]:
+        """Held echoes to add to this step's echoes: sector -> (range, class, age), only where no capture since the
+        held one shows a nearer obstacle echo."""
+        held = {}
+        for s, rd in readings.items():
+            if rd is None or not rd.healthy:
+                self.last.pop(s, None)
+                continue
+            obs = [e for e in rd.echoes if e.cls in OBSTACLE_CLASSES]
+            near = min(obs, key=lambda e: e.r0) if obs else None
+            prev = self.last.get(s)
+            if prev is not None and t - prev[2] <= self.hold_s + 1e-9 and (near is None or near.r0 > prev[0]):
+                held[s] = (prev[0], prev[1], t - prev[2])
+            if near is not None and (prev is None or s not in held):
+                self.last[s] = (float(near.r0), near.cls, t - rd.age)
+            elif prev is not None and s not in held:
+                self.last.pop(s, None)
+        return held
+
+
 class SectorTracker:
     def __init__(self, cfg: FleetConfig = DEFAULT):
         self.cfg = cfg
@@ -79,8 +112,9 @@ class SectorTracker:
 
 
 def build_targets(t: float, readings: Dict[str, SectorReading], tracks: Dict[str, Optional[SectorTrack]],
-                  cfg: FleetConfig = DEFAULT, assoc_m: float = 0.6, blind_relevant_m: float = 4.0) -> List[Target]:
-    """Associate obstacle echoes of adjacent sectors at similar ranges into targets."""
+                  cfg: FleetConfig = DEFAULT, assoc_m: float = 0.6, blind_relevant_m: float = 4.0,
+                  held: Optional[Dict[str, Tuple[float, str, float]]] = None) -> List[Target]:
+    """Associate obstacle echoes of adjacent sectors at similar ranges into targets (``held``: EchoHold echoes)."""
     env = cfg.env
     echoes = []                       # (sector, range, cls, age)
     for s in SECTORS:
@@ -93,6 +127,8 @@ def build_targets(t: float, readings: Dict[str, SectorReading], tracks: Dict[str
         # seabed clutter: beyond blind_from a vehicle cannot be excluded -> conservative UNKNOWN
         if rd.blind_from is not None and rd.healthy and rd.blind_from <= blind_relevant_m:
             echoes.append((s, rd.blind_from, "UNKNOWN", rd.age))
+        if held and s in held:                         # a recent nearer echo this capture missed
+            echoes.append((s, held[s][0], held[s][1], held[s][2]))
     echoes.sort(key=lambda x: x[1])
     # nearest obstacle echo and reading age per sector: the input of the association-free distance bound
     nearest: Dict[str, float] = {}

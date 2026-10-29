@@ -62,7 +62,7 @@ from holo_fleet.perception.nav import DeadReckoning
 from holo_fleet.perception.sonar_geometry import SECTORS, sonar_sensor_name
 from holo_fleet.perception.sonar_processing import EchoClassifier, SectorReading, dvl_altitude
 from holo_fleet.perception.structure_aiding import StructureAiding
-from holo_fleet.perception.targets import SectorTracker, Target, build_targets
+from holo_fleet.perception.targets import EchoHold, SectorTracker, Target, build_targets
 
 
 @dataclass
@@ -132,6 +132,7 @@ class Perception:
         self.clf = EchoClassifier(gate_bars=bars, cfg=cfg)
         self.aiding = StructureAiding(self.clf, cfg, gates=plan.structures)     # map-aided position correction near the gate
         self.tracker = SectorTracker(cfg)
+        self.echo_hold = EchoHold(cfg.env.tau_max)     # missed detections become stale readings (targets.py)
         self.acoustic = AcousticTracker(cfg)           # B2 range-bearing beacon (inactive in B0)
         self.gp = GatePerception(plan, cfg, acoustic=self.acoustic)
         self.ok_since: Optional[float] = None
@@ -276,7 +277,7 @@ class Perception:
         self.acoustic.update(t, d.get("AcousticRx"), nav.p, nav.yaw)     # B2 fixes (own pose after the aiding)
         readings = self.clf.classify(profiles, ages, nav.p, R_wb, seabed_z, tau_healthy=env.tau_max)
         tracks = self.tracker.update(t, readings)
-        targets = build_targets(t, readings, tracks, self.cfg)
+        targets = build_targets(t, readings, tracks, self.cfg, held=self.echo_hold.update(t, readings))
         d_min = min([tg.d_lower for tg in targets], default=1e9)
         unhealthy = [s for s in SECTORS if not readings[s].healthy]
         sense_ok = (not unhealthy and frame.fresh("DVLSensor", 0.35) and frame.fresh("Compass", 0.2)
