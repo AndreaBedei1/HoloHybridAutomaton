@@ -294,14 +294,21 @@ def parse_cpus(text):
 
 
 def lower_children(worker_pid: int) -> None:
-    """Make sure the worker and the Holodeck.exe it started run below normal priority (in case it was not inherited)."""
+    """Make sure the worker and the Holodeck.exe it started run below normal priority (in case it was not inherited)
+    and on the orchestrator's cores (the Unreal engine resets its own process affinity to every core)."""
     import psutil
 
+    try:
+        cores = psutil.Process().cpu_affinity()
+    except Exception:  # noqa: BLE001
+        cores = None
     for pid in [worker_pid] + [p for p, pp in holodeck_pids().items() if pp == worker_pid]:
         try:
             pr = psutil.Process(pid)
             if os.name == "nt" and pr.nice() not in (psutil.BELOW_NORMAL_PRIORITY_CLASS, psutil.IDLE_PRIORITY_CLASS):
                 pr.nice(psutil.BELOW_NORMAL_PRIORITY_CLASS)
+            if cores and sorted(pr.cpu_affinity()) != sorted(cores):
+                pr.cpu_affinity(cores)
         except Exception:  # noqa: BLE001
             pass
 
