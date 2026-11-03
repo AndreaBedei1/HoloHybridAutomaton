@@ -32,14 +32,15 @@ Variant B2 (range-bearing beacon, perception/acoustic.py).  Identified fixes ent
   latency) and within ``e_lost`` of the neighbour's expected position, the neighbour counts as sighted now for the
   NEIGHBOUR_MEMORY_S timer (a drone occluded for the sonar but heard where it should be is not missing); it never
   confirms a MISSING neighbour back (only the sonar confirmation does) and never clears a vacancy;
-* ahead (veto): ``A_CONFIRM`` fixes of one track whose median along-track offset puts the neighbour more than
-  ``e_lost`` AHEAD of where the own (possibly delayed) formation time places its slot, on its lane: the own reference
+* ahead (veto): the latest fresh fix puts the neighbour more than ``e_lost`` plus the white-noise band AHEAD of where
+  the own (possibly delayed) formation time places its slot, on its lane (decided like A-P, before the sonar memory
+  runs out, at the deployed ping period): the own reference
   is the one behind, and slowing for the neighbour would widen the gap (the positive feedback that let the private
   formation times diverge).  It vetoes a NEW missing episode only, for at most t_rejoin; an existing episode and
   its vacancy timer are kept;
 * displacement (rule A-D): ``A_CONFIRM`` consecutive accepted fixes whose whole error region lies farther than
-  ``e_lost`` + ``A_DISPLACED_MARGIN`` from the neighbour's expected position, and not certainly ahead on its lane,
-  declare it MISSING at once (and keep it so: no sonar confirmation while the fixes say otherwise);
+  ``e_lost`` + ``A_DISPLACED_MARGIN`` from the neighbour's expected position, unless it is under the "ahead" veto
+  below, declare it MISSING at once (and keep it so: no sonar confirmation while the fixes say otherwise);
 * lag (clock re-synchronisation): when the same median puts the neighbour behind its expected position by more
   than the white-noise band k_sigma * sigma_w(r) of the declared envelope, the excess is reported
   (``acoustic_lag``) and the own formation time slows down in proportion to wait for it (control/formation_time.py;
@@ -251,18 +252,18 @@ class Perception:
                 self.neighbour_seen[k] = t                       # sighted while the fix is fresh (rule A-P)
             acc = [g for g in self.acoustic.all_fixes(k, t - a.fresh_s, t) if g.accepted][-A_CONFIRM:]
             one_track = len(acc) == A_CONFIRM and len({g.track for g in acc}) == 1
-            ahead = False
+            # along-track offset of k from where the own formation time places its slot.  The white error of one fix
+            # has the standard deviation sigma_w(r) of the declared envelope (band = k_sigma sigma_w); the constant
+            # biases (array calibration, compass, clock) do not average out and leave a bounded residual offset
+            band = a.k_sigma * math.hypot(a.sigma_range_m, f.r * math.radians(a.sigma_az_deg))
+            off = f.rel - exp
+            along_now = float(off @ t_hat)
+            # ahead: the latest fresh fix (as A-P, so that it is decided before the sonar memory runs out at the 1 s
+            # ping period), on its lane and ahead by more than e_lost plus the band
+            ahead = (float(np.linalg.norm(off - along_now * t_hat)) <= fr.e_lost and along_now > fr.e_lost + band)
             if one_track:
-                # along-track offset of k from where the own formation time places its slot: the median of the
-                # point estimates of A_CONFIRM fixes of one track.  Their white error has the standard deviation
-                # sigma_w(r) of the declared envelope; the constant biases (array calibration, compass, clock) do not
-                # average out and leave a bounded residual offset
-                offs = [g.rel - exp for g in acc]
-                along = float(np.median([float(o @ t_hat) for o in offs]))
-                lane = all(float(np.linalg.norm(o - float(o @ t_hat) * t_hat)) <= fr.e_lost for o in offs)
-                r = max(g.r for g in acc)
-                band = a.k_sigma * math.hypot(a.sigma_range_m, r * math.radians(a.sigma_az_deg))
-                ahead = lane and along > fr.e_lost
+                # lag: the median of the point estimates of A_CONFIRM fixes of one track beyond the band
+                along = float(np.median([float((g.rel - exp) @ t_hat) for g in acc]))
                 if along < -band:
                     self.acoustic_lag[k] = -along - band         # beyond the white-noise band: clock re-synchronisation
             if ahead:
@@ -274,7 +275,7 @@ class Perception:
                     self.acoustic_ahead.append(k)
             else:
                 self.ahead_since.pop(k, None)
-            if (one_track and not ahead                          # every region point farther than that
+            if (one_track and k not in self.acoustic_ahead       # every region point farther than that
                     and all(float(np.min(np.linalg.norm(g.pts - (g.p - g.rel) - exp, axis=1))) - g.slack
                             > fr.e_lost + A_DISPLACED_MARGIN for g in acc)):
                 self.acoustic_displaced.append(k)

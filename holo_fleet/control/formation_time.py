@@ -104,9 +104,9 @@ class FormationTime:
         """Advance by one control step.  ``incomplete``: an expected neighbour is missing and not vacant (own
         perception); ``mutex``: the drone follows the gate flow (mutex zone or committed); ``front_residual``: range
         residual of the neighbour directly ahead on the same lane, None when there is none or it is not seen;
-        ``keeping``: the drone is in a formation-keeping mode (on its slot); ``behind``: the largest certain lag of a
-        non-vacant neighbour behind the slot the own formation time places it at (B2 identified fixes,
-        FormationObs.behind), None without one."""
+        ``keeping``: the drone is in a formation-keeping mode (on its slot); ``behind``: the largest lag of a
+        non-vacant neighbour behind the slot the own formation time places it at, beyond the white-noise band of the
+        fixes (FormationObs.behind), None without one."""
         fr = self.cfg.form
         v_plan = self.plan_speed(t, dt)
         moving = v_plan > 1e-6
@@ -130,8 +130,8 @@ class FormationTime:
         # the reduced progress v_wait and never faster than planned - the drone behind keeps the planned speed, so
         # the formation times converge towards the latest one (first-order progress consensus, as in coordinated
         # path following, here from sensed rather than communicated progress)
-        self.sync = 0.0 if (mutex or behind is None or not moving) else min(fr.k_progress * behind,
-                                                                             max(0.0, v_plan - fr.v_wait))
+        self.sync = 0.0 if (mutex or behind is None or not moving or not keeping) else min(
+            fr.k_progress * behind, max(0.0, v_plan - fr.v_wait))   # only while keeping its slot (fix-age bias)
         if not moving:
             self.rate = 1.0                                   # planned hold: nothing to slow down
         else:

@@ -67,7 +67,7 @@ Kinds of evidence used below:
 | Every position compatible with a measurement inside the declared envelope lies in the region the perception builds | randomized B2-A1 | envelope = MEDIUM channel at 3 sigma + array calibration bias + one-sided clear-path multipath excess (docs/ACOUSTIC_CHANNEL_MODEL.md) |
 | No measurement of a hull in the CR passes the acoustic exit, outside or exclusion test | exhaustive numeric B2-A2/A3 | as above |
 | The acoustic exit evidence is available | reported B2-M4g: holds for n = 2 and 3 (exit by range once the drone is far enough beyond) | - |
-| A drone heard inside the CR blocks the timeout fallback and the stage-2 entry | design: two accepted fixes on one track, the latest within one ping period plus the latency, on the clear-path region (no one-sided multipath excess) | a veto added to the sonar rules: a miss leaves the sonar-only behaviour; the clear-path region removes the false vetoes of drones waiting beyond the exit |
+| A drone heard inside the CR blocks the timeout fallback and the stage-2 entry | design: two accepted fixes on one track, the latest within acoustic.fresh_s (one lost ping is no gap), on the clear-path region (no one-sided multipath excess) | a veto added to the sonar rules: a miss leaves the sonar-only behaviour; the clear-path region removes the false vetoes of drones waiting beyond the exit |
 | Acoustic data never reach separation, collision avoidance, precedence or the sonar witness | static (AST) B2-S; tests/test_b2_isolation.py | - |
 | The channel delivers identity pings only (TDMA, no payload, no handshake) | code structure (sim/beacon.py) and tests | hardware assumptions H1-H5 |
 

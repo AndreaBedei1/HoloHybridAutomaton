@@ -174,7 +174,7 @@ class AcousticExit:
         a, period = self.cfg.acoustic, self.cfg.beacon.period_s
         fresh = a.fresh_s
         for j in self.others:
-            acc = [f for f in self.tracker.all_fixes(j, t - period - fresh, t) if f.accepted][-2:]
+            acc = [f for f in self.tracker.all_fixes(j, t - 2.0 * period - fresh, t) if f.accepted][-2:]
             if (len(acc) == 2 and acc[0].track == acc[1].track and t - acc[-1].t <= fresh
                     and all(self._inside_clear_path(g, f, t) for f in acc)):
                 return True

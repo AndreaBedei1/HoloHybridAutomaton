@@ -518,32 +518,30 @@ def test_a_neighbour_heard_far_from_its_slot_is_declared_missing_on_the_second_f
 
 
 def test_a_neighbour_heard_ahead_on_its_lane_vetoes_a_new_missing_episode():
-    # 8 m AHEAD of the slot the own clock places it at: the own formation time is the one behind; slowing for the
-    # neighbour would widen the gap (the positive feedback of diverging formation times).  Heard twice before the
-    # sonar memory expires: no missing episode starts; it is not displaced and gives no lag
+    # 8 m AHEAD of the slot the own clock places it at, pinging at the deployed 1 s period: the own formation time is
+    # the one behind; slowing for the neighbour would widen the gap (the positive feedback of diverging formation
+    # times).  The latest fresh fix decides (as A-P), so no missing episode starts; no lag, not displaced
     off = {2: np.array([8.0, 0.0, 0.0])}
-    c, first, recs = _run_form(B2, _every(0.5), offset=off)
+    c, first, recs = _run_form(B2, _every(B2.beacon.period_s), offset=off)
     assert 2 not in first and 2 in c.perception.acoustic_ahead
     assert 2 not in recs[-1]["form"]["acoustic_displaced"] and 2 not in c.perception.acoustic_lag
     assert c.flows.ftime.sync == 0.0
 
 
 def test_heard_ahead_never_clears_an_existing_missing_episode():
-    # one fix only before the memory expires: the episode starts; later fixes ahead must not end it (a failed drone
-    # carried ahead by the current must still be declared vacant)
+    # silent until 3 s (the episode starts when the sonar memory runs out), then heard ahead: the episode is kept, so
+    # a failed drone carried ahead by the current is still declared vacant
     off = {2: np.array([8.0, 0.0, 0.0])}
-    c, first, _recs = _run_form(B2, _every(1.0), offset=off)
+    late = lambda t: (1, 2, 3) if t >= 3.0 and abs(t - round(t)) < 1e-6 else ()
+    c, first, _recs = _run_form(B2, late, offset=off)
     assert first.get(2, 9.0) < 2.0 and c.perception.missing_state.get(2)
 
 
 def test_the_ahead_veto_expires_after_t_rejoin():
-    from holo_fleet.perception.perception import Perception
-    plan = SCENARIOS["lost_drone_rejoin"](B2).plans[0]
-    pc = Perception(plan, B2)
-    pc.ahead_since[2] = 0.0
-    t = B2.form.t_rejoin + 0.5
-    # the bookkeeping alone: past t_rejoin a neighbour still heard ahead no longer vetoes (module docstring)
-    assert t - pc.ahead_since[2] > B2.form.t_rejoin
+    off = {2: np.array([8.0, 0.0, 0.0])}
+    steps = int((B2.form.t_rejoin + 5.0) / DT)
+    c, first, _recs = _run_form(B2, _every(B2.beacon.period_s), offset=off, steps=steps)
+    assert first.get(2) is not None and first[2] > B2.form.t_rejoin       # the veto held t_rejoin, then lapsed
 
 
 def test_a_neighbour_certainly_behind_slows_the_own_formation_time():
