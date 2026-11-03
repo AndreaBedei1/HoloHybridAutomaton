@@ -156,6 +156,22 @@ The cause is therefore not the consolidation code.
 - Other processes on the machine, which must not be touched: CARLA (`scripts/start_carla.py`, since 02/11 16:53), the
   user's Instagram worker (started 23:11), and the CodexSandboxService.
 
+**Update at 2026-11-04 00:05:**
+- Runs that completed:
+  - the in-process probe (`runner.run`, B0 and B2);
+  - a worker started in the foreground from bash, with `--terminal` (gate_single, up to t = 160 s, status COMPLETE).
+- The deaths are not deterministic and not caused by the consolidation code. Every worker launched through the
+  orchestrator loop (`scripts/run_dev_diagnostics.sh`, started in the background) died about 15.7 s after launch.
+- Confound, my own mistake: several of my probes ran while the background loop was alive, i.e. two HoloOcean instances
+  at once. The reviewers' test runs may also have started HoloOcean, because
+  `test_octree_patch::test_octree_rebuild_regression` launches the engine.
+- Rule from now on: before any HoloOcean probe, no other HoloOcean or orchestrator may be running. Reviewers must not run
+  that test.
+- One orphan worker of mine (gate_single, started 00:03:35) was left to finish on its own; stopping it by PID was refused
+  by the permission classifier.
+- Probe outputs are in `results/robustness/raw_dev/probe3` and `probe4` and are not valid evidence; they ran
+  concurrently.
+
 **Next steps to try:**
 - move the static sonar probe;
 - add the gate structures and the octree rebuild;
