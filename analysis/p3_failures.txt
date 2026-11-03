@@ -1,0 +1,387 @@
+========================================================================================================================
+B2_BLACKOUT/MEDIUM-ALL/formation_recovery_head_current/s1  failed=P3_recovered;terminal_success  tags=false_reoccupation;sensor_fault_failsafe;waiting_for_missing_neighbour
+  t_ref=50.0 deadline=95.15 t_end=95.2 reason='required outcomes not all reached: P3 recovered, still waiting for a missing neighbour'  disturbance windows=[(12.0, 24.0)] faults=[]
+  B2_CLEAN PASS t_end=[50.1, 50.1, 50.1]  same-cell PASS t_end=[50.1, 50.1]
+  referee e_lost/e_ok/hold=(1.2, 0.5, 2.0): 1 episodes, open at end: [np.float64(20.4)], state at end LOST
+  referee e_lost/e_ok/hold=(1.5, 1.0, 2.0): 1 episodes, open at end: [np.float64(21.7)], state at end LOST
+  referee e_lost/e_ok/hold=(2.0, 1.0, 2.0): 1 episodes, open at end: [np.float64(23.3)], state at end LOST
+  form_err: max 3.51 at t=95.2; last 30 s: first10 2.17 last10 3.17 min 2.09 max 3.51; final 3.51; continuously < 1.0 m for the last 0.0 s; frac(last 30 s) < 0.5: 0.00 < 1.0: 0.00
+  per-drone deviation at end: [0.46, 1.79, 3.51, 1.8]  (mean over last 10 s: [0.35, 1.6, 3.17, 1.7])
+  drone_0: modes(s)={'FOL': 50.1, 'REC': 27.9, 'WAIT': 16.0, 'FS': 0.8, 'SW': 0.2, 'CA': 0.2} last60={'REC': 244, 'FOL': 307, 'CA': 2, 'WAIT': 48} FS_entries=1 reloc_hold=0.0s end_mode=FORMATION_FOLLOW missing=[] vacant=[] slot_err=0.032 wait_t=0.0 gate_s=-1000000000.0
+  drone_1: modes(s)={'REC': 74.3, 'FOL': 17.6, 'FS': 2.7, 'SW': 0.4, 'CA': 0.2} last60={'REC': 582, 'FS': 17, 'CA': 2} FS_entries=6 reloc_hold=0.0s end_mode=FORMATION_RECOVERY missing=[] vacant=[] slot_err=0.04 wait_t=0.0 gate_s=-1000000000.0
+  drone_2: modes(s)={'REC': 42.1, 'FOL': 40.6, 'FS': 8.0, 'SW': 3.2, 'WAIT': 1.1, 'CA': 0.2} last60={'REC': 322, 'SW': 20, 'FOL': 240, 'FS': 8, 'WAIT': 11} FS_entries=2 reloc_hold=0.0s end_mode=FORMATION_WAIT_REJOIN missing=[0, 3] vacant=[] slot_err=0.07 wait_t=22.7 gate_s=-1000000000.0
+  drone_3: modes(s)={'REC': 49.9, 'FOL': 28.6, 'WAIT': 11.2, 'FS': 2.8, 'SW': 2.5, 'CA': 0.2} last60={'WAIT': 110, 'SW': 4, 'FOL': 147, 'FS': 10, 'REC': 330} FS_entries=7 reloc_hold=0.0s end_mode=FORMATION_FOLLOW missing=[] vacant=[] slot_err=0.028 wait_t=0.0 gate_s=-1000000000.0
+========================================================================================================================
+B2_BLACKOUT/MEDIUM-ALL/formation_six/s2  failed=P3_recovered;no_permanent_false_vacancy;terminal_success  tags=false_vacancy;sensor_fault_failsafe
+  t_ref=50.0 deadline=95.15 t_end=95.2 reason='required outcomes not all reached: P3 recovered'  disturbance windows=[] faults=[]
+  B2_CLEAN PASS t_end=[50.1, 50.1, 50.1]  same-cell PASS t_end=[50.1, 56.1]
+  referee e_lost/e_ok/hold=(1.2, 0.5, 2.0): 1 episodes, open at end: [np.float64(83.1)], state at end LOST
+  referee e_lost/e_ok/hold=(1.5, 1.0, 2.0): 1 episodes, open at end: [np.float64(87.6)], state at end LOST
+  referee e_lost/e_ok/hold=(2.0, 1.0, 2.0): 0 episodes, open at end: [], state at end OK
+  form_err: max 1.86 at t=95.2; last 30 s: first10 0.70 last10 1.65 min 0.63 max 1.86; final 1.86; continuously < 1.0 m for the last 0.0 s; frac(last 30 s) < 0.5: 0.00 < 1.0: 0.50
+  per-drone deviation at end: [0.64, 0.41, 1.24, 1.39, 1.86, 1.65]  (mean over last 10 s: [0.46, 0.46, 0.97, 1.35, 1.65, 1.46])
+  drone_0: modes(s)={'FOL': 50.5, 'WAIT': 38.7, 'FS': 1.9, 'REC': 1.8, 'DEG': 1.6, 'SW': 0.4, 'CA': 0.3} last60={'FOL': 196, 'SW': 4, 'REC': 18, 'WAIT': 363, 'FS': 3, 'CA': 1, 'DEG': 16} FS_entries=4 reloc_hold=0.0s end_mode=FORMATION_FOLLOW missing=[] vacant=[] slot_err=0.038 wait_t=0.0 gate_s=-1000000000.0
+  drone_1: modes(s)={'FOL': 44.3, 'WAIT': 37.8, 'DEG': 7.7, 'REC': 2.6, 'FS': 2.6, 'SW': 0.1, 'CA': 0.1} last60={'FOL': 107, 'WAIT': 374, 'FS': 18, 'CA': 1, 'REC': 24, 'DEG': 77} FS_entries=5 reloc_hold=0.0s end_mode=DEGRADED_FORMATION missing=[] vacant=[3] slot_err=0.04 wait_t=0.0 gate_s=-1000000000.0
+  drone_2: modes(s)={'WAIT': 47.3, 'FOL': 45.4, 'DEG': 1.6, 'FS': 0.9} last60={'FOL': 144, 'FS': 1, 'WAIT': 440, 'DEG': 16} FS_entries=2 reloc_hold=0.0s end_mode=DEGRADED_FORMATION missing=[] vacant=[0] slot_err=0.06 wait_t=0.0 gate_s=-1000000000.0
+  drone_3: modes(s)={'WAIT': 43.9, 'FOL': 41.3, 'REC': 8.5, 'FS': 1.0, 'SW': 0.4, 'CA': 0.1} last60={'FOL': 89, 'WAIT': 421, 'SW': 4, 'FS': 2, 'REC': 85} FS_entries=3 reloc_hold=0.0s end_mode=FORMATION_RECOVERY missing=[1] vacant=[5] slot_err=0.055 wait_t=35.5 gate_s=-1000000000.0
+  drone_4: modes(s)={'FOL': 78.8, 'WAIT': 11.7, 'FS': 2.5, 'SW': 1.5, 'REC': 0.5, 'CA': 0.2} last60={'FOL': 459, 'SW': 11, 'FS': 9, 'REC': 5, 'WAIT': 117} FS_entries=4 reloc_hold=0.0s end_mode=FORMATION_FOLLOW missing=[] vacant=[] slot_err=0.036 wait_t=0.0 gate_s=-1000000000.0
+  drone_5: modes(s)={'FOL': 78.4, 'WAIT': 14.8, 'FS': 1.7, 'SW': 0.2, 'CA': 0.1} last60={'FOL': 433, 'FS': 17, 'WAIT': 148, 'SW': 2, 'CA': 1} FS_entries=3 reloc_hold=0.0s end_mode=FORMATION_FOLLOW missing=[] vacant=[] slot_err=0.017 wait_t=0.0 gate_s=-1000000000.0
+  vacancy events: [('DECLARED_VACANT', 'drone_3', 5, 83.2), ('DECLARED_VACANT', 'drone_1', 3, 87.5), ('DECLARED_VACANT', 'drone_0', 2, 91.7), ('REOCCUPIED', 'drone_0', 2, 93.3), ('DECLARED_VACANT', 'drone_2', 0, 93.6)]
+========================================================================================================================
+B2_BLACKOUT/MEDIUM-ALL/lost_drone_mutex/s1  failed=progress;gate_completed;terminal_success  tags=sensor_fault_failsafe;relocalization_hold;gate_not_completed
+  t_ref=72.0 deadline=142.10000000000002 t_end=142.1 reason='required outcomes not all reached: progress, gate'  disturbance windows=[(1.0, 72.0)] faults=[('drone_0', 1.0, None)]
+  B2_CLEAN PASS t_end=[129.0, 130.9, 131.0]  same-cell PASS t_end=[84.0, 85.0]
+  referee e_lost/e_ok/hold=(1.2, 0.5, 2.0): 1 episodes, open at end: [np.float64(8.4)], state at end LOST
+  referee e_lost/e_ok/hold=(1.5, 1.0, 2.0): 1 episodes, open at end: [np.float64(9.4)], state at end LOST
+  referee e_lost/e_ok/hold=(2.0, 1.0, 2.0): 1 episodes, open at end: [np.float64(10.8)], state at end LOST
+  form_err: max 16.28 at t=142.1; last 30 s: first10 12.17 last10 15.20 min 11.59 max 16.28; final 16.28; continuously < 1.0 m for the last 0.0 s; frac(last 30 s) < 0.5: 0.00 < 1.0: 0.00
+  per-drone deviation at end: [13.57, 16.27, 3.16]  (mean over last 10 s: [13.15, 15.2, 2.64])
+  gate passed t: {'drone_1': 47.199528, 'drone_2': None}
+  drone_0: modes(s)={'FS': 135.6, 'FOL': 5.8, 'WAIT': 0.5, 'REC': 0.2} last60={'FS': 601} FS_entries=1 reloc_hold=0.0s end_mode=FAILSAFE_HOLD_OR_RETREAT missing=[1, 2] vacant=[] slot_err=30.171 wait_t=46.4 gate_s=-14.02
+  drone_1: modes(s)={'WAIT': 74.6, 'MX': 36.9, 'DEG': 12.3, 'FOL': 8.0, 'REC': 6.5, 'FS': 2.6, 'SW': 0.6, 'CA': 0.6} last60={'WAIT': 468, 'FS': 9, 'CA': 1, 'DEG': 123} FS_entries=5 reloc_hold=4.8s end_mode=DEGRADED_FORMATION missing=[] vacant=[0, 2] slot_err=0.017 wait_t=0.0 gate_s=-1000000000.0
+  drone_2: modes(s)={'MX': 86.2, 'SW': 32.1, 'CA': 12.6, 'FOL': 3.8, 'FS': 2.9, 'WAIT': 2.7, 'REC': 1.8} last60={'MX': 247, 'CA': 43, 'SW': 293, 'FS': 18} FS_entries=8 reloc_hold=12.5s end_mode=MUTEX_PASS missing=[0, 1] vacant=[] slot_err=22.637 wait_t=0.0 gate_s=-3.71
+  vacancy events: [('DECLARED_VACANT', 'drone_1', 0, 129.8), ('DECLARED_VACANT', 'drone_1', 2, 129.8)]
+========================================================================================================================
+B2_BLACKOUT/MEDIUM-ALL/lost_drone_rejoin/s1  failed=P3_recovered;terminal_success  tags=sensor_fault_failsafe;waiting_for_missing_neighbour
+  t_ref=60.0 deadline=110.15 t_end=110.2 reason='required outcomes not all reached: P3 recovered, still waiting for a missing neighbour'  disturbance windows=[(8.0, 15.0)] faults=[('drone_2', 8.0, 15.0)]
+  B2_CLEAN PASS t_end=[60.1, 60.1, 60.1]  same-cell PASS t_end=[60.1, 60.1]
+  referee e_lost/e_ok/hold=(1.2, 0.5, 2.0): 1 episodes, open at end: [np.float64(12.7)], state at end LOST
+  referee e_lost/e_ok/hold=(1.5, 1.0, 2.0): 1 episodes, open at end: [np.float64(13.6)], state at end LOST
+  referee e_lost/e_ok/hold=(2.0, 1.0, 2.0): 1 episodes, open at end: [np.float64(15.1)], state at end LOST
+  form_err: max 3.01 at t=22.0; last 30 s: first10 2.29 last10 2.83 min 2.15 max 2.98; final 2.54; continuously < 1.0 m for the last 0.0 s; frac(last 30 s) < 0.5: 0.00 < 1.0: 0.00
+  per-drone deviation at end: [1.02, 1.04, 2.54, 1.57]  (mean over last 10 s: [0.92, 1.12, 2.83, 1.76])
+  drone_0: modes(s)={'FOL': 68.3, 'REC': 23.2, 'WAIT': 17.2, 'FS': 1.1, 'CA': 0.2, 'SW': 0.2} last60={'REC': 50, 'SW': 2, 'FOL': 547, 'FS': 1} FS_entries=3 reloc_hold=0.0s end_mode=FORMATION_RECOVERY missing=[] vacant=[] slot_err=0.044 wait_t=0.0 gate_s=-1000000000.0
+  drone_1: modes(s)={'REC': 74.2, 'FOL': 16.9, 'WAIT': 14.8, 'FS': 2.7, 'SW': 1.6} last60={'REC': 368, 'FS': 8, 'WAIT': 148, 'FOL': 75, 'SW': 1} FS_entries=6 reloc_hold=0.0s end_mode=FORMATION_WAIT_REJOIN missing=[0] vacant=[] slot_err=0.027 wait_t=0.0 gate_s=-1000000000.0
+  drone_2: modes(s)={'FOL': 44.8, 'REC': 39.5, 'WAIT': 14.0, 'FS': 11.0, 'SW': 0.9} last60={'FOL': 289, 'FS': 26, 'REC': 142, 'SW': 3, 'WAIT': 140} FS_entries=7 reloc_hold=0.0s end_mode=FORMATION_RECOVERY missing=[3] vacant=[] slot_err=0.183 wait_t=29.8 gate_s=-1000000000.0
+  drone_3: modes(s)={'REC': 59.6, 'WAIT': 25.0, 'FOL': 20.2, 'SW': 2.6, 'FS': 2.6, 'CA': 0.2} last60={'FOL': 103, 'WAIT': 94, 'CA': 2, 'REC': 387, 'FS': 9, 'SW': 5} FS_entries=5 reloc_hold=0.0s end_mode=FORMATION_RECOVERY missing=[] vacant=[] slot_err=0.035 wait_t=0.0 gate_s=-1000000000.0
+========================================================================================================================
+B2_BLACKOUT/MEDIUM-ALL/lost_drone_timeout/s0  failed=P3_degraded_holds;terminal_success  tags=false_reoccupation;sensor_fault_failsafe;waiting_for_missing_neighbour;vacancy_not_declared
+  t_ref=80.0 deadline=142.85000000000002 t_end=142.9 reason='required outcomes not all reached: P3-deg re-formed, P3-deg vacancy, still waiting for a missing neighbour'  disturbance windows=[(8.0, 80.0)] faults=[('drone_2', 8.0, None)]
+  B2_CLEAN PASS t_end=[80.1, 80.1, 80.1]  same-cell PASS t_end=[]
+  referee e_lost/e_ok/hold=(1.2, 0.5, 2.0): 1 episodes, open at end: [np.float64(14.5)], state at end LOST
+  referee e_lost/e_ok/hold=(1.5, 1.0, 2.0): 1 episodes, open at end: [np.float64(15.9)], state at end LOST
+  referee e_lost/e_ok/hold=(2.0, 1.0, 2.0): 1 episodes, open at end: [np.float64(18.4)], state at end LOST
+  form_err: max 20.08 at t=142.9; last 30 s: first10 18.49 last10 19.97 min 17.61 max 20.08; final 20.08; continuously < 1.0 m for the last 0.0 s; frac(last 30 s) < 0.5: 0.00 < 1.0: 0.00
+  per-drone deviation at end: [7.21, 5.65, 20.08, 7.76]  (mean over last 10 s: [7.32, 5.65, 19.97, 7.46])
+  drone_0: modes(s)={'WAIT': 72.5, 'REC': 25.9, 'FOL': 25.8, 'DEG': 15.0, 'FS': 3.3, 'CA': 0.3, 'SW': 0.1} last60={'WAIT': 352, 'FS': 9, 'CA': 2, 'DEG': 150, 'FOL': 72, 'REC': 16} FS_entries=5 reloc_hold=0.0s end_mode=FORMATION_WAIT_REJOIN missing=[1] vacant=[] slot_err=0.016 wait_t=4.0 gate_s=-1000000000.0
+  drone_1: modes(s)={'REC': 74.3, 'FOL': 29.7, 'WAIT': 27.6, 'SW': 8.3, 'FS': 2.6, 'CA': 0.4} last60={'REC': 421, 'FS': 17, 'SW': 61, 'WAIT': 64, 'FOL': 36, 'CA': 2} FS_entries=5 reloc_hold=0.0s end_mode=FORMATION_RECOVERY missing=[3] vacant=[] slot_err=4.022 wait_t=16.2 gate_s=-1000000000.0
+  drone_2: modes(s)={'FS': 128.5, 'FOL': 11.4, 'REC': 3.0} last60={'FS': 601} FS_entries=2 reloc_hold=0.0s end_mode=FAILSAFE_HOLD_OR_RETREAT missing=[0, 1, 3] vacant=[] slot_err=27.821 wait_t=98.2 gate_s=-1000000000.0
+  drone_3: modes(s)={'REC': 76.4, 'WAIT': 31.8, 'FOL': 17.4, 'SW': 7.2, 'DEG': 6.9, 'FS': 2.9, 'CA': 0.3} last60={'WAIT': 127, 'FS': 17, 'CA': 2, 'REC': 316, 'DEG': 69, 'SW': 70} FS_entries=7 reloc_hold=0.0s end_mode=FORMATION_RECOVERY missing=[] vacant=[2] slot_err=0.224 wait_t=0.0 gate_s=-1000000000.0
+  vacancy events: [('DECLARED_VACANT', 'drone_0', 2, 96.3), ('DECLARED_VACANT', 'drone_3', 2, 100.1), ('REOCCUPIED', 'drone_0', 2, 111.3)]
+========================================================================================================================
+B2_BLACKOUT/MEDIUM-ALL/lost_drone_timeout/s1  failed=P3_degraded_holds;terminal_success  tags=false_reoccupation;sensor_fault_failsafe;waiting_for_missing_neighbour;vacancy_not_declared
+  t_ref=80.0 deadline=142.85000000000002 t_end=142.9 reason='required outcomes not all reached: P3-deg re-formed, P3-deg vacancy, still waiting for a missing neighbour'  disturbance windows=[(8.0, 80.0)] faults=[('drone_2', 8.0, None)]
+  B2_CLEAN PASS t_end=[80.1, 80.1, 80.1]  same-cell PASS t_end=[]
+  referee e_lost/e_ok/hold=(1.2, 0.5, 2.0): 1 episodes, open at end: [np.float64(14.5)], state at end LOST
+  referee e_lost/e_ok/hold=(1.5, 1.0, 2.0): 1 episodes, open at end: [np.float64(15.8)], state at end LOST
+  referee e_lost/e_ok/hold=(2.0, 1.0, 2.0): 1 episodes, open at end: [np.float64(18.1)], state at end LOST
+  form_err: max 20.66 at t=107.2; last 30 s: first10 20.63 last10 20.57 min 20.55 max 20.64; final 20.55; continuously < 1.0 m for the last 0.0 s; frac(last 30 s) < 0.5: 0.00 < 1.0: 0.00
+  per-drone deviation at end: [6.71, 6.93, 20.55, 7.05]  (mean over last 10 s: [6.73, 6.97, 20.57, 7.02])
+  drone_0: modes(s)={'REC': 90.0, 'FOL': 36.1, 'WAIT': 14.8, 'FS': 1.7, 'CA': 0.3} last60={'FOL': 130, 'CA': 3, 'REC': 460, 'FS': 8} FS_entries=3 reloc_hold=0.0s end_mode=FORMATION_RECOVERY missing=[] vacant=[] slot_err=0.05 wait_t=0.0 gate_s=-1000000000.0
+  drone_1: modes(s)={'REC': 68.6, 'FOL': 37.7, 'WAIT': 33.2, 'FS': 2.6, 'SW': 0.6, 'CA': 0.2} last60={'WAIT': 314, 'CA': 1, 'FOL': 132, 'FS': 9, 'REC': 142, 'SW': 3} FS_entries=5 reloc_hold=0.0s end_mode=FORMATION_WAIT_REJOIN missing=[0] vacant=[] slot_err=0.032 wait_t=0.0 gate_s=-1000000000.0
+  drone_2: modes(s)={'FS': 129.1, 'FOL': 13.2, 'REC': 0.6} last60={'FS': 601} FS_entries=1 reloc_hold=0.0s end_mode=FAILSAFE_HOLD_OR_RETREAT missing=[0, 1, 3] vacant=[] slot_err=28.143 wait_t=98.4 gate_s=-1000000000.0
+  drone_3: modes(s)={'REC': 89.6, 'FOL': 49.5, 'FS': 2.1, 'WAIT': 1.1, 'SW': 0.6} last60={'REC': 273, 'WAIT': 11, 'FOL': 316, 'FS': 1} FS_entries=7 reloc_hold=0.0s end_mode=FORMATION_RECOVERY missing=[] vacant=[] slot_err=0.024 wait_t=0.0 gate_s=-1000000000.0
+========================================================================================================================
+B2_BLACKOUT/MEDIUM-ALL/lost_drone_timeout/s2  failed=P3_degraded_holds;terminal_success  tags=false_reoccupation;sensor_fault_failsafe;vacancy_not_declared
+  t_ref=80.0 deadline=142.85000000000002 t_end=142.9 reason='required outcomes not all reached: P3-deg re-formed, P3-deg vacancy'  disturbance windows=[(8.0, 80.0)] faults=[('drone_2', 8.0, None)]
+  B2_CLEAN PASS t_end=[80.1, 80.1, 80.1]  same-cell PASS t_end=[]
+  referee e_lost/e_ok/hold=(1.2, 0.5, 2.0): 1 episodes, open at end: [np.float64(14.3)], state at end LOST
+  referee e_lost/e_ok/hold=(1.5, 1.0, 2.0): 1 episodes, open at end: [np.float64(15.6)], state at end LOST
+  referee e_lost/e_ok/hold=(2.0, 1.0, 2.0): 1 episodes, open at end: [np.float64(18.1)], state at end LOST
+  form_err: max 20.91 at t=133.1; last 30 s: first10 20.70 last10 20.82 min 20.31 max 20.91; final 20.79; continuously < 1.0 m for the last 0.0 s; frac(last 30 s) < 0.5: 0.00 < 1.0: 0.00
+  per-drone deviation at end: [6.49, 6.93, 20.79, 7.45]  (mean over last 10 s: [6.47, 6.96, 20.82, 7.46])
+  drone_0: modes(s)={'DEG': 73.4, 'WAIT': 29.9, 'REC': 23.9, 'FOL': 13.2, 'FS': 1.2, 'SW': 0.8, 'CA': 0.5} last60={'DEG': 405, 'SW': 8, 'REC': 185, 'CA': 1, 'FS': 2} FS_entries=5 reloc_hold=0.0s end_mode=FORMATION_RECOVERY missing=[] vacant=[2] slot_err=0.049 wait_t=0.0 gate_s=-1000000000.0
+  drone_1: modes(s)={'REC': 73.8, 'SW': 33.0, 'FOL': 22.3, 'WAIT': 10.2, 'FS': 3.3, 'CA': 0.3} last60={'REC': 281, 'SW': 310, 'FS': 8, 'CA': 2} FS_entries=5 reloc_hold=0.0s end_mode=SEPARATION_WARNING missing=[2] vacant=[] slot_err=0.366 wait_t=0.0 gate_s=-1000000000.0
+  drone_2: modes(s)={'FS': 129.3, 'FOL': 12.9, 'REC': 0.7} last60={'FS': 601} FS_entries=1 reloc_hold=0.0s end_mode=FAILSAFE_HOLD_OR_RETREAT missing=[0, 1, 3] vacant=[] slot_err=27.958 wait_t=98.3 gate_s=-1000000000.0
+  drone_3: modes(s)={'REC': 68.8, 'FOL': 39.7, 'WAIT': 28.3, 'SW': 4.5, 'FS': 1.1, 'CA': 0.5} last60={'FOL': 148, 'SW': 43, 'WAIT': 122, 'REC': 287, 'FS': 1} FS_entries=4 reloc_hold=0.0s end_mode=FORMATION_FOLLOW missing=[] vacant=[] slot_err=0.065 wait_t=0.0 gate_s=-1000000000.0
+  vacancy events: [('DECLARED_VACANT', 'drone_0', 2, 44.2)]
+========================================================================================================================
+B2_BLACKOUT/MEDIUM-ALL/p1_vertical_escape/s1  failed=P3_recovered;terminal_success  tags=sensor_fault_failsafe
+  t_ref=45.0 deadline=87.94999999999999 t_end=87.9 reason='required outcomes not all reached: P3 recovered'  disturbance windows=[] faults=[]
+  B2_CLEAN PASS t_end=[45.1, 45.1, 45.1]  same-cell PASS t_end=[45.1, 87.7]
+  referee e_lost/e_ok/hold=(1.2, 0.5, 2.0): 1 episodes, open at end: [np.float64(16.7)], state at end LOST
+  referee e_lost/e_ok/hold=(1.5, 1.0, 2.0): 1 episodes, open at end: [np.float64(17.5)], state at end LOST
+  referee e_lost/e_ok/hold=(2.0, 1.0, 2.0): 1 episodes, open at end: [np.float64(19.0)], state at end LOST
+  form_err: max 8.81 at t=37.3; last 30 s: first10 5.15 last10 4.66 min 4.42 max 5.44; final 4.72; continuously < 1.0 m for the last 0.0 s; frac(last 30 s) < 0.5: 0.00 < 1.0: 0.00
+  per-drone deviation at end: [1.46, 4.72, 1.2, 2.08]  (mean over last 10 s: [1.53, 4.66, 1.29, 1.86])
+  drone_0: modes(s)={'DEG': 34.1, 'WAIT': 30.1, 'FOL': 22.6, 'FS': 0.9, 'CA': 0.2} last60={'WAIT': 251, 'FS': 9, 'DEG': 341} FS_entries=2 reloc_hold=0.0s end_mode=DEGRADED_FORMATION missing=[] vacant=[1] slot_err=0.071 wait_t=0.0 gate_s=-1000000000.0
+  drone_1: modes(s)={'REC': 41.2, 'SW': 24.8, 'FOL': 11.6, 'CA': 8.6, 'FS': 1.7} last60={'SW': 186, 'REC': 397, 'FS': 17, 'CA': 1} FS_entries=3 reloc_hold=0.0s end_mode=FORMATION_RECOVERY missing=[0, 2, 3] vacant=[] slot_err=5.623 wait_t=51.8 gate_s=-1000000000.0
+  drone_2: modes(s)={'DEG': 33.0, 'WAIT': 31.6, 'FOL': 17.5, 'REC': 3.6, 'FS': 1.9, 'CA': 0.2, 'SW': 0.1} last60={'WAIT': 252, 'FS': 18, 'SW': 1, 'DEG': 330} FS_entries=5 reloc_hold=0.0s end_mode=DEGRADED_FORMATION missing=[] vacant=[1] slot_err=0.06 wait_t=0.0 gate_s=-1000000000.0
+  drone_3: modes(s)={'REC': 42.0, 'SW': 20.6, 'FOL': 14.3, 'WAIT': 8.8, 'FS': 1.8, 'CA': 0.4} last60={'REC': 388, 'SW': 124, 'FS': 1, 'WAIT': 88} FS_entries=3 reloc_hold=0.0s end_mode=FORMATION_RECOVERY missing=[1] vacant=[] slot_err=0.931 wait_t=53.6 gate_s=-1000000000.0
+  vacancy events: [('DECLARED_VACANT', 'drone_0', 1, 53.5), ('DECLARED_VACANT', 'drone_2', 1, 53.9)]
+========================================================================================================================
+B2_LOW/LOW-ALL/formation_six/s0  failed=P3_recovered;terminal_success  tags=sensor_fault_failsafe;waiting_for_missing_neighbour
+  t_ref=50.0 deadline=95.15 t_end=95.2 reason='required outcomes not all reached: P3 recovered, still waiting for a missing neighbour'  disturbance windows=[] faults=[]
+  B2_CLEAN PASS t_end=[50.1, 50.1, 50.1]  same-cell PASS t_end=[50.2, 60.8]
+  referee e_lost/e_ok/hold=(1.2, 0.5, 2.0): 1 episodes, open at end: [np.float64(52.7)], state at end LOST
+  referee e_lost/e_ok/hold=(1.5, 1.0, 2.0): 1 episodes, open at end: [np.float64(57.5)], state at end LOST
+  referee e_lost/e_ok/hold=(2.0, 1.0, 2.0): 0 episodes, open at end: [], state at end OK
+  form_err: max 1.90 at t=95.2; last 30 s: first10 1.73 last10 1.87 min 1.66 max 1.90; final 1.90; continuously < 1.0 m for the last 0.0 s; frac(last 30 s) < 0.5: 0.00 < 1.0: 0.00
+  per-drone deviation at end: [0.34, 0.31, 1.9, 0.58, 0.74, 0.58]  (mean over last 10 s: [0.52, 0.22, 1.87, 0.46, 0.59, 0.4])
+  drone_0: modes(s)={'FOL': 89.2, 'WAIT': 6.0} last60={'FOL': 541, 'WAIT': 60} FS_entries=0 reloc_hold=0.0s end_mode=FORMATION_WAIT_REJOIN missing=[2] vacant=[] slot_err=0.068 wait_t=6.0 gate_s=-1000000000.0
+  drone_1: modes(s)={'FOL': 76.0, 'WAIT': 19.2} last60={'FOL': 409, 'WAIT': 192} FS_entries=0 reloc_hold=0.0s end_mode=FORMATION_WAIT_REJOIN missing=[0] vacant=[] slot_err=0.102 wait_t=14.0 gate_s=-1000000000.0
+  drone_2: modes(s)={'FOL': 60.0, 'WAIT': 33.9, 'REC': 1.2, 'FS': 0.1} last60={'WAIT': 222, 'FOL': 366, 'FS': 1, 'REC': 12} FS_entries=1 reloc_hold=0.0s end_mode=FORMATION_WAIT_REJOIN missing=[0, 3] vacant=[] slot_err=0.053 wait_t=3.8 gate_s=-1000000000.0
+  drone_3: modes(s)={'FOL': 92.4, 'WAIT': 2.8} last60={'FOL': 573, 'WAIT': 28} FS_entries=0 reloc_hold=0.0s end_mode=FORMATION_FOLLOW missing=[] vacant=[] slot_err=0.076 wait_t=0.0 gate_s=-1000000000.0
+  drone_4: modes(s)={'FOL': 95.2} last60={'FOL': 601} FS_entries=0 reloc_hold=0.0s end_mode=FORMATION_FOLLOW missing=[] vacant=[] slot_err=0.03 wait_t=0.0 gate_s=-1000000000.0
+  drone_5: modes(s)={'FOL': 87.2, 'WAIT': 8.0} last60={'FOL': 579, 'WAIT': 22} FS_entries=0 reloc_hold=0.0s end_mode=FORMATION_FOLLOW missing=[] vacant=[] slot_err=0.066 wait_t=0.0 gate_s=-1000000000.0
+========================================================================================================================
+B2_LOW/LOW-ALL/mutex_deadlock_resolution/s2  failed=P3_recovered;terminal_success  tags=sensor_fault_failsafe
+  t_ref=75.0 deadline=132.64999999999998 t_end=132.6 reason='required outcomes not all reached: P3 recovered'  disturbance windows=[] faults=[]
+  B2_CLEAN PASS t_end=[75.1, 75.1, 75.1]  same-cell PASS t_end=[75.1, 75.1]
+  referee e_lost/e_ok/hold=(1.2, 0.5, 2.0): 1 episodes, open at end: [np.float64(6.4)], state at end LOST
+  referee e_lost/e_ok/hold=(1.5, 1.0, 2.0): 1 episodes, open at end: [np.float64(7.6)], state at end LOST
+  referee e_lost/e_ok/hold=(2.0, 1.0, 2.0): 1 episodes, open at end: [np.float64(9.2)], state at end LOST
+  form_err: max 8.45 at t=96.5; last 30 s: first10 6.95 last10 3.36 min 2.70 max 7.57; final 2.70; continuously < 1.0 m for the last 0.0 s; frac(last 30 s) < 0.5: 0.00 < 1.0: 0.00
+  per-drone deviation at end: [1.35, 1.35, 2.7]  (mean over last 10 s: [1.68, 1.68, 3.36])
+  gate passed t: {'drone_0': 21.499785, 'drone_1': 42.099579, 'drone_2': 115.898841}
+  drone_0: modes(s)={'WAIT': 91.5, 'MX': 21.6, 'DEG': 12.7, 'REC': 6.8} last60={'WAIT': 474, 'DEG': 127} FS_entries=0 reloc_hold=0.8s end_mode=DEGRADED_FORMATION missing=[] vacant=[2] slot_err=0.025 wait_t=0.0 gate_s=-1000000000.0
+  drone_1: modes(s)={'WAIT': 70.4, 'MX': 42.3, 'DEG': 12.7, 'REC': 7.2} last60={'WAIT': 474, 'DEG': 127} FS_entries=0 reloc_hold=0.7s end_mode=DEGRADED_FORMATION missing=[] vacant=[2] slot_err=0.051 wait_t=0.0 gate_s=-1000000000.0
+  drone_2: modes(s)={'MX': 115.9, 'REC': 16.6, 'FS': 0.1} last60={'MX': 434, 'FS': 1, 'REC': 166} FS_entries=1 reloc_hold=1.6s end_mode=FORMATION_RECOVERY missing=[0, 1] vacant=[] slot_err=5.647 wait_t=16.2 gate_s=-1000000000.0
+  vacancy events: [('DECLARED_VACANT', 'drone_0', 2, 119.9), ('DECLARED_VACANT', 'drone_1', 2, 119.9)]
+========================================================================================================================
+B2_MEDIUM/MEDIUM-ALL/formation_six/s1  failed=P3_recovered;terminal_success  tags=false_reoccupation;sensor_fault_failsafe;waiting_for_missing_neighbour
+  t_ref=50.0 deadline=95.15 t_end=95.2 reason='required outcomes not all reached: P3 recovered, still waiting for a missing neighbour'  disturbance windows=[] faults=[]
+  B2_CLEAN PASS t_end=[50.1, 50.1, 50.1]  same-cell PASS t_end=[51.1, 66.7]
+  referee e_lost/e_ok/hold=(1.2, 0.5, 2.0): 1 episodes, open at end: [np.float64(49.0)], state at end LOST
+  referee e_lost/e_ok/hold=(1.5, 1.0, 2.0): 1 episodes, open at end: [np.float64(65.7)], state at end LOST
+  referee e_lost/e_ok/hold=(2.0, 1.0, 2.0): 1 episodes, open at end: [np.float64(76.4)], state at end LOST
+  form_err: max 3.43 at t=95.2; last 30 s: first10 1.65 last10 3.04 min 1.48 max 3.43; final 3.43; continuously < 1.0 m for the last 0.0 s; frac(last 30 s) < 0.5: 0.00 < 1.0: 0.00
+  per-drone deviation at end: [0.71, 1.08, 0.73, 3.43, 0.18, 0.91]  (mean over last 10 s: [0.43, 0.95, 0.5, 3.04, 0.39, 0.97])
+  drone_0: modes(s)={'FOL': 66.2, 'WAIT': 27.7, 'FS': 0.8, 'REC': 0.3, 'CA': 0.2} last60={'FOL': 375, 'WAIT': 221, 'CA': 2, 'REC': 3} FS_entries=1 reloc_hold=0.0s end_mode=FORMATION_FOLLOW missing=[] vacant=[] slot_err=0.141 wait_t=0.0 gate_s=-1000000000.0
+  drone_1: modes(s)={'FOL': 74.9, 'WAIT': 17.5, 'FS': 2.7, 'CA': 0.1} last60={'FOL': 454, 'FS': 19, 'WAIT': 127, 'CA': 1} FS_entries=5 reloc_hold=0.0s end_mode=FORMATION_FOLLOW missing=[] vacant=[] slot_err=0.051 wait_t=0.0 gate_s=-1000000000.0
+  drone_2: modes(s)={'FOL': 66.4, 'WAIT': 27.6, 'FS': 0.9, 'SW': 0.2, 'CA': 0.1} last60={'WAIT': 187, 'SW': 2, 'FOL': 403, 'FS': 9} FS_entries=2 reloc_hold=0.0s end_mode=FORMATION_FOLLOW missing=[] vacant=[] slot_err=0.033 wait_t=0.0 gate_s=-1000000000.0
+  drone_3: modes(s)={'REC': 44.3, 'WAIT': 30.4, 'FOL': 16.7, 'FS': 2.8, 'SW': 0.6, 'CA': 0.4} last60={'WAIT': 170, 'SW': 4, 'FS': 11, 'FOL': 46, 'REC': 370} FS_entries=5 reloc_hold=0.0s end_mode=FORMATION_RECOVERY missing=[4, 5] vacant=[] slot_err=0.117 wait_t=24.5 gate_s=-1000000000.0
+  drone_4: modes(s)={'FOL': 38.5, 'WAIT': 30.8, 'REC': 24.0, 'FS': 1.3, 'SW': 0.3, 'CA': 0.3} last60={'WAIT': 150, 'FS': 1, 'FOL': 227, 'CA': 3, 'REC': 218, 'SW': 2} FS_entries=4 reloc_hold=0.0s end_mode=FORMATION_WAIT_REJOIN missing=[3] vacant=[] slot_err=0.071 wait_t=11.7 gate_s=-1000000000.0
+  drone_5: modes(s)={'FOL': 41.7, 'REC': 33.9, 'WAIT': 18.4, 'FS': 0.9, 'CA': 0.3} last60={'REC': 319, 'FOL': 140, 'WAIT': 138, 'CA': 3, 'FS': 1} FS_entries=2 reloc_hold=0.0s end_mode=COLLISION_AVOIDANCE missing=[3] vacant=[] slot_err=0.069 wait_t=3.3 gate_s=-1000000000.0
+========================================================================================================================
+B2_MEDIUM/MEDIUM-ALL/gate_single/s0  failed=progress;gate_completed;P3_recovered;terminal_success  tags=false_reoccupation;sensor_fault_failsafe;gate_not_completed
+  t_ref=80.0 deadline=271.1 t_end=271.1 reason='required outcomes not all reached: progress, gate, P3 recovered'  disturbance windows=[] faults=[]
+  B2_CLEAN PASS t_end=[121.2, 148.7, 150.8]  same-cell PASS t_end=[81.9, 93.7]
+  referee e_lost/e_ok/hold=(1.2, 0.5, 2.0): 1 episodes, open at end: [np.float64(4.8)], state at end LOST
+  referee e_lost/e_ok/hold=(1.5, 1.0, 2.0): 1 episodes, open at end: [np.float64(5.7)], state at end LOST
+  referee e_lost/e_ok/hold=(2.0, 1.0, 2.0): 1 episodes, open at end: [np.float64(9.0)], state at end LOST
+  form_err: max 19.33 at t=271.1; last 30 s: first10 19.19 last10 19.28 min 19.17 max 19.33; final 19.33; continuously < 1.0 m for the last 0.0 s; frac(last 30 s) < 0.5: 0.00 < 1.0: 0.00
+  per-drone deviation at end: [9.8, 19.33, 9.53]  (mean over last 10 s: [9.7, 19.28, 9.58])
+  gate passed t: {'drone_0': 31.499685, 'drone_1': None, 'drone_2': 46.99953}
+  drone_0: modes(s)={'DEG': 144.5, 'WAIT': 66.7, 'MX': 29.8, 'FOL': 12.1, 'REC': 11.1, 'FS': 3.9, 'CA': 1.6, 'SW': 1.4} last60={'DEG': 587, 'FS': 3, 'WAIT': 11} FS_entries=10 reloc_hold=1.2s end_mode=DEGRADED_FORMATION missing=[] vacant=[1] slot_err=0.043 wait_t=0.0 gate_s=-1000000000.0
+  drone_1: modes(s)={'MX': 158.2, 'SW': 97.7, 'CA': 9.3, 'FS': 5.9} last60={'MX': 325, 'SW': 248, 'CA': 27, 'FS': 1} FS_entries=10 reloc_hold=0.0s end_mode=MUTEX_PASS missing=[0] vacant=[] slot_err=29.275 wait_t=0.0 gate_s=-2.25
+  drone_2: modes(s)={'DEG': 140.7, 'WAIT': 55.5, 'MX': 44.5, 'REC': 22.4, 'FS': 3.0, 'SW': 2.6, 'FOL': 2.2, 'CA': 0.2} last60={'DEG': 599, 'FS': 2} FS_entries=9 reloc_hold=1.3s end_mode=DEGRADED_FORMATION missing=[] vacant=[1] slot_err=0.024 wait_t=0.0 gate_s=-1000000000.0
+  vacancy events: [('DECLARED_VACANT', 'drone_2', 1, 120.8), ('DECLARED_VACANT', 'drone_0', 1, 122.2)]
+========================================================================================================================
+B2_MEDIUM/MEDIUM-ALL/lost_drone_mutex/s1  failed=progress;gate_completed;terminal_success  tags=sensor_fault_failsafe;relocalization_hold;gate_not_completed
+  t_ref=72.0 deadline=142.10000000000002 t_end=142.1 reason='required outcomes not all reached: progress, gate'  disturbance windows=[(1.0, 72.0)] faults=[('drone_0', 1.0, None)]
+  B2_CLEAN PASS t_end=[129.0, 130.9, 131.0]  same-cell PASS t_end=[84.7, 88.1]
+  referee e_lost/e_ok/hold=(1.2, 0.5, 2.0): 1 episodes, open at end: [np.float64(8.5)], state at end LOST
+  referee e_lost/e_ok/hold=(1.5, 1.0, 2.0): 1 episodes, open at end: [np.float64(9.4)], state at end LOST
+  referee e_lost/e_ok/hold=(2.0, 1.0, 2.0): 1 episodes, open at end: [np.float64(10.8)], state at end LOST
+  form_err: max 15.83 at t=142.1; last 30 s: first10 12.07 last10 14.97 min 11.50 max 15.83; final 15.83; continuously < 1.0 m for the last 0.0 s; frac(last 30 s) < 0.5: 0.00 < 1.0: 0.00
+  per-drone deviation at end: [14.08, 15.83, 2.61]  (mean over last 10 s: [13.38, 14.97, 2.49])
+  gate passed t: {'drone_1': 42.099579, 'drone_2': None}
+  drone_0: modes(s)={'FS': 135.6, 'FOL': 6.0, 'REC': 0.5} last60={'FS': 601} FS_entries=1 reloc_hold=0.0s end_mode=FAILSAFE_HOLD_OR_RETREAT missing=[1, 2] vacant=[] slot_err=30.209 wait_t=43.1 gate_s=-14.2
+  drone_1: modes(s)={'WAIT': 77.9, 'MX': 33.4, 'DEG': 12.1, 'FOL': 8.2, 'REC': 6.7, 'FS': 2.6, 'CA': 0.9, 'SW': 0.3} last60={'WAIT': 468, 'FS': 9, 'CA': 3, 'DEG': 121} FS_entries=5 reloc_hold=2.2s end_mode=DEGRADED_FORMATION missing=[] vacant=[0, 2] slot_err=0.026 wait_t=0.0 gate_s=-1000000000.0
+  drone_2: modes(s)={'MX': 97.9, 'CA': 27.3, 'FOL': 7.8, 'SW': 5.6, 'FS': 2.9, 'REC': 0.6} last60={'SW': 34, 'MX': 360, 'CA': 189, 'FS': 18} FS_entries=8 reloc_hold=64.1s end_mode=MUTEX_PASS missing=[0] vacant=[] slot_err=20.859 wait_t=0.0 gate_s=-1.86
+  vacancy events: [('DECLARED_VACANT', 'drone_1', 0, 129.8), ('DECLARED_VACANT', 'drone_1', 2, 129.8)]
+========================================================================================================================
+B2_MEDIUM/MEDIUM-ALL/p1_two_lines/s2  failed=progress;terminal_success  tags=sensor_fault_failsafe;waiting_for_missing_neighbour
+  t_ref=36.0 deadline=74.15 t_end=74.2 reason='required outcomes not all reached: progress, still waiting for a missing neighbour'  disturbance windows=[] faults=[]
+  B2_CLEAN PASS t_end=[37.9, 41.6, 41.7]  same-cell PASS t_end=[36.1, 36.1]
+  drone_0: modes(s)={'REC': 27.7, 'FOL': 26.0, 'WAIT': 14.5, 'SW': 4.1, 'FS': 1.9} last60={'FOL': 184, 'FS': 11, 'REC': 241, 'SW': 41, 'WAIT': 124} FS_entries=4 reloc_hold=0.0s end_mode=FORMATION_FOLLOW missing=[] vacant=[] slot_err=0.108 wait_t=0.0 gate_s=-1000000000.0
+  drone_1: modes(s)={'FOL': 55.8, 'REC': 12.7, 'SW': 3.0, 'FS': 2.5, 'CA': 0.2} last60={'FOL': 417, 'CA': 2, 'REC': 127, 'FS': 25, 'SW': 30} FS_entries=4 reloc_hold=0.0s end_mode=FORMATION_FOLLOW missing=[] vacant=[] slot_err=0.069 wait_t=0.0 gate_s=-1000000000.0
+  drone_2: modes(s)={'FOL': 54.1, 'REC': 9.9, 'WAIT': 7.8, 'SW': 1.5, 'FS': 0.9} last60={'FOL': 444, 'WAIT': 65, 'SW': 14, 'REC': 77, 'FS': 1} FS_entries=2 reloc_hold=0.0s end_mode=FORMATION_FOLLOW missing=[] vacant=[] slot_err=0.086 wait_t=0.0 gate_s=-1000000000.0
+  drone_3: modes(s)={'FOL': 24.6, 'WAIT': 22.2, 'REC': 19.2, 'SW': 7.3, 'FS': 0.9} last60={'WAIT': 201, 'FOL': 126, 'FS': 9, 'REC': 192, 'SW': 73} FS_entries=2 reloc_hold=0.0s end_mode=FORMATION_FOLLOW missing=[] vacant=[] slot_err=0.145 wait_t=0.0 gate_s=-1000000000.0
+  drone_4: modes(s)={'FOL': 45.8, 'REC': 14.8, 'SW': 6.8, 'WAIT': 4.3, 'FS': 2.5} last60={'FOL': 325, 'FS': 17, 'WAIT': 43, 'SW': 68, 'REC': 148} FS_entries=4 reloc_hold=0.0s end_mode=FORMATION_FOLLOW missing=[] vacant=[] slot_err=0.06 wait_t=0.0 gate_s=-1000000000.0
+  drone_5: modes(s)={'FOL': 35.3, 'REC': 19.7, 'WAIT': 14.6, 'SW': 2.8, 'FS': 1.7, 'CA': 0.1} last60={'FOL': 215, 'WAIT': 143, 'SW': 28, 'REC': 197, 'FS': 17, 'CA': 1} FS_entries=3 reloc_hold=0.0s end_mode=FORMATION_WAIT_REJOIN missing=[0] vacant=[] slot_err=0.062 wait_t=3.9 gate_s=-1000000000.0
+========================================================================================================================
+B2_MEDIUM/MEDIUM-ONE/formation_gust/s2  failed=P3_recovered;terminal_success  tags=false_reoccupation;false_vacancy;sensor_fault_failsafe;waiting_for_missing_neighbour
+  t_ref=55.0 deadline=102.65 t_end=102.6 reason='required outcomes not all reached: P3 recovered, still waiting for a missing neighbour'  disturbance windows=[(12.0, 22.0)] faults=[]
+  B2_CLEAN PASS t_end=[55.1, 55.1, 55.1]  same-cell PASS t_end=[60.3, 74.6]
+  referee e_lost/e_ok/hold=(1.2, 0.5, 2.0): 1 episodes, open at end: [np.float64(47.3)], state at end LOST
+  referee e_lost/e_ok/hold=(1.5, 1.0, 2.0): 1 episodes, open at end: [np.float64(75.8)], state at end LOST
+  referee e_lost/e_ok/hold=(2.0, 1.0, 2.0): 0 episodes, open at end: [], state at end OK
+  form_err: max 1.99 at t=102.6; last 30 s: first10 1.50 last10 1.76 min 1.45 max 1.99; final 1.99; continuously < 1.0 m for the last 0.0 s; frac(last 30 s) < 0.5: 0.00 < 1.0: 0.00
+  per-drone deviation at end: [0.46, 1.13, 1.99, 1.0]  (mean over last 10 s: [0.36, 0.89, 1.76, 0.8])
+  drone_0: modes(s)={'REC': 52.0, 'WAIT': 37.2, 'FOL': 7.9, 'SW': 3.4, 'FS': 1.8, 'CA': 0.3} last60={'REC': 326, 'SW': 9, 'CA': 1, 'FS': 2, 'WAIT': 263} FS_entries=4 reloc_hold=0.0s end_mode=FORMATION_WAIT_REJOIN missing=[2] vacant=[] slot_err=0.025 wait_t=27.5 gate_s=-1000000000.0
+  drone_1: modes(s)={'FOL': 52.9, 'WAIT': 35.5, 'REC': 11.1, 'DEG': 2.5, 'SW': 0.6} last60={'FOL': 104, 'WAIT': 355, 'SW': 6, 'REC': 111, 'DEG': 25} FS_entries=0 reloc_hold=0.0s end_mode=DEGRADED_FORMATION missing=[] vacant=[2] slot_err=0.039 wait_t=0.0 gate_s=-1000000000.0
+  drone_2: modes(s)={'REC': 56.4, 'FOL': 21.7, 'WAIT': 20.3, 'SW': 4.2} last60={'REC': 362, 'SW': 19, 'FOL': 17, 'WAIT': 203} FS_entries=0 reloc_hold=0.0s end_mode=FORMATION_FOLLOW missing=[] vacant=[] slot_err=0.079 wait_t=0.0 gate_s=-1000000000.0
+  drone_3: modes(s)={'FOL': 61.8, 'WAIT': 32.8, 'DEG': 3.8, 'SW': 2.3, 'REC': 1.9} last60={'WAIT': 252, 'DEG': 38, 'FOL': 269, 'SW': 23, 'REC': 19} FS_entries=0 reloc_hold=0.0s end_mode=FORMATION_FOLLOW missing=[] vacant=[] slot_err=0.04 wait_t=0.0 gate_s=-1000000000.0
+  vacancy events: [('DECLARED_VACANT', 'drone_3', 0, 67.7), ('REOCCUPIED', 'drone_3', 0, 71.5), ('DECLARED_VACANT', 'drone_1', 2, 100.1)]
+========================================================================================================================
+B2_MEDIUM/MEDIUM-ONE/formation_square/s0  failed=P3_recovered;terminal_success  tags=false_reoccupation;false_vacancy;sensor_fault_failsafe;waiting_for_missing_neighbour
+  t_ref=45.0 deadline=87.65 t_end=87.6 reason='required outcomes not all reached: P3 recovered, still waiting for a missing neighbour'  disturbance windows=[] faults=[]
+  B2_CLEAN PASS t_end=[45.1, 45.1, 45.1]  same-cell PASS t_end=[45.1]
+  referee e_lost/e_ok/hold=(1.2, 0.5, 2.0): 1 episodes, open at end: [np.float64(67.8)], state at end LOST
+  referee e_lost/e_ok/hold=(1.5, 1.0, 2.0): 0 episodes, open at end: [], state at end OK
+  referee e_lost/e_ok/hold=(2.0, 1.0, 2.0): 0 episodes, open at end: [], state at end OK
+  form_err: max 1.27 at t=71.0; last 30 s: first10 1.01 last10 0.80 min 0.59 max 1.27; final 0.60; continuously < 1.0 m for the last 10.1 s; frac(last 30 s) < 0.5: 0.00 < 1.0: 0.51
+  per-drone deviation at end: [0.41, 0.16, 0.35, 0.6]  (mean over last 10 s: [0.57, 0.28, 0.5, 0.8])
+  drone_0: modes(s)={'FOL': 56.1, 'REC': 15.5, 'WAIT': 9.5, 'SW': 3.9, 'FS': 2.4, 'CA': 0.2} last60={'WAIT': 54, 'FS': 24, 'SW': 37, 'REC': 155, 'FOL': 329, 'CA': 2} FS_entries=3 reloc_hold=0.0s end_mode=FORMATION_WAIT_REJOIN missing=[3] vacant=[] slot_err=0.178 wait_t=6.6 gate_s=-1000000000.0
+  drone_1: modes(s)={'FOL': 60.2, 'WAIT': 26.4, 'SW': 1.0} last60={'WAIT': 242, 'FOL': 349, 'SW': 10} FS_entries=0 reloc_hold=0.0s end_mode=FORMATION_FOLLOW missing=[] vacant=[] slot_err=0.063 wait_t=0.0 gate_s=-1000000000.0
+  drone_2: modes(s)={'FOL': 75.9, 'WAIT': 9.5, 'REC': 1.5, 'SW': 0.7} last60={'FOL': 526, 'WAIT': 53, 'SW': 7, 'REC': 15} FS_entries=0 reloc_hold=0.0s end_mode=FORMATION_RECOVERY missing=[] vacant=[] slot_err=0.148 wait_t=0.0 gate_s=-1000000000.0
+  drone_3: modes(s)={'WAIT': 45.1, 'FOL': 33.7, 'DEG': 8.1, 'SW': 0.7} last60={'FOL': 114, 'SW': 7, 'WAIT': 399, 'DEG': 81} FS_entries=0 reloc_hold=0.0s end_mode=FORMATION_FOLLOW missing=[] vacant=[] slot_err=0.02 wait_t=0.0 gate_s=-1000000000.0
+  vacancy events: [('DECLARED_VACANT', 'drone_3', 1, 68.2), ('REOCCUPIED', 'drone_3', 1, 81.6)]
+========================================================================================================================
+B2_MEDIUM/MEDIUM-ONE/formation_square/s2  failed=P3_recovered;terminal_success  tags=false_reoccupation;sensor_fault_failsafe;waiting_for_missing_neighbour
+  t_ref=45.0 deadline=87.65 t_end=87.6 reason='required outcomes not all reached: P3 recovered, still waiting for a missing neighbour'  disturbance windows=[] faults=[]
+  B2_CLEAN PASS t_end=[45.1, 45.1, 45.1]  same-cell PASS t_end=[45.1]
+  referee e_lost/e_ok/hold=(1.2, 0.5, 2.0): 1 episodes, open at end: [np.float64(56.0)], state at end LOST
+  referee e_lost/e_ok/hold=(1.5, 1.0, 2.0): 0 episodes, open at end: [], state at end OK
+  referee e_lost/e_ok/hold=(2.0, 1.0, 2.0): 0 episodes, open at end: [], state at end OK
+  form_err: max 1.47 at t=65.5; last 30 s: first10 1.37 last10 1.33 min 1.19 max 1.47; final 1.33; continuously < 1.0 m for the last 0.0 s; frac(last 30 s) < 0.5: 0.00 < 1.0: 0.00
+  per-drone deviation at end: [1.19, 1.23, 1.33, 1.16]  (mean over last 10 s: [1.16, 1.16, 1.33, 1.19])
+  drone_0: modes(s)={'REC': 66.9, 'FOL': 9.9, 'WAIT': 8.1, 'FS': 1.8, 'SW': 0.8, 'CA': 0.1} last60={'REC': 598, 'CA': 1, 'FS': 2} FS_entries=4 reloc_hold=0.0s end_mode=FORMATION_RECOVERY missing=[1] vacant=[] slot_err=0.514 wait_t=26.9 gate_s=-1000000000.0
+  drone_1: modes(s)={'FOL': 56.5, 'WAIT': 31.1} last60={'FOL': 290, 'WAIT': 311} FS_entries=0 reloc_hold=0.0s end_mode=FORMATION_WAIT_REJOIN missing=[0, 2] vacant=[] slot_err=0.096 wait_t=31.1 gate_s=-1000000000.0
+  drone_2: modes(s)={'REC': 36.6, 'WAIT': 29.1, 'FOL': 20.1, 'SW': 1.8} last60={'REC': 309, 'SW': 1, 'WAIT': 291} FS_entries=0 reloc_hold=0.0s end_mode=FORMATION_WAIT_REJOIN missing=[1] vacant=[] slot_err=0.035 wait_t=31.2 gate_s=-1000000000.0
+  drone_3: modes(s)={'WAIT': 46.8, 'FOL': 40.8} last60={'WAIT': 441, 'FOL': 160} FS_entries=0 reloc_hold=0.0s end_mode=FORMATION_WAIT_REJOIN missing=[0] vacant=[] slot_err=0.035 wait_t=14.8 gate_s=-1000000000.0
+========================================================================================================================
+B2_MEDIUM/MEDIUM-ONE/gate_single/s0  failed=progress;gate_completed;P3_recovered;terminal_success  tags=sensor_fault_failsafe;relocalization_hold;gate_not_completed
+  t_ref=80.0 deadline=271.1 t_end=271.1 reason='required outcomes not all reached: progress, gate, P3 recovered'  disturbance windows=[] faults=[]
+  B2_CLEAN PASS t_end=[121.2, 148.7, 150.8]  same-cell PASS t_end=[89.5, 172.4]
+  referee e_lost/e_ok/hold=(1.2, 0.5, 2.0): 1 episodes, open at end: [np.float64(4.6)], state at end LOST
+  referee e_lost/e_ok/hold=(1.5, 1.0, 2.0): 1 episodes, open at end: [np.float64(5.5)], state at end LOST
+  referee e_lost/e_ok/hold=(2.0, 1.0, 2.0): 1 episodes, open at end: [np.float64(8.6)], state at end LOST
+  form_err: max 4.65 at t=192.9; last 30 s: first10 4.40 last10 4.49 min 4.26 max 4.63; final 4.30; continuously < 1.0 m for the last 0.0 s; frac(last 30 s) < 0.5: 0.00 < 1.0: 0.00
+  per-drone deviation at end: [4.3, 1.25, 3.53]  (mean over last 10 s: [4.49, 1.28, 3.63])
+  gate passed t: {'drone_0': None, 'drone_1': None, 'drone_2': None}
+  drone_0: modes(s)={'MX': 265.4, 'FS': 3.7, 'SW': 1.4, 'CA': 0.6} last60={'MX': 598, 'FS': 3} FS_entries=8 reloc_hold=250.8s end_mode=MUTEX_PASS missing=[1, 2] vacant=[] slot_err=28.967 wait_t=0.0 gate_s=-1.75
+  drone_1: modes(s)={'MX': 271.1} last60={'MX': 601} FS_entries=0 reloc_hold=0.0s end_mode=MUTEX_YIELD missing=[2] vacant=[] slot_err=32.404 wait_t=0.0 gate_s=-5.4
+  drone_2: modes(s)={'MX': 266.1, 'SW': 5.0} last60={'MX': 601} FS_entries=0 reloc_hold=0.0s end_mode=MUTEX_YIELD missing=[0, 1] vacant=[] slot_err=35.402 wait_t=0.0 gate_s=-5.4
+========================================================================================================================
+B2_MEDIUM/MEDIUM-ONE/integrated_short/s1  failed=no_permanent_false_vacancy  tags=false_reoccupation;sensor_fault_failsafe;relocalization_hold
+  t_ref=92.0 deadline=253.70000000000002 t_end=186.6 reason='every required outcome reached'  disturbance windows=[(5.0, 45.0)] faults=[]
+  B2_CLEAN PASS t_end=[137.4, 165.7, 195.5]  same-cell PASS t_end=[97.7, 170.2]
+  referee e_lost/e_ok/hold=(1.2, 0.5, 2.0): 1 episodes, open at end: [], state at end OK
+  referee e_lost/e_ok/hold=(1.5, 1.0, 2.0): 1 episodes, open at end: [], state at end OK
+  referee e_lost/e_ok/hold=(2.0, 1.0, 2.0): 1 episodes, open at end: [], state at end OK
+  form_err: max 10.03 at t=122.9; last 30 s: first10 6.34 last10 0.92 min 0.35 max 6.96; final 0.35; continuously < 1.0 m for the last 5.5 s; frac(last 30 s) < 0.5: 0.07 < 1.0: 0.19
+  per-drone deviation at end: [0.07, 0.35, 0.28]  (mean over last 10 s: [0.28, 0.92, 0.65])
+  gate passed t: {'drone_0': 38.699613, 'drone_1': 133.298667, 'drone_2': 75.799242}
+  drone_0: modes(s)={'WAIT': 75.9, 'DEG': 48.9, 'MX': 37.0, 'FOL': 15.9, 'REC': 8.5, 'SW': 0.4} last60={'DEG': 449, 'WAIT': 52, 'FOL': 100} FS_entries=0 reloc_hold=0.8s end_mode=FORMATION_FOLLOW missing=[] vacant=[] slot_err=0.031 wait_t=0.0 gate_s=-1000000000.0
+  drone_1: modes(s)={'MX': 120.8, 'REC': 51.4, 'CA': 6.5, 'FS': 5.0, 'SW': 1.6, 'FOL': 1.3} last60={'MX': 68, 'REC': 514, 'FS': 17, 'CA': 2} FS_entries=8 reloc_hold=37.3s end_mode=FORMATION_RECOVERY missing=[] vacant=[] slot_err=0.225 wait_t=0.0 gate_s=-1000000000.0
+  drone_2: modes(s)={'MX': 74.4, 'DEG': 59.1, 'WAIT': 38.9, 'REC': 12.8, 'SW': 1.4} last60={'WAIT': 25, 'DEG': 576} FS_entries=0 reloc_hold=1.4s end_mode=DEGRADED_FORMATION missing=[] vacant=[1] slot_err=0.13 wait_t=0.0 gate_s=-1000000000.0
+  vacancy events: [('DECLARED_VACANT', 'drone_2', 1, 121.6), ('DECLARED_VACANT', 'drone_0', 1, 122.5), ('REOCCUPIED', 'drone_0', 1, 176.6)]
+========================================================================================================================
+B2_MEDIUM/MEDIUM-ONE/lost_drone_timeout/s2  failed=P3_degraded_holds;terminal_success  tags=false_reoccupation;sensor_fault_failsafe;waiting_for_missing_neighbour;vacancy_not_declared
+  t_ref=80.0 deadline=142.85000000000002 t_end=142.9 reason='required outcomes not all reached: P3-deg re-formed, P3-deg vacancy, still waiting for a missing neighbour'  disturbance windows=[(8.0, 80.0)] faults=[('drone_2', 8.0, None)]
+  B2_CLEAN PASS t_end=[80.1, 80.1, 80.1]  same-cell PASS t_end=[80.1, 87.1]
+  referee e_lost/e_ok/hold=(1.2, 0.5, 2.0): 1 episodes, open at end: [np.float64(14.9)], state at end LOST
+  referee e_lost/e_ok/hold=(1.5, 1.0, 2.0): 1 episodes, open at end: [np.float64(16.5)], state at end LOST
+  referee e_lost/e_ok/hold=(2.0, 1.0, 2.0): 1 episodes, open at end: [np.float64(19.3)], state at end LOST
+  form_err: max 20.42 at t=142.9; last 30 s: first10 17.65 last10 20.23 min 16.89 max 20.42; final 20.42; continuously < 1.0 m for the last 0.0 s; frac(last 30 s) < 0.5: 0.00 < 1.0: 0.00
+  per-drone deviation at end: [6.9, 6.56, 20.42, 7.0]  (mean over last 10 s: [7.09, 6.34, 20.23, 6.85])
+  drone_0: modes(s)={'WAIT': 98.9, 'DEG': 32.9, 'FOL': 10.2, 'SW': 0.9} last60={'FOL': 17, 'WAIT': 575, 'SW': 9} FS_entries=0 reloc_hold=0.0s end_mode=FORMATION_WAIT_REJOIN missing=[2] vacant=[] slot_err=0.085 wait_t=0.0 gate_s=-1000000000.0
+  drone_1: modes(s)={'REC': 61.9, 'SW': 44.5, 'WAIT': 24.2, 'FOL': 10.7, 'FS': 1.3, 'CA': 0.3} last60={'WAIT': 25, 'SW': 240, 'FS': 3, 'REC': 333} FS_entries=6 reloc_hold=0.0s end_mode=FORMATION_RECOVERY missing=[2] vacant=[] slot_err=2.47 wait_t=72.2 gate_s=-1000000000.0
+  drone_2: modes(s)={'FS': 128.6, 'FOL': 13.3, 'REC': 1.0} last60={'FS': 601} FS_entries=1 reloc_hold=0.0s end_mode=FAILSAFE_HOLD_OR_RETREAT missing=[0, 1, 3] vacant=[] slot_err=27.983 wait_t=92.3 gate_s=-1000000000.0
+  drone_3: modes(s)={'REC': 37.4, 'WAIT': 36.0, 'DEG': 33.5, 'FOL': 22.6, 'SW': 13.4} last60={'DEG': 68, 'SW': 125, 'REC': 347, 'WAIT': 61} FS_entries=0 reloc_hold=0.0s end_mode=FORMATION_RECOVERY missing=[] vacant=[2] slot_err=0.103 wait_t=0.0 gate_s=-1000000000.0
+  vacancy events: [('DECLARED_VACANT', 'drone_0', 2, 49.4), ('DECLARED_VACANT', 'drone_3', 2, 56.1), ('REOCCUPIED', 'drone_0', 2, 82.3), ('DECLARED_VACANT', 'drone_0', 2, 113.4), ('REOCCUPIED', 'drone_0', 2, 129.1)]
+========================================================================================================================
+B2_MEDIUM/MEDIUM-SUBSET/formation_six/s2  failed=P3_recovered;terminal_success  tags=false_reoccupation;sensor_fault_failsafe;waiting_for_missing_neighbour
+  t_ref=50.0 deadline=95.15 t_end=95.2 reason='required outcomes not all reached: P3 recovered, still waiting for a missing neighbour'  disturbance windows=[] faults=[]
+  B2_CLEAN PASS t_end=[50.1, 50.1, 50.1]  same-cell PASS t_end=[56.1, 63.1]
+  referee e_lost/e_ok/hold=(1.2, 0.5, 2.0): 1 episodes, open at end: [np.float64(45.7)], state at end LOST
+  referee e_lost/e_ok/hold=(1.5, 1.0, 2.0): 1 episodes, open at end: [np.float64(87.2)], state at end LOST
+  referee e_lost/e_ok/hold=(2.0, 1.0, 2.0): 1 episodes, open at end: [np.float64(94.5)], state at end LOST
+  form_err: max 2.07 at t=95.2; last 30 s: first10 0.95 last10 1.69 min 0.86 max 2.07; final 2.07; continuously < 1.0 m for the last 0.0 s; frac(last 30 s) < 0.5: 0.00 < 1.0: 0.22
+  per-drone deviation at end: [0.23, 0.27, 2.07, 0.91, 0.32, 0.91]  (mean over last 10 s: [0.3, 0.21, 1.69, 0.73, 0.17, 0.74])
+  drone_0: modes(s)={'FOL': 70.6, 'WAIT': 24.6} last60={'FOL': 445, 'WAIT': 156} FS_entries=0 reloc_hold=0.0s end_mode=FORMATION_WAIT_REJOIN missing=[2] vacant=[] slot_err=0.069 wait_t=5.3 gate_s=-1000000000.0
+  drone_1: modes(s)={'FOL': 63.2, 'WAIT': 22.9, 'REC': 7.0, 'FS': 1.8, 'SW': 0.3} last60={'WAIT': 156, 'FOL': 398, 'SW': 1, 'REC': 44, 'FS': 2} FS_entries=4 reloc_hold=0.0s end_mode=FORMATION_FOLLOW missing=[] vacant=[] slot_err=0.113 wait_t=0.0 gate_s=-1000000000.0
+  drone_2: modes(s)={'FOL': 38.4, 'WAIT': 34.5, 'REC': 19.6, 'FS': 2.5, 'CA': 0.2} last60={'WAIT': 132, 'FOL': 254, 'FS': 17, 'REC': 196, 'CA': 2} FS_entries=4 reloc_hold=0.0s end_mode=FORMATION_RECOVERY missing=[0] vacant=[] slot_err=0.146 wait_t=6.0 gate_s=-1000000000.0
+  drone_3: modes(s)={'FOL': 62.8, 'REC': 20.1, 'WAIT': 9.9, 'SW': 1.3, 'FS': 0.9, 'CA': 0.2} last60={'FOL': 334, 'SW': 13, 'WAIT': 63, 'REC': 190, 'CA': 1} FS_entries=2 reloc_hold=0.0s end_mode=FORMATION_RECOVERY missing=[] vacant=[] slot_err=0.15 wait_t=0.0 gate_s=-1000000000.0
+  drone_4: modes(s)={'FOL': 70.3, 'WAIT': 24.9} last60={'WAIT': 42, 'FOL': 559} FS_entries=0 reloc_hold=0.0s end_mode=FORMATION_FOLLOW missing=[] vacant=[] slot_err=0.037 wait_t=0.0 gate_s=-1000000000.0
+  drone_5: modes(s)={'FOL': 95.2} last60={'FOL': 601} FS_entries=0 reloc_hold=0.0s end_mode=FORMATION_FOLLOW missing=[] vacant=[] slot_err=0.042 wait_t=0.0 gate_s=-1000000000.0
+========================================================================================================================
+B2_MEDIUM/MEDIUM-SUBSET/formation_square/s0  failed=P3_recovered;terminal_success  tags=false_reoccupation;sensor_fault_failsafe;waiting_for_missing_neighbour
+  t_ref=45.0 deadline=87.65 t_end=87.6 reason='required outcomes not all reached: P3 recovered, still waiting for a missing neighbour'  disturbance windows=[] faults=[]
+  B2_CLEAN PASS t_end=[45.1, 45.1, 45.1]  same-cell PASS t_end=[45.1, 47.9]
+  referee e_lost/e_ok/hold=(1.2, 0.5, 2.0): 1 episodes, open at end: [np.float64(64.6)], state at end LOST
+  referee e_lost/e_ok/hold=(1.5, 1.0, 2.0): 1 episodes, open at end: [], state at end OK
+  referee e_lost/e_ok/hold=(2.0, 1.0, 2.0): 0 episodes, open at end: [], state at end OK
+  form_err: max 1.61 at t=73.8; last 30 s: first10 1.10 last10 1.06 min 0.80 max 1.61; final 0.80; continuously < 1.0 m for the last 4.2 s; frac(last 30 s) < 0.5: 0.00 < 1.0: 0.24
+  per-drone deviation at end: [0.47, 0.43, 0.49, 0.8]  (mean over last 10 s: [0.67, 0.49, 0.64, 1.06])
+  drone_0: modes(s)={'FOL': 46.3, 'REC': 33.1, 'WAIT': 4.8, 'FS': 2.5, 'SW': 0.7, 'CA': 0.2} last60={'WAIT': 7, 'FS': 24, 'REC': 331, 'SW': 7, 'FOL': 230, 'CA': 2} FS_entries=4 reloc_hold=0.0s end_mode=FORMATION_WAIT_REJOIN missing=[3] vacant=[] slot_err=0.038 wait_t=6.6 gate_s=-1000000000.0
+  drone_1: modes(s)={'FOL': 54.2, 'WAIT': 26.8, 'REC': 5.2, 'FS': 1.0, 'CA': 0.4} last60={'WAIT': 246, 'FOL': 346, 'CA': 2, 'FS': 2, 'REC': 5} FS_entries=3 reloc_hold=0.0s end_mode=FORMATION_RECOVERY missing=[] vacant=[] slot_err=0.152 wait_t=0.0 gate_s=-1000000000.0
+  drone_2: modes(s)={'FOL': 76.9, 'WAIT': 9.7, 'SW': 1.0} last60={'FOL': 537, 'WAIT': 55, 'SW': 9} FS_entries=0 reloc_hold=0.0s end_mode=FORMATION_FOLLOW missing=[] vacant=[] slot_err=0.056 wait_t=0.0 gate_s=-1000000000.0
+  drone_3: modes(s)={'WAIT': 40.7, 'FOL': 32.8, 'REC': 10.4, 'SW': 3.7} last60={'FOL': 112, 'SW': 30, 'WAIT': 355, 'REC': 104} FS_entries=0 reloc_hold=0.0s end_mode=FORMATION_FOLLOW missing=[] vacant=[] slot_err=0.061 wait_t=0.0 gate_s=-1000000000.0
+========================================================================================================================
+B2_MEDIUM/MEDIUM-SUBSET/gate_single/s0  failed=progress;gate_completed;P3_recovered;terminal_success  tags=false_reoccupation;sensor_fault_failsafe;relocalization_hold;gate_not_completed
+  t_ref=80.0 deadline=271.1 t_end=271.1 reason='required outcomes not all reached: progress, gate, P3 recovered'  disturbance windows=[] faults=[]
+  B2_CLEAN PASS t_end=[121.2, 148.7, 150.8]  same-cell PASS t_end=[131.2, 136.7]
+  referee e_lost/e_ok/hold=(1.2, 0.5, 2.0): 1 episodes, open at end: [np.float64(4.5)], state at end LOST
+  referee e_lost/e_ok/hold=(1.5, 1.0, 2.0): 1 episodes, open at end: [np.float64(5.4)], state at end LOST
+  referee e_lost/e_ok/hold=(2.0, 1.0, 2.0): 1 episodes, open at end: [np.float64(8.6)], state at end LOST
+  form_err: max 20.19 at t=182.4; last 30 s: first10 19.13 last10 19.16 min 18.90 max 19.40; final 19.34; continuously < 1.0 m for the last 0.0 s; frac(last 30 s) < 0.5: 0.00 < 1.0: 0.00
+  per-drone deviation at end: [9.62, 19.34, 9.72]  (mean over last 10 s: [9.52, 19.16, 9.64])
+  gate passed t: {'drone_0': 31.499685, 'drone_1': None, 'drone_2': 70.499295}
+  drone_0: modes(s)={'DEG': 141.8, 'WAIT': 66.0, 'MX': 30.1, 'REC': 20.9, 'FOL': 6.2, 'FS': 4.0, 'SW': 1.6, 'CA': 0.5} last60={'DEG': 573, 'FS': 4, 'WAIT': 24} FS_entries=12 reloc_hold=1.1s end_mode=DEGRADED_FORMATION missing=[] vacant=[1] slot_err=0.148 wait_t=0.0 gate_s=-1000000000.0
+  drone_1: modes(s)={'MX': 180.8, 'SW': 77.8, 'FS': 6.3, 'CA': 6.2} last60={'SW': 99, 'MX': 452, 'CA': 49, 'FS': 1} FS_entries=14 reloc_hold=79.0s end_mode=MUTEX_PASS missing=[0, 2] vacant=[] slot_err=28.988 wait_t=0.0 gate_s=-1.81
+  drone_2: modes(s)={'DEG': 149.6, 'MX': 67.9, 'WAIT': 37.2, 'REC': 12.5, 'SW': 2.6, 'FOL': 1.3} last60={'DEG': 601} FS_entries=0 reloc_hold=1.3s end_mode=DEGRADED_FORMATION missing=[] vacant=[1] slot_err=0.02 wait_t=0.0 gate_s=-1000000000.0
+  vacancy events: [('DECLARED_VACANT', 'drone_2', 1, 121.5), ('DECLARED_VACANT', 'drone_0', 1, 123.9)]
+========================================================================================================================
+B2_MEDIUM/MEDIUM-SUBSET/integrated_short/s0  failed=progress;gate_completed;P3_recovered;terminal_success  tags=false_reoccupation;sensor_fault_failsafe;relocalization_hold;waiting_for_missing_neighbour;gate_not_completed
+  t_ref=92.0 deadline=253.70000000000002 t_end=253.7 reason='required outcomes not all reached: progress, gate, P3 recovered, still waiting for a missing neighbour'  disturbance windows=[(5.0, 45.0)] faults=[]
+  B2_CLEAN PASS t_end=[137.4, 165.7, 195.5]  same-cell PASS t_end=[92.1]
+  referee e_lost/e_ok/hold=(1.2, 0.5, 2.0): 1 episodes, open at end: [np.float64(12.5)], state at end LOST
+  referee e_lost/e_ok/hold=(1.5, 1.0, 2.0): 1 episodes, open at end: [np.float64(13.4)], state at end LOST
+  referee e_lost/e_ok/hold=(2.0, 1.0, 2.0): 1 episodes, open at end: [np.float64(16.6)], state at end LOST
+  form_err: max 20.19 at t=247.9; last 30 s: first10 19.97 last10 20.03 min 19.79 max 20.19; final 19.99; continuously < 1.0 m for the last 0.0 s; frac(last 30 s) < 0.5: 0.00 < 1.0: 0.00
+  per-drone deviation at end: [9.99, 19.99, 10.0]  (mean over last 10 s: [10.0, 20.03, 10.04])
+  gate passed t: {'drone_0': 38.799612, 'drone_1': None, 'drone_2': 56.899431}
+  drone_0: modes(s)={'DEG': 116.0, 'WAIT': 75.1, 'MX': 37.1, 'FOL': 16.6, 'REC': 8.5, 'SW': 0.4} last60={'DEG': 494, 'WAIT': 107} FS_entries=0 reloc_hold=0.8s end_mode=FORMATION_WAIT_REJOIN missing=[2] vacant=[1] slot_err=0.005 wait_t=0.0 gate_s=-1000000000.0
+  drone_1: modes(s)={'MX': 143.6, 'SW': 97.1, 'CA': 7.7, 'FS': 4.0, 'FOL': 1.3} last60={'SW': 354, 'MX': 241, 'FS': 4, 'CA': 2} FS_entries=12 reloc_hold=14.0s end_mode=MUTEX_PASS missing=[0] vacant=[] slot_err=30.505 wait_t=0.0 gate_s=-3.39
+  drone_2: modes(s)={'WAIT': 96.1, 'DEG': 71.8, 'MX': 51.8, 'REC': 21.9, 'FS': 6.3, 'FOL': 2.6, 'SW': 2.4, 'CA': 0.8} last60={'DEG': 198, 'FS': 2, 'FOL': 26, 'WAIT': 371, 'CA': 2, 'SW': 2} FS_entries=14 reloc_hold=1.9s end_mode=FORMATION_WAIT_REJOIN missing=[1] vacant=[] slot_err=0.107 wait_t=0.0 gate_s=-1000000000.0
+  vacancy events: [('DECLARED_VACANT', 'drone_0', 1, 121.6), ('DECLARED_VACANT', 'drone_2', 1, 122.0), ('REOCCUPIED', 'drone_2', 1, 213.5)]
+========================================================================================================================
+B2_MEDIUM/MEDIUM-SUBSET/integrated_short/s2  failed=progress;gate_completed;P3_recovered;terminal_success  tags=false_reoccupation;sensor_fault_failsafe;gate_not_completed
+  t_ref=92.0 deadline=253.70000000000002 t_end=253.7 reason='required outcomes not all reached: progress, gate, P3 recovered'  disturbance windows=[(5.0, 45.0)] faults=[]
+  B2_CLEAN PASS t_end=[137.4, 165.7, 195.5]  same-cell PASS t_end=[92.1]
+  referee e_lost/e_ok/hold=(1.2, 0.5, 2.0): 1 episodes, open at end: [np.float64(12.6)], state at end LOST
+  referee e_lost/e_ok/hold=(1.5, 1.0, 2.0): 1 episodes, open at end: [np.float64(13.6)], state at end LOST
+  referee e_lost/e_ok/hold=(2.0, 1.0, 2.0): 1 episodes, open at end: [np.float64(16.8)], state at end LOST
+  form_err: max 21.79 at t=221.8; last 30 s: first10 21.68 last10 21.71 min 21.64 max 21.77; final 21.72; continuously < 1.0 m for the last 0.0 s; frac(last 30 s) < 0.5: 0.00 < 1.0: 0.00
+  per-drone deviation at end: [10.92, 21.72, 10.8]  (mean over last 10 s: [10.9, 21.71, 10.81])
+  gate passed t: {'drone_0': 39.799602, 'drone_1': None, 'drone_2': 64.799352}
+  drone_0: modes(s)={'DEG': 129.7, 'WAIT': 62.5, 'MX': 37.5, 'FOL': 14.2, 'REC': 8.6, 'SW': 1.2} last60={'DEG': 577, 'WAIT': 24} FS_entries=0 reloc_hold=0.8s end_mode=DEGRADED_FORMATION missing=[] vacant=[1] slot_err=0.043 wait_t=0.0 gate_s=-1000000000.0
+  drone_1: modes(s)={'MX': 247.3, 'FS': 4.4, 'FOL': 1.3, 'CA': 0.4, 'SW': 0.3} last60={'MX': 577, 'FS': 24} FS_entries=9 reloc_hold=0.0s end_mode=MUTEX_YIELD missing=[2] vacant=[] slot_err=32.381 wait_t=0.0 gate_s=-5.42
+  drone_2: modes(s)={'DEG': 125.3, 'MX': 56.6, 'WAIT': 45.2, 'REC': 14.9, 'SW': 5.7, 'FS': 4.9, 'CA': 1.1} last60={'DEG': 564, 'FS': 20, 'WAIT': 15, 'SW': 2} FS_entries=14 reloc_hold=2.5s end_mode=DEGRADED_FORMATION missing=[] vacant=[1] slot_err=0.22 wait_t=0.0 gate_s=-1000000000.0
+  vacancy events: [('DECLARED_VACANT', 'drone_0', 1, 121.6), ('DECLARED_VACANT', 'drone_2', 1, 122.0)]
+========================================================================================================================
+B2_MEDIUM/MEDIUM-SUBSET/lost_drone_mutex/s0  failed=progress;gate_completed;terminal_success  tags=sensor_fault_failsafe;relocalization_hold;gate_not_completed
+  t_ref=72.0 deadline=142.10000000000002 t_end=142.1 reason='required outcomes not all reached: progress, gate'  disturbance windows=[(1.0, 72.0)] faults=[('drone_0', 1.0, None)]
+  B2_CLEAN PASS t_end=[129.0, 130.9, 131.0]  same-cell PASS t_end=[76.9, 81.1]
+  referee e_lost/e_ok/hold=(1.2, 0.5, 2.0): 1 episodes, open at end: [np.float64(8.3)], state at end LOST
+  referee e_lost/e_ok/hold=(1.5, 1.0, 2.0): 1 episodes, open at end: [np.float64(9.3)], state at end LOST
+  referee e_lost/e_ok/hold=(2.0, 1.0, 2.0): 1 episodes, open at end: [np.float64(10.7)], state at end LOST
+  form_err: max 15.93 at t=142.1; last 30 s: first10 12.00 last10 15.07 min 11.36 max 15.93; final 15.93; continuously < 1.0 m for the last 0.0 s; frac(last 30 s) < 0.5: 0.00 < 1.0: 0.00
+  per-drone deviation at end: [13.71, 15.93, 2.93]  (mean over last 10 s: [13.13, 15.07, 2.74])
+  gate passed t: {'drone_1': 51.199488, 'drone_2': None}
+  drone_0: modes(s)={'FS': 135.7, 'FOL': 5.7, 'REC': 0.7} last60={'FS': 601} FS_entries=1 reloc_hold=0.0s end_mode=FAILSAFE_HOLD_OR_RETREAT missing=[1, 2] vacant=[] slot_err=30.288 wait_t=43.1 gate_s=-14.23
+  drone_1: modes(s)={'WAIT': 71.2, 'MX': 30.1, 'DEG': 13.1, 'FOL': 8.2, 'CA': 6.8, 'REC': 6.5, 'FS': 3.3, 'SW': 2.9} last60={'WAIT': 461, 'FS': 9, 'DEG': 131} FS_entries=5 reloc_hold=2.5s end_mode=DEGRADED_FORMATION missing=[] vacant=[0, 2] slot_err=0.033 wait_t=0.0 gate_s=-1000000000.0
+  drone_2: modes(s)={'MX': 89.3, 'SW': 26.1, 'CA': 15.6, 'FOL': 8.3, 'FS': 2.8} last60={'CA': 83, 'MX': 267, 'SW': 233, 'FS': 18} FS_entries=6 reloc_hold=50.7s end_mode=SEPARATION_WARNING missing=[0, 1] vacant=[] slot_err=22.01 wait_t=0.0 gate_s=-3.0
+  vacancy events: [('DECLARED_VACANT', 'drone_1', 0, 129.0), ('DECLARED_VACANT', 'drone_1', 2, 129.0)]
+========================================================================================================================
+B2_MEDIUM/MEDIUM-SUBSET/lost_drone_timeout/s2  failed=P3_degraded_holds;terminal_success  tags=false_reoccupation;sensor_fault_failsafe;waiting_for_missing_neighbour;vacancy_not_declared
+  t_ref=80.0 deadline=142.85000000000002 t_end=142.9 reason='required outcomes not all reached: P3-deg re-formed, P3-deg vacancy, still waiting for a missing neighbour'  disturbance windows=[(8.0, 80.0)] faults=[('drone_2', 8.0, None)]
+  B2_CLEAN PASS t_end=[80.1, 80.1, 80.1]  same-cell PASS t_end=[80.1, 80.1]
+  referee e_lost/e_ok/hold=(1.2, 0.5, 2.0): 1 episodes, open at end: [np.float64(14.9)], state at end LOST
+  referee e_lost/e_ok/hold=(1.5, 1.0, 2.0): 1 episodes, open at end: [np.float64(16.6)], state at end LOST
+  referee e_lost/e_ok/hold=(2.0, 1.0, 2.0): 1 episodes, open at end: [np.float64(19.4)], state at end LOST
+  form_err: max 19.81 at t=142.5; last 30 s: first10 17.95 last10 19.49 min 17.35 max 19.81; final 19.80; continuously < 1.0 m for the last 0.0 s; frac(last 30 s) < 0.5: 0.00 < 1.0: 0.00
+  per-drone deviation at end: [7.67, 5.82, 19.8, 6.32]  (mean over last 10 s: [7.97, 5.55, 19.49, 5.98])
+  drone_0: modes(s)={'WAIT': 87.0, 'DEG': 47.9, 'FOL': 8.0} last60={'DEG': 118, 'WAIT': 483} FS_entries=0 reloc_hold=0.0s end_mode=FORMATION_WAIT_REJOIN missing=[3] vacant=[2] slot_err=0.157 wait_t=15.6 gate_s=-1000000000.0
+  drone_1: modes(s)={'REC': 60.4, 'WAIT': 34.9, 'SW': 28.7, 'FOL': 12.6, 'DEG': 4.8, 'FS': 1.3, 'CA': 0.2} last60={'WAIT': 89, 'DEG': 48, 'FOL': 7, 'SW': 172, 'REC': 283, 'CA': 1, 'FS': 1} FS_entries=6 reloc_hold=0.0s end_mode=SEPARATION_WARNING missing=[2] vacant=[] slot_err=3.232 wait_t=39.6 gate_s=-1000000000.0
+  drone_2: modes(s)={'FS': 128.6, 'FOL': 13.2, 'REC': 1.0, 'SW': 0.1} last60={'FS': 601} FS_entries=1 reloc_hold=0.0s end_mode=FAILSAFE_HOLD_OR_RETREAT missing=[0, 1, 3] vacant=[] slot_err=28.12 wait_t=92.2 gate_s=-1000000000.0
+  drone_3: modes(s)={'WAIT': 38.7, 'REC': 38.5, 'DEG': 30.0, 'SW': 17.9, 'FOL': 13.8, 'FS': 3.6, 'CA': 0.4} last60={'DEG': 81, 'WAIT': 87, 'SW': 175, 'CA': 2, 'REC': 246, 'FS': 10} FS_entries=7 reloc_hold=0.0s end_mode=SEPARATION_WARNING missing=[0] vacant=[2] slot_err=1.412 wait_t=30.5 gate_s=-1000000000.0
+  vacancy events: [('DECLARED_VACANT', 'drone_0', 2, 46.7), ('DECLARED_VACANT', 'drone_3', 2, 60.9), ('DECLARED_VACANT', 'drone_1', 2, 87.0), ('REOCCUPIED', 'drone_1', 2, 93.0)]
+========================================================================================================================
+B2_MEDIUM/MEDIUM-SUBSET/mutex_deadlock_resolution/s0  failed=progress;gate_completed;P3_recovered;terminal_success  tags=sensor_fault_failsafe;gate_not_completed
+  t_ref=75.0 deadline=132.64999999999998 t_end=132.6 reason='required outcomes not all reached: progress, gate, P3 recovered'  disturbance windows=[] faults=[]
+  B2_CLEAN PASS t_end=[75.1, 75.1, 75.1]  same-cell PASS t_end=[86.2, 91.1]
+  referee e_lost/e_ok/hold=(1.2, 0.5, 2.0): 1 episodes, open at end: [np.float64(6.5)], state at end LOST
+  referee e_lost/e_ok/hold=(1.5, 1.0, 2.0): 1 episodes, open at end: [np.float64(7.7)], state at end LOST
+  referee e_lost/e_ok/hold=(2.0, 1.0, 2.0): 1 episodes, open at end: [np.float64(9.3)], state at end LOST
+  form_err: max 12.37 at t=132.0; last 30 s: first10 8.31 last10 11.37 min 7.48 max 12.37; final 12.32; continuously < 1.0 m for the last 0.0 s; frac(last 30 s) < 0.5: 0.00 < 1.0: 0.00
+  per-drone deviation at end: [6.17, 6.15, 12.32]  (mean over last 10 s: [5.67, 5.7, 11.37])
+  gate passed t: {'drone_0': 21.599784, 'drone_1': 52.99947, 'drone_2': None}
+  drone_0: modes(s)={'WAIT': 91.6, 'MX': 21.4, 'DEG': 12.7, 'REC': 6.9} last60={'WAIT': 474, 'DEG': 127} FS_entries=0 reloc_hold=0.7s end_mode=DEGRADED_FORMATION missing=[] vacant=[2] slot_err=0.048 wait_t=0.0 gate_s=-1000000000.0
+  drone_1: modes(s)={'WAIT': 60.6, 'MX': 38.7, 'DEG': 11.2, 'REC': 10.3, 'CA': 6.4, 'FS': 3.3, 'SW': 2.1} last60={'WAIT': 474, 'FS': 9, 'CA': 4, 'SW': 2, 'DEG': 112} FS_entries=5 reloc_hold=1.4s end_mode=DEGRADED_FORMATION missing=[] vacant=[2] slot_err=0.049 wait_t=0.0 gate_s=-1000000000.0
+  drone_2: modes(s)={'MX': 92.5, 'SW': 23.9, 'CA': 13.4, 'FS': 2.8} last60={'CA': 89, 'MX': 257, 'FS': 18, 'SW': 237} FS_entries=6 reloc_hold=1.0s end_mode=MUTEX_PASS missing=[0, 1] vacant=[] slot_err=20.619 wait_t=0.0 gate_s=-1.8
+  vacancy events: [('DECLARED_VACANT', 'drone_0', 2, 119.9), ('DECLARED_VACANT', 'drone_1', 2, 121.3)]
