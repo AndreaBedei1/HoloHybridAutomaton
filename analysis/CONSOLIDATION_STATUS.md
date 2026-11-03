@@ -79,6 +79,91 @@ Files: `perception.py` (rules A-P/A-D, `acoustic_lag`), `formation_time.py` (`be
 - `flows.gate`: the stage-2 hold is bounded to t_occ_max + t_clear. After that the drone returns to its queue point and
   retries, at most 2 times, then gives up. ENTRY_RETRY and ENTRY_GIVEN_UP are logged events.
 
+## Independent review G345 (behaviour changes) and the response, commit 92a72e5
+
+**Blocking findings, both verified and fixed by withdrawing the mechanism:**
+- **B1.** A retreat after a bounded hold left the drone committed, so it re-approached without the stage-1 check and two
+  drones could be committed at once. The retreat and retry are removed; the hold is logged once as ENTRY_HOLD_TIMEOUT. A
+  real give-up needs an automaton edge MUTEX_PASS -> MUTEX_YIELD plus formal re-verification. This is pending.
+- **B2.** The identity-assisted map fit dropped every bar echo near the gate, because the acoustic regions are far too
+  wide under the deployed envelope. It is withdrawn: `structure_aiding.py` is back at 0d1b7cd.
+
+**Major findings:**
+- **M1.** The `heard_inside` veto had a gap after one lost ping. Fixed: freshness is now `fresh_s`.
+- **M2, M3, M4.** The "ahead counts as present" rule:
+  - it fed unbounded residuals into the progress consensus;
+  - it could keep a drifting failed drone from ever being declared vacant;
+  - its envelope-certainty dead bands of 3-5 m left the positive feedback in place.
+
+  Redesigned:
+  - point estimates (the median of A_CONFIRM fixes of one track);
+  - a lag beyond k_sigma · sigma_w(r), with a continuous sync;
+  - the A-P rule back to v2;
+  - "ahead" only vetoes a NEW missing episode, for at most t_rejoin.
+- **M5** (retreat path) and **M6** (B2-S isolation): both resolved by the withdrawals.
+- **A4:** not yet tested under the deployed envelope (minor).
+- **M4h:** only 16 % of the CR is observable from the hold point, so the stage-2 sonar check has little value.
+
+A re-review of both reviews (G1 and G345) has been requested.
+
+## Re-review of G1 (commit 92a72e5) and its fixes (commit 05e1c5e)
+
+**Fixed in 05e1c5e:**
+- **N1 (blocking).** The online monitor and the offline replay used different T_nom. Both now use the planned end.
+- **N2.** Slow committed passages now violate the crossing budget.
+- **N3.** A v3 replay mismatch is classified REPLAY_MISMATCH.
+- **N4 (partly).** Errors while building the controllers are recorded as SUT_ERROR or INFRA.
+- **N6.** Stage 2 is detected from the logged key.
+- **N9.** Overstated claims have been reworded.
+
+**Open:**
+- **M2.** No generic no-progress detector outside the gate.
+- **M3.** A limit cycle with an in-band phase longer than 8.9 s still passes; this is stated as a limit.
+- **M10.** The contacts and the intruder flag are still taken from the full log.
+- **N5.** The historical re-evaluation is almost entirely CENSORED. T_nom is now the planned end, so the old logs are too
+  short.
+- **N7.** The idle-stall check stays off after a bypass.
+- **N10.** The avoidance term is loose (an upper bound).
+- **N11.** The FAILSAFE allowance covers only blackouts and DVL outages, per drone.
+- **Minor:** P3-deg for n < 3; the p1_two_lines formation term; the t_occ_max term for the first passage.
+
+**Re-review of G345:** requested after 92a72e5; result pending.
+
+## BLOCKER (2026-11-03, 23:35 onwards): the scenario runs die in HoloOcean
+
+**Symptom.** Every scenario run dies 2-3 s of simulated time (3-5 s of wall time) into the loop:
+- exit code 1;
+- no Python traceback;
+- `finally` blocks do not run (`events.jsonl` stays empty);
+- the HoloOcean engine log stops without a shutdown.
+
+**Where it fails:**
+- B0 and B2 alike;
+- in-process (`runner.run`), as an orchestrator worker, and outside the sandbox;
+- also at the pre-change commit a6efd0f (checked in a temporary worktree, since removed).
+
+The cause is therefore not the consolidation code.
+
+**What still works:**
+- a minimal HoloOcean environment (one BlueROV2 with DVL; one BlueROV2 with the six sonars, static, 600 ticks);
+- `tests/test_octree_patch.py::test_octree_rebuild_regression` when run alone.
+
+**Other observations:**
+- Long pytest runs, and a ProcessPool in `reevaluate_v3.py`, also died silently at random points, with "A process in
+  the pool was terminated abruptly".
+- Per-file test runs pass.
+- The GPU has 42 of 49 GB free; disk and RAM are fine; Defender and the system logs show nothing relevant.
+- Other processes on the machine, which must not be touched: CARLA (`scripts/start_carla.py`, since 02/11 16:53), the
+  user's Instagram worker (started 23:11), and the CodexSandboxService.
+
+**Next steps to try:**
+- move the static sonar probe;
+- add the gate structures and the octree rebuild;
+- run 3 drones;
+- check the noise wrapper and the beacon transport;
+- run `scripts/run_demo` for one scenario;
+- if needed, ask the user to check the machine.
+
 ## Measured facts used for the design
 
 **Stage-2 false holds** at the hold point with the CR truly empty, from the logs of 624 runs:
