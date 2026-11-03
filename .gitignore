@@ -32,3 +32,4 @@ ppt/
 
 # sensor-robustness / beacon campaign: raw per-run data stays local (summaries are versioned)
 results/robustness/raw*/
+results/robustness/v3_reeval/*/

@@ -21,11 +21,13 @@ Kinds of evidence used below:
 | --- | --- | --- |
 | The onboard distance never exceeds the true distance of the nearest hull, for single and merged multi-target echoes (association-free touch-set bound, perception/distance_bound.py) | randomized (S0, ~35 000 scenes incl. cube corners, edges, near field, square-formation pairs, extreme errors, random detection boundary in 60 deg +- one leaf); mutation S0m | echo error in [-eps_near, +eps_far]; relative hull tilt <= 10 deg (measured 0.03 deg); direction-lattice covering radius (numeric bound, tests/test_distance_bound.py) |
 | A missed capture becomes a stale reading (EchoHold) | unit tests | consecutive misses <= tau_max |
-| From any state with d_hat >= d_warning the separation stays >= d_safe | BMC S1a (4 s) + proof S1b (k-induction, k = 13); mutation S1m | speed, current and staleness bounds of config.Envelope; staleness allowance v_close * age |
+| From any state with d_hat >= d_warning the separation stays >= d_safe | BMC S1a (4 s) + proof S1b (k-induction, k = 13); mutation S1m | BOTH drones of the pair detect each other and brake (a_pair = 2 a_brake); speed, current and staleness bounds of config.Envelope; staleness allowance v_close * age |
+| The same with ONE drone reacting (a missed detection, a drone holding in FAILSAFE, a non-cooperative vehicle) | BMC S1d at the per-drone deceleration calibrated in the simulator (0.743 m/s^2, results/calibration/plant_calibration.json); reported S1o: SAT at the configured, conservative a_brake = 0.5 (the smallest d_warning that verifies is then 2.56 m > 2.4 m) | the one-sided claim rests on the simulator calibration, not on the configured margin; to be re-measured on hardware |
 | The escape opens every threat pattern | exhaustive numeric S2a-S2d over the sector patterns; mutation S2m | the six-sector geometry |
 | At most one vertex angle >= 90 deg among pairwise-separated drones | proof S3 | - |
 | A sonar blackout <= 0.8 s from d >= 2.34 m keeps d >= d_safe | proof S4 | FAILSAFE hold, unrejected drift bound |
-| Under LOW and MEDIUM, P1 held in every run | empirical (campaign) | MEDIUM exceeds the echo bound in ~1.2 % of captures (+-2-bin jitter): tested, not proved |
+| Under LOW and MEDIUM, P1 held in every run | empirical (campaign) | the echo bound is exceeded under LOW (per-run mean 0.86 % of captures beyond +eps_far, maximum 8.4 %; data age up to 0.3 s > tau_max) and MEDIUM (3.6 %, maximum 15.6 %): P1 under LOW and MEDIUM is tested, not proved |
+| Assumption (D) of the distance bound: no echo means no object in the cone | assumption | the simulator's sonar is a hard-edged cone with uniform detection; real beam patterns, fading and crosstalk violate it (external validity) |
 
 ## P2 - mutual exclusion at the gate (safety)
 
@@ -34,7 +36,8 @@ Kinds of evidence used below:
 | Never two drones with PRIORITY; exactly the first of the queue order leads (no deadlock), abreast n = 2..6 and the stacks | proof M1, M2 (every occupancy with <= 1 vacant point), numeric M2v; mutations M1m, M1m2 | heading and position tolerances; M2s documents the scope (two adjacent vacant points) |
 | Queue geometry: CR inside every FRONT cone, merge clearance, neighbours never hidden in the structure window | exhaustive numeric M4a-M4f, M4s; mutations M4m, M4fm | gate map; hold error of a queued drone |
 | Every queued drone has a sonar exit witness of the drone that passes, inside the validated domain | exhaustive numeric M4g (path sampling, bars' occlusion, structure window, detection range 10 m) | queue points within GateRule.queue_lateral_max = 3.5 m (planner check; abreast n >= 4 is refused and reported as the domain boundary); geometric availability only: in HoloOcean the witness from a lateral queue point is rarely obtained (detection beyond the frame) |
-| Never both in the CR with the occupancy latch | BMC M3 (42 s, every queue view); mutation M3m (no latch) | the occupant crosses at >= V_LO: the t_occ_max fallback is safe only for a healthy crossing |
+| Never both in the CR with the occupancy latch | BMC M3 (42 s, every queue view; still UNSAT at 65 s, longer than the slowest admissible crossing); mutation M3m (no latch) | the occupant crosses at >= V_LO without stopping (FAILSAFE, CA or SW inside the CR violate it: dwell up to 12.5 s observed); every entry into the CR is seen in the FRONT corridor (violated: 9 MEDIUM crossings classified STRUCTURE were missed by a queued drone); every exit witness is the occupant (violated: 69 of 260 MEDIUM sonar witnesses match no drone, 7 premature releases).  In the campaign P2 held through unmodelled kinematic margins and precedence |
+| Stage-2 entry check at the hold point (no CR-compatible echo over 3 captures; B2: no drone heard inside) | reported M4h (formal/check_stage2.py): the fraction of the CR observable from the hold point | the far part of the CR, where hull and bar echoes share ranges, is masked to the sonar; a silent occupant there is covered only by the latch argument above |
 | A drone stopped inside the CR by a fault is released by the t_occ_max fallback | BMC M3f (counterexample, scope) | outside the B0 guarantee; B2 blocks the fallback while that drone is heard inside |
 | Under every profile, no P2 violation | empirical (campaign) | - |
 
@@ -46,7 +49,8 @@ Kinds of evidence used below:
 | The automaton selects the right formation mode | proof F4a-F4d | - |
 | A neighbour that never reappears is declared vacant within t_rejoin | BMC F6, ranking F6r; mutation Fm4 | timer runs only while the drone keeps its slot and the clock moves |
 | An association identifies a neighbour only when every other required neighbour is accounted for; a present neighbour is matched before a missing or vacant one; B2 reserves the echo of a heard drone | unit tests (tests/test_slot_identification.py, mutation-checked) | range-only limit: one displaced neighbour in the overlap of two adjacent cones looks like two neighbours (B0) |
-| Recovery and degraded formation in HoloOcean | empirical (campaign) | documented limitations: B0 relative along-track drift; relocalization beside the gate opening (C5) |
+| Recovery and degraded formation in HoloOcean | empirical (campaign) | documented limitations: relative along-track drift under acoustic outage; relocalization beside the gate opening (C5, relaxed in B2 when every other drone is located) |
+| Scope of F1-F3 | - | the ranking functions concern each drone's own estimated slot error against its own (possibly delayed) reference; they do not imply recovery of the true formation: navigation error and the consistency of the private formation times are outside them (B2 re-synchronises the formation times from identified fixes, control/formation_time.py) |
 
 ## Automaton and interfaces
 
@@ -62,7 +66,8 @@ Kinds of evidence used below:
 | --- | --- | --- |
 | Every position compatible with a measurement inside the declared envelope lies in the region the perception builds | randomized B2-A1 | envelope = MEDIUM channel at 3 sigma + array calibration bias + one-sided clear-path multipath excess (docs/ACOUSTIC_CHANNEL_MODEL.md) |
 | No measurement of a hull in the CR passes the acoustic exit, outside or exclusion test | exhaustive numeric B2-A2/A3 | as above |
-| The acoustic exit evidence is available | reported B2-M4g: not available in the validated gate geometry under this envelope; B2 then uses the sonar latch | - |
+| The acoustic exit evidence is available | reported B2-M4g: holds for n = 2 and 3 (exit by range once the drone is far enough beyond) | - |
+| A drone heard inside the CR blocks the timeout fallback and the stage-2 entry | design: two accepted fixes on one track, the latest within one ping period plus the latency, on the clear-path region (no one-sided multipath excess) | a veto added to the sonar rules: a miss leaves the sonar-only behaviour; the clear-path region removes the false vetoes of drones waiting beyond the exit |
 | Acoustic data never reach separation, collision avoidance, precedence or the sonar witness | static (AST) B2-S; tests/test_b2_isolation.py | - |
 | The channel delivers identity pings only (TDMA, no payload, no handshake) | code structure (sim/beacon.py) and tests | hardware assumptions H1-H5 |
 

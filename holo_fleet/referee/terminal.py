@@ -4,23 +4,21 @@ A run ends with one of three outcomes instead of at a fixed duration:
 
 * FAILURE  - a safety violation is demonstrated: two drones closer than d_safe (P1), two drones in a critical region
              (P2), a contact (drones, gate, the non-cooperative vehicle) or that vehicle closer than d_safe;
-* SUCCESS  - every required outcome of the scenario is reached, judged against its committed CLEAN reference run:
-             every healthy drone has come within PROGRESS_TOL_M of the position its slot had at the end of the
-             reference (the mission progress the reference shows), every healthy drone has passed the gate, the
-             formation is recovered (or, with a permanent loss, the remaining drones have declared the slot vacant and
-             re-formed), and no healthy drone is still waiting for a missing neighbour;
-* DEADLINE - none of the above by the deadline.  The deadline comes from the CLEAN completion time: the CLEAN runs
-             of the campaign run until SUCCESS within a long exploratory horizon (CLEAN_HORIZON_FACTOR x T_ref +
-             CLEAN_HORIZON_MARGIN_S) and measure T_clean, the time at which every required outcome is reached (the
-             slowest seed); a degraded run gets deadline = DEADLINE_FACTOR x T_clean + DEADLINE_MARGIN_S, the room
-             left for the delays a degraded sensor introduces (FAILSAFE stops, reduced progress while a neighbour is
-             missing, a longer gate queue).  T_ref, the duration of the committed reference run, is often shorter than
-             T_clean: e.g. a lost drone's slot is declared vacant only after t_rejoin of moving formation time, which
-             the reference does not reach when its plan holds the clock at the gate.
+* SUCCESS  - every requirement of criteria v3 (referee/criteria.py) holds at the same time, not before the
+             scenario's nominal end T_nom:
+             - progress: every healthy drone is within progress_tol_m of its PLANNED end position (now, not once);
+             - gate: every healthy drone has passed the judged gate THROUGH the critical region (before it, inside
+               the CR at some instant, beyond the exit); a drone that went around or over the frame has not;
+             - P3: the formation (with a permanent loss: that of the healthy drones on their original slots) has no
+               open loss episode, the error being inside the E_TOL_M band for t_ok_hold;
+             - P3-deg vacancy: with a permanent loss, every healthy drone that expects the lost drone as a neighbour
+               has declared its slot vacant;
+             - no false vacancy: no healthy drone holds vacant the slot of a drone that is not permanently faulted;
+             - no healthy drone is still waiting for a missing neighbour;
+* DEADLINE - none of the above by the deadline (criteria.deadline_v3: T_nom plus the protocol's worst-case delays).
 
-SUCCESS is never declared before T_ref, so a degraded run is never judged on a shorter horizon than its reference;
-a run that has not completed by the deadline is a liveness failure only if the deadline is reached (an infrastructure
-interruption is INVALID, see robustness_metrics).
+The same monitor is replayed offline on logged runs (robustness_metrics.replay_terminal), so the online stop and the
+offline verdict use one requirement set (v2 checked the false vacancy only offline).
 """
 
 from __future__ import annotations
@@ -29,41 +27,42 @@ from typing import Dict, List, Optional, Sequence
 
 import numpy as np
 
-PROGRESS_TOL_M = 3.0
-DEADLINE_FACTOR = 1.5
-DEADLINE_MARGIN_S = 20.0
-CLEAN_HORIZON_FACTOR = 3.0
-CLEAN_HORIZON_MARGIN_S = 30.0
+from holo_fleet.referee.criteria import (CRITERIA_VERSION, E_TOL_M, expects, formation_judged, nominal_end_s,
+                                         permanent_faults, plan_targets, progress_tol_m)
+
 WAITING = ("FORMATION_WAIT_REJOIN",)
-
-
-def deadline_s(t_clean: float) -> float:
-    """Deadline of a degraded run from the CLEAN completion time."""
-    return DEADLINE_FACTOR * float(t_clean) + DEADLINE_MARGIN_S
-
-
-def clean_horizon_s(t_ref: float) -> float:
-    """Horizon of a CLEAN run (it ends at SUCCESS, normally long before)."""
-    return CLEAN_HORIZON_FACTOR * float(t_ref) + CLEAN_HORIZON_MARGIN_S
+REQUIREMENTS = ("progress", "gate", "P3 recovered", "P3-deg re-formed", "P3-deg vacancy", "no false vacancy",
+                "not waiting")
 
 
 class TerminalMonitor:
-    def __init__(self, scenario, cfg, names: Sequence[str], reference: Dict, t_ref: float, deadline: float):
+    def __init__(self, scenario, cfg, names: Sequence[str], deadline: float, t_nom: Optional[float] = None):
         self.sc, self.cfg, self.names = scenario, cfg, list(names)
-        self.ref = reference
-        self.t_ref = float(t_ref)
+        self.t_nom = nominal_end_s(scenario) if t_nom is None else float(t_nom)
         self.deadline = float(deadline)
-        faults = getattr(scenario.sim, "faults", ()) or ()
-        self.permanent = {f["drone"] for f in faults if f.get("t_off") is None}
+        self.permanent = permanent_faults(scenario)
         self.healthy = [k for k, n in enumerate(self.names) if n not in self.permanent]
-        self.end = [np.asarray(e, float) for e in reference["end"]] if reference and reference.get("end") else None
-        self.reached: Dict[int, Optional[float]] = {k: None for k in self.healthy}
+        self.targets = plan_targets(scenario, self.t_nom)
+        self.tol = progress_tol_m(cfg)
+        self.reached: Dict[int, Optional[float]] = {k: None for k in self.healthy}      # first time (report only)
+        self.near: Dict[int, bool] = {k: False for k in self.healthy}                   # within tol now
         self.gate = scenario.judged_gates[0] if scenario.judged_gates else None
         self.before = {k: False for k in self.healthy}
+        self.crossed = {k: False for k in self.healthy}
         self.passed: Dict[int, Optional[float]] = {k: None for k in self.healthy}
+        self.bypassed: List[str] = []
+        lost_idx = [k for k, n in enumerate(self.names) if n in self.permanent]
+        self.lost_slots = {pl.slot_index for pl in scenario.plans if pl.drone_id in self.permanent}
+        # the drones that must declare a lost slot vacant: those that expect its drone as a neighbour
+        self.must_vacate = {k: {scenario.plans[j].slot_index for j in lost_idx if expects(scenario, cfg, k, j)}
+                            for k in self.healthy}
+        self.slot_drone = {pl.slot_index: self.names.index(pl.drone_id) for pl in scenario.plans}
+        self.judge_formation = formation_judged(scenario)
         self.outcome: Optional[str] = None
         self.t_end: Optional[float] = None
         self.reason = ""
+        self.last_missing: List[str] = []
+        self.met_since: Dict[str, Optional[float]] = {r: None for r in REQUIREMENTS}
 
     def _failure(self, referee) -> Optional[str]:
         if referee.p1_violations:
@@ -83,58 +82,77 @@ class TerminalMonitor:
         why = self._failure(referee)
         if why:
             return self._finish("FAILURE", t, why)
+        G = self.cfg.gate
         for k in self.healthy:
-            if self.end is not None and self.reached[k] is None and np.linalg.norm(P[k] - self.end[k]) <= PROGRESS_TOL_M:
+            self.near[k] = bool(np.linalg.norm(P[k] - self.targets[k]) <= self.tol)
+            if self.reached[k] is None and self.near[k]:
                 self.reached[k] = t
             if self.gate is not None and self.passed[k] is None:
-                s = self.gate.to_gate_frame(P[k])[0]
-                G = self.cfg.gate
+                s, l, dz = self.gate.to_gate_frame(P[k])
                 self.before[k] = self.before[k] or s < -G.cr_half_len
+                if (self.before[k] and abs(s) <= G.cr_half_len and abs(l) <= G.cr_half_width
+                        and abs(dz) <= G.cr_half_height):
+                    self.crossed[k] = True
                 if self.before[k] and s > G.exit_s:
-                    self.passed[k] = t
-        if t >= self.t_ref - 1e-9 and self._success(referee, records):
+                    if self.crossed[k]:
+                        self.passed[k] = t
+                    elif self.names[k] not in self.bypassed:
+                        self.bypassed.append(self.names[k])          # around or over the frame: not a passage
+        miss = self.missing(referee, records, P)
+        for r in REQUIREMENTS:
+            if r in miss:
+                self.met_since[r] = None
+            elif self.met_since[r] is None:
+                self.met_since[r] = round(float(t), 2)
+        self.last_missing = miss
+        if t >= self.t_nom - 1e-9 and not miss:
             return self._finish("SUCCESS", t, "every required outcome reached")
         if t >= self.deadline - 1e-9:
-            return self._finish("DEADLINE", t, "required outcomes not all reached: " + ", ".join(self.missing(referee, records)))
+            return self._finish("DEADLINE", t, "required outcomes not all reached: " + ", ".join(miss))
         return None
 
     def finalize(self, t: float, referee, records: List[Dict]) -> str:
         """End of the horizon without an outcome: the deadline (the loop's last step falls one step short of it)."""
         if self.outcome is None:
-            self._finish("DEADLINE", t, "required outcomes not all reached: " + ", ".join(self.missing(referee, records)))
+            self._finish("DEADLINE", t, "required outcomes not all reached: " + ", ".join(self.last_missing))
         return self.outcome
 
-    def missing(self, referee, records) -> List[str]:
+    def missing(self, referee, records, P: Optional[np.ndarray] = None) -> List[str]:
         out = []
-        if self.end is not None and any(v is None for v in self.reached.values()):
+        if not all(self.near.values()):
             out.append("progress")
         if self.gate is not None and any(v is None for v in self.passed.values()):
             out.append("gate")
         live = referee.live()
-        if self.ref.get("P3_recovered") and live.get("formation") != "OK":
-            out.append("P3 recovered")
-        if self.ref.get("P3_degraded_holds"):
-            if live.get("formation_present") != "OK":
-                out.append("P3-deg re-formed")
-            slots = {pl.slot_index for pl in self.sc.plans if pl.drone_id in self.permanent}
-            for k in self.healthy:
+        if self.judge_formation:
+            if not self.permanent:
+                if live.get("formation") != "OK":
+                    out.append("P3 recovered")
+            else:
+                if live.get("formation_present") != "OK":
+                    out.append("P3-deg re-formed")
+                for k in self.healthy:
+                    vac = set(((records[k] or {}).get("form") or {}).get("vacant") or [])
+                    if not self.must_vacate[k] <= vac:
+                        out.append("P3-deg vacancy")
+                        break
+            for k in self.healthy:                          # ground truth: only a permanently faulted drone is lost
                 vac = set(((records[k] or {}).get("form") or {}).get("vacant") or [])
-                if not slots <= vac:
-                    out.append("P3-deg vacancy")
+                if any(self.slot_drone.get(sl) in self.healthy for sl in vac):
+                    out.append("no false vacancy")
                     break
         if any((records[k] or {}).get("mode") in WAITING for k in self.healthy):
-            out.append("still waiting for a missing neighbour")
+            out.append("not waiting")
         return out
-
-    def _success(self, referee, records) -> bool:
-        return not self.missing(referee, records)
 
     def _finish(self, outcome: str, t: float, reason: str) -> str:
         self.outcome, self.t_end, self.reason = outcome, round(float(t), 2), reason
         return outcome
 
     def summary(self) -> Dict:
-        return {"outcome": self.outcome or "INCOMPLETE", "t_end": self.t_end, "reason": self.reason,
-                "t_ref": self.t_ref, "deadline_s": self.deadline, "progress_tol_m": PROGRESS_TOL_M,
-                "reached_reference_end_t": {self.names[k]: v for k, v in self.reached.items()},
-                "gate_passed_t": {self.names[k]: v for k, v in self.passed.items()} if self.gate is not None else None}
+        return {"criteria": CRITERIA_VERSION, "outcome": self.outcome or "INCOMPLETE", "t_end": self.t_end,
+                "reason": self.reason, "missing": self.last_missing, "t_nom": self.t_nom, "deadline_s": self.deadline,
+                "progress_tol_m": round(self.tol, 2), "e_tol_m": E_TOL_M, "gate_bypass": list(self.bypassed),
+                "reached_plan_target_t": {self.names[k]: v for k, v in self.reached.items()},
+                "gate_passed_t": {self.names[k]: v for k, v in self.passed.items()} if self.gate is not None else None,
+                "requirement_met_since": dict(self.met_since)}

@@ -2,19 +2,29 @@
 
 ``analyze_run(run_dir, reference)`` reads a run directory written by holo_fleet.runner (controller logs = what
 the drones knew, referee time series = ground truth) and returns the P1 / P2 / P3 / automaton / sensor metrics
-and the run class:
+and the run class of criteria v3 (referee/criteria.py):
 
-* INVALID           the run did not complete (simulator or infrastructure problem);
-* SAFETY_FAILURE    P1 or P2 violated, a contact, or a scripted vehicle closer than d_safe;
-* LIVENESS_FAILURE  safe, but a required liveness outcome is missing and no conservative declaration explains it
-                    (no progress, no recovery, a gate not completed while the drones stay in their nominal modes);
-* SAFE_DEGRADED     safe, but the fleet degraded conservatively: a slot falsely declared vacant (false DEGRADED),
-                    or a required outcome missing while healthy drones entered FAILSAFE on a sensor fault;
-* PASS              every property the scenario's reference run achieves holds again.
+* INVALID         the run did not complete for a reason outside the system under test (simulator, infrastructure);
+* SUT_ERROR       the run stopped on an exception raised in the drones' own code (control, perception, automaton):
+                  a failure of the system under test, never retried as INVALID;
+* SAFETY_FAILURE  P1 or P2 violated, a contact, or a scripted vehicle closer than d_safe;
+* UNSAFE_ACTION   no violation, but an entry into the CR was authorised while another drone was truly in it (E4,
+                  referee/gate_events.py: an unsafe control action in the STPA sense);
+* SPEC_VIOLATION  a determinism or observation-consistency violation of the automaton at run time;
+* STALLED         a bounded-response requirement of the gate was violated (gate liveness), whether or not the run
+                  completed later;
+* PASS            every v3 requirement reached by the deadline (replay of the TerminalMonitor on the logs);
+* CENSORED        historical runs only: the log ends (criteria v2 stop) before the v3 deadline without an outcome;
+* SAFE_DEGRADED   requirements missed, and the miss is CAUSED by healthy drones that hold in FAILSAFE at the end on a
+                  sensor fault of their injected noise profile: every missed requirement involves only those drones
+                  (v2 used ANY sensor-fault FAILSAFE entry at any time, which absorbed nearly every liveness failure);
+* INCOMPLETE      requirements missed at the deadline otherwise (slow or diverging).
 
-The required outcomes are those of the scenario's committed CLEAN reference run (results/reference/<scenario>):
-P3 recovered / P3-deg holds when the reference achieves it, every healthy drone through the gate, healthy drones
-ending within ``PROGRESS_TOL_M`` of the reference end positions and not in FAILSAFE.
+Every metric is judged on the replay's horizon [0, t_end] (the v3 stop), so a historical run is not judged on the
+longer v2 log for some quantities and on the v3 stop for others.
+
+The requirements are a-priori (mission plan and protocol bounds), the same for every protocol, profile and cell; v2
+took them from the scenario's committed CLEAN reference run.
 """
 
 from __future__ import annotations
@@ -29,11 +39,13 @@ from typing import Dict, List, Optional
 import numpy as np
 
 from holo_fleet.config import DEFAULT
+from holo_fleet.referee.criteria import CRITERIA_VERSION, E_TOL_M, deadline_terms, deadline_v3, profile_family
+from holo_fleet.referee.gate_events import gate_events
 
-PROGRESS_TOL_M = 3.0      # end position vs the reference run: 10 s of survey travel at 0.3 m/s
-DEADLOCK_S = 20.0         # queued drones with an empty CR and nobody passing for this long = no progress
+DEADLOCK_S = 20.0         # v2 report only (deadlock_events); the v3 stall detector is referee/gate_events.py
 CHATTER_S = 1.0           # A -> B -> A within this = one chattering event
-CLASSES = ("PASS", "SAFE_DEGRADED", "LIVENESS_FAILURE", "SAFETY_FAILURE", "INVALID")
+CLASSES = ("PASS", "SAFE_DEGRADED", "INCOMPLETE", "STALLED", "SPEC_VIOLATION", "UNSAFE_ACTION", "SAFETY_FAILURE",
+           "SUT_ERROR", "CENSORED", "INVALID")
 AVOID = ("SEPARATION_WARNING", "COLLISION_AVOIDANCE")
 FS = "FAILSAFE_HOLD_OR_RETREAT"
 KEEPING = ("FORMATION_FOLLOW", "FORMATION_WAIT_REJOIN", "DEGRADED_FORMATION")
@@ -53,21 +65,6 @@ def _f(v):
         return math.nan
 
 
-def load_reference(demo_dir: Path) -> Optional[Dict]:
-    """Outcome flags and end positions of a committed CLEAN reference run."""
-    try:
-        met = json.loads((demo_dir / "referee_metrics.json").read_text(encoding="utf-8"))
-        rows = list(csv.DictReader(open(demo_dir / "referee_timeseries.csv", encoding="utf-8")))
-    except OSError:
-        return None
-    n = sum(1 for k in rows[0] if k.startswith("x") and k[1:].isdigit())
-    last = rows[-1]
-    deg = met.get("P3_degraded") or {}
-    return {"P3_recovered": bool(met["P3_formation_recovery"]["enabled"] and met["P3_formation_recovery"]["all_recovered_within_run"]),
-            "P3_degraded_holds": deg.get("holds") is True,
-            "end": [[_f(last[f"x{k}"]), _f(last[f"y{k}"]), _f(last[f"z{k}"])] for k in range(n)]}
-
-
 def _intervals(mask: np.ndarray, t: np.ndarray) -> List[tuple]:
     out, start = [], None
     for i, m in enumerate(mask):
@@ -81,7 +78,12 @@ def _intervals(mask: np.ndarray, t: np.ndarray) -> List[tuple]:
     return out
 
 
-def analyze_run(run_dir: Path, reference: Optional[Dict] = None, cfg=DEFAULT) -> Dict:
+def _queued(gs: Dict) -> bool:
+    return gs.get("at_queue") in (True, "True", "true")     # logged as a bool or a string ("False" is truthy)
+
+
+def analyze_run(run_dir: Path, reference: Optional[Dict] = None, cfg=DEFAULT, profile: Optional[str] = None) -> Dict:
+    """``reference`` is accepted for compatibility and no longer used (criteria v3 has a-priori requirements)."""
     from holo_fleet.referee.referee import Referee
     from holo_fleet.sim.scenarios import SCENARIOS
 
@@ -91,6 +93,9 @@ def analyze_run(run_dir: Path, reference: Optional[Dict] = None, cfg=DEFAULT) ->
         status = json.loads((run_dir / "run_status.json").read_text(encoding="utf-8"))
     except OSError:
         status = {"status": "MISSING"}
+    if status.get("status") == "ERROR" and status.get("error_kind") == "SUT":
+        out.update({"class": "SUT_ERROR", "error": status.get("error"), "traceback": status.get("traceback")})
+        return out
     if status.get("status") != "COMPLETE" or not (run_dir / "referee_metrics.json").exists():
         out.update({"class": "INVALID", "invalid_reason": status.get("reason") or status.get("status")})
         return out
@@ -120,12 +125,26 @@ def analyze_run(run_dir: Path, reference: Optional[Dict] = None, cfg=DEFAULT) ->
     healthy = [k for k in range(n) if names[k] not in permanently_faulted]
     sc = SCENARIOS[name](cfg)
 
+    # ------------------------------------------------------------------ criteria v3: replay, then one horizon
+    profile = profile or ((rc.get("terminal") or {}).get("profile")) or _profile_from_path(run_dir)
+    logged = (met.get("run") or {}).get("terminal")
+    term, mon, ref3 = replay_terminal(sc, cfg, names, t, P, states, modes, profile, logged=logged)
+    if term.get("t_end") is not None and m:
+        m = max(1, min(m, int(np.searchsorted(t, float(term["t_end"]) + 1e-6))))
+        t, P, modes, rows = t[:m], P[:m], modes[:m], rows[:m]
+        states = [st[:m] for st in states]
+    out["horizon_s"] = round(float(t[-1]), 2) if m else None
+
     # ------------------------------------------------------------------ P1
     p1 = met["P1_separation"]
     intr = p1.get("intruder") or {}
     contacts = p1["physical_contacts"] + len(p1["collision_sensor_edges"]) + int(intr.get("contacts") or 0)
-    tr = [e for e in events if e.get("type") == "transition"]
-    out["P1"] = {"holds": bool(p1["holds"]), "min_true_separation_m": p1["min_distance"],
+    tr = [e for e in events if e.get("type") == "transition" and float(e.get("t", 0.0)) <= (t[-1] if m else 0.0) + 1e-6]
+    dmin_t = np.array([min(float(np.linalg.norm(P[i, a] - P[i, b])) for a in range(n) for b in range(a + 1, n))
+                       for i in range(m)]) if n > 1 and m else np.array([np.inf])
+    t_nom = term.get("t_nom") or 0.0
+    out["P1"] = {"holds": bool(dmin_t.min() >= cfg.sep.d_safe), "min_true_separation_m": round(float(dmin_t.min()), 3),
+                 "min_true_separation_t_nom_m": round(float(dmin_t[t <= t_nom].min()), 3) if (t <= t_nom).any() else None,
                  "intruder_min_m": intr.get("min_distance"), "collisions": contacts,
                  "warning_entries": sum(1 for e in tr if e["to"] == "SEPARATION_WARNING"),
                  "ca_entries": sum(1 for e in tr if e["to"] == "COLLISION_AVOIDANCE"),
@@ -134,20 +153,23 @@ def analyze_run(run_dir: Path, reference: Optional[Dict] = None, cfg=DEFAULT) ->
 
     # ------------------------------------------------------------------ P2
     p2 = met["P2_mutual_exclusion"]
-    p2o: Dict = {"holds": bool(p2["holds"]), "gates": p2["gates"]}
+    p2o: Dict = {"holds": bool(p2["holds"]), "gates": p2["gates"]}     # recomputed on the horizon below
     if sc.judged_gates:
         G = cfg.gate
         g = sc.judged_gates[0]
         gf = np.array([[g.to_gate_frame(P[i, k]) for k in range(n)] for i in range(m)])      # (m, n, 3)
         inside = (np.abs(gf[:, :, 0]) <= G.cr_half_len) & (np.abs(gf[:, :, 1]) <= G.cr_half_width) & \
                  (np.abs(gf[:, :, 2]) <= G.cr_half_height)
+        p2o["holds"] = bool(inside.sum(axis=1).max() <= 1)
         passed_t = {}
         for k in healthy:
             idx = np.flatnonzero(gf[:, k, 0] > G.exit_s)
             # passed = beyond the exit after having been before the gate
             before = np.flatnonzero(gf[:, k, 0] < -G.cr_half_len)
             if idx.size and before.size and idx[idx > before[0]].size:
-                passed_t[names[k]] = float(t[idx[idx > before[0]][0]])
+                b = idx[idx > before[0]][0]
+                if inside[before[0]:b + 1, k].any():                 # through the CR cross-section, not around it
+                    passed_t[names[k]] = float(t[b])
         yielding = (modes == "MUTEX_YIELD").any(axis=1)
         passing = (modes == "MUTEX_PASS").any(axis=1)
         idle = yielding & ~inside.any(axis=1) & ~passing
@@ -158,7 +180,7 @@ def analyze_run(run_dir: Path, reference: Optional[Dict] = None, cfg=DEFAULT) ->
             others = [j for j in range(n) if j != k]
             for i in range(m):
                 gs = states[k][i].get("gate") or {}
-                if gs.get("id") is None or not gs.get("at_queue"):
+                if gs.get("id") is None or not _queued(gs):
                     continue
                 occ = gs.get("occ")
                 near = any(np.linalg.norm(P[i, j] - g.center) <= 4.0 for j in others)
@@ -192,13 +214,15 @@ def analyze_run(run_dir: Path, reference: Optional[Dict] = None, cfg=DEFAULT) ->
                     "time_without_leader_s": round(float(idle.sum()) * dt, 1),
                     "deadlock_events": len(stalls), "longest_stall_s": round(max((b - a for a, b in _intervals(idle, t)), default=0.0), 1),
                     "false_busy_s": round(false_busy * dt, 1), "false_free_s": round(false_free * dt, 1)})
+        p2o["events"] = gate_events(t, gf, states, healthy, g.gate_id, rc.get("plans") or [], cfg)
     out["P2"] = p2o
 
     # ------------------------------------------------------------------ P3 and missing neighbours
-    p3 = met["P3_formation_recovery"]
-    deg = met.get("P3_degraded") or {}
+    m3 = ref3.metrics()                                   # v3 referee (one band, scripted absences) on the horizon
+    p3 = m3["P3_formation_recovery"]
+    deg = m3.get("P3_degraded") or {}
     rec = [e["recovery_time_s"] for e in p3["episodes"] if e["recovery_time_s"] is not None]
-    fe = np.array([_f(r.get("form_err")) for r in rows[:m]]) if p3["enabled"] else np.array([])
+    fe = np.array([_f(r.get("form_err")) for r in ref3.rows[:m]]) if p3["enabled"] else np.array([])
     p3o: Dict = {"enabled": p3["enabled"], "episodes": p3["n_episodes"], "all_recovered": p3["all_recovered_within_run"],
                  "recovery_time_max_s": max(rec) if rec else None, "recovery_time_mean_s": round(float(np.mean(rec)), 1) if rec else None,
                  "max_formation_error_m": round(float(np.nanmax(fe)), 3) if fe.size else None,
@@ -212,7 +236,7 @@ def analyze_run(run_dir: Path, reference: Optional[Dict] = None, cfg=DEFAULT) ->
         ref = Referee(names, sc.template.offsets(), sc.path, sc.judged_gates, cfg, sc.formation_enabled,
                       clock=sc.plans[0].clock if sc.formation_enabled else None)
         dev = np.array([ref.deviations(P[i], list(range(n))) for i in range(m)])        # (m, n)
-        e_lost, rng_lim = cfg.form.e_lost, cfg.form.neighbour_range_m + 1.0
+        e_lost, rng_lim = E_TOL_M, cfg.form.neighbour_range_m + 1.0          # the referee's band, not the controller's
 
         def present(i: int, obs: int, j: int) -> bool:
             return dev[i, j] <= e_lost and np.linalg.norm(P[i, obs] - P[i, j]) <= rng_lim and not faulted(j, t[i])
@@ -297,56 +321,129 @@ def analyze_run(run_dir: Path, reference: Optional[Dict] = None, cfg=DEFAULT) ->
     out["noise_wrapper_stats"] = run.get("noise_wrapper_stats")
     out["beacon"] = run.get("beacon")
 
-    # ------------------------------------------------------------------ verdict
-    req: Dict[str, bool] = {}
-    term = run.get("terminal")
+    # ------------------------------------------------------------------ verdict (criteria v3, referee/criteria.py)
+    out["terminal_logged"] = logged
     out["terminal"] = term
-    if term is not None:
-        # terminal criterion (referee/terminal.py): liveness = reached before the deadline, not the state at an
-        # arbitrary last instant; transient FAILSAFE is reported, not required away
-        reached = term.get("reached_reference_end_t") or {}
-        req["progress"] = all(reached.get(names[k]) is not None for k in healthy) if reached else True
-        if sc.judged_gates:
-            req["gate_completed"] = bool(p2o.get("completed"))
-        if reference is not None and reference["P3_recovered"]:
-            req["P3_recovered"] = bool(p3["all_recovered_within_run"])
-        if reference is not None and reference["P3_degraded_holds"]:
-            req["P3_degraded_holds"] = deg.get("holds") is True
-        req["no_permanent_false_vacancy"] = not fm.get("false_vacancy_at_end")
-        req["terminal_success"] = term.get("outcome") == "SUCCESS"
-        out["failsafe_at_end"] = any(modes[-1, k] == FS for k in healthy) if m else False
-    elif reference is not None:
-        if reference["P3_recovered"]:
-            req["P3_recovered"] = bool(p3["all_recovered_within_run"])
-        if reference["P3_degraded_holds"]:
-            req["P3_degraded_holds"] = deg.get("holds") is True
-        if len(reference["end"]) == n and m:
-            dist_end = [float(np.linalg.norm(P[-1, k] - np.asarray(reference["end"][k]))) for k in healthy]
-            out["end_position_error_m"] = [round(d, 2) for d in dist_end]
-            req["progress"] = max(dist_end, default=0.0) <= PROGRESS_TOL_M
-    if term is None:
-        if sc.judged_gates:
-            req["gate_completed"] = bool(p2o.get("completed"))
-        req["no_failsafe_at_end"] = not any(modes[-1, k] == FS for k in healthy) if m else True
-    req["automaton_consistent"] = (out["automaton"]["determinism_violations"] == 0
-                                   and not out["automaton"]["observation_consistency_violations"])
-    out["requirements"] = req
+    ge = p2o.get("events") or {}
     safe = out["P1"]["holds"] and contacts == 0 and p2o["holds"] and not (intr.get("below_d_safe") or False)
-    live = all(req.values())
-    conservative = fm["false_vacancy"] > 0 or len(fs_sensor) > 0
+    unsafe_action = int(ge.get("E4") or 0)                 # entry authorised into an occupied CR (STPA: unsafe action)
+    consistent = (out["automaton"]["determinism_violations"] == 0
+                  and not out["automaton"]["observation_consistency_violations"])
+    out["requirements"] = {r: r not in term["missing"] for r in term["required"]}
+    if sc.judged_gates:
+        out["requirements"]["gate liveness"] = not ge.get("stalled")
+    out["requirements"]["automaton_consistent"] = consistent
+    out["failsafe_at_end"] = any(modes[-1, k] == FS for k in healthy) if m else False
+    fs_last = {}
+    for e in fs_tr:
+        fs_last[e["drone"]] = e.get("reason") or ""
+    noisy = set(rc.get("noise_drones") or []) if rc.get("noise") else set()
+    fs_end = [k for k in healthy if m and modes[-1, k] == FS and "sensor_fault" in fs_last.get(names[k], "")]
+    caused = _degradation_explains(term, mon, ref3, P, fs_end, healthy) if (fs_end and set(fs_end) <= noisy) else False
     if not safe:
         cls = "SAFETY_FAILURE"
-    elif (fm["false_vacancy"] > 0 and term is None) or (not live and conservative):
-        cls = "SAFE_DEGRADED"
-    elif not live:
-        cls = "LIVENESS_FAILURE"
-    else:
+    elif unsafe_action:
+        cls = "UNSAFE_ACTION"
+    elif not consistent:
+        cls = "SPEC_VIOLATION"
+    elif ge.get("stalled"):
+        cls = "STALLED"                        # a bounded-response requirement of the gate violated
+    elif term["outcome"] == "SUCCESS":
         cls = "PASS"
+    elif term["outcome"] == "CENSORED":
+        cls = "CENSORED"                       # the log ends before the v3 deadline (historical runs only)
+    elif caused and profile_family(profile) != "CLEAN":
+        cls = "SAFE_DEGRADED"                  # causal: the drones in sensor-fault FAILSAFE explain every miss
+    else:
+        cls = "INCOMPLETE"                     # requirements missed at the deadline
     out["class"] = cls
-    out["conservative_events"] = {"false_vacancy": fm["false_vacancy"], "failsafe_sensor_fault_entries": len(fs_sensor)}
-    out["failed_requirements"] = [k for k, v in req.items() if not v]
+    out["criteria"] = CRITERIA_VERSION
+    out["conservative_events"] = {"false_vacancy": fm["false_vacancy"], "failsafe_sensor_fault_entries": len(fs_sensor),
+                                  "failsafe_sensor_fault_at_end": [names[k] for k in fs_end],
+                                  "failsafe_explains_missed": caused}
+    out["failed_requirements"] = [k for k, v in out["requirements"].items() if not v]
     out["cause_tags"] = cause_tags(out, fm, fs_sensor, term, states, healthy, m, dt, met)
     return out
+
+
+def _degradation_explains(term, mon, ref, P, fs_end, healthy) -> bool:
+    """Every missed requirement involves only the drones in sensor-fault FAILSAFE at the end: their progress, their
+    gate passage, their waiting, the vacancy they did not declare, and a formation that is within E_TOL_M once they
+    are left out."""
+    fs = set(fs_end)
+    others = [k for k in healthy if k not in fs]
+    for r in term["missing"]:
+        if r == "progress" and not all(mon.near[k] for k in others):
+            return False
+        if r == "gate" and not all(mon.passed[k] is not None for k in others):
+            return False
+        if r in ("P3 recovered", "P3-deg re-formed"):
+            if len(others) >= 2 and ref.present_error(P[-1], others) > E_TOL_M:
+                return False
+        if r in ("not waiting", "P3-deg vacancy", "no false vacancy"):
+            return False                       # decided by the records of drones that are not holding: not explained
+    return True
+
+
+def _profile_from_path(run_dir: Path) -> Optional[str]:
+    """Campaign layout <protocol>/<profile>/<scenario>/s<k>: the profile part, if it looks like one."""
+    parts = Path(run_dir).parts
+    if len(parts) >= 3 and parts[-3].split("-")[0] in ("CLEAN", "LOW", "MEDIUM", "HIGH"):
+        return parts[-3]
+    return None
+
+
+def replay_terminal(sc, cfg, names, t, P, states, modes, profile, logged: Optional[Dict] = None):
+    """Replay the v3 TerminalMonitor on the logged ground truth and records: the same requirement set as the online
+    stop.  A log that ends before the deadline without an outcome (a historical run stopped by criteria v2) is
+    CENSORED.  For a v3 run the logged deadline is used and the replayed outcome is compared with the logged one
+    (``replay_consistent``).  Returns (summary, monitor, referee)."""
+    from types import SimpleNamespace
+
+    from holo_fleet.referee.referee import Referee
+    from holo_fleet.referee.terminal import TerminalMonitor
+
+    n, m = len(names), len(t)
+    faults = getattr(sc.sim, "faults", ()) or ()
+    ref = Referee(names, sc.template.offsets() if sc.template is not None else None, sc.path, sc.judged_gates, cfg,
+                  sc.formation_enabled, clock=sc.plans[0].clock if sc.formation_enabled else None, faults=faults)
+    v3 = bool(logged) and logged.get("criteria") == CRITERIA_VERSION
+    dl = float(logged["deadline_s"]) if v3 else deadline_v3(sc, cfg, profile)
+    mon = TerminalMonitor(sc, cfg, names, dl)
+    z = np.zeros((n, 3))
+    for i in range(m):
+        truth = SimpleNamespace(t=float(t[i]), positions=P[i], collision=np.zeros(n, bool), current_drift=z,
+                                velocities=z, intruders=None, rotations=None)
+        ref.update(truth, list(modes[i]))
+        if mon.update(float(t[i]), P[i], ref, [states[k][i] for k in range(n)]) is not None:
+            break
+    if mon.outcome is None:
+        if m and t[-1] >= dl - 0.2:
+            mon.finalize(float(t[-1]), ref, [states[k][-1] for k in range(n)])
+        else:
+            mon.outcome, mon.reason = "CENSORED", "log ends before the v3 deadline: " + ", ".join(mon.last_missing)
+            mon.t_end = round(float(t[-1]), 2) if m else None
+    s = mon.summary()
+    s["required"] = [r for r in ("progress", "gate", "P3 recovered", "P3-deg re-formed", "P3-deg vacancy",
+                                 "no false vacancy", "not waiting")
+                     if _applies(r, mon)]
+    s["deadline_terms"] = deadline_terms(sc, cfg, profile)
+    if v3:
+        s["replay_consistent"] = (logged.get("outcome") == s["outcome"]
+                                  and abs(float(logged.get("t_end") or 0.0) - float(s["t_end"] or 0.0)) <= 0.25)
+    return s, mon, ref
+
+
+def _applies(req: str, mon) -> bool:
+    if req == "gate":
+        return mon.gate is not None
+    if req in ("P3 recovered",):
+        return mon.judge_formation and not mon.permanent
+    if req in ("P3-deg re-formed", "P3-deg vacancy"):
+        return mon.judge_formation and bool(mon.permanent)
+    if req == "no false vacancy":
+        return mon.judge_formation
+    return True
 
 
 def cause_tags(out: Dict, fm: Dict, fs_sensor, term, states, healthy, m: int, dt: float, met: Dict) -> List[str]:
@@ -370,10 +467,14 @@ def cause_tags(out: Dict, fm: Dict, fs_sensor, term, states, healthy, m: int, dt
     if int(met.get("occupancy_timeouts") or 0) > 0:
         tags.append("occupancy_timeout_release")         # CR released by the t_occ_max fallback (assumption A-cross)
     reason = (term or {}).get("reason") or ""
-    if "still waiting" in reason:
+    if "not waiting" in reason:
         tags.append("waiting_for_missing_neighbour")
     if "P3-deg vacancy" in reason:
         tags.append("vacancy_not_declared")
-    if out.get("failed_requirements") and "gate_completed" in out["failed_requirements"]:
+    if out.get("failed_requirements") and "gate" in out["failed_requirements"]:
         tags.append("gate_not_completed")
+    if (term or {}).get("gate_bypass"):
+        tags.append("GATE_BYPASS")                       # past the gate around or over the frame, not through the CR
+    if (out.get("P2") or {}).get("events", {}).get("E8", {}).get("a_cross_ok") is False:
+        tags.append("A_CROSS_VIOLATED")                  # a CR dwell longer than t_occ_max (latch model premise)
     return tags

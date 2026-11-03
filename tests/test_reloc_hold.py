@@ -12,11 +12,11 @@ from holo_fleet.sim.scenarios import SCENARIOS
 G = DEFAULT.gate
 
 
-def _obs(plan, s, loc_ok, t):
+def _obs(plan, s, loc_ok, t, entry_ok=True, l=0.0):
     g = plan.gates[0]
-    p = g.from_gate_frame([s, 0.0, 0.0])
-    gate = SimpleNamespace(s=s, l=0.0, dz=0.0, queue_s=plan.queue_s, queue_l=plan.queue_lateral, queue_dz=plan.queue_dz,
-                           loc_ok=loc_ok)
+    p = g.from_gate_frame([s, l, 0.0])
+    gate = SimpleNamespace(s=s, l=l, dz=0.0, queue_s=plan.queue_s, queue_l=plan.queue_lateral, queue_dz=plan.queue_dz,
+                           loc_ok=loc_ok, entry_ok=entry_ok)
     return SimpleNamespace(t=t, p=np.asarray(p, float), gate=gate, gate_index=0)
 
 
@@ -47,3 +47,27 @@ def test_a_valid_localization_far_from_the_hold_point_does_not_clear_the_entry()
     s_hold = -(G.cr_half_len + 0.229 + 0.15)
     fl.gate(_obs(plan, s_hold + 0.02, False, 4.0), "MUTEX_PASS")
     assert fl.reloc_hold
+
+
+def test_stage_two_holds_a_localized_drone_while_a_hull_is_seen_or_heard_in_the_cr():
+    plan = SCENARIOS["lost_drone_mutex"](DEFAULT).plans[0]
+    fl = Flows(plan, DEFAULT)
+    s_hold = -(G.cr_half_len + 0.229 + 0.15)
+    v, _ = fl.gate(_obs(plan, s_hold + 0.02, True, 1.0, entry_ok=False), "MUTEX_PASS")
+    assert fl.reloc_hold and fl.entry_state == "HOLD" and _along(plan, v) <= 0.0
+    v, _ = fl.gate(_obs(plan, s_hold + 0.02, True, 2.0, entry_ok=True), "MUTEX_PASS")
+    assert not fl.reloc_hold and fl.entry_state == "ADMIT" and _along(plan, v) > 0.3
+
+
+def test_the_stage_two_hold_is_logged_once_beyond_its_bound_and_never_forced():
+    """Beyond t_occ_max + t_clear the hold is logged once (ENTRY_HOLD_TIMEOUT); the drone keeps holding before the CR:
+    no retreat (it would stay committed without the stage-1 check) and no forced entry."""
+    plan = SCENARIOS["lost_drone_mutex"](DEFAULT).plans[0]
+    fl = Flows(plan, DEFAULT)
+    s_hold = -(G.cr_half_len + 0.229 + 0.15)
+    t_max = G.t_occ_max + G.t_clear
+    fl.gate(_obs(plan, s_hold + 0.02, False, 0.0), "MUTEX_PASS")
+    fl.gate(_obs(plan, s_hold + 0.02, False, t_max + 0.1), "MUTEX_PASS")
+    v, _ = fl.gate(_obs(plan, s_hold + 0.02, False, t_max + 0.2), "MUTEX_PASS")
+    assert [e["type"] for e in fl.events] == ["ENTRY_HOLD_TIMEOUT"]
+    assert fl.reloc_hold and _along(plan, v) <= 0.0

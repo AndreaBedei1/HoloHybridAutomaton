@@ -1,11 +1,14 @@
 # HoloFleet-HA
 
-Communication-free coordination of BlueROV2 fleets with local hybrid automata in HoloOcean.
+Decentralised coordination of BlueROV2 fleets with local hybrid automata in HoloOcean, aided by a one-way acoustic
+identity beacon.
 
 HoloFleet-HA simulates fleets of BlueROV2 drones in HoloOcean. Every drone runs its own copy of the same
-local hybrid automaton. There is no leader and no inter-drone communication: each drone uses only its own
-sonars and onboard navigation, plus a mission plan shared before the dive (path, formation clock, formation
-template, gate map). With this, the fleet keeps a formation, keeps its separation, avoids collisions, crosses
+local hybrid automaton. There is no leader and no message with content: each drone uses its own sonars and onboard
+navigation, a mission plan shared before the dive (path, formation clock, formation template, gate map) and, in the
+operational architecture B2, the one-way identity pings every drone broadcasts on a TDMA schedule (no payload, no
+reply; the receiver measures range and direction itself). B2 is therefore one-way acoustic communication, not
+communication-free; with a silent channel it falls back to the sonar-only logic. With this, the fleet keeps a formation, keeps its separation, avoids collisions, crosses
 a narrow gate one drone at a time, recovers its formation after a disturbance and copes with lost drones.
 
 ## 1. How it works
@@ -177,7 +180,7 @@ The project includes Z3 checks of:
 python formal/check_properties.py
 ```
 
-Current status: 186 / 186 checks give the expected verdict. The proofs are on abstractions of the drones
+Current status: every check gives its expected verdict (the count and the verdicts are in the summary). The proofs are on abstractions of the drones
 and their sensing, not on HoloOcean's physics. Details: [`formal/results/SUMMARY.md`](formal/results/SUMMARY.md).
 
 ## 8. Tests

@@ -203,6 +203,9 @@ class DroneController:
         was_ok = self.envmon.ok
         ok = self.envmon.update(self.ll.saturated, check, dt, v_nav=obs.v_world, v_req=self.v_requested)
         self.v_requested = np.asarray(v, dtype=float).copy()
+        for e in self.flows.events:                            # ENTRY_HOLD_TIMEOUT (stage 2, flows.gate)
+            self.events.append({**e, "mode": mode.value})
+        self.flows.events.clear()
         if was_ok and not ok:
             self.events.append({"t": t, "type": "ENVELOPE_VIOLATION", **self.envmon.record()})
         elif ok and not was_ok:
@@ -213,7 +216,7 @@ class DroneController:
         incomplete = not obs.form.neighbors_ok or (mode not in IN_FORMATION and ftime.episode_t > 0.0
                                                    and obs.form.slot_err_norm > self.cfg.form.e_ok)
         ftime.update(t, dt, incomplete=incomplete, mutex=gate_flow, front_residual=obs.form.front_residual,
-                     keeping=mode in IN_FORMATION)
+                     keeping=mode in IN_FORMATION, behind=obs.form.behind)
         self.last_obs = obs
         ch = self.flows.last_choice
         self.last_record = {
@@ -237,6 +240,7 @@ class DroneController:
                      "occ": obs.gate.occ_state, "exit_witness": obs.gate.exit_witness, "relations": obs.gate.relations,
                      "rank_used": obs.gate.rank_used,
                      "loc_ok": obs.gate.loc_ok, "reloc_hold": self.flows.reloc_hold,
+                     "entry_ok": obs.gate.entry_ok, "entry": self.flows.entry_state or None,
                      **({"acoustic": {k: v for k, v in self.perception.gp.acoustic_exit.last.items() if v}}
                         if self.perception.gp.acoustic_exit is not None and obs.gate.occ_state == "BUSY" else {})},
             "form": {"form_err": round(obs.form.form_err, 3), "slot_err": round(obs.form.slot_err_norm, 3),

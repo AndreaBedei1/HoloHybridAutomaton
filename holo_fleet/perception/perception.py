@@ -31,11 +31,19 @@ Variant B2 (range-bearing beacon, perception/acoustic.py).  Identified fixes ent
 * presence (rule A-P): while the latest accepted fix is fresh (``acoustic.fresh_s``: one lost ping plus the
   latency) and within ``e_lost`` of the neighbour's expected position, the neighbour counts as sighted now for the
   NEIGHBOUR_MEMORY_S timer (a drone occluded for the sonar but heard where it should be is not missing); it never
-  confirms a MISSING neighbour back (only the sonar confirmation does) and never clears a
-  vacancy;
+  confirms a MISSING neighbour back (only the sonar confirmation does) and never clears a vacancy;
+* ahead (veto): ``A_CONFIRM`` fixes of one track whose median along-track offset puts the neighbour more than
+  ``e_lost`` AHEAD of where the own (possibly delayed) formation time places its slot, on its lane: the own reference
+  is the one behind, and slowing for the neighbour would widen the gap (the positive feedback that let the private
+  formation times diverge).  It vetoes a NEW missing episode only, for at most t_rejoin; an existing episode and
+  its vacancy timer are kept;
 * displacement (rule A-D): ``A_CONFIRM`` consecutive accepted fixes whose whole error region lies farther than
-  ``e_lost`` + ``A_DISPLACED_MARGIN`` from the neighbour's expected position declare it MISSING at once (and
-  keep it so: no sonar confirmation while the fixes say otherwise);
+  ``e_lost`` + ``A_DISPLACED_MARGIN`` from the neighbour's expected position, and not certainly ahead on its lane,
+  declare it MISSING at once (and keep it so: no sonar confirmation while the fixes say otherwise);
+* lag (clock re-synchronisation): when the same median puts the neighbour behind its expected position by more
+  than the white-noise band k_sigma * sigma_w(r) of the declared envelope, the excess is reported
+  (``acoustic_lag``) and the own formation time slows down in proportion to wait for it (control/formation_time.py;
+  continuous in the lag, no relay);
 * relative formation error: for a neighbour with a fresh fix, the full relative-position residual (fix minus
   template, map axes) replaces the range residual in the along-track / lateral consensus (``along_corr``,
   ``lateral_corr``): the along-track offset of an abreast neighbour, unobservable from ranges, becomes observable.
@@ -154,6 +162,9 @@ class Perception:
         self.acoustic_present: List[int] = []          # B2 rule A-P: sightings from fixes this step
         self.acoustic_displaced: List[int] = []        # B2 rule A-D: neighbours positively away from their slot
         self.acoustic_corr: List[int] = []             # neighbours whose fix fed the relative residual
+        self.acoustic_lag: Dict[int, float] = {}       # B2: slot -> lag behind its slot beyond the noise band [m]
+        self.acoustic_ahead: List[int] = []            # B2: neighbours heard well ahead on their lane (veto, bounded)
+        self.ahead_since: Dict[int, float] = {}
 
     # ------------------------------------------------------------------ formation reference
     def slot_reference(self, t_form: float, sigma: float = 0.0):
@@ -198,7 +209,8 @@ class Perception:
                 self.confirmed_since.pop(k, None)
             confirmed = k in self.confirmed_since
             if k in form.missing:
-                self.missing_state[k] = True               # not seen for NEIGHBOUR_MEMORY_S
+                if not (k in self.acoustic_ahead and not self.missing_state.get(k)):
+                    self.missing_state[k] = True           # not seen for NEIGHBOUR_MEMORY_S (heard ahead: no NEW episode)
             elif self.missing_state.get(k) and confirmed:
                 self.missing_state[k] = False              # back, confirmed
             if not self.missing_state.get(k):
@@ -221,9 +233,11 @@ class Perception:
     def acoustic_neighbours(self, t: float, slot_err: np.ndarray, R_form: np.ndarray) -> Optional[Dict[int, np.ndarray]]:
         """Rules A-P and A-D (module docstring); returns the fresh relative positions used for the association."""
         self.acoustic_present, self.acoustic_displaced, self.acoustic_fresh = [], [], []
+        self.acoustic_lag, self.acoustic_ahead = {}, []
         if not self.acoustic.enabled:
             return None
         a, fr = self.cfg.acoustic, self.cfg.form
+        t_hat = R_form[:, 0]
         out = {}
         for k, d_world in expected_relative(self.plan, R_form).items():
             f = self.acoustic.latest(k, t, a.fresh_s)
@@ -236,7 +250,31 @@ class Perception:
                 self.acoustic_present.append(k)
                 self.neighbour_seen[k] = t                       # sighted while the fix is fresh (rule A-P)
             acc = [g for g in self.acoustic.all_fixes(k, t - a.fresh_s, t) if g.accepted][-A_CONFIRM:]
-            if (len(acc) == A_CONFIRM and len({g.track for g in acc}) == 1      # every region point farther than that
+            one_track = len(acc) == A_CONFIRM and len({g.track for g in acc}) == 1
+            ahead = False
+            if one_track:
+                # along-track offset of k from where the own formation time places its slot: the median of the
+                # point estimates of A_CONFIRM fixes of one track.  Their white error has the standard deviation
+                # sigma_w(r) of the declared envelope; the constant biases (array calibration, compass, clock) do not
+                # average out and leave a bounded residual offset
+                offs = [g.rel - exp for g in acc]
+                along = float(np.median([float(o @ t_hat) for o in offs]))
+                lane = all(float(np.linalg.norm(o - float(o @ t_hat) * t_hat)) <= fr.e_lost for o in offs)
+                r = max(g.r for g in acc)
+                band = a.k_sigma * math.hypot(a.sigma_range_m, r * math.radians(a.sigma_az_deg))
+                ahead = lane and along > fr.e_lost
+                if along < -band:
+                    self.acoustic_lag[k] = -along - band         # beyond the white-noise band: clock re-synchronisation
+            if ahead:
+                # heard well AHEAD on its lane: the own formation time is the one behind; this vetoes a NEW missing
+                # episode (slowing for k would widen the gap), for at most t_rejoin - a drone that keeps drifting
+                # ahead (a failed drone carried by the current) is then judged by the ordinary rules
+                self.ahead_since.setdefault(k, t)
+                if t - self.ahead_since[k] <= fr.t_rejoin:
+                    self.acoustic_ahead.append(k)
+            else:
+                self.ahead_since.pop(k, None)
+            if (one_track and not ahead                          # every region point farther than that
                     and all(float(np.min(np.linalg.norm(g.pts - (g.p - g.rel) - exp, axis=1))) - g.slack
                             > fr.e_lost + A_DISPLACED_MARGIN for g in acc)):
                 self.acoustic_displaced.append(k)
@@ -311,6 +349,8 @@ class Perception:
                                missing={k for k, v in self.missing_state.items() if v})
         self.acoustic_residuals(t, form, R_form)
         self.track_missing(t, dt, form, in_formation, t_form)
+        lags = [v for k, v in self.acoustic_lag.items() if k not in self.vacant]
+        form.behind = max(lags) if lags else None          # clock re-synchronisation input (formation_time.py)
         fr = self.cfg.form
         if form.form_err < fr.e_ok:
             self.ok_since = t if self.ok_since is None else self.ok_since

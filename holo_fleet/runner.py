@@ -50,8 +50,9 @@ def run(name: str, out_root: Path, headless: bool = True, run_id: Optional[str] 
         cfg: FleetConfig = DEFAULT, noise=None, seed: Optional[int] = None, noise_drones=None,
         terminal: Optional[Dict] = None) -> Dict:
     """``noise_drones``: indices of the drones that receive ``noise`` (None: all; the others keep the deployed
-    sensors).  ``terminal``: {"reference": load_reference(...), "deadline_s": ...} ends the run on SUCCESS, FAILURE
-    or DEADLINE (referee/terminal.py) instead of at the scenario duration; the horizon is then the deadline."""
+    sensors).  ``terminal``: {"profile": sensor-profile name, "deadline_s": optional override} ends the run on SUCCESS,
+    FAILURE or DEADLINE (referee/terminal.py, criteria v3) instead of at the scenario duration; the horizon is then the
+    deadline, by default referee/criteria.deadline_v3 of the scenario and profile."""
     sc: Scenario = SCENARIOS[name](cfg)
     if sc.cfg_patch:
         cfg = dataclasses.replace(cfg, **sc.cfg_patch)
@@ -61,10 +62,11 @@ def run(name: str, out_root: Path, headless: bool = True, run_id: Optional[str] 
     sc.sim.noise_drones = None if noise_drones is None else tuple(int(k) for k in noise_drones)
     monitor = None
     if terminal is not None:
-        from holo_fleet.referee.terminal import TerminalMonitor, clean_horizon_s
+        from holo_fleet.referee.criteria import deadline_v3
+        from holo_fleet.referee.terminal import TerminalMonitor
 
-        t_ref = float(sc.duration_s)
-        duration = float(terminal.get("deadline_s") or clean_horizon_s(t_ref))
+        t_nom = float(sc.duration_s)
+        duration = float(terminal.get("deadline_s") or deadline_v3(sc, cfg, terminal.get("profile")))
         sc.sim.duration_s = duration                # noise windows, stress and logs cover the whole horizon
     run_id = run_id or name
     out = Path(out_root) / run_id
@@ -93,9 +95,9 @@ def run(name: str, out_root: Path, headless: bool = True, run_id: Optional[str] 
     truth_prev = None
     tmpl = sc.template.offsets() if sc.template is not None else None
     ref = Referee(sim.names, tmpl, sc.path, sc.judged_gates, cfg, sc.formation_enabled,
-                  clock=sc.plans[0].clock if sc.formation_enabled else None)
+                  clock=sc.plans[0].clock if sc.formation_enabled else None, faults=getattr(sc.sim, "faults", ()))
     if terminal is not None:
-        monitor = TerminalMonitor(sc, cfg, sim.names, terminal["reference"], t_ref, duration)
+        monitor = TerminalMonitor(sc, cfg, sim.names, duration, t_nom)
     cfg_dump = {"scenario": name, "title": sc.title, "description": sc.description, "focus": sc.focus,
                 "duration_s": T, "n_drones": len(sim.names), "template": None if sc.template is None else sc.template.name,
                 "gates": [g.gate_id for g in sc.judged_gates], "current": sc.sim.current.describe(),
@@ -103,7 +105,9 @@ def run(name: str, out_root: Path, headless: bool = True, run_id: Optional[str] 
                 "faults": list(getattr(sc.sim, "faults", ())),
                 "seed": sc.sim.seed, "noise": None if noise is None else noise.as_dict(),
                 "noise_drones": None if noise is None else sorted(getattr(sim, "noisy_idx", range(len(sim.names)))),
-                "terminal": None if monitor is None else {"t_ref": monitor.t_ref, "deadline_s": monitor.deadline},
+                "terminal": None if monitor is None else {"criteria": "v3", "t_nom": monitor.t_nom,
+                                                           "deadline_s": monitor.deadline,
+                                                           "profile": terminal.get("profile")},
                 "heading_bias_deg": [round(float(b), 2) for b in getattr(sim, "heading_bias", ())],
                 "disturbance_windows": sc.disturbance_windows, "stress": sc.sim.stress.__dict__,
                 "setup": sim.setup_report, "comms_enabled": cfg.comms_enabled, "fleet_config": cfg.to_dict(),
@@ -183,6 +187,18 @@ def run(name: str, out_root: Path, headless: bool = True, run_id: Optional[str] 
         status = {"status": "COMPLETE"}
     except KeyboardInterrupt:
         status = {"status": "INCOMPLETE", "reason": "interrupted by the user", "t": sim.t}
+    except Exception as exc:  # noqa: BLE001 - classified, recorded and not hidden as an infrastructure failure
+        import traceback
+
+        frames = traceback.extract_tb(exc.__traceback__)
+        sut = any(any(part in f.filename.replace("\\", "/") for part in ("holo_fleet/control/", "holo_fleet/perception/",
+                                                                         "holo_fleet/ha/")) for f in frames)
+        status = {"status": "ERROR", "error_kind": "SUT" if sut else "INFRA", "error": repr(exc), "t": sim.t,
+                  "traceback": traceback.format_exc()}
+        # recorded before the exception propagates: an error of the drones' own code is a failure of the system
+        # under test (robustness_metrics: SUT_ERROR), not an infrastructure problem to retry
+        (out / "run_status.json").write_text(json.dumps(status), encoding="utf-8")
+        raise
     finally:
         try:
             ev_f.write(json.dumps({"t": sim.t, "type": "run_finished", **status}) + "\n")

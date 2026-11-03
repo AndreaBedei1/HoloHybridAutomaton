@@ -3,8 +3,8 @@
 The sonar latch of gate_perception.py stays as it is: BUSY on an unexplained FRONT corridor echo, EXITING on a
 sonar exit witness with the corridor empty, FREE after t_clear more (or the t_occ_max fallback).  B2 adds ONE more
 way into EXITING, under the same "corridor empty" condition, and one restriction: the t_occ_max fallback does not
-release the CR while a fresh accepted fix places a drone possibly inside it (``heard_inside``: a drone stopped in
-the gate by a fault that still pings).  An acoustic observation never moves the latch while a corridor echo is seen,
+release the CR while two recent accepted fixes place a drone possibly inside it on the clear path (``heard_inside``:
+a drone stopped in the gate by a fault that still pings).  An acoustic observation never moves the latch while a corridor echo is seen,
 never touches the precedence decision, and its absence means nothing.
 
 Acoustic exit evidence at time t, for the episode whose last corridor sighting was at t_lc (the latest instant at
@@ -24,8 +24,9 @@ which a hull in or at the CR was seen; since then the corridor has been empty):
      exceeds the largest distance from the own position to the grown CR: a drone heard far enough away cannot be in
      it, and the direction of arrival, the least precise part of a fix at these ranges, is not needed.
 (A3) progress, not safety: at least one possible occupant was heard beyond the exit face (the nominal positions of
-     those fixes at s > cr_half_len + R_OUT): the occupant has passed, not backed out.  An episode none of whose
-     possible occupants is a drone of the plan is left to the sonar rules.
+     those fixes at s > cr_half_len + R_OUT): the occupant has passed, not backed out.
+(A4) an episode none of whose possible occupants is a drone of the plan (every other drone excluded at t_lc) gives
+     the exit evidence once every other drone is also positively outside the CR now (A2): no fleet drone is in it.
 
 Soundness argument (mutual exclusion rests on A1 and A2 only): under the B0 assumption that every
 entry into the CR crosses the FRONT corridor visibly (formal M3/M4), a drone in the CR at t either was in it or
@@ -150,14 +151,32 @@ class AcousticExit:
                   and self._cr_possible(gate_points(g, f.pts), f.slack + self.v_bound * max(t - f.t, 0.0))]
         return tail[-1] if ok and not contra else None
 
+    def _inside_clear_path(self, g, f: Fix, t: float) -> bool:
+        """The clear-path part of the region of f (ranges no shorter than the measured range minus the range envelope:
+        without the one-sided multipath excess), grown by the motion since the fix, can hold a hull in the CR."""
+        br = box_bounds(f.r, self.cfg)[0]
+        own = f.p - f.rel
+        pts = f.pts[np.linalg.norm(f.pts - own, axis=1) >= f.r - br - 1e-6]
+        return len(pts) > 0 and self._cr_possible(gate_points(g, pts), f.slack + self.v_bound * max(t - f.t, 0.0))
+
     def heard_inside(self, t: float, g) -> bool:
-        """A fresh accepted fix places some drone possibly inside the CR now (its region grown by the motion since the
-        fix): positive evidence of occupancy, so the t_occ_max fallback of the sonar latch must not release the CR
-        (gate_perception).  Without fixes nothing changes: their absence is no evidence."""
-        a = self.cfg.acoustic
+        """Positive evidence of occupancy: the two latest accepted fixes of one drone, on one track, the latest no older
+        than ``acoustic.fresh_s`` (one lost ping plus the latency: the veto does not drop on a single lost ping), both
+        place it possibly inside the CR now on the clear path
+        (``_inside_clear_path``).  The t_occ_max fallback of the sonar latch then does not release the CR
+        (gate_perception) and a committed drone is not admitted into it (stage 2).
+
+        It is a veto ADDED to the sonar rules: a false negative leaves the sonar-only behaviour, a false positive
+        blocks the gate.  So it uses the clear-path region: a reflected arrival is longer, never shorter, and places a
+        drone farther than it is; the one-sided multipath excess of the full region (los_excess_max_m, 3 m) made a
+        drone waiting beyond the exit look possibly inside and stopped the queue for minutes.  Two fixes on one track
+        reject a single outlier.  Without fixes nothing changes: their absence is no evidence."""
+        a, period = self.cfg.acoustic, self.cfg.beacon.period_s
+        fresh = a.fresh_s
         for j in self.others:
-            f = self.tracker.latest(j, t, a.fresh_s)
-            if f is not None and self._cr_possible(gate_points(g, f.pts), f.slack + self.v_bound * max(t - f.t, 0.0)):
+            acc = [f for f in self.tracker.all_fixes(j, t - period - fresh, t) if f.accepted][-2:]
+            if (len(acc) == 2 and acc[0].track == acc[1].track and t - acc[-1].t <= fresh
+                    and all(self._inside_clear_path(g, f, t) for f in acc)):
                 return True
         return False
 
@@ -184,6 +203,12 @@ class AcousticExit:
             possible.append(j)
         self.last["possible"] = list(possible)
         if not possible:
+            # (A4) no drone of the plan can be the occupant: each was excluded at t_lc, and each is positively
+            # OUTSIDE the CR now (A2), so no fleet drone is in it whether or not a later entry was seen.  P2 concerns
+            # the fleet's drones; an unexplained echo that is no drone stays an obstacle for the separation layer.
+            # (A phantom corridor echo held the latch for minutes while both other drones were excluded.)
+            if all(self.outside_now(g, j, t, t_lc) is not None for j in self.others):
+                return {"sector": "ACOUSTIC", "slots": [], "range": None, "rule": "A4"}
             return None
         exited, ranges = [], []
         for j in possible:

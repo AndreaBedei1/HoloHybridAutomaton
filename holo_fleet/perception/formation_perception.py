@@ -54,6 +54,7 @@ class FormationObs:
     missing: List[int] = field(default_factory=list)      # required (expected nearby, observable), not seen recently
     required: List[int] = field(default_factory=list)     # expected nearby and observable (healthy sectors, unmasked)
     front_residual: Optional[float] = None                # range residual of the same-lane neighbour ahead (seen now)
+    behind: Optional[float] = None                        # B2: largest certain lag of a non-vacant neighbour [m]
 
 
 def same_lane_ahead(plan: MissionPlan, lane_tol: float = 1.0) -> List[int]:

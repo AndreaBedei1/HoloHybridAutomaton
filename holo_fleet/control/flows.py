@@ -8,7 +8,7 @@ the low-level controller.  Output: desired world velocity and heading.
 from __future__ import annotations
 
 import math
-from typing import Optional, Tuple
+from typing import Dict, List, Optional, Tuple
 
 import numpy as np
 
@@ -71,6 +71,9 @@ class Flows:
         self.cr_cleared = False               # gate localization valid at the hold point: may enter the CR
         self.reloc_hold = False               # holding before the CR for the gate localization (logged)
         self.hold_since: Optional[float] = None   # relocalization hold before the CR started at
+        self.hold_timeout = False             # the stage-2 hold exceeded t_occ_max + t_clear (logged once)
+        self.entry_state = ""                 # stage 2: "", "HOLD", "ADMIT" (logged for the gate events E4 / E7)
+        self.events: List[Dict] = []          # ENTRY_HOLD_TIMEOUT (drained by the controller)
         self.giveway: str = ""                # "", "RIGHT", "UP", "DOWN"
         self.giveway_t = -1e9                 # last time the head-on condition held
         self.rejoin_phase = ""                # "", "DROP_BACK", "TO_LANE" (rejoin from behind, recovering only)
@@ -241,23 +244,34 @@ class Flows:
         hold = False
         if mode == "MUTEX_PASS":
             c = self._carrot(self.pass_path(go.queue_s, go.queue_l, go.queue_dz), np.array([go.s, go.l, go.dz]))
-            # relocalization hold: the critical region is entered only with a valid gate localization (the hull plus
-            # the uncertainty of a map fit inside the free opening: perception/structure_aiding.py).  Short of it the
-            # committed drone holds on its path before the CR, where the bars are observed, and every RELOC_PERIOD_S
-            # backs off by RELOC_BACK_M and returns (a new viewing geometry); queued drones see it in FRONT, nearer
-            # than the CR, and wait (WAIT relation): mutex, priority and the automaton are unchanged
+            # two-stage entry.  Stage 1 is the commit at the queue point (automaton: priority and the latch FREE).
+            # Stage 2 is the admission at the hold point before the CR: a valid gate localization (the hull plus the
+            # uncertainty of a map fit inside the free opening: perception/structure_aiding.py) AND no hull seen or
+            # heard in the CR from there (GateObs.entry_ok).  Short of it the committed drone holds on its path before
+            # the CR and every RELOC_PERIOD_S backs off by RELOC_BACK_M and returns (a new viewing geometry); queued
+            # drones see it in FRONT, nearer than the CR, and wait (WAIT relation).  A hold longer than t_occ_max +
+            # t_clear (the slowest release the protocol admits) is logged once as ENTRY_HOLD_TIMEOUT: the evaluation
+            # judges it a gate-liveness violation; the drone is never forced into the CR.  (A retreat to the queue
+            # point would leave it committed without the stage-1 check: two committed drones; giving up the passage
+            # needs an automaton edge MUTEX_PASS -> MUTEX_YIELD, not added here.)  Once admitted it completes the
+            # passage (no stop inside the CR is added).  Mutex, priority and the automaton are unchanged
             s_hold = -(G.cr_half_len + float(HULL_HALF[0]) + RELOC_MARGIN_M)
-            if go.loc_ok and go.s >= s_hold - RELOC_ZONE_M:
+            if go.loc_ok and go.entry_ok and go.s >= s_hold - RELOC_ZONE_M:
                 self.cr_cleared = True
             if not self.cr_cleared and c[0] > s_hold:
                 self.hold_since = obs.t if self.hold_since is None else self.hold_since
+                if obs.t - self.hold_since > G.t_occ_max + G.t_clear and not self.hold_timeout:
+                    self.hold_timeout = True
+                    self.events.append({"t": obs.t, "type": "ENTRY_HOLD_TIMEOUT", "loc_ok": go.loc_ok,
+                                        "entry_ok": go.entry_ok})
                 back = int((obs.t - self.hold_since) / RELOC_PERIOD_S) % 2 == 1
                 c = np.array([s_hold - (RELOC_BACK_M if back else 0.0), 0.0, c[2]])
                 hold = True
+            self.entry_state = "ADMIT" if self.cr_cleared else ("HOLD" if hold else "")
             tgt = g.from_gate_frame(c)
             vmax = G.v_pass
         else:  # MUTEX_APPROACH / MUTEX_YIELD: go to / hold the own queue point
-            self.cr_cleared, self.hold_since = False, None
+            self.cr_cleared, self.hold_since, self.entry_state, self.hold_timeout = False, None, "", False
             tgt = g.from_gate_frame([go.queue_s, go.queue_l, go.queue_dz])
             vmax = G.v_approach
         self.reloc_hold = hold

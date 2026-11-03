@@ -329,6 +329,29 @@ def run(cfg: FleetConfig = DEFAULT, verbose: bool = True, n_poses: int = 35000) 
     pm = dict(p, d_warning=max(p["d_safe"] + 0.1, hi - 0.25))
     rep.add(check(f"S1m mutation: d_warning={pm['d_warning']:.2f} must violate P1",
                   "expect counterexample (trace of d_i, c_i)", ENC, bmc(pm, K), expect="sat"), verbose)
+    # one-sided reaction (one drone of the pair does not react: a missed detection, a drone in FAILSAFE holding its
+    # own position, a non-cooperative vehicle): only one drone removes the closing component.  With the configured,
+    # conservative a_brake (0.5 m/s^2) the BMC is SAT (reported: P1 is then NOT guaranteed by this model); with the
+    # per-drone deceleration calibrated in closed loop in the simulator (Envelope.a_brake_measured, 0.743 m/s^2 from the
+    # stop time, results/calibration/plant_calibration.json) it is UNSAT.  The one-sided claim therefore rests on
+    # the simulator calibration, not on the configured margin; it is to be re-measured on hardware.
+    p1s = dict(p, a_pair=env.a_brake)
+    rep.add(check("S1o one-sided reaction at the configured a_brake: reported (not guaranteed)",
+                  "Init & T^K -> G d >= d_safe, a_pair = a_brake", ENC, bmc(p1s, K), expect="sat"), verbose)
+    p1c = dict(p, a_pair=env.a_brake_measured)
+    rep.add(check(f"S1d one-sided reaction at the calibrated deceleration {env.a_brake_measured} m/s^2: "
+                  "no violation within 4 s", "Init & T^K -> G d >= d_safe, a_pair = a_brake_measured", ENC,
+                  bmc(p1c, K)), verbose)
+    lo1, hi1 = p["d_safe"], 4.0
+    for _ in range(14):
+        mid = (lo1 + hi1) / 2
+        if check("", "", ENC, bmc(dict(p1s, d_warning=mid), K)).verdict == "unsat":
+            hi1 = mid
+        else:
+            lo1 = mid
+    if verbose:
+        print(f"       one-sided at the configured a_brake: smallest verified d_warning = {hi1:.3f} m "
+              f"(configured {p['d_warning']})")
     # ---------------------------------------------------------------- S2 escape tables
     planner = EscapePlanner(cfg)
     sample_err = sg.SAMPLING_ERR        # the planner's guarantees are already certified (sampled - SAMPLING_ERR)

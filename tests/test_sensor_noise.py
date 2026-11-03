@@ -70,8 +70,7 @@ def test_campaign_plan_sizes():
     camp = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(camp)
     runs = camp.plan("targeted", (0, 1), only=["gate_single"], protocols=["B2_LOW"], profiles=["LOW-ALL"])
-    assert runs[:2] == [("B0", "CLEAN", "gate_single", 0), ("B0", "CLEAN", "gate_single", 1)]   # deadline source first
-    assert runs[2:] == [("B2_LOW", "LOW-ALL", "gate_single", 0), ("B2_LOW", "LOW-ALL", "gate_single", 1)]
+    # criteria v3: the deadline is a priori, so no CLEAN run is planned as a deadline source
+    assert runs == [("B2_LOW", "LOW-ALL", "gate_single", 0), ("B2_LOW", "LOW-ALL", "gate_single", 1)]
     final = camp.plan("final", (0, 1, 2))
-    first_degraded = next(i for i, r in enumerate(final) if r[1] != "CLEAN")
-    assert all(r[1] == "CLEAN" for r in final[:first_degraded]) and len(set(final)) == len(final)
+    assert len(set(final)) == len(final)

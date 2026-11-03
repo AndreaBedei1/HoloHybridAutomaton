@@ -41,6 +41,8 @@ from holo_fleet.perception.exit_witness import ExitWitness
 from holo_fleet.perception.sonar_geometry import MOUNTS, R_OUT
 from holo_fleet.perception.sonar_processing import DYNAMIC
 
+ENTRY_QUIET_CAPTURES = 3   # stage 2: captures without a CR-compatible echo (the 3-capture rule of formal M4d)
+
 
 @dataclass
 class GateObs:
@@ -66,6 +68,7 @@ class GateObs:
     occ_timeouts: int = 0
     exit_witness: Optional[Dict] = None                      # {sector, range} of this capture's exit witness
     loc_ok: bool = False                                     # gate localization confirmed (structure_aiding.valid)
+    entry_ok: bool = True                                    # stage 2: no hull seen or heard in the CR (update)
 
 
 class GatePerception:
@@ -206,4 +209,12 @@ class GatePerception:
         o.occ_state = self.occ_state
         o.occ_busy = self.occ_state != "FREE"
         o.occ_timeouts = self.occ_timeouts
+        # stage 2, entry admission (control/flows.py, at the hold point before the CR): from the own pose now, no
+        # persistent unexplained FRONT echo compatible with a hull in the CR over the last ENTRY_QUIET_CAPTURES sonar
+        # captures, and (B2) no drone heard inside it on the clear path.  From the hold point only part of the CR
+        # is observable apart from the bars (formal/check_stage2.py, M4h): elsewhere hull and bar echoes share
+        # ranges and a silent occupant is not seen (a stated limit; the latch argument covers it)
+        quiet = t - self.last_corridor_t > ENTRY_QUIET_CAPTURES / self.cfg.perc.sonar.hz
+        heard = self.acoustic_exit is not None and self.acoustic_exit.heard_inside(t, g)
+        o.entry_ok = bool(quiet and not heard)
         return o

@@ -204,13 +204,66 @@ def test_a_drone_heard_inside_the_cr_blocks_the_timeout_fallback():
     a drone heard well beyond the exit, or no fixes at all, do not block it."""
     b, ae = exit_bench()
     b.ping(1, gate_world(0.0, 0.0))                                    # inside the CR
-    assert ae.heard_inside(b.t, G06)
-    b.step(DEFAULT_ACOUSTIC_FRESH + 0.1)
-    assert not ae.heard_inside(b.t, G06)                               # the fix is no longer fresh
+    assert not ae.heard_inside(b.t, G06)                               # one fix is no evidence (an outlier)
+    b.step(1.0)
+    b.ping(1, gate_world(0.0, 0.0))
+    assert ae.heard_inside(b.t, G06)                                   # two on one track, the latest recent
+    b.step(B2.acoustic.fresh_s + 0.1)
+    assert not ae.heard_inside(b.t, G06)                               # the latest fix is no longer fresh
     b, ae = exit_bench()
     queued_others(b, k_occ=-1)
-    b.ping(1, gate_world(8.0, 0.0))
+    for _ in range(2):
+        b.ping(1, gate_world(8.0, 0.0))
+        b.step(1.0)
     assert not ae.heard_inside(b.t, G06)
+
+
+def test_one_lost_ping_does_not_drop_the_inside_veto():
+    """A drone stopped in the CR pinging every second, one ping lost: the veto holds through the gap (absence of a
+    ping is no evidence of an exit)."""
+    b, ae = exit_bench()
+    for k in range(6):
+        if k != 3:
+            b.ping(1, gate_world(0.0, 0.0))
+        for _ in range(10):
+            b.step(0.1)
+            if k >= 1:
+                assert ae.heard_inside(b.t, G06), (k, b.t)
+
+
+def test_a_drone_waiting_beyond_the_gate_is_not_inside():
+    """A drone waiting beyond the exit, heard on the direct path: the full region reaches 3 m nearer (the one-sided
+    multipath excess) and, grown by its age, overlaps the CR; the clear-path region does not - the veto must not stop
+    the queue (v2 used the full region with a 2.5 s freshness and held the latch for minutes)."""
+    b, ae = exit_bench(cfg=B2)
+    for _ in range(3):
+        b.ping(1, gate_world(6.5, 0.0))                                # beyond the rally point (rally_s 6 m)
+        b.step(1.0)
+    f = b.tr.latest(1, b.t, 5.0)
+    assert ae._cr_possible(gate_points(G06, f.pts), f.slack + ae.v_bound * (b.t - f.t))
+    assert not ae.heard_inside(b.t, G06)
+
+
+def test_every_other_drone_excluded_and_outside_releases_a_phantom_corridor_echo():
+    """An unexplained FRONT echo (no drone) is the corridor sighting; every other drone is heard at its queue point or
+    far beyond the gate: rule A4 gives the exit evidence once each is positively outside the CR; with a drone
+    unheard nothing is released (absence is no evidence)."""
+    b, ae = exit_bench()
+    queued_others(b, k_occ=-1)
+    corridor(b, ae, gate_world(0.0, 0.0))
+    got = None
+    for _ in range(6):
+        b.step(1.0)
+        queued_others(b, k_occ=-1)
+        ev = ae.evaluate(b.t, G06)
+        got = got or ev
+    assert got is not None and got.get("rule") == "A4" and got["slots"] == []
+    b, ae = exit_bench()
+    corridor(b, ae, gate_world(0.0, 0.0))
+    for _ in range(6):
+        b.step(1.0)
+        queued_others(b, k_occ=1)                                      # drone 1 never heard: a possible occupant
+        assert ae.evaluate(b.t, G06) is None
 
 
 def test_a_multipath_episode_never_gives_an_exit_from_inside_the_cr():
@@ -462,6 +515,61 @@ def test_a_neighbour_heard_far_from_its_slot_is_declared_missing_on_the_second_f
     c, first, recs = _run_form(B2, _every(1.0), offset=off)
     assert set(first) == {2} and first[2] <= 2.0 + 1e-9               # fixes at 1.0 and 2.0 s
     assert 2 in recs[-1]["form"]["acoustic_displaced"]
+
+
+def test_a_neighbour_heard_ahead_on_its_lane_vetoes_a_new_missing_episode():
+    # 8 m AHEAD of the slot the own clock places it at: the own formation time is the one behind; slowing for the
+    # neighbour would widen the gap (the positive feedback of diverging formation times).  Heard twice before the
+    # sonar memory expires: no missing episode starts; it is not displaced and gives no lag
+    off = {2: np.array([8.0, 0.0, 0.0])}
+    c, first, recs = _run_form(B2, _every(0.5), offset=off)
+    assert 2 not in first and 2 in c.perception.acoustic_ahead
+    assert 2 not in recs[-1]["form"]["acoustic_displaced"] and 2 not in c.perception.acoustic_lag
+    assert c.flows.ftime.sync == 0.0
+
+
+def test_heard_ahead_never_clears_an_existing_missing_episode():
+    # one fix only before the memory expires: the episode starts; later fixes ahead must not end it (a failed drone
+    # carried ahead by the current must still be declared vacant)
+    off = {2: np.array([8.0, 0.0, 0.0])}
+    c, first, _recs = _run_form(B2, _every(1.0), offset=off)
+    assert first.get(2, 9.0) < 2.0 and c.perception.missing_state.get(2)
+
+
+def test_the_ahead_veto_expires_after_t_rejoin():
+    from holo_fleet.perception.perception import Perception
+    plan = SCENARIOS["lost_drone_rejoin"](B2).plans[0]
+    pc = Perception(plan, B2)
+    pc.ahead_since[2] = 0.0
+    t = B2.form.t_rejoin + 0.5
+    # the bookkeeping alone: past t_rejoin a neighbour still heard ahead no longer vetoes (module docstring)
+    assert t - pc.ahead_since[2] > B2.form.t_rejoin
+
+
+def test_a_neighbour_certainly_behind_slows_the_own_formation_time():
+    off = {2: np.array([-8.0, 0.0, 0.0])}
+    c, _first, _recs = _run_form(B2, _every(1.0), offset=off, steps=40)
+    lag = c.perception.acoustic_lag.get(2)
+    assert lag is not None and 0.0 < lag < 8.0                         # the lag beyond the white-noise band
+    assert c.flows.ftime.sync == pytest.approx(min(DEFAULT.form.k_progress * lag,
+                                             DEFAULT.form.v_nominal - DEFAULT.form.v_wait), abs=1e-6)
+    c0, _f, _r = _run_form(DEFAULT, _every(1.0), offset=off, steps=40)
+    assert c0.perception.acoustic_lag == {} and c0.flows.ftime.sync == 0.0   # silent channel: no re-synchronisation
+
+
+def test_resynchronisation_stays_between_the_reduced_and_the_planned_speed():
+    from holo_fleet.control.formation_time import FormationTime
+    from holo_fleet.mission import FormationClock
+    fr = DEFAULT.form
+    ft = FormationTime(FormationClock(0.0, fr.v_nominal, 0.0), DEFAULT)
+    for i in range(600):
+        ft.update(0.1 * i, 0.1, incomplete=False, behind=5.0)
+    assert ft.rate == pytest.approx(fr.v_wait / fr.v_nominal, abs=1e-6)    # saturated at the reduced progress
+    for i in range(600, 1200):
+        ft.update(0.1 * i, 0.1, incomplete=False, behind=None)
+    assert ft.rate == pytest.approx(1.0) and ft.sync == 0.0                # never faster than planned
+    ft.update(120.0, 0.1, incomplete=False, mutex=True, behind=5.0)
+    assert ft.sync == 0.0                                                  # the gate flow keeps its own timing
 
 
 def test_the_along_track_offset_of_a_neighbour_feeds_the_progress_consensus():

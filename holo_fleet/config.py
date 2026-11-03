@@ -48,6 +48,7 @@ class Envelope:
     v_max_nominal: float = 0.50      # speed cap outside avoidance (formation recovery) [m/s]
     v_escape: float = 0.55           # escape speed in COLLISION_AVOIDANCE [m/s]
     a_brake: float = 0.50            # closing-speed reduction per drone [m/s^2] (calibrated >= 0.74)
+    a_brake_measured: float = 0.743  # closed-loop stop in the simulator (plant_calibration.json): formal S1d only
     w_rel_max: float = 0.15          # unrejected differential drift between two drones [m/s]
     w_drift_max: float = 0.15        # unrejected absolute drift of one drone [m/s]
                                      # (residuals after compensation: they hold while the requested velocity is
@@ -271,11 +272,14 @@ class PlantCalibration:
 
 @dataclass(frozen=True)
 class RefereeConfig:
-    """Ground-truth judging (never visible to a controller)."""
+    """Ground-truth judging (never visible to a controller).  Criteria v3 (referee/criteria.py): one tolerance band of
+    1.0 m opens an episode (error above it) and closes it (inside it for t_ok_hold).  v2 used e_lost 1.2 / e_ok 0.5,
+    whose band in between never opened an episode, and a 2 s hold.  t_ok_hold = 4 / k_slot: the 2 % settling time of
+    the first-order slot-tracking loop (criteria.t_hold_s; a test keeps them equal)."""
 
-    e_lost: float = 1.2
-    e_ok: float = 0.5
-    t_ok_hold: float = 2.0
+    e_lost: float = 1.0
+    e_ok: float = 1.0
+    t_ok_hold: float = 8.9
 
 
 @dataclass(frozen=True)

@@ -8,11 +8,13 @@ never returns anything to a controller.  It judges, on agent-origin (hull-centre
 * P3  G(formation_lost -> F formation_recovered) - episodes of formation loss with their recovery
   times.  A finite run cannot falsify a liveness property: an episode still open at the end of a
   run is reported as "not recovered within the run", never as a counterexample.
-* P3-deg  a drone farther than e_lost from its slot (robust fit of the others) for t_rejoin of
-  mission time (the shared clock moving) is ABSENT (ground truth: it is not coming back on its own);
-  the formation of the PRESENT drones on their original slots is then judged with the same episode
-  logic: the degraded formation is stable when every such episode is recovered.  A drone back within
-  e_ok of its slot is present again.
+* P3-deg  with ``faults`` (criteria v3) the ABSENT drones are the permanently faulted ones from their fault
+  onset (ground truth of the scripted fault, never seen by a controller); without it (v2) a drone farther
+  than e_lost from its slot (robust fit of the others) for t_rejoin of mission time (the shared clock
+  moving) is absent, and present again back within e_ok.  The formation of the PRESENT drones on their
+  original slots is judged with the same episode logic: the degraded formation is stable when every such
+  episode is recovered.  v3 never declares a healthy drone absent, so a healthy drone that stays off its
+  slot fails P3-deg instead of leaving the judged set.
 """
 
 from __future__ import annotations
@@ -50,7 +52,7 @@ class Episode:
 
 class Referee:
     def __init__(self, names: Sequence[str], template_offsets: Optional[np.ndarray], path, gates: Sequence[GateSpec],
-                 cfg: FleetConfig = DEFAULT, formation_enabled: bool = True, clock=None):
+                 cfg: FleetConfig = DEFAULT, formation_enabled: bool = True, clock=None, faults=None):
         self.cfg = cfg
         self.names = list(names)
         self.n = len(self.names)
@@ -91,6 +93,10 @@ class Referee:
         self._lost_p = False
         self._ok_since_p: Optional[float] = None
         self._t_prev: Optional[float] = None
+        # v3: permanently faulted drone index -> fault onset (None: the v2 deviation heuristic)
+        self.permanent: Optional[Dict[int, float]] = None if faults is None else {
+            self.names.index(f["drone"]): float(f["t_on"]) for f in faults
+            if f.get("t_off") is None and f["drone"] in self.names}
 
     # ------------------------------------------------------------------ formation error
     def formation_error(self, P: np.ndarray) -> float:
@@ -133,7 +139,13 @@ class Referee:
         moving = self.clock is None or self.clock.moving(t)
         present = [k for k in range(self.n) if k not in self.absent]
         dev = self.deviations(P, present)
-        for k in range(self.n):
+        if self.permanent is not None:
+            for k, t_on in self.permanent.items():
+                if k not in self.absent and t >= t_on:
+                    self.absent[k] = t
+                    self.absence_log.append({"drone": self.names[k], "event": "absent", "t": round(t, 2),
+                                             "deviation_m": round(float(dev[k]), 2), "source": "scripted fault"})
+        for k in (range(self.n) if self.permanent is None else ()):          # v2: the deviation heuristic
             if k in self.absent:
                 if dev[k] < rc.e_ok:
                     self.absence_log.append({"drone": self.names[k], "event": "back", "t": round(t, 2)})

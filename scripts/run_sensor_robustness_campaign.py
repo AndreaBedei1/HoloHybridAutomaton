@@ -15,8 +15,8 @@ Holodeck.exe processes started by that run (and only those) are terminated if st
 
 Protocols: B0 (communication-free) and B2_<channel level> (one-way acoustic identity beacon, sim/acoustic_channel.py).
 Profiles: CLEAN or <LEVEL>-<SCOPE> (sim/sensor_noise.py; scope ONE / SUBSET / ALL, scope_drones).  Every run ends
-on SUCCESS / FAILURE / DEADLINE (referee/terminal.py); the deadline of a degraded run comes from the B0 CLEAN runs
-of the same raw root, so CLEAN runs are planned first.
+on SUCCESS / FAILURE / DEADLINE (referee/terminal.py, criteria v3); the deadline is a priori, from the mission plan
+and the protocol bounds (referee/criteria.deadline_v3), the same for every protocol and cell.
 """
 
 from __future__ import annotations
@@ -44,16 +44,6 @@ ALL_SCENARIOS = ("p1_head_on", "p1_vertical_escape", "p1_two_lines", "p1_close_e
                  "integrated_short", "lost_drone_rejoin", "lost_drone_timeout", "mutex_deadlock_resolution",
                  "line_parallel_mutex", "lost_drone_mutex")
 PY = sys.executable
-
-
-def clean_completion(protocol_root: Path, scenario: str):
-    """T_clean: the slowest completion (SUCCESS time) of the CLEAN runs of ``scenario`` (None if none succeeded)."""
-    ts = []
-    for p in sorted((protocol_root / "CLEAN" / scenario).glob("s*/run_metrics.json")):
-        term = json.loads(p.read_text(encoding="utf-8")).get("terminal") or {}
-        if term.get("outcome") == "SUCCESS":
-            ts.append(float(term["t_end"]))
-    return max(ts) if ts else None
 
 
 def scope_drones(scenario: str, scope: str) -> list:
@@ -97,7 +87,7 @@ def scope_drones(scenario: str, scope: str) -> list:
 
 
 def plan(phase: str, seeds, only=None, protocols=None, profiles=None):
-    """Runs (protocol, profile, scenario, seed), B0 CLEAN first (it fixes the deadline of every degraded run).
+    """Runs (protocol, profile, scenario, seed); deadlines are a priori (criteria v3), so no run depends on another.
     ``final``: the campaign matrix; ``targeted``: --only scenarios x --protocols x --profiles (targeted validation)."""
     if phase == "final":
         runs = final_matrix(seeds, only)
@@ -105,16 +95,13 @@ def plan(phase: str, seeds, only=None, protocols=None, profiles=None):
         if not (only and protocols and profiles):
             raise SystemExit("--phase targeted needs --only, --protocols and --profiles")
         runs = [(proto, prof, sc, s) for sc in only for prof in profiles for proto in protocols for s in seeds]
-        if any(prof != "CLEAN" for prof in profiles) and "B0" not in protocols:
-            runs = [("B0", "CLEAN", sc, s) for sc in only for s in seeds] + runs
     else:
         raise SystemExit(f"unknown phase {phase}")
     if only:
         runs = [r for r in runs if r[2] in only]
     if profiles:
-        runs = [r for r in runs if r[1] in profiles or (r[0], r[1]) == ("B0", "CLEAN")]
-    clean0 = [r for r in runs if (r[0], r[1]) == ("B0", "CLEAN")]
-    return list(dict.fromkeys(clean0 + [r for r in runs if r not in clean0]))
+        runs = [r for r in runs if r[1] in profiles]
+    return list(dict.fromkeys(runs))
 
 
 def final_matrix(seeds, only=None) -> list:
@@ -126,7 +113,7 @@ def final_matrix(seeds, only=None) -> list:
     * channel BLACKOUT with MEDIUM-ALL sensors (B2 must fall back to B0)."""
     scen = tuple(only) if only else FINAL_SCENARIOS
     runs = []
-    for sc in scen:                                 # CLEAN first: B0 CLEAN fixes the deadline of every degraded run
+    for sc in scen:
         runs += [(proto, "CLEAN", sc, s) for proto in ("B0", "B2_CLEAN") for s in seeds]
     for sc in scen:
         for prof, lvl in (("LOW-ALL", "LOW"), ("MEDIUM-ONE", "MEDIUM"), ("MEDIUM-SUBSET", "MEDIUM"), ("MEDIUM-ALL", "MEDIUM")):
@@ -160,21 +147,8 @@ def worker(args) -> int:
         cfg = dataclasses.replace(DEFAULT, beacon=BeaconConfig(mode="ACOUSTIC_RB", channel=args.protocol[3:]))
     d = Path(args.run_dir)
     prof, _, scope = args.profile.partition("-")
-    terminal = None
-    if args.terminal:
-        from holo_fleet.referee.robustness_metrics import load_reference
-
-        terminal = {"reference": load_reference(DEMOS / args.scenario)}
-        if prof != "CLEAN":
-            # the deadline of every protocol comes from the B0 CLEAN runs (one success criterion for B0 and B2)
-            t_clean = clean_completion(Path(args.run_dir).parents[3] / "B0", args.scenario)
-            if t_clean is None:
-                print(f"no successful CLEAN run of {args.scenario} under {Path(args.run_dir).parents[2]}: run CLEAN "
-                      "first (it fixes the deadline)", file=sys.stderr)
-                return 5
-            from holo_fleet.referee.terminal import deadline_s
-
-            terminal["deadline_s"] = deadline_s(t_clean)
+    # criteria v3 (referee/criteria.py): a-priori requirements, deadline from the plan and the protocol bounds
+    terminal = {"profile": args.profile} if args.terminal else None
     runner.run(args.scenario, d.parent, headless=True, run_id=d.name, frame_every_s=float("inf"), cfg=cfg,
                noise=profile(prof), seed=args.seed, noise_drones=scope_drones(args.scenario, scope) if scope else None,
                terminal=terminal)
@@ -427,10 +401,10 @@ def engine_info(d: Path) -> dict:
         return None
 
 
-def finish(d: Path, reference) -> dict:
+def finish(d: Path, profile: str) -> dict:
     from holo_fleet.referee.robustness_metrics import analyze_run
 
-    res = analyze_run(d, reference)
+    res = analyze_run(d, profile=profile)
     for f in d.glob("drone_*_state.jsonl"):
         with open(f, "rb") as src, gzip.open(str(f) + ".gz", "wb", compresslevel=6) as dst:
             shutil.copyfileobj(src, dst)
@@ -447,7 +421,7 @@ def main() -> int:
     ap.add_argument("--raw", default=str(RAW))
     ap.add_argument("--seeds", type=int, nargs="*", default=list(SEEDS))
     ap.add_argument("--only", nargs="*")
-    ap.add_argument("--profiles", nargs="*", help="profile labels (e.g. CLEAN MEDIUM-ALL); B0 CLEAN is always kept")
+    ap.add_argument("--profiles", nargs="*", help="profile labels (e.g. CLEAN MEDIUM-ALL)")
     ap.add_argument("--protocols", nargs="*", help="--phase targeted: protocols (e.g. B0 B2_CLEAN)")
     ap.add_argument("--dry-run", action="store_true")
     ap.add_argument("--max-runs", type=int, default=0)
@@ -476,7 +450,6 @@ def main() -> int:
     if args.worker:
         return worker(args)
 
-    from holo_fleet.referee.robustness_metrics import load_reference
     from holo_fleet.sim.scenarios import SCENARIOS
 
     from holo_fleet.sim import holoocean_setup as hs
@@ -507,7 +480,6 @@ def main() -> int:
         log.write(msg + "\n")
         log.flush()
 
-    refs = {}
     done = 0
     version = code_version()
     if args.phase == "final" and version["dirty_files"]:
@@ -523,12 +495,10 @@ def main() -> int:
         if lock is None:
             say(f"{time.strftime('%H:%M:%S')} {protocol} {prof} {sc} s{seed}: claimed by another orchestrator, skipped")
             continue
-        if sc not in refs:
-            refs[sc] = load_reference(DEMOS / sc)
-        dur = SCENARIOS[sc](__import__("holo_fleet.config", fromlist=["DEFAULT"]).DEFAULT).duration_s
-        from holo_fleet.referee.terminal import clean_horizon_s
+        from holo_fleet.config import DEFAULT
+        from holo_fleet.referee.criteria import deadline_v3
 
-        dur = clean_horizon_s(dur)
+        dur = deadline_v3(SCENARIOS[sc](DEFAULT), DEFAULT, prof)
         res, attempt = None, 0
         while attempt <= args.retries:
             attempt += 1
@@ -547,7 +517,7 @@ def main() -> int:
                 code = watch(proc, d, dur, args, seen)
             killed = reap(proc.pid, before)
             wall = round(time.time() - t0, 1)
-            res = finish(d, refs[sc]) if (d / "run_status.json").exists() else {"class": "INVALID", "invalid_reason": "no run dir"}
+            res = finish(d, prof) if (d / "run_status.json").exists() else {"class": "INVALID", "invalid_reason": "no run dir"}
             res.update({"protocol": protocol, "profile": prof, "scenario": sc, "seed": seed, "exit_code": code,
                         "wall_s": wall, "attempt": attempt, "reaped_holodeck": killed, "host_load_at_start": host,
                         "code_version": version, "engine_build": build, "config_sha256": config_hash(d),
