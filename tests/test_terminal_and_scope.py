@@ -174,3 +174,13 @@ def test_degraded_drones_are_deterministic_and_nested(camp):
         lost = {f["drone"] for f in SCENARIOS[sc](DEFAULT).sim.faults if f.get("t_off") is None}
         assert f"drone_{one[0]}" not in lost                        # ONE is always a healthy drone
         assert camp.scope_drones(sc, "ONE") == one                    # same choice every time
+
+
+def test_online_and_offline_monitors_share_t_nom():
+    import inspect
+
+    from holo_fleet import runner
+    sc = SCENARIOS["gate_single"](DEFAULT)
+    assert TerminalMonitor(sc, DEFAULT, sc.sim.names, 300.0).t_nom == criteria.nominal_end_s(sc)
+    src = inspect.getsource(runner.run)
+    assert "t_nom = nominal_end_s(sc)" in src             # the same planned end as the offline replay

@@ -38,6 +38,18 @@ def _jsonable(x):
     return str(x)
 
 
+def _error_status(exc: BaseException, t: float) -> Dict:
+    """Run status of an exception: SUT when a frame of the drones' own code (control, perception, automaton) is on
+    the traceback, INFRA otherwise (simulator, transport)."""
+    import traceback
+
+    frames = traceback.extract_tb(exc.__traceback__)
+    sut = any(any(part in f.filename.replace("\\", "/") for part in ("holo_fleet/control/", "holo_fleet/perception/",
+                                                                     "holo_fleet/ha/")) for f in frames)
+    return {"status": "ERROR", "error_kind": "SUT" if sut else "INFRA", "error": repr(exc), "t": round(float(t), 2),
+            "traceback": "".join(traceback.format_exception(type(exc), exc, exc.__traceback__))}
+
+
 def beacon_identities(plans, names, plan) -> dict:
     """Pinger code (drone index) -> slot, for the receiver flying ``plan``: only the drones of its own formation (the
     plans built for one formation share its path).  Slot indices restart in every formation, so a code of another
@@ -62,10 +74,10 @@ def run(name: str, out_root: Path, headless: bool = True, run_id: Optional[str] 
     sc.sim.noise_drones = None if noise_drones is None else tuple(int(k) for k in noise_drones)
     monitor = None
     if terminal is not None:
-        from holo_fleet.referee.criteria import deadline_v3
+        from holo_fleet.referee.criteria import deadline_v3, nominal_end_s
         from holo_fleet.referee.terminal import TerminalMonitor
 
-        t_nom = float(sc.duration_s)
+        t_nom = nominal_end_s(sc)                   # the planned end: the same T_nom as the offline replay
         duration = float(terminal.get("deadline_s") or deadline_v3(sc, cfg, terminal.get("profile")))
         sc.sim.duration_s = duration                # noise windows, stress and logs cover the whole horizon
     run_id = run_id or name
@@ -87,10 +99,19 @@ def run(name: str, out_root: Path, headless: bool = True, run_id: Optional[str] 
         finally:
             sim.close()
         raise
-    ctrls = {p.drone_id: DroneController(p, cfg) for p in sc.plans}
-    if cfg.beacon.enabled:            # pre-mission knowledge: the static beacon identity of every slot's drone
-        for p in sc.plans:
-            ctrls[p.drone_id].perception.acoustic.set_identities(beacon_identities(sc.plans, sim.names, p))
+    try:                              # the drones' own construction: an error here is the system under test's
+        ctrls = {p.drone_id: DroneController(p, cfg) for p in sc.plans}
+        if cfg.beacon.enabled:        # pre-mission knowledge: the static beacon identity of every slot's drone
+            for p in sc.plans:
+                ctrls[p.drone_id].perception.acoustic.set_identities(beacon_identities(sc.plans, sim.names, p))
+    except Exception as exc:  # noqa: BLE001 - recorded, then propagated
+        (out / "run_status.json").write_text(json.dumps(_error_status(exc, 0.0)), encoding="utf-8")
+        try:
+            if ui is not None and hasattr(ui, "close"):
+                ui.close()
+        finally:
+            sim.close()
+        raise
     audit = SensorAudit(sim.names, cfg, DT)
     truth_prev = None
     tmpl = sc.template.offsets() if sc.template is not None else None
@@ -188,13 +209,7 @@ def run(name: str, out_root: Path, headless: bool = True, run_id: Optional[str] 
     except KeyboardInterrupt:
         status = {"status": "INCOMPLETE", "reason": "interrupted by the user", "t": sim.t}
     except Exception as exc:  # noqa: BLE001 - classified, recorded and not hidden as an infrastructure failure
-        import traceback
-
-        frames = traceback.extract_tb(exc.__traceback__)
-        sut = any(any(part in f.filename.replace("\\", "/") for part in ("holo_fleet/control/", "holo_fleet/perception/",
-                                                                         "holo_fleet/ha/")) for f in frames)
-        status = {"status": "ERROR", "error_kind": "SUT" if sut else "INFRA", "error": repr(exc), "t": sim.t,
-                  "traceback": traceback.format_exc()}
+        status = _error_status(exc, sim.t)
         # recorded before the exception propagates: an error of the drones' own code is a failure of the system
         # under test (robustness_metrics: SUT_ERROR), not an infrastructure problem to retry
         (out / "run_status.json").write_text(json.dumps(status), encoding="utf-8")

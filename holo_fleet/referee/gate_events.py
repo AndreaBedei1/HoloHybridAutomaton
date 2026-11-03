@@ -103,8 +103,9 @@ def gate_events(t: np.ndarray, gf: np.ndarray, states: Sequence[Sequence[Dict]],
             if i and committed[i, k] and not committed[i - 1, k]:
                 e3 += int(other_in[i, k])
             entry = g.get("entry")
-            if entry is not None:
+            if "entry" in g:                           # the software logs stage 2 (N6: even if never reached)
                 stage2_logged = True
+            if entry is not None:
                 if entry == "ADMIT" and prev_entry != "ADMIT":
                     e4 += int(other_in[i, k])
                 if entry == "HOLD" and prev_entry != "HOLD":
@@ -152,8 +153,9 @@ def gate_events(t: np.ndarray, gf: np.ndarray, states: Sequence[Sequence[Dict]],
         L = abs(float(p["queue_lateral"])) + G.exit_s - float(p["queue_s"])
         budget[k] = L / G.v_pass + T_release
         for a, b, _op in _intervals(committed[:, k], t):
-            if b - a > budget[k] and not (k in passed and a <= passed[k] <= b + 1.0):
-                committed_viol.append((k, a, b))
+            end = passed[k] if (k in passed and a <= passed[k] <= b + 1.0) else b
+            if end - a > budget[k]:                     # slow passages count too, not only the ones that never end
+                committed_viol.append((k, a, end))
     w = list(wait.values())
     return {"E1": {**{key: round(v, 1) for key, v in e1.items()},
                    "false_free_frac": round(e1["false_free_s"] / e1["queued_s"], 4) if e1["queued_s"] else None,

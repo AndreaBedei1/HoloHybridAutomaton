@@ -99,3 +99,17 @@ def test_committed_drone_that_never_passes_is_a_stall():
         st[1][i]["committed"] = True
     ev = gate_events(t, gf, st, [0, 1], "g", PLANS, DEFAULT)
     assert ev["stalled"] and ev["E8"]["committed_stalls"][0][0] == 1
+
+
+def test_a_slow_committed_passage_violates_the_crossing_budget():
+    L = abs(PLANS[1]["queue_lateral"]) + G.exit_s - PLANS[1]["queue_s"]
+    budget = L / G.v_pass + G.t_occ_max + G.t_clear
+    t, gf, st = _trace(T=budget + 40.0)
+    gf[:, 1, :] = [-1.9, 0.0, 0.0]
+    i_in, i_out = np.searchsorted(t, budget + 20.0), np.searchsorted(t, budget + 25.0)
+    gf[i_in:i_out, 1, :] = [0.0, 0.0, 0.0]               # finally through the CR ...
+    gf[i_out:, 1, :] = [G.exit_s + 1.0, 0.0, 0.0]        # ... and beyond the exit, long after the budget
+    for i in range(i_out):
+        st[1][i]["committed"] = True
+    ev = gate_events(t, gf, st, [0, 1], "g", PLANS, DEFAULT)
+    assert 1 in ev["E8"]["passed"] and ev["stalled"] and ev["E8"]["committed_stalls"][0][0] == 1

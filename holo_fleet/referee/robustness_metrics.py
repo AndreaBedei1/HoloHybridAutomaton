@@ -23,8 +23,9 @@ and the run class of criteria v3 (referee/criteria.py):
 Every metric is judged on the replay's horizon [0, t_end] (the v3 stop), so a historical run is not judged on the
 longer v2 log for some quantities and on the v3 stop for others.
 
-The requirements are a-priori (mission plan and protocol bounds), the same for every protocol, profile and cell; v2
-took them from the scenario's committed CLEAN reference run.
+The requirements are a-priori (mission plan, protocol bounds, profile definitions) and the same for every protocol;
+the deadline's FAILSAFE term depends on the sensor profile (criteria.failsafe_allowance_s).  v2 took the requirements
+from the scenario's committed CLEAN reference run.
 """
 
 from __future__ import annotations
@@ -45,7 +46,7 @@ from holo_fleet.referee.gate_events import gate_events
 DEADLOCK_S = 20.0         # v2 report only (deadlock_events); the v3 stall detector is referee/gate_events.py
 CHATTER_S = 1.0           # A -> B -> A within this = one chattering event
 CLASSES = ("PASS", "SAFE_DEGRADED", "INCOMPLETE", "STALLED", "SPEC_VIOLATION", "UNSAFE_ACTION", "SAFETY_FAILURE",
-           "SUT_ERROR", "CENSORED", "INVALID")
+           "SUT_ERROR", "CENSORED", "REPLAY_MISMATCH", "INVALID")
 AVOID = ("SEPARATION_WARNING", "COLLISION_AVOIDANCE")
 FS = "FAILSAFE_HOLD_OR_RETREAT"
 KEEPING = ("FORMATION_FOLLOW", "FORMATION_WAIT_REJOIN", "DEGRADED_FORMATION")
@@ -340,7 +341,9 @@ def analyze_run(run_dir: Path, reference: Optional[Dict] = None, cfg=DEFAULT, pr
     noisy = set(rc.get("noise_drones") or []) if rc.get("noise") else set()
     fs_end = [k for k in healthy if m and modes[-1, k] == FS and "sensor_fault" in fs_last.get(names[k], "")]
     caused = _degradation_explains(term, mon, ref3, P, fs_end, healthy) if (fs_end and set(fs_end) <= noisy) else False
-    if not safe:
+    if term.get("replay_consistent") is False:
+        cls = "REPLAY_MISMATCH"                # the offline replay disagrees with the online stop: not judged
+    elif not safe:
         cls = "SAFETY_FAILURE"
     elif unsafe_action:
         cls = "UNSAFE_ACTION"
