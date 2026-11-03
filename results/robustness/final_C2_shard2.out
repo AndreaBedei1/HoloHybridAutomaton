@@ -1,0 +1,23 @@
+phase final: 112 runs, 19 done, 93 to do
+shard 2/3: 30 runs
+23:53:35 phase final start: orchestrator pid 82956, shard 2/3, code {'sha': 'c86052f476e3ceea6b45c2eb3c0515c10490fb5f', 'dirty_files': []}, engine {'patched_root': 'F:\\Andrea\\holoocean_patched_root', 'patch_info': {'patch': 'sonar-octree-rebuild', 'source': 'F:\\Andrea\\holoocean-octree-patch (branch sonar-octree-rebuild)', 'source_commit': 'a8d3070', 'holoocean': '2.3.0', 'unreal': '5.3.2', 'exe_sha256': 'A5E9AA1FB7756C06B83AF3A0896E42E6188F0390DD7A3D3D6E6E0532549FA028', 'built': '2026-10-07T23:52:04', 'reinstalled': '2026-10-22T19:04:11'}, 'binaries': {'Holodeck.exe': '9da866558fe302bd11d7f8ca01229254e2413eb9accece42dd03112f77d032dc', 'Holodeck\\Binaries\\Win64\\Holodeck.exe': 'a5e9aa1fb7756c06b83af3a0896e42e6188f0390dd7a3d3d6e6e0532549fa028'}}
+23:54:55 B2_CLEAN CLEAN                  formation_recovery_head_current  s0 PASS             P1 3.264 fail [] wall 77.9s exit 0
+23:59:49 B2_CLEAN CLEAN                  integrated_short                 s0 PASS             P1 3.279 fail [] wall 287.3s exit 0
+00:02:01 B2_CLEAN CLEAN                  mutex_deadlock_resolution        s0 PASS             P1 3.423 fail [] wall 125.9s exit 0
+00:03:08 B0 MEDIUM-ALL             p1_head_on                       s0 PASS             P1 3.773 fail [] wall 60.3s exit 0
+00:04:10 B2_BLACKOUT CLEAN                  p1_head_on                       s0 PASS             P1 4.037 fail [] wall 56.0s exit 0
+00:05:34 B2_MEDIUM MEDIUM-ALL             p1_vertical_escape               s0 PASS             P1 2.799 fail [] wall 77.5s exit 0
+00:07:31 B2_BLACKOUT MEDIUM-ALL             p1_vertical_escape               s0 PASS             P1 2.797 fail [] wall 110.9s exit 0
+00:08:53 B2_MEDIUM CLEAN                  p1_two_lines                     s0 PASS             P1 2.689 fail [] wall 75.5s exit 0
+00:10:08 B0 MEDIUM-ALL             p1_close_encounter               s0 PASS             P1 2.862 fail [] wall 69.0s exit 0
+00:11:22 B2_BLACKOUT CLEAN                  p1_close_encounter               s0 PASS             P1 3.081 fail [] wall 68.5s exit 0
+00:12:42 B2_MEDIUM MEDIUM-ALL             formation_triangle               s0 PASS             P1 4.434 fail [] wall 74.0s exit 0
+00:14:02 B2_BLACKOUT MEDIUM-ALL             formation_triangle               s0 PASS             P1 4.477 fail [] wall 73.7s exit 0
+00:15:26 B2_MEDIUM CLEAN                  formation_square                 s0 PASS             P1 3.332 fail [] wall 77.2s exit 0
+00:16:54 B0 MEDIUM-ALL             formation_six                    s0 PASS             P1 3.375 fail [] wall 82.2s exit 0
+00:18:20 B2_BLACKOUT CLEAN                  formation_six                    s0 PASS             P1 3.457 fail [] wall 79.6s exit 0
+00:20:23 B2_MEDIUM MEDIUM-ALL             formation_recovery_head_current  s0 PASS             P1 3.243 fail [] wall 116.2s exit 0
+00:22:14 B2_BLACKOUT MEDIUM-ALL             formation_recovery_head_current  s0 PASS             P1 3.189 fail [] wall 104.9s exit 0
+00:24:12 B2_MEDIUM CLEAN                  formation_gust                   s0 PASS             P1 2.704 fail [] wall 111.1s exit 0
+00:30:51 B0 MEDIUM-ALL             gate_single                      s0 SAFE_DEGRADED    P1 3.163 fail ['progress', 'gate_completed', 'P3_recovered', 'terminal_success'] wall 392.0s exit 0
+00:33:17 B2_BLACKOUT CLEAN                  gate_single                      s0 PASS             P1 3.248 fail [] wall 140.3s exit 0

@@ -1,0 +1,19 @@
+phase targeted: 48 runs, 0 done, 48 to do
+shard 0/3: 16 runs
+23:10:49 phase targeted start: orchestrator pid 63084, shard 0/3, code {'sha': '1a1487281ae0f7b52a4dc9543741b3ce3b3447c5', 'dirty_files': []}, engine {'patched_root': 'F:\\Andrea\\holoocean_patched_root', 'patch_info': {'patch': 'sonar-octree-rebuild', 'source': 'F:\\Andrea\\holoocean-octree-patch (branch sonar-octree-rebuild)', 'source_commit': 'a8d3070', 'holoocean': '2.3.0', 'unreal': '5.3.2', 'exe_sha256': 'A5E9AA1FB7756C06B83AF3A0896E42E6188F0390DD7A3D3D6E6E0532549FA028', 'built': '2026-10-07T23:52:04', 'reinstalled': '2026-10-22T19:04:11'}, 'binaries': {'Holodeck.exe': '9da866558fe302bd11d7f8ca01229254e2413eb9accece42dd03112f77d032dc', 'Holodeck\\Binaries\\Win64\\Holodeck.exe': 'a5e9aa1fb7756c06b83af3a0896e42e6188f0390dd7a3d3d6e6e0532549fa028'}}
+23:11:41 B0 CLEAN                  p1_head_on                       s0 PASS             P1 4.026 fail [] wall 50.9s exit 0
+23:13:05 B0 CLEAN                  p1_vertical_escape               s0 PASS             P1 2.735 fail [] wall 77.7s exit 0
+23:14:16 B0 CLEAN                  p1_two_lines                     s0 PASS             P1 2.651 fail [] wall 64.3s exit 0
+23:15:29 B0 CLEAN                  p1_close_encounter               s0 PASS             P1 2.842 fail [] wall 67.6s exit 0
+23:16:51 B0 CLEAN                  formation_triangle               s0 PASS             P1 4.61 fail [] wall 75.3s exit 0
+23:18:15 B0 CLEAN                  formation_square                 s0 PASS             P1 3.469 fail [] wall 77.8s exit 0
+23:19:48 B0 CLEAN                  formation_six                    s0 PASS             P1 3.454 fail [] wall 86.3s exit 0
+23:21:18 B0 CLEAN                  formation_recovery_head_current  s0 PASS             P1 3.242 fail [] wall 84.1s exit 0
+23:22:54 B0 CLEAN                  formation_gust                   s0 PASS             P1 2.743 fail [] wall 89.8s exit 0
+23:27:10 B0 CLEAN                  gate_single                      s0 PASS             P1 3.271 fail [] wall 249.1s exit 0
+23:31:15 B0 CLEAN                  integrated_short                 s0 PASS             P1 3.298 fail [] wall 238.2s exit 0
+23:33:04 B0 CLEAN                  lost_drone_rejoin                s0 PASS             P1 3.376 fail [] wall 102.5s exit 0
+23:35:20 B0 CLEAN                  lost_drone_timeout               s0 PASS             P1 3.346 fail [] wall 130.1s exit 0
+23:37:34 B0 CLEAN                  mutex_deadlock_resolution        s0 PASS             P1 3.424 fail [] wall 127.4s exit 0
+23:41:02 B0 CLEAN                  line_parallel_mutex              s0 PASS             P1 3.241 fail [] wall 200.9s exit 0
+23:42:59 B0 CLEAN                  lost_drone_mutex                 s0 PASS             P1 3.008 fail [] wall 110.6s exit 0
