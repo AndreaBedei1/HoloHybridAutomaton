@@ -132,6 +132,31 @@ def run_dir(raw: Path, protocol: str, prof: str, sc: str, seed: int) -> Path:
     return raw / protocol / prof / sc / f"s{seed}"
 
 
+def archive_attempt(d: Path, raw: Path) -> Optional[Path]:
+    """Retain invalid/interrupted evidence before retrying; never overwrite the previous worker log."""
+    raw, d = raw.resolve(), d.resolve()
+    if not d.is_relative_to(raw):
+        raise ValueError("run directory is outside its raw root")
+    log = d.parent / f"{d.name}_worker.log"
+    if not d.exists() and not log.exists():
+        return None
+    archive = (raw / "_attempts" / d.relative_to(raw) / str(time.time_ns())).resolve()
+    if not archive.is_relative_to(raw):
+        raise ValueError("attempt archive is outside its raw root")
+    archive.parent.mkdir(parents=True, exist_ok=True)
+    if d.exists():
+        d.rename(archive)
+    else:
+        archive.mkdir()
+    if log.exists():
+        target, suffix = archive / "worker.log", 0
+        while target.exists():
+            suffix += 1
+            target = archive / f"worker_pending_{suffix}.log"
+        log.rename(target)
+    return archive
+
+
 def worker(args) -> int:
     """One run, in this (fresh) process."""
     from holo_fleet import runner
@@ -518,8 +543,9 @@ def main() -> int:
         res, attempt = None, 0
         while attempt <= args.retries:
             attempt += 1
-            if d.exists():
-                shutil.rmtree(d)
+            archived = archive_attempt(d, raw)
+            if archived is not None and res is not None:
+                (archived / "attempt_metrics.json").write_text(json.dumps(res, indent=1, default=str), encoding="utf-8")
             d.parent.mkdir(parents=True, exist_ok=True)
             host = wait_for_memory(args, say)
             before = holodeck_pids()

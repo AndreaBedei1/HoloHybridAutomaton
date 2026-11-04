@@ -109,6 +109,32 @@ def test_untracked_code_prevents_clean_provenance(camp, tmp_path, monkeypatch):
     assert camp.code_version()["dirty_files"] == ["new.py"]
 
 
+def test_retry_preserves_run_and_worker_log(camp, tmp_path):
+    d = tmp_path / "B2_CLEAN/CLEAN/gate_single/s0"
+    d.mkdir(parents=True)
+    (d / "unique.jsonl").write_bytes(b"unique evidence\n")
+    (d / "worker.log").write_bytes(b"prior worker evidence\n")
+    (d / "worker_pending_1.log").write_bytes(b"older pending evidence\n")
+    log = d.parent / "s0_worker.log"
+    log.write_bytes(b"native exit evidence\n")
+    archived = camp.archive_attempt(d, tmp_path)
+    assert (archived / "unique.jsonl").read_bytes() == b"unique evidence\n"
+    assert (archived / "worker.log").read_bytes() == b"prior worker evidence\n"
+    assert (archived / "worker_pending_1.log").read_bytes() == b"older pending evidence\n"
+    assert (archived / "worker_pending_2.log").read_bytes() == b"native exit evidence\n"
+    assert not d.exists() and not log.exists()
+
+
+def test_retry_cannot_move_evidence_outside_its_raw_root(camp, tmp_path):
+    raw = tmp_path / "raw"
+    outside = tmp_path / "foreign/s0"
+    outside.mkdir(parents=True)
+    (outside / "evidence").write_bytes(b"keep")
+    with pytest.raises(ValueError, match="outside"):
+        camp.archive_attempt(outside, raw)
+    assert (outside / "evidence").read_bytes() == b"keep"
+
+
 def test_no_cpu_threshold_before_a_run(camp, monkeypatch):
     """A busy machine only makes a run slower: the admission waits for memory only, never for CPU."""
     import psutil

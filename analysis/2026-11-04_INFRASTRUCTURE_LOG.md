@@ -141,3 +141,9 @@ The gate result is consistent with the single-instance probes (minima 3.248..3.2
 observations do not estimate run-to-run distributions or establish zero impact on unrelated workloads.
 Per the user's steering, proceed to Issue 3 with the validated two-slot configuration. The default remains one;
 development campaign processes explicitly select two, with the hard project cap unchanged.
+
+Follow-up: retries now move prior INVALID/interrupted data and all pending worker logs into a unique `_attempts`
+directory under the raw root, instead of deleting them. Both move endpoints are resolved/checked inside that root.
+The independent review found a fallback log-name collision; an unused numbered name and a three-log preservation
+regression address it. Targeted campaign unit file: 8 passed. `psutil`, already installed/used, is now declared as
+a runtime dependency because the guarded launcher requires it.
