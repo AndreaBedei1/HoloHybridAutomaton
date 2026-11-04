@@ -13,6 +13,10 @@ supersede the historical entries below. Starting head: `466037b`, branch `b2-con
   corrections, formal obligations and independent review. Repetitions use separate raw roots, not different seeds.
 - Next: Issues 4, 1, 2; remaining referee/default/documentation items; full formal rerun; freeze; final campaign/report.
   No final campaign, freeze or main merge has occurred. The withdrawn fit and flow-only retreat remain withdrawn.
+- Checkpoint: account usage reached 92% of its 5-hour window, above the required 90% stop. Agent work stops;
+  the two already-authorized baseline scripts remain active under the shared cap. Resume from
+  `2026-11-04_ISSUE3_DESIGN_AND_FINDINGS.md`, inspect current ownership before any new simulation, and verify the
+  independent criteria findings in `2026-11-04_CRITERIA_REVIEW.md` before freeze.
 
 Evidence and review decisions: `2026-11-04_INFRASTRUCTURE_LOG.md`. The older implementation notes below are retained
 as history; in particular their original G.4 claims were withdrawn, as the later review section records.
