@@ -29,6 +29,22 @@ def reserve_trace_port():
         return None
 
 
+def _acquire_waiting():
+    """Take a project engine slot, waiting (scheduling only) up to HOLO_FLEET_SLOT_WAIT_S seconds for one to free up:
+    a worker started while the slots are held by another run of ours waits instead of failing INVALID."""
+    import time
+
+    wait = float(os.environ.get("HOLO_FLEET_SLOT_WAIT_S", "0"))    # the orchestrator sets it for its workers
+    t0 = time.monotonic()
+    while True:
+        try:
+            return EngineLease().acquire()
+        except RuntimeError as exc:
+            if "slots are busy" not in str(exc) or time.monotonic() - t0 >= wait:
+                raise
+            time.sleep(5.0)
+
+
 def make(*, clear_cache=False, **kwargs):
     """Keep the native environment API; all project launchers must use this entry point."""
     with _MAKE_LOCK, startup_lock():
@@ -36,7 +52,7 @@ def make(*, clear_cache=False, **kwargs):
         import holoocean
         from holoocean import environments, holoocean as hmake
 
-        lease = EngineLease().acquire()
+        lease = _acquire_waiting()
         reservation = None
         env = None
         try:

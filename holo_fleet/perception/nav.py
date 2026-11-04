@@ -106,7 +106,7 @@ class NavBound:
     The sum of worst cases of independent terms (no cancellation assumed).  It is an envelope assumption like the
     acoustic one: a sensor fault outside the declared envelope (a larger compass bias - the HIGH profile's 4 deg
     exceeds the declared 3 deg -, a DVL that reports wrong velocities) violates it; every run logs the bound
-    against the true error (referee: nav-bound coverage)."""
+    against the true error (the evaluation's nav-bound coverage)."""
 
     DVL_STALE_S = 0.15                       # one 10 Hz DVL sample plus jitter: older means the velocity is held
 

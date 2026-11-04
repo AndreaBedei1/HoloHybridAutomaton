@@ -582,7 +582,7 @@ def main() -> int:
                    str(seed), "--protocol", protocol, "--run-dir", str(d)] + (["--allow-unpatched"] if args.allow_unpatched else [])                 + ["--terminal"]
             with open(d.parent / f"{d.name}_worker.log", "w", encoding="utf-8") as wl:
                 proc = subprocess.Popen(cmd, stdout=wl, stderr=subprocess.STDOUT, cwd=str(ROOT),
-                                        env={**os.environ, "PYTHONUNBUFFERED": "1"})
+                                        env={**os.environ, "PYTHONUNBUFFERED": "1", "HOLO_FLEET_SLOT_WAIT_S": os.environ.get("HOLO_FLEET_SLOT_WAIT_S", "900")})
                 import psutil
                 try:
                     seen["worker_created"] = psutil.Process(proc.pid).create_time()
