@@ -428,6 +428,22 @@ def lost_drone_mutex(cfg: FleetConfig = DEFAULT) -> Scenario:
     return sc
 
 
+def gate_stalled_occupant(cfg: FleetConfig = DEFAULT) -> Scenario:
+    """gate_single (the same 3 drones, gate, current and plan) with the first drone to pass losing its thrusters for
+    good once its centre is in the second half of the critical region: a stalled occupant (plan G.3/H.2).  The
+    onset is a ground-truth condition of the simulator, fixed before any run; no controller sees it.  Pre-registered
+    acceptance (docs/ACCEPTANCE_CRITERIA.md): P1 and P2 hold and no unsafe action (E2.to_free = E3 = E4 = E5 = 0);
+    the other drones cannot pass a physically blocked gate, so the mission requirements are not expected."""
+    sc = gate_single(cfg)
+    sc.name, sc.title = "gate_stalled_occupant", "P2: a drone stalls inside the critical region of G06"
+    sc.description = ("gate_single; the first drone loses its thrusters for good in the middle of the critical region. "
+                      "The others must never enter it.")
+    sc.focus = "stalled occupant: occupancy latch, heard-inside veto, stage-2 hold, unknown occupant never FREE"
+    sc.sim.faults = ({"drone": "drone_0", "type": "THRUSTER_FAILURE", "t_on": 1e9, "t_off": None,
+                      "trigger": "mid_cr:G06"},)
+    return sc
+
+
 SCENARIOS: Dict[str, Callable[..., Scenario]] = {
     "p1_head_on": p1_head_on,
     "p1_vertical_escape": p1_vertical_escape,
@@ -445,4 +461,5 @@ SCENARIOS: Dict[str, Callable[..., Scenario]] = {
     "mutex_deadlock_resolution": mutex_deadlock_resolution,
     "line_parallel_mutex": line_parallel_mutex,
     "lost_drone_mutex": lost_drone_mutex,
+    "gate_stalled_occupant": gate_stalled_occupant,
 }

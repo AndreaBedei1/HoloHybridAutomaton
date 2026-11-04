@@ -9,8 +9,10 @@ from holo_fleet.sim.scenarios import SCENARIOS
 EXPECTED = {"p1_head_on": 2, "p1_vertical_escape": 4, "p1_two_lines": 6, "p1_close_encounter": 2,
             "formation_triangle": 3, "formation_square": 4, "formation_six": 6, "formation_recovery_head_current": 4,
             "formation_gust": 4, "gate_single": 3, "integrated_short": 3, "lost_drone_rejoin": 4,
-            "lost_drone_timeout": 4, "mutex_deadlock_resolution": 3, "line_parallel_mutex": 3, "lost_drone_mutex": 3}
-GATE_SCENARIOS = ("gate_single", "integrated_short", "mutex_deadlock_resolution", "line_parallel_mutex", "lost_drone_mutex")
+            "lost_drone_timeout": 4, "mutex_deadlock_resolution": 3, "line_parallel_mutex": 3, "lost_drone_mutex": 3,
+            "gate_stalled_occupant": 3}
+GATE_SCENARIOS = ("gate_single", "integrated_short", "mutex_deadlock_resolution", "line_parallel_mutex", "lost_drone_mutex",
+                  "gate_stalled_occupant")
 
 
 def test_catalogue_is_small_and_short():

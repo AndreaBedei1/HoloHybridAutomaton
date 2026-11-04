@@ -44,7 +44,7 @@ SEEDS = (0, 1, 2)
 ALL_SCENARIOS = ("p1_head_on", "p1_vertical_escape", "p1_two_lines", "p1_close_encounter", "formation_triangle",
                  "formation_square", "formation_six", "formation_recovery_head_current", "formation_gust", "gate_single",
                  "integrated_short", "lost_drone_rejoin", "lost_drone_timeout", "mutex_deadlock_resolution",
-                 "line_parallel_mutex", "lost_drone_mutex")
+                 "line_parallel_mutex", "lost_drone_mutex", "gate_stalled_occupant")
 PY = sys.executable
 
 
@@ -67,7 +67,8 @@ def scope_drones(scenario: str, scope: str) -> list:
         return list(range(n))
     lost = {f["drone"] for f in getattr(sc.sim, "faults", ()) or () if f.get("t_off") is None}
     healthy = [k for k in range(n) if sc.sim.names[k] not in lost]
-    rows = list(csv.DictReader(open(DEMOS / scenario / "referee_timeseries.csv", encoding="utf-8")))
+    ref_name = "gate_single" if scenario == "gate_stalled_occupant" else scenario   # same geometry and plan
+    rows = list(csv.DictReader(open(DEMOS / ref_name / "referee_timeseries.csv", encoding="utf-8")))
     P = np.array([[[float(r[f"{a}{k}"]) for a in "xyz"] for k in range(n)] for r in rows])
     bars = [b for st in sc.plans[0].structures for b in st.bars]
     near = np.full(n, 1e9)
@@ -93,6 +94,8 @@ def plan(phase: str, seeds, only=None, protocols=None, profiles=None):
     ``final``: the campaign matrix; ``targeted``: --only scenarios x --protocols x --profiles (targeted validation)."""
     if phase == "final":
         runs = final_matrix(seeds, only)
+    elif phase == "b2final":
+        runs = b2_final_matrix(only)
     elif phase == "targeted":
         if not (only and protocols and profiles):
             raise SystemExit("--phase targeted needs --only, --protocols and --profiles")
@@ -126,6 +129,27 @@ def final_matrix(seeds, only=None) -> list:
 
 
 FINAL_SCENARIOS = ALL_SCENARIOS
+
+# B2-only validation campaign (plan analysis/2026-11-03_B2_REVIEW_AND_PLAN.md, H.4), frozen with criteria v4
+# (docs/ACCEPTANCE_CRITERIA.md): 8 cells x (11 non-gate scenarios x 5 seeds + 6 gate scenarios x 10 seeds) = 920 runs on
+# held-out seeds (100-109) never used in development
+B2_CELLS = (("B2_CLEAN", "CLEAN"), ("B2_LOW", "LOW-ALL"), ("B2_MEDIUM", "MEDIUM-ONE"), ("B2_MEDIUM", "MEDIUM-SUBSET"),
+            ("B2_MEDIUM", "MEDIUM-ALL"), ("B2_MEDIUM", "CLEAN"), ("B2_BLACKOUT", "CLEAN"), ("B2_BLACKOUT", "MEDIUM-ALL"))
+B2_GATE_SCENARIOS = ("gate_single", "integrated_short", "mutex_deadlock_resolution", "line_parallel_mutex",
+                     "lost_drone_mutex", "gate_stalled_occupant")
+B2_NONGATE_SCENARIOS = tuple(s for s in ALL_SCENARIOS if s not in B2_GATE_SCENARIOS)
+B2_SEEDS_NONGATE = tuple(range(100, 105))
+B2_SEEDS_GATE = tuple(range(100, 110))
+
+
+def b2_final_matrix(only=None) -> list:
+    runs = []
+    for proto, prof in B2_CELLS:
+        for sc in B2_NONGATE_SCENARIOS:
+            runs += [(proto, prof, sc, s) for s in B2_SEEDS_NONGATE]
+        for sc in B2_GATE_SCENARIOS:
+            runs += [(proto, prof, sc, s) for s in B2_SEEDS_GATE]
+    return [r for r in runs if not only or r[2] in only]
 
 
 def run_dir(raw: Path, protocol: str, prof: str, sc: str, seed: int) -> Path:
@@ -461,7 +485,7 @@ def finish(d: Path, profile: str) -> dict:
 
 def main() -> int:
     ap = argparse.ArgumentParser()
-    ap.add_argument("--phase", default="final", choices=("final", "targeted"))
+    ap.add_argument("--phase", default="final", choices=("final", "targeted", "b2final"))
     ap.add_argument("--raw", default=str(RAW))
     ap.add_argument("--seeds", type=int, nargs="*", default=list(SEEDS))
     ap.add_argument("--only", nargs="*")
