@@ -435,6 +435,9 @@ def gate_stalled_occupant(cfg: FleetConfig = DEFAULT) -> Scenario:
     acceptance (docs/ACCEPTANCE_CRITERIA.md): P1 and P2 hold and no unsafe action (E2.to_free = E3 = E4 = E5 = 0);
     the other drones cannot pass a physically blocked gate, so the mission requirements are not expected."""
     sc = gate_single(cfg)
+    # no current: the stalled drone stays in the CR (the worst case for P2); with gate_single's 0.05 m/s cross
+    # current it drifts into a bar within ~20 s and leaves the region (seen in a development run, 2026-11-05)
+    sc.sim.current = CurrentField()
     sc.name, sc.title = "gate_stalled_occupant", "P2: a drone stalls inside the critical region of G06"
     sc.description = ("gate_single; the first drone loses its thrusters for good in the middle of the critical region. "
                       "The others must never enter it.")

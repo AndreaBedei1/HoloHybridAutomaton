@@ -271,6 +271,9 @@ class AcousticExit:
         for j in possible:
             if self.outside_now(g, j, t, t_lc) is None:
                 self.last["not_outside"].append(j)
+                # diagnostics: the latest fixes of j since t_lc (time, accepted, payload, clear of the CR at t)
+                self.last["fixes"] = [(round(f.t, 1), f.accepted, f.rep_reason, self.clear_of_cr(g, f, t) if f.accepted
+                                       else None) for f in self.tracker.all_fixes(j, t_lc + 1e-9, t)[-4:]]
                 return None
             f = self.outside_now(g, j, t, t_lc, beyond=True)
             if f is not None:

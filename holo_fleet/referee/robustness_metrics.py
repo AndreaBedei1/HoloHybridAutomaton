@@ -130,7 +130,8 @@ def analyze_run(run_dir: Path, reference: Optional[Dict] = None, cfg=DEFAULT, pr
     # ------------------------------------------------------------------ criteria v3: replay, then one horizon
     profile = profile or ((rc.get("terminal") or {}).get("profile")) or _profile_from_path(run_dir)
     logged = (met.get("run") or {}).get("terminal")
-    term, mon, ref3 = replay_terminal(sc, cfg, names, t, P, states, modes, profile, logged=logged)
+    edges = (met.get("P1_separation") or {}).get("collision_sensor_edges") or []
+    term, mon, ref3 = replay_terminal(sc, cfg, names, t, P, states, modes, profile, logged=logged, edges=edges)
     if term.get("t_end") is not None and m:
         m = max(1, min(m, int(np.searchsorted(t, float(term["t_end"]) + 1e-6))))
         t, P, modes, rows = t[:m], P[:m], modes[:m], rows[:m]
@@ -420,7 +421,7 @@ def _profile_from_path(run_dir: Path) -> Optional[str]:
     return None
 
 
-def replay_terminal(sc, cfg, names, t, P, states, modes, profile, logged: Optional[Dict] = None):
+def replay_terminal(sc, cfg, names, t, P, states, modes, profile, logged: Optional[Dict] = None, edges=()):
     """Replay the v3 TerminalMonitor on the logged ground truth and records: the same requirement set as the online
     stop.  A log that ends before the deadline without an outcome (a historical run stopped by criteria v2) is
     CENSORED.  For a v3 run the logged deadline is used and the replayed outcome is compared with the logged one
@@ -438,8 +439,15 @@ def replay_terminal(sc, cfg, names, t, P, states, modes, profile, logged: Option
     dl = float(logged["deadline_s"]) if v3 else deadline_v3(sc, cfg, profile)
     mon = TerminalMonitor(sc, cfg, names, dl)
     z = np.zeros((n, 3))
+    hit = {}                                     # the logged collision-sensor edges, at their own samples
+    for e in edges or ():
+        i = int(np.searchsorted(t, float(e["t"]) - 1e-6))
+        if i < m and e.get("drone") in names:
+            hit.setdefault(i, set()).add(names.index(e["drone"]))
     for i in range(m):
-        truth = SimpleNamespace(t=float(t[i]), positions=P[i], collision=np.zeros(n, bool), current_drift=z,
+        col = np.zeros(n, bool)
+        col[list(hit.get(i, ()))] = True
+        truth = SimpleNamespace(t=float(t[i]), positions=P[i], collision=col, current_drift=z,
                                 velocities=z, intruders=None, rotations=None)
         ref.update(truth, list(modes[i]))
         if mon.update(float(t[i]), P[i], ref, [states[k][i] for k in range(n)]) is not None:

@@ -70,6 +70,7 @@ def test_stalled_occupant_is_gate_single_with_a_ground_truth_mid_cr_trigger():
     assert f["drone"] == "drone_0" and f["t_off"] is None and f["t_on"] >= TRIGGER_PENDING and f["trigger"] == "mid_cr:G06"
     assert [p.queue_lateral for p in sc.plans] == [p.queue_lateral for p in ref.plans]
     assert [g.gate_id for g in sc.judged_gates] == ["G06"]
+    assert sc.sim.current.describe() == []          # no current: the stalled drone stays in the CR
 
 
 def test_currents_inside_the_envelope_except_declared_disturbances():
