@@ -21,7 +21,7 @@ def test_packet_round_trip_quantisation_and_bound_rounded_up():
     p = np.array([-20.1234, 17.276, -4.2031])
     pkt = pl.encode(7, p, 1.234)
     rep = pl.decode(pkt)
-    assert rep.frame == 7 % pl.FRAMES and len(pkt) * 8 == pl.PAYLOAD_BITS == 48
+    assert rep.frame == 7 % pl.FRAMES and len(pkt) * 8 == pl.PAYLOAD_BITS == 56
     assert np.linalg.norm(rep.p - p) <= pl.QUANT_ERR + 1e-9
     assert 1.234 + pl.QUANT_ERR <= rep.bound < 1.234 + pl.QUANT_ERR + pl.BOUND_Q
 
@@ -48,7 +48,7 @@ def test_payload_fits_the_tdma_slot_for_six_drones_and_is_refused_when_it_cannot
 
     cfg = BeaconConfig(mode="ACOUSTIC_RB")
     BeaconTransport([f"d{k}" for k in range(6)], cfg, 0)
-    with pytest.raises(ValueError):                            # 8 drones: 100 ms slots < 121 ms needed
+    with pytest.raises(ValueError):                            # 8 drones: 100 ms slots < 129 ms needed
         BeaconTransport([f"d{k}" for k in range(8)], cfg, 0)
 
 

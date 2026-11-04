@@ -389,9 +389,6 @@ class Perception:
         if corr is not None:                      # dead-reckoning drift bounded by the mapped gate (structure_aiding)
             self.nav.state.p += corr
             self.nav_bound.corrected(corr)
-        if self.aiding.loc_t == t and self.aiding.loc_u is not None:     # validated gate localization (map fix)
-            from holo_fleet.perception.structure_aiding import CONSIST_M
-            self.nav_bound.validated(self.aiding.loc_u + CONSIST_M)
         self.t_nav = t
         self.acoustic.update(t, d.get("AcousticRx"), nav.p, nav.yaw, self.nav_bound.value)   # B2 fixes
         readings = self.clf.classify(profiles, ages, nav.p, R_wb, seabed_z, tau_healthy=env.tau_max)

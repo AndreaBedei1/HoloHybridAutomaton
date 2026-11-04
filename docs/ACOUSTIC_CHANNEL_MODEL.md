@@ -5,9 +5,9 @@ This document describes the acoustic beacon of variant B2 as it is modelled in t
 ## 1. What B2 transmits
 
 - The link is **strictly one-way**. A drone emits a coded ping on a fixed TDMA schedule; nobody replies.
-- The ping carries **identity only**: the static code of the pinger, assigned by the shared mission plan. There is **no payload**.
+- The ping carries the static code of the pinger, assigned by the shared mission plan, and (since 2026-11-04, hardware assumption H6, `holo_fleet/perception/payload.py`) a 56-bit packet: the sender's ONBOARD position estimate in the shared mission frame and a conservative bound of its error. Before that date the ping carried identity only, and every earlier B2 result refers to that design.
 - There is **no handshake, no acknowledgement and no request-response**. A sender never learns whether it was heard.
-- **No position, state, priority, mode, queue, occupancy or sensor data is transmitted.** In the HoloOcean `AcousticBeaconSensor` the fourth result field is the receiver's own depth, not the sender's; nothing of the sender's state is carried (`beacon.py`).
+- **No state, priority, mode, queue, occupancy, control decision or raw sensor data is transmitted** (the payload is the navigation estimate and its bound only). In the HoloOcean `AcousticBeaconSensor` the fourth result field is the receiver's own depth, not the sender's; nothing of the sender's state is carried (`beacon.py`).
 - The receiver measures range (one-way travel time against a disciplined clock) and direction (receiving array) itself. Inter-agent communication is otherwise off (`FleetConfig.comms_enabled = False`).
 - **Hardware consequence (R3).** COTS one-way messages give a bearing only: the one-way message of the SeaTrac USBL variant delivers an incoming bearing but no range (field comment reproduced in a third-party driver header, `moosivp_seatrac_types`), and range needs a request-response exchange. Every verified commercial micro-USBL or modem is two-way or a topside short-baseline system, and none documents synchronised-clock one-way ranging. A strictly one-way range-bearing system therefore needs research-grade hardware (section 8).
 

@@ -354,7 +354,7 @@ def run(cfg: FleetConfig = B2, verbose: bool = True) -> Report:
     ps = payload_soundness(cfg, g)
     ok = ps["cleared_inside"] == 0 and ps["beyond_while_inside"] == 0
     rep.add(CheckResult("B2-P payload soundness: a sender truly in the CR whose estimate errs within its sent bound "
-                        "(cylinder |e_h| <= h, |e_z| <= z, radius hypot(h, z), through the 48-bit packet) is never "
+                        "(cylinder |e_h| <= h, |e_z| <= z, radius hypot(h, z), through the 56-bit packet) is never "
                         "cleared by the payload rule nor placed beyond the exit face",
                         "forall sampled centres in the CR and errors in the cylinder: rep_cr_possible and not A3",
                         ENC, "holds", verdict="holds" if ok else "violated", passed=ok,

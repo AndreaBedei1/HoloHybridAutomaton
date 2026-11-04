@@ -3,7 +3,7 @@
 Drone k pings on a fixed TDMA schedule (slot k of every period, slots aligned to simulator ticks so that the
 scheduled emission instant is exact), and every reception becomes a range-bearing measurement through the channel
 model of sim/acoustic_channel.py (noise, biases, NLOS reflections, dropouts, outages, latency).  A ping carries the
-sender's static identity and, with ``payload`` (H6, perception/payload.py), a 48-bit packet with the sender's
+sender's static identity and, with ``payload`` (H6, perception/payload.py), a 56-bit packet with the sender's
 ONBOARD position estimate and error bound, taken from its own perception through ``payload_source`` (never from
 the simulator state).  The packet is lost on its own (``payload_loss``, a separate seeded stream) even when the
 ping is detected.  No mode, queue or control data is sent, and nobody replies.

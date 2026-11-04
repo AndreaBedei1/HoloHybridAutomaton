@@ -219,7 +219,7 @@ class AcousticTracker:
             self.stats["payload_frame"] = self.stats.get("payload_frame", 0) + 1
             return
         b_own = self.pose.bound_at(f.t)
-        if b_own is None:
+        if b_own is None or not math.isfinite(b_own):          # own integrity lost: no cross-check, no payload
             f.rep_reason = "no_own_bound"
             return
         reach = rep.bound + self.v_bound * max(f.t - f.t_tx, 0.0) + b_own + self.v_bound * 0.11 + f.slack

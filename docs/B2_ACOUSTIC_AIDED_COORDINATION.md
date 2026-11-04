@@ -2,8 +2,10 @@
 
 B0 is the communication-free baseline: the same decentralised hybrid automaton on every drone, driven by the shared
 mission plan and local sensing (six single-beam sonars, DVL, IMU, compass, depth).  B2 keeps that automaton, its
-guards and thresholds unchanged and adds one input to the PERCEPTION: a one-way acoustic ping carrying only a static
-identity, from which the receiver itself derives range and bearing.
+guards and thresholds unchanged (apart from the explicit give-up edge of a gate entry, ha/spec.py pass_abort) and
+adds one input to the PERCEPTION: a one-way acoustic ping carrying a static identity, from which the receiver itself
+derives range and bearing, and (H6, section 2b) a 56-bit packet with the sender's onboard position estimate and
+error bound.
 
 ## 1. What the simulator really provides
 
@@ -53,41 +55,50 @@ water; CLEAN and LOW sit near the datasheet values, MEDIUM between them and the 
 Added on 2026-11-04 after an executed counterexample showed that range-bearing measurements alone cannot separate an
 occupied critical region from a cleared one: a drone at s = 0.8 m with a +3 m multipath excess (inside the declared
 envelope) and a drone at s = 3.8 m without excess produce identical fixes forever
-(`results/dev/issue3/indistinguishable_occupancy.json`).  Every ping now carries an 80-bit packet:
+(`results/dev/issue3/indistinguishable_occupancy.json`).  Every ping now carries a 56-bit packet:
 
 | field | bits | encoding |
 |---|---|---|
-| sequence | 8 | TDMA frame counter mod 256; the emission instant is the pre-assigned slot (H1, H2), so there is no timestamp |
-| x, y | 16 + 16 | onboard estimate in the shared mission frame, 1 cm, +-327 m |
-| depth | 12 | 1 cm, 0-41 m |
-| bound | 8 | radius of a ball containing the sender's true position, 5 cm steps, rounded up after the quantisation error; 255 = invalid |
-| CRC-16/CCITT | 16 | a corrupted packet is discarded |
+| frame | 2 | TDMA frame counter mod 4, checked by the receiver against its own schedule; no timestamp (the slot is the emission instant, H1, H2) |
+| x, y | 12 + 12 | onboard estimate in the shared mission frame, 5 cm, +-102 m (the mission area spans +-45 m) |
+| depth | 8 | 5 cm, 0-12.75 m |
+| bound | 6 | radius of a ball containing the sender's true position, 0.1 m steps, rounded up after the quantisation error; 63 = invalid |
+| CRC-16/CCITT | 16 | a corrupted packet is discarded (CRC-8 would pass ~1/256 of multi-bit errors on a mutual-exclusion premise) |
 
 * **One-way only.** No request, reply, acknowledgement, mode, queue position or control decision is sent.  The data
   come from the sender's own perception (`Perception.payload`), never from the simulator.
-* **Bound (NavBound).** Launch survey 0.30 m [REQ], plus (sin 3 deg + 1 %) x distance travelled (compass bias and DVL
-  scale), plus 3 x 0.15 m/s x sqrt(sum dt^2) (white DVL noise integrated by the dead reckoning), plus a_max tau dt
-  during DVL outages (a_max = 0.743 m/s^2, the calibrated closed-loop deceleration), plus every map-aided correction
-  (the bound never shrinks); depth 0.45 m.  It is an envelope assumption like the acoustic one, and every run logs
-  it (`nav_bound` in the state records) so that its coverage of the true error is measured.
-* **Air time.** At an assumed 1 kbit/s coherent short-packet rate, 80 ms; with a 40 ms identity chirp and the 33 ms
-  propagation spread of 50 m, 153 ms, which fits the 167 ms slot of n = 6 drones at the 1 s period.  The transport
-  refuses a configuration where it does not fit (`BeaconTransport`).  Rates of 1 kbit/s and above are within the PSK
-  modes of research modems (WHOI Micro-Modem, 80 bit/s FSK to about 5 kbit/s PSK burst rate) and of software-defined
-  modems (Subnero M25M, peak 15 kbit/s); the short-packet overhead at that rate is the stated assumption H6.
-* **Packet loss.** `payload_loss` per channel level (CLEAN 0.02, LOW 0.05, MEDIUM 0.15, a STRESS assumption): the
-  ping is detected but its packet is not decoded.  It draws from a separate seeded stream, so the ping and
-  measurement draws are those of earlier runs.
-* **Use onboard.** A payload is attached to a fix only if some point of the fix's error region lies within the
-  sender's bound + its motion since emission + the receiver's own bound + the region slack of the reported position;
-  otherwise it is discarded.  The receiver then holds two regions that both contain the sender: the gate rules use
-  their intersection (clear if either region is clear of the CR; a possible occupant only if both allow it), the
-  relocalization uses the reported balls to establish that no other drone can explain an echo matched to a bar,
-  and the formation clock compares the neighbour's reported position with where the own formation time places its
-  slot.
+* **Bound (NavBound).** Launch survey 0.30 m [REQ] (never restarted: a gate fit's uncertainty is not an error
+  bound), plus (2 sin 1.5 deg + 1 %)(1 + 1 %) x distance travelled (compass bias and DVL scale),
+  plus 3.44 x 0.0285 m/s x sqrt(sum dt^2) (white MEDIUM DVL noise integrated by the dead reckoning, 99.73 % of a 2-D
+  normal), plus min(1.5 m/s^2 tau, |v| + v_bound) dt while the DVL delivers no new sample for tau > 0.15 s (1.5 m/s^2:
+  the calibrated reversal), plus every unvalidated map correction, plus 2 x 0.25 m (DVL lever arm) and twice the
+  0.05 s latency at the speed bound; depth 0.45 m; the ball radius is hypot(horizontal, vertical).  A correction
+  larger than the bound marks it invalid for the rest of the run.  It is an envelope assumption like the acoustic
+  one (the HIGH profile, 4 deg compass bias, lies outside it), and every run logs it against the true error
+  (`nav_bound` in the state records; referee `nav_bound` coverage and the tag NAV_BOUND_PREMISE_VIOLATED).
+* **Air time (H6, unverified hardware assumption).** At 1 kbit/s net the packet takes 56 ms; the 40 ms identity chirp
+  is its preamble and the propagation spread at 50 m is 33 ms: 129 ms of the 167 ms slot of n = 6 drones at the 1 s
+  period, 38 ms left for reverberation tails and jitter.  The transport refuses a configuration that does not fit
+  (n >= 8).  Modems with short-range rates far above 1 kbit/s exist (EvoLogics S2CM-HS, up to 62.5 kbit/s at
+  120-200 kHz; Subnero M25M, 15 kbit/s peak at short range; Teledyne Benthos DAT, 140-15 360 bit/s), but none
+  documents a 7-byte frame time on a synchronised TDMA schedule: this must be measured on the bench.  A BlueROV2-class
+  64 bit/s modem (Water Linked M64) cannot carry it at this period; a longer period would require re-deriving every
+  1 Hz rule (A_CONFIRM within fresh_s, tie_window_s, REINIT_S, the ball growth v_bound x age).
+* **Packet loss.** `payload_loss` per channel level (CLEAN 0.02, LOW 0.05, MEDIUM 0.15): a STRESS knob, not a
+  measured rate (the ping is detected but its packet is not decoded; independent of range and path type).  It draws
+  from a separate seeded stream, so the ping and measurement draws coincide with those of an earlier run only until
+  the first behavioural difference.
+* **Use onboard.** A payload is attached to a fix only if its frame counter matches the schedule and some point of
+  the fix's error region lies within the sender's bound + its motion since emission + the receiver's own bound + the
+  region slack of the reported position; otherwise it is discarded.  The receiver then holds two regions that both
+  contain the sender: the gate rules use their intersection (clear if either region is clear of the CR; a possible
+  occupant only if both allow it; formal B2-P), the relocalization uses the reported balls to establish that no
+  other drone can explain an echo matched to a bar, and the formation clock compares the neighbour's reported
+  position with where the own formation time places its slot.
 * **Unknown occupant.** A drone whose latest accepted fix placed it possibly in the CR, and that has not been
   cleared since, keeps the latch BUSY: the t_occ_max fallback never releases it, and an acoustic-only episode is
-  released only by positive clearance (A2) of every other drone.
+  released only by positive clearance (A2) of every drone heard possibly inside.  Liveness cost: a drone that falls
+  silent right after such a fix blocks the gate for good (stated, not hidden).
 
 ## 3. Onboard fixes (`holo_fleet/perception/acoustic.py`, `config.AcousticConfig`)
 

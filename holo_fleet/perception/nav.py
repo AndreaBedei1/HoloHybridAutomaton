@@ -76,15 +76,15 @@ DVL_LEVER_M = 0.25            # [ASSUMPTION] bound of the DVL offset from the ve
 SENSOR_LATENCY_S = 0.05       # [PROF] MEDIUM sensor latency (sim/sensor_noise.py)
 A_MAX_MPS2 = 1.5              # [CAL] largest speed change rate: reversal from +0.45 to -0.30 m/s in 0.5 s
                               # (results/calibration/plant_calibration.json, "reversal")
-FIT_MARGIN_M = 0.30           # [CAL] lateral accuracy of a gate fit, from the replay in structure_aiding's docstring
-MAP_ERR_M = 0.10              # [REQ] survey accuracy of the gate map in the mission frame
+A_MAX_NOTE = ("the reversal average; for an outage shorter than 0.5 s a higher peak rate could exceed it, which the "
+              "cap |v_held| + v_bound does not cover: a stated limit")
 
 
 class NavBound:
     """Conservative onboard bound of the own dead-reckoning position error (shared mission frame), sent in the B2
     payload (H6).  It grows with the declared envelope of the navigation sensors, never with the profile of a run:
 
-      b_h(t) = b_ref                                            launch survey, or the last validated gate fit
+      b_h(t) = nav_b0_m                                         launch survey of the shared frame [REQ]
              + sum (2 sin(heading_err / 2) + s)(1 + s) |v_h| dt  compass bias and DVL scale error s on the true
                                                                  speed (<= (1 + s) |v_h|): drift proportional to
                                                                  the distance travelled
@@ -93,13 +93,14 @@ class NavBound:
              + sum min(a_max tau, |v_held| + v_bound) dt         DVL outage: the held velocity is wrong by at most
                                                                  a_max tau after tau seconds without a NEW sample
              + sum |unvalidated corrections|                     an applied map fit may itself be wrong
-             + 2 r_DVL + latency v_bound                         lever arm (bounded rotation of r) and sensor latency
+             + 2 r_DVL + 2 latency v_bound                       lever arm (bounded rotation of r), sensor latency
       b_z    = nav_depth_err_m while the depth sensor delivers new samples, growing with the speed bound otherwise.
       bound  = hypot(b_h, b_z): the radius of a BALL containing every error with |e_h| <= b_h and |e_z| <= b_z.
 
-    A gate localization VALIDATED by structure aiding (the hull plus the fit uncertainty u inside the free opening)
-    is a map-relative fix: the horizontal reference restarts at u + FIT_MARGIN_M + MAP_ERR_M if that is smaller.
-    Integrity: an applied correction larger than the current horizontal bound shows that the bound was violated;
+    The bound NEVER decreases.  A validated gate localization is not used to restart it: the fit uncertainty u is
+    not an error bound (the near-optimal spread under-reports, structure_aiding's docstring), and a wrong fit would
+    become a mutual-exclusion premise of the whole fleet through the payload.  Soundness is kept at the cost of a
+    looser bound on long missions.  Integrity: an applied correction larger than the current horizontal bound shows that the bound was violated;
     the bound is then INVALID for the rest of the run (the payload is sent marked unusable).
 
     The sum of worst cases of independent terms (no cancellation assumed).  It is an envelope assumption like the
@@ -116,7 +117,7 @@ class NavBound:
         self.k_rw = RAYLEIGH_3SIGMA * a.dvl_sigma_body_mps
         self.depth_err = a.nav_depth_err_m
         self.v_bound = max(env.v_escape, env.v_max_nominal, cfg.gate.v_pass) + env.w_drift_max
-        self.const = 2.0 * DVL_LEVER_M + SENSOR_LATENCY_S * self.v_bound
+        self.const = 2.0 * DVL_LEVER_M + 2.0 * SENSOR_LATENCY_S * self.v_bound
         self.ref = a.nav_b0_m
         self.lin = self.var = self.outage = self.aid = 0.0
         self.z = self.depth_err
@@ -137,12 +138,6 @@ class NavBound:
         if c > self.horizontal:
             self.invalid = True                 # the estimate was farther off than its bound: integrity lost
         self.aid += c
-
-    def validated(self, u: float) -> None:
-        """A validated gate localization with uncertainty u: restart the horizontal reference if it is smaller."""
-        r = float(u) + FIT_MARGIN_M + MAP_ERR_M
-        if r < self.horizontal:
-            self.ref, self.lin, self.var, self.outage, self.aid = r, 0.0, 0.0, 0.0, 0.0
 
     @property
     def horizontal(self) -> float:

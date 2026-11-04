@@ -80,7 +80,7 @@
       "note": "30 pairs; confirmation through a shadowed ray for 4, accounting through a shadowed ray for 30 (probable, not certain); worst exit evidence 28.6 s after the exit face (observer l=+5.25, passer lane +8.75, passer at s=10.35); falls back to the sonar latch for: observer +8.75/passer +5.25 (no evidence), observer +8.75/passer +1.75 (no evidence), observer -8.75/passer -1.75 (no evidence), observer -8.75/passer -5.25 (no evidence)"
     },
     {
-      "prop": "B2-P payload soundness: a sender truly in the CR whose estimate errs within its sent bound (cylinder |e_h| <= h, |e_z| <= z, radius hypot(h, z), through the 48-bit packet) is never cleared by the payload rule nor placed beyond the exit face",
+      "prop": "B2-P payload soundness: a sender truly in the CR whose estimate errs within its sent bound (cylinder |e_h| <= h, |e_z| <= z, radius hypot(h, z), through the 56-bit packet) is never cleared by the payload rule nor placed beyond the exit face",
       "formula": "forall sampled centres in the CR and errors in the cylinder: rep_cr_possible and not A3",
       "encoding": "perception/acoustic.py + perception/acoustic_gate.py",
       "expect": "holds",

@@ -2,7 +2,7 @@
 
 Strictly one-way: the payload is the sender's ONBOARD navigation estimate in the shared mission frame and a
 conservative bound of its error (perception/nav.py, NavBound).  No request, reply, acknowledgement, mode, queue
-position or control decision is ever sent.  The packet is 48 bits (6 bytes):
+position or control decision is ever sent.  The packet is 56 bits (7 bytes):
 
   field     bits  encoding
   frame        2  TDMA frame counter mod 4: the receiver checks it against its own schedule (a packet of another
@@ -11,14 +11,15 @@ position or control decision is ever sent.  The packet is 48 bits (6 bytes):
   depth        8  -z, unsigned, 0.05 m (0 - 12.75 m; the operating band is 1.5 - 9 m)
   bound        6  error-ball radius, 0.10 m steps, rounded UP after adding the quantisation error; 63 = invalid
                   (the sender's integrity monitor flags its own bound, NavBound.invalid)
-  crc          8  CRC-8 (polynomial 0x07) over the first 40 bits
+  crc         16  CRC-16/CCITT-FALSE over the first 40 bits (the field is a mutual-exclusion premise: a CRC-8
+                  would pass about 1/256 of multi-bit corrupted packets)
 
-Air time (H6, an assumption to be measured on the bench before any field use): at 1 kbit/s net, 48 ms; the
+Air time (H6, an assumption to be measured on the bench before any field use): at 1 kbit/s net, 56 ms; the
 identity chirp doubles as the packet preamble (40 ms), and with the 33 ms propagation spread of 50 m a slot needs
-121 ms of the 167 ms of n = 6 drones at the 1 s period (46 ms left for reverberation tails and scheduling jitter;
+129 ms of the 167 ms of n = 6 drones at the 1 s period (38 ms left for reverberation tails and scheduling jitter;
 sim/beacon.py refuses a configuration that does not fit).  Candidate hardware with short-range rates far above
 1 kbit/s exists (EvoLogics S2CM-HS, up to 62.5 kbit/s at 120-200 kHz; Subnero M25M, 15 kbit/s peak at short range;
-Teledyne Benthos DAT, 140-15 360 bit/s), but a 6-byte frame time on a synchronised TDMA schedule is not documented
+Teledyne Benthos DAT, 140-15 360 bit/s), but a 7-byte frame time on a synchronised TDMA schedule is not documented
 by any of them: it is the stated hardware assumption.  A BlueROV2-class 64 bit/s modem (Water Linked M64) cannot
 carry it at this period.  The CRC rejects corrupted packets, and a decoded position inconsistent with the measured
 range and bearing is not used (perception/acoustic.py).
@@ -32,7 +33,7 @@ from typing import Optional
 
 import numpy as np
 
-PAYLOAD_BITS = 48
+PAYLOAD_BITS = 56
 POS_Q = 0.05                  # [m] position quantum
 BOUND_Q = 0.10                # [m] bound quantum
 BOUND_INVALID = 63
@@ -40,12 +41,12 @@ FRAMES = 4                    # frame counter modulus
 QUANT_ERR = math.sqrt(3.0) * POS_Q / 2.0   # largest rounding error of a position (three axes)
 
 
-def crc8(data: bytes) -> int:
-    crc = 0
+def crc16(data: bytes) -> int:
+    crc = 0xFFFF
     for b in data:
-        crc ^= b
+        crc ^= b << 8
         for _ in range(8):
-            crc = ((crc << 1) ^ 0x07) & 0xFF if crc & 0x80 else (crc << 1) & 0xFF
+            crc = ((crc << 1) ^ 0x1021) & 0xFFFF if crc & 0x8000 else (crc << 1) & 0xFFFF
     return crc
 
 
@@ -68,15 +69,15 @@ def encode(frame: int, p, bound: float) -> bytes:
     b = min(b, BOUND_INVALID)
     bits = ((frame % FRAMES) << 38) | ((x & 0xFFF) << 26) | ((y & 0xFFF) << 14) | ((depth & 0xFF) << 6) | (b & 0x3F)
     head = bits.to_bytes(5, "big")
-    return head + bytes([crc8(head)])
+    return head + crc16(head).to_bytes(2, "big")
 
 
 def decode(packet: Optional[bytes]) -> Optional[Payload]:
     """Receiver side: None for a missing, corrupted or invalid packet."""
     if packet is None or len(packet) != PAYLOAD_BITS // 8:
         return None
-    head, crc = packet[:5], packet[5]
-    if crc8(head) != crc:
+    head, crc = packet[:5], int.from_bytes(packet[5:], "big")
+    if crc16(head) != crc:
         return None
     bits = int.from_bytes(head, "big")
     b = bits & 0x3F
