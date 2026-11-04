@@ -58,8 +58,18 @@ def test_lost_drone_scenarios_inject_one_simulator_fault_on_a_rear_drone():
         if name == "lost_drone_mutex":                       # the left drone of the line: the leftmost present goes
             assert sc.template.name == "line3" and k == 0
         assert sc.disturbance_active(f["t_on"] + 0.1)
-    for name in set(EXPECTED) - {"lost_drone_rejoin", "lost_drone_timeout", "lost_drone_mutex"}:
+    for name in set(EXPECTED) - {"lost_drone_rejoin", "lost_drone_timeout", "lost_drone_mutex", "gate_stalled_occupant"}:
         assert not SCENARIOS[name](DEFAULT).sim.faults, name
+
+
+def test_stalled_occupant_is_gate_single_with_a_ground_truth_mid_cr_trigger():
+    from holo_fleet.runner import TRIGGER_PENDING
+
+    sc, ref = SCENARIOS["gate_stalled_occupant"](DEFAULT), SCENARIOS["gate_single"](DEFAULT)
+    (f,) = sc.sim.faults
+    assert f["drone"] == "drone_0" and f["t_off"] is None and f["t_on"] >= TRIGGER_PENDING and f["trigger"] == "mid_cr:G06"
+    assert [p.queue_lateral for p in sc.plans] == [p.queue_lateral for p in ref.plans]
+    assert [g.gate_id for g in sc.judged_gates] == ["G06"]
 
 
 def test_currents_inside_the_envelope_except_declared_disturbances():
