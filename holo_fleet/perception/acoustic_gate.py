@@ -81,6 +81,8 @@ class AcousticExit:
         self.half = np.array([G.cr_half_len, G.cr_half_width, G.cr_half_height])
         self.v_bound = speed_bound(cfg)
         self.sighting: Optional[Dict] = None       # last corridor sighting: t, FRONT sonar (gate frame), ranges
+        self.veto: set = set()                     # drones whose heard-inside veto is on (hysteresis)
+        self.heard_by: set = set()                 # ... at the latest heard_inside evaluation
         self.last: Dict = {}                       # diagnostics of the latest evaluation
 
     def reset(self) -> None:
@@ -127,6 +129,7 @@ class AcousticExit:
     def _could_be_occupant(self, g, f: Fix, t_lc: float) -> bool:
         q = gate_points(g, f.pts)
         rho = self.v_bound * abs(f.t - t_lc) + f.slack
+        rho += f.r * math.radians(self.cfg.acoustic.heading_err_deg + self.cfg.acoustic.tilt_err_deg)  # own attitude
         meas = self._cr_possible(q, rho) or self._echo_possible(q, rho)
         if not meas or not f.rep_ok:
             return meas
@@ -189,17 +192,28 @@ class AcousticExit:
         place it possibly inside the CR now under the complete declared region, including one-sided multipath.
         Gate perception blocks commitment, pending releases and admission while this evidence persists.
 
-        Two fixes reject a single outlier. A nearby outside drone can remain ambiguous indefinitely: expiration is
-        bounded after the last compatible reception, not merely after its true centre leaves the CR. Missing fixes
-        provide no positive clearance; the sonar-only fallback still has its stated crossing assumption."""
+        Two fixes reject a single outlier; hysteresis: once on, the veto of a drone drops only when its two latest
+        fixes are BOTH clear of the CR (a single cleared fix, e.g. a payload that passed the CRC by chance, does not
+        end it), or when it has no fresh fix (then last_known_inside keeps the latch from timing out).  A nearby
+        outside drone can remain ambiguous indefinitely: expiration is bounded after the last compatible reception,
+        not merely after its true centre leaves the CR.  Missing fixes provide no positive clearance."""
         a, period = self.cfg.acoustic, self.cfg.beacon.period_s
         fresh = a.fresh_s
+        self.heard_by = set()
         for j in self.others:
             acc = [f for f in self.tracker.all_fixes(j, t - 2.0 * period - fresh, t) if f.accepted][-2:]
-            if (len(acc) == 2 and acc[0].track == acc[1].track and t - acc[-1].t <= fresh
-                    and all(not self.clear_of_cr(g, f, t) for f in acc)):
-                return True
-        return False
+            if not acc or t - acc[-1].t > fresh:
+                self.veto.discard(j)
+                continue
+            poss = [not self.clear_of_cr(g, f, t) for f in acc]
+            pair = len(acc) == 2 and acc[0].track == acc[1].track
+            if pair and all(poss):
+                self.veto.add(j)
+            elif j in self.veto and pair and not any(poss):
+                self.veto.discard(j)
+            if j in self.veto:
+                self.heard_by.add(j)
+        return bool(self.heard_by)
 
     def last_known_inside(self, t: float, g) -> bool:
         """Some other drone's LATEST accepted fix (within the tracker memory) placed it possibly in the CR at its own
@@ -213,10 +227,13 @@ class AcousticExit:
         return False
 
     # ------------------------------------------------------------------ decision
-    def evaluate_clearance(self, t: float, g, since: float) -> Optional[Dict]:
-        """A2 for every other drone, after an acoustic-only BUSY episode (no corridor sighting to account for)."""
-        if self.others and all(self.outside_now(g, j, t, since) is not None for j in self.others):
-            return {"sector": "ACOUSTIC", "slots": [], "range": None, "rule": "A2"}
+    def evaluate_clearance(self, t: float, g, since: float, suspects=None) -> Optional[Dict]:
+        """A2 for the drones heard possibly inside during an acoustic-only BUSY episode (``suspects``; every other
+        drone when not given).  Without a corridor sighting, an entry by another drone would have crossed the FRONT
+        corridor visibly (the sonar latch premise, formal M3/M4) and started a sonar episode instead."""
+        need = self.others if suspects is None else [j for j in self.others if j in suspects]
+        if need and all(self.outside_now(g, j, t, since) is not None for j in need):
+            return {"sector": "ACOUSTIC", "slots": sorted(need), "range": None, "rule": "A2"}
         return None
 
     def evaluate(self, t: float, g) -> Optional[Dict]:

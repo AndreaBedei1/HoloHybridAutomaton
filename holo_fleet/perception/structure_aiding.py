@@ -222,8 +222,8 @@ class StructureAiding:
     def echoes_not_drones(self, p: np.ndarray, R_wb: np.ndarray, obs: Dict, others, b_own: float) -> bool:
         """No echo of any observed sector can be the hull of a drone inside one of the payload balls ``others``
         [(centre, radius)] (mission frame), the echo placed from the own estimate p within ``b_own``."""
-        env = self.cfg.env
-        half0 = math.radians(self.cfg.perc.sonar.half_angle_deg)
+        env, a = self.cfg.env, self.cfg.acoustic
+        half0 = math.radians(self.cfg.perc.sonar.half_angle_deg + a.heading_err_deg + a.tilt_err_deg)  # own attitude
         for s, ranges in obs.items():
             m = p + R_wb @ MOUNTS[s]
             a = R_wb @ AXES[s]
@@ -283,7 +283,9 @@ class StructureAiding:
                   and (margin is not None or not self.gates))
         safe = margin is None or margin >= 0.0          # the hull + uncertainty inside the free opening
         identified = (not safe and fit_ok and others is not None and b_own is not None
-                      and self.echoes_not_drones(p + np.array([d[0], d[1], 0.0]), R_wb, obs, others, b_own))
+                      and self.echoes_not_drones(p, R_wb, obs, others, b_own))   # at the UNcorrected pose:
+        # the premise under test is that the fit may be wrong, so the echoes are placed from the own estimate within
+        # its own bound, not from the fitted position
         self.last["identified"] = bool(identified)
         if not fit_ok or not (safe or identified):       # beside the opening: only with every echo identified as a bar
             self.recent.clear()

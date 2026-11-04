@@ -80,7 +80,7 @@ def test_success_only_after_the_nominal_end_and_with_every_outcome():
     assert mon.update(mon.t_nom + 1.0, tg, r, rec) is None        # formation not recovered yet
     r.formation = "OK"
     assert mon.update(mon.t_nom + 2.0, tg, r, rec) == "SUCCESS"
-    assert mon.summary()["t_end"] == mon.t_nom + 2.0 and mon.summary()["criteria"] == "v3"
+    assert mon.summary()["t_end"] == mon.t_nom + 2.0 and mon.summary()["criteria"] == criteria.CRITERIA_VERSION
 
 
 def test_a_drone_still_waiting_for_a_missing_neighbour_is_not_success():

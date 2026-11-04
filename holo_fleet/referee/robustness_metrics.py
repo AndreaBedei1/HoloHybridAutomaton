@@ -136,6 +136,20 @@ def analyze_run(run_dir: Path, reference: Optional[Dict] = None, cfg=DEFAULT, pr
         t, P, modes, rows = t[:m], P[:m], modes[:m], rows[:m]
         states = [st[:m] for st in states]
     out["horizon_s"] = round(float(t[-1]), 2) if m else None
+    # ------------------------------------------------------------------ H6 premise: the sent navigation bound
+    nb_exc, nb_min, nb_n = 0, None, 0
+    for k in range(n):
+        for i in range(m):
+            b = states[k][i].get("nav_bound")
+            if b is None or states[k][i].get("nav_p") is None:
+                continue
+            e = float(np.linalg.norm(np.asarray(states[k][i]["nav_p"], float) - P[i, k]))
+            nb_n += 1
+            if math.isfinite(float(b)):
+                nb_exc += int(e > float(b))
+                nb_min = (float(b) - e) if nb_min is None else min(nb_min, float(b) - e)
+    out["nav_bound"] = {"samples": nb_n, "exceeded": nb_exc,
+                        "min_margin_m": None if nb_min is None else round(nb_min, 3)}
 
     # ------------------------------------------------------------------ P1
     p1 = met["P1_separation"]
@@ -387,7 +401,7 @@ def _degradation_explains(term, mon, ref, P, fs_end, healthy, t=None, cfg=DEFAUL
         if r in ("P3 recovered", "P3-deg re-formed") and len(others) >= 2:
             # the drones that are not holding must satisfy the same P3 semantics: within E_TOL_M (inclusive) for the
             # last T_HOLD_S of the retained history, not only at the final sample
-            hold = t_hold_s(cfg)
+            hold = cfg.ref.t_ok_hold
             idx = range(len(P)) if t is None else [i for i in range(len(P)) if t[i] >= t[-1] - hold]
             if t is not None and t[-1] - t[0] < hold:
                 return False
@@ -420,7 +434,7 @@ def replay_terminal(sc, cfg, names, t, P, states, modes, profile, logged: Option
     faults = getattr(sc.sim, "faults", ()) or ()
     ref = Referee(names, sc.template.offsets() if sc.template is not None else None, sc.path, sc.judged_gates, cfg,
                   sc.formation_enabled, clock=sc.plans[0].clock if sc.formation_enabled else None, faults=faults)
-    v3 = bool(logged) and logged.get("criteria") == CRITERIA_VERSION
+    v3 = bool(logged) and logged.get("criteria") in ("v3", CRITERIA_VERSION)   # same deadline and monitor
     dl = float(logged["deadline_s"]) if v3 else deadline_v3(sc, cfg, profile)
     mon = TerminalMonitor(sc, cfg, names, dl)
     z = np.zeros((n, 3))
@@ -463,6 +477,8 @@ def cause_tags(out: Dict, fm: Dict, fs_sensor, term, states, healthy, m: int, dt
     """Diagnostic mechanism tags of a run (never used by the class, fixed before the final campaign): which known
     mechanisms were active, so that a non-PASS run can be read without re-deriving its cause by hand."""
     tags = []
+    if (out.get("nav_bound") or {}).get("exceeded"):
+        tags.append("NAV_BOUND_PREMISE_VIOLATED")        # the H6 payload premise failed: no P2 claim rests on this run
     if not out["P1"]["holds"] or out["P1"]["collisions"]:
         tags.append("P1_violation")
     if not out["P2"]["holds"]:

@@ -58,7 +58,8 @@ from typing import Dict, List, Optional
 
 import numpy as np
 
-CRITERIA_VERSION = "v3"
+CRITERIA_VERSION = "v4"   # v4 (2026-11-04): unsafe-action disjunction E2.to_free | E3 | E4, inclusive tolerance,
+                          # SAFE_DEGRADED with the hold, crossing obligation from the first commit, bypass participation
 E_TOL_M = 1.0              # [REQ] formation tolerance (agreed for v3; the controller keeps e_ok = 0.5 as its margin)
 GIVEWAY_OFFSET_M = 2.5     # [PROT] = control/flows.Flows.traffic_offset(offset_max) (tests keep them equal)
 DETECT_S = 0.35            # [PROT] DVL freshness limit of sense_ok (perception.update): ends a sensor-fault FAILSAFE

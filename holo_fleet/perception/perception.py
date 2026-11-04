@@ -255,11 +255,13 @@ class Perception:
             out.append((f.rep.p, f.rep_radius(t, self.acoustic.v_bound)))
         return out
 
-    def payload(self):
-        """What this drone sends in its B2 beacon payload (H6): (estimate time, onboard position estimate, its error bound)."""
+    def payload(self, t_emit: float):
+        """What this drone sends in its B2 beacon payload (H6) at t_emit: its onboard position estimate and the error
+        bound, grown by the speed bound over the age of the estimate (inf, sent as invalid, after an integrity
+        failure)."""
         if self.t_nav is None:
             return None
-        return self.t_nav, self.nav.state.p.copy(), self.nav_bound.value
+        return self.nav.state.p.copy(), self.nav_bound.value + self.acoustic.v_bound * max(0.0, t_emit - self.t_nav)
 
     def _rep_offset(self, f, t: float, exp_world: np.ndarray, t_hat: np.ndarray):
         """Offset of a neighbour's reported position from where the own formation time places its slot, moved to t
@@ -369,7 +371,8 @@ class Perception:
         t_form = t if t_form is None else t_form
         d = frame.data
         env = self.cfg.env
-        nav = self.nav.update(t, dt, d.get("Compass"), d.get("DVLSensor"), d.get("DepthSensor"), d.get("IMUSensor"))
+        nav = self.nav.update(t, dt, d.get("Compass"), d.get("DVLSensor"), d.get("DepthSensor"), d.get("IMUSensor"),
+                              stamps=frame.stamp)
         self.att.update(d.get("IMUSensor"))
         roll, pitch = (self.att.roll, self.att.pitch) if self.use_attitude else (0.0, 0.0)
         R_wb = rot_world_body(roll, pitch, nav.yaw)
@@ -386,6 +389,9 @@ class Perception:
         if corr is not None:                      # dead-reckoning drift bounded by the mapped gate (structure_aiding)
             self.nav.state.p += corr
             self.nav_bound.corrected(corr)
+        if self.aiding.loc_t == t and self.aiding.loc_u is not None:     # validated gate localization (map fix)
+            from holo_fleet.perception.structure_aiding import CONSIST_M
+            self.nav_bound.validated(self.aiding.loc_u + CONSIST_M)
         self.t_nav = t
         self.acoustic.update(t, d.get("AcousticRx"), nav.p, nav.yaw, self.nav_bound.value)   # B2 fixes
         readings = self.clf.classify(profiles, ages, nav.p, R_wb, seabed_z, tau_healthy=env.tau_max)

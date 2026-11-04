@@ -50,9 +50,13 @@ M5  Progress of the queue (argument + spec): for every occupancy in scope some q
     after the previous drone is seen beyond the CR (or after t_occ_max, logged); the commit edge is
     then enabled (formal/check_determinism.py, G1/D2).  A WAIT caused by a drone that is not at its
     queue point (approaching, passing) ends when that drone reaches its queue point or moves beyond the
-    CR.  Under the fairness assumptions "a committed drone completes its passage" and "every drone in
-    the approach zone reaches its queue point or leaves the zone", every queued drone eventually
-    commits.  The static rank (the plan's queue order) is only the last tie-break for an ambiguous
+    CR.  Under the fairness assumptions "a committed drone completes its passage, or gives it up behind
+    the give-up plane after the bounded stage-2 hold (pass_abort, committed cleared) and returns to its
+    queue point" and "every drone in the approach zone reaches its queue point or leaves the zone",
+    every queued drone eventually commits.  A drone whose stage-2 cause persists (no gate localization,
+    a persistent echo or a heard-inside veto from the hold point) cycles commit - hold - give-up and,
+    being first in the order, keeps the drones on its right waiting: a livelock outside this argument,
+    judged STALLED by the referee (the crossing obligation runs from the first commit).  The static rank (the plan's queue order) is only the last tie-break for an ambiguous
     pattern (UP and DOWN at once), counted in every run.  Not covered: a drone that stops for good
     inside the approach zone (a permanent fault there) blocks the drones on its right.
 

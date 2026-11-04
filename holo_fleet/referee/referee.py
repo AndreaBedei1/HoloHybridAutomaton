@@ -147,7 +147,7 @@ class Referee:
                                              "deviation_m": round(float(dev[k]), 2), "source": "scripted fault"})
         for k in (range(self.n) if self.permanent is None else ()):          # v2: the deviation heuristic
             if k in self.absent:
-                if dev[k] < rc.e_ok:
+                if dev[k] <= rc.e_ok:
                     self.absence_log.append({"drone": self.names[k], "event": "back", "t": round(t, 2)})
                     del self.absent[k]
                     self._off_time[k] = 0.0

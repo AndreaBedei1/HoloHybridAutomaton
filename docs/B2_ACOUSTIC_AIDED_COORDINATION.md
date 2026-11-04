@@ -48,6 +48,47 @@ low-cost OWTT + inverted-USBL fleet at 1 Hz reported 68 % of range errors below 
 7 deg at 30-300 m in a river (Rypkema, Schmidt and Fischell, Field Robotics 2022).  Our ranges are 2-20 m in open
 water; CLEAN and LOW sit near the datasheet values, MEDIUM between them and the low-cost field figures.
 
+## 2b. H6: one-way position payload (`holo_fleet/perception/payload.py`, `perception/nav.py`)
+
+Added on 2026-11-04 after an executed counterexample showed that range-bearing measurements alone cannot separate an
+occupied critical region from a cleared one: a drone at s = 0.8 m with a +3 m multipath excess (inside the declared
+envelope) and a drone at s = 3.8 m without excess produce identical fixes forever
+(`results/dev/issue3/indistinguishable_occupancy.json`).  Every ping now carries an 80-bit packet:
+
+| field | bits | encoding |
+|---|---|---|
+| sequence | 8 | TDMA frame counter mod 256; the emission instant is the pre-assigned slot (H1, H2), so there is no timestamp |
+| x, y | 16 + 16 | onboard estimate in the shared mission frame, 1 cm, +-327 m |
+| depth | 12 | 1 cm, 0-41 m |
+| bound | 8 | radius of a ball containing the sender's true position, 5 cm steps, rounded up after the quantisation error; 255 = invalid |
+| CRC-16/CCITT | 16 | a corrupted packet is discarded |
+
+* **One-way only.** No request, reply, acknowledgement, mode, queue position or control decision is sent.  The data
+  come from the sender's own perception (`Perception.payload`), never from the simulator.
+* **Bound (NavBound).** Launch survey 0.30 m [REQ], plus (sin 3 deg + 1 %) x distance travelled (compass bias and DVL
+  scale), plus 3 x 0.15 m/s x sqrt(sum dt^2) (white DVL noise integrated by the dead reckoning), plus a_max tau dt
+  during DVL outages (a_max = 0.743 m/s^2, the calibrated closed-loop deceleration), plus every map-aided correction
+  (the bound never shrinks); depth 0.45 m.  It is an envelope assumption like the acoustic one, and every run logs
+  it (`nav_bound` in the state records) so that its coverage of the true error is measured.
+* **Air time.** At an assumed 1 kbit/s coherent short-packet rate, 80 ms; with a 40 ms identity chirp and the 33 ms
+  propagation spread of 50 m, 153 ms, which fits the 167 ms slot of n = 6 drones at the 1 s period.  The transport
+  refuses a configuration where it does not fit (`BeaconTransport`).  Rates of 1 kbit/s and above are within the PSK
+  modes of research modems (WHOI Micro-Modem, 80 bit/s FSK to about 5 kbit/s PSK burst rate) and of software-defined
+  modems (Subnero M25M, peak 15 kbit/s); the short-packet overhead at that rate is the stated assumption H6.
+* **Packet loss.** `payload_loss` per channel level (CLEAN 0.02, LOW 0.05, MEDIUM 0.15, a STRESS assumption): the
+  ping is detected but its packet is not decoded.  It draws from a separate seeded stream, so the ping and
+  measurement draws are those of earlier runs.
+* **Use onboard.** A payload is attached to a fix only if some point of the fix's error region lies within the
+  sender's bound + its motion since emission + the receiver's own bound + the region slack of the reported position;
+  otherwise it is discarded.  The receiver then holds two regions that both contain the sender: the gate rules use
+  their intersection (clear if either region is clear of the CR; a possible occupant only if both allow it), the
+  relocalization uses the reported balls to establish that no other drone can explain an echo matched to a bar,
+  and the formation clock compares the neighbour's reported position with where the own formation time places its
+  slot.
+* **Unknown occupant.** A drone whose latest accepted fix placed it possibly in the CR, and that has not been
+  cleared since, keeps the latch BUSY: the t_occ_max fallback never releases it, and an acoustic-only episode is
+  released only by positive clearance (A2) of every other drone.
+
 ## 3. Onboard fixes (`holo_fleet/perception/acoustic.py`, `config.AcousticConfig`)
 
 A reception becomes a FIX: the relative position r u(az, el), rotated with the own heading estimate of the arrival

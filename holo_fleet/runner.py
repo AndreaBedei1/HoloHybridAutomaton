@@ -74,7 +74,7 @@ def run(name: str, out_root: Path, headless: bool = True, run_id: Optional[str] 
     sc.sim.noise_drones = None if noise_drones is None else tuple(int(k) for k in noise_drones)
     monitor = None
     if terminal is not None:
-        from holo_fleet.referee.criteria import deadline_v3, nominal_end_s
+        from holo_fleet.referee.criteria import CRITERIA_VERSION, deadline_v3, nominal_end_s
         from holo_fleet.referee.terminal import TerminalMonitor
 
         t_nom = nominal_end_s(sc)                   # the planned end: the same T_nom as the offline replay
@@ -105,7 +105,7 @@ def run(name: str, out_root: Path, headless: bool = True, run_id: Optional[str] 
             for p in sc.plans:
                 ctrls[p.drone_id].perception.acoustic.set_identities(beacon_identities(sc.plans, sim.names, p))
             if getattr(sim, "beacon", None) is not None:   # H6 payload: each drone's ONBOARD estimate and bound
-                sim.beacon.payload_source = lambda k: ctrls[sim.names[k]].perception.payload()
+                sim.beacon.payload_source = lambda k, t: ctrls[sim.names[k]].perception.payload(t)
     except Exception as exc:  # noqa: BLE001 - recorded, then propagated
         (out / "run_status.json").write_text(json.dumps(_error_status(exc, 0.0)), encoding="utf-8")
         try:
@@ -128,7 +128,7 @@ def run(name: str, out_root: Path, headless: bool = True, run_id: Optional[str] 
                 "faults": list(getattr(sc.sim, "faults", ())),
                 "seed": sc.sim.seed, "noise": None if noise is None else noise.as_dict(),
                 "noise_drones": None if noise is None else sorted(getattr(sim, "noisy_idx", range(len(sim.names)))),
-                "terminal": None if monitor is None else {"criteria": "v3", "t_nom": monitor.t_nom,
+                "terminal": None if monitor is None else {"criteria": CRITERIA_VERSION, "t_nom": monitor.t_nom,
                                                            "deadline_s": monitor.deadline,
                                                            "profile": terminal.get("profile")},
                 "heading_bias_deg": [round(float(b), 2) for b in getattr(sim, "heading_bias", ())],

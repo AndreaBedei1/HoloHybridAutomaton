@@ -133,8 +133,11 @@ class PoseHistory:
         return None if e is None else (e[1], e[2])
 
     def bound_at(self, t: float) -> Optional[float]:
-        """Own navigation error bound at time t (None if unknown), grown by the speed bound over the 0.1 s step."""
+        """Own navigation error bound at time t (None if unknown).  The bound never decreases (nav.NavBound), so for
+        an instant older than the stored history the latest bound is a valid upper bound."""
         e = self._nearest(t)
+        if e is None and self.buf and t < self.buf[0][0]:
+            e = self.buf[-1]
         return None if e is None or e[3] is None else float(e[3])
 
 
@@ -207,6 +210,13 @@ class AcousticTracker:
             return
         if not f.accepted:
             f.rep_reason = "rejected_fix"
+            return
+        from holo_fleet.perception.payload import frame_index
+
+        n = len(self.slot_of) + 1
+        if rep.frame != frame_index(f.t_tx, self.cfg.beacon.period_s, n):
+            f.rep_reason = "frame"                       # not this frame's packet: misassociated or stale
+            self.stats["payload_frame"] = self.stats.get("payload_frame", 0) + 1
             return
         b_own = self.pose.bound_at(f.t)
         if b_own is None:

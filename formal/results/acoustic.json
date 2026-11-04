@@ -80,7 +80,29 @@
       "note": "30 pairs; confirmation through a shadowed ray for 4, accounting through a shadowed ray for 30 (probable, not certain); worst exit evidence 28.6 s after the exit face (observer l=+5.25, passer lane +8.75, passer at s=10.35); falls back to the sonar latch for: observer +8.75/passer +5.25 (no evidence), observer +8.75/passer +1.75 (no evidence), observer -8.75/passer -1.75 (no evidence), observer -8.75/passer -5.25 (no evidence)"
     },
     {
-      "prop": "B2-S acoustic fixes never reach separation, collision avoidance, precedence or the sonar witness; the latch uses them only with the FRONT corridor empty",
+      "prop": "B2-P payload soundness: a sender truly in the CR whose estimate errs within its sent bound (cylinder |e_h| <= h, |e_z| <= z, radius hypot(h, z), through the 48-bit packet) is never cleared by the payload rule nor placed beyond the exit face",
+      "formula": "forall sampled centres in the CR and errors in the cylinder: rep_cr_possible and not A3",
+      "encoding": "perception/acoustic.py + perception/acoustic_gate.py",
+      "expect": "holds",
+      "verdict": "holds",
+      "passed": true,
+      "seconds": 0.0,
+      "counterexample": null,
+      "note": "randomized, {'samples': 20000, 'cleared_inside': 0, 'beyond_while_inside': 0}"
+    },
+    {
+      "prop": "B2-Pm mutation: the radius max(h, z) (not a ball over the cylinder) must clear an occupant",
+      "formula": "expect counterexample",
+      "encoding": "perception/acoustic.py + perception/acoustic_gate.py",
+      "expect": "violated",
+      "verdict": "violated",
+      "passed": true,
+      "seconds": 0.0,
+      "counterexample": null,
+      "note": "{'samples': 4000, 'cleared_inside': 1, 'beyond_while_inside': 0}"
+    },
+    {
+      "prop": "B2-S acoustic fixes never reach separation, collision avoidance, precedence or the sonar witness; acoustic exit evaluation requires the FRONT corridor empty (H6: the payload balls reach the map fit only as its identity premise, through Perception, never as a position input)",
       "formula": "AST: no acoustic name in the safety / precedence modules; guarded call",
       "encoding": "perception/acoustic.py + perception/acoustic_gate.py",
       "expect": "holds",

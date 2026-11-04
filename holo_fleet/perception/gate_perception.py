@@ -85,6 +85,7 @@ class GatePerception:
         self.prio_since: Optional[float] = None
         self.occ_state = "FREE"
         self.last_corridor_t = -1e9
+        self.suspects: set = set()          # B2: drones heard possibly inside during the current BUSY episode
         self.busy_since = -1e9
         self.exit_seen_t = -1e9
         self.occ_timeouts = 0
@@ -189,6 +190,8 @@ class GatePerception:
         if heard:
             if self.occ_state == "FREE":
                 self.busy_since = t
+                self.suspects = set()
+            self.suspects |= self.acoustic_exit.heard_by
             self.occ_state, self.exit_witness = "BUSY", None
         witness = None
         if self.occ_state != "FREE":
@@ -199,7 +202,7 @@ class GatePerception:
                 if self.last_corridor_t >= self.busy_since:
                     witness = self.acoustic_exit.evaluate(t, g)
                 else:
-                    witness = self.acoustic_exit.evaluate_clearance(t, g, self.busy_since)
+                    witness = self.acoustic_exit.evaluate_clearance(t, g, self.busy_since, self.suspects)
         if heard:
             witness = None
             self.exit.clear_confirmation()  # vetoed captures cannot later become an exit witness
@@ -217,6 +220,7 @@ class GatePerception:
             self.occ_state = "FREE"
         if self.occ_state == "FREE":
             self.exit.reset()
+            self.suspects = set()
             if self.acoustic_exit is not None:
                 self.acoustic_exit.reset()
         o.occ_state = self.occ_state

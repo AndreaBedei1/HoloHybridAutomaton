@@ -234,6 +234,44 @@ def exit_observability(cfg: FleetConfig, g, n: int, ds: float = 0.05) -> list:
     return rows
 
 
+def payload_soundness(cfg: FleetConfig, g, n: int = 20000, seed: int = 3, radius=None) -> dict:
+    """B2-P: a sender truly in the CR (centre anywhere in the box, boundary included) whose estimate errs by at most
+    its declared horizontal bound h and vertical bound z, sent as the ball radius ``radius(h, z)`` (default: the
+    deployed NavBound rule hypot(h, z)) through the real packet (quantisation, rounding up), is never cleared by the
+    payload rule (``rep_cr_possible`` stays True) and never placed beyond the exit face by A3.  Randomized, with the
+    worst cases (errors on the boundary of the cylinder) over-sampled."""
+    from holo_fleet.perception import payload as pl
+    from holo_fleet.perception.acoustic_gate import AcousticExit, gate_points
+    from holo_fleet.perception.acoustic import AcousticTracker
+
+    radius = radius or (lambda h, z: math.hypot(h, z))
+    rng = np.random.default_rng(seed)
+    ae = AcousticExit(cfg, AcousticTracker(cfg), [1])
+    half = ae.half
+    bad = beyond_bad = 0
+    s_exit = half[0] + R_OUT
+    for i in range(n):
+        q = rng.uniform(-half, half)                              # true centre in the CR (gate frame)
+        if i % 3 == 0:
+            ax = rng.integers(3)
+            q[ax] = half[ax] * rng.choice([-1.0, 1.0])            # on the boundary
+        true = g.center + q[0] * g.axis + q[1] * np.array([-g.axis[1], g.axis[0], 0.0]) + np.array([0, 0, q[2]])
+        h, z = rng.uniform(0.0, 4.0), rng.uniform(0.0, 2.0)
+        ang = rng.uniform(0, 2 * math.pi)
+        rh = h if i % 2 == 0 else h * math.sqrt(rng.uniform())   # boundary of the cylinder half of the time
+        e = np.array([rh * math.cos(ang), rh * math.sin(ang), z * rng.choice([-1.0, 1.0]) * (1.0 if i % 2 == 0 else rng.uniform())])
+        rep = pl.decode(pl.encode(0, true + e, radius(h, z)))
+        if rep is None:
+            continue
+        f = Fix(slot=1, t=0.0, r=1.0, az=0.0, el=0.0, p=true, pts=true[None, :], slack=0.0, rel=np.zeros(3),
+                rep=rep, t_tx=0.0)
+        if not ae.rep_cr_possible(g, f, 0.0):
+            bad += 1
+        if float(gate_points(g, rep.p[None, :])[0][0]) - f.rep_radius(0.0, ae.v_bound) > s_exit:
+            beyond_bad += 1
+    return {"samples": n, "cleared_inside": bad, "beyond_while_inside": beyond_bad}
+
+
 def structural() -> list:
     """Modules that decide separation, collision avoidance or precedence never touch an acoustic fix."""
     pkg = ROOT / "holo_fleet"
@@ -248,6 +286,12 @@ def structural() -> list:
         tree = ast.parse(f.read_text(encoding="utf-8"))
         for node in ast.walk(tree):
             name = node.attr if isinstance(node, ast.Attribute) else node.id if isinstance(node, ast.Name) else None
+            # reading a DECLARED constant of the configuration (cfg.acoustic.<field>, e.g. the own gate-frame
+            # navigation error or the attitude error bound) is not acoustic data
+            if (name == "acoustic" and isinstance(node, ast.Attribute)
+                    and ((isinstance(node.value, ast.Attribute) and node.value.attr == "cfg")
+                         or (isinstance(node.value, ast.Name) and node.value.id == "cfg"))):
+                continue
             if name in ("acoustic", "AcousticTracker", "AcousticExit", "acoustic_exit", "AcousticRx"):
                 bad.append(f"{rel}:{getattr(node, 'lineno', '?')}")
     # the latch calls the acoustic exit only with the corridor empty and the latch BUSY
@@ -307,9 +351,23 @@ def run(cfg: FleetConfig = B2, verbose: bool = True) -> Report:
         rep.add(CheckResult(head, f"exists {cfg.acoustic.exit_confirm} consecutive clear fixes with s_lower > exit face "
                             "before the path end; queued drones excluded at t_lc", ENC, "violated" if not okn else "holds",
                             verdict="holds" if okn else "violated", passed=True, note=note), verbose)
+    ps = payload_soundness(cfg, g)
+    ok = ps["cleared_inside"] == 0 and ps["beyond_while_inside"] == 0
+    rep.add(CheckResult("B2-P payload soundness: a sender truly in the CR whose estimate errs within its sent bound "
+                        "(cylinder |e_h| <= h, |e_z| <= z, radius hypot(h, z), through the 48-bit packet) is never "
+                        "cleared by the payload rule nor placed beyond the exit face",
+                        "forall sampled centres in the CR and errors in the cylinder: rep_cr_possible and not A3",
+                        ENC, "holds", verdict="holds" if ok else "violated", passed=ok,
+                        note=f"randomized, {ps}"), verbose)
+    pm = payload_soundness(cfg, g, n=4000, radius=lambda h, z: max(h, z))
+    okm = pm["cleared_inside"] > 0
+    rep.add(CheckResult("B2-Pm mutation: the radius max(h, z) (not a ball over the cylinder) must clear an occupant",
+                        "expect counterexample", ENC, "violated", verdict="violated" if okm else "holds", passed=okm,
+                        note=f"{pm}"), verbose)
     bad = structural()
     rep.add(CheckResult("B2-S acoustic fixes never reach separation, collision avoidance, precedence or the sonar witness; "
-                        "acoustic exit evaluation requires the FRONT corridor empty",
+                        "acoustic exit evaluation requires the FRONT corridor empty (H6: the payload balls reach the "
+                        "map fit only as its identity premise, through Perception, never as a position input)",
                         "AST: no acoustic name in the safety / precedence modules; guarded call", ENC, "holds",
                         verdict="holds" if not bad else "violated", passed=not bad, note="; ".join(bad) or "clean"), verbose)
     return rep

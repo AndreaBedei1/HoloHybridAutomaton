@@ -18,7 +18,7 @@ from holo_fleet.control.formation_time import FormationTime
 from holo_fleet.mission import MissionPlan
 from holo_fleet.perception.perception import LocalObservation
 from holo_fleet.perception.sonar_processing import OBSTACLE_CLASSES
-from holo_fleet.perception.sonar_geometry import HULL_HALF
+from holo_fleet.perception.sonar_geometry import HULL_HALF, R_OUT
 
 RELOC_MARGIN_M = 0.15     # hold point: the hull this far before the critical region
 RELOC_ZONE_M = 0.4        # a gate localization confirmed this close to the hold point clears the entry
@@ -259,15 +259,24 @@ class Flows:
             s_hold = -(G.cr_half_len + float(HULL_HALF[0]) + RELOC_MARGIN_M)
             if go.loc_ok and go.entry_ok and go.s >= s_hold - RELOC_ZONE_M:
                 self.cr_cleared = True
-            if not self.cr_cleared and c[0] > s_hold:
+            # give-up plane: a drone whose centre is behind it is outside the CR whatever its declared gate-frame
+            # navigation error (the hull's circumscribed ball R_OUT included)
+            s_abort = -(G.cr_half_len + float(R_OUT) + G.nav_err_m)
+            self.abort_request = False
+            if not self.cr_cleared and (c[0] > s_hold or self.hold_timeout):
                 self.hold_since = obs.t if self.hold_since is None else self.hold_since
                 if obs.t - self.hold_since > G.t_occ_max + G.t_clear and not self.hold_timeout:
                     self.hold_timeout = True
                     self.events.append({"t": obs.t, "type": "ENTRY_HOLD_TIMEOUT", "loc_ok": go.loc_ok,
                                         "entry_ok": go.entry_ok})
-                self.abort_request = self.hold_timeout          # the controller adds the zone (I5)
                 back = int((obs.t - self.hold_since) / RELOC_PERIOD_S) % 2 == 1
                 c = np.array([s_hold - (RELOC_BACK_M if back else 0.0), 0.0, c[2]])
+                if self.hold_timeout:
+                    # give up: still committed (the queued drones keep waiting), back off behind the give-up plane,
+                    # then request the automaton's give-up edge, which clears the commitment; recomputed every step,
+                    # never once admitted
+                    c = np.array([s_abort - RELOC_MARGIN_M, 0.0, c[2]])
+                    self.abort_request = go.s <= s_abort
                 hold = True
             self.entry_state = "ADMIT" if self.cr_cleared else ("HOLD" if hold else "")
             tgt = g.from_gate_frame(c)

@@ -3,7 +3,7 @@
 Drone k pings on a fixed TDMA schedule (slot k of every period, slots aligned to simulator ticks so that the
 scheduled emission instant is exact), and every reception becomes a range-bearing measurement through the channel
 model of sim/acoustic_channel.py (noise, biases, NLOS reflections, dropouts, outages, latency).  A ping carries the
-sender's static identity and, with ``payload`` (H6, perception/payload.py), an 80-bit packet with the sender's
+sender's static identity and, with ``payload`` (H6, perception/payload.py), a 48-bit packet with the sender's
 ONBOARD position estimate and error bound, taken from its own perception through ``payload_source`` (never from
 the simulator state).  The packet is lost on its own (``payload_loss``, a separate seeded stream) even when the
 ping is detected.  No mode, queue or control data is sent, and nobody replies.
@@ -36,7 +36,7 @@ from typing import Dict, List, Sequence, Tuple
 import numpy as np
 
 SENSOR_NAME = "Beacon"
-PING_S = 0.04                 # identity chirp duration, upper end of the 20-40 ms of H1
+PING_S = 0.04                 # identity chirp duration, upper end of the 20-40 ms of H1 (also the packet preamble)
 
 
 class BeaconTransport:
@@ -60,7 +60,7 @@ class BeaconTransport:
         self.last_rx: Dict[Tuple[str, int], float] = {}                          # (receiver, sender id) -> t_rx
         self.longest_gap = 0.0
         self.t_now = 0.0
-        self.payload_source = None        # callable k -> (t_est, p_est, bound) from drone k's ONBOARD perception
+        self.payload_source = None        # callable (k, t_emit) -> (p_est, bound) from drone k's ONBOARD perception
         self.payload_rng = np.random.default_rng([int(seed), 5102])     # separate stream: pings unchanged
         self.payload_stats = {"sent": 0, "lost": 0, "delivered": 0}
         if cfg.payload:
@@ -101,16 +101,12 @@ class BeaconTransport:
             return None
         from holo_fleet.perception.payload import encode
 
-        src = self.payload_source(k)
+        src = self.payload_source(k, t)
         if src is None:
             return None
-        t_est, p_est, bound = src
-        from holo_fleet.perception.exit_witness import speed_bound
-
-        # the estimate is that of the last control step: its age at the emission instant is covered by the bound
-        grow = speed_bound() * max(0.0, t - t_est)
+        p_est, bound = src                # the sender's own bound already covers the age of its estimate at t
         self.payload_stats["sent"] += 1
-        return encode((tick // self.period_ticks) % 256, p_est, bound + grow)
+        return encode(tick // self.period_ticks, p_est, bound)
 
     def after_tick(self, env, t: float) -> None:
         """Resolve the engine results of this tick into receptions (or losses)."""

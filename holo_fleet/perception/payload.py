@@ -1,23 +1,27 @@
-"""B2 beacon payload (hardware assumption H6): the bits a drone broadcasts with its TDMA identity ping.
+"""B2 beacon payload (hardware assumption H6): the bits a drone sends with its TDMA identity ping.
 
 Strictly one-way: the payload is the sender's ONBOARD navigation estimate in the shared mission frame and a
 conservative bound of its error (perception/nav.py, NavBound).  No request, reply, acknowledgement, mode, queue
-position or control decision is ever sent.  The packet is 80 bits (10 bytes):
+position or control decision is ever sent.  The packet is 48 bits (6 bytes):
 
   field     bits  encoding
-  seq          8  TDMA frame counter mod 256 (the emission instant is the pre-assigned slot: no timestamp field)
-  x, y     16+16  mission-frame position, signed, 0.01 m (+-327.67 m)
-  depth       12  -z, unsigned, 0.01 m (0 - 40.95 m)
-  bound        8  error-ball radius, 0.05 m steps, rounded UP after adding the quantisation error; 255 = invalid
-  crc         16  CRC-16/CCITT-FALSE over the first 60 bits (8 bytes, 4 padding bits zero)
+  frame        2  TDMA frame counter mod 4: the receiver checks it against its own schedule (a packet of another
+                  frame is not used); the emission instant is the pre-assigned slot, so there is no timestamp
+  x, y     12+12  mission-frame position, signed, 0.05 m (+-102.35 m; the mission area spans +-45 m)
+  depth        8  -z, unsigned, 0.05 m (0 - 12.75 m; the operating band is 1.5 - 9 m)
+  bound        6  error-ball radius, 0.10 m steps, rounded UP after adding the quantisation error; 63 = invalid
+                  (the sender's integrity monitor flags its own bound, NavBound.invalid)
+  crc          8  CRC-8 (polynomial 0x07) over the first 40 bits
 
-Air time at the assumed 1 kbit/s coherent short-packet rate: 80 ms; with a 20-40 ms identity chirp and the 33 ms
-propagation spread of 50 m it fits the 167 ms slot of n = 6 drones at a 1 s period (sim/beacon.py checks it).
-Rates of 1 kbit/s and above at tens of metres are within PSK modes of research modems (WHOI Micro-Modem PSK
-burst rates up to about 5 kbit/s) and software-defined modems (Subnero M25M, peak 15 kbit/s); the CRC rejects
-corrupted packets, and a decoded position inconsistent with the measured range and bearing is not used
-(perception/acoustic.py).  The position uncertainty, clock error (synchronised clocks, H2) and packet loss are
-modelled; the identity of the sender is the TDMA slot and the ping code.
+Air time (H6, an assumption to be measured on the bench before any field use): at 1 kbit/s net, 48 ms; the
+identity chirp doubles as the packet preamble (40 ms), and with the 33 ms propagation spread of 50 m a slot needs
+121 ms of the 167 ms of n = 6 drones at the 1 s period (46 ms left for reverberation tails and scheduling jitter;
+sim/beacon.py refuses a configuration that does not fit).  Candidate hardware with short-range rates far above
+1 kbit/s exists (EvoLogics S2CM-HS, up to 62.5 kbit/s at 120-200 kHz; Subnero M25M, 15 kbit/s peak at short range;
+Teledyne Benthos DAT, 140-15 360 bit/s), but a 6-byte frame time on a synchronised TDMA schedule is not documented
+by any of them: it is the stated hardware assumption.  A BlueROV2-class 64 bit/s modem (Water Linked M64) cannot
+carry it at this period.  The CRC rejects corrupted packets, and a decoded position inconsistent with the measured
+range and bearing is not used (perception/acoustic.py).
 """
 
 from __future__ import annotations
@@ -28,61 +32,68 @@ from typing import Optional
 
 import numpy as np
 
-PAYLOAD_BITS = 80
-POS_Q = 0.01                  # [m] position quantum
-BOUND_Q = 0.05                # [m] bound quantum
-BOUND_INVALID = 255
+PAYLOAD_BITS = 48
+POS_Q = 0.05                  # [m] position quantum
+BOUND_Q = 0.10                # [m] bound quantum
+BOUND_INVALID = 63
+FRAMES = 4                    # frame counter modulus
 QUANT_ERR = math.sqrt(3.0) * POS_Q / 2.0   # largest rounding error of a position (three axes)
 
 
-def crc16(data: bytes) -> int:
-    crc = 0xFFFF
+def crc8(data: bytes) -> int:
+    crc = 0
     for b in data:
-        crc ^= b << 8
+        crc ^= b
         for _ in range(8):
-            crc = ((crc << 1) ^ 0x1021) & 0xFFFF if crc & 0x8000 else (crc << 1) & 0xFFFF
+            crc = ((crc << 1) ^ 0x07) & 0xFF if crc & 0x80 else (crc << 1) & 0xFF
     return crc
 
 
 @dataclass(frozen=True)
 class Payload:
-    seq: int
+    frame: int
     p: np.ndarray                 # decoded mission-frame position (quantised)
     bound: float                  # error-ball radius at the emission instant, quantisation included
 
 
-def encode(seq: int, p, bound: float) -> bytes:
+def encode(frame: int, p, bound: float) -> bytes:
     """Sender side.  ``bound`` already covers the age of the estimate at the emission instant."""
     x = int(round(float(p[0]) / POS_Q))
     y = int(round(float(p[1]) / POS_Q))
     depth = int(round(-float(p[2]) / POS_Q))
     b = math.ceil((float(bound) + QUANT_ERR) / BOUND_Q - 1e-9) if math.isfinite(bound) else BOUND_INVALID
-    if not (-32768 <= x <= 32767 and -32768 <= y <= 32767 and 0 <= depth <= 4095) or not math.isfinite(bound):
-        b = BOUND_INVALID                 # out of the representable frame: sent, but marked unusable
-        x, y, depth = max(-32768, min(32767, x)), max(-32768, min(32767, y)), max(0, min(4095, depth))
+    if not (-2048 <= x <= 2047 and -2048 <= y <= 2047 and 0 <= depth <= 255):
+        b = BOUND_INVALID                 # outside the representable frame: sent, but marked unusable
+        x, y, depth = max(-2048, min(2047, x)), max(-2048, min(2047, y)), max(0, min(255, depth))
     b = min(b, BOUND_INVALID)
-    bits = ((seq & 0xFF) << 52) | ((x & 0xFFFF) << 36) | ((y & 0xFFFF) << 20) | ((depth & 0xFFF) << 8) | (b & 0xFF)
-    head = (bits << 4).to_bytes(8, "big")
-    return head + crc16(head).to_bytes(2, "big")
+    bits = ((frame % FRAMES) << 38) | ((x & 0xFFF) << 26) | ((y & 0xFFF) << 14) | ((depth & 0xFF) << 6) | (b & 0x3F)
+    head = bits.to_bytes(5, "big")
+    return head + bytes([crc8(head)])
 
 
 def decode(packet: Optional[bytes]) -> Optional[Payload]:
     """Receiver side: None for a missing, corrupted or invalid packet."""
     if packet is None or len(packet) != PAYLOAD_BITS // 8:
         return None
-    head, crc = packet[:8], int.from_bytes(packet[8:], "big")
-    if crc16(head) != crc:
+    head, crc = packet[:5], packet[5]
+    if crc8(head) != crc:
         return None
-    bits = int.from_bytes(head, "big") >> 4
-    b = bits & 0xFF
+    bits = int.from_bytes(head, "big")
+    b = bits & 0x3F
     if b == BOUND_INVALID:
         return None
-    def s16(v):
-        return v - 0x10000 if v & 0x8000 else v
-    x, y = s16((bits >> 36) & 0xFFFF), s16((bits >> 20) & 0xFFFF)
-    depth = (bits >> 8) & 0xFFF
-    return Payload(seq=(bits >> 52) & 0xFF, p=np.array([x * POS_Q, y * POS_Q, -depth * POS_Q]), bound=b * BOUND_Q)
+
+    def s12(v):
+        return v - 0x1000 if v & 0x800 else v
+    x, y = s12((bits >> 26) & 0xFFF), s12((bits >> 14) & 0xFFF)
+    depth = (bits >> 6) & 0xFF
+    return Payload(frame=(bits >> 38) & 0x3, p=np.array([x * POS_Q, y * POS_Q, -depth * POS_Q]), bound=b * BOUND_Q)
 
 
 def air_time_s(rate_bps: float) -> float:
     return PAYLOAD_BITS / float(rate_bps)
+
+
+def frame_index(t_tx: float, period_s: float, n: int) -> int:
+    """TDMA frame of an emission instant (slot k of frame m at m P + k P / n), robust to millisecond errors."""
+    return int(math.floor((t_tx + 0.25 * period_s / max(n, 1)) / period_s)) % FRAMES

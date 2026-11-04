@@ -125,6 +125,8 @@ class GateRule:
     corridor_half_width: float = 6.5
     t_clear: float = 1.0              # PRIORITY / a free CR must persist this long before committing [s]
     t_occ_max: float = 25.0           # CR seen busy, no exit seen: belief returns FREE after this [s] (logged)
+    nav_err_m: float = 1.0            # declared own gate-frame navigation error (= AcousticConfig.nav_err_gate_m):
+                                      # the give-up plane of a stage-2 hold lies this far beyond R_OUT before the CR
     merge_angle_deg: float = 55.0     # committed drones descend to the axis on this heading (from the axis)
     merge_before_cr: float = 0.7      # ... and are on the axis this far before the CR
     merge_clearance: float = 3.2      # ... keeping at least this from every queue point still occupied
@@ -344,7 +346,7 @@ class AcousticConfig:
     # term is the declared envelope of a sensor, never the profile of a run:
     nav_b0_m: float = 0.30               # [REQ] launch survey of the shared mission frame (horizontal)
     dvl_scale_err: float = 0.01          # [LIT] DVL velocity scale error (1 %: low-cost DVL class; Nortek <= 0.1 %)
-    dvl_sigma_body_mps: float = 0.15     # [PROF] white DVL body-velocity noise, MEDIUM: 0.08 m/s per beam x 1.9
+    dvl_sigma_body_mps: float = 0.0285   # [PROF] white DVL body-velocity noise, MEDIUM: 0.015 m/s per beam x 1.9
     nav_depth_err_m: float = 0.45        # [PROF] depth sensor, 3 x the MEDIUM 0.15 m noise
 
 

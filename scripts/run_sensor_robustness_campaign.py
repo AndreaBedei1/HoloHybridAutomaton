@@ -172,6 +172,9 @@ def worker(args) -> int:
     cfg = DEFAULT
     if args.protocol.startswith("B2_"):            # range-bearing beacon, channel level after the underscore
         cfg = dataclasses.replace(DEFAULT, beacon=BeaconConfig(mode="ACOUSTIC_RB", channel=args.protocol[3:]))
+    elif args.protocol.startswith("B2NP_"):        # ablation: the same beacon without the H6 payload
+        cfg = dataclasses.replace(DEFAULT, beacon=BeaconConfig(mode="ACOUSTIC_RB", channel=args.protocol[5:],
+                                                               payload=False))
     d = Path(args.run_dir)
     prof, _, scope = args.profile.partition("-")
     # criteria v3 (referee/criteria.py): a-priori requirements, deadline from the plan and the protocol bounds

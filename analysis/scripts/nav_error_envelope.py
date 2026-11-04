@@ -36,7 +36,7 @@ def one(d):
         if f"x{k}" not in rows[0]:
             break
         truth = np.array([[float(r[f"x{k}"]), float(r[f"y{k}"])] for r in rows])
-        est, te, aid = [], [], []
+        est, te, aid, bnd = [], [], [], []
         with gzip.open(d / f"drone_{k}_state.jsonl.gz", "rt") as fh:
             for line in fh:
                 s = json.loads(line)
@@ -44,6 +44,7 @@ def one(d):
                     continue
                 te.append(float(s["t"]))
                 est.append(s["nav_p"][:2])
+                bnd.append(float(s["nav_bound"]) if s.get("nav_bound") is not None else np.nan)
                 na = s.get("nav_aid") or {}
                 aid.append(float(np.linalg.norm(na.get("applied", [0.0, 0.0])[:2])) if na.get("applied") else 0.0)
         if not est:
@@ -56,8 +57,13 @@ def one(d):
         dist = np.cumsum(step)
         e0 = err[0]
         ratio = np.where(dist > 5.0, (err - e0) / np.maximum(dist, 1e-6), 0.0)
+        bnd = np.array(bnd)
+        has_b = bool(np.isfinite(bnd).any())
         out.append({"run": str(d), "drone": k, "err_max": float(err.max()), "dist": float(dist[-1]),
-                    "ratio_max": float(ratio.max()), "aid_total": float(aid.sum()), "e0": float(e0)})
+                    "ratio_max": float(ratio.max()), "aid_total": float(aid.sum()), "e0": float(e0),
+                    "bound_exceeded": int(np.sum(err > bnd)) if has_b else None,
+                    "bound_min_margin": float(np.nanmin(bnd - err)) if has_b else None,
+                    "bound_end": float(bnd[-1]) if has_b else None})
         k += 1
     return out
 
@@ -73,6 +79,12 @@ def main(argv):
     em = np.array([r["err_max"] for r in res])
     print(f"drones {len(res)}  err_max p50 {np.median(em):.3f}  p99 {np.percentile(em, 99):.3f}  max {em.max():.3f} m")
     print(f"(err - e0)/distance after 5 m: p50 {np.median(rm):.4f}  p99 {np.percentile(rm, 99):.4f}  max {rm.max():.4f}")
+    cov = [r for r in res if r["bound_exceeded"] is not None]
+    if cov:
+        exc = sum(r["bound_exceeded"] for r in cov)
+        print(f"nav_bound logged for {len(cov)} drones: samples with error > bound {exc}; "
+              f"smallest margin {min(r['bound_min_margin'] for r in cov):.3f} m; "
+              f"bound at end p50 {np.median([r['bound_end'] for r in cov]):.2f} max {max(r['bound_end'] for r in cov):.2f} m")
     for r in sorted(res, key=lambda r: -r["ratio_max"])[:8]:
         print(json.dumps(r))
     return 0

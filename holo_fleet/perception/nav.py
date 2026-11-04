@@ -35,12 +35,16 @@ class DeadReckoning:
         self.state = NavState(p=np.array(launch_position, dtype=float), yaw=math.radians(launch_yaw_deg))
 
     def update(self, t: float, dt: float, compass: Optional[np.ndarray], dvl: Optional[np.ndarray],
-               depth: Optional[float], imu: Optional[np.ndarray]) -> NavState:
+               depth: Optional[float], imu: Optional[np.ndarray], stamps: Optional[dict] = None) -> NavState:
+        """``stamps``: the onboard time of the last update of each sensor (SensorFrame.stamp).  A frame holds the
+        LATEST value of a sensor with its own stamp: the freshness times are those stamps, not t (a held DVL
+        sample is not a new measurement)."""
         s = self.state
+        st = stamps or {}
         if compass is not None:
             m = np.asarray(compass, dtype=float).ravel()
             s.yaw = math.atan2(m[1], m[0])
-            s.t_compass = t
+            s.t_compass = float(st.get("Compass", t))
         if imu is not None:
             arr = np.asarray(imu, dtype=float)
             if arr.ndim == 2 and arr.shape[0] >= 2:
@@ -49,14 +53,14 @@ class DeadReckoning:
             v = np.asarray(dvl, dtype=float).ravel()[:3]
             if np.all(np.isfinite(v)):
                 s.v_body = v
-                s.t_dvl = t
+                s.t_dvl = float(st.get("DVLSensor", t))
         c, sn = math.cos(s.yaw), math.sin(s.yaw)
         s.v_world = np.array([c * s.v_body[0] - sn * s.v_body[1], sn * s.v_body[0] + c * s.v_body[1], s.v_body[2]])
         s.p[0] += s.v_world[0] * dt
         s.p[1] += s.v_world[1] * dt
         if depth is not None:
             s.p[2] = float(np.asarray(depth).ravel()[0])
-            s.t_depth = t
+            s.t_depth = float(st.get("DepthSensor", t))
         else:
             s.p[2] += s.v_world[2] * dt
         return s
@@ -66,40 +70,57 @@ class DeadReckoning:
         return np.array([[c, -sn, 0.0], [sn, c, 0.0], [0.0, 0.0, 1.0]])
 
 
+
+RAYLEIGH_3SIGMA = math.sqrt(-2.0 * math.log(1.0 - 0.9973))   # 3.44: 99.73 % of a 2-D isotropic normal error
+DVL_LEVER_M = 0.25            # [ASSUMPTION] bound of the DVL offset from the vehicle centre (omega x r not compensated)
+SENSOR_LATENCY_S = 0.05       # [PROF] MEDIUM sensor latency (sim/sensor_noise.py)
+A_MAX_MPS2 = 1.5              # [CAL] largest speed change rate: reversal from +0.45 to -0.30 m/s in 0.5 s
+                              # (results/calibration/plant_calibration.json, "reversal")
+FIT_MARGIN_M = 0.30           # [CAL] lateral accuracy of a gate fit, from the replay in structure_aiding's docstring
+MAP_ERR_M = 0.10              # [REQ] survey accuracy of the gate map in the mission frame
+
+
 class NavBound:
     """Conservative onboard bound of the own dead-reckoning position error (shared mission frame), sent in the B2
     payload (H6).  It grows with the declared envelope of the navigation sensors, never with the profile of a run:
 
-      b_h(t) = nav_b0_m                                         launch survey of the shared frame [REQ]
-             + sum (sin(heading_err) + dvl_scale_err) |v_h| dt   compass bias and DVL scale error: a drift
-                                                                 proportional to the distance travelled
-             + k_sigma dvl_sigma_body sqrt(sum dt^2)             white DVL noise integrated by the dead reckoning
-                                                                 (a random walk; k_sigma as in the acoustic envelope)
-             + sum a_max tau dt                                  DVL outage: the held velocity is wrong by at most
-                                                                 a_max tau after tau seconds without a sample
-                                                                 (a_max: the calibrated closed-loop deceleration)
-             + sum |correction|                                  a map-aided correction may itself be wrong: the
-                                                                 bound never shrinks
-      b_z    = nav_depth_err_m while the depth sensor is fresh, growing with the speed bound while it is not.
+      b_h(t) = b_ref                                            launch survey, or the last validated gate fit
+             + sum (2 sin(heading_err / 2) + s)(1 + s) |v_h| dt  compass bias and DVL scale error s on the true
+                                                                 speed (<= (1 + s) |v_h|): drift proportional to
+                                                                 the distance travelled
+             + 3.44 sigma_v sqrt(sum dt^2)                       white DVL noise integrated by the dead reckoning
+                                                                 (a 2-D random walk at the 99.73 % level)
+             + sum min(a_max tau, |v_held| + v_bound) dt         DVL outage: the held velocity is wrong by at most
+                                                                 a_max tau after tau seconds without a NEW sample
+             + sum |unvalidated corrections|                     an applied map fit may itself be wrong
+             + 2 r_DVL + latency v_bound                         lever arm (bounded rotation of r) and sensor latency
+      b_z    = nav_depth_err_m while the depth sensor delivers new samples, growing with the speed bound otherwise.
+      bound  = hypot(b_h, b_z): the radius of a BALL containing every error with |e_h| <= b_h and |e_z| <= b_z.
 
-    The bound is the sum of worst cases of independent terms (no cancellation assumed), at k_sigma for the one white
-    term.  It is an envelope assumption like the acoustic one: a sensor fault outside the declared envelope (a
-    larger compass bias, a DVL fault that still reports) violates it; every run logs the true error against it."""
+    A gate localization VALIDATED by structure aiding (the hull plus the fit uncertainty u inside the free opening)
+    is a map-relative fix: the horizontal reference restarts at u + FIT_MARGIN_M + MAP_ERR_M if that is smaller.
+    Integrity: an applied correction larger than the current horizontal bound shows that the bound was violated;
+    the bound is then INVALID for the rest of the run (the payload is sent marked unusable).
+
+    The sum of worst cases of independent terms (no cancellation assumed).  It is an envelope assumption like the
+    acoustic one: a sensor fault outside the declared envelope (a larger compass bias - the HIGH profile's 4 deg
+    exceeds the declared 3 deg -, a DVL that reports wrong velocities) violates it; every run logs the bound
+    against the true error (referee: nav-bound coverage)."""
 
     DVL_STALE_S = 0.15                       # one 10 Hz DVL sample plus jitter: older means the velocity is held
 
     def __init__(self, cfg):
         a, env = cfg.acoustic, cfg.env
-        self.k_lin = math.sin(math.radians(a.heading_err_deg)) + a.dvl_scale_err
-        self.k_rw = a.k_sigma * a.dvl_sigma_body_mps
-        self.a_max = env.a_brake_measured
+        s = a.dvl_scale_err
+        self.k_lin = (2.0 * math.sin(math.radians(a.heading_err_deg) / 2.0) + s) * (1.0 + s)
+        self.k_rw = RAYLEIGH_3SIGMA * a.dvl_sigma_body_mps
         self.depth_err = a.nav_depth_err_m
         self.v_bound = max(env.v_escape, env.v_max_nominal, cfg.gate.v_pass) + env.w_drift_max
-        self.lin = a.nav_b0_m
-        self.var = 0.0                       # sum dt^2 of the integrated white velocity noise
-        self.outage = 0.0
-        self.aid = 0.0
+        self.const = 2.0 * DVL_LEVER_M + SENSOR_LATENCY_S * self.v_bound
+        self.ref = a.nav_b0_m
+        self.lin = self.var = self.outage = self.aid = 0.0
         self.z = self.depth_err
+        self.invalid = False
 
     def update(self, t: float, dt: float, s: NavState) -> None:
         v_h = math.hypot(float(s.v_world[0]), float(s.v_world[1]))
@@ -108,17 +129,26 @@ class NavBound:
         if tau <= self.DVL_STALE_S:
             self.var += dt * dt
         else:
-            self.outage += self.a_max * min(tau, 1e3) * dt
+            self.outage += min(A_MAX_MPS2 * tau, v_h + self.v_bound) * dt
         self.z = self.depth_err if t - s.t_depth <= self.DVL_STALE_S else self.z + self.v_bound * dt
 
     def corrected(self, corr) -> None:
-        self.aid += float(np.linalg.norm(np.asarray(corr, dtype=float)[:2]))
+        c = float(np.linalg.norm(np.asarray(corr, dtype=float)[:2]))
+        if c > self.horizontal:
+            self.invalid = True                 # the estimate was farther off than its bound: integrity lost
+        self.aid += c
+
+    def validated(self, u: float) -> None:
+        """A validated gate localization with uncertainty u: restart the horizontal reference if it is smaller."""
+        r = float(u) + FIT_MARGIN_M + MAP_ERR_M
+        if r < self.horizontal:
+            self.ref, self.lin, self.var, self.outage, self.aid = r, 0.0, 0.0, 0.0, 0.0
 
     @property
     def horizontal(self) -> float:
-        return self.lin + self.k_rw * math.sqrt(self.var) + self.outage + self.aid
+        return self.ref + self.lin + self.k_rw * math.sqrt(self.var) + self.outage + self.aid + self.const
 
     @property
     def value(self) -> float:
-        """A ball radius containing the true position: the larger of the horizontal and vertical bounds."""
-        return max(self.horizontal, self.z)
+        """Radius of a ball containing the true position (inf when the integrity monitor has fired)."""
+        return math.inf if self.invalid else math.hypot(self.horizontal, self.z)

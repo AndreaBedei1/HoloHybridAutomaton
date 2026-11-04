@@ -91,10 +91,19 @@ def test_acoustic_only_episode_releases_on_positive_clearance_of_every_other_dro
     assert gp.last_corridor_t == -1e9 and gp.occ_timeouts == 0
 
 
-def test_acoustic_only_episode_does_not_infer_clearance_of_an_unheard_drone():
+def test_acoustic_only_episode_needs_clearance_of_every_drone_heard_possibly_inside():
+    # an acoustic-only episode started from FREE: a drone that was never heard inside would have crossed the FRONT
+    # corridor visibly to enter (the sonar latch premise) and started a sonar episode; every drone HEARD possibly
+    # inside during the episode must be positively cleared (A2)
     p, tracker, gp = observer()
-    heard_pair(tracker, p, -p[0])
+    for t in (1., 2.):
+        tracker.update(t, [(1, t - .25, -p[0], 0., 0.), (2, t - .2, -p[0], 0., 0.)], p, 0.)
     assert gp.update(2., p, 0., [], {}).occ_state == "BUSY"
-    for t in (17., 18., 19.):
+    assert gp.suspects == {1, 2}
+    for t in (17., 18., 19.):                       # only drone 1 is heard outside
         tracker.update(t, [(1, t, -p[0] + 7.5, 0., 0.)], p, 0.)
         assert gp.update(t, p, 0., [], {}).occ_state == "BUSY"
+    for t in (20., 21., 22.):                       # drone 2 too: released
+        tracker.update(t, [(1, t, -p[0] + 7.5, 0., 0.), (2, t - .1, -p[0] + 7.5, 0., 0.)], p, 0.)
+        o = gp.update(t, p, 0., [], {})
+    assert o.occ_state == "EXITING" and o.exit_witness["rule"] == "A2"
