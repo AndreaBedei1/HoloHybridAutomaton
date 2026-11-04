@@ -64,3 +64,61 @@ class DeadReckoning:
     def body_to_world_rot(self) -> np.ndarray:
         c, sn = math.cos(self.state.yaw), math.sin(self.state.yaw)
         return np.array([[c, -sn, 0.0], [sn, c, 0.0], [0.0, 0.0, 1.0]])
+
+
+class NavBound:
+    """Conservative onboard bound of the own dead-reckoning position error (shared mission frame), sent in the B2
+    payload (H6).  It grows with the declared envelope of the navigation sensors, never with the profile of a run:
+
+      b_h(t) = nav_b0_m                                         launch survey of the shared frame [REQ]
+             + sum (sin(heading_err) + dvl_scale_err) |v_h| dt   compass bias and DVL scale error: a drift
+                                                                 proportional to the distance travelled
+             + k_sigma dvl_sigma_body sqrt(sum dt^2)             white DVL noise integrated by the dead reckoning
+                                                                 (a random walk; k_sigma as in the acoustic envelope)
+             + sum a_max tau dt                                  DVL outage: the held velocity is wrong by at most
+                                                                 a_max tau after tau seconds without a sample
+                                                                 (a_max: the calibrated closed-loop deceleration)
+             + sum |correction|                                  a map-aided correction may itself be wrong: the
+                                                                 bound never shrinks
+      b_z    = nav_depth_err_m while the depth sensor is fresh, growing with the speed bound while it is not.
+
+    The bound is the sum of worst cases of independent terms (no cancellation assumed), at k_sigma for the one white
+    term.  It is an envelope assumption like the acoustic one: a sensor fault outside the declared envelope (a
+    larger compass bias, a DVL fault that still reports) violates it; every run logs the true error against it."""
+
+    DVL_STALE_S = 0.15                       # one 10 Hz DVL sample plus jitter: older means the velocity is held
+
+    def __init__(self, cfg):
+        a, env = cfg.acoustic, cfg.env
+        self.k_lin = math.sin(math.radians(a.heading_err_deg)) + a.dvl_scale_err
+        self.k_rw = a.k_sigma * a.dvl_sigma_body_mps
+        self.a_max = env.a_brake_measured
+        self.depth_err = a.nav_depth_err_m
+        self.v_bound = max(env.v_escape, env.v_max_nominal, cfg.gate.v_pass) + env.w_drift_max
+        self.lin = a.nav_b0_m
+        self.var = 0.0                       # sum dt^2 of the integrated white velocity noise
+        self.outage = 0.0
+        self.aid = 0.0
+        self.z = self.depth_err
+
+    def update(self, t: float, dt: float, s: NavState) -> None:
+        v_h = math.hypot(float(s.v_world[0]), float(s.v_world[1]))
+        self.lin += self.k_lin * v_h * dt
+        tau = t - s.t_dvl
+        if tau <= self.DVL_STALE_S:
+            self.var += dt * dt
+        else:
+            self.outage += self.a_max * min(tau, 1e3) * dt
+        self.z = self.depth_err if t - s.t_depth <= self.DVL_STALE_S else self.z + self.v_bound * dt
+
+    def corrected(self, corr) -> None:
+        self.aid += float(np.linalg.norm(np.asarray(corr, dtype=float)[:2]))
+
+    @property
+    def horizontal(self) -> float:
+        return self.lin + self.k_rw * math.sqrt(self.var) + self.outage + self.aid
+
+    @property
+    def value(self) -> float:
+        """A ball radius containing the true position: the larger of the horizontal and vertical bounds."""
+        return max(self.horizontal, self.z)

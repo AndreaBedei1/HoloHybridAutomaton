@@ -40,7 +40,8 @@ from typing import Dict, List, Optional
 import numpy as np
 
 from holo_fleet.config import DEFAULT
-from holo_fleet.referee.criteria import CRITERIA_VERSION, E_TOL_M, deadline_terms, deadline_v3, profile_family
+from holo_fleet.referee.criteria import (CRITERIA_VERSION, E_TOL_M, deadline_terms, deadline_v3, profile_family,
+                                         t_hold_s)
 from holo_fleet.referee.gate_events import gate_events
 
 DEADLOCK_S = 20.0         # v2 report only (deadlock_events); the v3 stall detector is referee/gate_events.py
@@ -327,7 +328,9 @@ def analyze_run(run_dir: Path, reference: Optional[Dict] = None, cfg=DEFAULT, pr
     out["terminal"] = term
     ge = p2o.get("events") or {}
     safe = out["P1"]["holds"] and contacts == 0 and p2o["holds"] and not (intr.get("below_d_safe") or False)
-    unsafe_action = int(ge.get("E4") or 0)                 # entry authorised into an occupied CR (STPA: unsafe action)
+    # unsafe control actions (STPA): an entry (E4) or an approach (E3) authorised into an occupied CR, or a release to
+    # FREE while it is occupied (E2.to_free, which permits a commit)
+    unsafe_action = int(ge.get("E4") or 0) + int(ge.get("E3") or 0) + int((ge.get("E2") or {}).get("to_free") or 0)
     consistent = (out["automaton"]["determinism_violations"] == 0
                   and not out["automaton"]["observation_consistency_violations"])
     out["requirements"] = {r: r not in term["missing"] for r in term["required"]}
@@ -340,7 +343,8 @@ def analyze_run(run_dir: Path, reference: Optional[Dict] = None, cfg=DEFAULT, pr
         fs_last[e["drone"]] = e.get("reason") or ""
     noisy = set(rc.get("noise_drones") or []) if rc.get("noise") else set()
     fs_end = [k for k in healthy if m and modes[-1, k] == FS and "sensor_fault" in fs_last.get(names[k], "")]
-    caused = _degradation_explains(term, mon, ref3, P, fs_end, healthy) if (fs_end and set(fs_end) <= noisy) else False
+    caused = (_degradation_explains(term, mon, ref3, P, fs_end, healthy, t, cfg)
+              if (fs_end and set(fs_end) <= noisy) else False)
     if term.get("replay_consistent") is False:
         cls = "REPLAY_MISMATCH"                # the offline replay disagrees with the online stop: not judged
     elif not safe:
@@ -369,7 +373,7 @@ def analyze_run(run_dir: Path, reference: Optional[Dict] = None, cfg=DEFAULT, pr
     return out
 
 
-def _degradation_explains(term, mon, ref, P, fs_end, healthy) -> bool:
+def _degradation_explains(term, mon, ref, P, fs_end, healthy, t=None, cfg=DEFAULT) -> bool:
     """Every missed requirement involves only the drones in sensor-fault FAILSAFE at the end: their progress, their
     gate passage, their waiting, the vacancy they did not declare, and a formation that is within E_TOL_M once they
     are left out."""
@@ -380,8 +384,14 @@ def _degradation_explains(term, mon, ref, P, fs_end, healthy) -> bool:
             return False
         if r == "gate" and not all(mon.passed[k] is not None for k in others):
             return False
-        if r in ("P3 recovered", "P3-deg re-formed"):
-            if len(others) >= 2 and ref.present_error(P[-1], others) > E_TOL_M:
+        if r in ("P3 recovered", "P3-deg re-formed") and len(others) >= 2:
+            # the drones that are not holding must satisfy the same P3 semantics: within E_TOL_M (inclusive) for the
+            # last T_HOLD_S of the retained history, not only at the final sample
+            hold = t_hold_s(cfg)
+            idx = range(len(P)) if t is None else [i for i in range(len(P)) if t[i] >= t[-1] - hold]
+            if t is not None and t[-1] - t[0] < hold:
+                return False
+            if any(ref.present_error(P[i], others) > E_TOL_M for i in idx):
                 return False
         if r in ("not waiting", "P3-deg vacancy", "no false vacancy"):
             return False                       # decided by the records of drones that are not holding: not explained

@@ -29,6 +29,15 @@ which a hull in or at the CR was seen; since then the corridor has been empty):
 (A4) an episode none of whose possible occupants is a drone of the plan (every other drone excluded at t_lc) gives
      the exit evidence once every other drone is also positively outside the CR now (A2): no fleet drone is in it.
 
+Payload (H6).  A fix whose payload is consistent with its measurement (perception/acoustic.py) has a second region:
+the ball of radius b_rep + v_bound |t - t_tx| around the reported position, in the mission frame of the gate map
+(no own navigation error enters: both are mission-frame quantities).  The true position lies in BOTH regions under
+the two envelopes, so their intersection is used: a fix is clear of the CR when either region is (A2), can be the
+occupant at t_lc only when both regions allow it (A1), and is beyond the exit face when either places it there
+(A3).  ``heard_inside`` therefore vetoes only when both regions allow the CR: the indistinguishable multipath
+histories of the range-bearing measurement alone (a drone beyond the exit with a +3 m excess) are separated by the
+independent navigation estimate.  An inconsistent or missing payload leaves the measurement-only rules.
+
 Soundness argument (mutual exclusion rests on A1 and A2 only): under the B0 assumption that every
 entry into the CR crosses the FRONT corridor visibly (formal M3/M4), a drone in the CR at t either was in it or
 produced the corridor echo at t_lc, or entered later visibly (a new t_lc).  (A1) leaves every such drone among
@@ -106,10 +115,29 @@ class AcousticExit:
                 return True
         return False
 
+    def rep_cr_possible(self, g, f: Fix, t: float) -> bool:
+        """The payload ball of f at t (mission frame) can hold the centre of a hull in the CR (True without a usable
+        payload: no evidence)."""
+        if not f.rep_ok:
+            return True
+        q = gate_points(g, f.rep.p[None, :])
+        gap = np.linalg.norm(q - np.clip(q, -self.half, self.half), axis=1)
+        return bool(gap[0] <= R_OUT + f.rep_radius(t, self.v_bound))
+
     def _could_be_occupant(self, g, f: Fix, t_lc: float) -> bool:
         q = gate_points(g, f.pts)
         rho = self.v_bound * abs(f.t - t_lc) + f.slack
-        return self._cr_possible(q, rho) or self._echo_possible(q, rho)
+        meas = self._cr_possible(q, rho) or self._echo_possible(q, rho)
+        if not meas or not f.rep_ok:
+            return meas
+        b_own = self.tracker.pose.bound_at(t_lc)
+        if b_own is None:
+            return True
+        qr = gate_points(g, f.rep.p[None, :])
+        rr = f.rep_radius(t_lc, self.v_bound)
+        # the echo shell is expressed in the own estimated frame: the reported position is compared with it within
+        # the own navigation bound as well
+        return self.rep_cr_possible(g, f, t_lc) or self._echo_possible(qr, rr + b_own)
 
     def clear_by_range(self, g, f: Fix, t: float) -> bool:
         """The drone of fix f cannot be in the CR (grown by R_OUT) at t, from the range alone: its smallest possible
@@ -124,7 +152,8 @@ class AcousticExit:
     def clear_of_cr(self, g, f: Fix, t: float) -> bool:
         """A2 for one fix at time t (module docstring): its region, grown by the motion since the fix, or its range."""
         grow = f.slack + self.v_bound * max(t - f.t, 0.0)
-        return not self._cr_possible(gate_points(g, f.pts), grow) or self.clear_by_range(g, f, t)
+        return (not self._cr_possible(gate_points(g, f.pts), grow) or self.clear_by_range(g, f, t)
+                or not self.rep_cr_possible(g, f, t))
 
     def s_lower(self, g, f: Fix, t: float) -> float:
         """Smallest gate-frame s the drone of fix f can have at t (region, slack, own nav error, motion since)."""
@@ -145,7 +174,9 @@ class AcousticExit:
             return None
         if beyond:                                  # A3, progress: heard beyond the exit face (nominal positions)
             s_exit = self.half[0] + R_OUT
-            ok = all(float(gate_points(g, f.p[None, :])[0][0]) > s_exit for f in tail)
+            ok = all(float(gate_points(g, f.p[None, :])[0][0]) > s_exit
+                     or (f.rep_ok and float(gate_points(g, f.rep.p[None, :])[0][0]) - f.rep_radius(f.t, self.v_bound)
+                         > s_exit) for f in tail)
         else:                                       # A2, safety: clear of the CR at its time, the latest also now
             ok = all(self.clear_of_cr(g, f, f.t) for f in tail) and self.clear_of_cr(g, tail[-1], t)
         contra = [f for f in after if not f.accepted and f.t >= tail[0].t
@@ -167,6 +198,17 @@ class AcousticExit:
             acc = [f for f in self.tracker.all_fixes(j, t - 2.0 * period - fresh, t) if f.accepted][-2:]
             if (len(acc) == 2 and acc[0].track == acc[1].track and t - acc[-1].t <= fresh
                     and all(not self.clear_of_cr(g, f, t) for f in acc)):
+                return True
+        return False
+
+    def last_known_inside(self, t: float, g) -> bool:
+        """Some other drone's LATEST accepted fix (within the tracker memory) placed it possibly in the CR at its own
+        time, and no later accepted fix has cleared it: its whereabouts since are unknown, so it is a possible
+        occupant and the CR cannot become FREE by a timeout (an unknown occupant never silently becomes FREE).
+        Without any fix of a drone (a silent channel) the sonar outage-mode rules apply."""
+        for j in self.others:
+            last = self.tracker.last_accepted.get(j)
+            if last is not None and last.t <= t and not self.clear_of_cr(g, last, last.t):
                 return True
         return False
 

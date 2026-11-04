@@ -88,6 +88,7 @@ class AcousticChannel:
     doa_bias_deg: float = 0.5            # calibration residual of the array: smooth direction-dependent bias amplitude
     los_outlier: float = 0.0             # clear path: per-reception probability that a multipath episode starts
     los_outlier_pings: float = 5.0       # ... its mean length in receptions (geometric)
+    payload_loss: float = 0.02           # H6: the ping is detected but its data packet is not decoded (STRESS)
 
     def as_dict(self) -> Dict:
         return asdict(self)
@@ -96,11 +97,12 @@ class AcousticChannel:
 CLEAN = AcousticChannel()
 LOW = AcousticChannel(name="LOW", sigma_range_m=0.10, sound_speed_err=0.005, clock_offset_m=0.03, sigma_az_deg=1.5,
                       sigma_el_deg=1.5, dropout=0.08, dropout_far=0.25, nlos_rx=0.20, latency_s=0.15,
-                      shadow_loss=0.50, shadow_dir_deg=1.0, doa_bias_deg=1.5, los_outlier=0.01)
+                      shadow_loss=0.50, shadow_dir_deg=1.0, doa_bias_deg=1.5, los_outlier=0.01,
+                      payload_loss=0.05)
 MEDIUM = AcousticChannel(name="MEDIUM", sigma_range_m=0.15, sound_speed_err=0.010, clock_offset_m=0.05,
                          sigma_az_deg=2.5, sigma_el_deg=2.5, dropout=0.20, dropout_far=0.50, outage_every_s=40.0,
                          outage_len_s=4.0, nlos_rx=0.35, latency_s=0.25, shadow_loss=0.70, shadow_dir_deg=1.5,
-                         doa_bias_deg=3.0, los_outlier=0.03)
+                         doa_bias_deg=3.0, los_outlier=0.03, payload_loss=0.15)
 BLACKOUT = AcousticChannel(name="BLACKOUT", blackout=True)
 CHANNELS: Dict[str, AcousticChannel] = {c.name: c for c in (CLEAN, LOW, MEDIUM, BLACKOUT)}
 

@@ -147,6 +147,10 @@ class DroneController:
         # observation consistency check (ha/observation_invariants.py) between perception and automaton:
         # an observation the perception cannot produce reveals a defect; it is logged and handed to the
         # automaton as a sensing fault, i.e. the existing fault edge -> FAILSAFE_HOLD_OR_RETREAT
+        # the stage-2 give-up request of the previous control step (flows.gate), only while committed (I5)
+        obs.ab.committed = self.ha.committed
+        obs.ab.entry_abort = bool(self.flows.abort_request and self.ha.committed and obs.ab.mutex_zone
+                                  and not obs.ab.passed)
         bad = observation_violations(obs.ab, self.cfg)
         self.obs_consistent = not bad
         if bad:
@@ -222,6 +226,7 @@ class DroneController:
         self.last_record = {
             "t": round(t, 3), "mode": mode.value, "committed": self.ha.committed,
             "nav_p": np.round(obs.p, 3).tolist(), "nav_yaw_deg": round(float(np.degrees(obs.yaw)), 1),
+            "nav_bound": round(float(self.perception.nav_bound.value), 3),
             "v_cmd": np.round(v, 3).tolist(), "giveway": self.flows.giveway,
             "offset": np.round(self.flows.offset, 2).tolist(), "d_min": round(obs.d_min, 3) if obs.d_min < 1e8 else None,
             "sense_ok": obs.sense_ok, "env_ok": self.envmon.ok, "v_mis": np.round(v_mis, 3).tolist(),

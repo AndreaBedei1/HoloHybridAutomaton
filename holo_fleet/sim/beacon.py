@@ -2,8 +2,11 @@
 
 Drone k pings on a fixed TDMA schedule (slot k of every period, slots aligned to simulator ticks so that the
 scheduled emission instant is exact), and every reception becomes a range-bearing measurement through the channel
-model of sim/acoustic_channel.py (noise, biases, NLOS reflections, dropouts, outages, latency).  A ping carries
-only the sender's static identity: no position, velocity, heading, mode, queue or sensor data, and nobody replies.
+model of sim/acoustic_channel.py (noise, biases, NLOS reflections, dropouts, outages, latency).  A ping carries the
+sender's static identity and, with ``payload`` (H6, perception/payload.py), an 80-bit packet with the sender's
+ONBOARD position estimate and error bound, taken from its own perception through ``payload_source`` (never from
+the simulator state).  The packet is lost on its own (``payload_loss``, a separate seeded stream) even when the
+ping is detected.  No mode, queue or control data is sent, and nobody replies.
 
 Every drone carries a HoloOcean ``AcousticBeaconSensor`` (id = drone index, engine range limit ``MaxDistance``
 and line-of-sight check ``CheckVisible``).
@@ -33,6 +36,7 @@ from typing import Dict, List, Sequence, Tuple
 import numpy as np
 
 SENSOR_NAME = "Beacon"
+PING_S = 0.04                 # identity chirp duration, upper end of the 20-40 ms of H1
 
 
 class BeaconTransport:
@@ -56,6 +60,17 @@ class BeaconTransport:
         self.last_rx: Dict[Tuple[str, int], float] = {}                          # (receiver, sender id) -> t_rx
         self.longest_gap = 0.0
         self.t_now = 0.0
+        self.payload_source = None        # callable k -> (t_est, p_est, bound) from drone k's ONBOARD perception
+        self.payload_rng = np.random.default_rng([int(seed), 5102])     # separate stream: pings unchanged
+        self.payload_stats = {"sent": 0, "lost": 0, "delivered": 0}
+        if cfg.payload:
+            from holo_fleet.perception.payload import air_time_s
+
+            slot_s = self.slot_ticks / ticks_per_sec
+            need = air_time_s(cfg.payload_bitrate_bps) + PING_S + cfg.max_range_m / cfg.sound_speed
+            if need > slot_s + 1e-9:          # H6: the packet, the chirp and the propagation spread fit the slot
+                raise ValueError(f"B2 payload does not fit the TDMA slot: {need:.3f} s > {slot_s:.3f} s "
+                                 f"({len(self.names)} drones, period {cfg.period_s} s)")
 
     def sensor_config(self, k: int) -> Dict:
         return {"sensor_type": "AcousticBeaconSensor", "sensor_name": SENSOR_NAME, "socket": "",
@@ -73,11 +88,29 @@ class BeaconTransport:
                 continue
             self.stats["transmissions"] += 1
             self.tx_log.append((round(t, 4), n))
+            packet = self._packet(k, t, tick)
             for r in self.names:
                 if r == n:
                     continue
                 env._client.command_center.enqueue_command(SendAcousticMessageCommand(n, SENSOR_NAME, r, SENSOR_NAME))
-                self.pending[r].append((n, t))
+                self.pending[r].append((n, t, packet))
+
+    def _packet(self, k: int, t: float, tick: int):
+        """The payload of drone k's ping at t, from its onboard estimate (None without payload)."""
+        if not self.cfg.payload or self.payload_source is None:
+            return None
+        from holo_fleet.perception.payload import encode
+
+        src = self.payload_source(k)
+        if src is None:
+            return None
+        t_est, p_est, bound = src
+        from holo_fleet.perception.exit_witness import speed_bound
+
+        # the estimate is that of the last control step: its age at the emission instant is covered by the bound
+        grow = speed_bound() * max(0.0, t - t_est)
+        self.payload_stats["sent"] += 1
+        return encode((tick // self.period_ticks) % 256, p_est, bound + grow)
 
     def after_tick(self, env, t: float) -> None:
         """Resolve the engine results of this tick into receptions (or losses)."""
@@ -99,12 +132,12 @@ class BeaconTransport:
                     self.stats["lost_collision"] += len(live)
                     pend = []
                 else:
-                    sender, t_tx = live[0]
+                    sender, t_tx = live[0][0], live[0][1]
                     pend = []
-                    self._measure(r, sender, t_tx, buf)
+                    self._measure(r, sender, t_tx, buf, live[0][2] if len(live[0]) > 2 else None)
             self.pending[r] = pend
 
-    def _measure(self, r: str, sender: str, t_tx: float, buf: np.ndarray) -> None:
+    def _measure(self, r: str, sender: str, t_tx: float, buf: np.ndarray, packet=None) -> None:
         """Engine geometry of the direct path -> delivered measurement (identity, t_arrival, range, az, el)."""
         k_s, k_r = self.names.index(sender), self.names.index(r)
         ch = self.channel
@@ -127,7 +160,13 @@ class BeaconTransport:
             return
         rng_m, az_m, el_m, nlos = m
         t_arr = t_tx + geom[2] / self.cfg.sound_speed
-        self.due.append((t_arr + ch.ch.latency_s, r, k_s, t_tx, (round(t_arr, 4), float(rng_m), float(az_m), float(el_m))))
+        if packet is not None and self.payload_rng.random() < ch.ch.payload_loss:
+            packet = None                                       # the ping was detected, its data packet was not decoded
+            self.payload_stats["lost"] += 1
+        elif packet is not None:
+            self.payload_stats["delivered"] += 1
+        self.due.append((t_arr + ch.ch.latency_s, r, k_s, t_tx,
+                         (round(t_arr, 4), float(rng_m), float(az_m), float(el_m), packet)))
         self.stats["receptions"] += 1
         self.stats["latency_s"].append(t_arr + ch.ch.latency_s - t_tx)
         self.rb_log.append((round(t_tx, 4), k_r, k_s, round(geom[2], 3), round(float(rng_m), 3),
@@ -164,7 +203,8 @@ class BeaconTransport:
         return geom, False
 
     def deliver(self, t: float) -> Dict[str, List[Tuple[int, float]]]:
-        """Receptions whose time has come: receiver -> [(sender identity, t_arrival, range, azimuth, elevation)]."""
+        """Receptions whose time has come: receiver -> [(sender identity, t_arrival, range, azimuth, elevation,
+        packet bytes or None)]."""
         out: Dict[str, List[Tuple[int, float]]] = defaultdict(list)
         keep = []
         for item in self.due:
@@ -200,7 +240,9 @@ class BeaconTransport:
                 "channel": self.channel.ch.as_dict(), "channel_stats": dict(self.channel.stats),
                 "sound_speed_scale": round(self.channel.scale, 5),
                 "clock_offset_m": [round(float(x), 3) for x in self.channel.offset],
-                "nlos_received": int(sum(1 for x in self.rb_log if x[7])), **_error_summary(self.rb_log)}
+                "nlos_received": int(sum(1 for x in self.rb_log if x[7])), "payload": dict(self.payload_stats),
+                "payload_bitrate_bps": self.cfg.payload_bitrate_bps if self.cfg.payload else None,
+                **_error_summary(self.rb_log)}
 
 
 def _error_summary(log) -> Dict:

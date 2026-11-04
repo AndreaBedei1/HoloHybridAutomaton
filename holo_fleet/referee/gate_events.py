@@ -29,10 +29,14 @@ doi:10.1145/302405.302672), with bounds taken from the protocol (config.GateRule
             committed, a commit must follow within T_release = t_occ_max + t_clear, the slowest release the protocol
             admits without exit evidence;
   committed a committed healthy drone must pass within its crossing budget L_k / v_pass + t_occ_max + t_clear
-            (L_k = |queue_lateral| + exit_s - queue_s), the per-drone term of the deadline (referee/criteria.py);
+            (L_k = |queue_lateral| + exit_s - queue_s), the per-drone term of the deadline (referee/criteria.py),
+            counted from its FIRST commit to the gate: a give-up (ABORT_PASS) and a later re-commit do not reset the
+            obligation;
   A-cross   the latch model's premise (formal M3): every CR dwell <= t_occ_max (reported as a validity flag).
-A violation is a liveness failure whether or not the run completes later (class STALLED).  An episode still open at
-the end of the log is inconclusive (finite-trace semantics), not a violation.
+A drone that went around the frame (GATE_BYPASS) no longer takes part in the idle check from the instant it is beyond
+the exit (its passage requirement fails separately).  A violation is a liveness failure whether or not the run
+completes later (class STALLED).  An open interval at the end of the log is a violation once it exceeds its bound,
+and inconclusive only while it is shorter (finite-trace semantics).
 """
 
 from __future__ import annotations
@@ -116,11 +120,13 @@ def gate_events(t: np.ndarray, gf: np.ndarray, states: Sequence[Sequence[Dict]],
     occ_n = inside.sum(axis=1)
     # E8: passages THROUGH the CR cross-section, bypasses, waits, entry gaps, dwell
     passed, bypass, wait, dwell, entries = {}, [], {}, [], []
+    gone = {}                                   # liveness participation ends here: passed, or beyond after a bypass
     for k in healthy:
         before = np.flatnonzero(gf[:, k, 0] < -G.cr_half_len)
         if before.size:
             beyond = np.flatnonzero((gf[:, k, 0] > G.exit_s) & (np.arange(m) > before[0]))
             if beyond.size:
+                gone[k] = float(t[beyond[0]])
                 if inside[before[0]:beyond[0] + 1, k].any():
                     passed[k] = float(t[beyond[0]])
                 else:
@@ -138,7 +144,7 @@ def gate_events(t: np.ndarray, gf: np.ndarray, states: Sequence[Sequence[Dict]],
     # bounded-response checks (healthy drones only)
     T_release = G.t_occ_max + G.t_clear
     hc = committed[:, healthy].any(axis=1) if healthy else np.zeros(m, bool)
-    not_passed = np.array([[k not in passed or t[i] < passed[k] for k in healthy] for i in range(m)]) if healthy \
+    not_passed = np.array([[k not in gone or t[i] < gone[k] for k in healthy] for i in range(m)]) if healthy \
         else np.zeros((m, 0), bool)
     all_waiting = np.array([bool(np.all(queued[i, healthy][not_passed[i]])) and bool(not_passed[i].any())
                             for i in range(m)]) if healthy else np.zeros(m, bool)
@@ -152,8 +158,11 @@ def gate_events(t: np.ndarray, gf: np.ndarray, states: Sequence[Sequence[Dict]],
             continue
         L = abs(float(p["queue_lateral"])) + G.exit_s - float(p["queue_s"])
         budget[k] = L / G.v_pass + T_release
-        for a, b, _op in _intervals(committed[:, k], t):
-            end = passed[k] if (k in passed and a <= passed[k] <= b + 1.0) else b
+        iv = _intervals(committed[:, k], t)
+        if iv:
+            # one obligation per gate: from the first commit to the passage, through give-ups and re-commits
+            a = iv[0][0]
+            end = passed[k] if k in passed and passed[k] >= a else float(t[-1])   # never passed: owed to the end
             if end - a > budget[k]:                     # slow passages count too, not only the ones that never end
                 committed_viol.append((k, a, end))
     w = list(wait.values())

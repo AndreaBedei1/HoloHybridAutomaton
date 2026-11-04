@@ -113,3 +113,23 @@ def test_a_slow_committed_passage_violates_the_crossing_budget():
         st[1][i]["committed"] = True
     ev = gate_events(t, gf, st, [0, 1], "g", PLANS, DEFAULT)
     assert 1 in ev["E8"]["passed"] and ev["stalled"] and ev["E8"]["committed_stalls"][0][0] == 1
+
+
+def test_give_up_and_recommit_do_not_reset_the_crossing_obligation():
+    from types import SimpleNamespace
+
+    from holo_fleet.config import DEFAULT
+    from holo_fleet.referee.gate_events import gate_events
+
+    G = DEFAULT.gate
+    t = np.arange(0.0, 120.0, 1.0)
+    m = len(t)
+    gf = np.zeros((m, 1, 3))
+    gf[:, 0, 0] = -6.0                                   # waits before the CR the whole time, never passes
+    st = [[{"committed": (10 <= i < 50) or (60 <= i < 100), "gate": {"id": "G", "at_queue": False}}
+           for i in range(m)]]
+    plans = [{"drone": "drone_0", "queue_lateral": 0.0, "queue_s": -5.0}]
+    out = gate_events(t, gf, st, [0], "G", plans, DEFAULT)
+    budget = (abs(0.0) + G.exit_s + 5.0) / G.v_pass + G.t_occ_max + G.t_clear
+    assert budget < 109.0 and out["stalled"]
+    assert out["E8"]["committed_stalls"][0][1] == 10.0     # from the FIRST commit, through the give-up

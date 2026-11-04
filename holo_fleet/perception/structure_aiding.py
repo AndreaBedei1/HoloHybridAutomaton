@@ -52,6 +52,17 @@ stopped by the echo it cannot explain.  Nothing is assumed about the identity of
 on several sectors matching the bars within FIT_RMS_M, uniquely and consistently over CONSIST_N captures, and the queue
 points, beside the opening, never pass the robust clearance below.
 
+Identity from the B2 payload (H6).  The C5 restriction rests on one premise: an echo matched to a bar may be the
+hull of another fleet drone.  When EVERY other drone of the plan is accounted for by a fresh, consistent payload
+(its reported position and error ball, perception/acoustic.py) and no echo of any observed sector could come from a
+hull inside any of those balls (grown by the own navigation bound, since the echo is placed with the own estimate),
+the premise is excluded and a fit that places the hull beside the opening may be APPLIED (the drone learns it is in
+front of a bar and corrects towards the opening).  It still never VALIDATES the localization: ``valid`` needs a later
+fit with the hull inside the opening.  The balls are small point-estimate bounds, not the wide range-bearing
+regions that covered the bars (the withdrawn variant); a drone that is not accounted for leaves C5 in force.  Only
+fleet drones and the mapped gate are assumed in the gate area (a non-fleet object there is outside this premise and
+stays an obstacle for the separation layer).
+
 The correction changes the drone's OWN position estimate only: the collision-avoidance distance bound uses the raw echo
 ranges in the body frame and does not depend on it, and the structure test keeps its tolerance (structure_tol_m is not
 widened), so a vehicle in front of a bar stays an obstacle (tests/test_structure_aiding.py).
@@ -66,7 +77,7 @@ from typing import Deque, Dict, Optional
 
 import numpy as np
 
-from holo_fleet.perception.sonar_geometry import HULL_HALF, MOUNTS, SECTORS
+from holo_fleet.perception.sonar_geometry import AXES, HULL_HALF, MOUNTS, NEAR_FIELD_WIDEN_M, R_OUT, SECTORS
 from holo_fleet.perception.sonar_processing import segment
 
 ASSOC_GATE_M = 0.9       # cap of the residual of one sector (predicted bar not seen / matched to a far echo)
@@ -208,9 +219,31 @@ class StructureAiding:
         """Gate localization confirmed within LOC_TTL_S (robust clearance included)."""
         return t - self.loc_t <= LOC_TTL_S
 
+    def echoes_not_drones(self, p: np.ndarray, R_wb: np.ndarray, obs: Dict, others, b_own: float) -> bool:
+        """No echo of any observed sector can be the hull of a drone inside one of the payload balls ``others``
+        [(centre, radius)] (mission frame), the echo placed from the own estimate p within ``b_own``."""
+        env = self.cfg.env
+        half0 = math.radians(self.cfg.perc.sonar.half_angle_deg)
+        for s, ranges in obs.items():
+            m = p + R_wb @ MOUNTS[s]
+            a = R_wb @ AXES[s]
+            a = a / np.linalg.norm(a)
+            for c, rad in others:
+                d = np.asarray(c, float) - m
+                dist = max(float(np.linalg.norm(d)), 1e-6)
+                ang = math.acos(max(-1.0, min(1.0, float(d @ a) / dist)))
+                grow = R_OUT + float(rad) + b_own
+                for r_e in ranges:
+                    lo, hi = max(float(r_e) - env.eps_range_far, 0.0), float(r_e) + env.eps_range_near
+                    half = half0 + math.atan2(NEAR_FIELD_WIDEN_M, max(lo, 1e-3))
+                    if lo - grow <= dist <= hi + grow and ang <= half + math.asin(min(1.0, grow / dist)):
+                        return False
+        return True
+
     def update(self, p: np.ndarray, R_wb: np.ndarray, profiles: Dict, ages: Dict, tau: float,
-               t: float = 0.0) -> Optional[np.ndarray]:
-        """Horizontal correction to add to the position estimate now (None: nothing accepted)."""
+               t: float = 0.0, others=None, b_own: Optional[float] = None) -> Optional[np.ndarray]:
+        """Horizontal correction to add to the position estimate now (None: nothing accepted).  ``others``: the
+        payload balls of EVERY other drone of the plan, or None when one is not accounted for (module docstring)."""
         self.last = None
         pts = self.pts
         if len(pts) == 0:
@@ -249,7 +282,10 @@ class StructureAiding:
         fit_ok = (matched_k >= MIN_MATCHED and rms_k <= FIT_RMS_M and spread <= UNIQUE_M
                   and (margin is not None or not self.gates))
         safe = margin is None or margin >= 0.0          # the hull + uncertainty inside the free opening
-        if not fit_ok or not safe:                       # a fit beside the opening is never applied (docstring)
+        identified = (not safe and fit_ok and others is not None and b_own is not None
+                      and self.echoes_not_drones(p + np.array([d[0], d[1], 0.0]), R_wb, obs, others, b_own))
+        self.last["identified"] = bool(identified)
+        if not fit_ok or not (safe or identified):       # beside the opening: only with every echo identified as a bar
             self.recent.clear()
             return None
         if safe and float(np.linalg.norm(d)) <= CONSIST_M:   # the current estimate is confirmed (consistency band)

@@ -29,7 +29,7 @@ def test_diagram_represents_exactly_the_spec_edges(mad):
     missing, extra = mad.coverage(model)
     assert not missing and not extra
     E = build_edges(DEFAULT)
-    assert model["n_edges"] == sum(len(v) for v in E.values()) == 120
+    assert model["n_edges"] == sum(len(v) for v in E.values()) == 130      # 13 per mode (pass_abort included)
     assert set(model["modes"]) == set(Mode) and len(model["modes"]) == 10
     # the formation-keeping arrows are exactly the non-self-loop formation edges of the keeping modes
     drawn = {(k["source"], k["target"]) for k in model["keeping"]}

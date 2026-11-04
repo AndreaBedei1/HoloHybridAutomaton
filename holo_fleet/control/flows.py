@@ -74,6 +74,7 @@ class Flows:
         self.hold_timeout = False             # the stage-2 hold exceeded t_occ_max + t_clear (logged once)
         self.entry_state = ""                 # stage 2: "", "HOLD", "ADMIT" (logged for the gate events E4 / E7)
         self.events: List[Dict] = []          # ENTRY_HOLD_TIMEOUT (drained by the controller)
+        self.abort_request = False            # stage-2 hold beyond the slowest release: give the passage up
         self.giveway: str = ""                # "", "RIGHT", "UP", "DOWN"
         self.giveway_t = -1e9                 # last time the head-on condition held
         self.rejoin_phase = ""                # "", "DROP_BACK", "TO_LANE" (rejoin from behind, recovering only)
@@ -251,10 +252,10 @@ class Flows:
             # the CR and every RELOC_PERIOD_S backs off by RELOC_BACK_M and returns (a new viewing geometry); queued
             # drones see it in FRONT, nearer than the CR, and wait (WAIT relation).  A hold longer than t_occ_max +
             # t_clear (the slowest release the protocol admits) is logged once as ENTRY_HOLD_TIMEOUT: the evaluation
-            # judges it a gate-liveness violation; the drone is never forced into the CR.  (A retreat to the queue
-            # point would leave it committed without the stage-1 check: two committed drones; giving up the passage
-            # needs an automaton edge MUTEX_PASS -> MUTEX_YIELD, not added here.)  Once admitted it completes the
-            # passage (no stop inside the CR is added).  Mutex, priority and the automaton are unchanged
+            # judges it a gate-liveness violation; the drone is never forced into the CR.  It then requests the
+            # automaton's give-up edge (ha/spec.py, pass_abort: committed is cleared, MUTEX_APPROACH, back to the
+            # queue point, where the stage-1 rule decides again; a flow-only retreat would keep it committed).
+            # Once admitted it completes the passage (no stop inside the CR is added)
             s_hold = -(G.cr_half_len + float(HULL_HALF[0]) + RELOC_MARGIN_M)
             if go.loc_ok and go.entry_ok and go.s >= s_hold - RELOC_ZONE_M:
                 self.cr_cleared = True
@@ -264,6 +265,7 @@ class Flows:
                     self.hold_timeout = True
                     self.events.append({"t": obs.t, "type": "ENTRY_HOLD_TIMEOUT", "loc_ok": go.loc_ok,
                                         "entry_ok": go.entry_ok})
+                self.abort_request = self.hold_timeout          # the controller adds the zone (I5)
                 back = int((obs.t - self.hold_since) / RELOC_PERIOD_S) % 2 == 1
                 c = np.array([s_hold - (RELOC_BACK_M if back else 0.0), 0.0, c[2]])
                 hold = True
@@ -272,6 +274,7 @@ class Flows:
             vmax = G.v_pass
         else:  # MUTEX_APPROACH / MUTEX_YIELD: go to / hold the own queue point
             self.cr_cleared, self.hold_since, self.entry_state, self.hold_timeout = False, None, "", False
+            self.abort_request = False
             tgt = g.from_gate_frame([go.queue_s, go.queue_l, go.queue_dz])
             vmax = G.v_approach
         self.reloc_hold = hold

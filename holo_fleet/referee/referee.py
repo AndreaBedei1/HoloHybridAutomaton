@@ -169,7 +169,7 @@ class Referee:
             self.episodes_present.append(Episode(t_lost=t))
             self._ok_since_p = None
         elif self._lost_p:
-            if e_p < rc.e_ok:
+            if e_p <= rc.e_ok:                     # inclusive: the requirement is error <= E_TOL_M
                 self._ok_since_p = t if self._ok_since_p is None else self._ok_since_p
                 if t - self._ok_since_p >= rc.t_ok_hold:
                     ep = self.episodes_present[-1]
@@ -235,7 +235,7 @@ class Referee:
                 self.episodes.append(Episode(t_lost=t, modes_at_loss=",".join(sorted(set(modes)))))
                 self._ok_since = None
             elif self._lost:
-                if e < rc.e_ok:
+                if e <= rc.e_ok:                   # inclusive: the requirement is error <= E_TOL_M
                     self._ok_since = t if self._ok_since is None else self._ok_since
                     if t - self._ok_since >= rc.t_ok_hold:
                         ep = self.episodes[-1]

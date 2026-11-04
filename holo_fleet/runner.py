@@ -104,6 +104,8 @@ def run(name: str, out_root: Path, headless: bool = True, run_id: Optional[str] 
         if cfg.beacon.enabled:        # pre-mission knowledge: the static beacon identity of every slot's drone
             for p in sc.plans:
                 ctrls[p.drone_id].perception.acoustic.set_identities(beacon_identities(sc.plans, sim.names, p))
+            if getattr(sim, "beacon", None) is not None:   # H6 payload: each drone's ONBOARD estimate and bound
+                sim.beacon.payload_source = lambda k: ctrls[sim.names[k]].perception.payload()
     except Exception as exc:  # noqa: BLE001 - recorded, then propagated
         (out / "run_status.json").write_text(json.dumps(_error_status(exc, 0.0)), encoding="utf-8")
         try:

@@ -24,6 +24,14 @@ sender is known.  This module turns receptions into FIXES:
   the track has had no accepted fix for ``REINIT_S``, start a new track (a new track id: whatever was established
   on the old one is not carried over).
 
+Payload (H6, perception/payload.py).  A reception may carry the sender's decoded onboard position estimate p_rep
+and its error bound b_rep (a ball that contains the sender's true position at the emission instant, under the
+sender's declared navigation envelope).  It is attached to the fix only if it is CONSISTENT with the measurement:
+some point of the fix's error region, which is expressed in the receiver's own estimated frame, lies within
+b_rep + v_bound age_tx + the receiver's own bound b_own + slack of p_rep.  An inconsistent payload means that one of
+the two navigation estimates, or the measurement, is outside its envelope: it is not used (``rep_ok`` False) and the
+fix keeps only its measurement region.  Nothing is inferred from a missing payload.
+
 Absence of fixes is never evidence of anything.
 """
 
@@ -86,6 +94,17 @@ class Fix:
     accepted: bool = True
     track: int = 0
     reason: str = ""
+    rep: Optional[object] = None     # decoded payload (perception/payload.Payload), consistent with the measurement
+    t_tx: float = 0.0                # emission instant (arrival minus the travel time at the measured range)
+    rep_reason: str = ""             # "", "ok", "missing", "inconsistent", "no_own_bound"
+
+    @property
+    def rep_ok(self) -> bool:
+        return self.rep is not None
+
+    def rep_radius(self, t: float, v_bound: float) -> float:
+        """Radius of the ball around the reported position that contains the sender at time t."""
+        return float(self.rep.bound) + v_bound * abs(t - self.t_tx)
 
     @property
     def extent(self) -> float:
@@ -98,17 +117,25 @@ class PoseHistory:
     keep_s: float = 3.0
     buf: Deque[Tuple[float, np.ndarray, float]] = field(default_factory=deque)
 
-    def push(self, t: float, p: np.ndarray, yaw: float) -> None:
-        self.buf.append((t, np.array(p, dtype=float), float(yaw)))
+    def push(self, t: float, p: np.ndarray, yaw: float, bound: Optional[float] = None) -> None:
+        self.buf.append((t, np.array(p, dtype=float), float(yaw), bound))
         while self.buf and t - self.buf[0][0] > self.keep_s:
             self.buf.popleft()
 
-    def at(self, t: float) -> Optional[Tuple[np.ndarray, float]]:
-        """Own pose estimate at time t (nearest stored instant; None if t is not covered)."""
+    def _nearest(self, t: float):
         if not self.buf or t < self.buf[0][0] - 0.11 or t > self.buf[-1][0] + 0.11:
             return None
-        k = min(range(len(self.buf)), key=lambda i: abs(self.buf[i][0] - t))
-        return self.buf[k][1], self.buf[k][2]
+        return self.buf[min(range(len(self.buf)), key=lambda i: abs(self.buf[i][0] - t))]
+
+    def at(self, t: float) -> Optional[Tuple[np.ndarray, float]]:
+        """Own pose estimate at time t (nearest stored instant; None if t is not covered)."""
+        e = self._nearest(t)
+        return None if e is None else (e[1], e[2])
+
+    def bound_at(self, t: float) -> Optional[float]:
+        """Own navigation error bound at time t (None if unknown), grown by the speed bound over the 0.1 s step."""
+        e = self._nearest(t)
+        return None if e is None or e[3] is None else float(e[3])
 
 
 class AcousticTracker:
@@ -119,6 +146,7 @@ class AcousticTracker:
         self.slot_of: Dict[int, int] = {}
         self.fixes: Dict[int, List[Fix]] = {}             # slot -> fixes (accepted and rejected), oldest first
         self.track_id: Dict[int, int] = {}
+        self.last_accepted: Dict[int, Fix] = {}          # slot -> latest accepted fix, never forgotten
         self.pose = PoseHistory()
         self.stats = {"received": 0, "stale": 0, "no_pose": 0, "implausible_depth": 0, "accepted": 0, "rejected": 0,
                       "track_restarts": 0}
@@ -127,9 +155,10 @@ class AcousticTracker:
         self.slot_of = {int(k): int(v) for k, v in ids.items()}
 
     # ------------------------------------------------------------------ ingestion
-    def update(self, t: float, rx, p_now: np.ndarray, yaw_now: float) -> List[Fix]:
-        """Store the own pose of this step and turn the receptions of this frame into fixes."""
-        self.pose.push(t, p_now, yaw_now)
+    def update(self, t: float, rx, p_now: np.ndarray, yaw_now: float, bound_now: Optional[float] = None) -> List[Fix]:
+        """Store the own pose (and own navigation bound) of this step and turn the receptions of this frame into
+        fixes."""
+        self.pose.push(t, p_now, yaw_now, bound_now)
         new = []
         if not self.enabled:
             return new
@@ -158,11 +187,38 @@ class AcousticTracker:
                 self.stats["implausible_depth"] += 1
             else:
                 self._gate(f)
+            f.t_tx = t_arr - r / self.cfg.beacon.sound_speed
+            self._attach(f, item[5] if len(item) > 5 else None)
             self.fixes.setdefault(slot, []).append(f)
             new.append(f)
+            if f.accepted:
+                self.last_accepted[slot] = f
         for slot, lst in self.fixes.items():
             self.fixes[slot] = [f for f in lst if t - f.t <= _KEEP_S]
         return new
+
+    def _attach(self, f: Fix, packet) -> None:
+        """Decode the payload and keep it only if it is consistent with the measurement (module docstring)."""
+        from holo_fleet.perception.payload import decode
+
+        rep = decode(packet) if packet is not None else None
+        if rep is None:
+            f.rep_reason = "missing"
+            return
+        if not f.accepted:
+            f.rep_reason = "rejected_fix"
+            return
+        b_own = self.pose.bound_at(f.t)
+        if b_own is None:
+            f.rep_reason = "no_own_bound"
+            return
+        reach = rep.bound + self.v_bound * max(f.t - f.t_tx, 0.0) + b_own + self.v_bound * 0.11 + f.slack
+        if float(np.min(np.linalg.norm(f.pts - rep.p, axis=1))) > reach:
+            f.rep_reason = "inconsistent"
+            self.stats["payload_inconsistent"] = self.stats.get("payload_inconsistent", 0) + 1
+            return
+        f.rep, f.rep_reason = rep, "ok"
+        self.stats["payload_ok"] = self.stats.get("payload_ok", 0) + 1
 
     def consistent(self, f: Fix, g: Fix) -> bool:
         """Kinematic consistency of two fixes of one identity.  The biases of the envelope (clock offset, sound speed,

@@ -42,7 +42,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 0.0,
+      "seconds": 0.002,
       "counterexample": null,
       "note": ""
     },
@@ -64,13 +64,24 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 0.002,
+      "seconds": 0.0,
       "counterexample": null,
       "note": ""
     },
     {
-      "prop": "G2 no PASS->YIELD fallback [FORMATION_FOLLOW]",
-      "formula": "committed -> target not in {MUTEX_APPROACH, MUTEX_YIELD}",
+      "prop": "G2 no PASS->YIELD fallback without give-up [FORMATION_FOLLOW]",
+      "formula": "committed & target in {MUTEX_APPROACH, MUTEX_YIELD} -> entry_abort",
+      "encoding": "holo_fleet/ha/spec.py (shared guards) + formal/check_determinism.py",
+      "expect": "unsat",
+      "verdict": "unsat",
+      "passed": true,
+      "seconds": 0.0,
+      "counterexample": null,
+      "note": ""
+    },
+    {
+      "prop": "G2c a give-up clears the commitment [FORMATION_FOLLOW]",
+      "formula": "committed & edge to {MUTEX_APPROACH, MUTEX_YIELD} enabled -> it sets committed := false",
       "encoding": "holo_fleet/ha/spec.py (shared guards) + formal/check_determinism.py",
       "expect": "unsat",
       "verdict": "unsat",
@@ -86,7 +97,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 0.0,
+      "seconds": 0.002,
       "counterexample": null,
       "note": ""
     },
@@ -130,7 +141,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 0.0,
+      "seconds": 0.002,
       "counterexample": null,
       "note": ""
     },
@@ -163,13 +174,24 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
+      "seconds": 0.002,
+      "counterexample": null,
+      "note": ""
+    },
+    {
+      "prop": "G2 no PASS->YIELD fallback without give-up [SEPARATION_WARNING]",
+      "formula": "committed & target in {MUTEX_APPROACH, MUTEX_YIELD} -> entry_abort",
+      "encoding": "holo_fleet/ha/spec.py (shared guards) + formal/check_determinism.py",
+      "expect": "unsat",
+      "verdict": "unsat",
+      "passed": true,
       "seconds": 0.0,
       "counterexample": null,
       "note": ""
     },
     {
-      "prop": "G2 no PASS->YIELD fallback [SEPARATION_WARNING]",
-      "formula": "committed -> target not in {MUTEX_APPROACH, MUTEX_YIELD}",
+      "prop": "G2c a give-up clears the commitment [SEPARATION_WARNING]",
+      "formula": "committed & edge to {MUTEX_APPROACH, MUTEX_YIELD} enabled -> it sets committed := false",
       "encoding": "holo_fleet/ha/spec.py (shared guards) + formal/check_determinism.py",
       "expect": "unsat",
       "verdict": "unsat",
@@ -185,7 +207,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 0.002,
+      "seconds": 0.0,
       "counterexample": null,
       "note": ""
     },
@@ -196,7 +218,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 0.002,
+      "seconds": 0.0,
       "counterexample": null,
       "note": ""
     },
@@ -207,7 +229,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 0.0,
+      "seconds": 0.002,
       "counterexample": null,
       "note": ""
     },
@@ -218,7 +240,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 0.0,
+      "seconds": 0.002,
       "counterexample": null,
       "note": ""
     },
@@ -267,13 +289,24 @@
       "note": ""
     },
     {
-      "prop": "G2 no PASS->YIELD fallback [COLLISION_AVOIDANCE]",
-      "formula": "committed -> target not in {MUTEX_APPROACH, MUTEX_YIELD}",
+      "prop": "G2 no PASS->YIELD fallback without give-up [COLLISION_AVOIDANCE]",
+      "formula": "committed & target in {MUTEX_APPROACH, MUTEX_YIELD} -> entry_abort",
       "encoding": "holo_fleet/ha/spec.py (shared guards) + formal/check_determinism.py",
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 0.002,
+      "seconds": 0.0,
+      "counterexample": null,
+      "note": ""
+    },
+    {
+      "prop": "G2c a give-up clears the commitment [COLLISION_AVOIDANCE]",
+      "formula": "committed & edge to {MUTEX_APPROACH, MUTEX_YIELD} enabled -> it sets committed := false",
+      "encoding": "holo_fleet/ha/spec.py (shared guards) + formal/check_determinism.py",
+      "expect": "unsat",
+      "verdict": "unsat",
+      "passed": true,
+      "seconds": 0.0,
       "counterexample": null,
       "note": ""
     },
@@ -295,7 +328,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 0.0,
+      "seconds": 0.002,
       "counterexample": null,
       "note": ""
     },
@@ -306,7 +339,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 0.001,
+      "seconds": 0.004,
       "counterexample": null,
       "note": ""
     },
@@ -317,7 +350,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 0.0,
+      "seconds": 0.002,
       "counterexample": null,
       "note": ""
     },
@@ -339,7 +372,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 0.0,
+      "seconds": 0.002,
       "counterexample": null,
       "note": ""
     },
@@ -350,7 +383,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 0.002,
+      "seconds": 0.0,
       "counterexample": null,
       "note": ""
     },
@@ -366,13 +399,24 @@
       "note": ""
     },
     {
-      "prop": "G2 no PASS->YIELD fallback [MUTEX_APPROACH]",
-      "formula": "committed -> target not in {MUTEX_APPROACH, MUTEX_YIELD}",
+      "prop": "G2 no PASS->YIELD fallback without give-up [MUTEX_APPROACH]",
+      "formula": "committed & target in {MUTEX_APPROACH, MUTEX_YIELD} -> entry_abort",
       "encoding": "holo_fleet/ha/spec.py (shared guards) + formal/check_determinism.py",
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
       "seconds": 0.002,
+      "counterexample": null,
+      "note": ""
+    },
+    {
+      "prop": "G2c a give-up clears the commitment [MUTEX_APPROACH]",
+      "formula": "committed & edge to {MUTEX_APPROACH, MUTEX_YIELD} enabled -> it sets committed := false",
+      "encoding": "holo_fleet/ha/spec.py (shared guards) + formal/check_determinism.py",
+      "expect": "unsat",
+      "verdict": "unsat",
+      "passed": true,
+      "seconds": 0.0,
       "counterexample": null,
       "note": ""
     },
@@ -383,7 +427,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 0.0,
+      "seconds": 0.002,
       "counterexample": null,
       "note": ""
     },
@@ -394,7 +438,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 0.002,
+      "seconds": 0.001,
       "counterexample": null,
       "note": ""
     },
@@ -405,7 +449,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 0.002,
+      "seconds": 0.0,
       "counterexample": null,
       "note": ""
     },
@@ -416,7 +460,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 0.002,
+      "seconds": 0.0,
       "counterexample": null,
       "note": ""
     },
@@ -427,7 +471,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 0.001,
+      "seconds": 0.002,
       "counterexample": null,
       "note": ""
     },
@@ -438,7 +482,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 0.001,
+      "seconds": 0.002,
       "counterexample": null,
       "note": ""
     },
@@ -449,7 +493,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 0.001,
+      "seconds": 0.0,
       "counterexample": null,
       "note": ""
     },
@@ -465,13 +509,24 @@
       "note": ""
     },
     {
-      "prop": "G2 no PASS->YIELD fallback [MUTEX_YIELD]",
-      "formula": "committed -> target not in {MUTEX_APPROACH, MUTEX_YIELD}",
+      "prop": "G2 no PASS->YIELD fallback without give-up [MUTEX_YIELD]",
+      "formula": "committed & target in {MUTEX_APPROACH, MUTEX_YIELD} -> entry_abort",
       "encoding": "holo_fleet/ha/spec.py (shared guards) + formal/check_determinism.py",
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 0.001,
+      "seconds": 0.002,
+      "counterexample": null,
+      "note": ""
+    },
+    {
+      "prop": "G2c a give-up clears the commitment [MUTEX_YIELD]",
+      "formula": "committed & edge to {MUTEX_APPROACH, MUTEX_YIELD} enabled -> it sets committed := false",
+      "encoding": "holo_fleet/ha/spec.py (shared guards) + formal/check_determinism.py",
+      "expect": "unsat",
+      "verdict": "unsat",
+      "passed": true,
+      "seconds": 0.0,
       "counterexample": null,
       "note": ""
     },
@@ -482,7 +537,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 0.0,
+      "seconds": 0.002,
       "counterexample": null,
       "note": ""
     },
@@ -493,7 +548,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 0.001,
+      "seconds": 0.002,
       "counterexample": null,
       "note": ""
     },
@@ -504,7 +559,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 0.001,
+      "seconds": 0.0,
       "counterexample": null,
       "note": ""
     },
@@ -515,7 +570,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 0.001,
+      "seconds": 0.0,
       "counterexample": null,
       "note": ""
     },
@@ -537,7 +592,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 0.001,
+      "seconds": 0.0,
       "counterexample": null,
       "note": ""
     },
@@ -559,13 +614,24 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 0.001,
+      "seconds": 0.0,
       "counterexample": null,
       "note": ""
     },
     {
-      "prop": "G2 no PASS->YIELD fallback [MUTEX_PASS]",
-      "formula": "committed -> target not in {MUTEX_APPROACH, MUTEX_YIELD}",
+      "prop": "G2 no PASS->YIELD fallback without give-up [MUTEX_PASS]",
+      "formula": "committed & target in {MUTEX_APPROACH, MUTEX_YIELD} -> entry_abort",
+      "encoding": "holo_fleet/ha/spec.py (shared guards) + formal/check_determinism.py",
+      "expect": "unsat",
+      "verdict": "unsat",
+      "passed": true,
+      "seconds": 0.0,
+      "counterexample": null,
+      "note": ""
+    },
+    {
+      "prop": "G2c a give-up clears the commitment [MUTEX_PASS]",
+      "formula": "committed & edge to {MUTEX_APPROACH, MUTEX_YIELD} enabled -> it sets committed := false",
       "encoding": "holo_fleet/ha/spec.py (shared guards) + formal/check_determinism.py",
       "expect": "unsat",
       "verdict": "unsat",
@@ -592,7 +658,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 0.001,
+      "seconds": 0.0,
       "counterexample": null,
       "note": ""
     },
@@ -614,7 +680,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 0.0,
+      "seconds": 0.002,
       "counterexample": null,
       "note": ""
     },
@@ -625,7 +691,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 0.002,
+      "seconds": 0.0,
       "counterexample": null,
       "note": ""
     },
@@ -663,13 +729,24 @@
       "note": ""
     },
     {
-      "prop": "G2 no PASS->YIELD fallback [FORMATION_RECOVERY]",
-      "formula": "committed -> target not in {MUTEX_APPROACH, MUTEX_YIELD}",
+      "prop": "G2 no PASS->YIELD fallback without give-up [FORMATION_RECOVERY]",
+      "formula": "committed & target in {MUTEX_APPROACH, MUTEX_YIELD} -> entry_abort",
       "encoding": "holo_fleet/ha/spec.py (shared guards) + formal/check_determinism.py",
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
       "seconds": 0.0,
+      "counterexample": null,
+      "note": ""
+    },
+    {
+      "prop": "G2c a give-up clears the commitment [FORMATION_RECOVERY]",
+      "formula": "committed & edge to {MUTEX_APPROACH, MUTEX_YIELD} enabled -> it sets committed := false",
+      "encoding": "holo_fleet/ha/spec.py (shared guards) + formal/check_determinism.py",
+      "expect": "unsat",
+      "verdict": "unsat",
+      "passed": true,
+      "seconds": 0.002,
       "counterexample": null,
       "note": ""
     },
@@ -691,7 +768,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 0.001,
+      "seconds": 0.0,
       "counterexample": null,
       "note": ""
     },
@@ -702,7 +779,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 0.0,
+      "seconds": 0.002,
       "counterexample": null,
       "note": ""
     },
@@ -713,7 +790,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 0.0,
+      "seconds": 0.002,
       "counterexample": null,
       "note": ""
     },
@@ -762,13 +839,24 @@
       "note": ""
     },
     {
-      "prop": "G2 no PASS->YIELD fallback [FAILSAFE_HOLD_OR_RETREAT]",
-      "formula": "committed -> target not in {MUTEX_APPROACH, MUTEX_YIELD}",
+      "prop": "G2 no PASS->YIELD fallback without give-up [FAILSAFE_HOLD_OR_RETREAT]",
+      "formula": "committed & target in {MUTEX_APPROACH, MUTEX_YIELD} -> entry_abort",
       "encoding": "holo_fleet/ha/spec.py (shared guards) + formal/check_determinism.py",
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 0.002,
+      "seconds": 0.0,
+      "counterexample": null,
+      "note": ""
+    },
+    {
+      "prop": "G2c a give-up clears the commitment [FAILSAFE_HOLD_OR_RETREAT]",
+      "formula": "committed & edge to {MUTEX_APPROACH, MUTEX_YIELD} enabled -> it sets committed := false",
+      "encoding": "holo_fleet/ha/spec.py (shared guards) + formal/check_determinism.py",
+      "expect": "unsat",
+      "verdict": "unsat",
+      "passed": true,
+      "seconds": 0.0,
       "counterexample": null,
       "note": ""
     },
@@ -790,7 +878,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 0.002,
+      "seconds": 0.0,
       "counterexample": null,
       "note": ""
     },
@@ -801,7 +889,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 0.002,
+      "seconds": 0.0,
       "counterexample": null,
       "note": ""
     },
@@ -834,7 +922,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 0.0,
+      "seconds": 0.002,
       "counterexample": null,
       "note": ""
     },
@@ -861,8 +949,19 @@
       "note": ""
     },
     {
-      "prop": "G2 no PASS->YIELD fallback [FORMATION_WAIT_REJOIN]",
-      "formula": "committed -> target not in {MUTEX_APPROACH, MUTEX_YIELD}",
+      "prop": "G2 no PASS->YIELD fallback without give-up [FORMATION_WAIT_REJOIN]",
+      "formula": "committed & target in {MUTEX_APPROACH, MUTEX_YIELD} -> entry_abort",
+      "encoding": "holo_fleet/ha/spec.py (shared guards) + formal/check_determinism.py",
+      "expect": "unsat",
+      "verdict": "unsat",
+      "passed": true,
+      "seconds": 0.002,
+      "counterexample": null,
+      "note": ""
+    },
+    {
+      "prop": "G2c a give-up clears the commitment [FORMATION_WAIT_REJOIN]",
+      "formula": "committed & edge to {MUTEX_APPROACH, MUTEX_YIELD} enabled -> it sets committed := false",
       "encoding": "holo_fleet/ha/spec.py (shared guards) + formal/check_determinism.py",
       "expect": "unsat",
       "verdict": "unsat",
@@ -878,7 +977,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 0.0,
+      "seconds": 0.002,
       "counterexample": null,
       "note": ""
     },
@@ -889,7 +988,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 0.0,
+      "seconds": 0.002,
       "counterexample": null,
       "note": ""
     },
@@ -900,7 +999,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 0.0,
+      "seconds": 0.002,
       "counterexample": null,
       "note": ""
     },
@@ -911,7 +1010,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 0.0,
+      "seconds": 0.002,
       "counterexample": null,
       "note": ""
     },
@@ -955,13 +1054,24 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
+      "seconds": 0.002,
+      "counterexample": null,
+      "note": ""
+    },
+    {
+      "prop": "G2 no PASS->YIELD fallback without give-up [DEGRADED_FORMATION]",
+      "formula": "committed & target in {MUTEX_APPROACH, MUTEX_YIELD} -> entry_abort",
+      "encoding": "holo_fleet/ha/spec.py (shared guards) + formal/check_determinism.py",
+      "expect": "unsat",
+      "verdict": "unsat",
+      "passed": true,
       "seconds": 0.0,
       "counterexample": null,
       "note": ""
     },
     {
-      "prop": "G2 no PASS->YIELD fallback [DEGRADED_FORMATION]",
-      "formula": "committed -> target not in {MUTEX_APPROACH, MUTEX_YIELD}",
+      "prop": "G2c a give-up clears the commitment [DEGRADED_FORMATION]",
+      "formula": "committed & edge to {MUTEX_APPROACH, MUTEX_YIELD} enabled -> it sets committed := false",
       "encoding": "holo_fleet/ha/spec.py (shared guards) + formal/check_determinism.py",
       "expect": "unsat",
       "verdict": "unsat",
@@ -977,7 +1087,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 0.001,
+      "seconds": 0.0,
       "counterexample": null,
       "note": ""
     },
@@ -1004,6 +1114,7 @@
         "at_queue": true,
         "committed": false,
         "d_min": 2.4,
+        "entry_abort": false,
         "env_ok": true,
         "form_err": 0.25,
         "has_prio": false,
@@ -1022,11 +1133,12 @@
       "expect": "sat",
       "verdict": "sat",
       "passed": true,
-      "seconds": 0.002,
+      "seconds": 0.0,
       "counterexample": {
         "at_queue": false,
         "committed": true,
         "d_min": 0.125,
+        "entry_abort": false,
         "env_ok": true,
         "form_err": 0.125,
         "has_prio": false,
@@ -1034,6 +1146,29 @@
         "passed": false,
         "sense_ok": true,
         "t_ok": 0.125
+      },
+      "note": ""
+    },
+    {
+      "prop": "MA mutation: a give-up that keeps the commitment (the withdrawn retreat) must violate G2c",
+      "formula": "expect counterexample",
+      "encoding": "holo_fleet/ha/spec.py (shared guards) + formal/check_determinism.py",
+      "expect": "sat",
+      "verdict": "sat",
+      "passed": true,
+      "seconds": 0.0,
+      "counterexample": {
+        "at_queue": false,
+        "committed": true,
+        "d_min": 2.4,
+        "entry_abort": true,
+        "env_ok": true,
+        "form_err": 0.25,
+        "has_prio": false,
+        "mutex_zone": true,
+        "passed": false,
+        "sense_ok": true,
+        "t_ok": 2.4
       },
       "note": ""
     },
@@ -1047,16 +1182,17 @@
       "seconds": 0.0,
       "counterexample": {
         "at_queue": false,
-        "committed": true,
-        "d_min": 1.7,
+        "committed": false,
+        "d_min": 2.05,
         "degraded": false,
+        "entry_abort": false,
         "env_ok": true,
-        "form_err": 1.7,
+        "form_err": 2.4,
         "has_prio": false,
         "mutex_zone": false,
         "neighbors_ok": true,
         "occ_busy": false,
-        "passed": true,
+        "passed": false,
         "sense_ok": true,
         "t_ok": 0.0
       },

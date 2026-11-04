@@ -1,0 +1,120 @@
+"""B2 payload (H6): packet format, slot budget, onboard navigation bound and its use as independent evidence."""
+
+import dataclasses
+import math
+
+import numpy as np
+import pytest
+
+from holo_fleet.config import DEFAULT, BeaconConfig
+from holo_fleet.mission import GateSpec, MissionPlan, Path, abreast_slots, queue_line
+from holo_fleet.perception import payload as pl
+from holo_fleet.perception.acoustic import AcousticTracker
+from holo_fleet.perception.gate_perception import GatePerception
+from holo_fleet.perception.nav import NavBound, NavState
+
+B2 = dataclasses.replace(DEFAULT, beacon=BeaconConfig(mode="ACOUSTIC_RB"))
+GATE = GateSpec("G", np.array([0., 0., -5.]), np.array([1., 0., 0.]), np.array([0., -1., 0.]), 2., 2.)
+
+
+def test_packet_round_trip_quantisation_and_bound_rounded_up():
+    p = np.array([-20.1234, 17.276, -4.2031])
+    rep = pl.decode(pl.encode(7, p, 1.234))
+    assert rep.seq == 7 and len(pl.encode(7, p, 1.234)) * 8 == pl.PAYLOAD_BITS
+    assert np.linalg.norm(rep.p - p) <= pl.QUANT_ERR + 1e-9
+    assert 1.234 + pl.QUANT_ERR <= rep.bound < 1.234 + pl.QUANT_ERR + pl.BOUND_Q
+
+
+def test_corrupted_or_unrepresentable_packets_are_not_used():
+    pkt = bytearray(pl.encode(1, [1., 2., -3.], 0.5))
+    pkt[3] ^= 0x10
+    assert pl.decode(bytes(pkt)) is None                       # CRC
+    assert pl.decode(pl.encode(1, [1., 2., -3.], float("inf"))) is None
+    assert pl.decode(pl.encode(1, [500., 2., -3.], 0.5)) is None   # outside the representable frame
+    assert pl.decode(pl.encode(1, [1., 2., -3.], 99.0)) is None    # bound beyond the field: invalid code
+
+
+def test_payload_fits_the_tdma_slot_for_six_drones_and_is_refused_for_seven():
+    from holo_fleet.sim.beacon import BeaconTransport
+
+    cfg = BeaconConfig(mode="ACOUSTIC_RB")
+    BeaconTransport([f"d{k}" for k in range(6)], cfg, 0)
+    with pytest.raises(ValueError):
+        BeaconTransport([f"d{k}" for k in range(7)], cfg, 0)
+
+
+def test_nav_bound_grows_with_distance_noise_and_outage_and_never_shrinks():
+    nb = NavBound(B2)
+    s = NavState(p=np.zeros(3), yaw=0.0)
+    s.v_world = np.array([0.3, 0.0, 0.0])
+    prev = nb.value
+    for i in range(1, 201):                                    # 20 s, DVL fresh
+        s.t_dvl, s.t_depth = i * 0.1, i * 0.1
+        nb.update(i * 0.1, 0.1, s)
+        assert nb.value >= prev
+        prev = nb.value
+    lin = B2.acoustic.nav_b0_m + nb.k_lin * 6.0
+    assert nb.horizontal == pytest.approx(lin + nb.k_rw * math.sqrt(200 * 0.01))
+    before = nb.horizontal
+    for i in range(201, 211):                                  # 1 s DVL outage
+        nb.update(i * 0.1, 0.1, s)
+    assert nb.horizontal - before >= B2.env.a_brake_measured * 0.5 * 0.9 * 1.0 ** 2 * 0.5
+    nb.corrected(np.array([0.3, 0.4, 0.0]))
+    assert nb.aid == pytest.approx(0.5)
+
+
+def _observer(p):
+    tracker = AcousticTracker(B2)
+    tracker.set_identities({1: 1, 2: 2})
+    tracker.update(0., (), p, 0., 0.5)
+    qs = queue_line(abreast_slots(3), B2.gate)
+    plan = MissionPlan(drone_id="d", slot_index=0, slots=abreast_slots(3),
+                       path=Path(np.array([[-20., 0.], [20., 0.]]), -5.), gates=[GATE], structures=[GATE],
+                       launch_position=p, launch_yaw_deg=0., static_rank=0, s_end=40., queue_lateral=0., queue_s=qs)
+    return tracker, GatePerception(plan, B2, acoustic=tracker)
+
+
+def _hear(tracker, p, r, rep_p, bound, times=(1., 2.)):
+    for t in times:
+        tracker.update(t, [(1, t - .25, r, 0., 0., pl.encode(int(t), rep_p, bound))], p, 0., 0.5)
+
+
+def test_payload_separates_the_indistinguishable_multipath_histories():
+    """Observer at s=-4.6, measured 8.4 m: inside with +3 m excess (s=0.8) or outside (s=3.8).  The range-bearing
+    measurement alone must veto both; the independent onboard estimate of the sender separates them."""
+    p = np.array([-4.6, 0., -5.])
+    tracker, gp = _observer(p)
+    _hear(tracker, p, 8.4, [3.8, 0., -5.], 1.0)                # outside, reports where it is
+    f = tracker.latest(1, 2., 5.)
+    assert f.rep_ok
+    assert not gp.acoustic_exit.heard_inside(2., GATE)
+    tracker2, gp2 = _observer(p)
+    _hear(tracker2, p, 8.4, [0.8, 0., -5.], 1.0)               # inside, reports where it is
+    assert tracker2.latest(1, 2., 5.).rep_ok
+    assert gp2.acoustic_exit.heard_inside(2., GATE)
+
+
+def test_payload_inconsistent_with_the_measurement_is_rejected_and_the_veto_kept():
+    p = np.array([-4.6, 0., -5.])
+    tracker, gp = _observer(p)
+    _hear(tracker, p, 5.4, [20.0, 0., -5.], 0.5)               # claims 20 m away, measured 5.4 m: inconsistent
+    f = tracker.latest(1, 2., 5.)
+    assert not f.rep_ok and f.rep_reason == "inconsistent"
+    assert gp.acoustic_exit.heard_inside(2., GATE)
+
+
+def test_a_large_bound_gives_no_clearance():
+    p = np.array([-4.6, 0., -5.])
+    tracker, gp = _observer(p)
+    _hear(tracker, p, 8.4, [3.8, 0., -5.], 4.0)                # the ball reaches the CR
+    assert gp.acoustic_exit.heard_inside(2., GATE)
+
+
+def test_unknown_occupant_never_times_out_to_free():
+    """A drone last heard possibly inside, then silent: the t_occ_max fallback does not release the CR."""
+    p = np.array([-4.6, 0., -5.])
+    tracker, gp = _observer(p)
+    _hear(tracker, p, 4.6, [0.0, 0., -5.], 0.5)                # inside the CR
+    gp.occ_state, gp.last_corridor_t, gp.busy_since = "BUSY", 2., 2.
+    for t in (5., 15., 2. + B2.gate.t_occ_max + 5.):
+        assert gp.update(t, p, 0., [], {}).occ_state == "BUSY"

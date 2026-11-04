@@ -68,12 +68,14 @@ def test_positive_occupancy_vetoes_a_sonar_witness_and_discards_its_confirmation
     assert gp.update(5.2, p, 0., [echo], {}).occ_state == "EXITING"
 
 
-def test_acoustic_only_episode_uses_existing_timeout_without_forging_sonar_evidence():
+def test_acoustic_only_episode_never_times_out_without_positive_clearance():
+    # an occupant heard inside and then silent is unknown, not gone: no timeout release (positive evidence only)
     p, tracker, gp = observer()
     heard_pair(tracker, p, -p[0])
     assert gp.update(2., p, 0., [], {}).occ_state == "BUSY"
     assert gp.update(2. + B2.acoustic.fresh_s + .1, p, 0., [], {}).occ_state == "BUSY"
-    assert gp.update(2. + B2.gate.t_occ_max + .1, p, 0., [], {}).occ_state == "FREE"
+    assert gp.update(2. + B2.gate.t_occ_max + .1, p, 0., [], {}).occ_state == "BUSY"
+    assert gp.occ_timeouts == 0
 
 
 def test_acoustic_only_episode_releases_on_positive_clearance_of_every_other_drone():

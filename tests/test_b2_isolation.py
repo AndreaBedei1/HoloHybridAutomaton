@@ -67,6 +67,7 @@ def test_acoustic_receptions_cannot_override_the_safety_layer(scenario):
 ALLOWED = {"config.py", "runner.py", "sim/beacon.py", "sim/holo_env.py", "sim/acoustic_channel.py",
            "perception/acoustic.py", "perception/acoustic_gate.py", "perception/perception.py",
            "perception/formation_perception.py", "perception/gate_perception.py", "perception/sensor_suite.py",
+           "perception/payload.py", "perception/nav.py",       # H6 payload: packet format, own navigation bound
            "control/controller.py", "referee/robustness_metrics.py", "referee/referee.py"}
 
 

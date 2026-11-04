@@ -48,6 +48,14 @@ Variant B2 (range-bearing beacon, perception/acoustic.py).  Identified fixes ent
 * relative formation error: for a neighbour with a fresh fix, the full relative-position residual (fix minus
   template, map axes) replaces the range residual in the along-track / lateral consensus (``along_corr``,
   ``lateral_corr``): the along-track offset of an abreast neighbour, unobservable from ranges, becomes observable.
+* payload (H6): a fix with a consistent payload carries the neighbour's own estimate of where it is.  Compared
+  with where the OWN formation time places the neighbour's slot (both are beliefs in the mission frame, so no
+  navigation error enters), the along-track offset measures the difference of the two private formation times
+  directly: it replaces the range-bearing point estimate for the lag and the "ahead" veto, with the band e_ok (the
+  neighbour's own in-formation tolerance) plus its largest speed deviation from the clock over the payload's age.
+  A_CONFIRM payloads of one track farther than e_lost + A_DISPLACED_MARGIN + band from the slot are rule A-D;
+* own navigation bound (perception/nav.py, NavBound): propagated every step, grown by every map-aided correction,
+  and sent in the B2 beacon payload (``payload``, H6).
 Without receptions (B0, a silent channel) every one of these is inactive and the perception is the sonar one.
 """
 
@@ -74,7 +82,7 @@ A_CORR_AGE_S = 1.5         # a fix this recent feeds the relative formation resi
 from holo_fleet.perception.acoustic import AcousticTracker
 from holo_fleet.perception.frame import SensorFrame
 from holo_fleet.perception.gate_perception import GateObs, GatePerception
-from holo_fleet.perception.nav import DeadReckoning
+from holo_fleet.perception.nav import DeadReckoning, NavBound
 from holo_fleet.perception.sonar_geometry import SECTORS, sonar_sensor_name
 from holo_fleet.perception.sonar_processing import EchoClassifier, SectorReading, dvl_altitude
 from holo_fleet.perception.structure_aiding import StructureAiding
@@ -142,6 +150,8 @@ class Perception:
         self.cfg = cfg
         launch = np.asarray(plan.launch_position, dtype=float) + (np.zeros(3) if nav_init_err is None else nav_init_err)
         self.nav = DeadReckoning(launch, plan.launch_yaw_deg)
+        self.nav_bound = NavBound(cfg)             # onboard bound of the own position error (payload, H6)
+        self.t_nav = None
         self.att = AttitudeFilter()
         self.use_attitude = use_attitude
         bars = [b for g in plan.structures for b in g.bars]
@@ -231,7 +241,39 @@ class Perception:
         form.neighbors_ok = not [k for k in form.missing if k not in self.vacant]
 
     # ------------------------------------------------------------------ B2: identified neighbours
-    def acoustic_neighbours(self, t: float, slot_err: np.ndarray, R_form: np.ndarray) -> Optional[Dict[int, np.ndarray]]:
+    def _payload_balls(self, t: float):
+        """Fresh consistent payload balls of EVERY other drone of the plan, or None if one is not accounted for."""
+        if not self.acoustic.enabled or not self.acoustic.slot_of:
+            return None
+        out = []
+        for k in range(len(self.plan.slots)):
+            if k == self.plan.slot_index:
+                continue
+            f = self.acoustic.latest(k, t, self.cfg.acoustic.fresh_s)
+            if f is None or not f.rep_ok:
+                return None
+            out.append((f.rep.p, f.rep_radius(t, self.acoustic.v_bound)))
+        return out
+
+    def payload(self):
+        """What this drone sends in its B2 beacon payload (H6): (estimate time, onboard position estimate, its error bound)."""
+        if self.t_nav is None:
+            return None
+        return self.t_nav, self.nav.state.p.copy(), self.nav_bound.value
+
+    def _rep_offset(self, f, t: float, exp_world: np.ndarray, t_hat: np.ndarray):
+        """Offset of a neighbour's reported position from where the own formation time places its slot, moved to t
+        at the clock speed, and the band of that comparison (module docstring); None without a usable payload."""
+        if not f.rep_ok:
+            return None
+        fr, clock = self.cfg.form, self.plan.clock
+        age = max(t - f.t_tx, 0.0)
+        v_clk = clock.v if (clock is not None and clock.moving(t)) else 0.0
+        off = f.rep.p + v_clk * age * t_hat - exp_world
+        return off, fr.e_ok + (fr.v_slot_max - fr.v_wait) * age
+
+    def acoustic_neighbours(self, t: float, slot_err: np.ndarray, R_form: np.ndarray,
+                            p_own: Optional[np.ndarray] = None) -> Optional[Dict[int, np.ndarray]]:
         """Rules A-P and A-D (module docstring); returns the fresh relative positions used for the association."""
         self.acoustic_present, self.acoustic_displaced, self.acoustic_fresh = [], [], []
         self.acoustic_lag, self.acoustic_ahead = {}, []
@@ -257,11 +299,25 @@ class Perception:
             # biases (array calibration, compass, clock) do not average out and leave a bounded residual offset
             band = a.k_sigma * math.hypot(a.sigma_range_m, f.r * math.radians(a.sigma_az_deg))
             off = f.rel - exp
+            exp_world = None if p_own is None else np.asarray(p_own, float) + exp
+            rep = None if exp_world is None else self._rep_offset(f, t, exp_world, t_hat)
+            if rep is not None:                                  # the neighbour's own estimate (payload)
+                off, band = rep
             along_now = float(off @ t_hat)
             # ahead: the latest fresh fix (as A-P, so that it is decided before the sonar memory runs out at the 1 s
             # ping period), on its lane and ahead by more than e_lost plus the band
             ahead = (float(np.linalg.norm(off - along_now * t_hat)) <= fr.e_lost and along_now > fr.e_lost + band)
-            if one_track:
+            reps = [] if exp_world is None else [self._rep_offset(g, t, exp_world, t_hat) for g in acc]
+            if one_track and reps and all(r is not None for r in reps):
+                # lag from the payloads: the median along-track offset beyond its band
+                along = float(np.median([float(r[0] @ t_hat) for r in reps]))
+                rb = max(r[1] for r in reps)
+                if along < -rb:
+                    self.acoustic_lag[k] = -along - rb
+                if (k not in self.acoustic_ahead and not ahead
+                        and all(float(np.linalg.norm(r[0])) > fr.e_lost + A_DISPLACED_MARGIN + r[1] for r in reps)):
+                    self.acoustic_displaced.append(k)            # rule A-D on the neighbour's own estimates
+            elif one_track:
                 # lag: the median of the point estimates of A_CONFIRM fixes of one track beyond the band
                 along = float(np.median([float((g.rel - exp) @ t_hat) for g in acc]))
                 if along < -band:
@@ -275,7 +331,8 @@ class Perception:
                     self.acoustic_ahead.append(k)
             else:
                 self.ahead_since.pop(k, None)
-            if (one_track and k not in self.acoustic_ahead       # every region point farther than that
+            if (one_track and k not in self.acoustic_ahead and k not in self.acoustic_displaced
+                    and not (reps and all(r is not None for r in reps))     # every region point farther than that
                     and all(float(np.min(np.linalg.norm(g.pts - (g.p - g.rel) - exp, axis=1))) - g.slack
                             > fr.e_lost + A_DISPLACED_MARGIN for g in acc)):
                 self.acoustic_displaced.append(k)
@@ -323,10 +380,14 @@ class Perception:
             key = sonar_sensor_name(s)
             profiles[s] = d.get(key)
             ages[s] = frame.age(key) if key in d else 1e9
-        corr = self.aiding.update(nav.p, R_wb, profiles, ages, env.tau_max, t=t)
+        self.nav_bound.update(t, dt, nav)
+        corr = self.aiding.update(nav.p, R_wb, profiles, ages, env.tau_max, t=t, others=self._payload_balls(t),
+                                  b_own=self.nav_bound.value)
         if corr is not None:                      # dead-reckoning drift bounded by the mapped gate (structure_aiding)
             self.nav.state.p += corr
-        self.acoustic.update(t, d.get("AcousticRx"), nav.p, nav.yaw)     # B2 fixes (own pose after the aiding)
+            self.nav_bound.corrected(corr)
+        self.t_nav = t
+        self.acoustic.update(t, d.get("AcousticRx"), nav.p, nav.yaw, self.nav_bound.value)   # B2 fixes
         readings = self.clf.classify(profiles, ages, nav.p, R_wb, seabed_z, tau_healthy=env.tau_max)
         tracks = self.tracker.update(t, readings)
         targets = build_targets(t, readings, tracks, self.cfg, held=self.echo_hold.update(t, readings))
@@ -344,7 +405,7 @@ class Perception:
             for k in range(len(self.plan.slots)):
                 if k != self.plan.slot_index:
                     self.neighbour_seen[k], self.missing_state[k] = t, False
-        ac_rel = self.acoustic_neighbours(t, slot - nav.p, R_form)
+        ac_rel = self.acoustic_neighbours(t, slot - nav.p, R_form, nav.p)
         form = check_formation(self.plan, self.cfg, slot - nav.p, R_form, R_wb, targets, healthy, t, self.neighbour_seen,
                                readings, vacant=self.vacant, acoustic=ac_rel,
                                missing={k for k, v in self.missing_state.items() if v})

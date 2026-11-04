@@ -286,9 +286,11 @@ class RefereeConfig:
 class BeaconConfig:
     """Variant B2 one-way acoustic beacon (OFF in the communication-free baseline B0).
 
-    Every drone emits, on a pre-assigned TDMA schedule of period ``period_s``, a coded ping carrying nothing but its
-    static identity.  No handshake, no reply, no payload; receivers measure range (one-way travel time, synchronised
-    clocks) and direction (receiving array) themselves.  Transport: HoloOcean's AcousticBeaconSensor driven by
+    Every drone emits, on a pre-assigned TDMA schedule of period ``period_s``, a coded ping carrying its static
+    identity and (``payload``) a short data packet with its ONBOARD position estimate and a conservative bound of
+    that estimate's error (docs/B2_ACOUSTIC_AIDED_COORDINATION.md, H6; sim/beacon.py, encode_payload).  Strictly
+    one-way broadcast: no handshake, no reply, no acknowledgement, no control decision; receivers measure range
+    (one-way travel time, synchronised clocks) and direction (receiving array) themselves.  Transport: HoloOcean's AcousticBeaconSensor driven by
     sim/beacon.py, measurement model sim/acoustic_channel.py (level ``channel``, simulator side only), onboard use
     perception/acoustic.py with the declared envelope AcousticConfig."""
 
@@ -298,6 +300,8 @@ class BeaconConfig:
     check_visible: bool = True
     sound_speed: float = 1500.0
     channel: str = "CLEAN"           # simulator-side channel level (sim/acoustic_channel.py), never onboard
+    payload: bool = True             # H6: the ping carries the sender's onboard position estimate and error bound
+    payload_bitrate_bps: float = 1000.0   # H6: coherent short-packet rate assumed (PAYLOAD_BITS / rate per slot)
 
     @property
     def enabled(self) -> bool:
@@ -336,6 +340,12 @@ class AcousticConfig:
     tie_window_s: float = 3.0            # fixes this close to the last corridor sighting account for a drone
     fresh_s: float = 2.5                 # a fix this recent counts for the neighbours (formation)
     depth_tol_m: float = 1.5             # a fix this far outside the operating depth band is a reflection
+    # onboard bound of the own dead-reckoning error (perception/nav.py, NavBound), sent in the payload (H6).  Every
+    # term is the declared envelope of a sensor, never the profile of a run:
+    nav_b0_m: float = 0.30               # [REQ] launch survey of the shared mission frame (horizontal)
+    dvl_scale_err: float = 0.01          # [LIT] DVL velocity scale error (1 %: low-cost DVL class; Nortek <= 0.1 %)
+    dvl_sigma_body_mps: float = 0.15     # [PROF] white DVL body-velocity noise, MEDIUM: 0.08 m/s per beam x 1.9
+    nav_depth_err_m: float = 0.45        # [PROF] depth sensor, 3 x the MEDIUM 0.15 m noise
 
 
 @dataclass(frozen=True)

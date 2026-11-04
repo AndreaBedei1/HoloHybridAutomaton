@@ -78,7 +78,7 @@ class Invariant:
 
 def _well_formed(o, L, cfg):
     reals = [L.finite(getattr(o, v)) for v in REAL_VARS]
-    bools = [L.boolean(getattr(o, v)) for v in BOOL_VARS if v != "committed"]
+    bools = [L.boolean(getattr(o, v)) for v in BOOL_VARS if v not in ("committed", "entry_abort")]
     return L.And(*reals, *bools)
 
 
@@ -136,6 +136,15 @@ INVARIANTS: List[Invariant] = [
         "(it selects FORMATION_WAIT_REJOIN, not FORMATION_RECOVERY)",
         "t_ok > 0 with form_err >= e_ok (a stale 'ok for t seconds' counter)",
         lambda o, L, cfg: _implies(L, o.t_ok > 0, o.form_err < cfg.form.e_ok)),
+    Invariant(
+        "I5 an entry is given up only by a committed drone in the approach zone",
+        "entry_abort -> committed & mutex_zone & !passed",
+        "the give-up request exists only for a committed drone holding before the CR of the current gate",
+        "control/flows.gate sets abort_request only in MUTEX_PASS while the stage-2 hold is active (never admitted, "
+        "own s before the hold point, inside the approach zone), and resets it in every other mode; the controller "
+        "hands it to the automaton only while committed",
+        "entry_abort for an uncommitted drone (an abort edge that could not fire) or after the gate was passed",
+        lambda o, L, cfg: _implies(L, o.entry_abort, L.And(o.committed, o.mutex_zone, L.Not(o.passed)))),
 ]
 
 BY_NAME: Dict[str, Invariant] = {inv.name.split()[0]: inv for inv in INVARIANTS}     # "N0", "I1", ...

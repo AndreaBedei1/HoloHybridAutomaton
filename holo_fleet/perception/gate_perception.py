@@ -208,7 +208,9 @@ class GatePerception:
             if witness is not None and not corridor:
                 self.occ_state, self.exit_seen_t, self.exit_witness = "EXITING", t, witness
                 self.exit_kind["ACOUSTIC" if witness.get("sector") == "ACOUSTIC" else "SONAR"] += 1
-            elif t - max(self.last_corridor_t, self.busy_since) > G.t_occ_max and not heard:
+            elif (t - max(self.last_corridor_t, self.busy_since) > G.t_occ_max and not heard
+                  and self.last_corridor_t >= self.busy_since          # an acoustic-only episode needs clearance
+                  and not (self.acoustic_exit is not None and self.acoustic_exit.last_known_inside(t, g))):
                 self.occ_state, self.exit_witness = "FREE", None      # fallback: bounded crossing assumed (docstring)
                 self.occ_timeouts += 1
         if self.occ_state == "EXITING" and not corridor and not heard and t - max(self.exit_seen_t, self.last_corridor_t) >= G.t_clear:
