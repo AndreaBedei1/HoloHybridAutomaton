@@ -127,7 +127,7 @@ def test_exit_witness_then_free_after_t_clear_and_the_sector_is_reported():
     gp = perception()
     _, t = run(gp, [[tg({"FRONT"}, 4.6)]] * 3)
     _, t = run(gp, [[]] * 20, t0=t)
-    o, t = run(gp, [[tg({"FRONT"}, 7.5)]] * 2, t0=t)
+    o, t = run(gp, [[tg({"FRONT"}, 7.5)]] * 3, t0=t)
     assert o.occ_state == "EXITING" and o.exit_witness["sector"] == "FRONT" and gp.exit_witness["range"] == 7.5
     o, t = run(gp, [[tg({"FRONT"}, 8.0)]] * int(G.t_clear / 0.1 + 2), t0=t)
     assert o.occ_state == "FREE"
@@ -142,7 +142,7 @@ def test_a_side_sector_facing_the_exit_side_can_witness_the_exit():
     r = max(w.r_far(G06, p, yaw, "LEFT"), 6.0) + ENV.eps_range_far + 0.5
     _, t = run(gp, [[tg({"FRONT"}, 4.6)]] * 3)
     _, t = run(gp, [[]] * 60, t0=t, yaw=yaw)
-    o, t = run(gp, [[tg({"LEFT"}, r)]] * 2, t0=t, yaw=yaw)
+    o, t = run(gp, [[tg({"LEFT"}, r)]] * 3, t0=t, yaw=yaw)
     assert o.occ_state == "EXITING" and gp.exit_witness["sector"] == "LEFT"
 
 
@@ -172,7 +172,7 @@ def test_a_drone_already_beyond_is_not_taken_for_the_occupant():
     seq = [[tg({"FRONT"}, 9.5 + 0.03 * k, ranges={"FRONT": 9.5 + 0.03 * k})] for k in range(40)]
     o, t = run(gp, seq, t0=t)                                                # O masked, A followed
     assert o.occ_state == "BUSY"
-    o, t = run(gp, [[tg({"FRONT"}, 7.0, ranges={"FRONT": 7.0})]] * 2, t0=t)   # a new echo: O
+    o, t = run(gp, [[tg({"FRONT"}, 7.0, ranges={"FRONT": 7.0})]] * 3, t0=t)   # a new echo: O
     assert o.occ_state == "EXITING"
 
 
@@ -185,3 +185,88 @@ def test_a_far_echo_right_after_the_corridor_is_not_reachable():
 
 def test_speed_bound():
     assert speed_bound() == max(ENV.v_escape, ENV.v_max_nominal, G.v_pass) + ENV.w_drift_max
+
+
+def test_witness_needs_three_distinct_captures():
+    gp = perception()
+    _, t = run(gp, [[tg({"FRONT"}, 4.6)]] * 3)
+    _, t = run(gp, [[]] * 20, t0=t)
+    for i in range(3):
+        o, t = run(gp, [[tg({"FRONT"}, 7.5)]], t0=t)
+        assert o.occ_state == ("BUSY" if i < 2 else "EXITING")
+
+
+def test_held_echo_callbacks_do_not_confirm_new_captures():
+    gp = perception()
+    _, t = run(gp, [[tg({"FRONT"}, 4.6)]] * 3)
+    _, t = run(gp, [[]] * 20, t0=t)
+    first = t
+    for i in range(3):
+        echo = tg({"FRONT"}, 7.5)
+        echo.age = t - first
+        o, t = run(gp, [[echo]], t0=t)
+        assert o.occ_state == "BUSY"
+
+
+def test_range_discontinuity_restarts_confirmation():
+    gp = perception()
+    _, t = run(gp, [[tg({"FRONT"}, 4.6)]] * 3)
+    _, t = run(gp, [[]] * 60, t0=t)
+    o, t = run(gp, [[tg({"FRONT"}, 7.5)]] * 2, t0=t)
+    assert o.occ_state == "BUSY"
+    o, t = run(gp, [[tg({"FRONT"}, 9.5)]] * 2, t0=t)
+    assert o.occ_state == "BUSY"
+    assert run(gp, [[tg({"FRONT"}, 9.5)]], t0=t)[0].occ_state == "EXITING"
+
+
+def test_confirmation_accounts_for_observer_sensor_displacement():
+    w = ExitWitness()
+    for i in range(3):
+        p = G06.from_gate_frame([QS - i, 0., 0.])
+        witness = w.update(10. + .1 * i, G06, p, YAW, [tg({"FRONT"}, 7.5 + i)], False, 0., {})
+        assert (witness is not None) == (i == 2)
+
+
+def test_group_members_expiring_do_not_create_front_captures():
+    w, p = ExitWitness(), G06.from_gate_frame([QS, 0., 0.])
+    for i, ages in enumerate(({"FRONT": 0., "LEFT": .2, "UP": .1},
+                              {"FRONT": .1, "UP": .2}, {"FRONT": .2})):
+        echo = tg(ages, 7.5, ranges={sec: 7.5 for sec in ages})
+        echo.age, echo.ages = .2, ages
+        assert w.update(10. + i * .1, G06, p, YAW, [echo], False, 7.5, {}) is None
+
+
+def test_target_builder_preserves_each_sectors_age():
+    from holo_fleet.perception.sonar_processing import Echo, SectorReading
+    from holo_fleet.perception.targets import build_targets
+
+    readings = {sec: SectorReading(sec, age, True, [Echo(sec, 7.5, 7.6, 1., cls="DYNAMIC")])
+                for sec, age in {"FRONT": 0., "LEFT": .2}.items()}
+    targets = build_targets(10., readings, {}, DEFAULT)
+    target = next(t for t in targets if "FRONT" in t.pattern)
+    assert target.ages == {"FRONT": 0., "LEFT": .2}
+
+
+def test_receding_hull_captures_confirm_while_echo_hold_retains_nearer_history():
+    from holo_fleet.perception.sonar_processing import Echo, SectorReading
+    from holo_fleet.perception.targets import EchoHold, build_targets
+
+    w, p, hold = ExitWitness(), G06.from_gate_frame([QS, 0., 0.]), EchoHold(ENV.tau_max)
+    for i in range(3):
+        t, r = 10. + .1 * i, 7.5 + G.v_pass * .1 * i
+        readings = {"FRONT": SectorReading("FRONT", 0., True, [Echo("FRONT", r, r + .1, 1., cls="DYNAMIC")])}
+        targets = build_targets(t, readings, {}, DEFAULT, held=hold.update(t, readings))
+        witness = w.update(t, G06, p, YAW, targets, False, 0., {"FRONT": True})
+        assert (witness is not None) == (i == 2)
+
+
+def test_confirmation_restarts_after_a_missing_capture():
+    w, p = ExitWitness(), G06.from_gate_frame([QS, 0., 0.])
+    for t in (10., 10.2, 10.4):
+        assert w.update(t, G06, p, YAW, [tg({"FRONT"}, 7.5)], False, 0., {}) is None
+
+
+def test_confirmation_requires_one_range_history_compatible_with_all_three_captures():
+    w, p = ExitWitness(), G06.from_gate_frame([QS, 0., 0.])
+    for i, r in enumerate((7.5, 8.5, 9.5)):
+        assert w.update(10. + .1 * i, G06, p, YAW, [tg({"FRONT"}, r)], False, 0., {}) is None

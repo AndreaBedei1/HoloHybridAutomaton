@@ -24,7 +24,9 @@ Witness conditions for an echo at range r in sector k (gate map, estimated own p
      at a range it could have reached since (tracked per sector, gate 0.5 m + v_bound * dt): a drone that had
      left before is not taken for the occupant.
 
-No echo is never evidence: without a witness the latch stays BUSY until the t_occ_max fallback.
+The same sector must supply three distinct consecutive captures whose centre-range intervals share a motion-
+compatible history, accounting for observer displacement. Held echoes do not add captures. This confirms range
+evolution, not identity. No echo is never evidence: without a witness the latch retains its timeout fallback.
 """
 
 from __future__ import annotations
@@ -40,6 +42,7 @@ from holo_fleet.perception.sonar_geometry import AXES, MOUNTS, NEAR_FIELD_WIDEN_
 ASSOC_M = 0.5            # range gate of a tracked background echo (per capture, plus v_bound * dt)
 _GRID = 9                # CR samples per axis (W1)
 _DIRS = 900              # sphere directions; those inside a cone sample it (W2)
+CONFIRM_CAPTURES = 3     # [PROT] G.3(b): three distinct consecutive sonar captures, as in M4d
 
 
 def speed_bound(cfg: FleetConfig = DEFAULT) -> float:
@@ -63,9 +66,14 @@ class ExitWitness:
         self.dirs = fibonacci_sphere(_DIRS)
         self.v_bound = speed_bound(cfg)
         self.background: Dict[str, List[Tuple[float, float]]] = {s: [] for s in SECTORS}  # sector -> [(r, t)]
+        self.confirmations = {}  # sector -> (capture time, centre-range lo/hi, sonar origin, count)
 
     def reset(self) -> None:
         self.background = {s: [] for s in SECTORS}
+        self.clear_confirmation()
+
+    def clear_confirmation(self) -> None:
+        self.confirmations.clear()
 
     # ------------------------------------------------------------------ geometry
     def _cone(self, g, p: np.ndarray, yaw: float, sector: str):
@@ -148,8 +156,36 @@ class ExitWitness:
                 if not (self.ahead(g, p, yaw, sec, r)
                         and self.exit_side_reachable(g, p, yaw, sec, r, reach + self.cfg.env.eps_range_near)):
                     continue                                                       # W2
-                fresh.append((sec, float(r)))
+                fresh.append((sec, float(r), t - tg.ages.get(sec, tg.age)))
         if occupant_seen or not fresh:
+            self.clear_confirmation()
             return None
-        sec, r = min(fresh, key=lambda x: x[1])
-        return {"sector": sec, "range": round(r, 2)}
+        candidates = {}
+        for sec, r, stamp in fresh:
+            current = candidates.get(sec)
+            if current is None or stamp > current[1] or (stamp == current[1] and r < current[0]):
+                candidates[sec] = (r, stamp)
+        confirmed, next_tracks = [], {}
+        for sec, (r, stamp) in candidates.items():
+            previous = self.confirmations.get(sec)
+            if previous is not None and stamp <= previous[0] + 1e-6:
+                next_tracks[sec] = previous  # a held/cached echo is not another capture
+                continue
+            origin, _ = self._cone(g, p, yaw, sec)
+            lo, hi = r - self.cfg.env.eps_range_far - R_OUT, r + self.cfg.env.eps_range_near + R_OUT
+            count = 1
+            if previous is not None:
+                pt, pl, ph, po, pc = previous
+                dt = stamp - pt
+                motion = self.v_bound * dt + float(np.linalg.norm(origin - po))
+                lower, upper = max(lo, pl - motion), min(hi, ph + motion)
+                if dt <= 1.0 / self.cfg.perc.sonar.hz + 1e-6 and lower <= upper:
+                    lo, hi, count = lower, upper, pc + 1
+            next_tracks[sec] = (stamp, lo, hi, origin, count)
+            if count >= CONFIRM_CAPTURES:
+                confirmed.append((sec, r))
+        self.confirmations = next_tracks
+        if not confirmed:
+            return None
+        sec, r = min(confirmed, key=lambda x: x[1])
+        return {"sector": sec, "range": round(r, 2), "captures": CONFIRM_CAPTURES}

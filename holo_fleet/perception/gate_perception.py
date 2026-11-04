@@ -21,9 +21,9 @@
   (formal M3f gives the counterexample).  In the gate scenarios the sonar witness from a lateral queue point is rare
   in HoloOcean (the passing drone is lost behind the frame and beyond the detection range), so most releases are this
   fallback (counted as occupancy timeouts in the run metrics).
-  Variant B2 only: an acoustic exit evidence (identified range-bearing fixes, perception/acoustic_gate.py) is a
-  second way into EXITING, under the same "corridor empty" condition; without it (B0, a silent channel) the latch
-  is exactly the sonar one.
+  B2 adds positive acoustic occupancy to BUSY and vetoes release/admission while a drone is heard possibly inside
+  (the complete declared region, perception/acoustic_gate.py). Acoustic exit evidence is evaluated only with the
+  corridor empty. Without receptions the sonar outage-mode latch remains.
 """
 
 from __future__ import annotations
@@ -178,6 +178,7 @@ class GatePerception:
         o.has_prio = self.prio_since is not None and (t - self.prio_since) >= G.t_clear
         # ---------------------------------------------------------------- occupancy belief
         corridor = [tg for tg in targets if "FRONT" in tg.pattern and r_near <= tg.r_min <= r_far]
+        heard = self.acoustic_exit is not None and self.acoustic_exit.heard_inside(t, g)
         if corridor:
             self.last_corridor_t = t
             if self.acoustic_exit is not None:
@@ -185,22 +186,32 @@ class GatePerception:
             if self.occ_state == "FREE":
                 self.busy_since = t
             self.occ_state = "BUSY"
+        if heard:
+            if self.occ_state == "FREE":
+                self.busy_since = t
+            self.occ_state, self.exit_witness = "BUSY", None
         witness = None
         if self.occ_state != "FREE":
             healthy = {sec: bool(rd.healthy) for sec, rd in readings.items()}
-            witness = self.exit.update(t, g, p, yaw, targets, bool(corridor), self.last_corridor_t, healthy)
+            if self.last_corridor_t >= self.busy_since:
+                witness = self.exit.update(t, g, p, yaw, targets, bool(corridor), self.last_corridor_t, healthy)
             if witness is None and not corridor and self.occ_state == "BUSY" and self.acoustic_exit is not None:
-                witness = self.acoustic_exit.evaluate(t, g)
+                if self.last_corridor_t >= self.busy_since:
+                    witness = self.acoustic_exit.evaluate(t, g)
+                else:
+                    witness = self.acoustic_exit.evaluate_clearance(t, g, self.busy_since)
+        if heard:
+            witness = None
+            self.exit.clear_confirmation()  # vetoed captures cannot later become an exit witness
         o.exit_witness = witness
         if self.occ_state == "BUSY":
             if witness is not None and not corridor:
                 self.occ_state, self.exit_seen_t, self.exit_witness = "EXITING", t, witness
                 self.exit_kind["ACOUSTIC" if witness.get("sector") == "ACOUSTIC" else "SONAR"] += 1
-            elif t - self.last_corridor_t > G.t_occ_max and not (self.acoustic_exit is not None
-                                                                   and self.acoustic_exit.heard_inside(t, g)):
+            elif t - max(self.last_corridor_t, self.busy_since) > G.t_occ_max and not heard:
                 self.occ_state, self.exit_witness = "FREE", None      # fallback: bounded crossing assumed (docstring)
                 self.occ_timeouts += 1
-        if self.occ_state == "EXITING" and not corridor and t - max(self.exit_seen_t, self.last_corridor_t) >= G.t_clear:
+        if self.occ_state == "EXITING" and not corridor and not heard and t - max(self.exit_seen_t, self.last_corridor_t) >= G.t_clear:
             self.occ_state = "FREE"
         if self.occ_state == "FREE":
             self.exit.reset()
@@ -211,10 +222,9 @@ class GatePerception:
         o.occ_timeouts = self.occ_timeouts
         # stage 2, entry admission (control/flows.py, at the hold point before the CR): from the own pose now, no
         # persistent unexplained FRONT echo compatible with a hull in the CR over the last ENTRY_QUIET_CAPTURES sonar
-        # captures, and (B2) no drone heard inside it on the clear path.  From the hold point only part of the CR
+        # captures, and (B2) no drone heard possibly inside under the declared region. From the hold point only part of the CR
         # is observable apart from the bars (formal/check_stage2.py, M4h): elsewhere hull and bar echoes share
         # ranges and a silent occupant is not seen (a stated limit; the latch argument covers it)
         quiet = t - self.last_corridor_t > ENTRY_QUIET_CAPTURES / self.cfg.perc.sonar.hz
-        heard = self.acoustic_exit is not None and self.acoustic_exit.heard_inside(t, g)
         o.entry_ok = bool(quiet and not heard)
         return o

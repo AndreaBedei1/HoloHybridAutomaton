@@ -20,7 +20,8 @@ the declared measurement envelope config.AcousticConfig) and add nothing to, and
   confirmation pings and of shadowed accounting paths are reported, since there the evidence is only probable.
   An observer for which the evidence does not exist falls back to the sonar rules (B0) - reported, never hidden;
 * B2-S structural: no module that decides separation, collision avoidance or precedence reads an acoustic fix;
-  the latch reads them only through acoustic_gate.AcousticExit, called only with the FRONT corridor empty.
+  the latch reads them through acoustic_gate.AcousticExit; exit evaluation requires the FRONT corridor empty.
+  Positive occupancy is queried independently to veto commitment, releases and admission.
 """
 
 from __future__ import annotations
@@ -308,7 +309,7 @@ def run(cfg: FleetConfig = B2, verbose: bool = True) -> Report:
                             verdict="holds" if okn else "violated", passed=True, note=note), verbose)
     bad = structural()
     rep.add(CheckResult("B2-S acoustic fixes never reach separation, collision avoidance, precedence or the sonar witness; "
-                        "the latch uses them only with the FRONT corridor empty",
+                        "acoustic exit evaluation requires the FRONT corridor empty",
                         "AST: no acoustic name in the safety / precedence modules; guarded call", ENC, "holds",
                         verdict="holds" if not bad else "violated", passed=not bad, note="; ".join(bad) or "clean"), verbose)
     return rep

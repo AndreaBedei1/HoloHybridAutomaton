@@ -9,14 +9,29 @@ supersede the historical entries below. Starting head: `466037b`, branch `b2-con
 - Single-engine, background-supervisor and two-client sensor-isolation probes passed. Two actual low-priority
   orchestrator workers completed `gate_single` and `formation_triangle` with PASS and P1/P2 held.
 - Per the user's steering, the unexplained historical worker death no longer blocks progress; it is not claimed fixed.
-- Current work: Issue 3, five repetitions of the 11 diagnostic cases before behavior changes, followed by veto/witness
-  corrections, formal obligations and independent review. Repetitions use separate raw roots, not different seeds.
+- Baseline complete: 55 diagnostic runs (five repetitions of 11 cases), 46 PASS, five STALLED, four INCOMPLETE,
+  all worker exits 0 and P1/P2 held. Aggregates: `results/b2/consolidation/before_issue3`.
+- Current work: Issue 3 candidate, not accepted. Full-envelope occupancy blocks unsafe releases, but a CLEAN probe
+  stalled before any CR passage. Independent review and an executed identical-packet example expose a conflict
+  between unconditional expiration after true exit and complete uncertainty coverage. No criterion was relaxed.
+- Current required user decision: the conditional Issue 3 closure proposal in
+  `2026-11-04_ISSUE3_DESIGN_AND_FINDINGS.md` (theoretical expiration scope and separate late-occupancy E7 coverage).
+  The question is pending. Do not infer approval from time, quota reset, automation activation or autonomous-work
+  authorization. Do not mark Issue 3 closed or advance to Issue 4 until resolved; the CLEAN stall remains a blocker.
+- Candidate checks: 39 files / 464 passed, one engine regression deselected, no retries; 85 latest focused tests
+  passed after the final producer/capture fixes. Independent reviews and verified mutation checks are recorded in
+  the Issue 3 findings. Final formal rerun and after diagnostics are still outstanding.
+- A concrete cross-worker TraceLog reservation race is corrected by serializing startup only. Independent review,
+  a no-op-lock mutation and 15 unit tests passed; two distinct concurrent orchestrators then completed PASS, exit 0,
+  with distinct roots/UUIDs/ports. See the infrastructure log. Two runtime instances remain permitted, default one.
+  Startup fix `bce9194` is pushed; both validation runs ended and no own engine remains active at this checkpoint.
 - Next: Issues 4, 1, 2; remaining referee/default/documentation items; full formal rerun; freeze; final campaign/report.
   No final campaign, freeze or main merge has occurred. The withdrawn fit and flow-only retreat remain withdrawn.
-- Checkpoint: account usage reached 92% of its 5-hour window, above the required 90% stop. Agent work stops;
-  the two already-authorized baseline scripts remain active under the shared cap. Resume from
-  `2026-11-04_ISSUE3_DESIGN_AND_FINDINGS.md`, inspect current ownership before any new simulation, and verify the
-  independent criteria findings in `2026-11-04_CRITERIA_REVIEW.md` before freeze.
+- Quota checkpoint history: work stopped at the prior window limit and resumed after the user pointed out the missed
+  13:53 restart. At 14:00 the renewed window was verified at 1%. The next reset is 19:00:50 Europe/Rome; the same
+  continuation automation is scheduled explicitly in UTC for 18:50. Check actual usage and stop at 90%.
+  Resume context: `2026-11-04_ISSUE3_DESIGN_AND_FINDINGS.md`; inspect ownership before any simulation, and resolve
+  `2026-11-04_CRITERIA_REVIEW.md` before freeze. No automation timing guarantee is claimed.
 
 Evidence and review decisions: `2026-11-04_INFRASTRUCTURE_LOG.md`. The older implementation notes below are retained
 as history; in particular their original G.4 claims were withdrawn, as the later review section records.

@@ -231,16 +231,20 @@ def test_one_lost_ping_does_not_drop_the_inside_veto():
                 assert ae.heard_inside(b.t, G06), (k, b.t)
 
 
-def test_a_drone_waiting_beyond_the_gate_is_not_inside():
-    """A drone waiting beyond the exit, heard on the direct path: the full region reaches 3 m nearer (the one-sided
-    multipath excess) and, grown by its age, overlaps the CR; the clear-path region does not - the veto must not stop
-    the queue (v2 used the full region with a 2.5 s freshness and held the latch for minutes)."""
+def test_a_near_exit_drone_is_ambiguous_until_its_full_region_clears_the_cr():
+    """The same reception can be a nearer occupant with multipath: an ambiguous outside point cannot certify FREE.
+    A sufficiently far exit is clear even under the deployed envelope."""
     b, ae = exit_bench(cfg=B2)
     for _ in range(3):
         b.ping(1, gate_world(6.5, 0.0))                                # beyond the rally point (rally_s 6 m)
         b.step(1.0)
     f = b.tr.latest(1, b.t, 5.0)
     assert ae._cr_possible(gate_points(G06, f.pts), f.slack + ae.v_bound * (b.t - f.t))
+    assert ae.heard_inside(b.t, G06)
+    b, ae = exit_bench(cfg=B2)
+    for _ in range(3):
+        b.ping(1, gate_world(2 * G.rally_s, 0.0))
+        b.step(1.0)
     assert not ae.heard_inside(b.t, G06)
 
 

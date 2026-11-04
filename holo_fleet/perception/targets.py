@@ -53,6 +53,7 @@ class Target:
     ranges: Dict[str, float] = field(default_factory=dict)
     expected_neighbour: bool = False  # matched to a formation neighbour expected by the template
     possible_neighbour: bool = False  # in an expected neighbour's sectors within 3 m of its expected distance
+    ages: Dict[str, float] = field(default_factory=dict)  # member ages, including held echoes (capture identity)
 
 
 class EchoHold:
@@ -162,5 +163,6 @@ def build_targets(t: float, readings: Dict[str, SectorReading], tracks: Dict[str
                               d_lower=float(d_lower), age=max(v[2] for v in members.values()),
                               closing_rate=float(closing),
                               cls=DYNAMIC if any(v[1] == DYNAMIC for v in members.values()) else "UNKNOWN",
-                              ranges={sec: v[0] for sec, v in members.items()}))
+                              ranges={sec: v[0] for sec, v in members.items()},
+                              ages={sec: v[2] for sec, v in members.items()}))
     return targets
