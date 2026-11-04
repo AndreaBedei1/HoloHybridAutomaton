@@ -129,8 +129,7 @@ class AcousticExit:
     def _could_be_occupant(self, g, f: Fix, t_lc: float) -> bool:
         q = gate_points(g, f.pts)
         rho = self.v_bound * abs(f.t - t_lc) + f.slack
-        rho += f.r * math.radians(self.cfg.acoustic.heading_err_deg + self.cfg.acoustic.tilt_err_deg)  # own attitude
-        meas = self._cr_possible(q, rho) or self._echo_possible(q, rho)
+        meas = self._cr_possible(q, rho) or self._echo_possible(q, rho)   # own-frame errors are in the region
         if not meas or not f.rep_ok:
             return meas
         b_own = self.tracker.pose.bound_at(t_lc)
@@ -140,7 +139,10 @@ class AcousticExit:
         rr = f.rep_radius(t_lc, self.v_bound)
         # the echo shell is expressed in the own estimated frame: the reported position is compared with it within
         # the own navigation bound as well
-        return self.rep_cr_possible(g, f, t_lc) or self._echo_possible(qr, rr + b_own)
+        # a mission-frame point against the own-frame echo cone: the own attitude error rotates the cone as well
+        a = self.cfg.acoustic
+        att = float(np.linalg.norm(qr[0] - self.sighting["m"])) * math.radians(a.heading_err_deg + a.tilt_err_deg)
+        return self.rep_cr_possible(g, f, t_lc) or self._echo_possible(qr, rr + b_own + att)
 
     def clear_by_range(self, g, f: Fix, t: float) -> bool:
         """The drone of fix f cannot be in the CR (grown by R_OUT) at t, from the range alone: its smallest possible

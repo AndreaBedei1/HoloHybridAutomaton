@@ -36,11 +36,12 @@ def test_corrupted_or_unrepresentable_packets_are_not_used():
 
 
 def test_frame_index_is_robust_to_millisecond_errors_at_every_slot():
-    P, n = 1.0, 6
-    for m in (0, 5, 255):
-        for k in range(n):
-            t = m * P + k * P / n
-            assert pl.frame_index(t - 0.003, P, n) == pl.frame_index(t + 0.003, P, n) == m % pl.FRAMES
+    P = 1.0
+    for n in (2, 3, 6, 7):
+        for m in (0, 5, 255):
+            for k in range(n):
+                t = m * P + k * P / n
+                assert pl.frame_index(t - 0.003, P) == pl.frame_index(t + 0.003, P) == m % pl.FRAMES
 
 
 def test_payload_fits_the_tdma_slot_for_six_drones_and_is_refused_when_it_cannot():
@@ -121,7 +122,7 @@ def _observer(p):
 def _hear(tracker, p, r, rep_p, bound, times=(1., 2.)):
     for t in times:
         t_arr = t - .25
-        frame = pl.frame_index(t_arr - r / B2.beacon.sound_speed, B2.beacon.period_s, 3)
+        frame = pl.frame_index(t_arr - r / B2.beacon.sound_speed, B2.beacon.period_s)
         tracker.update(t, [(1, t_arr, r, 0., 0., pl.encode(frame, rep_p, bound))], p, 0., 0.5)
 
 
@@ -184,3 +185,12 @@ def test_the_veto_needs_two_cleared_fixes_to_drop():
     assert gp.acoustic_exit.heard_inside(3., GATE)
     _hear(tracker, p, 8.4, [3.8, 0., -5.], 0.5, times=(4.,))   # two cleared fixes: off
     assert not gp.acoustic_exit.heard_inside(4., GATE)
+
+
+def test_stage_two_entry_is_held_while_an_occupant_is_merely_unheard():
+    p = np.array([-4.6, 0., -5.])
+    tracker, gp = _observer(p)
+    _hear(tracker, p, 4.6, [0.0, 0., -5.], 0.5)                # inside
+    assert not gp.update(2., p, 0., [], {}).entry_ok
+    o = gp.update(2. + B2.acoustic.fresh_s + 1.0, p, 0., [], {})   # silent (an outage longer than fresh_s)
+    assert not gp.acoustic_exit.heard_inside(2. + B2.acoustic.fresh_s + 1.0, GATE) and not o.entry_ok

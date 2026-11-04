@@ -95,6 +95,11 @@ def air_time_s(rate_bps: float) -> float:
     return PAYLOAD_BITS / float(rate_bps)
 
 
-def frame_index(t_tx: float, period_s: float, n: int) -> int:
-    """TDMA frame of an emission instant (slot k of frame m at m P + k P / n), robust to millisecond errors."""
-    return int(math.floor((t_tx + 0.25 * period_s / max(n, 1)) / period_s)) % FRAMES
+FRAME_GUARD_S = 0.02          # >> the error of an emission instant estimated as t_arrival - r / c (a few ms, even with a
+                              # 3 m multipath excess), << the 129 ms slot need: slot 0 of a frame is not taken for the last
+                              # slot of the previous one
+
+
+def frame_index(t_tx: float, period_s: float) -> int:
+    """TDMA frame of an emission instant (slot k of frame m at m P + k P / n)."""
+    return int(math.floor((t_tx + FRAME_GUARD_S) / period_s)) % FRAMES

@@ -213,8 +213,7 @@ class AcousticTracker:
             return
         from holo_fleet.perception.payload import frame_index
 
-        n = len(self.slot_of) + 1
-        if rep.frame != frame_index(f.t_tx, self.cfg.beacon.period_s, n):
+        if rep.frame != frame_index(f.t_tx, self.cfg.beacon.period_s):
             f.rep_reason = "frame"                       # not this frame's packet: misassociated or stale
             self.stats["payload_frame"] = self.stats.get("payload_frame", 0) + 1
             return

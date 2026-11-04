@@ -232,5 +232,7 @@ class GatePerception:
         # is observable apart from the bars (formal/check_stage2.py, M4h): elsewhere hull and bar echoes share
         # ranges and a silent occupant is not seen (a stated limit; the latch argument covers it)
         quiet = t - self.last_corridor_t > ENTRY_QUIET_CAPTURES / self.cfg.perc.sonar.hz
-        o.entry_ok = bool(quiet and not heard)
+        # an occupant merely unheard (no fresh fix after a fix that placed it possibly inside) also holds the entry
+        known_inside = self.acoustic_exit is not None and self.acoustic_exit.last_known_inside(t, g)
+        o.entry_ok = bool(quiet and not heard and not known_inside)
         return o
