@@ -108,7 +108,10 @@ class NavBound:
     exceeds the declared 3 deg -, a DVL that reports wrong velocities) violates it; every run logs the bound
     against the true error (the evaluation's nav-bound coverage)."""
 
-    DVL_STALE_S = 0.15                       # one 10 Hz DVL sample plus jitter: older means the velocity is held
+    # [PROT] a sample is "held" (outage) only when older than one 10 Hz DVL period (0.1 s) + the largest declared sensor
+    # latency (0.05 s, MEDIUM) + one control step (0.1 s, the frame is sampled at the control rate); 0.15 s counted
+    # ordinary samples as outages (development run 2026-11-05: the bound grew to 8 m at the rally point)
+    DVL_STALE_S = 0.25
 
     def __init__(self, cfg):
         a, env = cfg.acoustic, cfg.env
