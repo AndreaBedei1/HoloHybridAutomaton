@@ -1,4 +1,59 @@
-# Acceptance criteria of the final campaign (frozen before the campaign)
+# Acceptance criteria v4 of the B2-only validation campaign (pre-registered before any campaign run)
+
+Status: written 2026-11-04 before the B2-only campaign; frozen together with the code commit recorded in every run's
+provenance.  The sections after this one are the HISTORICAL v2 criteria of the 624-run B0/B2 campaign at `ad4fb5e`,
+kept as written.  That campaign deviated from its own freeze: the B2 change `ad4fb5e` (acoustic exit by range) came
+after the freeze `1dc9d3f`, and the earlier B2 runs were discarded without a record here (stage E).  Its results are
+historical evidence for `ad4fb5e` only; v2 is superseded by v4 below.
+
+## v4.1 Definitions (not changed by any result)
+
+* **P1** pairwise true distance >= d_safe = 1.0 m at every sample (and no physical contact).
+* **P2** at most one drone's centre in the critical region (CR) at any sample; precedence by the local rule.
+* **P3** formation error <= E_TOL = 1.0 m (inclusive) held T_HOLD = 8.9 s, every loss episode recovered; **P3-deg**
+  after a permanent fault: the healthy drones on their original slots, every healthy drone expecting the lost one has
+  declared its slot vacant, no false vacancy.
+* Requirements, deadline and gate events: `holo_fleet/referee/criteria.py` (v4 header) and `gate_events.py`.
+  Provenance labels [REQ] [PROT] [LIT] [PROF] [CAL] on every constant.
+
+## v4.2 Classes (holo_fleet/referee/robustness_metrics.py), in priority order
+
+INVALID / SUT_ERROR > REPLAY_MISMATCH > SAFETY_FAILURE (P1 or P2 violated) > UNSAFE_ACTION (E2.to_free, E3 or E4
+> 0) > SPEC_VIOLATION (automaton determinism or observation consistency) > STALLED (gate bounded response violated:
+idle > t_occ_max + t_clear, or crossing obligation from the FIRST commit > L / v_pass + t_occ_max + t_clear) >
+PASS > CENSORED > SAFE_DEGRADED (causal, non-CLEAN, with the hold) > INCOMPLETE.  A run tagged
+NAV_BOUND_PREMISE_VIOLATED (the sent navigation bound did not contain the true error) is reported and counted as a
+premise failure of H6; in an in-envelope profile it is a design failure, never silently excluded.
+
+## v4.3 Acceptance (per cell, decided before the runs)
+
+1. **Safety (all cells):** zero SAFETY_FAILURE and zero UNSAFE_ACTION.  Reported with the rule-of-three 95 % upper
+   bound 3/N on the per-run rate.
+2. **H6 premise (all in-envelope cells):** zero NAV_BOUND_PREMISE_VIOLATED.
+3. **CLEAN liveness (cell CLEAN / CLEAN):** every run PASS except gate_stalled_occupant (below); any STALLED or
+   INCOMPLETE in CLEAN is reported as a failure of the design.
+4. **Degraded cells:** PASS + SAFE_DEGRADED rates with Wilson 95 % intervals; completion times as Kaplan-Meier
+   curves censored at the deadline; no acceptance threshold is set on them (they characterise the envelope).
+5. **gate_stalled_occupant:** the first drone loses its thrusters in the middle of the CR (ground-truth trigger).
+   Accepted when P1 and P2 hold and E2.to_free = E3 = E4 = E5 = 0; the mission requirements are physically
+   unreachable (the gate is blocked) and are not part of its acceptance; its class is reported as it is.
+6. **Acoustic benefit:** only B2 against B2 under outage (cells MEDIUM-ALL/MEDIUM vs MEDIUM-ALL/BLACKOUT, and
+   CLEAN/CLEAN vs CLEAN/BLACKOUT), exact McNemar on nominally paired runs (engine noise is unseeded), Holm-corrected.
+
+## v4.4 Campaign (fixed)
+
+`scripts/run_sensor_robustness_campaign.py --phase b2final`: 8 cells (protocol / sensor profile): B2_CLEAN/CLEAN,
+B2_LOW/LOW-ALL, B2_MEDIUM/MEDIUM-ONE, B2_MEDIUM/MEDIUM-SUBSET, B2_MEDIUM/MEDIUM-ALL, B2_MEDIUM/CLEAN,
+B2_BLACKOUT/CLEAN, B2_BLACKOUT/MEDIUM-ALL; 11 non-gate scenarios x seeds 100-104 and 6 gate scenarios
+(gate_single, integrated_short, mutex_deadlock_resolution, line_parallel_mutex, lost_drone_mutex,
+gate_stalled_occupant) x seeds 100-109: 115 runs per cell, 920 runs.  Seeds 100-109 were never used in
+development.  At most two guarded HoloOcean instances, low priority.  If the time available cannot hold the 920
+runs, the smaller variant of the plan (3 and 6 seeds, 552 runs) is used, chosen and recorded here BEFORE the first
+run, never after seeing results.
+
+---
+
+# Historical v2: acceptance criteria of the 624-run B0/B2 campaign (superseded by v4 above)
 
 These criteria, the experiment plan and the classification below are fixed before the final campaign is run and
 are not changed in response to its results.  A change after the campaign has started would invalidate it: it would be
