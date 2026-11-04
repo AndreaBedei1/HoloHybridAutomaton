@@ -5,6 +5,7 @@ No HoloOcean here: process lists and run directories are faked.
 
 import importlib.util
 import json
+import subprocess
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -41,11 +42,16 @@ def test_invalid_runs_are_retried_and_complete_runs_kept(camp, tmp_path):
 
 def test_only_the_engine_of_our_worker_is_terminated(camp, monkeypatch):
     killed = []
-    monkeypatch.setattr(camp, "holodeck_pids", lambda: {11: 500, 12: 999, 13: 500, 14: 1})
-    monkeypatch.setattr("psutil.Process", lambda pid: SimpleNamespace(kill=lambda: killed.append(pid)))
-    # 11 and 13 were started by our worker 500 (13 already existed before the run: not ours to kill);
-    # 12 belongs to another program's process 999, 14 to a foreign parent
-    assert camp.reap(500, before={13: 500}) == [11]
+    parents = {11: 500, 12: 999, 13: 500, 14: 500, 15: 500}
+    def process(pid):
+        return SimpleNamespace(pid=pid, ppid=lambda: parents[pid], create_time=lambda: 2.0 if pid == 14 else 1.0,
+            name=lambda: "Holodeck.exe", cmdline=lambda: ["--HolodeckUUID=" + ("foreign" if pid == 15 else "ours")],
+            kill=lambda: killed.append(pid), wait=lambda timeout: None)
+    monkeypatch.setattr("psutil.Process", process)
+    monkeypatch.setattr(camp, "worker_engines", lambda *a: [])
+    records = [{"pid": pid, "ppid": 500, "created": 1.0, "uuid": "ours"} for pid in parents]
+    # Existing engine 13, foreign parent 12, recycled PID 14 and foreign UUID 15 must be untouched.
+    assert camp.reap(500, before={13: 500}, records=records) == [11]
     assert killed == [11]
 
 
@@ -55,27 +61,52 @@ def test_priority_is_lowered_only_for_our_worker_and_its_engine(camp, monkeypatc
     touched = []
 
     class P:
-        def __init__(self, pid):
+        def __init__(self, pid=None):
             self.pid = pid
+
+        def create_time(self):
+            return 1.0
+
+        def ppid(self):
+            return camp.os.getpid() if self.pid == 700 else (700 if self.pid == 21 else 42)
+
+        def name(self):
+            return "Holodeck.exe"
+
+        def cmdline(self):
+            return ["--HolodeckUUID=ours"]
+
+        def cpu_affinity(self, value=None):
+            return [0]
 
         def nice(self, value=None):
             if value is None:
                 return psutil.NORMAL_PRIORITY_CLASS if hasattr(psutil, "NORMAL_PRIORITY_CLASS") else 0
             touched.append(self.pid)
 
-    monkeypatch.setattr(camp, "holodeck_pids", lambda: {21: 700, 22: 42})
     monkeypatch.setattr("psutil.Process", P)
     monkeypatch.setattr(camp.os, "name", "nt")
     if not hasattr(psutil, "BELOW_NORMAL_PRIORITY_CLASS"):
         pytest.skip("Windows priority classes only")
-    camp.lower_children(700)
+    records = [{"pid": pid, "ppid": 700, "created": 1.0, "uuid": "ours"} for pid in (21, 22)]
+    camp.lower_children(700, worker_created=1.0, records=records)
     assert sorted(touched) == [21, 700]
+    touched.clear()
+    camp.lower_children(700, worker_created=2.0, records=[])
+    assert touched == []  # a recycled worker PID is not ours
 
 
 def test_code_version_names_the_commit_and_the_dirty_files(camp):
     v = camp.code_version()
     assert len(v["sha"]) == 40 and all(c in "0123456789abcdef" for c in v["sha"])
     assert all(not f.startswith(" ") and len(f) > 2 for f in v["dirty_files"])
+
+
+def test_untracked_code_prevents_clean_provenance(camp, tmp_path, monkeypatch):
+    subprocess.run(["git", "init", "--quiet", str(tmp_path)], check=True)
+    (tmp_path / "new.py").write_text("# new runtime code\n")
+    monkeypatch.setattr(camp, "ROOT", tmp_path)
+    assert camp.code_version()["dirty_files"] == ["new.py"]
 
 
 def test_no_cpu_threshold_before_a_run(camp, monkeypatch):

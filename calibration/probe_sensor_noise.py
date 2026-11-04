@@ -108,7 +108,7 @@ def main() -> int:
     ap.add_argument("--seconds", type=float, default=40.0)
     args = ap.parse_args()
     hs.use_patched_holoocean()
-    import holoocean
+    from holo_fleet.sim.engine_session import make
 
     hs.wait_for_engine_semaphores()
     agents, pins = [], {}
@@ -123,7 +123,7 @@ def main() -> int:
     scen = {"name": "probe_sensor_noise", "world": "OpenWater", "package_name": "Ocean", "main_agent": "probe_0",
             "ticks_per_sec": 30, "frames_per_sec": False, "octree_min": hs.OCTREE_MIN, "octree_max": hs.OCTREE_MAX,
             "env_min": [-20.0, -20.0, -20.0], "env_max": [20.0, len(SETTINGS) * SPACING, 2.0], "agents": agents}
-    env = holoocean.make(scenario_cfg=scen, show_viewport=False, ticks_per_sec=30, frames_per_sec=False)
+    env = make(scenario_cfg=scen, show_viewport=False, ticks_per_sec=30, frames_per_sec=False)
     rec = {k: {"front": [], "rear": [], "front_peak": [], "rear_peak": [], "dvl": [], "gyro": [], "gyro_bias": [], "accel": [], "heading": [],
                "depth": [], "pose_z": [], "noise_int": []} for k in range(len(SETTINGS))}
     n_ticks = int(args.seconds * 30)

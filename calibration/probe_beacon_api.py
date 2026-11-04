@@ -41,7 +41,7 @@ def agent(name, k):
 
 def main() -> int:
     hs.use_patched_holoocean()
-    import holoocean
+    from holo_fleet.sim.engine_session import make
     from holoocean.sensors import AcousticBeaconSensor, OpticalModemSensor
 
     hs.wait_for_engine_semaphores()
@@ -50,7 +50,7 @@ def main() -> int:
             "ticks_per_sec": 30, "frames_per_sec": False, "octree_min": hs.OCTREE_MIN, "octree_max": hs.OCTREE_MAX,
             "env_min": [-30.0, -30.0, -20.0], "env_max": [60.0, 30.0, 2.0],
             "agents": [agent(n, k) for k, n in enumerate(names)]}
-    env = holoocean.make(scenario_cfg=scen, show_viewport=False, ticks_per_sec=30, frames_per_sec=False)
+    env = make(scenario_cfg=scen, show_viewport=False, ticks_per_sec=30, frames_per_sec=False)
     env.spawn_prop(BOX["type"], location=BOX["location"], rotation=[0, 0, 0], scale=BOX["scale"], sim_physics=False,
                    material="steel")
     ids = {n: k for k, n in enumerate(names)}

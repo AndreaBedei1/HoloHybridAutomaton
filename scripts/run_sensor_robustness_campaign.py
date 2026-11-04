@@ -36,6 +36,8 @@ from typing import Optional
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
+from holo_fleet.sim.engine_lease import owned_engine, worker_engines
+
 RAW = ROOT / "results" / "robustness" / "raw_final"        # the one authoritative output location
 DEMOS = ROOT / "results" / "reference"
 SEEDS = (0, 1, 2)
@@ -168,17 +170,21 @@ def holodeck_pids():
     return out
 
 
-def reap(worker_pid: int, before: dict) -> list:
+def reap(worker_pid: int, before: dict, worker_created=None, records=()) -> list:
     """Terminate Holodeck.exe processes started by our worker (never anyone else's)."""
     import psutil
 
     killed = []
-    for pid, ppid in holodeck_pids().items():
-        if pid in before or ppid != worker_pid:
+    evidence = {r["pid"]: r for r in [*records, *worker_engines(worker_pid, worker_created)]}
+    for pid, record in evidence.items():
+        if pid in before or record["ppid"] != worker_pid:
             continue
         try:
-            psutil.Process(pid).kill()
-            killed.append(pid)
+            p = owned_engine(record)
+            if p is not None:
+                p.kill()
+                p.wait(10)
+                killed.append(pid)
         except Exception:  # noqa: BLE001
             pass
     return killed
@@ -212,7 +218,7 @@ def parse_cpus(text):
     return sorted(out)
 
 
-def lower_children(worker_pid: int) -> None:
+def lower_children(worker_pid: int, worker_created=None, records=()) -> None:
     """Make sure the worker and the Holodeck.exe it started run below normal priority (in case it was not inherited)
     and on the orchestrator's cores (the Unreal engine resets its own process affinity to every core)."""
     import psutil
@@ -221,9 +227,15 @@ def lower_children(worker_pid: int) -> None:
         cores = psutil.Process().cpu_affinity()
     except Exception:  # noqa: BLE001
         cores = None
-    for pid in [worker_pid] + [p for p, pp in holodeck_pids().items() if pp == worker_pid]:
+    targets = [p for r in records if r["ppid"] == worker_pid for p in [owned_engine(r)] if p is not None]
+    try:
+        worker_process = psutil.Process(worker_pid)
+        if worker_process.create_time() == worker_created and worker_process.ppid() == os.getpid():
+            targets.append(worker_process)
+    except psutil.Error:
+        pass
+    for pr in targets:
         try:
-            pr = psutil.Process(pid)
             if os.name == "nt" and pr.nice() not in (psutil.BELOW_NORMAL_PRIORITY_CLASS, psutil.IDLE_PRIORITY_CLASS):
                 pr.nice(psutil.BELOW_NORMAL_PRIORITY_CLASS)
             if cores and sorted(pr.cpu_affinity()) != sorted(cores):
@@ -262,13 +274,17 @@ def watch(proc, d: Path, dur: float, args, seen: dict):
             return proc.wait(timeout=10.0)
         except subprocess.TimeoutExpired:
             pass
-        lower_children(proc.pid)
-        for pid, ppid in holodeck_pids().items():
-            if ppid == proc.pid:
+        records = worker_engines(proc.pid, seen.get("worker_created"))
+        seen.setdefault("engine_records", {}).update({r["pid"]: r for r in records})
+        lower_children(proc.pid, seen.get("worker_created"), records)
+        for record in records:
+            pid = record["pid"]
+            engine_process = owned_engine(record)
+            if engine_process is not None:
                 seen.setdefault("holodeck_pids", set()).add(pid)
                 try:
                     seen.setdefault("listen_ports", set()).update(
-                        c.laddr.port for c in psutil.Process(pid).net_connections(kind="inet") if c.status == "LISTEN")
+                        c.laddr.port for c in engine_process.net_connections(kind="inet") if c.status == "LISTEN")
                 except Exception:  # noqa: BLE001
                     pass
         st = d / "drone_0_state.jsonl"
@@ -310,7 +326,7 @@ def code_version() -> dict:
         r = subprocess.run(["git", *a], cwd=str(ROOT), capture_output=True, text=True)
         return r.stdout.rstrip("\n")
 
-    dirty = [ln[3:] for ln in git("status", "--porcelain", "--untracked-files=no").splitlines() if ln.strip()]
+    dirty = [ln[3:] for ln in git("status", "--porcelain", "--untracked-files=all").splitlines() if ln.strip()]
     return {"sha": git("rev-parse", "HEAD").strip(), "dirty_files": dirty}
 
 
@@ -514,8 +530,13 @@ def main() -> int:
             with open(d.parent / f"{d.name}_worker.log", "w", encoding="utf-8") as wl:
                 proc = subprocess.Popen(cmd, stdout=wl, stderr=subprocess.STDOUT, cwd=str(ROOT),
                                         env={**os.environ, "PYTHONUNBUFFERED": "1"})
+                import psutil
+                try:
+                    seen["worker_created"] = psutil.Process(proc.pid).create_time()
+                except psutil.NoSuchProcess:
+                    seen["worker_created"] = None
                 code = watch(proc, d, dur, args, seen)
-            killed = reap(proc.pid, before)
+            killed = reap(proc.pid, before, seen["worker_created"], seen.get("engine_records", {}).values())
             wall = round(time.time() - t0, 1)
             res = finish(d, prof) if (d / "run_status.json").exists() else {"class": "INVALID", "invalid_reason": "no run dir"}
             res.update({"protocol": protocol, "profile": prof, "scenario": sc, "seed": seed, "exit_code": code,
@@ -524,6 +545,8 @@ def main() -> int:
                         "process": {"orchestrator_pid": os.getpid(), "shard": [args.shard, args.nshards], "worker_pid": proc.pid,
                                     "holodeck_pids": sorted(seen.get("holodeck_pids", ())),
                                     "engine_listen_ports": sorted(seen.get("listen_ports", ())),
+                                    "engine_records": list(seen.get("engine_records", {}).values()),
+                                    "worker_created": seen["worker_created"],
                                     "start_time": time.strftime("%Y-%m-%dT%H:%M:%S", time.localtime(t0))},
                         "engine": engine_info(d)})
             if isinstance(code, str):

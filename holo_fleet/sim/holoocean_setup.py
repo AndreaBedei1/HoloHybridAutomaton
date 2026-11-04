@@ -46,7 +46,10 @@ def use_patched_holoocean() -> dict:
     root = patched_root()
     if root is None:
         return {"patched": False, "root": None}
-    os.environ["HOLODECKPATH"] = str(root)
+    from holo_fleet.sim.engine_session import _MAKE_LOCK
+
+    with _MAKE_LOCK:
+        os.environ["HOLODECKPATH"] = str(root)
     info = json.loads((root / "PATCH_INFO.json").read_text(encoding="utf-8-sig"))
     return {"patched": True, "root": str(root), **info}
 

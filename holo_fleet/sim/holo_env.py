@@ -25,6 +25,7 @@ from holo_fleet.config import DEFAULT, FleetConfig
 from holo_fleet.perception.frame import SensorFrame
 from holo_fleet.perception.sensor_suite import SONAR_NAMES, is_onboard, onboard_sensor_configs
 from holo_fleet.sim import holoocean_setup as hs
+from holo_fleet.sim.engine_session import make
 from holo_fleet.sim.sensor_noise import heading_biases, plan_windows
 
 LOG = logging.getLogger(__name__)
@@ -155,8 +156,6 @@ class HoloFleetSim:
 
     def start(self) -> None:
         self.setup_report["holoocean"] = hs.use_patched_holoocean()
-        import holoocean
-
         hs.wait_for_engine_semaphores()           # the client no longer loses the engine's start-up race
 
         from holo_fleet.sim.engine_watchdog import EngineWatchdog
@@ -175,19 +174,19 @@ class HoloFleetSim:
             if delay:
                 time.sleep(delay)
             try:
-                self.env = holoocean.make(scenario_cfg=scenario, show_viewport=not self.headless,
-                                          ticks_per_sec=TICKS_PER_SEC, frames_per_sec=False)
+                self.env = make(scenario_cfg=scenario, show_viewport=not self.headless,
+                                ticks_per_sec=TICKS_PER_SEC, frames_per_sec=False)
                 break
             except Exception as exc:  # pragma: no cover - fallback: engine did not come up (restart it)
                 last_exc = exc
                 text = f"{type(exc).__name__}: {exc}".lower()
                 LOG.warning("HoloOcean start attempt %d failed: %s", attempt, exc)
-                self._kill_own_engines()
                 if not any(s in text for s in ("semaphore", "timed out", "file not found", "impossibile trovare")):
                     raise
         else:
             raise RuntimeError(f"HoloOcean could not start after retries: {last_exc}")
         self.watchdog = EngineWatchdog(self.env).start()
+        self.setup_report["holoocean"]["root"] = self.env._holo_engine["root"]
         self.setup_report["engine_start_s"] = round(time.time() - t0, 1)
         self._spawn_static_scene()
         self.setup_report["engine"] = self._engine_identity()
@@ -243,21 +242,10 @@ class HoloFleetSim:
             ports = sorted(c.laddr.port for c in psutil.Process(pid).net_connections(kind="inet") if c.status == "LISTEN")
         except Exception:  # noqa: BLE001 - informative only
             pass
-        return {"ipc_uuid": getattr(self.env, "_uuid", None), "pid": pid, "listen_ports": ports}
-
-    @staticmethod
-    def _kill_own_engines() -> None:
-        try:
-            import os
-
-            import psutil
-
-            me = os.getpid()
-            for p in psutil.process_iter(["pid", "ppid", "name"]):
-                if str(p.info.get("name") or "").lower() == "holodeck.exe" and p.info.get("ppid") == me:
-                    p.kill()
-        except Exception:  # pragma: no cover
-            pass
+        identity = {"ipc_uuid": getattr(self.env, "_uuid", None), "pid": pid, "listen_ports": ports}
+        if hasattr(self.env, "_holo_engine"):
+            identity["isolation"] = self.env._holo_engine
+        return identity
 
     def _plan_blackouts(self) -> None:
         st = self.spec.stress

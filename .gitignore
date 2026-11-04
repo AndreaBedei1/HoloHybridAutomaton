@@ -5,6 +5,7 @@ __pycache__/
 
 # development runs and probes output
 results/dev/
+results/.holo_slots/
 results/reference/*/drone_*_state.jsonl
 calibration/out/
 formal/results_*.log

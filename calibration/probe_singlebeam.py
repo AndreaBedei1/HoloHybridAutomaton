@@ -27,8 +27,6 @@ from __future__ import annotations
 import argparse
 import json
 import math
-import os
-import shutil
 import sys
 import time
 from pathlib import Path
@@ -39,13 +37,12 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
 from holo_fleet.arena_bridge import HORSESHOE_TRACK, load_arena_gates, make_spawner, visual_gates  # noqa: E402
+from holo_fleet.sim.holoocean_setup import octree_cache_dir
 
 OUT = ROOT / "calibration" / "out" / "sonar_probe"
 TPS = 30
 SONAR_HZ = 10
 OCTREE_MIN, OCTREE_MAX = 0.06, 5.0           # project-specific cache folder (min6_max768), never shared
-OCTREE_DIR = (Path(os.environ.get("LOCALAPPDATA", "")) / "holoocean" / "2.3.0" / "worlds" / "Ocean" / "Windows"
-              / "Holodeck" / "Octrees" / "OpenWater" / "min6_max768")
 SONAR_X = 0.24                                # sonar origin: bow of the hull, on the body x axis [m]
 OPEN_WATER = np.array([0.0, -40.0, -5.0])     # >= 25 m from every arena bar
 BOX_POS = np.array([-5.0, 30.0, -4.3])        # >= 14 m from every arena bar
@@ -71,8 +68,8 @@ def rot_matrix(rpy_deg) -> np.ndarray:
 
 
 class Bench:
-    def __init__(self, session: str, opening: float, sonar_in_scenario: bool, camera: bool = True):
-        import holoocean
+    def __init__(self, session: str, opening: float, sonar_in_scenario: bool, camera: bool = True, clear_cache=False):
+        from holo_fleet.sim.engine_session import make
 
         self.session, self.opening = session, opening
         self.dir = OUT / session
@@ -102,7 +99,8 @@ class Bench:
                 "main_agent": "observer", "ticks_per_sec": TPS, "frames_per_sec": False,
                 "octree_min": OCTREE_MIN, "octree_max": OCTREE_MAX, "agents": agents}
         t0 = time.time()
-        self.env = holoocean.make(scenario_cfg=scen, show_viewport=False, ticks_per_sec=TPS, frames_per_sec=False)
+        self.env = make(scenario_cfg=scen, show_viewport=False, ticks_per_sec=TPS, frames_per_sec=False,
+                        clear_cache=clear_cache)
         self.env.reset()
         self.log("env_ready", wall_s=round(time.time() - t0, 1))
         self.latest = {"observer": {}, "target": {}}
@@ -212,8 +210,8 @@ class Bench:
 
     def write_events(self):
         listing = []
-        if OCTREE_DIR.exists():
-            for f in sorted(OCTREE_DIR.rglob("*.json")):
+        if octree_cache_dir().exists():
+            for f in sorted(octree_cache_dir().rglob("*.json")):
                 st = f.stat()
                 listing.append({"file": f.name, "kb": round(st.st_size / 1e3, 1), "mtime": st.st_mtime})
         (self.dir / "cache_listing.json").write_text(json.dumps(listing, indent=0), encoding="utf-8")
@@ -319,22 +317,15 @@ def exp_seabed(b: Bench):
         b.record("seabed_horizontal_target", {"altitude": h, "d": 4.0}, captures=4)
 
 
-def clear_project_cache():
-    if OCTREE_DIR.exists():
-        shutil.rmtree(OCTREE_DIR)
-    return not OCTREE_DIR.exists()
-
-
 def cache_size_mb() -> float:
-    if not OCTREE_DIR.exists():
+    if not octree_cache_dir().exists():
         return 0.0
-    return round(sum(p.stat().st_size for p in OCTREE_DIR.rglob("*") if p.is_file()) / 1e6, 1)
+    return round(sum(p.stat().st_size for p in octree_cache_dir().rglob("*") if p.is_file()) / 1e6, 1)
 
 
 # --------------------------------------------------------------------------------------------- sessions
 def session_k1(opening: float):
-    clear_project_cache()
-    b = Bench("k1", opening, sonar_in_scenario=True)
+    b = Bench("k1", opening, sonar_in_scenario=True, clear_cache=True)
     g = gate_g06()
     b.place(*face_gate_poses(g, 3.0))
     for _ in range(40):                              # octree built inside reset(); let the init cells finish
@@ -352,8 +343,7 @@ def session_k1(opening: float):
 
 
 def session_k2(opening: float, short: bool = False):
-    clear_project_cache()
-    b = Bench("k2" if not short else f"k2_oa{int(opening)}", opening, sonar_in_scenario=False)
+    b = Bench("k2" if not short else f"k2_oa{int(opening)}", opening, sonar_in_scenario=False, clear_cache=True)
     g = gate_g06()
     b.place(*face_gate_poses(g, 3.0))
     b.timing("no_sonar_open_scene")
@@ -397,7 +387,7 @@ def session_k3(opening: float):
     exp_gate(b, distances=(2.0, 3.0))
     exp_box(b, distances=(2.0, 3.0))
     b.close()
-    b.log("cache_cleanup", removed=clear_project_cache())
+    b.log("cache_cleanup", removed=False, reason="private cache retained; next k1/k2 clears it under its engine lease")
     b.write_events()
 
 

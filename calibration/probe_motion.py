@@ -1,11 +1,11 @@
-﻿"""Calibrate BlueROV2 actuation (arena thruster mapping) and DVL/IMU frames."""
+"""Calibrate BlueROV2 actuation (arena thruster mapping) and DVL/IMU frames."""
 import json
 import math
 import sys
 from pathlib import Path
 
 import numpy as np
-import holoocean
+from holo_fleet.sim.engine_session import make
 
 ARENA_ROOT = Path.home() / "Desktop" / "HoloDroneCompetition"
 sys.path.insert(0, str(ARENA_ROOT))
@@ -33,7 +33,7 @@ def main():
                         {"sensor_type": "MagnetometerSensor", "socket": "IMUSocket", "Hz": 30},
                         {"sensor_type": "DepthSensor", "socket": "DepthSocket", "Hz": 30}]}],
     }
-    env = holoocean.make(scenario_cfg=scenario, show_viewport=False, ticks_per_sec=30, frames_per_sec=False)
+    env = make(scenario_cfg=scenario, show_viewport=False, ticks_per_sec=30, frames_per_sec=False)
     env.reset()
     phases = [("idle", (0, 0, 0, 0), 2), ("surge+0.3", (0.3, 0, 0, 0), 6), ("surge+1", (1, 0, 0, 0), 6), ("stop", (0, 0, 0, 0), 4),
               ("sway+0.5", (0, 0.5, 0, 0), 6), ("stop", (0, 0, 0, 0), 4), ("heave+0.3", (0, 0, 0.3, 0), 4),

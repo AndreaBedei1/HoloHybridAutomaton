@@ -3,7 +3,7 @@ import json
 from pathlib import Path
 
 import numpy as np
-import holoocean
+from holo_fleet.sim.engine_session import make
 
 MAGS = [0.3, 1.0, 2.0, 4.0]
 
@@ -16,7 +16,7 @@ def main():
                                                          {"sensor_type": "VelocitySensor", "socket": "IMUSocket", "Hz": 30}]})
     scenario = {"name": "cur", "world": "OpenWater", "package_name": "Ocean", "main_agent": "A0", "ticks_per_sec": 30,
                 "frames_per_sec": False, "agents": agents}
-    env = holoocean.make(scenario_cfg=scenario, show_viewport=False, ticks_per_sec=30, frames_per_sec=False)
+    env = make(scenario_cfg=scenario, show_viewport=False, ticks_per_sec=30, frames_per_sec=False)
     env.reset()
     res = {m: [] for m in MAGS}
     for k in range(30 * 20):

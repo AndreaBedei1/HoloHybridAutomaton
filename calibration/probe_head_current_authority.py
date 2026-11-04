@@ -80,7 +80,7 @@ def leaky_violation(sat, dt=DT, t_enter=4.0):
 
 
 def main() -> int:
-    import holoocean
+    from holo_fleet.sim.engine_session import make
 
     names, agents = [], []
     for k, (kind, w) in enumerate(CASES):
@@ -89,7 +89,7 @@ def main() -> int:
                        "rotation": [0, 0, 0], "control_scheme": 0, "sensors": sensors()})
     scen = {"name": "head_authority", "world": "OpenWater", "package_name": "Ocean", "main_agent": names[0],
             "ticks_per_sec": TPS, "frames_per_sec": False, "agents": agents}
-    env = holoocean.make(scenario_cfg=scen, show_viewport=False, ticks_per_sec=TPS, frames_per_sec=False)
+    env = make(scenario_cfg=scen, show_viewport=False, ticks_per_sec=TPS, frames_per_sec=False)
     env.reset()
     latest = {n: {} for n in names}
     nav = {n: DeadReckoning(np.array(a["location"], float), 0.0) for n, a in zip(names, agents)}

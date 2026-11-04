@@ -61,7 +61,7 @@ def echo_near(p, r, tol=0.2, thr=1e-3):
 
 class Bench:
     def __init__(self):
-        import holoocean
+        from holo_fleet.sim.engine_session import make
 
         sonar = {"sensor_type": "SinglebeamSonar", "sensor_name": "Sonar", "location": [SONAR_X, 0, 0], "Hz": HZ,
                  "configuration": {"OpeningAngle": 120, "RangeMin": R_MIN, "RangeMax": R_MAX, "RangeBins": BINS,
@@ -75,7 +75,7 @@ class Bench:
         scen = {"name": "octree_regression", "world": "OpenWater", "package_name": "Ocean", "main_agent": "observer",
                 "ticks_per_sec": TPS, "frames_per_sec": False, "octree_min": OCTREE_MIN, "octree_max": OCTREE_MAX,
                 "env_min": ENV_MIN, "env_max": ENV_MAX, "agents": agents}
-        self.env = holoocean.make(scenario_cfg=scen, show_viewport=False, ticks_per_sec=TPS, frames_per_sec=False)
+        self.env = make(scenario_cfg=scen, show_viewport=False, ticks_per_sec=TPS, frames_per_sec=False)
         self.watchdog = EngineWatchdog(self.env).start()
         self.poses = {"observer": (list(BASE), [0, 0, 0]), "target": (FAR, [0, 0, 0])}
         self.last = None

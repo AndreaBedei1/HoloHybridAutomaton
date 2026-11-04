@@ -5,6 +5,7 @@ minute: it is marked ``holoocean`` and ``slow``.
 """
 
 import json
+import os
 import subprocess
 import sys
 from pathlib import Path
@@ -47,6 +48,7 @@ def test_patched_client_exposes_rebuild_api():
 
 @pytest.mark.holoocean
 @pytest.mark.slow
+@pytest.mark.skipif(os.environ.get("HOLO_FLEET_ENGINE_TESTS") != "1", reason="engine tests require HOLO_FLEET_ENGINE_TESTS=1")
 @pytest.mark.skipif(patched_root() is None, reason="patched HoloOcean root not installed")
 def test_octree_rebuild_regression(tmp_path):
     out = tmp_path / "regression.json"            # never overwrite the versioned calibration record
