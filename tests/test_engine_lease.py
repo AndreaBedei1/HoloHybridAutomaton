@@ -107,3 +107,29 @@ def test_os_releases_the_slot_after_owner_exits_without_finally(tmp_path):
     assert proc.returncode == 0, err
     lease = EngineLease(tmp_path, capacity=1).acquire()
     lease.release()
+
+
+def test_startup_lock_serializes_processes_and_survives_owner_exit(tmp_path):
+    code = ("import os,sys\nfrom holo_fleet.sim.engine_lease import startup_lock\n"
+            "print('waiting',flush=True)\nwith startup_lock(sys.argv[1]):\n"
+            " print('entered',flush=True)\n if len(sys.argv)>2: input()\n os._exit(0)\n")
+    first = subprocess.Popen([sys.executable, "-c", code, str(tmp_path), "hold"], stdin=subprocess.PIPE,
+                             stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+    second = None
+    try:
+        assert first.stdout.readline().strip() == "waiting"
+        assert first.stdout.readline().strip() == "entered"
+        second = subprocess.Popen([sys.executable, "-c", code, str(tmp_path)], stdin=subprocess.PIPE,
+                                  stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+        assert second.stdout.readline().strip() == "waiting"
+        with pytest.raises(subprocess.TimeoutExpired):
+            second.wait(timeout=0.3)
+        _, err = first.communicate("exit\n", timeout=10)
+        assert first.returncode == 0, err
+        assert second.stdout.readline().strip() == "entered"
+    finally:
+        if first.poll() is None:
+            first.communicate("exit\n", timeout=10)
+        if second is not None:
+            _, err = second.communicate("exit\n", timeout=15)
+            assert second.returncode == 0, err

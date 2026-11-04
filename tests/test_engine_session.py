@@ -41,6 +41,9 @@ def test_failed_make_releases_lease_and_restores_client(tmp_path, monkeypatch):
 
     def fail(**kw):
         assert hmake.HoloOceanEnvironment is not old_class
+        with open(engine_lease.SLOTS / "startup.lock", "a+b") as file:
+            with pytest.raises(OSError):
+                engine_lease.EngineLease._lock(file, True)
         raise ValueError("bad scenario")
 
     monkeypatch.setattr(holoocean, "make", fail)

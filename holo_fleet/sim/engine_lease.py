@@ -4,12 +4,35 @@ from __future__ import annotations
 
 import json
 import os
+from contextlib import contextmanager
 from pathlib import Path
 import tempfile
+import time
+import errno
 
 import psutil
 
 SLOTS = Path(__file__).resolve().parents[2] / "results/.holo_slots"
+
+
+@contextmanager
+def startup_lock(directory=None):
+    """Keep overlapping launches from borrowing another worker's temporary port reservation."""
+    directory = Path(SLOTS if directory is None else directory)
+    directory.mkdir(parents=True, exist_ok=True)
+    with open(directory / "startup.lock", "a+b") as file:
+        while True:
+            try:
+                EngineLease._lock(file, True)
+                break
+            except OSError as exc:
+                if exc.errno not in (errno.EACCES, errno.EAGAIN, errno.EDEADLK):
+                    raise
+                time.sleep(0.1)  # scheduling only; no mission or engine-start timeout is changed
+        try:
+            yield
+        finally:
+            EngineLease._lock(file, False)
 
 
 def worker_engines(pid, created):

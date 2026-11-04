@@ -10,7 +10,7 @@ from types import SimpleNamespace
 
 import psutil
 
-from holo_fleet.sim.engine_lease import EngineLease, owned_engine, same_process
+from holo_fleet.sim.engine_lease import EngineLease, owned_engine, same_process, startup_lock
 
 _MAKE_LOCK = threading.RLock()
 
@@ -31,7 +31,7 @@ def reserve_trace_port():
 
 def make(*, clear_cache=False, **kwargs):
     """Keep the native environment API; all project launchers must use this entry point."""
-    with _MAKE_LOCK:
+    with _MAKE_LOCK, startup_lock():
         from holo_fleet.sim import holoocean_setup as hs
         import holoocean
         from holoocean import environments, holoocean as hmake

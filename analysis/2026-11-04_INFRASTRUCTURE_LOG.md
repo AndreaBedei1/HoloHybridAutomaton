@@ -147,3 +147,33 @@ directory under the raw root, instead of deleting them. Both move endpoints are 
 The independent review found a fallback log-name collision; an unused numbered name and a three-log preservation
 regression address it. Targeted campaign unit file: 8 passed. `psutil`, already installed/used, is now declared as
 a runtime dependency because the guarded launcher requires it.
+
+## Cross-worker startup reservation race (14:12--14:40 Europe/Rome)
+
+The Issue 3 BLACKOUT probe refused its launch explicitly: listener `[1985]` failed the port audit. This is not the
+historical silent worker exit. The temporary reservation could be held by worker A when worker B checked, then
+released before B's native process bound its listener. B correctly killed only its verified own engine and released
+its lease; the refused attempt remains in `raw_dev/issue3_full_region_probe`.
+
+`startup_lock()` now holds a project OS byte lock through setup, native launch, listener audit and reservation close.
+It is released before simulation runtime; the two-slot lifetime cap and all native timeouts remain unchanged.
+The OS releases this lock on worker death. Lock-contention polling changes no mission threshold or deadline.
+
+Independent review found no concrete production defect, but identified a vacuous contender test: both test children
+waited for stdin, so a missing lock still timed out. Verified the finding, changed only the first child to wait, and
+executed a no-op-lock mutation: the revised test rejects it. `test_engine_lease.py` plus `test_engine_session.py`:
+15 passed, including contention, abrupt owner exit, failure cleanup and listener refusal. No finding was rejected.
+
+Two distinct orchestrator processes were then started with two slots and no campaign retry:
+`results/robustness/raw_dev/startup_serialized_probe/B2_CLEAN/CLEAN`.
+
+| Case | Start | Wall | Result | P1 minimum | Engine UUID | Port |
+|---|---|---:|---|---:|---|---:|
+| formation_triangle s0 | 14:38:31 | 130.2 s | PASS, exit 0 | 4.586 m | 90707d48-c3e7-41d4-991b-af72bfeece19 | 34466 |
+| formation_square s0 | 14:38:41 | 122.9 s | PASS, exit 0 | 3.450 m | 769a3125-9d2f-4c99-8a18-4e6351f86791 | 33729 |
+
+The intervals overlap, roots/logs are distinct, and the worker/engine generation and UUID records are in each
+run_metrics.json. Both slot sidecars were empty after normal exit. Start samples reported 67.9/66.2 GiB free RAM;
+these are resource observations, not acceptance thresholds. A later attempt to capture a live resource snapshot
+found zero own engines because both had already finished; it supplies no additional priority/GPU evidence.
+The low-priority orchestrator/engine policy is unchanged. No foreign process was modified.
