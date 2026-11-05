@@ -87,6 +87,7 @@ class GatePerception:
         self.last_corridor_t = -1e9
         self.suspects: set = set()          # B2: drones heard possibly inside during the current BUSY episode
         self.phantom, self.phantoms = False, 0   # B2: corridor echoes no fleet drone can have produced (count)
+        self.phantom_events: list = []
         self.busy_since = -1e9
         self.exit_seen_t = -1e9
         self.occ_timeouts = 0
@@ -185,7 +186,11 @@ class GatePerception:
         self.phantom = bool(corridor and self.acoustic_exit is not None
                             and self.acoustic_exit.no_fleet_drone(t, g, p, yaw, [tg.r_min for tg in corridor]))
         if self.phantom:
+            # the echo is no occupant: the latch, the W3 background bookkeeping of the exit witness and the stage-2
+            # quiet test all treat this capture as corridor-empty (sound while every other drone is excluded);
+            # every such event is logged with the excluding fixes
             self.phantoms += 1
+            self.phantom_events.append({"t": round(t, 2), "fixes": dict(self.acoustic_exit.last_phantom)})
             corridor = []
         heard = self.acoustic_exit is not None and self.acoustic_exit.heard_inside(t, g)
         if corridor:

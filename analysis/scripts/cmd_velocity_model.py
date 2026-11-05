@@ -38,7 +38,40 @@ def series(d):
         k += 1
 
 
+def position_table(roots, tau=0.5, lengths=(0.2, 0.5, 1.0, 2.0, 3.0, 5.0), stride=5):
+    """Integrated horizontal position error of the first-order model over windows of length L (outage lengths), from
+    every logged sample: n, p50, p99, p99.9 and max per L.  Saved as the calibration of perception/nav.py."""
+    out = {}
+    runs_used = []
+    acc = {L: [] for L in lengths}
+    for d in runs(roots):
+        runs_used.append(str(d))
+        for t, P, vreq, modes in series(d):
+            dt = np.diff(t)
+            vt = np.vstack([np.zeros(2), np.diff(P, axis=0) / np.maximum(dt, 1e-6)[:, None]])
+            for L in lengths:
+                H = int(round(L / 0.1))
+                for i in range(1, len(t) - H - 1, stride):
+                    v, e = vt[i].copy(), np.zeros(2)
+                    for j in range(H):
+                        v = v + (vreq[i + j] - v) * min(1.0, 0.1 / tau)
+                        e += (vt[i + j + 1] - v) * 0.1
+                    acc[L].append(float(np.linalg.norm(e)))
+    for L, e in acc.items():
+        e = np.asarray(e)
+        out[str(L)] = {"n": int(e.size), "p50": float(np.percentile(e, 50)), "p99": float(np.percentile(e, 99)),
+                       "p99_9": float(np.percentile(e, 99.9)), "max": float(e.max())}
+    return {"tau_s": tau, "lengths_s": list(lengths), "position_error_m": out, "runs": runs_used}
+
+
 def main(argv):
+    if len(argv) > 2 and argv[1] == "--table":
+        import json as _json
+        res = position_table(argv[3:])
+        Path(argv[2]).write_text(_json.dumps(res, indent=1), encoding="utf-8")
+        for L, q in res["position_error_m"].items():
+            print(L, {k: round(v, 3) for k, v in q.items()})
+        return 0
     taus = (0.3, 0.5, 0.8, 1.2)
     errs = {tau: [] for tau in taus}
     held = []

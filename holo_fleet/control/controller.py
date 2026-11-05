@@ -140,7 +140,8 @@ class DroneController:
         ftime = self.flows.ftime                               # own formation time (reduced progress)
         obs = self.perception.update(frame, dt, sigma=self.flows.sigma, env_ok=self.envmon.ok,
                                      offset=self.flows.offset + self.flows.lat_offset, in_formation=self.ha.mode in IN_FORMATION,
-                                     t_form=ftime.now(t), v_req=self.v_requested)
+                                     t_form=ftime.now(t),
+                                     v_req=self.v_requested if (self.envmon.ok and not self.ll.saturated) else None)
         for e in self.perception.events:                       # SLOT_DECLARED_VACANT / SLOT_REOCCUPIED
             self.events.append({**e, "mode": self.ha.mode.value})
         self.perception.events.clear()
@@ -200,13 +201,20 @@ class DroneController:
         else:
             v = v_mis
         v = self.flows.structure_filter(obs, v)
-        cmd = self.ll.command(self.perception.nav.state, v, yaw_d, authority, dt)
+        from holo_fleet.perception.nav import NavBound
+        dvl_fresh = t - self.perception.nav.state.t_dvl <= NavBound.DVL_STALE_S
+        cmd = self.ll.command(self.perception.nav.state, v, yaw_d, authority, dt, dvl_fresh=dvl_fresh)
         # envelope: can the low level deliver the requested velocity against the (estimated) current?
         judged = mode not in AVOIDANCE
         check = check_onboard(self.ll.current_estimate(), v, self.cfg, AUTHORITY[authority]) if judged else None
         was_ok = self.envmon.ok
-        ok = self.envmon.update(self.ll.saturated, check, dt, v_nav=obs.v_world, v_req=self.v_requested)
+        # during a DVL outage the navigation velocity is the model's: not evidence of delivery (no circularity)
+        ok = self.envmon.update(self.ll.saturated, check, dt, v_nav=obs.v_world if dvl_fresh else None,
+                                v_req=self.v_requested)
         self.v_requested = np.asarray(v, dtype=float).copy()
+        for e in self.perception.gp.phantom_events:            # B2: corridor echoes no fleet drone produced
+            self.events.append({"t": e["t"], "type": "PHANTOM_ECHO", "excluding_fixes": e["fixes"]})
+        self.perception.gp.phantom_events.clear()
         for e in self.flows.events:                            # ENTRY_HOLD_TIMEOUT (stage 2, flows.gate)
             self.events.append({**e, "mode": mode.value})
         self.flows.events.clear()

@@ -245,7 +245,10 @@ class Perception:
                 self.present_since.setdefault(k, t)
             else:
                 self.present_since.pop(k, None)
-            back = k in self.present_since and t - self.present_since[k] >= fr.t_reinclude - 1e-9
+            # re-inclusion evidence counts only after the vacancy was declared, for at least two ping periods
+            hold = max(fr.t_reinclude, 2.0 * self.cfg.beacon.period_s)
+            back = (k in self.present_since and k in self.vacant and self.present_since[k] >= self.vacant[k]
+                    and t - self.present_since[k] >= hold - 1e-9)
             if k in self.vacant:
                 # re-included after t_reinclude of a sonar confirmation, or of identified fixes within e_lost of the
                 # slot together with the drone's own reported position there (payload_present; never an
@@ -354,7 +357,8 @@ class Perception:
             ahead = (float(np.linalg.norm(off - along_now * t_hat)) <= fr.e_lost and along_now > fr.e_lost + band)
             reps = [] if exp_world is None else [self._rep_offset(g, t, exp_world, t_hat) for g in acc]
             if (one_track and reps and all(r is not None for r in reps) and k in self.acoustic_present
-                    and all(float(np.linalg.norm(r[0])) <= fr.e_lost + r[1] for r in reps)):
+                    and all(float(np.linalg.norm((g.rel - exp))) <= fr.e_lost for g in acc)
+                    and all(float(np.linalg.norm(r[0])) <= fr.e_ok + r[1] for r in reps)):
                 # back near its slot: by its own estimates AND by an identified fix of it within e_lost of where it
                 # should be (a physical, identified sighting: an unidentified echo never brings a neighbour back)
                 self.payload_present.append(k)
@@ -432,7 +436,7 @@ class Perception:
             key = sonar_sensor_name(s)
             profiles[s] = d.get(key)
             ages[s] = frame.age(key) if key in d else 1e9
-        self.nav_bound.update(t, dt, nav)
+        self.nav_bound.update(t, dt, nav, model=v_req is not None)
         corr = self.aiding.update(nav.p, R_wb, profiles, ages, env.tau_max, t=t, others=self._payload_balls(t),
                                   b_own=self.nav_bound.value)
         if corr is not None:                      # dead-reckoning drift bounded by the mapped gate (structure_aiding)

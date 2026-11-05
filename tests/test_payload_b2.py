@@ -66,9 +66,16 @@ def test_nav_bound_grows_with_distance_noise_and_outage_and_never_shrinks():
     lin = B2.acoustic.nav_b0_m + nb.k_lin * 6.0 + nb.const
     assert nb.horizontal == pytest.approx(lin + nb.k_rw * math.sqrt(200 * 0.01))
     before = nb.horizontal
-    for i in range(201, 211):                                  # 1 s DVL outage: no new sample
-        nb.update(i * 0.1, 0.1, s)
-    assert 0.15 < nb.outage < 0.3 and nb.horizontal - before >= nb.outage   # model-aided DR, one 1 s outage
+    for i in range(201, 211):                                  # 1 s DVL outage, model-aided: no new sample
+        nb.update(i * 0.1, 0.1, s, model=True)
+    q = float(np.interp(nb.out_len, nb.q_len, nb.q_max))
+    assert nb.outage == pytest.approx(q) and 0.3 < q < 0.5    # the calibrated max for that length
+    nb2 = NavBound(B2)
+    s2 = NavState(p=np.zeros(3), yaw=0.0)
+    s2.v_world, s2.t_dvl, s2.t_depth = np.array([0.3, 0.0, 0.0]), 20.0, 20.0
+    for i in range(201, 211):                                  # the same outage without the model: worst case
+        nb2.update(i * 0.1, 0.1, s2, model=False)
+    assert nb2.outage > nb.outage
     nb.corrected(np.array([0.3, 0.4, 0.0]))
     assert nb.aid == pytest.approx(0.5) and not nb.invalid
 

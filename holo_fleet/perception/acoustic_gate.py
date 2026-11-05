@@ -82,6 +82,7 @@ class AcousticExit:
         self.v_bound = speed_bound(cfg)
         self.sighting: Optional[Dict] = None       # last corridor sighting: t, FRONT sonar (gate frame), ranges
         self.veto: set = set()                     # drones whose heard-inside veto is on (hysteresis)
+        self.last_phantom: Dict = {}               # the excluding fixes of the latest phantom echo (audit log)
         self.heard_by: set = set()                 # ... at the latest heard_inside evaluation
         self.last: Dict = {}                       # diagnostics of the latest evaluation
 
@@ -107,12 +108,16 @@ class AcousticExit:
         saved = self.sighting
         self.note_corridor(t, g, p, yaw, ranges)
         try:
+            self.last_phantom = {}
             for j in self.others:
                 win = self.tracker.all_fixes(j, t - a.tie_window_s, t)
-                acc = [f for f in win if f.accepted and not self._could_be_occupant(g, f, t)]
-                contra = [f for f in win if not f.accepted and self._could_be_occupant(g, f, t)]
-                if not acc or contra:
+                acc = [f for f in win if f.accepted]
+                # every accepted fix of the window must exclude j (one accepted outlier never suffices), the latest no
+                # older than fresh_s, and no rejected fix of the window may place j in the CR or at the echo
+                if (not acc or t - acc[-1].t > a.fresh_s or any(self._could_be_occupant(g, f, t) for f in acc)
+                        or any(self._could_be_occupant(g, f, t) for f in win if not f.accepted)):
                     return False
+                self.last_phantom[j] = [round(f.t, 2) for f in acc]
             return True
         finally:
             self.sighting = saved

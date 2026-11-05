@@ -351,7 +351,8 @@ class AcousticConfig:
     # DVL outage: model-aided dead reckoning (perception/nav.py).  The low level tracks the requested velocity as a
     # first-order lag; calibrated on 64 MEDIUM-ONE runs of the v5 campaign (analysis/scripts/cmd_velocity_model.py):
     dr_model_tau_s: float = 0.5          # [CAL] time constant of the commanded-velocity model (smallest p99 error)
-    dr_model_err_mps: float = 0.257      # [CAL] 99.9th percentile of the 1 s position error of that model, per second
+    # the error bound of that model per outage length is the calibration table results/calibration/
+    # dr_model_calibration.json (max integrated position error), read by perception/nav.NavBound
 
 
 @dataclass(frozen=True)

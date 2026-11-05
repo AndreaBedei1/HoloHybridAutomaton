@@ -29,19 +29,23 @@ class LowLevelController:
         self.saturated = False                     # last horizontal command hit the authority limit
         self.yaw = 0.0
 
-    def command(self, nav: NavState, v_d: np.ndarray, yaw_d: float, authority: str, dt: float) -> Dict[str, float]:
+    def command(self, nav: NavState, v_d: np.ndarray, yaw_d: float, authority: str, dt: float,
+                dvl_fresh: bool = True) -> Dict[str, float]:
+        """``dvl_fresh`` False (a DVL outage): feedforward plus the FROZEN integral, no feedback on the held velocity
+        (a stale error would wind the integrator up); the response is then the first-order model the dead reckoning
+        uses during the outage (perception/nav.py)."""
         pl = self.cfg.plant
         c, s = math.cos(nav.yaw), math.sin(nav.yaw)
         vb_d = np.array([c * v_d[0] + s * v_d[1], -s * v_d[0] + c * v_d[1]])
         vb = np.asarray(nav.v_body[:2], dtype=float)
-        err = vb_d - vb
+        err = vb_d - vb if dvl_fresh else np.zeros(2)
         lim = AUTHORITY.get(authority, 0.30)
         u = vb_d / pl.surge_speed_per_cmd + self.k_v * err + self.k_i * self.i_xy
         n = float(np.linalg.norm(u))
         self.saturated = n > lim
         if n > lim:
             u *= lim / n
-        else:
+        elif dvl_fresh:
             # conditional integration (anti-windup): integrate only while not saturated;
             # the integral term is what rejects a steady current measured through the DVL
             self.i_xy = np.clip(self.i_xy + err * dt, -0.75, 0.75)
