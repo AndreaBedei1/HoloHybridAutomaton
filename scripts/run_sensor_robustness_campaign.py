@@ -131,15 +131,16 @@ def final_matrix(seeds, only=None) -> list:
 FINAL_SCENARIOS = ALL_SCENARIOS
 
 # B2-only validation campaign (plan analysis/2026-11-03_B2_REVIEW_AND_PLAN.md, H.4), frozen with criteria v4
-# (docs/ACCEPTANCE_CRITERIA.md): 8 cells x (11 non-gate scenarios x 5 seeds + 6 gate scenarios x 10 seeds) = 920 runs on
-# held-out seeds (100-109) never used in development
+# (docs/ACCEPTANCE_CRITERIA.md v4.4): the plan's smaller variant, chosen before any campaign run for the wall time
+# (~3.8 min per run, two instances: 920 runs ~ 29 h, 552 runs ~ 18 h): 8 cells x (11 non-gate scenarios x 3 seeds +
+# 6 gate scenarios x 6 seeds) = 552 runs on held-out seeds (100-105) never used in development
 B2_CELLS = (("B2_CLEAN", "CLEAN"), ("B2_LOW", "LOW-ALL"), ("B2_MEDIUM", "MEDIUM-ONE"), ("B2_MEDIUM", "MEDIUM-SUBSET"),
             ("B2_MEDIUM", "MEDIUM-ALL"), ("B2_MEDIUM", "CLEAN"), ("B2_BLACKOUT", "CLEAN"), ("B2_BLACKOUT", "MEDIUM-ALL"))
 B2_GATE_SCENARIOS = ("gate_single", "integrated_short", "mutex_deadlock_resolution", "line_parallel_mutex",
                      "lost_drone_mutex", "gate_stalled_occupant")
 B2_NONGATE_SCENARIOS = tuple(s for s in ALL_SCENARIOS if s not in B2_GATE_SCENARIOS)
-B2_SEEDS_NONGATE = tuple(range(100, 105))
-B2_SEEDS_GATE = tuple(range(100, 110))
+B2_SEEDS_NONGATE = tuple(range(100, 103))
+B2_SEEDS_GATE = tuple(range(100, 106))
 
 
 def b2_final_matrix(only=None) -> list:
@@ -445,14 +446,18 @@ def claim(d: Path) -> Optional[Path]:
     return None
 
 
-def pending(raw: Path, runs) -> list:
+def pending(raw: Path, runs, sha: str = "") -> list:
     """Runs still to do: no run_metrics.json yet, or an INVALID one (infrastructure: engine start, killed worker,
     missing logs...), which is tried again.  COMPLETE runs, scientific failures included, are kept as they are."""
     out = []
     for r in runs:
         p = run_dir(raw, *r) / "run_metrics.json"
         try:
-            ok = json.loads(p.read_text(encoding="utf-8")).get("class") not in (None, "INVALID")
+            m = json.loads(p.read_text(encoding="utf-8"))
+            ok = m.get("class") not in (None, "INVALID")
+            if ok and sha and (m.get("code_version") or {}).get("sha") not in (None, sha):
+                raise SystemExit(f"refused: {p} was produced by commit {(m.get('code_version') or {}).get('sha')}, "
+                                 f"not {sha}; a campaign is never resumed over another commit's runs")
         except (OSError, ValueError):
             ok = False
         if not ok:
@@ -527,7 +532,7 @@ def main() -> int:
         return 4
     raw = Path(args.raw)
     runs = plan(args.phase, args.seeds, args.only, args.protocols, args.profiles)
-    todo = pending(raw, runs)
+    todo = pending(raw, runs, code_version()["sha"] if args.phase == "b2final" else "")
     print(f"phase {args.phase}: {len(runs)} runs, {len(runs) - len(todo)} done, {len(todo)} to do", flush=True)
     if args.nshards > 1:
         # slice the PLAN, not what is still pending: orchestrators started at different times then still own disjoint
@@ -550,7 +555,7 @@ def main() -> int:
 
     done = 0
     version = code_version()
-    if args.phase == "final" and version["dirty_files"]:
+    if args.phase in ("final", "b2final") and version["dirty_files"]:
         say(f"refused: the final campaign runs only from a clean commit; modified: {version['dirty_files']}")
         return 2
     build = engine_build()

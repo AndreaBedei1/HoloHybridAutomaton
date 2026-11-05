@@ -53,14 +53,14 @@ def _error_status(exc: BaseException, t: float) -> Dict:
 TRIGGER_PENDING = 1e9      # t_on of a fault whose onset is a ground-truth condition (resolved and logged when met)
 
 
-def _triggered(f, sc, names, truth) -> bool:
+def _triggered(f, sc, names, truth, cfg=DEFAULT) -> bool:
     """Simulator-side fault trigger on ground truth: ``mid_cr:<gate>`` - the drone's centre is in the second half of
     the critical region (0 <= s <= cr_half_len, inside its width and height): it stops there for good."""
     kind, _, gid = str(f["trigger"]).partition(":")
     g = next((x for x in sc.judged_gates if x.gate_id == gid), None)
     if kind != "mid_cr" or g is None:
         return False
-    G = DEFAULT.gate
+    G = cfg.gate
     s, l, dz = (float(v) for v in g.to_gate_frame(np.asarray(truth.positions[names.index(f["drone"])], float)))
     return 0.0 <= s <= G.cr_half_len and abs(l) <= G.cr_half_width and abs(dz) <= G.cr_half_height
 
@@ -170,12 +170,13 @@ def run(name: str, out_root: Path, headless: bool = True, run_id: Optional[str] 
             step_events = []
             for i, f in enumerate(getattr(sc.sim, "faults", ())):         # ground truth, never seen by a controller
                 if f.get("trigger") and f["t_on"] >= TRIGGER_PENDING and truth_prev is not None:
-                    if _triggered(f, sc, sim.names, truth_prev):           # e.g. "mid_cr:G06": stalled occupant
+                    if _triggered(f, sc, sim.names, truth_prev, cfg):      # e.g. "mid_cr:G06": stalled occupant
                         f["t_on"] = round(sim.t, 2)
                         if ref.permanent is not None:
                             ref.permanent[sim.names.index(f["drone"])] = f["t_on"]
-                        (out / "run_config.json").write_text(json.dumps(cfg_dump, indent=1, default=_jsonable),
-                                                             encoding="utf-8")
+                        tmp = out / "run_config.json.tmp"        # atomic: the resolved onset replaces the file
+                        tmp.write_text(json.dumps(cfg_dump, indent=1, default=_jsonable), encoding="utf-8")
+                        tmp.replace(out / "run_config.json")
                 on = f["t_on"] <= sim.t and (f.get("t_off") is None or sim.t < f["t_off"])
                 if on != fault_on[i]:
                     fault_on[i] = on

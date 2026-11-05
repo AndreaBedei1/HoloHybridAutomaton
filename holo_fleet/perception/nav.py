@@ -93,7 +93,7 @@ class NavBound:
              + sum min(a_max tau, |v_held| + v_bound) dt         DVL outage: the held velocity is wrong by at most
                                                                  a_max tau after tau seconds without a NEW sample
              + sum |unvalidated corrections|                     an applied map fit may itself be wrong
-             + 2 r_DVL + 2 latency v_bound                       lever arm (bounded rotation of r), sensor latency
+             + 2 r_DVL + 2 (T_dvl + latency) v_bound             lever arm (bounded rotation of r), hold + latency
       b_z    = nav_depth_err_m while the depth sensor delivers new samples, growing with the speed bound otherwise.
       bound  = hypot(b_h, b_z): the radius of a BALL containing every error with |e_h| <= b_h and |e_z| <= b_z.
 
@@ -108,10 +108,10 @@ class NavBound:
     exceeds the declared 3 deg -, a DVL that reports wrong velocities) violates it; every run logs the bound
     against the true error (the evaluation's nav-bound coverage)."""
 
-    # [PROT] a sample is "held" (outage) only when older than one 10 Hz DVL period (0.1 s) + the largest declared sensor
-    # latency (0.05 s, MEDIUM) + one control step (0.1 s, the frame is sampled at the control rate); 0.15 s counted
-    # ordinary samples as outages (development run 2026-11-05: the bound grew to 8 m at the rally point)
-    DVL_STALE_S = 0.25
+    # [PROT] a sample is "held" (outage) when older than one 10 Hz DVL period (0.1 s) + the declared sensor latency
+    # (0.05 s, MEDIUM).  In the simulator an ordinary sample is at most 0.133 s old at a control instant, so every
+    # dropped sample counts (a 0.25 s threshold, tried on 2026-11-05 on a wrong diagnosis, ignored isolated dropouts)
+    DVL_STALE_S = 0.15
 
     def __init__(self, cfg):
         a, env = cfg.acoustic, cfg.env
@@ -120,7 +120,9 @@ class NavBound:
         self.k_rw = RAYLEIGH_3SIGMA * a.dvl_sigma_body_mps
         self.depth_err = a.nav_depth_err_m
         self.v_bound = max(env.v_escape, env.v_max_nominal, cfg.gate.v_pass) + env.w_drift_max
-        self.const = 2.0 * DVL_LEVER_M + 2.0 * SENSOR_LATENCY_S * self.v_bound
+        # zero-order hold of a sample plus its latency: an effective delay of at most one period + latency, at the
+        # speed bound, both ways
+        self.const = 2.0 * DVL_LEVER_M + 2.0 * (0.1 + SENSOR_LATENCY_S) * self.v_bound
         self.ref = a.nav_b0_m
         self.lin = self.var = self.outage = self.aid = 0.0
         self.z = self.depth_err
