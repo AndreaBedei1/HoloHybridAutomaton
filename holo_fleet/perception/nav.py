@@ -90,8 +90,8 @@ class NavBound:
                                                                  the distance travelled
              + 3.44 sigma_v sqrt(sum dt^2)                       white DVL noise integrated by the dead reckoning
                                                                  (a 2-D random walk at the 99.73 % level)
-             + sum min(a_max tau, |v_held| + v_bound) dt         DVL outage: the held velocity is wrong by at most
-                                                                 a_max tau after tau seconds without a NEW sample
+             + sum min(a_max (tau - T_nom), |v_held| + v_bound) dt DVL outage: beyond the nominal hold T_nom the
+                                                                 held velocity is wrong by at most a_max (tau - T_nom)
              + sum |unvalidated corrections|                     an applied map fit may itself be wrong
              + 2 r_DVL + 2 (T_dvl + latency) v_bound             lever arm (bounded rotation of r), hold + latency
       b_z    = nav_depth_err_m while the depth sensor delivers new samples, growing with the speed bound otherwise.
@@ -135,7 +135,9 @@ class NavBound:
         if tau <= self.DVL_STALE_S:
             self.var += dt * dt
         else:
-            self.outage += min(A_MAX_MPS2 * tau, v_h + self.v_bound) * dt
+            # beyond the nominal hold (covered by the hold + latency constant) the held velocity drifts from the true
+            # one by at most a_max (tau - T_nominal), and never by more than |v_held| + v_bound
+            self.outage += min(A_MAX_MPS2 * (tau - self.DVL_STALE_S), v_h + self.v_bound) * dt
         self.z = self.depth_err if t - s.t_depth <= self.DVL_STALE_S else self.z + self.v_bound * dt
 
     def corrected(self, corr) -> None:

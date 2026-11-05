@@ -1,4 +1,28 @@
-# Acceptance criteria v4 of the B2-only validation campaign (pre-registered before any campaign run)
+# Acceptance criteria v5 of the B2-only validation campaign
+
+Status: written 2026-11-05 after the v4 campaign (tag `b2-freeze-v4`, stopped by the user at 404 of 552 runs), by the
+user's explicit decision.  v5 changes the LIVENESS criterion and the judgement of an infeasible mission; the safety
+items, the property definitions and the cell matrix are those of v4 below.  Both the v4 and the v5 classification of
+the v4 runs are reported, so that the change is visible.
+
+* **Liveness is eventual.** "Prima o poi ci riuscirà" (the user): no time bound on a gate passage or a wait enters
+  the class; the gate bounded-response checks of v4 are still computed and reported (`gate_bounded_response`).  The
+  run horizon is HORIZON_FACTOR = 3 x the a-priori deadline (the exploratory horizon of plan H.2); the a-priori
+  deadline remains the reported "on time" reference.  A run that reaches the horizon without SUCCESS is INCOMPLETE:
+  not observed to complete, which is not a proof of a deadlock.
+* **Feasible requirements only.** A scenario whose mission is physically infeasible by design is judged on safety
+  over the whole horizon (`Scenario.safety_only`): gate_stalled_occupant (a drone stalled in the CR blocks the gate;
+  asking the others to pass it would be meaningless).  It is PASS when P1 and P2 hold, there is no contact and no
+  unsafe action (E2.to_free = E3 = E4 = 0) until the horizon.  The BLACKOUT exception of v4.3 item 1 stays.
+* **Classes v5:** INVALID / SUT_ERROR > REPLAY_MISMATCH > SAFETY_FAILURE > UNSAFE_ACTION > SPEC_VIOLATION > PASS >
+  CENSORED > SAFE_DEGRADED > INCOMPLETE (no STALLED).
+* **Behaviour change made with v5 (not a criterion):** a missing neighbour reported in a gate's approach zone is
+  delayed by the mutual exclusion, not lost; its vacancy timer is held for at most the protocol's slowest serial
+  passage (v4 campaign: false vacancies of neighbours waiting their turn at a slow MEDIUM gate).
+
+---
+
+# Acceptance criteria v4 of the B2-only validation campaign (pre-registered before the v4 campaign)
 
 Status: written 2026-11-04 before the B2-only campaign; frozen together with the code commit recorded in every run's
 provenance.  The sections after this one are the HISTORICAL v2 criteria of the 624-run B0/B2 campaign at `ad4fb5e`,

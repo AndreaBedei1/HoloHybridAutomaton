@@ -55,7 +55,8 @@ Variant B2 (range-bearing beacon, perception/acoustic.py).  Identified fixes ent
   neighbour's own in-formation tolerance) plus its largest speed deviation from the clock over the payload's age.
   A_CONFIRM payloads of one track farther than e_lost + A_DISPLACED_MARGIN + band from the slot are rule A-D;
 * delayed at the gate (vacancy): a missing neighbour whose fresh consistent payload places it, ball included, in the
-  approach zone of a gate of the plan is delayed by the mutual exclusion, not lost: its vacancy timer does not run,
+  approach zone of a gate of the plan (its ball intersects the zone) is delayed by the mutual exclusion, not lost:
+  its vacancy timer does not run,
   for at most the protocol's slowest serial passage of the whole fleet (n x (L / v_pass + t_occ_max + t_clear), the
   gate term of the a-priori deadline); beyond that the ordinary timer resumes, so a drone that fails at the gate
   is still declared vacant.  (A neighbour waiting its turn at a slow MEDIUM gate was declared vacant by a drone
@@ -181,6 +182,7 @@ class Perception:
         self.acoustic_corr: List[int] = []             # neighbours whose fix fed the relative residual
         self.acoustic_lag: Dict[int, float] = {}       # B2: slot -> lag behind its slot beyond the noise band [m]
         self.acoustic_ahead: List[int] = []            # B2: neighbours heard well ahead on their lane (veto, bounded)
+        self.payload_present: List[int] = []           # H6: A_CONFIRM payloads of one track near the slot (rejoined)
         self.ahead_since: Dict[int, float] = {}
         self.gate_delay: Dict[int, float] = {}         # B2: slot -> time its vacancy timer was held (delayed at gate)
         G = cfg.gate
@@ -207,7 +209,9 @@ class Perception:
         """Missing state (hysteresis), missing timers and the vacancy latch (see the module docstring)."""
         fr = self.cfg.form
         clock = self.plan.clock
-        moving = clock is None or clock.moving(t if t_form is None else t_form)
+        tf = t if t_form is None else t_form
+        ended = clock is not None and clock.s(tf) >= min(self.plan.s_end, clock.s_end) - 1e-6
+        moving = clock is None or clock.moving(tf) or ended      # after the plan end the formation is static
         for k in self.acoustic_displaced:                  # rule A-D: positively away from its slot
             if k not in form.missing:
                 form.missing.append(k)
@@ -232,7 +236,7 @@ class Perception:
             if k in form.missing:
                 if not (k in self.acoustic_ahead and not self.missing_state.get(k)):
                     self.missing_state[k] = True           # not seen for NEIGHBOUR_MEMORY_S (heard ahead: no NEW episode)
-            elif self.missing_state.get(k) and confirmed:
+            elif self.missing_state.get(k) and (confirmed or k in self.payload_present):
                 self.missing_state[k] = False              # back, confirmed
             if not self.missing_state.get(k):
                 self.missing_t[k] = 0.0
@@ -255,7 +259,8 @@ class Perception:
 
     # ------------------------------------------------------------------ B2: identified neighbours
     def _delayed_at_gate(self, k: int, t: float) -> bool:
-        """Neighbour k's latest fresh consistent payload places it (ball included) in the approach zone of a gate."""
+        """Neighbour k's latest fresh consistent payload places it possibly (its ball intersects) in the approach zone of a
+        gate.  Only a vacancy timer depends on it, and only for the bounded gate_delay_max."""
         if not self.acoustic.enabled or not self.plan.gates:
             return False
         f = self.acoustic.latest(k, t, self.cfg.acoustic.fresh_s)
@@ -265,7 +270,7 @@ class Perception:
         half_w = max(G.corridor_half_width, G.queue_lateral_max + 1.0)
         for g in self.plan.gates:
             s, l, _dz = (float(v) for v in g.to_gate_frame(f.rep.p))
-            if (self.plan.queue_s - G.approach_len + rad <= s <= G.exit_s - rad and abs(l) <= half_w - rad):
+            if (self.plan.queue_s - G.approach_len - rad <= s <= G.exit_s + rad and abs(l) <= half_w + rad):
                 return True
         return False
 
@@ -306,7 +311,7 @@ class Perception:
                             p_own: Optional[np.ndarray] = None) -> Optional[Dict[int, np.ndarray]]:
         """Rules A-P and A-D (module docstring); returns the fresh relative positions used for the association."""
         self.acoustic_present, self.acoustic_displaced, self.acoustic_fresh = [], [], []
-        self.acoustic_lag, self.acoustic_ahead = {}, []
+        self.acoustic_lag, self.acoustic_ahead, self.payload_present = {}, [], []
         if not self.acoustic.enabled:
             return None
         a, fr = self.cfg.acoustic, self.cfg.form
@@ -338,6 +343,9 @@ class Perception:
             # ping period), on its lane and ahead by more than e_lost plus the band
             ahead = (float(np.linalg.norm(off - along_now * t_hat)) <= fr.e_lost and along_now > fr.e_lost + band)
             reps = [] if exp_world is None else [self._rep_offset(g, t, exp_world, t_hat) for g in acc]
+            if one_track and reps and all(r is not None for r in reps) and all(
+                    float(np.linalg.norm(r[0])) <= fr.e_lost + r[1] for r in reps):
+                self.payload_present.append(k)                   # back near its slot by its own estimates
             if one_track and reps and all(r is not None for r in reps):
                 # lag from the payloads: the median along-track offset beyond its band
                 along = float(np.median([float(r[0] @ t_hat) for r in reps]))
