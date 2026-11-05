@@ -35,7 +35,8 @@ class DeadReckoning:
         self.state = NavState(p=np.array(launch_position, dtype=float), yaw=math.radians(launch_yaw_deg))
 
     def update(self, t: float, dt: float, compass: Optional[np.ndarray], dvl: Optional[np.ndarray],
-               depth: Optional[float], imu: Optional[np.ndarray], stamps: Optional[dict] = None) -> NavState:
+               depth: Optional[float], imu: Optional[np.ndarray], stamps: Optional[dict] = None,
+               v_req: Optional[np.ndarray] = None, model_tau: float = 0.5, stale_s: float = 0.15) -> NavState:
         """``stamps``: the onboard time of the last update of each sensor (SensorFrame.stamp).  A frame holds the
         LATEST value of a sensor with its own stamp: the freshness times are those stamps, not t (a held DVL
         sample is not a new measurement)."""
@@ -55,7 +56,14 @@ class DeadReckoning:
                 s.v_body = v
                 s.t_dvl = float(st.get("DVLSensor", t))
         c, sn = math.cos(s.yaw), math.sin(s.yaw)
-        s.v_world = np.array([c * s.v_body[0] - sn * s.v_body[1], sn * s.v_body[0] + c * s.v_body[1], s.v_body[2]])
+        v_dvl = np.array([c * s.v_body[0] - sn * s.v_body[1], sn * s.v_body[0] + c * s.v_body[1], s.v_body[2]])
+        if v_req is not None and t - s.t_dvl > stale_s:
+            # DVL outage: model-aided dead reckoning - the velocity follows the controller's own request through the
+            # calibrated first-order lag of the low level, from the last measured velocity (standard practice)
+            vr = np.asarray(v_req, dtype=float)
+            s.v_world = s.v_world + (np.array([vr[0], vr[1], s.v_world[2]]) - s.v_world) * min(1.0, dt / model_tau)
+        else:
+            s.v_world = v_dvl
         s.p[0] += s.v_world[0] * dt
         s.p[1] += s.v_world[1] * dt
         if depth is not None:
@@ -90,8 +98,11 @@ class NavBound:
                                                                  the distance travelled
              + 3.44 sigma_v sqrt(sum dt^2)                       white DVL noise integrated by the dead reckoning
                                                                  (a 2-D random walk at the 99.73 % level)
-             + sum min(a_max (tau - T_nom), |v_held| + v_bound) dt DVL outage: beyond the nominal hold T_nom the
-                                                                 held velocity is wrong by at most a_max (tau - T_nom)
+             + 3.44 sqrt(sum_outages e_k^2)                      DVL outage k of length L_k beyond the nominal hold:
+                                                                 model-aided DR error e_k = e_model L_k (e_model the
+                                                                 calibrated 99.9th percentile per second), outages
+                                                                 independent (root-sum-square); the current outage
+                                                                 counts linearly until it ends
              + sum |unvalidated corrections|                     an applied map fit may itself be wrong
              + 2 r_DVL + 2 (T_dvl + latency) v_bound             lever arm (bounded rotation of r), hold + latency
       b_z    = nav_depth_err_m while the depth sensor delivers new samples, growing with the speed bound otherwise.
@@ -125,6 +136,9 @@ class NavBound:
         self.const = 2.0 * DVL_LEVER_M + 2.0 * (0.1 + SENSOR_LATENCY_S) * self.v_bound
         self.ref = a.nav_b0_m
         self.lin = self.var = self.outage = self.aid = 0.0
+        self.e_model = a.dr_model_err_mps
+        self.out_pool = 0.0                  # sum of e_k^2 of the finished outages
+        self.out_cur = 0.0                   # error of the current outage
         self.z = self.depth_err
         self.invalid = False
 
@@ -134,10 +148,15 @@ class NavBound:
         tau = t - s.t_dvl
         if tau <= self.DVL_STALE_S:
             self.var += dt * dt
-        else:
-            # beyond the nominal hold (covered by the hold + latency constant) the held velocity drifts from the true
-            # one by at most a_max (tau - T_nominal), and never by more than |v_held| + v_bound
-            self.outage += min(A_MAX_MPS2 * (tau - self.DVL_STALE_S), v_h + self.v_bound) * dt
+        else:  # outage
+            # beyond the nominal hold (covered by the hold + latency constant): the model-aided DR error of this
+            # outage grows by e_model per second, never faster than |v| + v_bound
+            self.out_cur += min(self.e_model, v_h + self.v_bound) * dt
+        if tau <= self.DVL_STALE_S and self.out_cur > 0.0:
+            self.out_pool += self.out_cur ** 2   # the outage ended: it joins the independent ones
+            self.out_cur = 0.0
+        self.outage = RAYLEIGH_3SIGMA / 3.0 * math.sqrt(self.out_pool + self.out_cur ** 2) if (
+            self.out_pool or self.out_cur) else 0.0
         self.z = self.depth_err if t - s.t_depth <= self.DVL_STALE_S else self.z + self.v_bound * dt
 
     def corrected(self, corr) -> None:

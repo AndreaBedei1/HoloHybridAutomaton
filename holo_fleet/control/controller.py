@@ -140,7 +140,7 @@ class DroneController:
         ftime = self.flows.ftime                               # own formation time (reduced progress)
         obs = self.perception.update(frame, dt, sigma=self.flows.sigma, env_ok=self.envmon.ok,
                                      offset=self.flows.offset + self.flows.lat_offset, in_formation=self.ha.mode in IN_FORMATION,
-                                     t_form=ftime.now(t))
+                                     t_form=ftime.now(t), v_req=self.v_requested)
         for e in self.perception.events:                       # SLOT_DECLARED_VACANT / SLOT_REOCCUPIED
             self.events.append({**e, "mode": self.ha.mode.value})
         self.perception.events.clear()

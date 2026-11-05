@@ -348,6 +348,10 @@ class AcousticConfig:
     dvl_scale_err: float = 0.01          # [LIT] DVL velocity scale error (1 %: low-cost DVL class; Nortek <= 0.1 %)
     dvl_sigma_body_mps: float = 0.0285   # [PROF] white DVL body-velocity noise, MEDIUM: 0.015 m/s per beam x 1.9
     nav_depth_err_m: float = 0.45        # [PROF] depth sensor, 3 x the MEDIUM 0.15 m noise
+    # DVL outage: model-aided dead reckoning (perception/nav.py).  The low level tracks the requested velocity as a
+    # first-order lag; calibrated on 64 MEDIUM-ONE runs of the v5 campaign (analysis/scripts/cmd_velocity_model.py):
+    dr_model_tau_s: float = 0.5          # [CAL] time constant of the commanded-velocity model (smallest p99 error)
+    dr_model_err_mps: float = 0.257      # [CAL] 99.9th percentile of the 1 s position error of that model, per second
 
 
 @dataclass(frozen=True)

@@ -68,7 +68,7 @@ def test_nav_bound_grows_with_distance_noise_and_outage_and_never_shrinks():
     before = nb.horizontal
     for i in range(201, 211):                                  # 1 s DVL outage: no new sample
         nb.update(i * 0.1, 0.1, s)
-    assert nb.horizontal - before > 0.3
+    assert 0.15 < nb.outage < 0.3 and nb.horizontal - before >= nb.outage   # model-aided DR, one 1 s outage
     nb.corrected(np.array([0.3, 0.4, 0.0]))
     assert nb.aid == pytest.approx(0.5) and not nb.invalid
 

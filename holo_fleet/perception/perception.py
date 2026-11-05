@@ -414,13 +414,14 @@ class Perception:
     # ------------------------------------------------------------------ main update
     def update(self, frame: SensorFrame, dt: float, sigma: float = 0.0, env_ok: bool = True,
                offset: Optional[np.ndarray] = None, in_formation: bool = True,
-               t_form: Optional[float] = None) -> LocalObservation:
+               t_form: Optional[float] = None, v_req: Optional[np.ndarray] = None) -> LocalObservation:
         t = frame.t
         t_form = t if t_form is None else t_form
         d = frame.data
         env = self.cfg.env
         nav = self.nav.update(t, dt, d.get("Compass"), d.get("DVLSensor"), d.get("DepthSensor"), d.get("IMUSensor"),
-                              stamps=frame.stamp)
+                              stamps=frame.stamp, v_req=v_req, model_tau=self.cfg.acoustic.dr_model_tau_s,
+                              stale_s=NavBound.DVL_STALE_S)
         self.att.update(d.get("IMUSensor"))
         roll, pitch = (self.att.roll, self.att.pitch) if self.use_attitude else (0.0, 0.0)
         R_wb = rot_world_body(roll, pitch, nav.yaw)
