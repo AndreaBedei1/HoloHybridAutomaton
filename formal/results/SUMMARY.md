@@ -1,10 +1,10 @@
 # Formal verification summary
 
-Generated 2026-10-30 00:43:29 by `formal/check_properties.py`.
+Generated 2026-11-05 01:38:58 by `formal/check_properties.py`.
 
 UNSAT = the negated property has no model in the abstraction, i.e. the property HOLDS for the model; SAT is expected for the satisfiability / non-vacuity checks (a witness must exist) and for the mutation tests (deliberately broken designs must yield a counterexample); mutation Om2 expects UNSAT (a broken observation domain loses the reachability of an edge).  The observation domain of every suite is the conjunction of the invariants of holo_fleet/ha/observation_invariants.py.
 
-## Local determinism & priority hierarchy  (93/93 as expected, 0.3 s)
+## Local determinism & priority hierarchy  (104/104 as expected, 0.4 s)
 
 Encoding: `holo_fleet/ha/spec.py`
 
@@ -16,7 +16,8 @@ Encoding: `holo_fleet/ha/spec.py`
 | H2 d<d_ca=>COLLISION_AVOIDANCE [FORMATION_FOLLOW] | !fault & d_min < d_ca -> target = COLLISION_AVOIDANCE | UNSAT | UNSAT | yes |
 | H3 warning band=>SEPARATION_WARNING [FORMATION_FOLLOW] | !fault & d_ca_exit <= d_min < d_warning -> target = SEPARATION_WARNING | UNSAT | UNSAT | yes |
 | G1 MUTEX_PASS entry condition [FORMATION_FOLLOW] | !committed & guard(->MUTEX_PASS) -> at_queue & !occ_busy & has_prio | UNSAT | UNSAT | yes |
-| G2 no PASS->YIELD fallback [FORMATION_FOLLOW] | committed -> target not in {MUTEX_APPROACH, MUTEX_YIELD} | UNSAT | UNSAT | yes |
+| G2 no PASS->YIELD fallback without give-up [FORMATION_FOLLOW] | committed & target in {MUTEX_APPROACH, MUTEX_YIELD} -> entry_abort | UNSAT | UNSAT | yes |
+| G2c a give-up clears the commitment [FORMATION_FOLLOW] | committed & edge to {MUTEX_APPROACH, MUTEX_YIELD} enabled -> it sets committed := false | UNSAT | UNSAT | yes |
 | G3 no commit under hazard [FORMATION_FOLLOW] | commit edge enabled -> d_min >= d_warning (or >= d_warning_exit from SW) | UNSAT | UNSAT | yes |
 | L1 readable guards exact [FORMATION_FOLLOW] | forall legal obs, edge k: no earlier edge enabled -> (label_k <-> guard_k) | UNSAT | UNSAT | yes |
 | D1 determinism [SEPARATION_WARNING] | forall legal obs: at most one outgoing guard enabled | UNSAT | UNSAT | yes |
@@ -25,7 +26,8 @@ Encoding: `holo_fleet/ha/spec.py`
 | H2 d<d_ca=>COLLISION_AVOIDANCE [SEPARATION_WARNING] | !fault & d_min < d_ca -> target = COLLISION_AVOIDANCE | UNSAT | UNSAT | yes |
 | H3 warning band=>SEPARATION_WARNING [SEPARATION_WARNING] | !fault & d_ca_exit <= d_min < d_warning -> target = SEPARATION_WARNING | UNSAT | UNSAT | yes |
 | G1 MUTEX_PASS entry condition [SEPARATION_WARNING] | !committed & guard(->MUTEX_PASS) -> at_queue & !occ_busy & has_prio | UNSAT | UNSAT | yes |
-| G2 no PASS->YIELD fallback [SEPARATION_WARNING] | committed -> target not in {MUTEX_APPROACH, MUTEX_YIELD} | UNSAT | UNSAT | yes |
+| G2 no PASS->YIELD fallback without give-up [SEPARATION_WARNING] | committed & target in {MUTEX_APPROACH, MUTEX_YIELD} -> entry_abort | UNSAT | UNSAT | yes |
+| G2c a give-up clears the commitment [SEPARATION_WARNING] | committed & edge to {MUTEX_APPROACH, MUTEX_YIELD} enabled -> it sets committed := false | UNSAT | UNSAT | yes |
 | G3 no commit under hazard [SEPARATION_WARNING] | commit edge enabled -> d_min >= d_warning (or >= d_warning_exit from SW) | UNSAT | UNSAT | yes |
 | L1 readable guards exact [SEPARATION_WARNING] | forall legal obs, edge k: no earlier edge enabled -> (label_k <-> guard_k) | UNSAT | UNSAT | yes |
 | D1 determinism [COLLISION_AVOIDANCE] | forall legal obs: at most one outgoing guard enabled | UNSAT | UNSAT | yes |
@@ -34,7 +36,8 @@ Encoding: `holo_fleet/ha/spec.py`
 | H2 d<d_ca=>COLLISION_AVOIDANCE [COLLISION_AVOIDANCE] | !fault & d_min < d_ca -> target = COLLISION_AVOIDANCE | UNSAT | UNSAT | yes |
 | H3 warning band=>SEPARATION_WARNING [COLLISION_AVOIDANCE] | !fault & d_ca_exit <= d_min < d_warning -> target = SEPARATION_WARNING | UNSAT | UNSAT | yes |
 | G1 MUTEX_PASS entry condition [COLLISION_AVOIDANCE] | !committed & guard(->MUTEX_PASS) -> at_queue & !occ_busy & has_prio | UNSAT | UNSAT | yes |
-| G2 no PASS->YIELD fallback [COLLISION_AVOIDANCE] | committed -> target not in {MUTEX_APPROACH, MUTEX_YIELD} | UNSAT | UNSAT | yes |
+| G2 no PASS->YIELD fallback without give-up [COLLISION_AVOIDANCE] | committed & target in {MUTEX_APPROACH, MUTEX_YIELD} -> entry_abort | UNSAT | UNSAT | yes |
+| G2c a give-up clears the commitment [COLLISION_AVOIDANCE] | committed & edge to {MUTEX_APPROACH, MUTEX_YIELD} enabled -> it sets committed := false | UNSAT | UNSAT | yes |
 | G3 no commit under hazard [COLLISION_AVOIDANCE] | commit edge enabled -> d_min >= d_warning (or >= d_warning_exit from SW) | UNSAT | UNSAT | yes |
 | L1 readable guards exact [COLLISION_AVOIDANCE] | forall legal obs, edge k: no earlier edge enabled -> (label_k <-> guard_k) | UNSAT | UNSAT | yes |
 | D1 determinism [MUTEX_APPROACH] | forall legal obs: at most one outgoing guard enabled | UNSAT | UNSAT | yes |
@@ -43,7 +46,8 @@ Encoding: `holo_fleet/ha/spec.py`
 | H2 d<d_ca=>COLLISION_AVOIDANCE [MUTEX_APPROACH] | !fault & d_min < d_ca -> target = COLLISION_AVOIDANCE | UNSAT | UNSAT | yes |
 | H3 warning band=>SEPARATION_WARNING [MUTEX_APPROACH] | !fault & d_ca_exit <= d_min < d_warning -> target = SEPARATION_WARNING | UNSAT | UNSAT | yes |
 | G1 MUTEX_PASS entry condition [MUTEX_APPROACH] | !committed & guard(->MUTEX_PASS) -> at_queue & !occ_busy & has_prio | UNSAT | UNSAT | yes |
-| G2 no PASS->YIELD fallback [MUTEX_APPROACH] | committed -> target not in {MUTEX_APPROACH, MUTEX_YIELD} | UNSAT | UNSAT | yes |
+| G2 no PASS->YIELD fallback without give-up [MUTEX_APPROACH] | committed & target in {MUTEX_APPROACH, MUTEX_YIELD} -> entry_abort | UNSAT | UNSAT | yes |
+| G2c a give-up clears the commitment [MUTEX_APPROACH] | committed & edge to {MUTEX_APPROACH, MUTEX_YIELD} enabled -> it sets committed := false | UNSAT | UNSAT | yes |
 | G3 no commit under hazard [MUTEX_APPROACH] | commit edge enabled -> d_min >= d_warning (or >= d_warning_exit from SW) | UNSAT | UNSAT | yes |
 | L1 readable guards exact [MUTEX_APPROACH] | forall legal obs, edge k: no earlier edge enabled -> (label_k <-> guard_k) | UNSAT | UNSAT | yes |
 | D1 determinism [MUTEX_YIELD] | forall legal obs: at most one outgoing guard enabled | UNSAT | UNSAT | yes |
@@ -52,7 +56,8 @@ Encoding: `holo_fleet/ha/spec.py`
 | H2 d<d_ca=>COLLISION_AVOIDANCE [MUTEX_YIELD] | !fault & d_min < d_ca -> target = COLLISION_AVOIDANCE | UNSAT | UNSAT | yes |
 | H3 warning band=>SEPARATION_WARNING [MUTEX_YIELD] | !fault & d_ca_exit <= d_min < d_warning -> target = SEPARATION_WARNING | UNSAT | UNSAT | yes |
 | G1 MUTEX_PASS entry condition [MUTEX_YIELD] | !committed & guard(->MUTEX_PASS) -> at_queue & !occ_busy & has_prio | UNSAT | UNSAT | yes |
-| G2 no PASS->YIELD fallback [MUTEX_YIELD] | committed -> target not in {MUTEX_APPROACH, MUTEX_YIELD} | UNSAT | UNSAT | yes |
+| G2 no PASS->YIELD fallback without give-up [MUTEX_YIELD] | committed & target in {MUTEX_APPROACH, MUTEX_YIELD} -> entry_abort | UNSAT | UNSAT | yes |
+| G2c a give-up clears the commitment [MUTEX_YIELD] | committed & edge to {MUTEX_APPROACH, MUTEX_YIELD} enabled -> it sets committed := false | UNSAT | UNSAT | yes |
 | G3 no commit under hazard [MUTEX_YIELD] | commit edge enabled -> d_min >= d_warning (or >= d_warning_exit from SW) | UNSAT | UNSAT | yes |
 | L1 readable guards exact [MUTEX_YIELD] | forall legal obs, edge k: no earlier edge enabled -> (label_k <-> guard_k) | UNSAT | UNSAT | yes |
 | D1 determinism [MUTEX_PASS] | forall legal obs: at most one outgoing guard enabled | UNSAT | UNSAT | yes |
@@ -61,7 +66,8 @@ Encoding: `holo_fleet/ha/spec.py`
 | H2 d<d_ca=>COLLISION_AVOIDANCE [MUTEX_PASS] | !fault & d_min < d_ca -> target = COLLISION_AVOIDANCE | UNSAT | UNSAT | yes |
 | H3 warning band=>SEPARATION_WARNING [MUTEX_PASS] | !fault & d_ca_exit <= d_min < d_warning -> target = SEPARATION_WARNING | UNSAT | UNSAT | yes |
 | G1 MUTEX_PASS entry condition [MUTEX_PASS] | !committed & guard(->MUTEX_PASS) -> at_queue & !occ_busy & has_prio | UNSAT | UNSAT | yes |
-| G2 no PASS->YIELD fallback [MUTEX_PASS] | committed -> target not in {MUTEX_APPROACH, MUTEX_YIELD} | UNSAT | UNSAT | yes |
+| G2 no PASS->YIELD fallback without give-up [MUTEX_PASS] | committed & target in {MUTEX_APPROACH, MUTEX_YIELD} -> entry_abort | UNSAT | UNSAT | yes |
+| G2c a give-up clears the commitment [MUTEX_PASS] | committed & edge to {MUTEX_APPROACH, MUTEX_YIELD} enabled -> it sets committed := false | UNSAT | UNSAT | yes |
 | G3 no commit under hazard [MUTEX_PASS] | commit edge enabled -> d_min >= d_warning (or >= d_warning_exit from SW) | UNSAT | UNSAT | yes |
 | L1 readable guards exact [MUTEX_PASS] | forall legal obs, edge k: no earlier edge enabled -> (label_k <-> guard_k) | UNSAT | UNSAT | yes |
 | D1 determinism [FORMATION_RECOVERY] | forall legal obs: at most one outgoing guard enabled | UNSAT | UNSAT | yes |
@@ -70,7 +76,8 @@ Encoding: `holo_fleet/ha/spec.py`
 | H2 d<d_ca=>COLLISION_AVOIDANCE [FORMATION_RECOVERY] | !fault & d_min < d_ca -> target = COLLISION_AVOIDANCE | UNSAT | UNSAT | yes |
 | H3 warning band=>SEPARATION_WARNING [FORMATION_RECOVERY] | !fault & d_ca_exit <= d_min < d_warning -> target = SEPARATION_WARNING | UNSAT | UNSAT | yes |
 | G1 MUTEX_PASS entry condition [FORMATION_RECOVERY] | !committed & guard(->MUTEX_PASS) -> at_queue & !occ_busy & has_prio | UNSAT | UNSAT | yes |
-| G2 no PASS->YIELD fallback [FORMATION_RECOVERY] | committed -> target not in {MUTEX_APPROACH, MUTEX_YIELD} | UNSAT | UNSAT | yes |
+| G2 no PASS->YIELD fallback without give-up [FORMATION_RECOVERY] | committed & target in {MUTEX_APPROACH, MUTEX_YIELD} -> entry_abort | UNSAT | UNSAT | yes |
+| G2c a give-up clears the commitment [FORMATION_RECOVERY] | committed & edge to {MUTEX_APPROACH, MUTEX_YIELD} enabled -> it sets committed := false | UNSAT | UNSAT | yes |
 | G3 no commit under hazard [FORMATION_RECOVERY] | commit edge enabled -> d_min >= d_warning (or >= d_warning_exit from SW) | UNSAT | UNSAT | yes |
 | L1 readable guards exact [FORMATION_RECOVERY] | forall legal obs, edge k: no earlier edge enabled -> (label_k <-> guard_k) | UNSAT | UNSAT | yes |
 | D1 determinism [FAILSAFE_HOLD_OR_RETREAT] | forall legal obs: at most one outgoing guard enabled | UNSAT | UNSAT | yes |
@@ -79,7 +86,8 @@ Encoding: `holo_fleet/ha/spec.py`
 | H2 d<d_ca=>COLLISION_AVOIDANCE [FAILSAFE_HOLD_OR_RETREAT] | !fault & d_min < d_ca -> target = COLLISION_AVOIDANCE | UNSAT | UNSAT | yes |
 | H3 warning band=>SEPARATION_WARNING [FAILSAFE_HOLD_OR_RETREAT] | !fault & d_ca_exit <= d_min < d_warning -> target = SEPARATION_WARNING | UNSAT | UNSAT | yes |
 | G1 MUTEX_PASS entry condition [FAILSAFE_HOLD_OR_RETREAT] | !committed & guard(->MUTEX_PASS) -> at_queue & !occ_busy & has_prio | UNSAT | UNSAT | yes |
-| G2 no PASS->YIELD fallback [FAILSAFE_HOLD_OR_RETREAT] | committed -> target not in {MUTEX_APPROACH, MUTEX_YIELD} | UNSAT | UNSAT | yes |
+| G2 no PASS->YIELD fallback without give-up [FAILSAFE_HOLD_OR_RETREAT] | committed & target in {MUTEX_APPROACH, MUTEX_YIELD} -> entry_abort | UNSAT | UNSAT | yes |
+| G2c a give-up clears the commitment [FAILSAFE_HOLD_OR_RETREAT] | committed & edge to {MUTEX_APPROACH, MUTEX_YIELD} enabled -> it sets committed := false | UNSAT | UNSAT | yes |
 | G3 no commit under hazard [FAILSAFE_HOLD_OR_RETREAT] | commit edge enabled -> d_min >= d_warning (or >= d_warning_exit from SW) | UNSAT | UNSAT | yes |
 | L1 readable guards exact [FAILSAFE_HOLD_OR_RETREAT] | forall legal obs, edge k: no earlier edge enabled -> (label_k <-> guard_k) | UNSAT | UNSAT | yes |
 | D1 determinism [FORMATION_WAIT_REJOIN] | forall legal obs: at most one outgoing guard enabled | UNSAT | UNSAT | yes |
@@ -88,7 +96,8 @@ Encoding: `holo_fleet/ha/spec.py`
 | H2 d<d_ca=>COLLISION_AVOIDANCE [FORMATION_WAIT_REJOIN] | !fault & d_min < d_ca -> target = COLLISION_AVOIDANCE | UNSAT | UNSAT | yes |
 | H3 warning band=>SEPARATION_WARNING [FORMATION_WAIT_REJOIN] | !fault & d_ca_exit <= d_min < d_warning -> target = SEPARATION_WARNING | UNSAT | UNSAT | yes |
 | G1 MUTEX_PASS entry condition [FORMATION_WAIT_REJOIN] | !committed & guard(->MUTEX_PASS) -> at_queue & !occ_busy & has_prio | UNSAT | UNSAT | yes |
-| G2 no PASS->YIELD fallback [FORMATION_WAIT_REJOIN] | committed -> target not in {MUTEX_APPROACH, MUTEX_YIELD} | UNSAT | UNSAT | yes |
+| G2 no PASS->YIELD fallback without give-up [FORMATION_WAIT_REJOIN] | committed & target in {MUTEX_APPROACH, MUTEX_YIELD} -> entry_abort | UNSAT | UNSAT | yes |
+| G2c a give-up clears the commitment [FORMATION_WAIT_REJOIN] | committed & edge to {MUTEX_APPROACH, MUTEX_YIELD} enabled -> it sets committed := false | UNSAT | UNSAT | yes |
 | G3 no commit under hazard [FORMATION_WAIT_REJOIN] | commit edge enabled -> d_min >= d_warning (or >= d_warning_exit from SW) | UNSAT | UNSAT | yes |
 | L1 readable guards exact [FORMATION_WAIT_REJOIN] | forall legal obs, edge k: no earlier edge enabled -> (label_k <-> guard_k) | UNSAT | UNSAT | yes |
 | D1 determinism [DEGRADED_FORMATION] | forall legal obs: at most one outgoing guard enabled | UNSAT | UNSAT | yes |
@@ -97,14 +106,16 @@ Encoding: `holo_fleet/ha/spec.py`
 | H2 d<d_ca=>COLLISION_AVOIDANCE [DEGRADED_FORMATION] | !fault & d_min < d_ca -> target = COLLISION_AVOIDANCE | UNSAT | UNSAT | yes |
 | H3 warning band=>SEPARATION_WARNING [DEGRADED_FORMATION] | !fault & d_ca_exit <= d_min < d_warning -> target = SEPARATION_WARNING | UNSAT | UNSAT | yes |
 | G1 MUTEX_PASS entry condition [DEGRADED_FORMATION] | !committed & guard(->MUTEX_PASS) -> at_queue & !occ_busy & has_prio | UNSAT | UNSAT | yes |
-| G2 no PASS->YIELD fallback [DEGRADED_FORMATION] | committed -> target not in {MUTEX_APPROACH, MUTEX_YIELD} | UNSAT | UNSAT | yes |
+| G2 no PASS->YIELD fallback without give-up [DEGRADED_FORMATION] | committed & target in {MUTEX_APPROACH, MUTEX_YIELD} -> entry_abort | UNSAT | UNSAT | yes |
+| G2c a give-up clears the commitment [DEGRADED_FORMATION] | committed & edge to {MUTEX_APPROACH, MUTEX_YIELD} enabled -> it sets committed := false | UNSAT | UNSAT | yes |
 | G3 no commit under hazard [DEGRADED_FORMATION] | commit edge enabled -> d_min >= d_warning (or >= d_warning_exit from SW) | UNSAT | UNSAT | yes |
 | L1 readable guards exact [DEGRADED_FORMATION] | forall legal obs, edge k: no earlier edge enabled -> (label_k <-> guard_k) | UNSAT | UNSAT | yes |
 | M1 mutation: commit without priority must violate G1 | expect counterexample | SAT | SAT | yes |
 | M2 mutation: gate pass ignoring collision risk must violate H2 | expect counterexample | SAT | SAT | yes |
+| MA mutation: a give-up that keeps the commitment (the withdrawn retreat) must violate G2c | expect counterexample | SAT | SAT | yes |
 | ML mutation: a wrong readable guard (collision risk drawn at d_warning) must violate L1 | expect counterexample | SAT | SAT | yes |
 
-## Observation consistency (perception -> automaton interface)  (31/31 as expected, 0.7 s)
+## Observation consistency (perception -> automaton interface)  (32/32 as expected, 0.8 s)
 
 Encoding: `holo_fleet/ha/observation_invariants.py + holo_fleet/ha/spec.py`
 
@@ -116,6 +127,7 @@ Encoding: `holo_fleet/ha/observation_invariants.py + holo_fleet/ha/spec.py`
 | O2 I2 the queue point lies in the approach zone: excludes observations admitted by the other invariants | exists obs: others & !(at_queue -> mutex_zone) | SAT | SAT | yes |
 | O2 I3 a passed gate is out of the approach zone: excludes observations admitted by the other invariants | exists obs: others & !(passed -> !mutex_zone) | SAT | SAT | yes |
 | O2 I4 t_ok counts only while the own slot error is ok: excludes observations admitted by the other invariants | exists obs: others & !(t_ok > 0 -> form_err < e_ok) | SAT | SAT | yes |
+| O2 I5 an entry is given up only by a committed drone in the approach zone: excludes observations admitted by the other invariants | exists obs: others & !(entry_abort -> committed & mutex_zone & !passed) | SAT | SAT | yes |
 | O3 non-vacuity [FORMATION_FOLLOW]: every edge enabled on some consistent observation | for each edge e: exists consistent obs with guard(e) | SAT | SAT | yes |
 | O3 non-vacuity [SEPARATION_WARNING]: every edge enabled on some consistent observation | for each edge e: exists consistent obs with guard(e) | SAT | SAT | yes |
 | O3 non-vacuity [COLLISION_AVOIDANCE]: every edge enabled on some consistent observation | for each edge e: exists consistent obs with guard(e) | SAT | SAT | yes |
@@ -142,7 +154,7 @@ Encoding: `holo_fleet/ha/observation_invariants.py + holo_fleet/ha/spec.py`
 | Om2 mutation: v1 constraint passed -> at_queue makes pass_done unreachable | expect UNSAT (reachability lost) | UNSAT | UNSAT | yes |
 | Om3 mutation: no monitor -> an inconsistent observation drives a mission edge | expect counterexample | SAT | SAT | yes |
 
-## P1 inter-vehicle separation  (13/13 as expected, 131.1 s)
+## P1 inter-vehicle separation  (15/15 as expected, 166.9 s)
 
 Encoding: `formal/check_separation.py`
 
@@ -154,6 +166,8 @@ Encoding: `formal/check_separation.py`
 | S1b k-induction: G(d >= d_safe) for all time (k=13) | P(s_0..s_{k-1}) & T -> P(s_k), base case covered by S1a (K >= k) | UNSAT | UNSAT | yes |
 | S1c configured d_warning above the smallest verified one | d_warning >= d_warning_min | HOLDS | HOLDS | yes |
 | S1m mutation: d_warning=1.59 must violate P1 | expect counterexample (trace of d_i, c_i) | SAT | SAT | yes |
+| S1o one-sided reaction at the configured a_brake: reported (not guaranteed) | Init & T^K -> G d >= d_safe, a_pair = a_brake | SAT | SAT | yes |
+| S1d one-sided reaction at the calibrated deceleration 0.743 m/s^2: no violation within 4 s | Init & T^K -> G d >= d_safe, a_pair = a_brake_measured | UNSAT | UNSAT | yes |
 | S2a CA escape, one threat: guaranteed opening per unit speed >= g_min (all patterns) | forall P: certified G(P, e*(P)) >= g_min | HOLDS | HOLDS | yes |
 | S2b SW filter, one threat: velocity <= v_max with guaranteed opening >= v_open (all patterns) | forall P: exists v: min_u -v.u >= v_open | HOLDS | HOLDS | yes |
 | S2c CA escape, two threats within 90 deg: positive guarantee | forall P1,P2 with all region directions <= 90 deg apart: max_e min G > 0 | HOLDS | HOLDS | yes |
@@ -162,7 +176,7 @@ Encoding: `formal/check_separation.py`
 | S3 at most one vertex angle >= 90 deg (pairwise d >= d_safe) | d_ij >= d_safe -> not(angle_i >= 90 and angle_j >= 90) | UNSAT | UNSAT | yes |
 | S4 blackout <= 0.8s starting at d >= 2.34 m keeps d >= d_safe | FAILSAFE hold with unrejected drift w_rel | UNSAT | UNSAT | yes |
 
-## P2 critical-region mutual exclusion  (38/38 as expected, 150.0 s)
+## P2 critical-region mutual exclusion  (38/38 as expected, 147.4 s)
 
 Encoding: `holo_fleet/ha/mutex_rule.py + formal/check_mutex.py`
 
@@ -207,7 +221,7 @@ Encoding: `holo_fleet/ha/mutex_rule.py + formal/check_mutex.py`
 | M3m mutation: belief without latch (FREE when nothing is seen) must violate P2 | expect counterexample | SAT | SAT | yes |
 | M3f scope: an occupant that stops inside the CR (fault) is released by the t_occ_max fallback | expect counterexample: crossing speed >= V_LO is an assumption of M3 | SAT | SAT | yes |
 
-## P3 formation recovery (liveness, ranking functions)  (22/22 as expected, 3.2 s)
+## P3 formation recovery (liveness, ranking functions)  (22/22 as expected, 3.1 s)
 
 Encoding: `formal/check_formation.py`
 
@@ -236,7 +250,7 @@ Encoding: `formal/check_formation.py`
 | Fm1 mutation: no catch-up margin (v_recovery = v_clock) must break F1 (along) | expect counterexample | SAT | SAT | yes |
 | Fm2 mutation: k_slot = 0 must break F2 (lateral) | expect counterexample | SAT | SAT | yes |
 
-## Variant B2 range-bearing beacon (own assumptions; B0 checks unchanged)  (8/8 as expected, 54.2 s)
+## Variant B2 range-bearing beacon (own assumptions; B0 checks unchanged)  (10/10 as expected, 54.4 s)
 
 Encoding: `perception/acoustic.py + perception/acoustic_gate.py + formal/check_acoustic.py`
 
@@ -249,6 +263,8 @@ Encoding: `perception/acoustic.py + perception/acoustic_gate.py + formal/check_a
 | B2-M4g domain boundary, n=4: refused by the planner (queue points beyond queue_lateral_max), reported | exists 3 consecutive clear fixes with s_lower > exit face before the path end; queued drones excluded at t_lc | HOLDS | HOLDS | yes |
 | B2-M4g domain boundary, n=5: refused by the planner (queue points beyond queue_lateral_max), reported | exists 3 consecutive clear fixes with s_lower > exit face before the path end; queued drones excluded at t_lc | VIOLATED | VIOLATED | yes |
 | B2-M4g domain boundary, n=6: refused by the planner (queue points beyond queue_lateral_max), reported | exists 3 consecutive clear fixes with s_lower > exit face before the path end; queued drones excluded at t_lc | VIOLATED | VIOLATED | yes |
-| B2-S acoustic fixes never reach separation, collision avoidance, precedence or the sonar witness; the latch uses them only with the FRONT corridor empty | AST: no acoustic name in the safety / precedence modules; guarded call | HOLDS | HOLDS | yes |
+| B2-P payload soundness: a sender truly in the CR whose estimate errs within its sent bound (cylinder |e_h| <= h, |e_z| <= z, radius hypot(h, z), through the 56-bit packet) is never cleared by the payload rule nor placed beyond the exit face | forall sampled centres in the CR and errors in the cylinder: rep_cr_possible and not A3 | HOLDS | HOLDS | yes |
+| B2-Pm mutation: the radius max(h, z) (not a ball over the cylinder) must clear an occupant | expect counterexample | VIOLATED | VIOLATED | yes |
+| B2-S acoustic fixes never reach separation, collision avoidance, precedence or the sonar witness; acoustic exit evaluation requires the FRONT corridor empty (H6: the payload balls reach the map fit only as its identity premise, through Perception, never as a position input) | AST: no acoustic name in the safety / precedence modules; guarded call | HOLDS | HOLDS | yes |
 
 **Overall: ALL CHECKS AS EXPECTED**
