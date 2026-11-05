@@ -219,3 +219,23 @@ def test_a_neighbour_reported_at_the_gate_is_delayed_not_lost():
         per.acoustic.update(1.25, [(k, t_arr, r, az, el, pl.encode(fr, q, 0.5))], me, 0.0, 0.5)
     assert per._delayed_at_gate(1, 1.3) and not per._delayed_at_gate(2, 1.3)
     assert per.gate_delay_max > 60.0
+
+
+def test_a_corridor_echo_no_fleet_drone_can_have_produced_does_not_set_the_latch():
+    from holo_fleet.perception.targets import Target
+
+    p = np.array([-4.6, 0., -5.])
+    tracker, gp = _observer(p)
+    gp.acoustic_exit.others = [1]                              # one other drone in this plan
+    echo = Target(frozenset({"FRONT"}), 4.0, 4.0, 0., 0., "DYNAMIC")
+    _hear(tracker, p, 20.0, [-4.6, 20.0, -5.], 0.5)            # heard 20 m to the side: cannot be the echo
+    o = gp.update(2.1, p, 0., [echo], {})
+    assert gp.phantom and o.occ_state == "FREE"
+    tracker2, gp2 = _observer(p)
+    gp2.acoustic_exit.others = [1]
+    _hear(tracker2, p, 4.6, [0.0, 0., -5.], 0.5)               # heard in the CR: the echo may be it
+    o2 = gp2.update(2.1, p, 0., [echo], {})
+    assert not gp2.phantom and o2.occ_state == "BUSY"
+    tracker3, gp3 = _observer(p)                               # nobody heard: nothing excluded, the sonar rules
+    gp3.acoustic_exit.others = [1]
+    assert gp3.update(2.1, p, 0., [echo], {}).occ_state == "BUSY"

@@ -183,6 +183,7 @@ class Perception:
         self.acoustic_lag: Dict[int, float] = {}       # B2: slot -> lag behind its slot beyond the noise band [m]
         self.acoustic_ahead: List[int] = []            # B2: neighbours heard well ahead on their lane (veto, bounded)
         self.payload_present: List[int] = []           # H6: A_CONFIRM payloads of one track near the slot (rejoined)
+        self.present_since: Dict[int, float] = {}      # slot -> start of the current payload_present run
         self.ahead_since: Dict[int, float] = {}
         self.gate_delay: Dict[int, float] = {}         # B2: slot -> time its vacancy timer was held (delayed at gate)
         G = cfg.gate
@@ -240,8 +241,17 @@ class Perception:
                 self.missing_state[k] = False              # back, confirmed
             if not self.missing_state.get(k):
                 self.missing_t[k] = 0.0
+            if k in self.payload_present:
+                self.present_since.setdefault(k, t)
+            else:
+                self.present_since.pop(k, None)
+            back = k in self.present_since and t - self.present_since[k] >= fr.t_reinclude - 1e-9
             if k in self.vacant:
-                if confirmed and t - self.confirmed_since[k] >= fr.t_reinclude - 1e-9:
+                # re-included after t_reinclude of a sonar confirmation, or of identified fixes within e_lost of the
+                # slot together with the drone's own reported position there (payload_present; never an
+                # unidentified echo).  A healthy drone delayed beyond its vacancy timer rejoins instead of staying
+                # excluded for good
+                if back or (confirmed and t - self.confirmed_since[k] >= fr.t_reinclude - 1e-9):
                     del self.vacant[k]
                     self.missing_state[k], self.missing_t[k] = False, 0.0
                     self.events.append({"t": t, "type": "SLOT_REOCCUPIED", "slot": k})

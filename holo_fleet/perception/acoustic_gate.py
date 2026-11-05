@@ -95,6 +95,28 @@ class AcousticExit:
         a = g.vec_to_gate_frame(R @ AXES["FRONT"])
         self.sighting = {"t": t, "m": m, "a": a / np.linalg.norm(a), "ranges": [float(r) for r in ranges]}
 
+    def no_fleet_drone(self, t: float, g, p: np.ndarray, yaw: float, ranges: List[float]) -> bool:
+        """The corridor echo of this capture cannot be a fleet drone: every other drone of the plan is EXCLUDED at t
+        (as A1 at t_lc: an accepted fix within tie_window_s whose region, grown by its motion, can neither be a hull in
+        the CR nor the hull of one of these echoes, and no contradictory rejected fix that could).  A4 applied at the
+        sighting instant: P2 concerns the fleet's drones, and the echo stays an obstacle for the separation layer.
+        Without a fix of every other drone (a silent channel) nothing is excluded: the sonar latch rules apply."""
+        if not self.others:
+            return False
+        a = self.cfg.acoustic
+        saved = self.sighting
+        self.note_corridor(t, g, p, yaw, ranges)
+        try:
+            for j in self.others:
+                win = self.tracker.all_fixes(j, t - a.tie_window_s, t)
+                acc = [f for f in win if f.accepted and not self._could_be_occupant(g, f, t)]
+                contra = [f for f in win if not f.accepted and self._could_be_occupant(g, f, t)]
+                if not acc or contra:
+                    return False
+            return True
+        finally:
+            self.sighting = saved
+
     # ------------------------------------------------------------------ geometry
     def _cr_possible(self, q: np.ndarray, rho: float) -> bool:
         """Some point within rho of a sample q (gate frame) can be the centre of a hull in the CR."""

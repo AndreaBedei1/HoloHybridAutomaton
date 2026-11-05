@@ -86,6 +86,7 @@ class GatePerception:
         self.occ_state = "FREE"
         self.last_corridor_t = -1e9
         self.suspects: set = set()          # B2: drones heard possibly inside during the current BUSY episode
+        self.phantom, self.phantoms = False, 0   # B2: corridor echoes no fleet drone can have produced (count)
         self.busy_since = -1e9
         self.exit_seen_t = -1e9
         self.occ_timeouts = 0
@@ -179,6 +180,13 @@ class GatePerception:
         o.has_prio = self.prio_since is not None and (t - self.prio_since) >= G.t_clear
         # ---------------------------------------------------------------- occupancy belief
         corridor = [tg for tg in targets if "FRONT" in tg.pattern and r_near <= tg.r_min <= r_far]
+        # B2: an echo that no fleet drone can have produced (every other drone positively elsewhere) is no occupant;
+        # under MEDIUM sonar noise such phantom echoes refreshed the latch every few seconds and blocked the queue
+        self.phantom = bool(corridor and self.acoustic_exit is not None
+                            and self.acoustic_exit.no_fleet_drone(t, g, p, yaw, [tg.r_min for tg in corridor]))
+        if self.phantom:
+            self.phantoms += 1
+            corridor = []
         heard = self.acoustic_exit is not None and self.acoustic_exit.heard_inside(t, g)
         if corridor:
             self.last_corridor_t = t
