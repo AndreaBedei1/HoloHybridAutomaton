@@ -206,10 +206,10 @@ def worker(args) -> int:
     terminal = {"profile": args.profile} if args.terminal else None
     factor = float(os.environ.get("HOLO_FLEET_HORIZON_FACTOR", "1"))
     if terminal is not None and factor != 1.0:          # exploratory horizon (plan H.2: 3x), never for results
-        from holo_fleet.referee.criteria import deadline_v3
+        from holo_fleet.referee.criteria import horizon_v5
         from holo_fleet.sim.scenarios import SCENARIOS
 
-        terminal["deadline_s"] = round(factor * deadline_v3(SCENARIOS[args.scenario](DEFAULT), DEFAULT, args.profile), 1)
+        terminal["deadline_s"] = round(factor * horizon_v5(SCENARIOS[args.scenario](DEFAULT), DEFAULT, args.profile), 1)
     runner.run(args.scenario, d.parent, headless=True, run_id=d.name, frame_every_s=float("inf"), cfg=cfg,
                noise=profile(prof), seed=args.seed, noise_drones=scope_drones(args.scenario, scope) if scope else None,
                terminal=terminal)
@@ -577,7 +577,9 @@ def main() -> int:
         from holo_fleet.config import DEFAULT
         from holo_fleet.referee.criteria import deadline_v3
 
-        dur = deadline_v3(SCENARIOS[sc](DEFAULT), DEFAULT, prof) * float(os.environ.get("HOLO_FLEET_HORIZON_FACTOR", "1"))
+        from holo_fleet.referee.criteria import horizon_v5
+
+        dur = horizon_v5(SCENARIOS[sc](DEFAULT), DEFAULT, prof) * float(os.environ.get("HOLO_FLEET_HORIZON_FACTOR", "1"))
         res, attempt = None, 0
         while attempt <= args.retries:
             attempt += 1

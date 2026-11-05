@@ -89,11 +89,11 @@ def run(name: str, out_root: Path, headless: bool = True, run_id: Optional[str] 
     sc.sim.noise_drones = None if noise_drones is None else tuple(int(k) for k in noise_drones)
     monitor = None
     if terminal is not None:
-        from holo_fleet.referee.criteria import CRITERIA_VERSION, deadline_v3, nominal_end_s
+        from holo_fleet.referee.criteria import CRITERIA_VERSION, horizon_v5, nominal_end_s
         from holo_fleet.referee.terminal import TerminalMonitor
 
         t_nom = nominal_end_s(sc)                   # the planned end: the same T_nom as the offline replay
-        duration = float(terminal.get("deadline_s") or deadline_v3(sc, cfg, terminal.get("profile")))
+        duration = float(terminal.get("deadline_s") or horizon_v5(sc, cfg, terminal.get("profile")))
         sc.sim.duration_s = duration                # noise windows, stress and logs cover the whole horizon
     run_id = run_id or name
     out = Path(out_root) / run_id

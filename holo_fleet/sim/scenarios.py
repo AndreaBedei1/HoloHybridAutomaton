@@ -72,6 +72,7 @@ class Scenario:
     focus: str = ""                      # what to look at (UI)
     cfg_patch: Dict = field(default_factory=dict)   # FleetConfig fields overridden for this scenario
     automaton_drone: Optional[int] = None  # drone of the fleet view's automaton panel (UI; default: the camera drone)
+    safety_only: bool = False              # mission physically infeasible by design: judged on safety (criteria v5)
 
     @property
     def duration_s(self) -> float:
@@ -444,6 +445,7 @@ def gate_stalled_occupant(cfg: FleetConfig = DEFAULT) -> Scenario:
     sc.focus = "stalled occupant: occupancy latch, heard-inside veto, stage-2 hold, unknown occupant never FREE"
     sc.sim.faults = ({"drone": "drone_0", "type": "THRUSTER_FAILURE", "t_on": 1e9, "t_off": None,
                       "trigger": "mid_cr:G06"},)
+    sc.safety_only = True          # the gate is physically blocked: judged on safety over the horizon (criteria v5)
     return sc
 
 

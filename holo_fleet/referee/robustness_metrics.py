@@ -11,7 +11,8 @@ and the run class of criteria v3 (referee/criteria.py):
 * UNSAFE_ACTION   no violation, but an entry into the CR was authorised while another drone was truly in it (E4,
                   referee/gate_events.py: an unsafe control action in the STPA sense);
 * SPEC_VIOLATION  a determinism or observation-consistency violation of the automaton at run time;
-* STALLED         a bounded-response requirement of the gate was violated (gate liveness), whether or not the run
+* STALLED         (v4 only; v5 reports the gate bounded response as a metric, liveness being eventual) a
+                  bounded-response requirement of the gate was violated (gate liveness), whether or not the run
                   completed later;
 * PASS            every v3 requirement reached by the deadline (replay of the TerminalMonitor on the logs);
 * CENSORED        historical runs only: the log ends (criteria v2 stop) before the v3 deadline without an outcome;
@@ -40,7 +41,8 @@ from typing import Dict, List, Optional
 import numpy as np
 
 from holo_fleet.config import DEFAULT
-from holo_fleet.referee.criteria import (CRITERIA_VERSION, E_TOL_M, deadline_terms, deadline_v3, profile_family,
+from holo_fleet.referee.criteria import (CRITERIA_VERSION, E_TOL_M, deadline_terms, deadline_v3, horizon_v5,
+                                         profile_family,
                                          t_hold_s)
 from holo_fleet.referee.gate_events import gate_events
 
@@ -353,7 +355,7 @@ def analyze_run(run_dir: Path, reference: Optional[Dict] = None, cfg=DEFAULT, pr
                   and not out["automaton"]["observation_consistency_violations"])
     out["requirements"] = {r: r not in term["missing"] for r in term["required"]}
     if sc.judged_gates:
-        out["requirements"]["gate liveness"] = not ge.get("stalled")
+        out["gate_bounded_response"] = not ge.get("stalled")     # reported (v5: not a requirement, liveness is eventual)
     out["requirements"]["automaton_consistent"] = consistent
     out["failsafe_at_end"] = any(modes[-1, k] == FS for k in healthy) if m else False
     fs_last = {}
@@ -374,8 +376,6 @@ def analyze_run(run_dir: Path, reference: Optional[Dict] = None, cfg=DEFAULT, pr
         cls = "UNSAFE_ACTION"
     elif not consistent:
         cls = "SPEC_VIOLATION"
-    elif ge.get("stalled"):
-        cls = "STALLED"                        # a bounded-response requirement of the gate violated
     elif term["outcome"] == "SUCCESS":
         cls = "PASS"
     elif term["outcome"] == "CENSORED":
@@ -385,6 +385,9 @@ def analyze_run(run_dir: Path, reference: Optional[Dict] = None, cfg=DEFAULT, pr
     else:
         cls = "INCOMPLETE"                     # requirements missed at the deadline
     out["class"] = cls
+    dl0 = deadline_v3(sc, cfg, profile)
+    out["on_time"] = bool(term["outcome"] == "SUCCESS" and term.get("t_end") is not None and float(term["t_end"]) <= dl0)
+    out["deadline_a_priori_s"] = dl0
     out["criteria"] = CRITERIA_VERSION
     out["conservative_events"] = {"false_vacancy": fm["false_vacancy"], "failsafe_sensor_fault_entries": len(fs_sensor),
                                   "failsafe_sensor_fault_at_end": [names[k] for k in fs_end],
@@ -442,7 +445,7 @@ def replay_terminal(sc, cfg, names, t, P, states, modes, profile, logged: Option
     ref = Referee(names, sc.template.offsets() if sc.template is not None else None, sc.path, sc.judged_gates, cfg,
                   sc.formation_enabled, clock=sc.plans[0].clock if sc.formation_enabled else None, faults=faults)
     v3 = bool(logged) and logged.get("criteria") in ("v3", CRITERIA_VERSION)   # same deadline and monitor
-    dl = float(logged["deadline_s"]) if v3 else deadline_v3(sc, cfg, profile)
+    dl = float(logged["deadline_s"]) if v3 else horizon_v5(sc, cfg, profile)
     mon = TerminalMonitor(sc, cfg, names, dl)
     z = np.zeros((n, 3))
     hit = {}                                     # the logged collision-sensor edges, at their own samples

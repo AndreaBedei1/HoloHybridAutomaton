@@ -58,7 +58,11 @@ from typing import Dict, List, Optional
 
 import numpy as np
 
-CRITERIA_VERSION = "v4"   # v4 (2026-11-04): unsafe-action disjunction E2.to_free | E3 | E4, inclusive tolerance,
+CRITERIA_VERSION = "v5"   # v5 (2026-11-05, the user's decision after the v4 campaign): liveness is eventual - no
+                          # time bound on a gate passage enters the class; the run horizon is HORIZON_FACTOR x the
+                          # a-priori deadline (which stays the reported "on time" reference); scenarios whose mission
+                          # is physically infeasible are judged on safety only.
+# previous: "v4"   # v4 (2026-11-04): unsafe-action disjunction E2.to_free | E3 | E4, inclusive tolerance,
                           # SAFE_DEGRADED with the hold, crossing obligation from the first commit, bypass participation
 E_TOL_M = 1.0              # [REQ] formation tolerance (agreed for v3; the controller keeps e_ok = 0.5 as its margin)
 GIVEWAY_OFFSET_M = 2.5     # [PROT] = control/flows.Flows.traffic_offset(offset_max) (tests keep them equal)
@@ -182,3 +186,12 @@ def deadline_terms(sc, cfg, profile: Optional[str] = None) -> Dict[str, float]:
 
 def deadline_v3(sc, cfg, profile: Optional[str] = None) -> float:
     return round(sum(deadline_terms(sc, cfg, profile).values()), 1)
+
+
+HORIZON_FACTOR = 3.0      # [PROT] the exploratory horizon of the plan (H.2): eventual completion is observed up to here
+
+
+def horizon_v5(sc, cfg, profile: Optional[str] = None) -> float:
+    """Simulation horizon of a run: HORIZON_FACTOR x the a-priori deadline.  A run ends earlier at SUCCESS or FAILURE;
+    reaching the horizon without SUCCESS is INCOMPLETE (not observed to complete), never a proof of a deadlock."""
+    return round(HORIZON_FACTOR * deadline_v3(sc, cfg, profile), 1)
