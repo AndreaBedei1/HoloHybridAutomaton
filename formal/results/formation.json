@@ -31,7 +31,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 0.01,
+      "seconds": 0.013,
       "counterexample": null,
       "note": "e* = 0.439 m (A4 needs the onboard form_err below e_ok = 0.5 m)"
     },
@@ -64,7 +64,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 0.01,
+      "seconds": 0.011,
       "counterexample": null,
       "note": "e* = 0.355 m (A4 needs the onboard form_err below e_ok = 0.5 m)"
     },
@@ -75,7 +75,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 0.01,
+      "seconds": 0.008,
       "counterexample": null,
       "note": ""
     },
@@ -119,7 +119,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 0.008,
+      "seconds": 0.007,
       "counterexample": null,
       "note": ""
     },
@@ -130,7 +130,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 0.01,
+      "seconds": 0.008,
       "counterexample": null,
       "note": ""
     },
@@ -141,7 +141,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 0.008,
+      "seconds": 0.009,
       "counterexample": null,
       "note": ""
     },
@@ -152,7 +152,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 0.008,
+      "seconds": 0.01,
       "counterexample": null,
       "note": ""
     },
@@ -163,9 +163,9 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 0.026,
+      "seconds": 0.025,
       "counterexample": null,
-      "note": "perception.track_missing (timer, latch) + spec guards; frozen steps (planned holds, drone not on its slot) do not count, A5"
+      "note": "perception.track_missing (timer, latch) + spec guards; frozen steps (planned holds, drone not on its slot) do not count, A5; with the B2 gate-delay hold the bound is F6g"
     },
     {
       "prop": "F6r ranking: t_rejoin - tau >= 0 and decreases by dt per running step until the slot is vacant",
@@ -174,8 +174,35 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 0.0,
+      "seconds": 0.001,
       "counterexample": null,
+      "note": ""
+    },
+    {
+      "prop": "F6g bounded waiting with the gate-delay hold: max(H - h, 0) + (t_rejoin - tau) >= 0 strictly decreases every running step (by dt on a timer step, by min(dt, H - h) > 0 on a hold step, at most ceil(H / dt) of them), so a neighbour that never reappears is vacant within t_rejoin + gate_delay_max + dt",
+      "formula": "h >= 0 & 0 <= tau < t_rejoin & step -> R' < R & R' >= 0",
+      "encoding": "formal/check_formation.py (abstraction of Flows.formation) + holo_fleet/ha/spec.py",
+      "expect": "unsat",
+      "verdict": "unsat",
+      "passed": true,
+      "seconds": 0.004,
+      "counterexample": null,
+      "note": "perception.track_missing (gate_delay never resets, so the hold is spent once)"
+    },
+    {
+      "prop": "F6gm mutation: a hold without its bound H may never let the timer run (vacancy never declared)",
+      "formula": "expect counterexample",
+      "encoding": "formal/check_formation.py (abstraction of Flows.formation) + holo_fleet/ha/spec.py",
+      "expect": "sat",
+      "verdict": "sat",
+      "passed": true,
+      "seconds": 0.002,
+      "counterexample": {
+        "h": 0.0,
+        "hm": 0.1,
+        "tau": 0.0,
+        "tau1": 0.0
+      },
       "note": ""
     },
     {
@@ -185,7 +212,7 @@
       "expect": "sat",
       "verdict": "sat",
       "passed": true,
-      "seconds": 0.081,
+      "seconds": 0.076,
       "counterexample": {
         "at_queue_w0": false,
         "at_queue_w1": false,
@@ -597,7 +624,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 0.016,
+      "seconds": 0.014,
       "counterexample": null,
       "note": "head current admitted at V; xs: one-axis through-water speed at the nominal authority"
     },
@@ -622,7 +649,7 @@
       "expect": "sat",
       "verdict": "sat",
       "passed": true,
-      "seconds": 0.008,
+      "seconds": 0.007,
       "counterexample": {
         "h": 0.5,
         "xs": 0.7126002621221232
@@ -636,11 +663,11 @@
       "expect": "sat",
       "verdict": "sat",
       "passed": true,
-      "seconds": 0.008,
+      "seconds": 0.005,
       "counterexample": {
         "e": 0.6666666666666666,
-        "sigma_dot": -0.0022731818181818183,
-        "v_ref": 0.274995,
+        "sigma_dot": 0.136,
+        "v_ref": 0.2,
         "w": -0.05
       },
       "note": ""
@@ -652,11 +679,11 @@
       "expect": "sat",
       "verdict": "sat",
       "passed": true,
-      "seconds": 0.007,
+      "seconds": 0.005,
       "counterexample": {
-        "corr": 0.1,
+        "corr": -4.1666666666666667e-07,
         "e": -0.4,
-        "w": -0.05
+        "w": -5.416666666666667e-06
       },
       "note": ""
     }
