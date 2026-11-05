@@ -1,3 +1,18 @@
+# v6 amendment (2026-11-06): behaviour fixes after the v5 campaign, same criteria
+
+The v5 campaign (tag `b2-freeze-v5`, seeds 200-205) was stopped by the user at 201 of 552 runs: CLEAN 69/69 and
+LOW-ALL 69/69 PASS, MEDIUM-ONE with 7 INCOMPLETE (no safety event).  Their analysis showed two design defects and one
+over-conservative bound; fixed, independently reviewed, and verified on those 7 runs (7/7 PASS):
+* phantom corridor echoes (MEDIUM sonar noise) that no fleet drone can have produced no longer set the occupancy
+  latch: every accepted fix of every other drone within the tie window must exclude it, the latest fresh (A4 at the
+  sighting; formal B2-PE, randomized: an occupant truly in the CR is never excluded);
+* a healthy drone wrongly declared vacant is re-included on identified fixes and its own payload near its slot;
+* realistic navigation bound: model-aided dead reckoning during DVL outages (calibrated commanded-velocity model,
+  low level in feedforward + frozen integral), error per outage = the measured maximum for its length
+  (results/calibration/dr_model_calibration.json), outages within 10 s summed linearly, clusters root-sum-square,
+  worst case beyond the table or when the model is not used.  Coverage is logged in every run.
+Criteria v5 unchanged.  Campaign: same 8 cells and sizes, seeds 300-302 / 300-305, hardest cells first.
+
 # Acceptance criteria v5 of the B2-only validation campaign
 
 Status: written 2026-11-05 after the v4 campaign (tag `b2-freeze-v4`, stopped by the user at 404 of 552 runs), by the
