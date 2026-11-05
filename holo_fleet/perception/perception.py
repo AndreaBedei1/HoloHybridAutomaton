@@ -54,6 +54,12 @@ Variant B2 (range-bearing beacon, perception/acoustic.py).  Identified fixes ent
   directly: it replaces the range-bearing point estimate for the lag and the "ahead" veto, with the band e_ok (the
   neighbour's own in-formation tolerance) plus its largest speed deviation from the clock over the payload's age.
   A_CONFIRM payloads of one track farther than e_lost + A_DISPLACED_MARGIN + band from the slot are rule A-D;
+* delayed at the gate (vacancy): a missing neighbour whose fresh consistent payload places it, ball included, in the
+  approach zone of a gate of the plan is delayed by the mutual exclusion, not lost: its vacancy timer does not run,
+  for at most the protocol's slowest serial passage of the whole fleet (n x (L / v_pass + t_occ_max + t_clear), the
+  gate term of the a-priori deadline); beyond that the ordinary timer resumes, so a drone that fails at the gate
+  is still declared vacant.  (A neighbour waiting its turn at a slow MEDIUM gate was declared vacant by a drone
+  that had passed: a false vacancy, development and v4 campaign runs.)
 * own navigation bound (perception/nav.py, NavBound): propagated every step, grown by every map-aided correction,
   and sent in the B2 beacon payload (``payload``, H6).
 Without receptions (B0, a silent channel) every one of these is inactive and the perception is the sonar one.
@@ -176,6 +182,10 @@ class Perception:
         self.acoustic_lag: Dict[int, float] = {}       # B2: slot -> lag behind its slot beyond the noise band [m]
         self.acoustic_ahead: List[int] = []            # B2: neighbours heard well ahead on their lane (veto, bounded)
         self.ahead_since: Dict[int, float] = {}
+        self.gate_delay: Dict[int, float] = {}         # B2: slot -> time its vacancy timer was held (delayed at gate)
+        G = cfg.gate
+        n = len(plan.slots)
+        self.gate_delay_max = n * ((G.queue_lateral_max + G.exit_s - plan.queue_s) / G.v_pass + G.t_occ_max + G.t_clear)
 
     # ------------------------------------------------------------------ formation reference
     def slot_reference(self, t_form: float, sigma: float = 0.0):
@@ -232,6 +242,9 @@ class Perception:
                     self.missing_state[k], self.missing_t[k] = False, 0.0
                     self.events.append({"t": t, "type": "SLOT_REOCCUPIED", "slot": k})
             elif self.missing_state.get(k) and k in form.required and in_formation and moving:
+                if self._delayed_at_gate(k, t) and self.gate_delay.get(k, 0.0) < self.gate_delay_max:
+                    self.gate_delay[k] = self.gate_delay.get(k, 0.0) + dt     # waiting its turn: not lost
+                    continue
                 self.missing_t[k] = self.missing_t.get(k, 0.0) + dt
                 if self.missing_t[k] >= fr.t_rejoin - 1e-9:
                     self.vacant[k] = t
@@ -241,6 +254,21 @@ class Perception:
         form.neighbors_ok = not [k for k in form.missing if k not in self.vacant]
 
     # ------------------------------------------------------------------ B2: identified neighbours
+    def _delayed_at_gate(self, k: int, t: float) -> bool:
+        """Neighbour k's latest fresh consistent payload places it (ball included) in the approach zone of a gate."""
+        if not self.acoustic.enabled or not self.plan.gates:
+            return False
+        f = self.acoustic.latest(k, t, self.cfg.acoustic.fresh_s)
+        if f is None or not f.rep_ok:
+            return False
+        G, rad = self.cfg.gate, f.rep_radius(t, self.acoustic.v_bound)
+        half_w = max(G.corridor_half_width, G.queue_lateral_max + 1.0)
+        for g in self.plan.gates:
+            s, l, _dz = (float(v) for v in g.to_gate_frame(f.rep.p))
+            if (self.plan.queue_s - G.approach_len + rad <= s <= G.exit_s - rad and abs(l) <= half_w - rad):
+                return True
+        return False
+
     def _payload_balls(self, t: float):
         """Fresh consistent payload balls of EVERY other drone of the plan, or None if one is not accounted for."""
         if not self.acoustic.enabled or not self.acoustic.slot_of:

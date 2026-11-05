@@ -194,3 +194,28 @@ def test_stage_two_entry_is_held_while_an_occupant_is_merely_unheard():
     assert not gp.update(2., p, 0., [], {}).entry_ok
     o = gp.update(2. + B2.acoustic.fresh_s + 1.0, p, 0., [], {})   # silent (an outage longer than fresh_s)
     assert not gp.acoustic_exit.heard_inside(2. + B2.acoustic.fresh_s + 1.0, GATE) and not o.entry_ok
+
+
+def test_a_neighbour_reported_at_the_gate_is_delayed_not_lost():
+    from holo_fleet.perception.perception import Perception
+    from holo_fleet.sim.scenarios import SCENARIOS
+
+    sc = SCENARIOS["gate_single"](B2)
+    plan = sc.plans[0]
+    per = Perception(plan, B2)
+    per.acoustic.set_identities({0: 0, 1: 1, 2: 2})
+    g = plan.gates[0]
+    left = np.array([-g.axis[1], g.axis[0], 0.0])
+    me = g.center + (plan.queue_s - 1.0) * np.asarray(g.axis, float)
+    queued = g.center + plan.queue_s * np.asarray(g.axis, float) - 3.5 * left     # a neighbour at its queue point
+    far = g.center - 30.0 * np.asarray(g.axis, float)                              # far behind: not at the gate
+    per.acoustic.update(0.0, (), me, 0.0, 0.5)
+    for i, (k, q) in enumerate(((1, queued), (2, far))):
+        r = float(np.linalg.norm(q - me))
+        d = q - me
+        az, el = math.atan2(d[1], d[0]), math.asin(d[2] / r)
+        t_arr = 1.0
+        fr = pl.frame_index(t_arr - r / B2.beacon.sound_speed, B2.beacon.period_s)
+        per.acoustic.update(1.25, [(k, t_arr, r, az, el, pl.encode(fr, q, 0.5))], me, 0.0, 0.5)
+    assert per._delayed_at_gate(1, 1.3) and not per._delayed_at_gate(2, 1.3)
+    assert per.gate_delay_max > 60.0
