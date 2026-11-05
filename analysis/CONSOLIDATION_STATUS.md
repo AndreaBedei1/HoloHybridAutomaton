@@ -1,5 +1,35 @@
 # B2 consolidation: implementation status
 
+**Operational update, 2026-11-04 evening (H6 payload phase, continued by Claude at the user's request):**
+
+- **Why H6.** Codex executed a counterexample: range-bearing fixes alone cannot separate an occupied CR from a cleared one
+  (results/dev/issue3/indistinguishable_occupancy.json); the full-region veto is safe but stalled CLEAN gate_single.
+- **H6 (commits e6eb5db, 6b2d596, c69643b, 443adf6):** every ping carries a 56-bit packet (perception/payload.py):
+  onboard mission-frame position, an error-ball bound from NavBound (perception/nav.py, declared MEDIUM sensor
+  envelope, monotone, integrity flag), 2-bit TDMA frame, CRC-16; 129 ms of the 167 ms slot at 1 kbit/s net (an
+  unverified bench assumption, stated).  Strictly one-way.  Receivers attach a payload only if consistent with the
+  range-bearing region; gate rules use the intersection (B2-P randomized check + mutation B2-Pm); an unknown occupant
+  never becomes FREE by timeout and holds the stage-2 entry; veto hysteresis; acoustic-only episodes need A2 of the
+  drones heard inside; relocalization beside the opening accepted only when payload balls exclude every other drone
+  (evaluated at the uncorrected pose); formation lag/ahead/A-D from the neighbours' reported positions.
+- **Issue 1:** automaton edge pass_abort (MUTEX_PASS -> MUTEX_APPROACH, committed cleared), observation entry_abort,
+  invariant I5, G2/G2c restated, mutation MA; give-up only behind s = -(cr_half_len + R_OUT + 1.0 m), never once
+  admitted.  Determinism 104/104, observations 32/32.  Livelock from a persistent stage-2 cause documented (M5).
+- **Referee v4:** UNSAFE_ACTION = E2.to_free | E3 | E4; inclusive 1 m; SAFE_DEGRADED with the hold; crossing
+  obligation from the first commit; bypass participation; nav-bound coverage per run (NAV_BOUND_PREMISE_VIOLATED).
+- **Scenario gate_stalled_occupant** (ground-truth mid-CR thruster loss) and the pre-registered campaign
+  (docs/ACCEPTANCE_CRITERIA.md v4, `--phase b2final`, 920 runs on seeds 100-109).
+- **Reviews:** two independent reviewers (formal; underwater acoustics/methodology), two rounds each; every blocking
+  finding fixed or recorded (bound reset removed as unsound; CRC-16; ball over h and z; sticky give-up flag; stage-2
+  unknown occupant).  Open, stated: modem air time unbench-tested; payload loss is a stress knob; HIGH outside the
+  envelope; give-up livelock; a drone silent after a possibly-inside fix blocks the gate.
+- **Evidence so far:** smoke B2_CLEAN gate_single s0 PASS at T_nom with the payload (Codex's candidate STALLED); payload
+  off (B2NP_) on the same case STALLED; NavBound never exceeded in 303 231 baseline samples (offline) nor in the
+  runs logged so far.  Batch 1 was mostly INVALID (engine slots busy: workers now wait for a slot).
+
+The entries below are history.
+
+
 **Operational update, 2026-11-04:** `CODEX_HANDOFF_B2_CONSOLIDATION.md`, plus the user's latest instructions,
 supersede the historical entries below. Starting head: `466037b`, branch `b2-consolidation`.
 
