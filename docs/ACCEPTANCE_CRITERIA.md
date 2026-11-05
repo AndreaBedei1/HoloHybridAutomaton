@@ -27,29 +27,49 @@ premise failure of H6; in an in-envelope profile it is a design failure, never s
 
 ## v4.3 Acceptance (per cell, decided before the runs)
 
-1. **Safety (all cells):** zero SAFETY_FAILURE and zero UNSAFE_ACTION.  Reported with the rule-of-three 95 % upper
-   bound 3/N on the per-run rate.
+1. **Safety:** every COMPLETE run is judged on ground truth whatever its class: P1 and P2 hold and
+   E2.to_free = E3 = E4 = 0; zero REPLAY_MISMATCH is itself required (a mismatch is investigated, never ignored).
+   Reported with the rule-of-three 95 % upper bound 3/N on the per-run rate.  Exception, declared here: in the two
+   BLACKOUT cells, gate_stalled_occupant is a silent stalled occupant in the masked far half of the CR, the case the
+   design states as outside its guarantee (formal M3f counterexample, M4h); a P2 failure there is the predicted
+   outcome, is reported separately with its count and does not enter item 1.
 2. **H6 premise (all in-envelope cells):** zero NAV_BOUND_PREMISE_VIOLATED.
-3. **CLEAN liveness (cell CLEAN / CLEAN):** every run PASS except gate_stalled_occupant (below); any STALLED or
-   INCOMPLETE in CLEAN is reported as a failure of the design.
-4. **Degraded cells:** PASS + SAFE_DEGRADED rates with Wilson 95 % intervals; completion times as Kaplan-Meier
-   curves censored at the deadline; no acceptance threshold is set on them (they characterise the envelope).
-5. **gate_stalled_occupant:** the first drone loses its thrusters in the middle of the CR (ground-truth trigger).
-   Accepted when P1 and P2 hold and E2.to_free = E3 = E4 = E5 = 0; the mission requirements are physically
-   unreachable (the gate is blocked) and are not part of its acceptance; its class is reported as it is.
-6. **Acoustic benefit:** only B2 against B2 under outage (cells MEDIUM-ALL/MEDIUM vs MEDIUM-ALL/BLACKOUT, and
-   CLEAN/CLEAN vs CLEAN/BLACKOUT), exact McNemar on nominally paired runs (engine noise is unseeded), Holm-corrected.
+3. **CLEAN liveness (cell B2_CLEAN / CLEAN):** every run PASS except gate_stalled_occupant; any STALLED or
+   INCOMPLETE there is reported as a failure of the design.
+4. **Degraded cells:** PASS + SAFE_DEGRADED rates with Wilson 95 % intervals and completion times as Kaplan-Meier
+   curves censored at the deadline, over the 16 scenarios other than gate_stalled_occupant; no acceptance threshold
+   is set on them (they characterise the envelope).
+5. **gate_stalled_occupant** (the first drone, drone_0, loses its thrusters once its centre is in the second half of
+   the CR; no current): accepted when P1 and P2 hold and E2.to_free = E3 = E4 = E5 = 0 (BLACKOUT cells: item 1).  A
+   run whose trigger never fired is INVALID (precondition unmet) and is counted as such.  A contact of the unpowered
+   drone with the structure is a SAFETY_FAILURE like any contact (no special case).
+6. **Acoustic benefit:** only B2 against B2 under outage, on the endpoint PASS (vs any other class), exact McNemar on
+   nominally paired runs (same scenario and seed; engine noise is unseeded), two hypotheses: B2_MEDIUM / MEDIUM-ALL
+   vs B2_BLACKOUT / MEDIUM-ALL and B2_CLEAN / CLEAN vs B2_BLACKOUT / CLEAN, Holm-corrected, gate_stalled_occupant
+   excluded.
 
 ## v4.4 Campaign (fixed)
 
-`scripts/run_sensor_robustness_campaign.py --phase b2final`: 8 cells (protocol / sensor profile): B2_CLEAN/CLEAN,
-B2_LOW/LOW-ALL, B2_MEDIUM/MEDIUM-ONE, B2_MEDIUM/MEDIUM-SUBSET, B2_MEDIUM/MEDIUM-ALL, B2_MEDIUM/CLEAN,
-B2_BLACKOUT/CLEAN, B2_BLACKOUT/MEDIUM-ALL; 11 non-gate scenarios x seeds 100-104 and 6 gate scenarios
-(gate_single, integrated_short, mutex_deadlock_resolution, line_parallel_mutex, lost_drone_mutex,
-gate_stalled_occupant) x seeds 100-109: 115 runs per cell, 920 runs.  Seeds 100-109 were never used in
-development.  At most two guarded HoloOcean instances, low priority.  If the time available cannot hold the 920
-runs, the smaller variant of the plan (3 and 6 seeds, 552 runs) is used, chosen and recorded here BEFORE the first
-run, never after seeing results.
+`scripts/run_sensor_robustness_campaign.py --phase b2final` from a clean commit (the script refuses a dirty tree and
+refuses to resume over runs of another commit): 8 cells (protocol / sensor profile): B2_CLEAN/CLEAN, B2_LOW/LOW-ALL,
+B2_MEDIUM/MEDIUM-ONE, B2_MEDIUM/MEDIUM-SUBSET, B2_MEDIUM/MEDIUM-ALL, B2_MEDIUM/CLEAN, B2_BLACKOUT/CLEAN,
+B2_BLACKOUT/MEDIUM-ALL; 11 non-gate scenarios x seeds 100-102 and 6 gate scenarios (gate_single,
+integrated_short, mutex_deadlock_resolution, line_parallel_mutex, lost_drone_mutex, gate_stalled_occupant) x seeds
+100-105: 69 runs per cell, 552 runs.  This is the plan's smaller variant, chosen on 2026-11-05 before any campaign
+run for the wall time (about 3.8 min per run with two instances: 920 runs about 29 h, 552 runs about 18 h); it
+weakens the per-scenario conclusions (Wilson half-width about +-7 % at p = 0.9 per cell).  Seeds 100-105 were never
+used in development.  At most two guarded HoloOcean instances (the user's limit), low priority.  INVALID runs
+(infrastructure) are retried once by the orchestrator; every attempt is preserved and reported.
+
+## v4.5 Amendments after the first v4 text (65c86c1), before any campaign run
+
+| commit | change | reason and evidence |
+|---|---|---|
+| cc3c652 | gate_stalled_occupant without current; replay fed the logged collision edges | development runs b2_98f7908: the unpowered drone drifted into a bar within ~20 s and left the CR (the scenario no longer tested a stalled occupant); the replay ignored contacts (REPLAY_MISMATCH) |
+| caead76, then reverted | DVL hold threshold 0.25 s | a wrong diagnosis (a pre-freeze review showed ordinary samples are at most 0.133 s old); restored to 0.15 s with the hold + latency constant corrected |
+| this amendment | acceptance item 1 on ground truth, BLACKOUT exception for the stalled occupant, precondition INVALID, McNemar endpoint and family, smaller variant, resume guard, last-known-inside cleared by exit_confirm fixes | pre-freeze independent review |
+
+The freeze is the git tag `b2-freeze-v4`; every campaign run records its commit.
 
 ---
 

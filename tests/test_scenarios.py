@@ -143,3 +143,32 @@ def test_gate_passages_stay_inside_the_validated_queue_domain():
         sc = make(DEFAULT)
         if sc.plans and sc.plans[0].gates:
             check_gate_domain(sc.plans[0].slots, DEFAULT.gate)
+
+
+def test_mid_cr_trigger_fires_only_in_the_second_half_of_the_critical_region():
+    from types import SimpleNamespace
+
+    from holo_fleet.runner import _triggered
+
+    sc = SCENARIOS["gate_stalled_occupant"](DEFAULT)
+    (f,) = sc.sim.faults
+    g = sc.judged_gates[0]
+    names = sc.sim.names
+    left = np.array([-g.axis[1], g.axis[0], 0.0])
+
+    def at(s, l=0.0):
+        P = np.zeros((len(names), 3))
+        P[0] = g.center + s * np.asarray(g.axis, float) + l * left
+        return SimpleNamespace(positions=P)
+    assert not _triggered(f, sc, names, at(-0.3)) and _triggered(f, sc, names, at(0.3))
+    assert not _triggered(f, sc, names, at(0.3, 1.5)) and not _triggered(f, sc, names, at(1.2))
+
+
+def test_b2_final_matrix_is_the_preregistered_smaller_variant():
+    import sys
+    sys.path.insert(0, str(__import__("pathlib").Path(__file__).resolve().parents[1] / "scripts"))
+    import run_sensor_robustness_campaign as c
+
+    runs = c.b2_final_matrix()
+    assert len(runs) == 552 == len(set(runs)) and len(c.B2_CELLS) == 8
+    assert {r[3] for r in runs} == set(range(100, 106))

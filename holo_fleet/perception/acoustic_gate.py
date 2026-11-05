@@ -222,9 +222,15 @@ class AcousticExit:
         time, and no later accepted fix has cleared it: its whereabouts since are unknown, so it is a possible
         occupant and the CR cannot become FREE by a timeout (an unknown occupant never silently becomes FREE).
         Without any fix of a drone (a silent channel) the sonar outage-mode rules apply."""
+        n = self.cfg.acoustic.exit_confirm
         for j in self.others:
             last = self.tracker.last_accepted.get(j)
-            if last is not None and last.t <= t and not self.clear_of_cr(g, last, last.t):
+            if last is None or last.t > t:
+                continue
+            # cleared only by exit_confirm consecutive accepted fixes of one track, each clear (as A2): one cleared
+            # fix followed by silence does not release a possible occupant
+            tail = [f for f in self.tracker.all_fixes(j, -1e9, t) if f.accepted][-n:] or [last]
+            if any(not self.clear_of_cr(g, f, f.t) for f in tail):
                 return True
         return False
 

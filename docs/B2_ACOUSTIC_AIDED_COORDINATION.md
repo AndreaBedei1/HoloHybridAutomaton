@@ -70,9 +70,9 @@ envelope) and a drone at s = 3.8 m without excess produce identical fixes foreve
 * **Bound (NavBound).** Launch survey 0.30 m [REQ] (never restarted: a gate fit's uncertainty is not an error
   bound), plus (2 sin 1.5 deg + 1 %)(1 + 1 %) x distance travelled (compass bias and DVL scale),
   plus 3.44 x 0.0285 m/s x sqrt(sum dt^2) (white MEDIUM DVL noise integrated by the dead reckoning, 99.73 % of a 2-D
-  normal), plus min(1.5 m/s^2 tau, |v| + v_bound) dt while the DVL delivers no new sample for tau > 0.15 s (1.5 m/s^2:
+  normal), plus min(1.5 m/s^2 tau, |v| + v_bound) dt while the DVL delivers no new sample for tau > 0.15 s (one period + latency) (1.5 m/s^2:
   the calibrated reversal), plus every unvalidated map correction, plus 2 x 0.25 m (DVL lever arm) and twice the
-  0.05 s latency at the speed bound; depth 0.45 m; the ball radius is hypot(horizontal, vertical).  A correction
+  hold + latency delay (0.1 + 0.05 s) at the speed bound; depth 0.45 m; the ball radius is hypot(horizontal, vertical).  A correction
   larger than the bound marks it invalid for the rest of the run.  It is an envelope assumption like the acoustic
   one (the HIGH profile, 4 deg compass bias, lies outside it), and every run logs it against the true error
   (`nav_bound` in the state records; referee `nav_bound` coverage and the tag NAV_BOUND_PREMISE_VIOLATED).
