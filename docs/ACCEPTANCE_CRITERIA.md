@@ -16,9 +16,22 @@ the v4 runs are reported, so that the change is visible.
   unsafe action (E2.to_free = E3 = E4 = 0) until the horizon.  The BLACKOUT exception of v4.3 item 1 stays.
 * **Classes v5:** INVALID / SUT_ERROR > REPLAY_MISMATCH > SAFETY_FAILURE > UNSAFE_ACTION > SPEC_VIOLATION > PASS >
   CENSORED > SAFE_DEGRADED > INCOMPLETE (no STALLED).
+* **Acceptance items (v4.3 as adapted by v5, fixed before the v5 campaign):** item 1 safety on ground truth for
+  every complete run (BLACKOUT x gate_stalled_occupant reported separately); item 2 zero NAV_BOUND_PREMISE_VIOLATED;
+  item 3 every B2_CLEAN / CLEAN run PASS (gate_stalled_occupant included, judged on safety): an INCOMPLETE there at
+  the 3x horizon is a design failure; item 4 per-cell PASS + SAFE_DEGRADED rates (Wilson 95 %), on-time counts, PASS
+  runs late at the gate (gate_bounded_response false) and PASS runs with a transient false vacancy, Kaplan-Meier
+  censored at the horizon, gate_stalled_occupant excluded; item 5 replaced by the safety-only judgement; item 6
+  unchanged.  Aggregator: `scripts/analyze_b2final.py` (frozen with the code).
+* **Fresh seeds.** The v5 campaign uses seeds 200-202 (non-gate) and 200-205 (gate): 100-105 were used by the v4
+  campaign, whose diagnostics motivated the v5 behaviour changes.  Same 8 cells, 552 runs.
+* **Formal.** F6g (formal/check_formation.py): with the gate-delay hold a never-returning neighbour is vacant within
+  t_rejoin + gate_delay_max + dt of running time (ranking max(H - h, 0) + max(t_rejoin - tau, 0); mutation F6gm).
 * **Behaviour change made with v5 (not a criterion):** a missing neighbour reported in a gate's approach zone is
   delayed by the mutual exclusion, not lost; its vacancy timer is held for at most the protocol's slowest serial
-  passage (v4 campaign: false vacancies of neighbours waiting their turn at a slow MEDIUM gate).
+  passage (v4 campaign: false vacancies of neighbours waiting their turn at a slow MEDIUM gate); the vacancy timer also
+  runs after the plan end; a missing neighbour comes back on A_CONFIRM payloads near its slot together with an
+  identified fix within e_lost; the DVL outage term counts the excess over the nominal hold.
 
 ---
 

@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
-# Exploratory extended-horizon reruns (plan H.2: 3 x the deadline) of a list of "protocol profile scenario seed"
+# Exploratory reruns at the v5 horizon (3 x the a-priori deadline), or a multiple of it, of a list of "protocol profile scenario seed"
 # lines, on two guarded engine slots: does a run that missed the deadline complete eventually?
 set -u
-LIST="${1:?targets}"; RAW="${2:?raw root}"; FACTOR="${3:-3}"
+LIST="${1:?targets}"; RAW="${2:?raw root}"; FACTOR="${3:-1}"   # a multiple of the v5 horizon (3 x deadline)
 PY="${PY:-C:/Users/andrea.bedei3/.conda/envs/holo_fleet_ha/python.exe}"
 cd "$(dirname "$0")/.."
 i=0

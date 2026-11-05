@@ -343,9 +343,11 @@ class Perception:
             # ping period), on its lane and ahead by more than e_lost plus the band
             ahead = (float(np.linalg.norm(off - along_now * t_hat)) <= fr.e_lost and along_now > fr.e_lost + band)
             reps = [] if exp_world is None else [self._rep_offset(g, t, exp_world, t_hat) for g in acc]
-            if one_track and reps and all(r is not None for r in reps) and all(
-                    float(np.linalg.norm(r[0])) <= fr.e_lost + r[1] for r in reps):
-                self.payload_present.append(k)                   # back near its slot by its own estimates
+            if (one_track and reps and all(r is not None for r in reps) and k in self.acoustic_present
+                    and all(float(np.linalg.norm(r[0])) <= fr.e_lost + r[1] for r in reps)):
+                # back near its slot: by its own estimates AND by an identified fix of it within e_lost of where it
+                # should be (a physical, identified sighting: an unidentified echo never brings a neighbour back)
+                self.payload_present.append(k)
             if one_track and reps and all(r is not None for r in reps):
                 # lag from the payloads: the median along-track offset beyond its band
                 along = float(np.median([float(r[0] @ t_hat) for r in reps]))

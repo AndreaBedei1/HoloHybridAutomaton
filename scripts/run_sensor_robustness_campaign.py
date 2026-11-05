@@ -139,8 +139,8 @@ B2_CELLS = (("B2_CLEAN", "CLEAN"), ("B2_LOW", "LOW-ALL"), ("B2_MEDIUM", "MEDIUM-
 B2_GATE_SCENARIOS = ("gate_single", "integrated_short", "mutex_deadlock_resolution", "line_parallel_mutex",
                      "lost_drone_mutex", "gate_stalled_occupant")
 B2_NONGATE_SCENARIOS = tuple(s for s in ALL_SCENARIOS if s not in B2_GATE_SCENARIOS)
-B2_SEEDS_NONGATE = tuple(range(100, 103))
-B2_SEEDS_GATE = tuple(range(100, 106))
+B2_SEEDS_NONGATE = tuple(range(200, 203))      # v5: fresh held-out seeds (100-105 were used by the v4 campaign,
+B2_SEEDS_GATE = tuple(range(200, 206))         # from whose diagnostics the v5 changes were derived)
 
 
 def b2_final_matrix(only=None) -> list:
@@ -205,7 +205,7 @@ def worker(args) -> int:
     # criteria v3 (referee/criteria.py): a-priori requirements, deadline from the plan and the protocol bounds
     terminal = {"profile": args.profile} if args.terminal else None
     factor = float(os.environ.get("HOLO_FLEET_HORIZON_FACTOR", "1"))
-    if terminal is not None and factor != 1.0:          # exploratory horizon (plan H.2: 3x), never for results
+    if terminal is not None and factor != 1.0:          # exploratory: a multiple of the v5 horizon, never for results
         from holo_fleet.referee.criteria import horizon_v5
         from holo_fleet.sim.scenarios import SCENARIOS
 
@@ -561,6 +561,9 @@ def main() -> int:
 
     done = 0
     version = code_version()
+    if args.phase == "b2final" and float(os.environ.get("HOLO_FLEET_HORIZON_FACTOR", "1")) != 1.0:
+        say("refused: the campaign uses the v5 horizon as frozen (HOLO_FLEET_HORIZON_FACTOR must be unset or 1)")
+        return 2
     if args.phase in ("final", "b2final") and version["dirty_files"]:
         say(f"refused: the final campaign runs only from a clean commit; modified: {version['dirty_files']}")
         return 2
