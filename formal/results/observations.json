@@ -163,7 +163,7 @@
       "expect": "sat",
       "verdict": "sat",
       "passed": true,
-      "seconds": 0.018,
+      "seconds": 0.019,
       "counterexample": null,
       "note": "13 edges"
     },
@@ -174,7 +174,7 @@
       "expect": "sat",
       "verdict": "sat",
       "passed": true,
-      "seconds": 0.021,
+      "seconds": 0.018,
       "counterexample": null,
       "note": "13 edges"
     },
@@ -196,7 +196,7 @@
       "expect": "sat",
       "verdict": "sat",
       "passed": true,
-      "seconds": 0.019,
+      "seconds": 0.016,
       "counterexample": null,
       "note": "13 edges"
     },
@@ -207,7 +207,7 @@
       "expect": "sat",
       "verdict": "sat",
       "passed": true,
-      "seconds": 0.02,
+      "seconds": 0.019,
       "counterexample": null,
       "note": "13 edges"
     },
@@ -218,7 +218,7 @@
       "expect": "sat",
       "verdict": "sat",
       "passed": true,
-      "seconds": 0.02,
+      "seconds": 0.016,
       "counterexample": null,
       "note": "13 edges"
     },
@@ -229,7 +229,7 @@
       "expect": "sat",
       "verdict": "sat",
       "passed": true,
-      "seconds": 0.019,
+      "seconds": 0.017,
       "counterexample": null,
       "note": "13 edges"
     },
@@ -240,7 +240,7 @@
       "expect": "sat",
       "verdict": "sat",
       "passed": true,
-      "seconds": 0.02,
+      "seconds": 0.018,
       "counterexample": null,
       "note": "13 edges"
     },
@@ -251,7 +251,7 @@
       "expect": "sat",
       "verdict": "sat",
       "passed": true,
-      "seconds": 0.02,
+      "seconds": 0.018,
       "counterexample": null,
       "note": "13 edges"
     },
@@ -273,7 +273,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 0.001,
+      "seconds": 0.002,
       "counterexample": null,
       "note": ""
     },
@@ -295,7 +295,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 0.001,
+      "seconds": 0.0,
       "counterexample": null,
       "note": ""
     },
@@ -317,7 +317,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 0.0,
+      "seconds": 0.001,
       "counterexample": null,
       "note": ""
     },
@@ -350,7 +350,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 0.002,
+      "seconds": 0.001,
       "counterexample": null,
       "note": ""
     },
@@ -361,7 +361,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 0.002,
+      "seconds": 0.0,
       "counterexample": null,
       "note": ""
     },
@@ -372,7 +372,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 0.004,
+      "seconds": 0.002,
       "counterexample": null,
       "note": ""
     },
@@ -383,7 +383,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 0.002,
+      "seconds": 0.0,
       "counterexample": null,
       "note": ""
     },
@@ -394,7 +394,7 @@
       "expect": "sat",
       "verdict": "sat",
       "passed": true,
-      "seconds": 0.002,
+      "seconds": 0.0,
       "counterexample": {
         "at_queue": true,
         "committed": false,
@@ -430,7 +430,7 @@
       "expect": "sat",
       "verdict": "sat",
       "passed": true,
-      "seconds": 0.002,
+      "seconds": 0.0,
       "counterexample": {
         "at_queue": true,
         "committed": false,
