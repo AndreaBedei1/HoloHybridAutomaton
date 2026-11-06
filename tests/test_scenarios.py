@@ -171,4 +171,4 @@ def test_b2_final_matrix_is_the_preregistered_smaller_variant():
 
     runs = c.b2_final_matrix()
     assert len(runs) == 207 == len(set(runs)) and len(c.B2_CELLS) == 3
-    assert {r[3] for r in runs} == set(range(400, 406))                       # fresh held-out seeds (v7)
+    assert {r[3] for r in runs} == set(range(500, 506))                       # fresh held-out seeds (v8)

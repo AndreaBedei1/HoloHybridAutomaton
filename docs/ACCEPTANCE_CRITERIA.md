@@ -1,3 +1,12 @@
+# v8 (2026-11-06): a completely failed drone rises (deployment assumption)
+
+By the owner's decision, reviewed independently: a drone that fails completely (no power, no beacon) is net
+positively buoyant and rises out of the CR; a SILENT drone last known in the CR is considered gone after
+max(t_occ_max + t_clear, 50 s) (2.5 m at a conservative 0.05 m/s; BlueROV2 datasheet +0.2 kg ballasted, no published
+ascent rate; AUVs and gliders often surface by drop weights instead, so this is a stated deployment assumption, not a
+property of every vehicle, and the simulator does not reproduce it).  A drone that still pings is never released this
+way (gate_stalled_occupant stays a test of the veto).  Same three cells as v7, fresh seeds 500-505.
+
 # v7 (2026-11-06): three conditions, by the user's decision after the v6 campaign
 
 * **Cells:** B2_CLEAN / CLEAN (ideal), B2_LOW / LOW-ALL (nominal degradation), B2_MEDIUM / MEDIUM-ALL (the upper

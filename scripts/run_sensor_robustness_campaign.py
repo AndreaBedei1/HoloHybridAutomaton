@@ -142,8 +142,8 @@ B2_CELLS = (("B2_CLEAN", "CLEAN"), ("B2_LOW", "LOW-ALL"), ("B2_MEDIUM", "MEDIUM-
 B2_GATE_SCENARIOS = ("gate_single", "integrated_short", "mutex_deadlock_resolution", "line_parallel_mutex",
                      "lost_drone_mutex", "gate_stalled_occupant")
 B2_NONGATE_SCENARIOS = tuple(s for s in ALL_SCENARIOS if s not in B2_GATE_SCENARIOS)
-B2_SEEDS_NONGATE = tuple(range(400, 403))      # v7: fresh held-out seeds (100-105 v4, 200-205 v5, 300-305 v6; the
-B2_SEEDS_GATE = tuple(range(400, 406))         # v7 safety fix was derived from the v6 MEDIUM-ALL runs)
+B2_SEEDS_NONGATE = tuple(range(500, 503))      # v8: fresh held-out seeds (100-105 v4, 200-205 v5, 300-305 v6, 400-405 v7)
+B2_SEEDS_GATE = tuple(range(500, 506))
 
 
 def b2_final_matrix(only=None) -> list:

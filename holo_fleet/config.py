@@ -342,6 +342,12 @@ class AcousticConfig:
     tie_window_s: float = 3.0            # fixes this close to the last corridor sighting account for a drone
     fresh_s: float = 2.5                 # a fix this recent counts for the neighbours (formation)
     depth_tol_m: float = 1.5             # a fix this far outside the operating depth band is a reflection
+    # deployment assumption (the owner's decision, reviewed 2026-11-06): a drone that fails completely (no power, no
+    # beacon) is net positively buoyant and rises; a SILENT drone last known in the CR is gone after
+    # max(t_occ_max + t_clear, T_rise), T_rise = 2.5 m (centre from the CR floor out of its top, fix slack included)
+    # / 0.05 m/s (a conservative passive ascent: about 3x below the ~0.15 m/s estimated for +0.2 kgf).  A drone that
+    # still pings is never released this way.  Not reproduced by the simulator (near-neutral vehicle).
+    silent_gone_s: float = 50.0
     # onboard bound of the own dead-reckoning error (perception/nav.py, NavBound), sent in the payload (H6).  Every
     # term is the declared envelope of a sensor, never the profile of a run:
     nav_b0_m: float = 0.30               # [REQ] launch survey of the shared mission frame (horizontal)

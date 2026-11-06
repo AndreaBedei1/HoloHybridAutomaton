@@ -254,6 +254,9 @@ class AcousticExit:
             last = self.tracker.last_accepted.get(j)
             if last is None or last.t > t:
                 continue
+            gone = max(self.cfg.gate.t_occ_max + self.cfg.gate.t_clear, self.cfg.acoustic.silent_gone_s)
+            if t - last.t > gone and not self.tracker.all_fixes(j, last.t + 1e-9, t):
+                continue                   # silent that long: risen out of the CR (deployment assumption, config)
             # cleared only by exit_confirm consecutive accepted fixes of one track, each clear (as A2): one cleared
             # fix followed by silence does not release a possible occupant
             tail = [f for f in self.tracker.all_fixes(j, -1e9, t) if f.accepted][-n:] or [last]

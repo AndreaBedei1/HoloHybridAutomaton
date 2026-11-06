@@ -246,3 +246,12 @@ def test_a_corridor_echo_no_fleet_drone_can_have_produced_does_not_set_the_latch
     tracker3, gp3 = _observer(p)                               # nobody heard: nothing excluded, the sonar rules
     gp3.acoustic_exit.others = [1]
     assert gp3.update(2.1, p, 0., [echo], {}).occ_state == "BUSY"
+
+
+def test_a_silent_drone_last_known_inside_is_gone_after_the_ascent_time():
+    p = np.array([-4.6, 0., -5.])
+    tracker, gp = _observer(p)
+    _hear(tracker, p, 4.6, [0.0, 0., -5.], 0.5)                # last heard in the CR, then silent
+    gone = max(B2.gate.t_occ_max + B2.gate.t_clear, B2.acoustic.silent_gone_s)
+    assert gp.acoustic_exit.last_known_inside(2. + gone - 1., GATE)
+    assert not gp.acoustic_exit.last_known_inside(2. + gone + 1., GATE)
