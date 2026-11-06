@@ -61,11 +61,11 @@ def test_positive_occupancy_vetoes_a_sonar_witness_and_discards_its_confirmation
     for t in (2., 2.1, 2.2):
         o = gp.update(t, p, 0., [echo], {})
         assert o.occ_state == "BUSY" and o.exit_witness is None
-    # Once the receptions expire, suppressed captures cannot immediately become a release.
-    for t in (5., 5.1):
+    # Once the receptions expire the drone is unknown, not gone (last known possibly inside): a sonar witness never
+    # releases the latch over it (v6: a clutter echo released the latch over a stalled, shadowed occupant)
+    for t in (5., 5.1, 5.2, 5.3):
         o = gp.update(t, p, 0., [echo], {})
-        assert o.occ_state == "BUSY"
-    assert gp.update(5.2, p, 0., [echo], {}).occ_state == "EXITING"
+        assert o.occ_state == "BUSY" and o.exit_witness is None
 
 
 def test_acoustic_only_episode_never_times_out_without_positive_clearance():

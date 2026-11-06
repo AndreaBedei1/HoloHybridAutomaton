@@ -39,7 +39,8 @@ def mechanism(m, d: Path):
     if term.get("outcome") == "SUCCESS":
         labels.append("LATE_ONLY (mission complete; a gate bounded-response check exceeded)")
         return labels, miss, {}
-    events = [json.loads(x) for x in open(d / "events.jsonl", encoding="utf-8")]
+    ev_p = d / "events.jsonl"
+    events = [json.loads(x) for x in open(ev_p, encoding="utf-8")] if ev_p.exists() else []
     aborts = sum(1 for e in events if e.get("decision") == "ABORT_PASS")
     faults = [e for e in events if e.get("type") == "FAULT_INJECTED"]
     end = {}

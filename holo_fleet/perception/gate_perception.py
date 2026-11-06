@@ -193,6 +193,10 @@ class GatePerception:
             self.phantom_events.append({"t": round(t, 2), "fixes": dict(self.acoustic_exit.last_phantom)})
             corridor = []
         heard = self.acoustic_exit is not None and self.acoustic_exit.heard_inside(t, g)
+        # an occupant last known possibly inside and not heard since (shadowed by the bars, a lost ping) is unknown,
+        # not gone: no exit witness, no release and no admission while it is (v6 campaign: a MEDIUM clutter echo
+        # beyond the exit released the latch over a stalled occupant whose pings were shadowed)
+        known_inside = self.acoustic_exit is not None and self.acoustic_exit.last_known_inside(t, g)
         if corridor:
             self.last_corridor_t = t
             if self.acoustic_exit is not None:
@@ -216,7 +220,7 @@ class GatePerception:
                     witness = self.acoustic_exit.evaluate(t, g)
                 else:
                     witness = self.acoustic_exit.evaluate_clearance(t, g, self.busy_since, self.suspects)
-        if heard:
+        if heard or known_inside:
             witness = None
             self.exit.clear_confirmation()  # vetoed captures cannot later become an exit witness
         o.exit_witness = witness
@@ -229,7 +233,8 @@ class GatePerception:
                   and not (self.acoustic_exit is not None and self.acoustic_exit.last_known_inside(t, g))):
                 self.occ_state, self.exit_witness = "FREE", None      # fallback: bounded crossing assumed (docstring)
                 self.occ_timeouts += 1
-        if self.occ_state == "EXITING" and not corridor and not heard and t - max(self.exit_seen_t, self.last_corridor_t) >= G.t_clear:
+        if (self.occ_state == "EXITING" and not corridor and not heard and not known_inside
+                and t - max(self.exit_seen_t, self.last_corridor_t) >= G.t_clear):
             self.occ_state = "FREE"
         if self.occ_state == "FREE":
             self.exit.reset()
@@ -246,6 +251,5 @@ class GatePerception:
         # ranges and a silent occupant is not seen (a stated limit; the latch argument covers it)
         quiet = t - self.last_corridor_t > ENTRY_QUIET_CAPTURES / self.cfg.perc.sonar.hz
         # an occupant merely unheard (no fresh fix after a fix that placed it possibly inside) also holds the entry
-        known_inside = self.acoustic_exit is not None and self.acoustic_exit.last_known_inside(t, g)
         o.entry_ok = bool(quiet and not heard and not known_inside)
         return o
