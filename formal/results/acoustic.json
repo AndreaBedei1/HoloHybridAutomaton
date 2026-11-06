@@ -102,6 +102,17 @@
       "note": "{'samples': 4000, 'cleared_inside': 1, 'beyond_while_inside': 0}"
     },
     {
+      "prop": "B2-PE phantom-echo soundness: a fleet drone truly in the CR, heard inside the declared envelope (multipath, ages up to the tie window, with or without a payload within its bound), is never excluded by the phantom-echo rule",
+      "formula": "randomized: no_fleet_drone -> false",
+      "encoding": "perception/acoustic.py + perception/acoustic_gate.py",
+      "expect": "holds",
+      "verdict": "holds",
+      "passed": true,
+      "seconds": 0.0,
+      "counterexample": null,
+      "note": "{'samples': 3000, 'occupant_excluded': 0}"
+    },
+    {
       "prop": "B2-S acoustic fixes never reach separation, collision avoidance, precedence or the sonar witness; acoustic exit evaluation requires the FRONT corridor empty (H6: the payload balls reach the map fit only as its identity premise, through Perception, never as a position input)",
       "formula": "AST: no acoustic name in the safety / precedence modules; guarded call",
       "encoding": "perception/acoustic.py + perception/acoustic_gate.py",
