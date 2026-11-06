@@ -1,7 +1,7 @@
 # v7 (2026-11-06): three conditions, by the user's decision after the v6 campaign
 
-* **Cells:** B2_CLEAN / CLEAN (ideal), B2_LOW / LOW-ALL (nominal degradation), B2_MEDIUM / MEDIUM-ALL (upper realistic
-  degradation): the documented LOW and MEDIUM levels of sensors and acoustic channel, every drone degraded.  Nothing
+* **Cells:** B2_CLEAN / CLEAN (ideal), B2_LOW / LOW-ALL (nominal degradation), B2_MEDIUM / MEDIUM-ALL (the upper
+  level of the declared envelope): the documented LOW and MEDIUM levels of sensors and acoustic channel, every drone degraded.  Nothing
   beyond MEDIUM.  69 runs per cell (11 non-gate scenarios x seeds 400-402, 6 gate scenarios x seeds 400-405), 207 runs.
 * **Removed:** the total acoustic blackout.  B2 assumes a working one-way beacon; its total loss is outside the
   protocol's operating assumptions (as removing the sensor that the protocol is built on) and is reported as a
@@ -12,8 +12,13 @@
   and safety holds everywhere.  Formation tolerance 1.0 m unchanged.
 * **Behaviour change in v7:** an occupant last known possibly inside also vetoes the sonar exit witness and the
   EXITING -> FREE release (v6: a clutter echo released the latch over a stalled, acoustically shadowed occupant).
-* Literature support for LOW = nominal and MEDIUM = upper realistic degradation: independent review recorded in
-  the final report.
+* Independent literature review (2026-11-06): LOW is defensible as nominal for the ASSUMED hardware (DVL, IMU,
+  compass, depth anchored on datasheets; dropouts, outages, sonar wrapper and most channel values are stated stress
+  assumptions; a one-way OWTT receiver is research hardware); MEDIUM is the upper level of the declared envelope (it
+  exceeds the proved sonar envelope in about 1.2 % of captures, and stays below the only one-way field figures).
+* Disclosed: the reduction to three cells was decided after the v4-v6 results; MEDIUM-ONE, MEDIUM-SUBSET and the
+  channel-only cells are dropped (their v4-v6 outcomes are reported); heterogeneous (mixed) fleets and channel-only
+  degradation are therefore untested in v7; the silent-channel fall-back evidence predates v7.
 
 # v6 amendment (2026-11-06): behaviour fixes after the v5 campaign, same criteria
 
