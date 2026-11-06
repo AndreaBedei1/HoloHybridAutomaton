@@ -1,3 +1,20 @@
+# v7 (2026-11-06): three conditions, by the user's decision after the v6 campaign
+
+* **Cells:** B2_CLEAN / CLEAN (ideal), B2_LOW / LOW-ALL (nominal degradation), B2_MEDIUM / MEDIUM-ALL (upper realistic
+  degradation): the documented LOW and MEDIUM levels of sensors and acoustic channel, every drone degraded.  Nothing
+  beyond MEDIUM.  69 runs per cell (11 non-gate scenarios x seeds 400-402, 6 gate scenarios x seeds 400-405), 207 runs.
+* **Removed:** the total acoustic blackout.  B2 assumes a working one-way beacon; its total loss is outside the
+  protocol's operating assumptions (as removing the sensor that the protocol is built on) and is reported as a
+  stated limit, with the v4-v6 BLACKOUT runs as historical evidence (safety held in all of them).
+* **Acceptance:** safety (P1, P2, no unsafe action) in every run of every cell; every run PASS in CLEAN and in the
+  nominal cell (gate_stalled_occupant judged on safety); the MEDIUM cell is reported as the upper degradation with
+  its failure mechanisms (Wilson intervals), and the work is declared complete if CLEAN and nominal are fully PASS
+  and safety holds everywhere.  Formation tolerance 1.0 m unchanged.
+* **Behaviour change in v7:** an occupant last known possibly inside also vetoes the sonar exit witness and the
+  EXITING -> FREE release (v6: a clutter echo released the latch over a stalled, acoustically shadowed occupant).
+* Literature support for LOW = nominal and MEDIUM = upper realistic degradation: independent review recorded in
+  the final report.
+
 # v6 amendment (2026-11-06): behaviour fixes after the v5 campaign, same criteria
 
 The v5 campaign (tag `b2-freeze-v5`, seeds 200-205) was stopped by the user at 201 of 552 runs: CLEAN 69/69 and

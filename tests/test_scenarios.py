@@ -170,5 +170,5 @@ def test_b2_final_matrix_is_the_preregistered_smaller_variant():
     import run_sensor_robustness_campaign as c
 
     runs = c.b2_final_matrix()
-    assert len(runs) == 552 == len(set(runs)) and len(c.B2_CELLS) == 8
-    assert {r[3] for r in runs} == set(range(300, 306))                       # fresh held-out seeds (v6)
+    assert len(runs) == 207 == len(set(runs)) and len(c.B2_CELLS) == 3
+    assert {r[3] for r in runs} == set(range(400, 406))                       # fresh held-out seeds (v7)

@@ -134,15 +134,16 @@ FINAL_SCENARIOS = ALL_SCENARIOS
 # (docs/ACCEPTANCE_CRITERIA.md v4.4): the plan's smaller variant, chosen before any campaign run for the wall time
 # (~3.8 min per run, two instances: 920 runs ~ 29 h, 552 runs ~ 18 h): 8 cells x (11 non-gate scenarios x 3 seeds +
 # 6 gate scenarios x 6 seeds) = 552 runs on held-out seeds (100-105) never used in development
-# v6: the hardest cells first, so that a design failure shows within the first hours (the user's instruction)
-B2_CELLS = (("B2_MEDIUM", "MEDIUM-ALL"), ("B2_BLACKOUT", "MEDIUM-ALL"), ("B2_MEDIUM", "MEDIUM-SUBSET"),
-            ("B2_MEDIUM", "MEDIUM-ONE"), ("B2_BLACKOUT", "CLEAN"), ("B2_MEDIUM", "CLEAN"), ("B2_LOW", "LOW-ALL"),
-            ("B2_CLEAN", "CLEAN"))
+# v7 (the user's decision, 2026-11-06): three conditions - ideal, nominal and upper realistic degradation - with the
+# documented LOW and MEDIUM levels (sensors and channel together, every drone); the total acoustic blackout is outside
+# the protocol's operating assumptions and is no longer a campaign cell (a stated limit).  Order: CLEAN, nominal,
+# degraded.
+B2_CELLS = (("B2_CLEAN", "CLEAN"), ("B2_LOW", "LOW-ALL"), ("B2_MEDIUM", "MEDIUM-ALL"))
 B2_GATE_SCENARIOS = ("gate_single", "integrated_short", "mutex_deadlock_resolution", "line_parallel_mutex",
                      "lost_drone_mutex", "gate_stalled_occupant")
 B2_NONGATE_SCENARIOS = tuple(s for s in ALL_SCENARIOS if s not in B2_GATE_SCENARIOS)
-B2_SEEDS_NONGATE = tuple(range(300, 303))      # v6: fresh held-out seeds (100-105: v4 campaign, 200-205: v5 campaign;
-B2_SEEDS_GATE = tuple(range(300, 306))         # the v6 changes were derived from the v5 MEDIUM-ONE runs)
+B2_SEEDS_NONGATE = tuple(range(400, 403))      # v7: fresh held-out seeds (100-105 v4, 200-205 v5, 300-305 v6; the
+B2_SEEDS_GATE = tuple(range(400, 406))         # v7 safety fix was derived from the v6 MEDIUM-ALL runs)
 
 
 def b2_final_matrix(only=None) -> list:
