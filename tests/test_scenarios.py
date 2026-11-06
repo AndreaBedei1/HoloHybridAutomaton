@@ -9,6 +9,7 @@ from holo_fleet.sim.scenarios import SCENARIOS
 EXPECTED = {"p1_head_on": 2, "p1_vertical_escape": 4, "p1_two_lines": 6, "p1_close_encounter": 2,
             "formation_triangle": 3, "formation_square": 4, "formation_six": 6, "formation_recovery_head_current": 4,
             "formation_gust": 4, "gate_single": 3, "integrated_short": 3, "lost_drone_rejoin": 4,
+            "lost_drone_rejoin_front": 4,
             "lost_drone_timeout": 4, "mutex_deadlock_resolution": 3, "line_parallel_mutex": 3, "lost_drone_mutex": 3,
             "gate_stalled_occupant": 3}
 GATE_SCENARIOS = ("gate_single", "integrated_short", "mutex_deadlock_resolution", "line_parallel_mutex", "lost_drone_mutex",
@@ -58,7 +59,15 @@ def test_lost_drone_scenarios_inject_one_simulator_fault_on_a_rear_drone():
         if name == "lost_drone_mutex":                       # the left drone of the line: the leftmost present goes
             assert sc.template.name == "line3" and k == 0
         assert sc.disturbance_active(f["t_on"] + 0.1)
-    for name in set(EXPECTED) - {"lost_drone_rejoin", "lost_drone_timeout", "lost_drone_mutex", "gate_stalled_occupant"}:
+    # v9: the rejoin of a FRONT slot (temporary fault; the drone of the rear slot on its lane is in the way)
+    sc = SCENARIOS["lost_drone_rejoin_front"](DEFAULT)
+    (f,) = sc.sim.faults
+    k = int(f["drone"].split("_")[1])
+    me = sc.template.slots[k]
+    assert f["type"] == "THRUSTER_FAILURE" and f["t_off"] is not None and sc.disturbance_active(f["t_on"] + 0.1)
+    assert any(sl.along < me.along and abs(sl.lateral - me.lateral) < 1e-9 for sl in sc.template.slots)
+    for name in set(EXPECTED) - {"lost_drone_rejoin", "lost_drone_rejoin_front", "lost_drone_timeout", "lost_drone_mutex",
+                                 "gate_stalled_occupant"}:
         assert not SCENARIOS[name](DEFAULT).sim.faults, name
 
 
@@ -170,5 +179,5 @@ def test_b2_final_matrix_is_the_preregistered_smaller_variant():
     import run_sensor_robustness_campaign as c
 
     runs = c.b2_final_matrix()
-    assert len(runs) == 207 == len(set(runs)) and len(c.B2_CELLS) == 3
-    assert {r[3] for r in runs} == set(range(500, 506))                       # fresh held-out seeds (v8)
+    assert len(runs) == 216 == len(set(runs)) and len(c.B2_CELLS) == 3
+    assert {r[3] for r in runs} == set(range(700, 706))                       # fresh held-out seeds (v9)

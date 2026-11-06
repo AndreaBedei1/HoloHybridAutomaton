@@ -1,3 +1,20 @@
+# v9 (2026-11-06): rejoin of a slot with another slot behind it on its lane; 72 runs per cell
+
+The v8 campaign (tag `b2-freeze-v8`, seeds 500-505) was stopped at CLEAN 69/69 PASS and LOW-ALL 36 PASS +
+1 INCOMPLETE (p1_vertical_escape s502; P1 held, min 2.47 m; results/robustness/raw_b2final_v8/STOPPED.md).  The tee
+centre drone, pushed behind by the escape, rejoined "from behind along its own lane" while the rear drone's slot is on
+that lane: 250 s of warning/recovery cycles behind it.  The same geometry exists for the square front slots; the
+lost-drone scenarios had always failed the rear drone, so this path was never exercised.  Behaviour change, reviewed
+independently (two rounds): such a slot is reached on a level pass_dz_m = 3.5 m below (above when the depth band has no
+room), the drone descending first without approaching the rear slot closer than 3.5 m, rising only past it (latched,
+with hysteresis; the vertical give-way of the traffic rule at the queue spacing).  Disclosed: it relies on the modelled
+up/down obstacle sonars (real BlueROV2s rarely carry them) and on depth room (the pass level -8.5 m is the band edge
+z_min + 0.5; at a shallow site the seabed would limit it).  New scenario lost_drone_rejoin_front (front-left drone
+fails and rejoins past the rear-left one).  Campaign infrastructure: an orchestrator no longer re-runs a run another
+one completed after it listed its runs (v8: 34 complete duplicates, all PASS, archived).  Cells and acceptance as in
+v7/v8; 72 runs per cell (12 non-gate scenarios x seeds 700-702, 6 gate scenarios x seeds 700-705), 216 runs; seeds
+600-602 were the pre-freeze probes.
+
 # v8 (2026-11-06): a completely failed drone rises (deployment assumption)
 
 By the owner's decision, reviewed independently: a drone that fails completely (no power, no beacon) is net

@@ -43,7 +43,7 @@ DEMOS = ROOT / "results" / "reference"
 SEEDS = (0, 1, 2)
 ALL_SCENARIOS = ("p1_head_on", "p1_vertical_escape", "p1_two_lines", "p1_close_encounter", "formation_triangle",
                  "formation_square", "formation_six", "formation_recovery_head_current", "formation_gust", "gate_single",
-                 "integrated_short", "lost_drone_rejoin", "lost_drone_timeout", "mutex_deadlock_resolution",
+                 "integrated_short", "lost_drone_rejoin", "lost_drone_rejoin_front", "lost_drone_timeout", "mutex_deadlock_resolution",
                  "line_parallel_mutex", "lost_drone_mutex", "gate_stalled_occupant")
 PY = sys.executable
 
@@ -67,7 +67,8 @@ def scope_drones(scenario: str, scope: str) -> list:
         return list(range(n))
     lost = {f["drone"] for f in getattr(sc.sim, "faults", ()) or () if f.get("t_off") is None}
     healthy = [k for k in range(n) if sc.sim.names[k] not in lost]
-    ref_name = "gate_single" if scenario == "gate_stalled_occupant" else scenario   # same geometry and plan
+    ref_name = {"gate_stalled_occupant": "gate_single",                              # same geometry and plan
+                "lost_drone_rejoin_front": "lost_drone_rejoin"}.get(scenario, scenario)
     rows = list(csv.DictReader(open(DEMOS / ref_name / "referee_timeseries.csv", encoding="utf-8")))
     P = np.array([[[float(r[f"{a}{k}"]) for a in "xyz"] for k in range(n)] for r in rows])
     bars = [b for st in sc.plans[0].structures for b in st.bars]
@@ -142,8 +143,8 @@ B2_CELLS = (("B2_CLEAN", "CLEAN"), ("B2_LOW", "LOW-ALL"), ("B2_MEDIUM", "MEDIUM-
 B2_GATE_SCENARIOS = ("gate_single", "integrated_short", "mutex_deadlock_resolution", "line_parallel_mutex",
                      "lost_drone_mutex", "gate_stalled_occupant")
 B2_NONGATE_SCENARIOS = tuple(s for s in ALL_SCENARIOS if s not in B2_GATE_SCENARIOS)
-B2_SEEDS_NONGATE = tuple(range(500, 503))      # v8: fresh held-out seeds (100-105 v4, 200-205 v5, 300-305 v6, 400-405 v7)
-B2_SEEDS_GATE = tuple(range(500, 506))
+B2_SEEDS_NONGATE = tuple(range(700, 703))      # v9: fresh held-out seeds (100-105 v4, 200-205 v5, 300-305 v6,
+B2_SEEDS_GATE = tuple(range(700, 706))         # 400-405 v7, 500-505 v8; 600-602 were the pre-freeze probes)
 
 
 def b2_final_matrix(only=None) -> list:
@@ -579,6 +580,11 @@ def main() -> int:
         lock = claim(d)
         if lock is None:
             say(f"{time.strftime('%H:%M:%S')} {protocol} {prof} {sc} s{seed}: claimed by another orchestrator, skipped")
+            continue
+        if not pending(raw, [(protocol, prof, sc, seed)], version["sha"]):
+            # completed by another orchestrator since this one listed its runs: never run (and archive) it again
+            lock.unlink(missing_ok=True)
+            say(f"{time.strftime('%H:%M:%S')} {protocol} {prof} {sc} s{seed}: already done by another orchestrator, skipped")
             continue
         from holo_fleet.config import DEFAULT
         from holo_fleet.referee.criteria import deadline_v3

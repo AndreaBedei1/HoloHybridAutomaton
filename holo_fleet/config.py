@@ -205,6 +205,11 @@ class FormationRule:
     t_reinclude: float = 1.0          # a vacant slot is re-included after its drone is seen there this long [s]
     rejoin_lane_tol_m: float = 1.0    # a recovering drone farther than this from its own lane rejoins from behind
     rejoin_back_m: float = 2.0        # ... through a point on its lane this far behind the rear-most slot [m]
+    # a slot with another slot behind it on its lane (lane and level nearer than pass_dz_m: square front drones,
+    # the tee centre drone) is reached from behind on a level pass_dz_m below (above when the depth band has no
+    # room), the drone rising only past that slot: the vertical give-way of the traffic rule, at the queue spacing
+    # (> d_warning_exit + estimate margin), so the drone of the rear slot never stands in the way
+    pass_dz_m: float = 3.5
     # reduced progress while an expected neighbour is missing (control/formation_time.py): the formation
     # reference of a drone that misses a neighbour advances at v_wait instead of the planned speed, reached and
     # left with a ramp of a_wait.  v_wait = 0.20: the catch-up of a rejoining drone grows from 0.20 to 0.30 m/s
