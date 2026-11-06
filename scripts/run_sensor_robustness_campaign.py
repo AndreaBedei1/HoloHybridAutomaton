@@ -143,8 +143,8 @@ B2_CELLS = (("B2_CLEAN", "CLEAN"), ("B2_LOW", "LOW-ALL"), ("B2_MEDIUM", "MEDIUM-
 B2_GATE_SCENARIOS = ("gate_single", "integrated_short", "mutex_deadlock_resolution", "line_parallel_mutex",
                      "lost_drone_mutex", "gate_stalled_occupant")
 B2_NONGATE_SCENARIOS = tuple(s for s in ALL_SCENARIOS if s not in B2_GATE_SCENARIOS)
-B2_SEEDS_NONGATE = tuple(range(700, 703))      # v9: fresh held-out seeds (100-105 v4, 200-205 v5, 300-305 v6,
-B2_SEEDS_GATE = tuple(range(700, 706))         # 400-405 v7, 500-505 v8; 600-602 were the pre-freeze probes)
+B2_SEEDS_NONGATE = tuple(range(800, 803))      # v10: fresh held-out seeds (100-105 v4, 200-205 v5, 300-305 v6,
+B2_SEEDS_GATE = tuple(range(800, 806))         # 400-405 v7, 500-505 v8, 700-705 v9; 600-602 the v9 probes)
 
 
 def b2_final_matrix(only=None) -> list:

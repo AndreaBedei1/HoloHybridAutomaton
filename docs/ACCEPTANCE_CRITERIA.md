@@ -1,3 +1,11 @@
+# v10 (2026-11-06): numerical fix, same plan as v9, fresh seeds 800-805
+
+The v9 campaign (tag `b2-freeze-v9`, seeds 700-705) was stopped at CLEAN 47 PASS + 1 SUT_ERROR (formation_six s701):
+a division by zero in the sonar sector frame (Rodrigues rotation, boresight antiparallel to +x within ~1e-8 rad;
+latent since the six-sonar model, first occurrence in any campaign; results/robustness/raw_b2final_v9/STOPPED.md).
+Fixed without changing the formula elsewhere, with a regression test.  No behaviour change; cells, scenarios and
+acceptance as in v9 (216 runs).
+
 # v9 (2026-11-06): rejoin of a slot with another slot behind it on its lane; 72 runs per cell
 
 The v8 campaign (tag `b2-freeze-v8`, seeds 500-505) was stopped at CLEAN 69/69 PASS and LOW-ALL 36 PASS +
