@@ -26,8 +26,11 @@ def demo(tmp_path, monkeypatch):
     calls = {"run": [], "gif": []}
     state = {"status": "COMPLETE"}
 
-    def fake_run(name, out_root, headless=True, run_id=None, duration=None, ui=None, frame_every_s=0.5):
+    def fake_run(name, out_root, headless=True, run_id=None, duration=None, ui=None, frame_every_s=0.5, cfg=None,
+                 noise=None, seed=None):
         calls["run"].append(frame_every_s)
+        calls.setdefault("args", []).append({"beacon": cfg.beacon.mode, "noise": None if noise is None else noise.name,
+                                             "seed": seed})
         out = Path(out_root) / (run_id or name)
         (out / "frames").mkdir(parents=True, exist_ok=True)          # as the runner does
         (out / "run_status.json").write_text(json.dumps({"status": state["status"]}), encoding="utf-8")
@@ -58,7 +61,7 @@ def _files(path: Path):
 
 def test_default_demo_keeps_nothing(demo):
     assert demo.main(["--scenario", "formation_triangle"]) == 0
-    assert _files(demo.OUT) == []                                   # nothing under results/v2/demos
+    assert _files(demo.OUT) == []                                   # nothing under results/reference
     assert _files(demo.tmp) == []                                   # the staging folder is gone
     assert demo.calls["run"] == [math.inf] and demo.calls["gif"] == []
 
@@ -96,6 +99,20 @@ def test_media_only_with_media(demo):
     dest = demo.OUT / "formation_triangle"
     assert demo.calls["run"][-1] == 0.5
     assert {"formation_triangle.gif", f"fleet_view{os.sep}fleet_00001.jpg", f"frames{os.sep}chase_00001.jpg"} <= set(_files(dest))
+
+
+def test_noise_profile_and_beacon_reach_the_run(demo):
+    assert demo.main(["--scenario", "formation_triangle"]) == 0
+    assert demo.main(["--scenario", "formation_triangle", "--profile", "MEDIUM", "--seed", "2", "--b2", "MEDIUM"]) == 0
+    assert demo.calls["args"] == [{"beacon": "NONE", "noise": None, "seed": None},
+                                  {"beacon": "ACOUSTIC_RB", "noise": "MEDIUM", "seed": 2}]
+
+
+@pytest.mark.parametrize("flags", [["--profile", "LOW"], ["--b2", "CLEAN"]])
+def test_noisy_or_beacon_runs_are_never_saved_as_reference_demos(demo, flags):
+    with pytest.raises(SystemExit):
+        demo.main(["--scenario", "formation_triangle", "--save", *flags])
+    assert demo.calls["run"] == [] and _files(demo.OUT) == []
 
 
 @pytest.mark.parametrize("flags", [["--media"], ["--overwrite"], ["--out", "x"]])

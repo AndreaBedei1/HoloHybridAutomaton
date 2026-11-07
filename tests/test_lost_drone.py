@@ -1,4 +1,4 @@
-"""Lost drones without communication (DI-29, DI-31): missing timers, slot vacancy, the timeout derived from the
+"""Lost drones without communication: missing timers, slot vacancy, the timeout derived from the
 catch-up, the reduced progress of a waiting formation (local formation time), the formation-keeping modes and
 their transition reasons, rejoin from behind, the envelope clear rule and the referee's degraded verdict."""
 
@@ -393,6 +393,72 @@ def test_rejoin_from_behind_never_cuts_across_the_fleet():
     assert fl.rejoin_phase == ""
 
 
+def test_rejoin_to_a_slot_with_a_drone_behind_it_on_its_lane_passes_below_it():
+    """A slot with another slot behind it on the same lane (square front drones, the tee centre drone) cannot be
+    reached from behind along the lane: the drone of the rear slot is in the way (v8 campaign, p1_vertical_escape
+    LOW s502: the tee centre drone held 2.9 m behind the rear drone for 250 s).  The rejoining drone passes on a
+    level pass_dz below (above if the depth band has no room), descending first, and rises only past it."""
+    plan = _plan(0)                                          # front-left slot (1.75, 1.75); rear-left (-1.75, 1.75)
+    fl = Flows(plan, DEFAULT)
+    t = 20.0
+    s_ref = plan.clock.s(t)
+    z_pass = -5.0 - DEFAULT.form.pass_dz_m
+    # on its lane, 2.9 m behind the rear-left slot, at the slot depth: descend first, never closer to it
+    o = _flow_obs([s_ref - 1.75 - 2.9, 1.75, -5.0], t, plan)
+    v, _ = fl.formation(o, DT, recovering=True)
+    assert fl.rejoin_phase == "PASS" and v[2] < 0.0 and v[0] <= plan.clock.v + 1e-9
+    # at the pass level, behind the rear slot: advance along the lane, staying at that level
+    o = _flow_obs([s_ref - 1.75 - 2.9, 1.75, z_pass], t, plan)
+    v, _ = fl.formation(o, DT, recovering=True)
+    assert fl.rejoin_phase == "PASS" and v[0] > 0.3 and abs(v[2]) < 0.05
+    # below the rear slot (3.5 m under it): keep passing at the pass level
+    o = _flow_obs([s_ref - 1.75, 1.75, z_pass], t, plan)
+    v, _ = fl.formation(o, DT, recovering=True)
+    assert fl.rejoin_phase == "PASS" and abs(v[2]) < 0.05
+    # past it, near the own slot: plain slot tracking, rising
+    o = _flow_obs([s_ref + 1.6, 1.75, z_pass], t, plan)
+    v, _ = fl.formation(o, DT, recovering=True)
+    assert fl.rejoin_phase == "" and v[2] > 0.0
+    # a slip back while rising (here 0.6 m, behind the rise point) never sends it back down or back
+    o = _flow_obs([s_ref + 1.0, 1.75, z_pass + 1.0], t, plan)
+    v, _ = fl.formation(o, DT, recovering=True)
+    assert fl.rejoin_phase == "" and v[0] > 0.0 and v[2] > 0.0
+    # independent review: a drone already AHEAD of the rear slot, on the slot level, behind its own slot (the
+    # normal recovery after a warning or a gate) tracks its slot as before: no PASS, never reversed into the rear one
+    for lag in (0.6, 1.0, 2.0, 3.0):
+        f = Flows(_plan(0), DEFAULT)
+        o = _flow_obs([s_ref + 1.75 - lag, 1.75, -5.0], t, plan)
+        v, _ = f.formation(o, DT, recovering=True)
+        assert f.rejoin_phase == "" and v[0] > 0.0 and abs(v[2]) < 1e-6, lag
+    # off its blocked lane, far behind: joins the lane on the pass level, pass_dz_m behind the rear slot
+    f = Flows(_plan(0), DEFAULT)
+    o = _flow_obs([s_ref - 12.0, 1.75 - 2.5, -5.0], t, plan)
+    f.formation(o, DT, recovering=True)
+    e = f.rejoin_entry(o, *f._slot(o)[1:])
+    assert f.rejoin_phase == "TO_LANE" and abs(e[2] - z_pass) < 1e-9 and e[0] <= s_ref - 1.75 - DEFAULT.form.pass_dz_m + 1e-9
+    # a gate episode or FAILSAFE ends a PASS latch
+    f.passing = True
+    f.formation(o, DT, recovering=True, traffic=False)
+    assert not f.passing
+    # descending behind the rear slot, the along command never reverses (the fleet stopped at the plan end)
+    stop = dataclasses.replace(_plan(0), clock=FormationClock(0.0, 0.3, 0.0, s_end=1.0))
+    f = Flows(stop, DEFAULT)
+    o = _flow_obs([1.0 - 1.75 - 2.9, 1.75, -5.0], t, stop)
+    v, _ = f.formation(o, DT, recovering=True)
+    assert f.rejoin_phase == "PASS" and v[0] >= -1e-9 and v[2] < 0.0
+    # the rear drone (nothing behind its slot) rejoins along its lane as before
+    fl2 = Flows(_plan(2), DEFAULT)
+    o = _flow_obs([s_ref - 6.0, 1.75, -5.0], t, _plan(2))
+    fl2.formation(o, DT, recovering=True)
+    assert fl2.rejoin_phase == ""
+    # no room below the path depth: pass above
+    deep = dataclasses.replace(_plan(0), path=Path(np.array([[0.0, 0.0], [80.0, 0.0]]), -7.0))
+    fl3 = Flows(deep, DEFAULT)
+    o = _flow_obs([s_ref - 1.75 - 2.9, 1.75, -7.0], t, deep)
+    v, _ = fl3.formation(o, DT, recovering=True)
+    assert fl3.rejoin_phase == "PASS" and v[2] > 0.0
+
+
 def test_failsafe_cancels_a_give_way():
     """A head-on give-way decided while holding in FAILSAFE would displace the target after the drone resumes
     (seen in the lost_drone_rejoin run: a closing-rate spike of a re-acquired echo)."""
@@ -455,7 +521,7 @@ def test_referee_declares_a_drone_absent_and_judges_the_degraded_formation():
 
 
 def test_no_give_way_while_catching_up_with_the_own_fleet():
-    """Seen in a lost_drone_rejoin probe (DI-31): a drone rejoining from behind at the catch-up speed sees the drone
+    """Seen in a lost_drone_rejoin probe: a drone rejoining from behind at the catch-up speed sees the drone
     ahead close in its FRONT sector faster than the head-on threshold and, 3 m behind its slot, does not recognise
     it as a neighbour; a give-way decided then pushed it 2 m towards the next lane."""
     plan = _plan(2)

@@ -119,8 +119,16 @@ class EchoClassifier:
         x = np.array([1.0, 0.0, 0.0])
         v = np.cross(x, a)
         c = float(np.dot(x, a))
-        if np.linalg.norm(v) < 1e-9:
-            M = np.eye(3) if c > 0 else np.diag([-1.0, -1.0, 1.0])
+        if np.linalg.norm(v) < 1e-9 and c > 0:
+            M = np.eye(3)
+        elif 1.0 + c <= 1e-6:
+            # (nearly) antiparallel: Rodrigues' 1 / (1 + c) is singular (v9 campaign, formation_six CLEAN s701: the
+            # REAR sector of a drone heading exactly +x, 1 + c rounded to 0).  Half turn about z (+x -> -x), then the
+            # small, well-conditioned rotation from -x to the boresight.
+            b = -x
+            w = np.cross(b, a)
+            wx = np.array([[0, -w[2], w[1]], [w[2], 0, -w[0]], [-w[1], w[0], 0]])
+            M = (np.eye(3) + wx + wx @ wx * (1.0 / (1.0 + float(np.dot(b, a))))) @ np.diag([-1.0, -1.0, 1.0])
         else:
             vx = np.array([[0, -v[2], v[1]], [v[2], 0, -v[0]], [-v[1], v[0], 0]])
             M = np.eye(3) + vx + vx @ vx * (1.0 / (1.0 + c))
@@ -132,7 +140,7 @@ class EchoClassifier:
         d = self.struct_pts - sonar_pos
         r = np.linalg.norm(d, axis=1)
         ang = np.arccos(np.clip((d @ boresight) / np.maximum(r, 1e-9), -1.0, 1.0))
-        # near-field widening (DI-12): strong reflectors close to the sonar are detected beyond the nominal
+        # near-field widening: strong reflectors close to the sonar are detected beyond the nominal
         # cone (seen in HoloOcean: a gate post at 0.63 m and 78 deg off-axis; a real wide beam does the
         # same through its side lobes), so the predicted structure window uses a cone widened by
         # atan(NEAR_FIELD_WIDEN_M / r): 22 deg at 0.6 m, 5 deg at 3 m, 2 deg at 7 m

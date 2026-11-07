@@ -189,6 +189,15 @@ def queue_assignment(slots: Sequence[Slot], G) -> List[Tuple[float, float]]:
     return out
 
 
+def check_gate_domain(slots: Sequence[Slot], G) -> None:
+    """Refuse a gate passage whose queue lies outside the validated domain (config.GateRule.queue_lateral_max: the
+    queue points from which a sonar exit witness of every passing drone exists, formal M4g)."""
+    worst = max(abs(lat) for lat, _dz in queue_assignment(slots, G))
+    if worst > G.queue_lateral_max + 1e-9:
+        raise ValueError(f"gate passage outside the validated domain: queue point {worst:.2f} m off the axis > "
+                         f"queue_lateral_max {G.queue_lateral_max:.2f} m (no sonar exit witness, formal M4g)")
+
+
 def queue_order(slots: Sequence[Slot], G) -> List[int]:
     """Static rank of every slot = its position in the queue precedence of the shared plan (left first, then
     top first).  It is the same order the sector rule produces geometrically, so the static-rank fallback
@@ -201,17 +210,28 @@ def queue_order(slots: Sequence[Slot], G) -> List[int]:
     return rank
 
 
-def _gate_frame_points(half: float, depth: float, k: int = 25) -> np.ndarray:
-    """Surface samples of a square gate frame (gate frame: s along the axis, l left, z up)."""
-    t = np.linspace(-half, half, k)
-    pts = [(x, y, z) for x in (-depth, depth) for y in t for z in (-half, half)] + \
-          [(x, y, z) for x in (-depth, depth) for y in (-half, half) for z in t]
-    return np.array(pts, dtype=float)
+def gate_frame_points(gate: Optional[GateSpec] = None, spacing: float = 0.04) -> np.ndarray:
+    """Surface samples of the gate's mapped bars in its gate frame (s along the axis, l left, z up).
+
+    ``gate`` defaults to the judged gate G06 of the scenarios, loaded from the arena with the bridge's overrides:
+    the same bars the simulator spawns and the sonar classifier maps."""
+    if gate is None:
+        return _judged_gate_frame_points(spacing)
+    from holo_fleet.perception.sonar_processing import bar_surface_points
+
+    pts = bar_surface_points(gate.bars, spacing)
+    return np.array([gate.to_gate_frame(p) for p in pts])
+
+
+@functools.lru_cache(maxsize=4)
+def _judged_gate_frame_points(spacing: float) -> np.ndarray:
+    from holo_fleet.arena_bridge import HORSESHOE_TRACK, load_arena_gates
+
+    return gate_frame_points(load_arena_gates(HORSESHOE_TRACK, ["G06"])[0], spacing)
 
 
 def structure_masked_pairs(points: Sequence[Tuple[float, float]], q_s: float, G, perc,
-                           frame_half: float = 0.93, frame_depth: float = 0.11, tol: Optional[float] = None,
-                           pairs=None) -> List:
+                           tol: Optional[float] = None, pairs=None, gate: Optional[GateSpec] = None) -> List:
     """Queue neighbours that a queued drone would see inside the gate's structure window.
 
     For every ordered pair of queue points (lateral, dz) within the queue bracket and every sector whose
@@ -225,7 +245,7 @@ def structure_masked_pairs(points: Sequence[Tuple[float, float]], q_s: float, G,
     from holo_fleet.perception.sonar_geometry import AXES, MOUNTS, NEAR_FIELD_WIDEN_M
 
     tol = G.hold_err_m if tol is None else tol
-    frame = _gate_frame_points(frame_half, frame_depth)
+    frame = gate_frame_points(gate)
     half = math.radians(perc.sonar.opening_deg / 2.0)
     corners = [np.array([a, b, c]) * tol for a in (-1, 1) for b in (-1, 1) for c in (-1, 1)]
     out = []

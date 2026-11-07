@@ -1,0 +1,822 @@
+{
+ "seconds": 40.0,
+ "wall_s": 27.9,
+ "threshold": 0.3,
+ "bin_m": 0.05,
+ "face_m": {
+  "front": 2.531,
+  "rear": 5.531
+ },
+ "settings": [
+  {
+   "setting": {
+    "label": "clean",
+    "sonar": [
+     0.05,
+     0.1,
+     0.05
+    ],
+    "dvl_vel": 0.01,
+    "dvl_rng": 0.02,
+    "gyro": 0.005,
+    "accel": 0.01,
+    "gyro_bias": 0.0,
+    "accel_bias": 0.0,
+    "mag": 0.005,
+    "depth": 0.02
+   },
+   "sonar_front": {
+    "captures": 390,
+    "recall": 1.0,
+    "false_alarm_rate": 0.0,
+    "range_err_mean": -0.0032,
+    "range_err_p05": -0.006,
+    "range_err_p50": -0.006,
+    "range_err_p95": 0.044,
+    "range_err_max": 0.044,
+    "range_err_min": -0.006,
+    "peak_p05_p50_p95": [
+     0.903,
+     1.029,
+     1.201
+    ]
+   },
+   "sonar_rear": {
+    "captures": 390,
+    "recall": 1.0,
+    "false_alarm_rate": 0.0,
+    "range_err_mean": 0.044,
+    "range_err_p05": 0.044,
+    "range_err_p50": 0.044,
+    "range_err_p95": 0.044,
+    "range_err_max": 0.044,
+    "range_err_min": 0.044,
+    "peak_p05_p50_p95": [
+     0.88,
+     1.018,
+     1.167
+    ]
+   },
+   "open_water_intensity": {
+    "mean": 0.0622,
+    "p99": 0.1516,
+    "frac_above_threshold": 0.0,
+    "rayleigh_scale_fit": 0.0496
+   },
+   "dvl_vel_std_xyz": [
+    0.0184,
+    0.0188,
+    0.0054
+   ],
+   "dvl_vel_rms_horizontal": 0.0264,
+   "gyro_z_std": 0.00504,
+   "gyro_z_mean": -2e-05,
+   "gyro_bias_z_end": 0.0,
+   "gyro_bias_z_maxabs": 0.0,
+   "accel_std_xyz": [
+    0.0102,
+    0.0097,
+    0.0099
+   ],
+   "heading_err_deg": {
+    "mean": -0.005,
+    "std": 0.29,
+    "p95_abs": 0.572
+   },
+   "depth": {
+    "mean": -4.9401,
+    "std": 0.0201,
+    "pose_z_mean": -4.935
+   }
+  },
+  {
+   "setting": {
+    "label": "add0.07",
+    "sonar": [
+     0.07,
+     0.1,
+     0.05
+    ],
+    "dvl_vel": 0.02,
+    "dvl_rng": 0.05,
+    "gyro": 0.01,
+    "accel": 0.02,
+    "gyro_bias": 0.0005,
+    "accel_bias": 0.001,
+    "mag": 0.01,
+    "depth": 0.05
+   },
+   "sonar_front": {
+    "captures": 390,
+    "recall": 1.0,
+    "false_alarm_rate": 0.0026,
+    "range_err_mean": -0.0043,
+    "range_err_p05": -0.006,
+    "range_err_p50": -0.006,
+    "range_err_p95": -0.006,
+    "range_err_max": 0.044,
+    "range_err_min": -0.106,
+    "peak_p05_p50_p95": [
+     0.942,
+     1.062,
+     1.203
+    ]
+   },
+   "sonar_rear": {
+    "captures": 390,
+    "recall": 1.0,
+    "false_alarm_rate": 0.0051,
+    "range_err_mean": 0.044,
+    "range_err_p05": 0.044,
+    "range_err_p50": 0.044,
+    "range_err_p95": 0.044,
+    "range_err_max": 0.044,
+    "range_err_min": 0.044,
+    "peak_p05_p50_p95": [
+     0.911,
+     1.042,
+     1.207
+    ]
+   },
+   "open_water_intensity": {
+    "mean": 0.0877,
+    "p99": 0.2102,
+    "frac_above_threshold": 8.547008547008547e-05,
+    "rayleigh_scale_fit": 0.0698
+   },
+   "dvl_vel_std_xyz": [
+    0.0356,
+    0.0374,
+    0.0116
+   ],
+   "dvl_vel_rms_horizontal": 0.0517,
+   "gyro_z_std": 0.01352,
+   "gyro_z_mean": -0.01594,
+   "gyro_bias_z_end": -0.03138,
+   "gyro_bias_z_maxabs": 0.03414,
+   "accel_std_xyz": [
+    0.0223,
+    0.0234,
+    0.0221
+   ],
+   "heading_err_deg": {
+    "mean": -0.018,
+    "std": 0.561,
+    "p95_abs": 1.085
+   },
+   "depth": {
+    "mean": -4.9368,
+    "std": 0.0501,
+    "pose_z_mean": -4.935
+   }
+  },
+  {
+   "setting": {
+    "label": "add0.08",
+    "sonar": [
+     0.08,
+     0.1,
+     0.05
+    ],
+    "dvl_vel": 0.03,
+    "dvl_rng": 0.1,
+    "gyro": 0.02,
+    "accel": 0.05,
+    "gyro_bias": 0.001,
+    "accel_bias": 0.002,
+    "mag": 0.02,
+    "depth": 0.1
+   },
+   "sonar_front": {
+    "captures": 390,
+    "recall": 1.0,
+    "false_alarm_rate": 0.0282,
+    "range_err_mean": -0.0039,
+    "range_err_p05": -0.006,
+    "range_err_p50": -0.006,
+    "range_err_p95": -0.006,
+    "range_err_max": 0.044,
+    "range_err_min": -0.006,
+    "peak_p05_p50_p95": [
+     0.952,
+     1.092,
+     1.255
+    ]
+   },
+   "sonar_rear": {
+    "captures": 390,
+    "recall": 1.0,
+    "false_alarm_rate": 0.0718,
+    "range_err_mean": 0.044,
+    "range_err_p05": 0.044,
+    "range_err_p50": 0.044,
+    "range_err_p95": 0.044,
+    "range_err_max": 0.044,
+    "range_err_min": 0.044,
+    "peak_p05_p50_p95": [
+     0.928,
+     1.054,
+     1.216
+    ]
+   },
+   "open_water_intensity": {
+    "mean": 0.1007,
+    "p99": 0.2419,
+    "frac_above_threshold": 0.0006837606837606838,
+    "rayleigh_scale_fit": 0.0804
+   },
+   "dvl_vel_std_xyz": [
+    0.0553,
+    0.0597,
+    0.0163
+   ],
+   "dvl_vel_rms_horizontal": 0.0813,
+   "gyro_z_std": 0.02282,
+   "gyro_z_mean": -0.01855,
+   "gyro_bias_z_end": -0.02735,
+   "gyro_bias_z_maxabs": 0.04185,
+   "accel_std_xyz": [
+    0.0524,
+    0.0555,
+    0.0522
+   ],
+   "heading_err_deg": {
+    "mean": -0.012,
+    "std": 1.157,
+    "p95_abs": 2.418
+   },
+   "depth": {
+    "mean": -4.94,
+    "std": 0.1018,
+    "pose_z_mean": -4.935
+   }
+  },
+  {
+   "setting": {
+    "label": "add0.09",
+    "sonar": [
+     0.09,
+     0.1,
+     0.05
+    ],
+    "dvl_vel": 0.05,
+    "dvl_rng": 0.2,
+    "gyro": 0.05,
+    "accel": 0.1,
+    "gyro_bias": 0.002,
+    "accel_bias": 0.005,
+    "mag": 0.035,
+    "depth": 0.2
+   },
+   "sonar_front": {
+    "captures": 390,
+    "recall": 1.0,
+    "false_alarm_rate": 0.1385,
+    "range_err_mean": -0.0056,
+    "range_err_p05": -0.006,
+    "range_err_p50": -0.006,
+    "range_err_p95": -0.006,
+    "range_err_max": 0.044,
+    "range_err_min": -0.156,
+    "peak_p05_p50_p95": [
+     0.953,
+     1.096,
+     1.274
+    ]
+   },
+   "sonar_rear": {
+    "captures": 390,
+    "recall": 1.0,
+    "false_alarm_rate": 0.3462,
+    "range_err_mean": 0.043,
+    "range_err_p05": 0.044,
+    "range_err_p50": 0.044,
+    "range_err_p95": 0.044,
+    "range_err_max": 0.044,
+    "range_err_min": -0.056,
+    "peak_p05_p50_p95": [
+     0.929,
+     1.083,
+     1.248
+    ]
+   },
+   "open_water_intensity": {
+    "mean": 0.1119,
+    "p99": 0.2717,
+    "frac_above_threshold": 0.0037606837606837607,
+    "rayleigh_scale_fit": 0.0895
+   },
+   "dvl_vel_std_xyz": [
+    0.0915,
+    0.0913,
+    0.0274
+   ],
+   "dvl_vel_rms_horizontal": 0.1295,
+   "gyro_z_std": 0.05466,
+   "gyro_z_mean": 0.01612,
+   "gyro_bias_z_end": 0.00356,
+   "gyro_bias_z_maxabs": 0.06367,
+   "accel_std_xyz": [
+    0.1114,
+    0.1304,
+    0.1258
+   ],
+   "heading_err_deg": {
+    "mean": -0.125,
+    "std": 2.026,
+    "p95_abs": 3.933
+   },
+   "depth": {
+    "mean": -4.9395,
+    "std": 0.1989,
+    "pose_z_mean": -4.935
+   }
+  },
+  {
+   "setting": {
+    "label": "add0.11",
+    "sonar": [
+     0.11,
+     0.1,
+     0.05
+    ],
+    "dvl_vel": 0.08,
+    "dvl_rng": 0.3,
+    "gyro": 0.1,
+    "accel": 0.2,
+    "gyro_bias": 0.005,
+    "accel_bias": 0.01,
+    "mag": 0.05,
+    "depth": 0.3
+   },
+   "sonar_front": {
+    "captures": 390,
+    "recall": 1.0,
+    "false_alarm_rate": 0.5897,
+    "range_err_mean": -0.011,
+    "range_err_p05": -0.056,
+    "range_err_p50": -0.006,
+    "range_err_p95": -0.006,
+    "range_err_max": 0.044,
+    "range_err_min": -0.356,
+    "peak_p05_p50_p95": [
+     0.985,
+     1.134,
+     1.316
+    ]
+   },
+   "sonar_rear": {
+    "captures": 390,
+    "recall": 1.0,
+    "false_alarm_rate": 0.9128,
+    "range_err_mean": 0.0367,
+    "range_err_p05": -0.006,
+    "range_err_p50": 0.044,
+    "range_err_p95": 0.044,
+    "range_err_max": 0.044,
+    "range_err_min": -0.156,
+    "peak_p05_p50_p95": [
+     0.97,
+     1.113,
+     1.304
+    ]
+   },
+   "open_water_intensity": {
+    "mean": 0.138,
+    "p99": 0.3344,
+    "frac_above_threshold": 0.0252991452991453,
+    "rayleigh_scale_fit": 0.1101
+   },
+   "dvl_vel_std_xyz": [
+    0.1453,
+    0.1608,
+    0.0438
+   ],
+   "dvl_vel_rms_horizontal": 0.2174,
+   "gyro_z_std": 0.11068,
+   "gyro_z_mean": 0.02834,
+   "gyro_bias_z_end": 0.13884,
+   "gyro_bias_z_maxabs": 0.13884,
+   "accel_std_xyz": [
+    0.2255,
+    0.2033,
+    0.2152
+   ],
+   "heading_err_deg": {
+    "mean": -0.102,
+    "std": 2.902,
+    "p95_abs": 5.704
+   },
+   "depth": {
+    "mean": -4.9517,
+    "std": 0.2958,
+    "pose_z_mean": -4.935
+   }
+  },
+  {
+   "setting": {
+    "label": "range0.10",
+    "sonar": [
+     0.05,
+     0.1,
+     0.1
+    ],
+    "dvl_vel": 0.1,
+    "dvl_rng": 0.5,
+    "gyro": 0.2,
+    "accel": 0.3,
+    "gyro_bias": 0.01,
+    "accel_bias": 0.02,
+    "mag": 0.07,
+    "depth": 0.5
+   },
+   "sonar_front": {
+    "captures": 390,
+    "recall": 1.0,
+    "false_alarm_rate": 0.0,
+    "range_err_mean": 0.004,
+    "range_err_p05": -0.006,
+    "range_err_p50": -0.006,
+    "range_err_p95": 0.044,
+    "range_err_max": 0.044,
+    "range_err_min": -0.006,
+    "peak_p05_p50_p95": [
+     0.957,
+     1.079,
+     1.193
+    ]
+   },
+   "sonar_rear": {
+    "captures": 390,
+    "recall": 1.0,
+    "false_alarm_rate": 0.0,
+    "range_err_mean": 0.044,
+    "range_err_p05": 0.044,
+    "range_err_p50": 0.044,
+    "range_err_p95": 0.044,
+    "range_err_max": 0.044,
+    "range_err_min": 0.044,
+    "peak_p05_p50_p95": [
+     0.948,
+     1.056,
+     1.211
+    ]
+   },
+   "open_water_intensity": {
+    "mean": 0.0627,
+    "p99": 0.1522,
+    "frac_above_threshold": 0.0,
+    "rayleigh_scale_fit": 0.05
+   },
+   "dvl_vel_std_xyz": [
+    0.1899,
+    0.1811,
+    0.0536
+   ],
+   "dvl_vel_rms_horizontal": 0.2625,
+   "gyro_z_std": 0.26008,
+   "gyro_z_mean": -0.26584,
+   "gyro_bias_z_end": -0.33784,
+   "gyro_bias_z_maxabs": 0.55768,
+   "accel_std_xyz": [
+    0.3569,
+    0.4195,
+    0.4312
+   ],
+   "heading_err_deg": {
+    "mean": 0.194,
+    "std": 4.076,
+    "p95_abs": 7.838
+   },
+   "depth": {
+    "mean": -4.9518,
+    "std": 0.5062,
+    "pose_z_mean": -4.935
+   }
+  },
+  {
+   "setting": {
+    "label": "range0.20",
+    "sonar": [
+     0.05,
+     0.1,
+     0.2
+    ],
+    "dvl_vel": 0.15,
+    "dvl_rng": 1.0,
+    "gyro": 0.005,
+    "accel": 0.01,
+    "gyro_bias": 0.0,
+    "accel_bias": 0.0,
+    "mag": 0.1,
+    "depth": 0.02
+   },
+   "sonar_front": {
+    "captures": 390,
+    "recall": 1.0,
+    "false_alarm_rate": 0.0,
+    "range_err_mean": 0.0173,
+    "range_err_p05": -0.006,
+    "range_err_p50": -0.006,
+    "range_err_p95": 0.044,
+    "range_err_max": 0.044,
+    "range_err_min": -0.006,
+    "peak_p05_p50_p95": [
+     0.987,
+     1.092,
+     1.222
+    ]
+   },
+   "sonar_rear": {
+    "captures": 390,
+    "recall": 1.0,
+    "false_alarm_rate": 0.0,
+    "range_err_mean": 0.044,
+    "range_err_p05": 0.044,
+    "range_err_p50": 0.044,
+    "range_err_p95": 0.044,
+    "range_err_max": 0.044,
+    "range_err_min": 0.044,
+    "peak_p05_p50_p95": [
+     0.968,
+     1.083,
+     1.224
+    ]
+   },
+   "open_water_intensity": {
+    "mean": 0.0626,
+    "p99": 0.1515,
+    "frac_above_threshold": 0.0,
+    "rayleigh_scale_fit": 0.0499
+   },
+   "dvl_vel_std_xyz": [
+    0.2842,
+    0.2705,
+    0.0808
+   ],
+   "dvl_vel_rms_horizontal": 0.3929,
+   "gyro_z_std": 0.0052,
+   "gyro_z_mean": -0.0002,
+   "gyro_bias_z_end": 0.0,
+   "gyro_bias_z_maxabs": 0.0,
+   "accel_std_xyz": [
+    0.01,
+    0.0102,
+    0.0103
+   ],
+   "heading_err_deg": {
+    "mean": -0.034,
+    "std": 5.795,
+    "p95_abs": 11.464
+   },
+   "depth": {
+    "mean": -4.9403,
+    "std": 0.0196,
+    "pose_z_mean": -4.935
+   }
+  },
+  {
+   "setting": {
+    "label": "range0.40",
+    "sonar": [
+     0.05,
+     0.1,
+     0.4
+    ],
+    "dvl_vel": 0.01,
+    "dvl_rng": 0.02,
+    "gyro": 0.005,
+    "accel": 0.01,
+    "gyro_bias": 0.0,
+    "accel_bias": 0.0,
+    "mag": 0.15,
+    "depth": 0.02
+   },
+   "sonar_front": {
+    "captures": 390,
+    "recall": 1.0,
+    "false_alarm_rate": 0.0,
+    "range_err_mean": 0.0272,
+    "range_err_p05": -0.006,
+    "range_err_p50": 0.044,
+    "range_err_p95": 0.044,
+    "range_err_max": 0.044,
+    "range_err_min": -0.006,
+    "peak_p05_p50_p95": [
+     0.994,
+     1.105,
+     1.213
+    ]
+   },
+   "sonar_rear": {
+    "captures": 390,
+    "recall": 1.0,
+    "false_alarm_rate": 0.0,
+    "range_err_mean": 0.0452,
+    "range_err_p05": 0.044,
+    "range_err_p50": 0.044,
+    "range_err_p95": 0.044,
+    "range_err_max": 0.094,
+    "range_err_min": 0.044,
+    "peak_p05_p50_p95": [
+     0.985,
+     1.078,
+     1.219
+    ]
+   },
+   "open_water_intensity": {
+    "mean": 0.0629,
+    "p99": 0.1511,
+    "frac_above_threshold": 0.0,
+    "rayleigh_scale_fit": 0.0503
+   },
+   "dvl_vel_std_xyz": [
+    0.0187,
+    0.0181,
+    0.0054
+   ],
+   "dvl_vel_rms_horizontal": 0.026,
+   "gyro_z_std": 0.00505,
+   "gyro_z_mean": -0.00013,
+   "gyro_bias_z_end": 0.0,
+   "gyro_bias_z_maxabs": 0.0,
+   "accel_std_xyz": [
+    0.0104,
+    0.0099,
+    0.0098
+   ],
+   "heading_err_deg": {
+    "mean": -0.042,
+    "std": 8.572,
+    "p95_abs": 17.413
+   },
+   "depth": {
+    "mean": -4.9406,
+    "std": 0.0212,
+    "pose_z_mean": -4.935
+   }
+  },
+  {
+   "setting": {
+    "label": "mult0.30",
+    "sonar": [
+     0.05,
+     0.3,
+     0.05
+    ],
+    "dvl_vel": 0.01,
+    "dvl_rng": 0.02,
+    "gyro": 0.005,
+    "accel": 0.01,
+    "gyro_bias": 0.0,
+    "accel_bias": 0.0,
+    "mag": 0.2,
+    "depth": 0.02
+   },
+   "sonar_front": {
+    "captures": 390,
+    "recall": 1.0,
+    "false_alarm_rate": 0.0,
+    "range_err_mean": -0.0045,
+    "range_err_p05": -0.006,
+    "range_err_p50": -0.006,
+    "range_err_p95": -0.006,
+    "range_err_max": 0.044,
+    "range_err_min": -0.006,
+    "peak_p05_p50_p95": [
+     0.93,
+     1.183,
+     1.519
+    ]
+   },
+   "sonar_rear": {
+    "captures": 390,
+    "recall": 1.0,
+    "false_alarm_rate": 0.0,
+    "range_err_mean": 0.0444,
+    "range_err_p05": 0.044,
+    "range_err_p50": 0.044,
+    "range_err_p95": 0.044,
+    "range_err_max": 0.094,
+    "range_err_min": 0.044,
+    "peak_p05_p50_p95": [
+     0.892,
+     1.18,
+     1.496
+    ]
+   },
+   "open_water_intensity": {
+    "mean": 0.0628,
+    "p99": 0.1493,
+    "frac_above_threshold": 0.0,
+    "rayleigh_scale_fit": 0.05
+   },
+   "dvl_vel_std_xyz": [
+    0.0186,
+    0.0193,
+    0.0054
+   ],
+   "dvl_vel_rms_horizontal": 0.0268,
+   "gyro_z_std": 0.00495,
+   "gyro_z_mean": -4e-05,
+   "gyro_bias_z_end": 0.0,
+   "gyro_bias_z_maxabs": 0.0,
+   "accel_std_xyz": [
+    0.0101,
+    0.01,
+    0.0098
+   ],
+   "heading_err_deg": {
+    "mean": -0.552,
+    "std": 11.632,
+    "p95_abs": 23.224
+   },
+   "depth": {
+    "mean": -4.9394,
+    "std": 0.0193,
+    "pose_z_mean": -4.935
+   }
+  },
+  {
+   "setting": {
+    "label": "mult0.60",
+    "sonar": [
+     0.05,
+     0.6,
+     0.05
+    ],
+    "dvl_vel": 0.01,
+    "dvl_rng": 0.02,
+    "gyro": 0.005,
+    "accel": 0.01,
+    "gyro_bias": 0.0,
+    "accel_bias": 0.0,
+    "mag": 0.3,
+    "depth": 0.02
+   },
+   "sonar_front": {
+    "captures": 390,
+    "recall": 1.0,
+    "false_alarm_rate": 0.0,
+    "range_err_mean": 0.0021,
+    "range_err_p05": -0.006,
+    "range_err_p50": -0.006,
+    "range_err_p95": 0.044,
+    "range_err_max": 0.094,
+    "range_err_min": -0.006,
+    "peak_p05_p50_p95": [
+     0.954,
+     1.45,
+     2.15
+    ]
+   },
+   "sonar_rear": {
+    "captures": 390,
+    "recall": 1.0,
+    "false_alarm_rate": 0.0,
+    "range_err_mean": 0.0508,
+    "range_err_p05": 0.044,
+    "range_err_p50": 0.044,
+    "range_err_p95": 0.094,
+    "range_err_max": 0.144,
+    "range_err_min": 0.044,
+    "peak_p05_p50_p95": [
+     0.806,
+     1.411,
+     2.054
+    ]
+   },
+   "open_water_intensity": {
+    "mean": 0.0629,
+    "p99": 0.1534,
+    "frac_above_threshold": 0.0,
+    "rayleigh_scale_fit": 0.0501
+   },
+   "dvl_vel_std_xyz": [
+    0.0186,
+    0.0193,
+    0.0055
+   ],
+   "dvl_vel_rms_horizontal": 0.0268,
+   "gyro_z_std": 0.00513,
+   "gyro_z_mean": 4e-05,
+   "gyro_bias_z_end": 0.0,
+   "gyro_bias_z_maxabs": 0.0,
+   "accel_std_xyz": [
+    0.01,
+    0.01,
+    0.0104
+   ],
+   "heading_err_deg": {
+    "mean": -0.405,
+    "std": 18.176,
+    "p95_abs": 35.708
+   },
+   "depth": {
+    "mean": -4.9394,
+    "std": 0.0202,
+    "pose_z_mean": -4.935
+   }
+  }
+ ]
+}

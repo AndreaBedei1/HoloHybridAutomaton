@@ -8,7 +8,7 @@ the low-level controller.  Output: desired world velocity and heading.
 from __future__ import annotations
 
 import math
-from typing import Optional, Tuple
+from typing import Dict, List, Optional, Tuple
 
 import numpy as np
 
@@ -18,6 +18,12 @@ from holo_fleet.control.formation_time import FormationTime
 from holo_fleet.mission import MissionPlan
 from holo_fleet.perception.perception import LocalObservation
 from holo_fleet.perception.sonar_processing import OBSTACLE_CLASSES
+from holo_fleet.perception.sonar_geometry import HULL_HALF, R_OUT
+
+RELOC_MARGIN_M = 0.15     # hold point: the hull this far before the critical region
+RELOC_ZONE_M = 0.4        # a gate localization confirmed this close to the hold point clears the entry
+RELOC_PERIOD_S = 6.0      # relocalization: hold, then back off for a new viewing geometry, alternately
+RELOC_BACK_M = 0.6
 
 
 def _cap(v: np.ndarray, vmax_xy: float, vmax_z: float) -> np.ndarray:
@@ -56,13 +62,24 @@ class Flows:
         self.cfg = cfg
         self.escape = EscapePlanner(cfg)
         self.sigma = 0.0                      # local along-track progress offset (sonar consensus)
-        self.ftime = FormationTime(plan.clock, cfg)   # local formation time (reduced progress, DI-31)
+        self.lam = 0.0                        # local lateral slot offset (sonar consensus) [m]
+        self.lat_offset = np.zeros(3)         # ... as a world vector, added to the slot reference
+        self.ftime = FormationTime(plan.clock, cfg)   # local formation time (reduced progress)
         self.last_choice: Optional[EscapeChoice] = None
         self.hold_pos: Optional[np.ndarray] = None
         self.offset = np.zeros(3)             # give-way offset of the mission target (world) [m]
+        self.cr_cleared = False               # gate localization valid at the hold point: may enter the CR
+        self.reloc_hold = False               # holding before the CR for the gate localization (logged)
+        self.hold_since: Optional[float] = None   # relocalization hold before the CR started at
+        self.hold_timeout = False             # the stage-2 hold exceeded t_occ_max + t_clear (logged once)
+        self.entry_state = ""                 # stage 2: "", "HOLD", "ADMIT" (logged for the gate events E4 / E7)
+        self.events: List[Dict] = []          # ENTRY_HOLD_TIMEOUT (drained by the controller)
+        self.abort_request = False            # stage-2 hold beyond the slowest release: give the passage up
         self.giveway: str = ""                # "", "RIGHT", "UP", "DOWN"
         self.giveway_t = -1e9                 # last time the head-on condition held
-        self.rejoin_phase = ""                # "", "DROP_BACK", "TO_LANE" (rejoin from behind, recovering only)
+        self.rejoin_phase = ""                # "", "DROP_BACK", "TO_LANE", "PASS" (rejoin from behind, recovering only)
+        self.passing = False                  # PASS latch (kept through avoidance episodes); see rejoin_entry
+        self.at_level = False                 # ... at the pass level (hysteresis)
 
     # ------------------------------------------------------------------ give-way (traffic rule)
     def traffic_offset(self, obs: LocalObservation, dt: float, r_trigger: float = 8.0,
@@ -74,10 +91,10 @@ class Flows:
         Decided before the warning band, from sector patterns only; safety does not rely on it (P1 is
         enforced by the warning filter and the escape), it avoids head-on standoffs.  Not ``active`` (the
         drone is in FAILSAFE, holding): no give-way is decided and a running one is cancelled - a decision
-        latched while holding would displace the mission target after the drone resumes (DI-29).  Not
+        latched while holding would displace the mission target after the drone resumes.  Not
         ``decide`` (the drone recovers from behind its slot, catching up with its own fleet): no new give-way
         is decided, a running one ends as usual - the drones ahead close in its FRONT sector at the catch-up
-        speed and, off its slot, it does not recognise them as neighbours (DI-31)."""
+        speed and, off its slot, it does not recognise them as neighbours."""
         R = obs.R_wb
         if not self.cfg.traffic_rule:
             return self.offset
@@ -117,22 +134,32 @@ class Flows:
     def formation(self, obs: LocalObservation, dt: float, recovering: bool = False,
                   traffic: bool = True) -> Tuple[np.ndarray, float]:
         fr = self.cfg.form
-        # speed of the own formation reference: the planned speed, reduced while a neighbour is missing (DI-31)
+        # speed of the own formation reference: the planned speed, reduced while a neighbour is missing
         v_clock = self.ftime.speed(obs.t, dt)
         err = obs.slot_pos - obs.p             # slot_pos already includes the give-way offset
         # sonar progress consensus: drift sigma towards the neighbours' actual along-track positions.  Not while the
         # drone is far from its own slot (beyond e_lost): there the range residuals mostly measure its own
         # displacement (a drone left behind sees every neighbour 'ahead') and would carry its reference away from
-        # the fleet (DI-31); near its slot, in any mode, it is what re-aligns the references of the drones
-        if float(np.linalg.norm(err)) < fr.e_lost:
+        # the fleet; near its slot, in any mode, it is what re-aligns the references of the drones
+        # lateral consensus, the same integral on the lateral residual: the dead reckoning drifts sideways (a compass
+        # bias turns into a lateral error of a few percent of the distance run) and the drone, on its slot in its own
+        # estimate, is really beside it; the proportional sonar term below only shares that error with the slot
+        # tracking, the integrated offset moves the slot reference until the neighbours' ranges agree
+        near = float(np.linalg.norm(err)) < fr.e_lost
+        if near:
             self.sigma += dt * (fr.k_progress * obs.form.along_corr - 0.02 * self.sigma)
             self.sigma = float(np.clip(self.sigma, -fr.progress_max, fr.progress_max))
+            self.lam += dt * (fr.k_lateral * obs.form.lateral_corr - 0.02 * self.lam)
+            self.lam = float(np.clip(self.lam, -fr.progress_max, fr.progress_max))
         _slot, R_form, s_ref = self._slot(obs)
         t_hat, n_hat = R_form[:, 0], R_form[:, 1]
+        self.lat_offset = self.lam * np.array([n_hat[0], n_hat[1], 0.0])
         # a recovering drone behind its slot is catching up with its own fleet, not meeting it head-on: the drones
         # ahead close in its FRONT sector at the catch-up speed and, while it is off its slot, are not recognised
-        # as neighbours; no new give-way is decided then (it would push it towards the next lane, DI-31)
+        # as neighbours; no new give-way is decided then (it would push it towards the next lane)
         catching_up = recovering and float(err @ t_hat) > fr.e_ok
+        if not traffic:                                          # FAILSAFE: a PASS latch ends with the episode
+            self.passing = self.at_level = False
         self.traffic_offset(obs, dt, active=traffic, decide=not catching_up)
         entry = self.rejoin_entry(obs, R_form, s_ref) if recovering else None
         if not recovering:
@@ -153,7 +180,7 @@ class Flows:
         return v, math.atan2(t_hat[1], t_hat[0])
 
     def rejoin_entry(self, obs: LocalObservation, R_form: np.ndarray, s_ref: float) -> Optional[np.ndarray]:
-        """Rejoin from behind (DI-29).  A recovering drone that is off its own lane does not head straight for
+        """Rejoin from behind.  A recovering drone that is off its own lane does not head straight for
         its slot, which could take it across the lanes of the drones in formation: it first falls behind the
         formation (DROP_BACK: along-track correction only, no lateral motion, while it is level with the
         fleet), then moves to its own lane at ``rejoin_back_m`` behind the rear-most slot (TO_LANE), and from
@@ -164,15 +191,66 @@ class Flows:
         t_hat, n_hat = R_form[:, 0], R_form[:, 1]
         p_lane, _d, _n = self.plan.path.frame_at(s_ref + me.along)
         lane_err = float((obs.p[:2] - p_lane[:2]) @ n_hat[:2]) - me.lateral
+        blk = self._lane_blocked()
         if abs(lane_err) <= fr.rejoin_lane_tol_m:
-            self.rejoin_phase = ""
-            return None
+            if blk is None:
+                self.passing = False
+                self.rejoin_phase = ""
+                return None
+            p0, _d, _n = self.plan.path.frame_at(s_ref)
+            a = float((obs.p[:2] - p0[:2]) @ t_hat[:2])          # own along-track position in the formation frame
+            z, z_pass = float(obs.p[2]), self.plan.path.depth_z + blk[1]
+            z_slot = self.plan.path.depth_z + me.dz
+            past = min(me.along, blk[0] + fr.pass_dz_m) - 0.5    # rise from the pass level from here on
+            in_layer = abs(z - z_pass) < abs(z - z_slot)
+            # latched: entered only behind the rear slot (or in the pass layer well before the rise point), left
+            # only past it - a drone between the rear slot and its own one, or rising, is never sent back down
+            if self.passing and a >= past:
+                self.passing = False
+            elif not self.passing and (a < blk[0] or (in_layer and a < past - 1.0)):
+                self.passing = True
+            if not self.passing:
+                self.rejoin_phase = ""
+                return None
+            # pass on the pass level: descend first (advancing at most up to pass_dz_m behind the rear slot, never
+            # backwards: a vertical move only ever widens the distance to the drones on the slot level), then advance
+            # along the lane at that level up to the rise point (level hysteresis 0.3 / 0.8 m)
+            if abs(z - z_pass) <= 0.3:
+                self.at_level = True
+            elif abs(z - z_pass) > 0.8:
+                self.at_level = False
+            along = me.along if self.at_level else min(me.along, max(a, blk[0] - fr.pass_dz_m))
+            p_e, _d, n_e = self.plan.path.frame_at(s_ref + along)
+            self.rejoin_phase = "PASS"
+            return np.array([p_e[0] + me.lateral * n_e[0], p_e[1] + me.lateral * n_e[1], z_pass])
+        self.passing = False
         rear = min(sl.along for sl in self.plan.slots) - fr.rejoin_back_m
+        if blk is not None:                                      # a blocked lane is joined on the pass level, at
+            rear = min(rear, blk[0] - fr.pass_dz_m)              # least pass_dz_m behind the rear slot (review)
         p_r, _d, n_r = self.plan.path.frame_at(s_ref + rear)
-        entry = np.array([p_r[0] + me.lateral * n_r[0], p_r[1] + me.lateral * n_r[1], self.plan.path.depth_z + me.dz])
+        dz = me.dz if blk is None else blk[1]
+        entry = np.array([p_r[0] + me.lateral * n_r[0], p_r[1] + me.lateral * n_r[1], self.plan.path.depth_z + dz])
         behind = float((entry - obs.p) @ t_hat) >= -0.5          # at (or behind) the rear entry point
         self.rejoin_phase = "TO_LANE" if behind else "DROP_BACK"
         return entry
+
+    def _lane_blocked(self) -> Optional[Tuple[float, float]]:
+        """(along of the front-most slot behind the own one on its lane, dz of the pass level), or None.  A slot is
+        on the own lane when its lane and level are nearer than pass_dz_m; the pass level is pass_dz_m below the own
+        slot (above when the depth band has no room) and must keep pass_dz_m from every other slot's lane."""
+        fr, env = self.cfg.form, self.cfg.env
+        me = self.plan.my_slot
+        others = [sl for k, sl in enumerate(self.plan.slots) if k != self.plan.slot_index]
+        behind = [sl.along for sl in others
+                  if sl.along < me.along and math.hypot(sl.lateral - me.lateral, sl.dz - me.dz) < fr.pass_dz_m - 1e-6]
+        if not behind:
+            return None
+        for dz in (me.dz - fr.pass_dz_m, me.dz + fr.pass_dz_m):
+            z = self.plan.path.depth_z + dz
+            if env.z_min + 0.5 - 1e-6 <= z <= env.z_max - 0.5 + 1e-6 and all(
+                    math.hypot(sl.lateral - me.lateral, sl.dz - dz) >= fr.pass_dz_m - 1e-6 for sl in others):
+                return max(behind), dz
+        return None
 
     def _slot(self, obs):
         clock = self.plan.clock
@@ -215,19 +293,58 @@ class Flows:
         return path[-1]
 
     def gate(self, obs: LocalObservation, mode: str) -> Tuple[np.ndarray, float]:
+        self.passing = self.at_level = False                     # a gate episode ends a PASS latch (review)
         G = self.cfg.gate
         g = self.plan.gates[min(obs.gate_index, len(self.plan.gates) - 1)]
         go = obs.gate
         yaw = math.atan2(g.axis[1], g.axis[0])
+        hold = False
         if mode == "MUTEX_PASS":
             c = self._carrot(self.pass_path(go.queue_s, go.queue_l, go.queue_dz), np.array([go.s, go.l, go.dz]))
+            # two-stage entry.  Stage 1 is the commit at the queue point (automaton: priority and the latch FREE).
+            # Stage 2 is the admission at the hold point before the CR: a valid gate localization (the hull plus the
+            # uncertainty of a map fit inside the free opening: perception/structure_aiding.py) AND no hull seen or
+            # heard in the CR from there (GateObs.entry_ok).  Short of it the committed drone holds on its path before
+            # the CR and every RELOC_PERIOD_S backs off by RELOC_BACK_M and returns (a new viewing geometry); queued
+            # drones see it in FRONT, nearer than the CR, and wait (WAIT relation).  A hold longer than t_occ_max +
+            # t_clear (the slowest release the protocol admits) is logged once as ENTRY_HOLD_TIMEOUT: the evaluation
+            # judges it a gate-liveness violation; the drone is never forced into the CR.  It then requests the
+            # automaton's give-up edge (ha/spec.py, pass_abort: committed is cleared, MUTEX_APPROACH, back to the
+            # queue point, where the stage-1 rule decides again; a flow-only retreat would keep it committed).
+            # Once admitted it completes the passage (no stop inside the CR is added)
+            s_hold = -(G.cr_half_len + float(HULL_HALF[0]) + RELOC_MARGIN_M)
+            if go.loc_ok and go.entry_ok and go.s >= s_hold - RELOC_ZONE_M:
+                self.cr_cleared = True
+            # give-up plane: a drone whose centre is behind it is outside the CR whatever its declared gate-frame
+            # navigation error (the hull's circumscribed ball R_OUT included)
+            s_abort = -(G.cr_half_len + float(R_OUT) + G.nav_err_m)
+            self.abort_request = False
+            if not self.cr_cleared and (c[0] > s_hold or self.hold_timeout):
+                self.hold_since = obs.t if self.hold_since is None else self.hold_since
+                if obs.t - self.hold_since > G.t_occ_max + G.t_clear and not self.hold_timeout:
+                    self.hold_timeout = True
+                    self.events.append({"t": obs.t, "type": "ENTRY_HOLD_TIMEOUT", "loc_ok": go.loc_ok,
+                                        "entry_ok": go.entry_ok})
+                back = int((obs.t - self.hold_since) / RELOC_PERIOD_S) % 2 == 1
+                c = np.array([s_hold - (RELOC_BACK_M if back else 0.0), 0.0, c[2]])
+                if self.hold_timeout:
+                    # give up: still committed (the queued drones keep waiting), back off behind the give-up plane,
+                    # then request the automaton's give-up edge, which clears the commitment; recomputed every step,
+                    # never once admitted
+                    c = np.array([s_abort - RELOC_MARGIN_M, 0.0, c[2]])
+                    self.abort_request = go.s <= s_abort
+                hold = True
+            self.entry_state = "ADMIT" if self.cr_cleared else ("HOLD" if hold else "")
             tgt = g.from_gate_frame(c)
             vmax = G.v_pass
         else:  # MUTEX_APPROACH / MUTEX_YIELD: go to / hold the own queue point
+            self.cr_cleared, self.hold_since, self.entry_state, self.hold_timeout = False, None, "", False
+            self.abort_request = False
             tgt = g.from_gate_frame([go.queue_s, go.queue_l, go.queue_dz])
             vmax = G.v_approach
+        self.reloc_hold = hold
         v = G.k_track * (tgt - obs.p)
-        if mode == "MUTEX_PASS":                                    # carrot: keep the cruise speed
+        if mode == "MUTEX_PASS" and not hold:                       # carrot: keep the cruise speed
             n = float(np.linalg.norm(v[:2]))
             if n > 1e-6:
                 v[:2] *= vmax / n
@@ -271,7 +388,7 @@ class Flows:
         """Hold the position at the own failsafe layer.  With ``probe`` (an envelope violation is declared) the
         held depth oscillates by +-``amp`` (period ``period``, twice the monitor's window): the vehicle shows,
         with its own DVL, that it moves when asked to before the violation is cleared
-        (controller.EnvelopeMonitor, DI-29)."""
+        (controller.EnvelopeMonitor)."""
         if self.hold_pos is None:
             self.hold_pos = obs.p.copy()
             self.hold_pos[2] = float(np.clip(obs.p[2] + self.plan.failsafe_layer_dz, self.cfg.env.z_min + 0.5,

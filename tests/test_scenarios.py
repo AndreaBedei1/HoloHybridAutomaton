@@ -9,8 +9,11 @@ from holo_fleet.sim.scenarios import SCENARIOS
 EXPECTED = {"p1_head_on": 2, "p1_vertical_escape": 4, "p1_two_lines": 6, "p1_close_encounter": 2,
             "formation_triangle": 3, "formation_square": 4, "formation_six": 6, "formation_recovery_head_current": 4,
             "formation_gust": 4, "gate_single": 3, "integrated_short": 3, "lost_drone_rejoin": 4,
-            "lost_drone_timeout": 4, "mutex_deadlock_resolution": 3, "line_parallel_mutex": 3, "lost_drone_mutex": 3}
-GATE_SCENARIOS = ("gate_single", "integrated_short", "mutex_deadlock_resolution", "line_parallel_mutex", "lost_drone_mutex")
+            "lost_drone_rejoin_front": 4,
+            "lost_drone_timeout": 4, "mutex_deadlock_resolution": 3, "line_parallel_mutex": 3, "lost_drone_mutex": 3,
+            "gate_stalled_occupant": 3}
+GATE_SCENARIOS = ("gate_single", "integrated_short", "mutex_deadlock_resolution", "line_parallel_mutex", "lost_drone_mutex",
+                  "gate_stalled_occupant")
 
 
 def test_catalogue_is_small_and_short():
@@ -56,13 +59,32 @@ def test_lost_drone_scenarios_inject_one_simulator_fault_on_a_rear_drone():
         if name == "lost_drone_mutex":                       # the left drone of the line: the leftmost present goes
             assert sc.template.name == "line3" and k == 0
         assert sc.disturbance_active(f["t_on"] + 0.1)
-    for name in set(EXPECTED) - {"lost_drone_rejoin", "lost_drone_timeout", "lost_drone_mutex"}:
+    # v9: the rejoin of a FRONT slot (temporary fault; the drone of the rear slot on its lane is in the way)
+    sc = SCENARIOS["lost_drone_rejoin_front"](DEFAULT)
+    (f,) = sc.sim.faults
+    k = int(f["drone"].split("_")[1])
+    me = sc.template.slots[k]
+    assert f["type"] == "THRUSTER_FAILURE" and f["t_off"] is not None and sc.disturbance_active(f["t_on"] + 0.1)
+    assert any(sl.along < me.along and abs(sl.lateral - me.lateral) < 1e-9 for sl in sc.template.slots)
+    for name in set(EXPECTED) - {"lost_drone_rejoin", "lost_drone_rejoin_front", "lost_drone_timeout", "lost_drone_mutex",
+                                 "gate_stalled_occupant"}:
         assert not SCENARIOS[name](DEFAULT).sim.faults, name
+
+
+def test_stalled_occupant_is_gate_single_with_a_ground_truth_mid_cr_trigger():
+    from holo_fleet.runner import TRIGGER_PENDING
+
+    sc, ref = SCENARIOS["gate_stalled_occupant"](DEFAULT), SCENARIOS["gate_single"](DEFAULT)
+    (f,) = sc.sim.faults
+    assert f["drone"] == "drone_0" and f["t_off"] is None and f["t_on"] >= TRIGGER_PENDING and f["trigger"] == "mid_cr:G06"
+    assert [p.queue_lateral for p in sc.plans] == [p.queue_lateral for p in ref.plans]
+    assert [g.gate_id for g in sc.judged_gates] == ["G06"]
+    assert sc.sim.current.describe() == []          # no current: the stalled drone stays in the CR
 
 
 def test_currents_inside_the_envelope_except_declared_disturbances():
     """Outside the declared disturbance windows every current is control-feasible for the survey velocity
-    (DI-27, along the mission path at the planned clock speed) and inside the exercised range."""
+    (along the mission path at the planned clock speed) and inside the exercised range."""
     from holo_fleet.control.current_envelope import check_current
 
     for name in EXPECTED:
@@ -97,7 +119,7 @@ def test_close_encounter_is_a_simultaneous_right_angle_crossing():
 
 def test_head_current_is_in_range_but_not_control_feasible():
     """The jet stays within the exercised range (0.6 m/s) but, against the 0.30 m/s survey velocity, it is
-    beyond the control-feasible head limit (about 0.41 m/s): outside the corrected envelope (DI-27)."""
+    beyond the control-feasible head limit (about 0.41 m/s): outside the corrected envelope."""
     from holo_fleet.control.current_envelope import check_current, head_limit
 
     sc = SCENARIOS["formation_recovery_head_current"](DEFAULT)
@@ -112,3 +134,50 @@ def test_head_current_is_in_range_but_not_control_feasible():
 
 def norm_head(jet):
     return -float(jet.drift[0])
+
+
+def test_gate_passages_stay_inside_the_validated_queue_domain():
+    """Every queued drone has a sonar exit witness of the drone that passes only for queue points within
+    GateRule.queue_lateral_max (formal M4g): the planner refuses larger queues (the abreast queue of 4-6) and every gate
+    scenario is inside the domain."""
+    import pytest
+    from holo_fleet.mission import abreast_slots, check_gate_domain
+
+    for n in (2, 3):
+        check_gate_domain(abreast_slots(n), DEFAULT.gate)
+    for n in (4, 5, 6):
+        with pytest.raises(ValueError, match="validated domain"):
+            check_gate_domain(abreast_slots(n), DEFAULT.gate)
+    for name, make in SCENARIOS.items():
+        sc = make(DEFAULT)
+        if sc.plans and sc.plans[0].gates:
+            check_gate_domain(sc.plans[0].slots, DEFAULT.gate)
+
+
+def test_mid_cr_trigger_fires_only_in_the_second_half_of_the_critical_region():
+    from types import SimpleNamespace
+
+    from holo_fleet.runner import _triggered
+
+    sc = SCENARIOS["gate_stalled_occupant"](DEFAULT)
+    (f,) = sc.sim.faults
+    g = sc.judged_gates[0]
+    names = sc.sim.names
+    left = np.array([-g.axis[1], g.axis[0], 0.0])
+
+    def at(s, l=0.0):
+        P = np.zeros((len(names), 3))
+        P[0] = g.center + s * np.asarray(g.axis, float) + l * left
+        return SimpleNamespace(positions=P)
+    assert not _triggered(f, sc, names, at(-0.3)) and _triggered(f, sc, names, at(0.3))
+    assert not _triggered(f, sc, names, at(0.3, 1.5)) and not _triggered(f, sc, names, at(1.2))
+
+
+def test_b2_final_matrix_is_the_preregistered_smaller_variant():
+    import sys
+    sys.path.insert(0, str(__import__("pathlib").Path(__file__).resolve().parents[1] / "scripts"))
+    import run_sensor_robustness_campaign as c
+
+    runs = c.b2_final_matrix()
+    assert len(runs) == 216 == len(set(runs)) and len(c.B2_CELLS) == 3
+    assert {r[3] for r in runs} == set(range(800, 806))                       # fresh held-out seeds (v10)

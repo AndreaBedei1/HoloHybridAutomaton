@@ -1,0 +1,4 @@
+phase targeted: 2 runs, 0 done, 2 to do
+21:18:37 phase targeted start: orchestrator pid 28132, shard 0/1, code {'sha': '31efb0d4ef46613649a353d5b1eab740e4f68cb3', 'dirty_files': []}
+21:20:24 B0 LOW-ALL                lost_drone_timeout               s0 PASS             P1 3.45 fail [] wall 105.8s exit 0
+21:22:15 B2_LOW LOW-ALL                lost_drone_timeout               s0 PASS             P1 3.342 fail [] wall 104.6s exit 0

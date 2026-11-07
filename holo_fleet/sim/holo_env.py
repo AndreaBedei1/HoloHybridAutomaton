@@ -25,6 +25,8 @@ from holo_fleet.config import DEFAULT, FleetConfig
 from holo_fleet.perception.frame import SensorFrame
 from holo_fleet.perception.sensor_suite import SONAR_NAMES, is_onboard, onboard_sensor_configs
 from holo_fleet.sim import holoocean_setup as hs
+from holo_fleet.sim.engine_session import make
+from holo_fleet.sim.sensor_noise import heading_biases, plan_windows
 
 LOG = logging.getLogger(__name__)
 
@@ -54,7 +56,9 @@ def agent_origin_from_pose(pose: np.ndarray) -> np.ndarray:
 class HoloFleetSim:
     """``spec`` needs: name, names, spawn_positions, spawn_yaw_deg, gate_ids, props, current,
     stress (beam_dropout, blackout_every_s, blackout_len_s), release_s, duration_s, seed,
-    camera_drone (index or None), env_box (or None)."""
+    camera_drone (index or None), env_box (or None); optionally ``noise`` (sim.sensor_noise.NoiseProfile:
+    HoloOcean noise parameters + seeded wrapper degradation of the onboard streams, None = deployed sensors).
+    ``cfg.beacon`` enables the B2 one-way acoustic beacon (sim/beacon.py)."""
 
     def __init__(self, spec, cfg: FleetConfig = DEFAULT, headless: bool = True, view_region: bool = False):
         self.spec = spec
@@ -75,11 +79,49 @@ class HoloFleetSim:
         self.tick_wall_ms: List[float] = []
         self.sonar_captures = 0
         self.watchdog = None
+        # sensor degradation (sim/sensor_noise.py): its own generator, so the stress stream above is unchanged
+        self.noise = getattr(spec, "noise", None)
+        self.nrng = np.random.default_rng([int(spec.seed), 7919])
+        nd = getattr(spec, "noise_drones", None)
+        self.noisy_idx = set(range(len(self.names))) if nd is None else {int(k) for k in nd}
+        self.noisy = {self.names[k] for k in self.noisy_idx} if self.noise is not None else set()
+        self.heading_bias = (heading_biases(self.noise, len(self.names), spec.seed) if self.noise is not None
+                             else np.zeros(len(self.names)))
+        self.heading_bias = np.array([b if k in self.noisy_idx else 0.0 for k, b in enumerate(self.heading_bias)])
+        self.noise_windows: Dict[str, Dict[str, List[tuple]]] = {}
+        self.delayed: Dict[str, List[tuple]] = {n: [] for n in self.names}      # (t_due, key, value, t_capture)
+        self.noise_stats = {"sonar_dropped": 0, "sonar_blackout": 0, "sonar_faded": 0, "sonar_shifted": 0,
+                            "dvl_dropped": 0, "dvl_outage": 0}
+        self.beacon = None
+        self.beacon_inbox: Dict[str, List[tuple]] = {n: [] for n in self.names}
+        if cfg.beacon.enabled:
+            from holo_fleet.sim.beacon import BeaconTransport
+
+            self.beacon = BeaconTransport(self.names, cfg.beacon, spec.seed, ticks_per_sec=TICKS_PER_SEC)
+            self.beacon.scene = self._beacon_scene
+
+    def _beacon_scene(self):
+        """Simulator truth for the B2 channel model (never onboard): agent origins, headings, gate bars."""
+        P, Y = [], []
+        for name in self.names:
+            pose = self.latest[name].get("PoseSensor")
+            if pose is None:
+                P.append(np.full(3, 1e6))
+                Y.append(0.0)
+                continue
+            pose = np.asarray(pose, dtype=float)
+            P.append(agent_origin_from_pose(pose))
+            Y.append(math.atan2(pose[1, 0], pose[0, 0]))
+        return np.array(P), np.array(Y), getattr(self, "scene_bars", [])
 
     # ------------------------------------------------------------------ setup
     def _agent_cfg(self, k: int) -> Dict[str, Any]:
         name = self.names[k]
-        sensors = onboard_sensor_configs(self.cfg, view_region=self.view_region)
+        sensors = onboard_sensor_configs(self.cfg, view_region=self.view_region,
+                                         noise=self.noise if name in self.noisy else None,
+                                         heading_bias_deg=float(self.heading_bias[k]))
+        if self.beacon is not None:
+            sensors.append(self.beacon.sensor_config(k))
         sensors += [
             {"sensor_type": "PoseSensor", "sensor_name": "PoseSensor", "socket": "IMUSocket", "Hz": 30},
             {"sensor_type": "VelocitySensor", "sensor_name": "VelocitySensor", "socket": "IMUSocket", "Hz": 30},
@@ -114,8 +156,6 @@ class HoloFleetSim:
 
     def start(self) -> None:
         self.setup_report["holoocean"] = hs.use_patched_holoocean()
-        import holoocean
-
         hs.wait_for_engine_semaphores()           # the client no longer loses the engine's start-up race
 
         from holo_fleet.sim.engine_watchdog import EngineWatchdog
@@ -134,26 +174,27 @@ class HoloFleetSim:
             if delay:
                 time.sleep(delay)
             try:
-                self.env = holoocean.make(scenario_cfg=scenario, show_viewport=not self.headless,
-                                          ticks_per_sec=TICKS_PER_SEC, frames_per_sec=False)
+                self.env = make(scenario_cfg=scenario, show_viewport=not self.headless,
+                                ticks_per_sec=TICKS_PER_SEC, frames_per_sec=False)
                 break
             except Exception as exc:  # pragma: no cover - fallback: engine did not come up (restart it)
                 last_exc = exc
                 text = f"{type(exc).__name__}: {exc}".lower()
                 LOG.warning("HoloOcean start attempt %d failed: %s", attempt, exc)
-                self._kill_own_engines()
                 if not any(s in text for s in ("semaphore", "timed out", "file not found", "impossibile trovare")):
                     raise
         else:
             raise RuntimeError(f"HoloOcean could not start after retries: {last_exc}")
         self.watchdog = EngineWatchdog(self.env).start()
+        self.setup_report["holoocean"]["root"] = self.env._holo_engine["root"]
         self.setup_report["engine_start_s"] = round(time.time() - t0, 1)
         self._spawn_static_scene()
+        self.setup_report["engine"] = self._engine_identity()
         self._plan_blackouts()
         self.t = 0.0
 
     def _spawn_static_scene(self) -> None:
-        from holo_fleet.arena_bridge import HORSESHOE_TRACK, make_spawner, visual_gates
+        from holo_fleet.arena_bridge import HORSESHOE_TRACK, load_arena_gates, make_spawner, visual_gates
 
         t0 = time.time()
         bars = []
@@ -162,6 +203,9 @@ class HoloFleetSim:
             spawner = make_spawner(self.env)
             spawner.spawn_gate_bars(bars)
             self.setup_report["gate_spawn"] = getattr(spawner.report, "__dict__", {})
+        # the same bars as the map's oriented boxes (centre, axes, half extents: arena_bridge, one geometry)
+        self.scene_bars = ([b for g in load_arena_gates(HORSESHOE_TRACK, list(self.spec.gate_ids)) for b in g.bars]
+                           if self.spec.gate_ids else [])
         for prop in getattr(self.spec, "props", ()) or ():
             self.env.spawn_prop(prop.get("type", "box"), location=list(prop["location"]),
                                 rotation=list(prop.get("rotation", (0, 0, 0))), scale=prop.get("scale", 1.0),
@@ -184,19 +228,24 @@ class HoloFleetSim:
                 self.env.act(n, np.zeros(8))
             self._tick(record=False)
 
-    @staticmethod
-    def _kill_own_engines() -> None:
+    def _engine_identity(self) -> Dict[str, Any]:
+        """Which engine this simulation talks to: HoloOcean's client and engine share memory and named semaphores
+        scoped by a per-instance UUID (no network port), so instances of other projects cannot collide with it.  The
+        engine's only listening socket is Unreal's TraceLog control port (1985, or a free high port when 1985 is
+        taken); it is recorded, not used."""
+        proc = getattr(self.env, "_world_process", None)
+        pid = getattr(proc, "pid", None)
+        ports = []
         try:
-            import os
-
             import psutil
 
-            me = os.getpid()
-            for p in psutil.process_iter(["pid", "ppid", "name"]):
-                if str(p.info.get("name") or "").lower() == "holodeck.exe" and p.info.get("ppid") == me:
-                    p.kill()
-        except Exception:  # pragma: no cover
+            ports = sorted(c.laddr.port for c in psutil.Process(pid).net_connections(kind="inet") if c.status == "LISTEN")
+        except Exception:  # noqa: BLE001 - informative only
             pass
+        identity = {"ipc_uuid": getattr(self.env, "_uuid", None), "pid": pid, "listen_ports": ports}
+        if hasattr(self.env, "_holo_engine"):
+            identity["isolation"] = self.env._holo_engine
+        return identity
 
     def _plan_blackouts(self) -> None:
         st = self.spec.stress
@@ -208,9 +257,55 @@ class HoloFleetSim:
                     wins.append((t, t + st.blackout_len_s))
                     t += float(self.rng.exponential(st.blackout_every_s)) + st.blackout_len_s
             self.blackouts[n] = wins
+        nz = self.noise
+        if nz is not None:
+            for n in self.names:
+                if n not in self.noisy:
+                    continue
+                self.noise_windows[n] = {
+                    "sonar": plan_windows(self.nrng, nz.sonar_blackout_every_s, nz.sonar_blackout_len_s,
+                                          self.spec.duration_s),
+                    "dvl": plan_windows(self.nrng, nz.dvl_outage_every_s, nz.dvl_outage_len_s, self.spec.duration_s)}
 
     def _blackout(self, name: str, t: float) -> bool:
         return any(a <= t <= b for a, b in self.blackouts.get(name, []))
+
+    def _in_window(self, name: str, kind: str, t: float) -> bool:
+        return any(a <= t <= b for a, b in self.noise_windows.get(name, {}).get(kind, []))
+
+    def _degrade(self, name: str, key: str, val, t: float):
+        """Seeded wrapper degradation of one onboard capture (None: not delivered)."""
+        nz = self.noise
+        if key in SONAR_NAMES:
+            if self._in_window(name, "sonar", t):
+                self.noise_stats["sonar_blackout"] += 1
+                return None
+            if nz.sonar_dropout > 0 and self.nrng.random() < nz.sonar_dropout:
+                self.noise_stats["sonar_dropped"] += 1
+                return None
+            prof = None
+            if nz.sonar_fade_prob > 0 and self.nrng.random() < nz.sonar_fade_prob:
+                prof = np.asarray(val, dtype=float) * nz.sonar_fade_gain
+                self.noise_stats["sonar_faded"] += 1
+            if nz.sonar_range_jitter_m > 0:
+                k = int(round(float(self.nrng.normal(0.0, nz.sonar_range_jitter_m)) / self.cfg.perc.sonar.bin_width))
+                if k:
+                    src = np.asarray(val if prof is None else prof, dtype=float).ravel()
+                    prof = np.zeros_like(src)
+                    if k > 0:
+                        prof[k:] = src[:-k]
+                    else:
+                        prof[:k] = src[-k:]
+                    self.noise_stats["sonar_shifted"] += 1
+            return val if prof is None else prof
+        if key == "DVLSensor":
+            if self._in_window(name, "dvl", t):
+                self.noise_stats["dvl_outage"] += 1
+                return None
+            if nz.dvl_dropout > 0 and self.nrng.random() < nz.dvl_dropout:
+                self.noise_stats["dvl_dropped"] += 1
+                return None
+        return val
 
     # ------------------------------------------------------------------ stepping
     def _tick(self, record: bool = True) -> None:
@@ -221,6 +316,8 @@ class HoloFleetSim:
             vel = (self.intruder_position(d, self.t + 0.1) - loc) / 0.1
             self.env.agents[d["name"]].set_physics_state([float(v) for v in loc], [0.0, 0.0, float(d.get("yaw_deg", 0.0))],
                                                          [float(v) for v in vel], [0, 0, 0])
+        if self.beacon is not None:
+            self.beacon.before_tick(self.env, self.t)
         w0 = time.perf_counter()
         raw = self.env.tick()
         if record:
@@ -236,8 +333,27 @@ class HoloFleetSim:
                     # simply not delivered (its age grows); a blackout drops every sonar of the drone
                     if self._blackout(n, tick_t) or (st.beam_dropout > 0 and self.rng.random() < st.beam_dropout):
                         continue
+                if record and n in self.noisy and n in self.delayed and is_onboard(key):
+                    val = self._degrade(n, key, val, tick_t)
+                    if val is None:
+                        continue
+                    if self.noise.latency_s > 0:              # delivered late, stamped with its capture time
+                        self.delayed[n].append((tick_t + self.noise.latency_s, key, val, tick_t))
+                        continue
                 self.latest[n][key] = val
                 self.stamp[n][key] = tick_t
+            if self.delayed.get(n):
+                keep = []
+                for item in self.delayed[n]:
+                    if item[0] <= tick_t + 1e-6:
+                        self.latest[n][item[1]], self.stamp[n][item[1]] = item[2], item[3]
+                    else:
+                        keep.append(item)
+                self.delayed[n] = keep
+        if self.beacon is not None:
+            self.beacon.after_tick(self.env, tick_t)
+            for r, rx in self.beacon.deliver(tick_t).items():
+                self.beacon_inbox[r].extend(rx)
 
     def pin(self, name: str, location: Sequence[float], rotation: Sequence[float] = (0.0, 0.0, 0.0)) -> None:
         """Bench mode: hold an agent at a pose (perception and coverage experiments only)."""
@@ -272,6 +388,11 @@ class HoloFleetSim:
         for name in self.names:
             data = {k: v for k, v in self.latest[name].items() if is_onboard(k)}
             stamp = {k: v for k, v in self.stamp[name].items() if is_onboard(k)}
+            if self.beacon is not None:                # receptions since the previous frame (identities only)
+                rx = self.beacon_inbox[name]
+                data["AcousticRx"] = tuple(rx)          # (identity, t_arrival, range, azimuth, elevation)
+                stamp["AcousticRx"] = max((x[1] for x in rx), default=-1e9)
+                self.beacon_inbox[name] = []
             out[name] = SensorFrame(t=self.t, data=data, stamp=stamp)
         return out
 

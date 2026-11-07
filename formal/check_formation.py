@@ -1,5 +1,5 @@
 """P3 - formation recovery (liveness):  G( formation_lost -> F formation_recovered ),
-and its degraded variant P3-deg for a drone that never comes back (DI-29).
+and its degraded variant P3-deg for a drone that never comes back.
 
 No time bound is claimed for P3.  Eventual recovery is proved by RANKING FUNCTIONS on an abstraction of the
 deployed formation law (holo_fleet.control.flows.Flows.formation), under explicit fairness and
@@ -9,8 +9,7 @@ unbounded time.
 Abstraction (per drone, per axis, dt = 0.1 s).  The slot moves with the drone's own formation reference at
 v_ref plus the drift of the local progress offset sigma (|sigma_dot| <= s_rate: sigma is driven by
 the along-track sonar residual, capped by range_gate, plus a leak).  v_ref is the planned speed v_clock,
-or anything down to v_wait while the reduced progress of a missing neighbour runs (DI-31,
-control/formation_time.py); it is a free variable in [v_wait, v_clock] at every step, so ramps and the
+or anything down to v_wait while the reduced progress of a missing neighbour runs (control/formation_time.py); it is a free variable in [v_wait, v_clock] at every step, so ramps and the
 following of the drone ahead are covered.  The drone commands v = v_ref t + k_slot e (+ the capped lateral
 sonar correction), saturated at v_recovery (along) and sqrt(v_recovery^2 - v_clock^2) (lateral); the
 unrejected disturbance after the low-level integrator has converged is |w| <= w_res.
@@ -33,7 +32,7 @@ F6  bounded waiting (P3-deg): the missing timer of a neighbour that never reappe
     holds again and the edge out of FORMATION_WAIT_REJOIN is enabled: no drone waits forever.  Fm4: without
     the timeout (the v2 baseline: a missing neighbour kept the drone in FORMATION_RECOVERY) the same run
     waits for ever (counterexample);
-F5  current envelope (DI-27): for every head current admitted by the control-feasible envelope evaluated
+F5  current envelope: for every head current admitted by the control-feasible envelope evaluated
     at the recovery speed V, the deliverable along-track speed is >= V, so the saturated band of F1 keeps
     its margin; the same parameters as the runtime (plant curve, AUTHORITY, v_clock, V);
 Fm  mutations: no catch-up margin (v_recovery = v_clock) must break F1; k_slot = 0 must break F2;
@@ -129,7 +128,7 @@ def envelope_terms(cfg: FleetConfig):
 
 
 def head_envelope_checks(cfg: FleetConfig, p) -> list:
-    """F5 / Fm3 / Em1 on a pure head current h (the direction with the smallest margin, DI-27).
+    """F5 / Fm3 / Em1 on a pure head current h (the direction with the smallest margin).
 
     xs is the through-water speed the authority delivers on one axis (g(xs) = A); against h the drone makes at
     most xs - h along-track, so the saturated band of F1 runs at V_eff = min(V, xs - h) and decreases |e| by
@@ -152,7 +151,7 @@ def head_envelope_checks(cfg: FleetConfig, p) -> list:
               note="a head current the drone can hold at v_clock but not overcome during a recovery"),
         check("Em1 mutation: the v1-v2 scalar bound |w| <= 0.6 m/s admits head currents with which the survey speed "
               "is not deliverable", "expect counterexample", ENC, base + [g(vc + h) > A], expect="sat",
-              note="the old isotropic current bound (DI-24, DI-27)"),
+              note="the old isotropic current bound"),
     ]
 
 
@@ -220,13 +219,35 @@ def waiting_checks(cfg: FleetConfig) -> list:
                      "ranking t_rejoin - tau: after N running steps the WAIT_REJOIN self-loop is disabled", ENC,
                      cons + [waiting[-1]],
                      note="perception.track_missing (timer, latch) + spec guards; frozen steps (planned holds, drone "
-                          "not on its slot) do not count, A5"))
+                          "not on its slot) do not count, A5; with the B2 gate-delay hold the bound is F6g"))
     # ranking function, one step: while waiting and not yet vacant, t_rejoin - tau decreases by dt and stays >= 0
     tau, tau1 = z3.Reals("tau tau1")
     T = z3.RealVal(str(Fraction(repr(cfg.form.t_rejoin))))
     out.append(check("F6r ranking: t_rejoin - tau >= 0 and decreases by dt per running step until the slot is vacant",
                      "0 <= tau < t_rejoin & tau' = tau + dt -> (t_rejoin - tau') = (t_rejoin - tau) - dt", ENC,
                      [tau >= 0, tau < T, tau1 == tau + DT, z3.Not(T - tau1 == T - tau - DT)]))
+    # F6g: the B2 gate-delay hold (perception._delayed_at_gate) adds a second, bounded counter.  Per running step either
+    # the hold accrues (h < H) or the timer runs: the sum (H - h) + (t_rejoin - tau) of two non-negative terms drops by
+    # dt every step, so the slot is vacant within t_rejoin + H of running time (H = gate_delay_max, the protocol's
+    # slowest serial passage); the timer also runs after the plan end (the final formation is static)
+    h, h1, H = z3.Reals("h h1 H")
+    step = z3.Or(z3.And(h < H, h1 == h + DT, tau1 == tau), z3.And(h1 == h, tau1 == tau + DT))
+    def rh(x):
+        return z3.If(x < H, H - x, 0)                 # the hold left, truncated (the last increment may overshoot H)
+    def rt(x):
+        return z3.If(x < T, T - x, 0)                 # the timer left, truncated (vacant once tau >= t_rejoin)
+    R0, R1 = rh(h) + rt(tau), rh(h1) + rt(tau1)
+    out.append(check("F6g bounded waiting with the gate-delay hold: max(H - h, 0) + (t_rejoin - tau) >= 0 strictly "
+                     "decreases every running step (by dt on a timer step, by min(dt, H - h) > 0 on a hold step, at "
+                     "most ceil(H / dt) of them), so a neighbour that never reappears is vacant within "
+                     "t_rejoin + gate_delay_max + dt",
+                     "h >= 0 & 0 <= tau < t_rejoin & step -> R' < R & R' >= 0", ENC,
+                     [H > 0, h >= 0, tau >= 0, tau < T, step, z3.Not(z3.And(R1 < R0, R1 >= 0))],
+                     note="perception.track_missing (gate_delay never resets, so the hold is spent once)"))
+    hm = z3.Real("hm")
+    out.append(check("F6gm mutation: a hold without its bound H may never let the timer run (vacancy never declared)",
+                     "expect counterexample", ENC, [h >= 0, hm == h + DT, tau1 == tau, tau >= 0, tau < T,
+                                                     z3.Not(tau1 > tau)], expect="sat"))
     cons, waiting, n = waiting_bmc(cfg, timeout=False)
     out.append(check("Fm4 mutation: no timeout (v2 baseline) -> the drone may wait for ever (still waiting after N steps)",
                      "expect counterexample", ENC, cons + [waiting[-1]], expect="sat",

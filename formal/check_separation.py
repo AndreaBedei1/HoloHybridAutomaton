@@ -3,12 +3,15 @@
 All numbers come from holo_fleet.config; the sensing lemmas evaluate the deployed perception and
 escape code (holo_fleet.perception.sonar_geometry, holo_fleet.control.escape) - nothing is copied.
 
-S0  Conservative distance (numeric, 10^5 random BlueROV2 poses, every orientation, 1-8 m, echo
-    error in [-eps_near, +eps_far]): the onboard distance d_hat of a target (perception.targets:
-    min over the sectors that see it of the sound per-sector bound, sonar_geometry.
-    target_distance_lower) is never above the true centre distance.  With staleness the guards
-    use d_hat - c_max * age, still below the current distance.  Mutation S0m: the v1-style bound
-    (r + R_IN everywhere) must be caught overestimating.
+S0  Conservative distance (numeric): scenes of one to three BlueROV2 hulls (any heading, roll / pitch within the
+    tilt assumption of perception/distance_bound.py; uniform, cube-corner, cube-edge, near-field and square-formation
+    placements), the detection boundary of every sector drawn inside its uncertainty band (60 deg +- one octree leaf)
+    and an independent echo error in [-eps_near, +eps_far] per sector: the deployed association-free estimate (the
+    smallest target bound of perception/targets.py) is never above the distance of the nearest hull.  With staleness
+    the guards use d_hat - c_max * age, still below the current distance.  Mutations that must be caught
+    overestimating: S0m (centre assumed inside every member cone).  Reported for information: bound A on every echo
+    without touch-set reasoning (not found above the truth in the sampled scenes, but without a certificate), and the
+    deployed estimate on scenes with an arbitrary hull attitude (the role of the tilt assumption).
 S1  Pairwise radial model (linear real arithmetic, discrete time dt).  State (d, c): true centre
     distance and closing speed of a pair.
       velocity caps    |c| <= c_max = v_escape + v_max_nominal + w_rel_max
@@ -36,7 +39,7 @@ S3  Triangle lemma (Z3, nonlinear): with all pairwise distances >= d_safe at mos
 S4  Blackout lemma (Z3): a sonar blackout of <= T_b s starting at d >= d_blackout keeps d >= d_safe
     (FAILSAFE holds position; unrejected drift w_rel).
 
-NOT proved here (assumptions, measured in results/v2/ASSUMPTIONS.md): the sonar detects a BlueROV2
+NOT proved here (assumptions, measured in results/reference/ASSUMPTIONS.md): the sonar detects a BlueROV2
 anywhere in its 60 deg cone within range (probe F), both drones of a pair detect each other (six
 cones cover the sphere), a_brake, w_rel_max (a RESIDUAL drift after the low-level compensation: it holds
 while the commanded velocities are control-feasible against the raw current, control/current_envelope.py, and
@@ -85,39 +88,107 @@ def _rand_rot(rng):
                      [2 * (b * d - a * c), 2 * (c * d + a * b), a * a - b * b - c * c + d * d]])
 
 
-def bound_samples(cfg: FleetConfig, n_poses: int, bound, seed: int = 1, corner: bool = False):
-    """Random hull poses -> (true distance, bound) for echo errors -eps_near, 0, +eps_far.  ``corner``:
-    directions near the eight cube corners at 1-3 m (no cone contains the centre: the hard case)."""
-    rng = np.random.default_rng(seed)
-    H = _hull_points()
-    cos60 = math.cos(math.radians(cfg.perc.sonar.half_angle_deg))
-    env = cfg.env
-    out = []
-    for _ in range(n_poses):
-        d = rng.uniform(1.0, 3.0) if corner else rng.uniform(1.0, 8.0)
-        u = rng.normal(size=3)
-        if corner:
-            u = np.sign(u) / math.sqrt(3.0) + 0.12 * rng.normal(size=3)
-        u /= np.linalg.norm(u)
-        P = d * u + H @ _rand_rot(rng).T
-        ranges = {}
-        for s in sg.SECTORS:
+def _level_rot(rng, tilt_deg):
+    """Any heading and a tilt (angle between the hull's z axis and the observer's) up to tilt_deg about a random
+    horizontal axis: the hull assumption of perception/distance_bound.py."""
+    yaw = rng.uniform(-math.pi, math.pi)
+    t = math.radians(rng.uniform(0.0, tilt_deg))
+    ax = rng.uniform(-math.pi, math.pi)
+    k = np.array([math.cos(ax), math.sin(ax), 0.0])
+    K = np.array([[0.0, -k[2], k[1]], [k[2], 0.0, -k[0]], [-k[1], k[0], 0.0]])
+    tilt = np.eye(3) + math.sin(t) * K + (1.0 - math.cos(t)) * (K @ K)           # Rodrigues
+    cy, sy = math.cos(yaw), math.sin(yaw)
+    return tilt @ np.array([[cy, -sy, 0.0], [sy, cy, 0.0], [0.0, 0.0, 1.0]])
+
+
+def scene_ranges(hulls, rng, cfg: FleetConfig, errors: str = "random", boundary: str = "random"):
+    """Nearest echo per sector of a scene of hull point clouds (body frame of the observer).  The sector's detection
+    boundary is drawn per scene inside the uncertainty band of the model, 60 deg +- one octree leaf (points beyond it
+    are never seen, points inside 60 deg - leaf always), and every echo gets its own error in [-eps_near, +eps_far]
+    ("extreme": one of the two limits, "far": always +eps_far); ``boundary`` "narrow" puts every detection boundary at
+    60 deg - leaf (fewest detections: the worst case for the soundness of the estimate)."""
+    model, env = cfg.perc.sonar, cfg.env
+    ranges = {}
+    for s in sg.SECTORS:
+        k = -1.0 if boundary == "narrow" else rng.uniform(-1.0, 1.0)
+        best = math.inf
+        for P in hulls:
             sv = P - sg.MOUNTS[s]
             r = np.linalg.norm(sv, axis=1)
-            inc = (sv @ sg.AXES[s]) / r >= cos60
-            if inc.any() and float(r[inc].min()) >= cfg.perc.sonar.range_min:
-                ranges[s] = float(r[inc].min())
+            ang = np.degrees(np.arccos(np.clip((sv @ sg.AXES[s]) / r, -1.0, 1.0)))
+            lim = model.half_angle_deg + k * np.degrees(np.arctan2(sg.OCTREE_LEAF_M, np.maximum(r, model.range_min)))
+            inc = (ang <= lim) & (r >= model.range_min) & (r <= model.range_max)
+            if inc.any():
+                best = min(best, float(r[inc].min()))
+        if best < math.inf:
+            e = (env.eps_range_far if errors == "far" else
+                 rng.choice([-env.eps_range_near, env.eps_range_far]) if errors == "extreme"
+                 else rng.uniform(-env.eps_range_near, env.eps_range_far))
+            ranges[s] = best + float(e)
+    return ranges
+
+
+def _direction(rng, kind):
+    u = rng.normal(size=3)
+    if kind == "corner":                          # near the eight cube corners: no cone contains the centre for sure
+        u = np.sign(u) / math.sqrt(3.0) + 0.12 * rng.normal(size=3)
+    elif kind == "edge":                          # near the twelve cube edges: two adjacent cones overlap
+        ax = rng.choice(3)
+        u = np.sign(u)
+        u[ax] = 0.0
+        u = u / np.linalg.norm(u) + 0.15 * rng.normal(size=3)
+    return u / np.linalg.norm(u)
+
+
+def bound_scenes(cfg: FleetConfig, n_scenes: int, bound, seed: int = 1, kind: str = "single", tilt_deg: float = None,
+                 n_hulls=(1, 1), dist=(1.0, 8.0), errors: str = "random", boundary: str = "random"):
+    """Scenes of 1..3 hulls -> (true distance of the nearest hull, bound evaluated on the nearest echo of every
+    sector).  ``kind`` places the hull centres: single (uniform directions), corner, edge, or square (two neighbours
+    90 deg apart in the horizontal plane, the formation case that motivated the association-free bound)."""
+    from holo_fleet.perception.distance_bound import MAX_REL_TILT_DEG
+
+    tilt = MAX_REL_TILT_DEG if tilt_deg is None else tilt_deg
+    rng = np.random.default_rng(seed)
+    H = _hull_points(16)
+    out = []
+    for _ in range(n_scenes):
+        m = int(rng.integers(n_hulls[0], n_hulls[1] + 1))
+        centres = []
+        if kind == "square":
+            base = rng.uniform(0.0, 2.0 * math.pi)
+            for k in range(m):
+                a = base + k * math.pi / 2.0 + np.radians(rng.normal(0.0, 6.0))
+                r = rng.uniform(*dist)
+                centres.append(r * np.array([math.cos(a), math.sin(a), rng.normal(0.0, 0.1)]))
+        else:
+            for _k in range(m):
+                centres.append(rng.uniform(*dist) * _direction(rng, kind))
+        rot = _rand_rot if tilt >= 90.0 else (lambda g: _level_rot(g, tilt))
+        hulls = [c + H @ rot(rng).T for c in centres]
+        ranges = scene_ranges(hulls, rng, cfg, errors, boundary)
         if not ranges:
             continue
-        for err in (-env.eps_range_near, 0.0, env.eps_range_far):
-            out.append((d, bound({s: r + err for s, r in ranges.items()})))
+        out.append((min(float(np.linalg.norm(c)) for c in centres), bound(ranges)))
     return np.array(out)
+
+
+def deployed_bound(cfg: FleetConfig):
+    """The deployed estimate (perception/distance_bound.py, as used by perception/targets.py), fresh readings."""
+    from holo_fleet.perception.distance_bound import nearest_distance_lower
+
+    return lambda r: nearest_distance_lower(r, {s: 0.0 for s in r}, cfg.env.eps_range_far, 0.0, cfg.perc.sonar)
 
 
 def v1_bound(ranges, eps_far=0.12):
     """Mutation: the centre assumed inside every member cone (r + R_IN, no certification) and the
-    tightest member kept - a hull corner reaching into a cone makes it overestimate (DI-13)."""
+    tightest member kept - a hull corner reaching into a cone makes it overestimate."""
     return max(sg.centre_distance_lower(r, s, eps_far, centre_in_cone=True) for s, r in ranges.items())
+
+
+def naive_union_bound(ranges, eps_far=0.12):
+    """Mutation: bound A for every echo, no touch-set reasoning (the centre assumed inside the cone of the sector with
+    the nearest echo) - wrong in the near field and at the cube corners."""
+    return min(sg.centre_distance_lower(r, s, eps_far, centre_in_cone=True) for s, r in ranges.items())
 
 
 # ---------------------------------------------------------------------------------------------- S1
@@ -171,23 +242,58 @@ def run(cfg: FleetConfig = DEFAULT, verbose: bool = True, n_poses: int = 35000) 
     env, sep = cfg.env, cfg.sep
     # ---------------------------------------------------------------- S0
     t0 = time.time()
-    S = bound_samples(cfg, n_poses, lambda r: sg.target_distance_lower(r, env.eps_range_far, cfg.perc.sonar))
-    gap = S[:, 0] - S[:, 1]
-    r = CheckResult("S0 onboard distance never above the true centre distance (numeric)",
-                    "forall sampled poses/errors: d_hat <= d", "perception/targets.py + sonar_geometry.target_distance_lower",
-                    "holds", verdict="holds" if gap.min() >= 0 else "violated", passed=bool(gap.min() >= 0),
+    est = deployed_bound(cfg)
+    sets = [("single hull, 1-8 m", dict(kind="single", n_hulls=(1, 1), dist=(1.0, 8.0))),
+            ("single hull near the cube corners, 1-3 m", dict(kind="corner", n_hulls=(1, 1), dist=(1.0, 3.0))),
+            ("single hull near the cube edges, 1-4 m", dict(kind="edge", n_hulls=(1, 1), dist=(1.0, 4.0))),
+            ("near field, 0.7-1.6 m", dict(kind="single", n_hulls=(1, 2), dist=(0.7, 1.6))),
+            ("2-3 hulls, 1-6 m", dict(kind="single", n_hulls=(2, 3), dist=(1.0, 6.0))),
+            ("2-3 hulls at cube edges, 1.5-4 m", dict(kind="edge", n_hulls=(2, 3), dist=(1.5, 4.0))),
+            ("square-formation neighbours 90 deg apart, 2.5-4.5 m", dict(kind="square", n_hulls=(2, 2), dist=(2.5, 4.5))),
+            ("square-formation neighbours, extreme range errors", dict(kind="square", n_hulls=(2, 3), dist=(2.5, 4.5),
+                                                                      errors="extreme")),
+            ("worst case (narrowest boundary, +eps_far): corners 0.7-3 m", dict(kind="corner", n_hulls=(1, 2),
+                                                                               dist=(0.7, 3.0), errors="far",
+                                                                               boundary="narrow")),
+            ("worst case: edges 0.7-4 m", dict(kind="edge", n_hulls=(1, 3), dist=(0.7, 4.0), errors="far",
+                                                boundary="narrow")),
+            ("worst case: square neighbours", dict(kind="square", n_hulls=(2, 3), dist=(2.5, 4.5), errors="far",
+                                                    boundary="narrow"))]
+    worst, total, notes = math.inf, 0, []
+    per = max(400, n_poses // len(sets))
+    for k, (label, kw) in enumerate(sets):
+        S = bound_scenes(cfg, per, est, seed=100 + k, **kw)
+        g = S[:, 0] - S[:, 1]
+        worst, total = min(worst, float(g.min())), total + len(S)
+        notes.append(f"{label}: min(d - d_hat) {g.min():.3f}, p50 {np.percentile(g, 50):.2f}")
+    r = CheckResult("S0 onboard distance never above the true distance of the nearest hull (numeric, multi-hull scenes)",
+                    "forall sampled scenes/errors/detection boundaries: d_hat <= min_O d(O)",
+                    "perception/distance_bound.py (perception/targets.py)",
+                    "holds", verdict="holds" if worst >= 0 else "violated", passed=bool(worst >= 0),
                     seconds=round(time.time() - t0, 1),
-                    note=f"{len(S)} samples; min(d - d_hat) = {gap.min():.3f} m; looseness p50 {np.percentile(gap, 50):.2f}, "
-                         f"p95 {np.percentile(gap, 95):.2f}, max {gap.max():.2f} m (affects liveness only)")
+                    note=f"{total} scenes, hull tilt <= distance_bound.MAX_REL_TILT_DEG; " + "; ".join(notes))
     rep.add(r, verbose)
     if verbose:
         print("       " + r.note)
-    S1 = bound_samples(cfg, max(4000, n_poses // 8), v1_bound, corner=True)
+    S1 = bound_scenes(cfg, max(3000, n_poses // 10), lambda r: v1_bound(r, cfg.env.eps_range_far), seed=9, kind="corner",
+                      dist=(1.0, 3.0))
     g1 = S1[:, 0] - S1[:, 1]
     rep.add(CheckResult("S0m mutation: uncertified bound (centre assumed inside every member cone) must overestimate",
-                        "expect: some sample with d_hat > d", ENC, "violated",
+                        "expect: some scene with d_hat > d", ENC, "violated",
                         verdict="violated" if g1.min() < 0 else "holds", passed=bool(g1.min() < 0),
-                        note=f"worst overestimate {(-g1.min()):.3f} m in {int((g1 < 0).sum())} of {len(S1)} samples"), verbose)
+                        note=f"worst overestimate {(-g1.min()):.3f} m in {int((g1 < 0).sum())} of {len(S1)} scenes"), verbose)
+    S2 = bound_scenes(cfg, max(3000, n_poses // 10), lambda r: naive_union_bound(r, cfg.env.eps_range_far), seed=10,
+                      kind="corner", n_hulls=(1, 2), dist=(0.6, 3.0), errors="far", boundary="narrow")
+    g2 = S2[:, 0] - S2[:, 1]
+    if verbose:                                   # informational: bound A on every echo has no certificate
+        print(f"       S0 (info) bound A on every echo, worst-case corner scenes: min(d - d_hat) {g2.min():.3f} m, "
+              f"{int((g2 < 0).sum())} of {len(S2)} above the true distance (not certified: no touch-set reasoning)")
+    S3 = bound_scenes(cfg, max(2000, n_poses // 15), est, seed=11, kind="corner", n_hulls=(1, 1), dist=(1.0, 3.0),
+                      tilt_deg=90.0)
+    g3 = S3[:, 0] - S3[:, 1]
+    if verbose:                                   # informational: the role of the hull-tilt assumption
+        print(f"       S0 outside the tilt assumption (any attitude, cube corners): min(d - d_hat) {g3.min():.3f} m, "
+              f"{int((g3 < 0).sum())} of {len(S3)} scenes above the true distance")
     # ---------------------------------------------------------------- S1
     p = params(cfg)
     if verbose:
@@ -223,6 +329,29 @@ def run(cfg: FleetConfig = DEFAULT, verbose: bool = True, n_poses: int = 35000) 
     pm = dict(p, d_warning=max(p["d_safe"] + 0.1, hi - 0.25))
     rep.add(check(f"S1m mutation: d_warning={pm['d_warning']:.2f} must violate P1",
                   "expect counterexample (trace of d_i, c_i)", ENC, bmc(pm, K), expect="sat"), verbose)
+    # one-sided reaction (one drone of the pair does not react: a missed detection, a drone in FAILSAFE holding its
+    # own position, a non-cooperative vehicle): only one drone removes the closing component.  With the configured,
+    # conservative a_brake (0.5 m/s^2) the BMC is SAT (reported: P1 is then NOT guaranteed by this model); with the
+    # per-drone deceleration calibrated in closed loop in the simulator (Envelope.a_brake_measured, 0.743 m/s^2 from the
+    # stop time, results/calibration/plant_calibration.json) it is UNSAT.  The one-sided claim therefore rests on
+    # the simulator calibration, not on the configured margin; it is to be re-measured on hardware.
+    p1s = dict(p, a_pair=env.a_brake)
+    rep.add(check("S1o one-sided reaction at the configured a_brake: reported (not guaranteed)",
+                  "Init & T^K -> G d >= d_safe, a_pair = a_brake", ENC, bmc(p1s, K), expect="sat"), verbose)
+    p1c = dict(p, a_pair=env.a_brake_measured)
+    rep.add(check(f"S1d one-sided reaction at the calibrated deceleration {env.a_brake_measured} m/s^2: "
+                  "no violation within 4 s", "Init & T^K -> G d >= d_safe, a_pair = a_brake_measured", ENC,
+                  bmc(p1c, K)), verbose)
+    lo1, hi1 = p["d_safe"], 4.0
+    for _ in range(14):
+        mid = (lo1 + hi1) / 2
+        if check("", "", ENC, bmc(dict(p1s, d_warning=mid), K)).verdict == "unsat":
+            hi1 = mid
+        else:
+            lo1 = mid
+    if verbose:
+        print(f"       one-sided at the configured a_brake: smallest verified d_warning = {hi1:.3f} m "
+              f"(configured {p['d_warning']})")
     # ---------------------------------------------------------------- S2 escape tables
     planner = EscapePlanner(cfg)
     sample_err = sg.SAMPLING_ERR        # the planner's guarantees are already certified (sampled - SAMPLING_ERR)

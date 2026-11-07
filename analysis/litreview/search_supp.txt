@@ -1,0 +1,261 @@
+## T4sq1 "narrow passage multi-robot" OA=20 CR=10 S2=0 unique=28
+126 2005|Narrow passage sampling for probabilistic roadmap planning|10.1109/tro.2005.853485
+100 2017|A Learning-based Multi-RRT Approach for Robot Path Planning in Narrow Passages|10.1007/s10846-017-0641-3
+41 2006|Multi-level free-space dilation for sampling narrow passages in PRM planning|10.1109/robot.2006.1641881
+33 2010|Triple RRTs: An Effective Method for Path Planning in Narrow Passages|10.1163/016918610x496928
+19 2021|Section Patterns: Efficiently Solving Narrow Passage Problems in Multilevel Mo|10.1109/tro.2021.3070975
+18 2014|Nonlinear dynamic modeling on multi-spherical modular soft robots|10.1007/s11071-014-1480-4
+17 2015|“Go Ahead, Please”: Recognition and Resolution of Conflict Situations in Narro|10.1007/978-3-319-25554-5_64
+17 2023|Scalable Multi-Robot Motion Planning for Congested Environments With Topologic|10.1109/lra.2023.3312980
+14 2009|A multi-RRTs framework for robot path planning in high-dimensional configurati|10.1109/icma.2009.5246014
+10 1996|Space robot. Space Reasoning from Action Observation for Motion Planning of Mu|10.7210/jrsj.14.1003
+6 2024|Multi-Robot Formation Planning in Maze-Like Environments Consisting of Narrow |10.1109/access.2024.3497177
+3 2012|Triple-Rrts for robot path planning based on narrow passage identification|10.1109/csip.2012.6308826
+2 2011|Avoiding deadlocks of mobile robots in narrow passages of environments populat|10.1109/aim.2011.6027143
+0 2021|Integer-Programming-Based Narrow-Passage Multi-Robot Path Planning with Effect|10.48550/arxiv.2107.12219
+0 2025|Waypoint-Scheduled Multi-Robot Path Planning for Formation-Aware Narrow Passag|10.23919/iccas66577.2025.11301085
+0 2025|Real-time Multi-robot Formation Planning in Complex Indoor Environments Consis|10.5302/j.icros.2025.25.0101
+0 2025|Adaptive Formation Switching and MPC-Based Follower Control for Multi-Robot Na|10.1109/icia64617.2025.11277468
+0 2025|Opinion-Driven Decision-Making for Multi-Robot Navigation through Narrow Corri|10.48550/arxiv.2504.20947
+0 2005|Dynamics of Multi-Connected Bodies Supported by Damper-Spring Systems Moving i|10.1115/pvp2005-71369
+0 2005|101 Effect of the Body Number and Dynamic Stability of the Multi-connected Bod|10.1299/jsmedmc.2005._101-1_
+0 2007|822 Effect of the Body Number and Fluid Resistance on Stability of the Multi-c|10.1299/jsmedmc.2007._822-1_
+0 2006|307 Effect of the Body Number and Fluid Flow on Stability of the Multi-connect|10.1299/jsmedmc.2006._307-1_
+0 2026|Interaction-Aware Safe Planning for Human-Robot and Multi-Robot Systems|10.7936/trfz-z297
+0 2012|Narrow Passage Identification Based Robot Path Planning|10.4156/ijact.vol4.issue21.16
+0 None|Adaptive Trajectory Learning With Obstacle Awareness for Motion Planning_supp1|10.1109/lra.2025.3544491/mm1
+0 2018|Measurement of Aeroelastic Vibration of Multi-connected Structures in a Narrow|10.1299/jsmemecj.2018.g0500406
+0 2009|On the Passage of Sound through Narrow Slits Appendix|10.1017/cbo9780511704000.050
+0 2026|A compact multi-legged mobile robot with leg-mounted adhesion mechanisms for c|10.21203/rs.3.rs-8389481/v1
+## T4sq2 "intersection management autonomous vehicles survey" OA=20 CR=10 S2=0 unique=30
+363 2023|Graph Neural Networks for Intelligent Transportation Systems: A Survey|10.1109/tits.2023.3257759
+260 1996|Air pollution from motor vehicles|10.1596/0-8213-3444-1
+159 2019|Intelligent Intersection Management Systems Considering Autonomous Vehicles: A|10.1109/access.2019.2927412
+108 2020|A Survey on Intersection Management of Connected Autonomous Vehicles|10.1145/3407903
+98 2022|A Comprehensive Survey on Cooperative Intersection Management for Heterogeneou|10.1109/access.2022.3142450
+90 2021|Collaborative Autonomous Driving—A Survey of Solution Approaches and Future Ch|10.3390/s21113783
+75 2020|Autonomous and Semiautonomous Intersection Management: A Survey|10.1109/mits.2020.3014074
+67 2017|A platoon-based intersection management system for autonomous vehicles|10.1109/ivs.2017.7995794
+61 2022|Artificial Intelligence and Machine Learning as key enablers for V2X communica|10.1016/j.vehcom.2022.100569
+52 2018|RIM: Robust Intersection Management for Connected Autonomous Vehicles|10.1109/rtss.2018.00014
+34 2020|Intersection management for autonomous vehicles with vehicle-to-infrastructure|10.1371/journal.pone.0235644
+30 2023|A Survey on the Applications of Frontier AI, Foundation Models, and Large Lang|10.1109/icca59364.2023.10401518
+15 2021|A Farm Management Information System for Semi-Supervised Path Planning and Aut|10.3390/su13137497
+7 1995|COLLISION AVOIDANCE AND AUTOMATED TRAFFIC MANAGEMENT SENSORS|
+6 2026|Adversarial Machine Learning: A 20-Year Survey of Attacks, Defenses, and Stand|10.1109/access.2026.3690620
+4 2022|Autonomous underwater acoustic localization through multiple unmanned surface |10.1109/oceans47191.2022.9977104
+3 2022|Versatile Safe Autonomous Intersection Management Protocol for Heterogeneous C|10.1109/vppc55846.2022.10003461
+2 None|Optimal scheduling of connected and autonomous vehicles at a reservation-based|10.18297/etd/3964
+1 2023|Threat Analysis of Position, Navigation, and Timing for Highly Automated Vehic|10.1109/plans53410.2023.10140072
+1 2024|Application of Risk Management Principles to Assess UAV Routing Options for Co|10.18260/1-2-110.116.119.1133-33902
+1 2019|Urban Intersection Management with Connected Infrastructure Objects and Autono|10.1109/iccve45908.2019.8964917
+1 2023|Plenary Autonomous Intersection Management Protocol for Heterogeneous Connecte|10.1109/icufn57995.2023.10200347
+0 2026|A survey on dedicated lane management for connected autonomous vehicles in mix|10.1016/j.physa.2026.131660
+0 2026|Autonomous and Connected Vehicles in Intersection and Corridor Traffic Managem|10.17605/osf.io/ju4tq
+0 2024|Evaluation of Difficulty for Autonomous Vehicles Testing Roads based on Multip|10.4271/2024-01-1983
+0 2026|Human factors-oriented testing and evaluation of the operational impact of aut|10.1016/j.trf.2026.103843
+0 2026|LiDAR-based autonomous recovery guidance method for unmanned surface vehicles|10.19693/j.issn.1673-3185.04416
+0 2025|A Comprehensive Survey on Traffic Light Detection Sensors for Vehicle Safety a|10.1007/978-981-97-8355-7_14
+0 None|Distributed Intersection Management Algorithms for Autonomous Vehicles|10.4995/thesis/10251/204406
+0 2026|Auction-Based Intersection Management for Connected Autonomous Vehicles: Integ|10.2139/ssrn.6083301
+## T4sq3 "AGV zone control deadlock" OA=20 CR=10 S2=0 unique=25
+221 2016|Decentralized Control of Multi-AGV Systems in Autonomous Warehousing Applicati|10.1109/tase.2016.2603781
+102 2002|Event-based controller to avoid deadlock and collisions in zone-control AGVS|10.1080/00207540110118073
+93 2003|Cyclic deadlock prediction and avoidance for zone-controlled AGV system|10.1016/s0925-5273(02)00370-5
+72 2017|A decentralized control strategy for the coordination of AGV systems|10.1016/j.conengprac.2017.10.001
+60 1995|Deadlock prediction and avoidance based on Petri nets for zone-control automat|10.1080/00207549508904872
+58 1998|Deadlock prediction and avoidance for zone-control AGVS|10.1080/002075498192526
+48 2009|Zone design and control for vehicle collision prevention and load balancing in|10.1016/j.cie.2008.07.007
+42 2021|Structural on-line control policy for collision and deadlock resolution in mul|10.1016/j.jmsy.2021.05.002
+40 2016|A Control of Collision and Deadlock Avoidance for Automated Guided Vehicles wi|10.5772/62685
+38 2008|Decentralized coordination of autonomous AGVs in flexible manufacturing system|10.1109/iros.2008.4650894
+27 2015|Decentralized deadlock-free control for AGV systems|10.1109/acc.2015.7171094
+25 2003|A deadlock avoidance strategy for AGV systems modelled by coloured Petri nets|10.1109/wodes.2002.1167670
+18 2020|A Collision and Deadlock Prevention Method With Traffic Sequence Optimization |10.1109/access.2020.3039515
+12 2022|Hybrid supervisory-based architecture for robust control of Bi-directional AGV|10.1016/j.compind.2022.103797
+10 2023|Geometric Zone-Control Algorithm for Collision and Deadlock Avoidance in AGV S|10.1109/access.2023.3335843
+6 2021|AGVs Collision and Deadlock Handling Based on Structural Online Control Policy|10.3390/app11146494
+5 2010|Modeling and Control of the AGV System in an Automated Container Terminal|10.2316/p.2010.702-035
+4 2016|A software tool for the decentralized control of AGV systems|10.1109/codit.2016.7593609
+1 2000|AGV Deadlock Avoidance Under Zone Control|
+1 2022|Formal verification of deadlock avoidance rules for AGV systems|10.1109/med54222.2022.9837154
+1 2021|A Novel Searching Method of Fringe Blocks for AGV Deadlock Avoidance|10.1109/icnsc52481.2021.9702207
+0 2003|Cyclic Deadlock Prediction for Zone-Control AGV System|
+0 2024|Effect of Layout Discretization on the Performance of Zone Control-Based Multi|10.3390/app14177817
+0 2025|A Multi-AGV Path Planning and Deadlock Avoidance Strategy for Automatic Wareho|10.1109/icnsc66229.2025.00011
+0 None|Petri Net Modeling and Deadlock-Free Scheduling of Attachable Heterogeneous AG|10.1109/tase.2026.3730449/mm1
+## T6sq1 "range-only observability underwater" OA=20 CR=10 S2=0 unique=26
+111 2015|Range-Based Underwater Vehicle Localization in the Presence of Unknown Ocean C|10.1109/tcst.2015.2420636
+103 1999|Observability of target tracking with range-only measurements|10.1109/48.775299
+49 2013|An Observability Metric for Underwater Vehicle Localization Using Range Measur|10.3390/s131216191
+33 2005|Remarks on the observability of single beacon underwater navigation|
+30 2014|Observability based control in range-only underwater vehicle localization|10.1109/acc.2014.6859032
+20 2012|Relative Pose Observability Analysis for 3D Nonholonomic Vehicles Based on Ran|10.3182/20120919-3-it-2046.00031
+18 2008|Review on Underwater Navigation System Based on Range Measurements from One Re|10.1109/oceanskobe.2008.4531072
+15 2018|Range-based underwater target localization using an autonomous surface vehicle|10.1109/plans.2018.8373417
+13 2014|Single range observability for cooperative underactuated underwater vehicles.|10.3182/20140824-6-za-1003.02376
+9 2000|Observability analysis of two closed-loop guidance systems with bearings-only |10.1016/s0362-546x(99)00208-4
+8 2012|Observability Analysis for AUV Range-only Localization and Mapping Measures of|10.3182/20120919-3-it-2046.00055
+5 2010|Underwater vehicle localization using range measurements|
+5 2018|Observability Degree‐Based AUV Single Beacon Navigation Trajectory Optimizatio|10.1155/2018/4056870
+2 2021|Observability for 3-D Range-only Positioning System|10.23919/ccc52363.2021.9549413
+2 2017|Maximizing Range Observability in Bearings-Only Rendezvous Guidance|10.2514/6.2017-1243
+1 2021|Research on Observability Conditions for Single and Multiple Observing Station|10.1109/coa50123.2021.9519958
+1 2025|Underwater target 6D State Estimation via UUV Attitude Enhance Observability|10.1109/iros60139.2025.11246376
+1 2017|Modified Gain Bearing-only Extended Kalman Filter for Underwater Target Tracki|10.17485/ijst/2017/v10i8/110671
+0 2023|Underwater Noncooperative Target Localization and Tracking Using Range-Only Me|10.1007/978-981-19-6613-2_639
+0 2013|Observability Based Path Planning in Range-only Localization|
+0 2013|Preliminary results on the active pose estimation of underwater vehicles from |10.3182/20130918-4-jp-3022.00038
+0 2018|Advances on a null-space-based approach to range-only underwater steering and |10.1109/plans.2018.8373415
+0 1979|Congress on cavitation and inhomogeneities in underwater acoustics|10.1016/0041-624x(79)90095-7
+0 2025|Sequential Bearing-Only State Estimation for Underwater Object Motions with Un|10.1007/978-981-96-6340-8_7
+0 2026|Statistical Consistency Analysis of Bayesian Filters for Range-Only Localizati|10.23919/irs70539.2026.11548705
+0 2017|Range-only target motion analysis: Observability when the observer maneuvers m|10.23919/icif.2017.8009825
+## T8sq1 "passive inverted USBL" OA=7 CR=10 S2=0 unique=14
+96 2017|One-way travel-time inverted ultra-short baseline localization for low-cost au|10.1109/icra.2017.7989570
+35 2022|Passive Inverted Ultra-Short Baseline Positioning for a Disc-Shaped Autonomous|10.1109/lra.2022.3178494
+24 2019|Passive Inverted Ultra-Short Baseline (piUSBL) Localization: An Experimental E|10.1109/iros40897.2019.8967800
+17 2023|Adaptive noise cancelling for an AUV-mounted passive inverted USBL array|10.1016/j.oceaneng.2023.115998
+4 2012|Positioning Small AUVs for Deeper Water Surveys Using Inverted USBL|10.3990/2.242
+2 2026|Raspi$^{2}$USBL: An Open-Source Raspberry Pi-Based Passive Inverted Ultrashort|10.1109/joe.2026.3708044
+1 2025|Research on Passive Positioning Algorithm for AUVs Based on Single Mobile Surf|10.1109/jiot.2025.3542445
+1 None|Passive Millimeter-Wave IC Components Made of Inverted Strip Dielectric Wavegu|10.1109/mwsym.1976.1123688
+0 2025|Factor-Graph-Based Passive Acoustic Navigation for Decentralized Cooperative L|10.48550/arxiv.2506.14690
+0 2024|Inverted Ultra-Short Baseline (i-USBL): Avanços e Implicações no Posicionament|10.29327/simposio-brasileiro-de-hidrografia-2024.853600
+0 2026|BIND-USBL: Bounding IMU Navigation Drift Using USBL in Heterogeneous ASV-AUV T|10.1109/oceans66983.2026.11616954
+0 2000|Inverted turnstile finline junction circulator|10.1049/pbew049e_ch17
+0 2023|More Accurate Bearings From USBL - UFI|10.36227/techrxiv.23734041.v1
+0 2022|Ultrashort Baseline (USBL)|10.1007/978-981-10-6946-8_300864
+## T8sq2 "low-cost acoustic modem localization micro AUV" OA=5 CR=10 S2=0 unique=11
+77 2020|ahoi|10.1145/3376921
+15 2020|Micro AUV Localization for Agile Navigation with Low-cost Acoustic Modems|10.1109/auv50043.2020.9267909
+9 2020|Low-cost AUV Swarm Localization Through Multimodal Underwater Acoustic Network|10.1109/ieeeconf38699.2020.9389467
+8 None|A compact underwater acoustic modem|10.1109/auv.1994.518652
+7 2018|Self-Localization of Micro AUVs Using a Low-Power, Low-Cost Acoustic Modem|10.1109/oceans.2018.8604776
+4 2025|Development of a Low-Cost Reconfigurable Underwater Acoustic Modem for AUV App|10.23919/oceans59106.2025.11245092
+0 2012|Inter-glider underwater communication and coordination for ocean monitoring an|10.7282/t3vx0f9k
+0 2026|Adaptive Acoustic Modem Management for Energy-Accuracy Trade-Offs in AUV Local|10.1109/oceans66983.2026.11616750
+0 2025|Online Passive Localization for Underwater Swarm Vehicles Using a Low-Cost Aco|10.1109/mrs66243.2025.11357275
+0 2017|Design of a Low-Cost Underwater Acoustic Modem|10.1201/b11487-7
+0 None|A Simulation and Field Study Analysis of Cooperative Range-Aided Localization |10.1575/1912/73278
+## T8sq3 "single beacon swarm AUV acoustic" OA=1 CR=10 S2=0 unique=10
+38 2019|Single-Hydrophone Low-Cost Underwater Vehicle Swarming|10.1109/lra.2019.2958774
+34 2010|Single beacon navigation: Localization and control of the MARES AUV|10.1109/oceans.2010.5664518
+10 2009|Single Beacon Acoustic Navigation for an AUV in the presence of unknown ocean |10.3182/20090916-3-br-3001.0057
+10 2016|About accuracy estimation of AUV single-beacon mobile navigation using ASV, eq|10.1109/oceansap.2016.7485435
+8 2010|SLAM for an AUV using vision and an acoustic beacon|10.3182/20100906-3-it-2019.00087
+7 2018|On Simultaneous AUV Localization with Single Acoustic Beacon using Angles Meas|10.1109/iaeac.2018.8577751
+5 2023|Sea experimentation of single beacon simultaneous localization and communicati|10.1109/oceanslimerick52467.2023.10244396
+4 2017|Observation error estimation in case of an AUV using a single beacon acoustic |10.23919/icins.2017.7995596
+4 2023|Single Beacon-Based AUV Navigation: A Comparative Study of Kalman Filters|10.1109/it57431.2023.10078685
+3 2014|Comparing some algorithms for AUV single beacon mobile navigation|10.1109/oceans.2014.7003048
+## T9sq1 "range-based formation control marine vehicles" OA=20 CR=10 S2=0 unique=27
+189 2018|A survey of formation control and motion planning of multiple unmanned vehicle|10.1017/s0263574718000218
+57 2020|Bioinspired neurodynamics based formation control for unmanned surface vehicle|10.1016/j.neucom.2020.02.107
+54 2013|Joint ASV/AUV range-based formation control: Theory and experimental results|10.1109/icra.2013.6631378
+39 2019|Adaptive neural network control for marine surface vehicles platoon with input|10.3934/math.2020039
+36 2021|Adaptive finite-time event-triggered control of marine surface vehicles with p|10.1016/j.oceaneng.2021.109712
+19 2023|Optimal Rigid Graph-Based Cooperative Formation Control of AUVs in Anchor-Free|10.1109/tiv.2023.3306364
+16 2012|Triangular formation control using range measurements: An application to marin|10.3182/20120410-3-pt-4028.00020
+14 2014|Flexible triangular formation keeping of marine robotic vehicles using range m|10.3182/20140824-6-za-1003.02435
+14 2013|Cooperative formation control of underactuated marine vehicles for target surv|10.1109/icra.2013.6630824
+10 2009|Vehicle-Following Guidance for Unmanned Marine Vehicles|10.3182/20090916-3-br-3001.00015
+7 2013|Design and Implementation of a Range-Based Formation Controller for Marine Rob|10.1007/978-3-319-03413-3_5
+5 2018|Formation Control of Surface Marine Vehicles for Underwater Target Tracking Us|10.1109/controlo.2018.8514303
+4 2025|Prescribed performance cooperative formation control for UUVs based on finite |10.1016/j.oceaneng.2025.123439
+3 2014|Finite-Time Formation Control for Autonomous Underwater Vehicles with Limited |10.4028/www.scientific.net/amm.511-512.909
+3 2014|Adaptive leader-follower formation control of autonomous marine vehicles|10.1109/cdc.2014.7040222
+2 2009|Formation control of multiple marine vehicles based passivity-control design|10.1109/ssd.2009.4956697
+2 2020|Cooperative Multiple Formation Control of Autonomous Marine Vehicles|10.1109/auv50043.2020.9267927
+1 2010|Collision Avoidance Algorithms for Unmanned Surface Vehicle-Based Formation Co|
+1 2015|Formation Control and Fault Accommodation for a Team of Autonomous Underwater |
+1 2023|Distributed Lyapunov-Based Model Predictive Formation-Tracking Control for AUV|10.1007/978-3-031-19354-5_6
+0 2026|Development of a Gazebo-ROS2 Simulation Framework for Cooperative Path Plannin|10.1115/omae2026-181111
+0 2024|Formation Control and Obstacle Avoidance Algorithm for Multi-USV System Based |10.21203/rs.3.rs-4180518/v2
+0 2024|Multi-USV System Formation Control Based on Improved DWA Algorithm in Unknown |10.21203/rs.3.rs-4180518/v1
+0 2026|Adaptive formation transformation strategy and control for multi-USV cooperati|10.19693/j.issn.1673-3185.04253
+0 2019|Formation control of autonomous marine vehicles|10.1049/pbtr011e_ch9
+0 2024|Predefined-time edge vector-based formation maneuver control for underactuated|10.22541/au.173201413.37458916/v1
+0 2012|Formation control of multiple marine vehicles with velocity reference estimati|10.1504/ijmic.2012.045215
+## T9sq2 "cooperative path following event-triggered communication marine" OA=4 CR=10 S2=0 unique=14
+54 2022|Event-triggered cooperative path following control of multiple underactuated u|10.1016/j.oceaneng.2022.110740
+31 2024|Structure Synchronized Dynamic Event-Triggered Control for Marine Ranching AMV|10.1109/tits.2024.3463181
+30 2021|Decentralized event-triggered cooperative path-following control for multiple |10.1016/j.apor.2021.102751
+19 2018|Cooperative Path Following of Autonomous Vehicles with Model Predictive Contro|10.1016/j.ifacol.2018.11.031
+15 2024|Robust control for cooperative path following of marine surface-air vehicles w|10.1016/j.oceaneng.2024.118240
+13 2022|Event‐triggered‐based finite‐time cooperative path following control for under|10.1002/asjc.2850
+4 2025|Neural network-enhanced asymmetric prescribed performance control for multi-ta|10.1016/j.neucom.2025.131521
+2 2022|Fixed-time Cooperative Path Following of Multiple USVs Based on Event-triggere|10.1109/ccdc55256.2022.10033833
+1 2018|Distributed State Estimation and Cooperative Path-Following Under Communicatio|10.5075/epfl-thesis-8626
+1 2024|Modeling and cooperative path following control of USVs-UAVs via the event-tri|10.1109/ccdc62350.2024.10587363
+0 2026|Cooperative path‐following control for UAVs with communication constraints and|10.1002/asjc.70146
+0 2026|Event-Triggered Communication Protocol for Cooperative Path Following of Under|10.1109/yac71005.2026.11616177
+0 2022|Event-Triggered Leader-Following Consensus Analysis|10.1007/978-981-19-5654-6_2
+0 2022|Distributed Edge Event-Triggered Consensus Protocol with Communication Buffer|10.1007/978-981-19-5654-6_5
+## T10sq1 "formation reconfiguration agent failure" OA=20 CR=10 S2=0 unique=28
+19 2023|Multi-agent Q-Learning control of spacecraft formation flying reconfiguration |10.1016/j.asr.2022.09.034
+15 2017|Capture and Abandon: Social Reproduction and Informal Land Tenure in Jamaica|
+12 2005|Fault tolerance for communication-based multirobot formation|10.1109/icmlc.2004.1380629
+12 2015|Distributed consensus control of robot swarm with obstacle and collision avoid|10.1109/icitacee.2015.7437759
+5 2023|Time-Varying Topology Formation Reconfiguration Control of the Multi-Agent Sys|10.3390/app132011581
+5 2025|Water uptake and interface hydrothermal aging of thermoplastic CFRPMMA composi|10.1016/j.conbuildmat.2025.143238
+4 2014|Fault tolerant predictive control for multi-agent dynamical systems: Formation|10.1109/codit.2014.6996930
+3 2023|Collision/Obstacle Avoidance Dynamic Formation Reconfiguration of High-Order N|10.1109/ccdc58219.2023.10327182
+2 2012|An Optimized Approach to Minimize Broadcast in Communication of Self Organized|10.1007/978-3-642-35314-7_61
+2 2008|Rigid Formation Keeping and Formation Reconfiguration of Multi-Agent Systems|10.3182/20080706-5-kr-1001.00866
+2 2002|9. Controlling Agent Melting and Agent Splitting|10.1007/3-540-45834-4_9
+1 2019|A Reconfiguration Framework for Multi-Sink Wireless Sensor Networks|10.1109/giis48668.2019.9044967
+1 2007|Realization of the Sensor Web Concept for Earth Science using Mobile Robotic P|10.1109/aero.2007.353086
+1 2020|Hybrid Immunized Swarm Optimization Concept for Resilient Coordinated Missions|10.2514/6.2020-1373
+1 2000|An Application of Multi-Agent Systems to Enterprise Formation and Reconfigurat|10.1016/s1474-6670(17)39449-1
+1 None|Fuel optimal maneuvers for multiple spacecraft formation reconfiguration using|10.1109/.2001.981029
+0 2026|Topology Reconfiguration of Multiagent Systems under Link Failures|10.1109/lcsys.2026.3742141
+0 2024|Distributed Reconfiguration of Distance-Based Formations with Virtual Surface |10.23919/ecc64448.2024.10591270
+0 2026|Resilient Reconfiguration and Fault-Tolerant Cooperative Control of MAS under |10.1109/uvs66989.2026.11449808
+0 2026|EFLUX: Elastic Multi-Robot Formation Navigation and Adaptation with Agentic LL|10.48550/arxiv.2607.12050
+0 2015|Fault-tolerant self-organizing control for command tracking of heterogeneous a|10.1016/j.ifacol.2015.10.317
+0 2025|A Coordinated and Resilient Formation Strategy Based on Hierarchical Reorganiz|10.1109/lra.2025.3604698
+0 2014|Decentralized graph processes for robust multi-agent networks|
+0 2026|Communication-Aware Formation Control for Multi-Robot Systems: A Review of Pro|
+0 2025|Comparative Analysis of Transfer Learning and Alliance-Based Approaches in Mul|10.22555/pjets.v13i2.1398
+0 2026|Governance as a Political Variable: How the Digital Omnibus Reconfigured the E|10.5281/zenodo.20100268
+0 2021|Distributed Trajectory Optimization for Time-Optimal Reconfiguration of Multi-|10.1109/ccdc52312.2021.9602860
+0 2015|Dynamical Reconfiguration of Transport Networks Using Feedback Control|10.1007/978-3-319-16823-4_8
+## T10sq2 "graceful degradation multi-robot formation" OA=2 CR=10 S2=0 unique=11
+12 2011|Graceful Degradation in Multi-Party Computation (Extended Abstract)|10.1007/978-3-642-20728-0_15
+4 2013|Automated Multi-graceful Degradation: A Case Study|10.1109/srds.2013.17
+4 2011|Multi-robot Formation Control with Kernel-based Reinforcement Learning|10.3724/sp.j.1218.2011.00379
+1 2010|COMBINING RUNTIME DIAGNOSIS AND AI-PLANNING IN A MOBILE AUTONOMOUS ROBOT TO AC|10.5220/0002752101270134
+0 2026|Communication-Aware Formation Control for Multi-Robot Systems: A Review of Pro|
+0 2025|Improving Multi-Robot Cooperative Navigation Through Bio-Inspired Reinforcemen|10.20517/scierxiv202509.0632.v1
+0 None|graceful degradation|10.1007/springerreference_15412
+0 2015|Reconstruction of 3-D Density Functions from Few Projections: Structural Assum|10.1109/crv.2015.27
+0 None|Graceful Degradation and Speculation for Robots in Highly Dynamic Environments|10.70675/f1e1175fz2135z4a7bzba8cz07bb8651babf
+0 None|Multi-robot formation control in obstacle environments|10.32657/10220/47697
+0 None|Predetermined Time Optimal Multi-Robot Formation: A Zeroing Neural Dynamics Ap|10.1109/tase.2025.3628930/mm1
+## T11sq1 "BlueROV2 multi-vehicle" OA=15 CR=10 S2=0 unique=24
+17 2020|MEASURING ARTIFICIAL REEFS USING A MULTI-CAMERA SYSTEM FOR UNMANNED UNDERWATER|10.5194/isprs-archives-xliii-b2-2020-999-2020
+11 2020|Low-Cost, Open-Source Hovering Autonomous Underwater Vehicle (HAUV) for Marine|10.1109/auv50043.2020.9267913
+8 2026|Backstepping–Sliding Mode With Anti-Windup for Autonomous Underwater Vehicle H|10.1109/access.2026.3657857
+8 2012|Multi-Axle Vehicle Dynamics|10.4271/sp-2337
+6 2022|Finite-Time Controller for Coordinated Navigation of Unmanned Underwater Vehic|10.3390/s23010239
+1 2025|AVIP: Acoustic-Visual-Inertial-Pressure Fusion-based Underwater Localization S|10.1109/iros60139.2025.11246675
+1 2026|Low-Cost Underwater In-Pipe Centering and Inspection Using a Minimal-Sensing R|10.48550/arxiv.2602.05265
+1 2025|MARVL-ROV: Modular, Adaptable, Research Vehicle Loadout for the BlueROV2|10.1109/oceans58557.2025.11104522
+1 2022|Underwater Vehicle Manipulator System (UVMS) With BlueROV2 and SeaArm-2 Manipu|10.1115/omae2022-79913
+0 2026|Onboard Vision and MPC Navigation for Underwater Robots: An Open BlueROV2 Plat|10.48550/arxiv.2609.38511
+0 2026|Koopman-Based Multi-Step Prediction of Nonlinear Body-Velocity Dynamics for an|10.1109/med70602.2026.11598264
+0 2026|Intelligent Cooperative Control for Multiple Unmanned Underwater Vehicles Usin|10.1109/acit69831.2026.11700200
+0 2026|Hierarchical Multi-Scale Modelling of ROV-Mounted Rolling Brush Systems: From |10.2991/978-94-6239-750-7_74
+0 2026|Enhanced Multi-Sensor Fusion for Underwater SLAM Systems|10.26190/unsworks/32420
+0 2026|Event Camera and DVL-Aided Multi-Sensor Underwater SLAM Under Illumination Var|10.1109/oceans66983.2026.11616810
+0 2026|Vision-Enhanced Model-Free Reinforcement Learning for 6-DOF AUV Control|10.1109/ccdc69976.2026.11560597
+0 2026|Intelligent Control for Autonomous Underwater Exploration|10.1109/med70602.2026.11598458
+0 2026|Remote Control of a Bluerov Using Underwater Acoustic Transmissions|10.1109/oceans66983.2026.11616932
+0 2024|Preliminary report on progress for advanced data processing, geolocation and e|10.5281/zenodo.20779637
+0 None|Robust Fault-Tolerant Control for Underwater Vehicles With Saturation-Triggere|10.1109/lra.2026.3662535/mm1
+0 2018|Multi-vehicle Accidents|10.1093/oso/9780190259150.003.0010
+0 2026|Identificación no lineal de un modelo semifísico en lazo cerrado para la veloc|10.17979/ja-cea.2026.47.13848
+0 2026|Reconfigurable multi-unit, multi-axle, multi-articulation heavy vehicle (RUAAH|10.1504/ijhvs.2026.10080347
+0 2017|MULTI OPERATIONAL VEHICLE FOR MAIZE PLANTATION|10.23883/ijrter.2017.3239.vccpl
+COUNTS {"T4s": 83, "T6s": 26, "T8s": 35, "T9s": 41, "T10s": 39, "T11s": 24}

@@ -1,9 +1,9 @@
 """Re-render the fleet view of a finished run from its logs (no simulator needed) and make its GIF.
 
-    python scripts/render_demo.py results/v2/demos/lost_drone_rejoin
-    python scripts/render_demo.py results/v2/demos/gate_single --every 0.5 --fps 6
-    python scripts/render_demo.py results/v2/demos/lost_drone_timeout --at 30 50     # single frames (PNG)
-    python scripts/render_demo.py results/v2/demos/lost_drone_rejoin --select 2      # automaton panel of drone 2
+    python scripts/render_demo.py results/reference/lost_drone_rejoin
+    python scripts/render_demo.py results/reference/gate_single --every 0.5 --fps 6
+    python scripts/render_demo.py results/reference/lost_drone_timeout --at 30 50     # single frames (PNG)
+    python scripts/render_demo.py results/reference/lost_drone_rejoin --select 2      # automaton panel of drone 2
 
 States, missing / vacant slots and queue decisions come from drone_<k>_state.jsonl and events.jsonl (what
 the controllers logged), positions and the P1 / P2 / P3 status from referee_timeseries.csv (ground

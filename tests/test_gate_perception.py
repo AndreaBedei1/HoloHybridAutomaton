@@ -52,7 +52,7 @@ def test_exit_seen_then_free_after_t_clear():
     gp = perception()
     _, t = run(gp, [[tg({"FRONT"}, 4.6)]] * 3)
     _, t = run(gp, [[]] * 20, t0=t)
-    o, t = run(gp, [[tg({"FRONT"}, 7.5)]] * 2, t0=t)         # beyond the CR
+    o, t = run(gp, [[tg({"FRONT"}, 7.5)]] * 3, t0=t)         # beyond the CR
     assert o.occ_state == "EXITING"
     o, t = run(gp, [[tg({"FRONT"}, 8.0)]] * int(G.t_clear / 0.1 + 2), t0=t)
     assert o.occ_state == "FREE"

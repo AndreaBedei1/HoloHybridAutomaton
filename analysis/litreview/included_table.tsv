@@ -1,0 +1,62 @@
+T1	leonard2007collective	Leonard et al. (2007). Collective Motion, Sensor Networks, and Ocean Sampling. *Proceedings of the IEEE*, 95(1), 48-74.	10.1109/jproc.2006.887295
+T1	yang2021survey	Yang et al. (2021). A Survey of Autonomous Underwater Vehicle Formation: Performance, Formation Control, and Communication Capability. *IEEE Communications Surveys & Tutorials*, 23(2), 815-841.	10.1109/comst.2021.3059998
+T1	connor2021current	Connor et al. (2021). Current Algorithms, Communication Methods and Designs for Underwater Swarm Robotics: A Review. *IEEE Sensors Journal*, 21(1), 153-169.	10.1109/jsen.2020.3013265
+T1	berlinger2021implicit	Berlinger et al. (2021). Implicit coordination for 3D underwater collective behaviors in a fish-inspired robot swarm. *Science Robotics*, 6(50), eabd8668.	10.1126/scirobotics.abd8668
+T2	alur1995algorithmic	Alur et al. (1995). The algorithmic analysis of hybrid systems. *Theoretical Computer Science*, 138(1), 3-34.	10.1016/0304-3975(94)00202-t
+T2	lygeros2003dynamical	Lygeros et al. (2003). Dynamical properties of hybrid automata. *IEEE Transactions on Automatic Control*, 48(1), 2-17.	10.1109/tac.2002.806650
+T2	tomlin1998conflict	Tomlin et al. (1998). Conflict resolution for air traffic management: a study in multiagent hybrid systems. *IEEE Transactions on Automatic Control*, 43(4), 509-521.	10.1109/9.664154
+T2	mitsch2017formal	Mitsch et al. (2017). Formal verification of obstacle avoidance and navigation of ground robots. *The International Journal of Robotics Research*, 36(12), 1312-1340.	10.1177/0278364917733549
+T2	brooks1986robust	Brooks (1986). A robust layered control system for a mobile robot. *IEEE Journal on Robotics and Automation*, 2(1), 14-23.	10.1109/jra.1986.1087032
+T2	sha2001using	Lui Sha (2001). Using simplicity to control complexity. *IEEE Software*, 18(4), 20-28.	10.1109/ms.2001.936213
+T3	ames2017control	Ames et al. (2017). Control Barrier Function Based Quadratic Programs for Safety Critical Systems. *IEEE Transactions on Automatic Control*, 62(8), 3861-3876.	10.1109/tac.2016.2638961
+T3	wang2017safety	Wang et al. (2017). Safety Barrier Certificates for Collisions-Free Multirobot Systems. *IEEE Transactions on Robotics*, 33(3), 661-674.	10.1109/tro.2017.2659727
+T3	vandenberg2011reciprocal	van den Berg et al. (2011). Reciprocal n-Body Collision Avoidance. *Springer Tracts in Advanced Robotics*, 3-19.	10.1007/978-3-642-19457-3_1
+T3	zhou2017fast	Zhou et al. (2017). Fast, On-line Collision Avoidance for Dynamic Vehicles Using Buffered Voronoi Cells. *IEEE Robotics and Automation Letters*, 2(2), 1047-1054.	10.1109/lra.2017.2656241
+T3	ozkahraman2020combining	Ozkahraman and Ogren (2020). Combining Control Barrier Functions and Behavior Trees for Multi-Agent Underwater Coverage Missions. *2020 59th IEEE Conference on Decision and Control (CDC)*, 5275-5282.	10.1109/cdc42340.2020.9304151
+T4	lamport1974new	Lamport (1974). A new solution of Dijkstra's concurrent programming problem. *Communications of the ACM*, 17(8), 453-455.	10.1145/361082.361093
+T4	dresner2008multiagent	Dresner and Stone (2008). A Multiagent Approach to Autonomous Intersection Management. *Journal of Artificial Intelligence Research*, 31, 591-656.	10.1613/jair.2502
+T4	colombo2015least	Colombo and Del Vecchio (2015). Least Restrictive Supervisors for Intersection Collision Avoidance: A Scheduling Approach. *IEEE Transactions on Automatic Control*, 60(6), 1515-1527.	10.1109/tac.2014.2381453
+T4	wu2015distributed	Wu et al. (2015). Distributed Mutual Exclusion Algorithms for Intersection Traffic Control. *IEEE Transactions on Parallel and Distributed Systems*, 26(1), 65-74.	10.1109/tpds.2013.2297097
+T4	pecora2018loosely	Pecora et al. (2018). A Loosely-Coupled Approach for Multi-Robot Coordination, Motion Planning and Control. *Proceedings of the International Conference on Automated Planning and Scheduling*, 28, 485-493.	10.1609/icaps.v28i1.13923
+T4	mannucci2019provably	Mannucci et al. (2019). Provably Safe Multi-Robot Coordination With Unreliable Communication. *IEEE Robotics and Automation Letters*, 4(4), 3232-3239.	10.1109/lra.2019.2924849
+T4	gray1989leases	Gray and Cheriton (1989). Leases: an efficient fault-tolerant mechanism for distributed file cache consistency. *Proceedings of the twelfth ACM symposium on Operating systems principles*, 202-210.	10.1145/74850.74870
+T5	coffman1971system	Coffman et al. (1971). System Deadlocks. *ACM Computing Surveys*, 3(2), 67-78.	10.1145/356586.356588
+T5	cap2016provably	Cap et al. (2016). Provably safe and deadlock-free execution of multi-robot plans under delaying disturbances. *2016 IEEE/RSJ International Conference on Intelligent Robots and Systems (IROS)*, 5113-5118.	10.1109/iros.2016.7759750
+T5	grover2023before	Grover et al. (2023). The Before, During, and After of Multi-robot Deadlock. *The International Journal of Robotics Research*, 42(6), 317-336.	10.1177/02783649221074718
+T5	chandra2025deadlock	Chandra et al. (2025). Deadlock-free, safe, and decentralized multi-robot navigation in social mini-games via discrete-time control barrier functions. *Autonomous Robots*, 49(2), 12.	10.1007/s10514-025-10194-8
+T5	zheng2024mcca	Zheng and Li (2024). MCCA: A Decentralized Method for Collision and Deadlock Avoidance With Nonholonomic Robots. *IEEE Robotics and Automation Letters*, 9(3), 2710-2717.	10.1109/lra.2024.3358623
+T5	draganjac2016decentralized	Draganjac et al. (2016). Decentralized Control of Multi-AGV Systems in Autonomous Warehousing Applications. *IEEE Transactions on Automation Science and Engineering*, 13(4), 1433-1447.	10.1109/tase.2016.2603781
+T6	moravec1985high	Moravec and Elfes (1985). High resolution maps from wide angle sonar. *Proceedings. 1985 IEEE International Conference on Robotics and Automation*, 2, 116-121.	10.1109/robot.1985.1087316
+T6	kleeman2016sonar	Kleeman and Kuc (2016). Sonar Sensing. *Springer Handbooks*, 753-782.	10.1007/978-3-319-32552-1_30
+T6	petillot2001underwater	Petillot et al. (2001). Underwater vehicle obstacle avoidance and path planning using a multi-beam forward looking sonar. *IEEE Journal of Oceanic Engineering*, 26(2), 240-251.	10.1109/48.922790
+T6	ribas2008underwater	Ribas et al. (2008). Underwater SLAM in man-made structured environments. *Journal of Field Robotics*, 25(11-12), 898-921.	10.1002/rob.20249
+T6	batista2011single	Batista et al. (2011). Single range aided navigation and source localization: Observability and filter design. *Systems & Control Letters*, 60(8), 665-673.	10.1016/j.sysconle.2011.05.004
+T7	paull2014auv	Paull et al. (2014). AUV Navigation and Localization: A Review. *IEEE Journal of Oceanic Engineering*, 39(1), 131-149.	10.1109/joe.2013.2278891
+T7	eustice2011synchronous	Eustice et al. (2011). Synchronous-clock, one-way-travel-time acoustic navigation for underwater vehicles. *Journal of Field Robotics*, 28(1), 121-136.	10.1002/rob.20365
+T7	webster2012advances	Webster et al. (2012). Advances in single-beacon one-way-travel-time acoustic navigation for underwater vehicles. *The International Journal of Robotics Research*, 31(8), 935-950.	10.1177/0278364912446166
+T7	bahr2009cooperative	Bahr et al. (2009). Cooperative Localization for Autonomous Underwater Vehicles. *The International Journal of Robotics Research*, 28(6), 714-728.	10.1177/0278364908100561
+T8	rypkema2017oneway	Rypkema et al. (2017). One-way travel-time inverted ultra-short baseline localization for low-cost autonomous underwater vehicles. *2017 IEEE International Conference on Robotics and Automation (ICRA)*, 4920-4926.	10.1109/icra.2017.7989570
+T8	rypkema2019passive	Rypkema and Schmidt (2019). Passive Inverted Ultra-Short Baseline (piUSBL) Localization: An Experimental Evaluation of Accuracy. *2019 IEEE/RSJ International Conference on Intelligent Robots and Systems (IROS)*, 7197-7204.	10.1109/iros40897.2019.8967800
+T8	rypkema2022synchronous	Rypkema et al. (2022). Synchronous-Clock Range-Angle Relative Acoustic Navigation: A Unified Approach to Multi-AUV Localization, Command, Control, and Coordination. *Field Robotics*, 2, 774-806.	10.55417/fr.2022026
+T8	fischell2020single	Fischell et al. (2020). Single-Hydrophone Low-Cost Underwater Vehicle Swarming. *IEEE Robotics and Automation Letters*, 5(2), 354-361.	10.1109/lra.2019.2958774
+T8	syed2006time	Syed and Heidemann (2006). Time Synchronization for High Latency Acoustic Networks. *Proceedings IEEE INFOCOM 2006. 25TH IEEE International Conference on Computer Communications*, 1-12.	10.1109/infocom.2006.161
+T9	ghabcheloo2009coordinated	Ghabcheloo et al. (2009). Coordinated Path-Following in the Presence of Communication Losses and Time Delays. *SIAM Journal on Control and Optimization*, 48(1), 234-265.	10.1137/060678993
+T9	lewis1997high	Lewis and Tan (1997). High Precision Formation Control of Mobile Robots Using Virtual Structures. *Autonomous Robots*, 4(4), 387-403.	10.1023/a:1008814708459
+T9	oh2015survey	Oh et al. (2015). A survey of multi-agent formation control. *Automatica*, 53, 424-440.	10.1016/j.automatica.2014.10.022
+T9	soares2013joint	Soares et al. (2013). Joint ASV/AUV range-based formation control: Theory and experimental results. *2013 IEEE International Conference on Robotics and Automation*, 5579-5585.	10.1109/icra.2013.6631378
+T9	mirollo1990synchronization	Mirollo and Strogatz (1990). Synchronization of Pulse-Coupled Biological Oscillators. *SIAM Journal on Applied Mathematics*, 50(6), 1645-1662.	10.1137/0150098
+T10	christensen2009fireflies	Christensen et al. (2009). From Fireflies to Fault-Tolerant Swarms of Robots. *IEEE Transactions on Evolutionary Computation*, 13(4), 754-766.	10.1109/tevc.2009.2017516
+T10	chandra1996unreliable	Chandra and Toueg (1996). Unreliable failure detectors for reliable distributed systems. *Journal of the ACM*, 43(2), 225-267.	10.1145/226643.226647
+T10	hayashibara2004phi	Hayashibara et al. (2004). The /spl phi/ accrual failure detector. *Proceedings of the 23rd IEEE International Symposium on Reliable Distributed Systems, 2004.*, 66-78.	10.1109/reldis.2004.1353004
+T10	pang2024multi	Pang et al. (2024). Multi-AUV Formation Reconfiguration Obstacle Avoidance Algorithm Based on Affine Transformation and Improved Artificial Potential Field Under Ocean Currents Disturbance. *IEEE Transactions on Automation Science and Engineering*, 21(2), 1469-1487.	10.1109/tase.2023.3245818
+T11	akyildiz2005underwater	Akyildiz et al. (2005). Underwater acoustic sensor networks: research challenges. *Ad Hoc Networks*, 3(3), 257-279.	10.1016/j.adhoc.2005.01.004
+T11	stojanovic2009underwater	Stojanovic and Preisig (2009). Underwater acoustic communication channels: Propagation models and statistical characterization. *IEEE Communications Magazine*, 47(1), 84-89.	10.1109/mcom.2009.4752682
+T11	stilwell2000platoons	Stilwell and Bishop (2000). Platoons of underwater vehicles. *IEEE Control Systems*, 20(6), 45-52.	10.1109/37.887448
+T11	fossen2011handbook	Fossen (2011). Handbook of Marine Craft Hydrodynamics and Motion Control. *Wiley*.	10.1002/9781119994138
+T11	potokar2022holoocean	Potokar et al. (2022). HoloOcean: An Underwater Robotics Simulator. *2022 International Conference on Robotics and Automation (ICRA)*, 3040-3046.	10.1109/icra46639.2022.9812353
+X	blackman2004multiple	Blackman (2004). Multiple hypothesis tracking for multiple target tracking. *IEEE Aerospace and Electronic Systems Magazine*, 19(1), 5-18.	10.1109/maes.2004.1263228
+X	musicki1994integrated	Musicki et al. (1994). Integrated probabilistic data association. *IEEE Transactions on Automatic Control*, 39(6), 1237-1241.	10.1109/9.293185
+X	ristic2013tutorial	Ristic et al. (2013). A Tutorial on Bernoulli Filters: Theory, Implementation and Applications. *IEEE Transactions on Signal Processing*, 61(13), 3406-3430.	10.1109/tsp.2013.2257765
+X	coue2006bayesian	Coué et al. (2006). Bayesian Occupancy Filtering for Multitarget Tracking: An Automotive Application. *The International Journal of Robotics Research*, 25(1), 19-30.	10.1177/0278364906061158
+X	wald1945sequential	Wald (1945). Sequential Tests of Statistical Hypotheses. *The Annals of Mathematical Statistics*, 16(2), 117-186.	10.1214/aoms/1177731118
+X	gunes2016joint	Gunes and Guldogan (2016). Joint underwater target detection and tracking with the Bernoulli filter using an acoustic vector sensor. *Digital Signal Processing*, 48, 246-258.	10.1016/j.dsp.2015.09.020

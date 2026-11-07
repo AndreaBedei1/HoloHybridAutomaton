@@ -1,4 +1,4 @@
-"""Fleet-centred demo view (DI-30): one clean picture of the whole fleet for a supervisor.
+"""Fleet-centred demo view: one clean picture of the whole fleet for a supervisor.
 
 * main map, top-down: the common survey path, the formation slots of the shared plan (empty rings; a
   slot declared vacant is marked), every drone at its true position coloured by its automaton state
@@ -68,7 +68,7 @@ STATE_COLOR = {"FOLLOW": _rgb("#2f9e5b"), "WAIT": _rgb("#e0a21c"), "DEGRADED": _
                "PASS": _rgb("#1c4e9c"), "WARNING": _rgb("#e8577a"), "AVOID": _rgb("#c62828"),
                "FAILSAFE": _rgb("#4b4a46")}
 LEGEND = ["FOLLOW", "WAIT", "DEGRADED", "RECOVERY", "APPROACH", "YIELD", "PASS", "WARNING", "AVOID", "FAILSAFE"]
-# the ten states on the priority layout of the automaton diagram (figures/v2/automaton): hazards, mutex, recovery, keeping
+# the ten states on the priority layout of the automaton diagram (figures/automaton): hazards, mutex, recovery, keeping
 AUT_LAYOUT = [("FAILSAFE", 0, 0), ("AVOID", 1, 0), ("WARNING", 2, 0), ("APPROACH", 0, 1), ("YIELD", 1, 1),
               ("PASS", 2, 1), ("RECOVERY", 1, 2), ("WAIT", 0, 3), ("FOLLOW", 1, 3), ("DEGRADED", 2, 3)]
 KEEPING = ("FORMATION_FOLLOW", "FORMATION_WAIT_REJOIN", "DEGRADED_FORMATION")
@@ -424,11 +424,13 @@ class FleetView:
                 hull = cv2.convexHull(np.array([self.px(c) for c in corners], np.int32))
                 cv2.fillPoly(img, [hull], _bgr(GATE), cv2.LINE_AA)
             if self.vertical:
-                top = [g.from_gate_frame([0.0, 0.0, z]) for z in (-0.93, 0.93)]
-                for zz in (-0.93, 0.93):
-                    a = self.pz(g.from_gate_frame([-0.11, 0.0, zz]))
-                    cv2.rectangle(img, (a[0] - 2, a[1] - 2), (a[0] + 4, a[1] + 2), _bgr(GATE), -1)
-                _ = top
+                for b in g.bars:
+                    if abs(g.to_gate_frame(b.center)[2]) < 1e-6:
+                        continue                    # side bars: seen end-on in the vertical view
+                    corners = np.array([b.center + b.axes @ (b.half * np.array([sx, sy, sz]))
+                                        for sx in (-1, 1) for sy in (-1, 1) for sz in (-1, 1)])
+                    a, c = zip(*[self.pz(q) for q in corners])
+                    cv2.rectangle(img, (min(a), min(c)), (max(a), max(c)), _bgr(GATE), -1)
         # common path (dashed)
         wp = self.sc.path.waypoints
         a, b = np.asarray(wp[0], float), np.asarray(wp[-1], float)

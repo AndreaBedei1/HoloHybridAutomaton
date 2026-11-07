@@ -6,7 +6,7 @@ face of the BlueROV2 hull, all with the same model; only position and orientatio
 
 Conventions (body frame of the agent origin, HoloOcean client axes): x forward, y left, z up.
 Sensor rotations are HoloOcean ``[roll, pitch, yaw]`` degrees; pitch is positive *downward*
-(probe/probe_singlebeam.py: an agent pitched -90 deg looks up).
+(calibration/probe_singlebeam.py: an agent pitched -90 deg looks up).
 
 What a sector pattern tells about the direction of a target
 -----------------------------------------------------------
@@ -51,7 +51,8 @@ ROTATIONS: Dict[str, List[float]] = {
 R_IN = float(HULL_HALF.min())                 # inscribed ball of a BlueROV2 hull
 R_OUT = float(np.linalg.norm(HULL_HALF))      # circumscribed ball
 RHO_MIN = 1.0                                 # regions are built for centre distances >= this (= d_safe)
-NEAR_FIELD_WIDEN_M = 0.25                     # near-field beam widening (see sonar_processing, DI-12)
+OCTREE_LEAF_M = 0.06                          # sonar octree leaf (= sim.holoocean_setup.OCTREE_MIN): cone-edge resolution
+NEAR_FIELD_WIDEN_M = 0.25                     # near-field beam widening (see sonar_processing)
 
 
 @dataclass(frozen=True)
@@ -212,67 +213,6 @@ def diagonal_directions() -> Dict[str, np.ndarray]:
     return out
 
 
-HULL_FUZZ_DEG = 5.0            # cone boundary uncertainty for a hull at >= RHO_MIN (probe: 60 deg, 62.5 at 3 m)
-
-
-def _parallax_angle(alpha_deg: float, mount: float, D: float = RHO_MIN) -> float:
-    """Angle at a sensor mounted ``mount`` ahead of the centre (along its axis) of a point at centre
-    distance D whose direction from the centre makes ``alpha_deg`` with the axis."""
-    a = np.radians(alpha_deg)
-    return float(np.degrees(np.arctan2(D * np.sin(a), D * np.cos(a) - mount)))
-
-
-@lru_cache(maxsize=4)
-def _alpha_table(model: SonarModel = DEFAULT_SONAR) -> Dict[FrozenSet[str], Dict[str, Dict[float, float]]]:
-    """Pattern -> sector -> {rho_grid: largest angle [deg] between the sector axis and a direction of the pattern's
-    region at centre distances >= rho_grid}."""
-    dirs = fibonacci_sphere(12000)
-    out = {}
-    for P, per in _region_table_by_radius(12000, model).items():
-        out[P] = {}
-        for sct in P:
-            cos = dirs @ AXES[sct]
-            row = {}
-            for k, rho in enumerate(REGION_RADII):
-                idx = [per[r] for r in REGION_RADII[k:] if r in per]
-                if idx:
-                    row[rho] = float(np.degrees(np.arccos(np.clip(cos[np.concatenate(idx)].min(), -1.0, 1.0))))
-            out[P][sct] = row
-    return out
-
-
-def centre_in_cone(pattern: Iterable[str], sector: str, d_min: float, model: SonarModel = DEFAULT_SONAR) -> bool:
-    """True when the target CENTRE is certainly inside ``sector``'s cone as seen from that sensor, for a
-    target seen with ``pattern`` at centre distance >= d_min (a sound lower bound)."""
-    row = _alpha_table(model).get(frozenset(pattern), {}).get(sector)
-    if not row or d_min <= float(np.linalg.norm(MOUNTS[sector])) + 0.05:
-        return False
-    grid = [r for r in REGION_RADII if r <= d_min and r in row]       # the band that contains d_min
-    if not grid:
-        return False
-    alpha = row[grid[-1]]
-    return _parallax_angle(alpha, float(np.linalg.norm(MOUNTS[sector])), d_min) + HULL_FUZZ_DEG <= model.half_angle_deg
-
-
-def certified_sectors(pattern: Iterable[str], model: SonarModel = DEFAULT_SONAR, d_min: float = RHO_MIN) -> FrozenSet[str]:
-    return frozenset(s_ for s_ in frozenset(pattern) if centre_in_cone(pattern, s_, d_min, model))
-
-
-def target_distance_lower(ranges: Dict[str, float], eps_far: float = 0.12, model: SonarModel = DEFAULT_SONAR) -> float:
-    """Sound lower bound of the centre distance of a target seen by the sectors in ``ranges`` (sector ->
-    nearest echo range).  Every member sector gives a sound bound (B); where the pattern and that
-    bound certify the target centre inside the sector's cone, the tighter bound (A) applies.  The
-    minimum over the members is kept: two different objects merged into one target (similar ranges
-    in adjacent sectors) are both bounded."""
-    P = frozenset(ranges)
-    out = []
-    for sct, r in ranges.items():
-        dB = centre_distance_lower(r, sct, eps_far, model, centre_in_cone=False)
-        inside = centre_in_cone(P, sct, max(dB, 0.0), model)
-        out.append(centre_distance_lower(r, sct, eps_far, model, centre_in_cone=inside))
-    return float(min(out)) if out else 1e9
-
-
 def centre_distance_lower(r_echo: float, sector: str, eps_far: float = 0.12, model: SonarModel = DEFAULT_SONAR,
                           centre_in_cone: bool = False) -> float:
     """Sound lower bound of the centre-to-centre distance to a BlueROV2 whose nearest echo in ``sector``
@@ -282,14 +222,13 @@ def centre_distance_lower(r_echo: float, sector: str, eps_far: float = 0.12, mod
     (B) always: p lies in the cone, so |p|^2 = |m|^2 + r'^2 + 2|m| r' cos(angle(p - m, axis))
         >= |m|^2 + r'^2 + 2|m| r' cos(60 deg + w(r')), w = near-field widening; the target centre is
         within R_OUT of p:  d >= |p| - R_OUT.
-    (A) when the pattern certifies that the target CENTRE is inside this sector's cone
-        (``certified_sectors``): the inscribed ball's nearest point is in the cone, so the centre
+    (A) when the target CENTRE is known to lie inside this sector's cone (perception/distance_bound.py certifies it
+        from the candidate touch sets): the inscribed ball's nearest point is in the cone, so the centre
         is at L >= r' + R_IN from the sensor, at an angle phi <= 60 deg + asin(R_OUT / L) from the
         axis (= direction of m):  d^2 = L^2 + |m|^2 + 2 L |m| cos(phi)  ->  d >= L + |m| cos(phi).
-    The bound used is the larger of the applicable ones.  Checked on 10^5 random hull poses
-    (formal/check_separation.py, S0): never above the true distance.  Without (A) a hull corner
-    reaching into the cone while the centre is outside would make r' + R_IN overestimate the
-    distance by up to 0.4 m (DI-13).
+    The bound used is the larger of the applicable ones (formal/check_separation.py, S0).  Applying (A) without
+    the centre certified inside the cone overestimates: a hull corner can reach into the cone while the centre is
+    outside (mutation S0m).
     """
     m = float(np.linalg.norm(MOUNTS[sector]))
     rp = max(r_echo - eps_far, 0.0)

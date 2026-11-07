@@ -1,0 +1,14 @@
+{
+"T1": ["decentralized multi-AUV coordination", "underwater swarm robotics implicit coordination without communication", "multiple autonomous underwater vehicles cooperative control survey"],
+"T2": ["hybrid automata formal verification robots", "multi-agent hybrid systems conflict resolution safety verification"],
+"T3": ["control barrier functions multi-robot collision avoidance", "collision avoidance multiple autonomous underwater vehicles", "decentralized collision avoidance without communication robots"],
+"T4": ["mutual exclusion intersection autonomous vehicles distributed", "multi-robot coordination narrow passage critical section", "decentralized intersection crossing robots without communication"],
+"T5": ["deadlock resolution multi-robot systems decentralized", "provably safe deadlock-free multi-robot coordination"],
+"T6": ["wide-angle sonar occupancy grid uncertainty", "single beam sonar obstacle detection underwater vehicle", "observability range-only bearing-only underwater navigation"],
+"T7": ["one-way travel time acoustic navigation synchronous clock", "inverted ultra-short baseline localization AUV", "cooperative localization autonomous underwater vehicles acoustic ranging"],
+"T8": ["acoustic beacon passive localization multiple AUVs swarm", "relative localization underwater robots acoustic broadcast neighbors"],
+"T9": ["coordinated path following marine vehicles communication losses", "formation control autonomous underwater vehicles ocean currents", "synchronization path parameter formation without communication"],
+"T10": ["fault-tolerant formation control multi-agent agent loss reconfiguration", "robot swarm fault detection heartbeat synchronization", "failure detector timeout distributed systems accrual"],
+"T11": ["underwater acoustic communication channel challenges networking", "underwater robotics simulator sonar acoustic", "AUV navigation localization review"],
+"X": ["target existence probability tracking intermittent detection Bernoulli filter", "Bayesian occupancy filter dynamic environment tracking", "multiple hypothesis tracking track confirmation", "pulse-coupled oscillators synchronization"]
+}

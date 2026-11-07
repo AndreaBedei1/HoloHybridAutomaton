@@ -1,7 +1,7 @@
 """Which HoloOcean installation the project runs on, and how the sonar octree is kept consistent.
 
 HoloOcean 2.3.0 sonars see the static scene through an octree that the engine builds once and
-caches on disk per level and octree size (DESIGN_ITERATIONS.md DI-1/DI-2).  The project runs on a
+caches on disk per level and octree size.  The project runs on a
 *patched* HoloOcean root (docs/HOLOOCEAN_OCTREE_PATCH.md) whose engine understands the
 ``RebuildSonarOctree`` command and whose client exposes ``env.rebuild_sonar_octree()``:
 
@@ -28,7 +28,7 @@ from pathlib import Path
 from typing import Iterable, Optional, Sequence
 
 DEFAULT_PATCHED_ROOT = Path(r"F:\Andrea\holoocean_patched_root")
-OCTREE_MIN = 0.06            # leaf size [m] (arena bars are 0.18 m thick)
+OCTREE_MIN = 0.06            # leaf size [m] (below the thinnest gate bar, arena_bridge.GATE_BAR_SECTION_M)
 OCTREE_MAX = 5.0             # mid-level size [m] -> engine folder "min6_max768"
 # One environment box for every arena-area scenario: it bounds the octree root (fast to rebuild)
 # and contains the Horseshoe Bay arena and the open-water test areas around it.
@@ -46,7 +46,10 @@ def use_patched_holoocean() -> dict:
     root = patched_root()
     if root is None:
         return {"patched": False, "root": None}
-    os.environ["HOLODECKPATH"] = str(root)
+    from holo_fleet.sim.engine_session import _MAKE_LOCK
+
+    with _MAKE_LOCK:
+        os.environ["HOLODECKPATH"] = str(root)
     info = json.loads((root / "PATCH_INFO.json").read_text(encoding="utf-8-sig"))
     return {"patched": True, "root": str(root), **info}
 

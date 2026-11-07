@@ -11,7 +11,9 @@ Checks, for every source mode:
   H3  calm & d_ca_exit <= d_min < d_warning => SEPARATION_WARNING;
   G1  the only way into MUTEX_PASS without being committed is the commit edge, whose guard implies
       at_queue & !occ_busy & has_prio (local mutual-exclusion entry condition);
-  G2  a committed drone never falls back to MUTEX_APPROACH/MUTEX_YIELD (no oscillation PASS->YIELD);
+  G2  a committed drone falls back to MUTEX_APPROACH/MUTEX_YIELD only by the explicit give-up of an entry that was
+      never admitted (entry_abort, observation invariant I5), and that edge clears ``committed`` (G2c): no silent
+      oscillation PASS->YIELD, and no drone that keeps its commitment while returning to the queue;
   G3  a hazard (d_min < d_warning) never coexists with a commit decision;
   L1  readable guards: the ``label`` of every edge (the text of the automaton diagram and of the transition
       log, holo_fleet/ha/guard_text.py) is exact under the priority order - for every legal observation on
@@ -94,9 +96,15 @@ def run(cfg=DEFAULT, verbose=True) -> Report:
         # G2 committed never goes back to approach/yield
         back = [g for e, g in gs if e.target in (Mode.MUTEX_APPROACH, Mode.MUTEX_YIELD)]
         if back:
-            rep.add(check(f"G2 no PASS->YIELD fallback [{src.value}]",
-                          "committed -> target not in {MUTEX_APPROACH, MUTEX_YIELD}", ENC,
-                          [legal, o.committed, z3.Or(*back)]), verbose)
+            rep.add(check(f"G2 no PASS->YIELD fallback without give-up [{src.value}]",
+                          "committed & target in {MUTEX_APPROACH, MUTEX_YIELD} -> entry_abort", ENC,
+                          [legal, o.committed, z3.Or(*back), z3.Not(o.entry_abort)]), verbose)
+            keep = [g for e, g in gs if e.target in (Mode.MUTEX_APPROACH, Mode.MUTEX_YIELD)
+                    and e.set_committed is not False]
+            if keep:
+                rep.add(check(f"G2c a give-up clears the commitment [{src.value}]",
+                              "committed & edge to {MUTEX_APPROACH, MUTEX_YIELD} enabled -> it sets committed := false",
+                              ENC, [legal, o.committed, z3.Or(*keep)]), verbose)
         # G3 no commit decision under a separation hazard
         commits = [g for e, g in gs if e.set_committed is True]
         if commits:
@@ -109,7 +117,7 @@ def run(cfg=DEFAULT, verbose=True) -> Report:
                       [legal, label_mismatch(gs, o, cfg)]), verbose)
 
     # ------------------------------------------------------------- mutation tests
-    def mutated(drop_prio: bool = False, drop_ca_priority: bool = False):
+    def mutated(drop_prio: bool = False, drop_ca_priority: bool = False, abort_keeps_commit: bool = False):
         ed = build_edges(cfg)
         out = {}
         for src, lst in ed.items():
@@ -123,6 +131,9 @@ def run(cfg=DEFAULT, verbose=True) -> Report:
                     # broken design: "once committed, keep passing whatever happens"
                     new.append(Edge(e.name, lambda o, L: L.And(L.Not(P.fault(o, L)), o.committed, L.Not(o.passed)),
                                     e.target, e.set_committed, e.decision))
+                elif abort_keeps_commit and e.name == "pass_abort":
+                    # broken design: the withdrawn flow-only retreat (back to the queue, still committed)
+                    new.append(Edge(e.name, e.guard, e.target, None, e.decision))
                 else:
                     new.append(e)
             out[src] = new
@@ -142,6 +153,11 @@ def run(cfg=DEFAULT, verbose=True) -> Report:
     rep.add(check("M2 mutation: gate pass ignoring collision risk must violate H2",
                   "expect counterexample", ENC,
                   [o.legal(cfg), z3.Not(P.fault(o, Z3L)), o.d_min < cfg.sep.d_ca, z3.Or(*bad)], expect="sat"), verbose)
+    me = mutated(abort_keeps_commit=True)
+    gs = guards_of(me[Mode.MUTEX_PASS], o)
+    keep = [g for e, g in gs if e.target in (Mode.MUTEX_APPROACH, Mode.MUTEX_YIELD) and e.set_committed is not False]
+    rep.add(check("MA mutation: a give-up that keeps the commitment (the withdrawn retreat) must violate G2c",
+                  "expect counterexample", ENC, [o.legal(cfg), o.committed, z3.Or(*keep)], expect="sat"), verbose)
     wrong = [(Edge(e.name, e.guard, e.target, e.set_committed, e.decision,
                    label="d_min < d_warning" if e.name == "collision_risk" else e.label), g)
              for e, g in guards_of(edges[Mode.FORMATION_FOLLOW], o)]

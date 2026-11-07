@@ -56,3 +56,19 @@ def test_region_table_patterns():
 def test_onboard_whitelist_has_no_privileged_sensor():
     for key in ("PoseSensor", "VelocitySensor", "CollisionSensor", "LocationSensor", "RotationSensor"):
         assert key not in ONBOARD_NAMES
+
+
+def test_sector_frame_is_a_rotation_to_the_boresight_also_antiparallel_to_x():
+    """v9 campaign, formation_six CLEAN s701: the REAR sector of a drone heading exactly +x made Rodrigues'
+    1 / (1 + c) divide by zero.  Every sector, at yaws around 0 and pi down to 1e-12 rad: M is a rotation, M x = a."""
+    import math
+
+    from holo_fleet.perception.sonar_processing import EchoClassifier
+    from holo_fleet.perception.sonar_processing import AXES
+    for yaw in (0.0, 1e-12, -1e-12, 1e-9, 1e-8, 1e-7, 1e-5, 0.3, math.pi, math.pi - 1e-9, -math.pi / 2):
+        c, s = math.cos(yaw), math.sin(yaw)
+        R = np.array([[c, -s, 0.0], [s, c, 0.0], [0.0, 0.0, 1.0]])
+        for sec in AXES:
+            a, M = EchoClassifier._sector_frame(sec, R)
+            assert np.allclose(M @ np.array([1.0, 0.0, 0.0]), a, atol=1e-6), (yaw, sec)
+            assert np.allclose(M.T @ M, np.eye(3), atol=1e-6) and abs(np.linalg.det(M) - 1.0) < 1e-6, (yaw, sec)

@@ -52,7 +52,7 @@ Branch `realistic-sonar-formations-v2`. Design history is recorded in [DESIGN_IT
    progress checked for every occupancy with at most one vacant queue point between neighbours.
 10. **The automaton made visible** (DI-31): every edge carries a readable guard proved equal to the
    executed one under the priority order (Z3) and a cause written to the transition log at every mode change;
-   the automaton diagram is generated from the spec (`figures/v2/automaton/`); the fleet view shows the
+   the automaton diagram is generated from the spec (`figures/automaton/`); the fleet view shows the
    state, the last transition and its cause for one drone.
 
 The coordination is **decentralized and communication-free, driven by shared mission constraints and
@@ -67,7 +67,7 @@ its own slot of the shared plan and corrects it with its own sonars.
 
 ## 2. Sensing
 
-Phase-1 probe ([docs/v2/SONAR_PROBE.md](docs/v2/SONAR_PROBE.md)) and benches (`scripts/sonar_bench.py`):
+Phase-1 probe ([docs/v2/SONAR_PROBE.md](docs/v2/SONAR_PROBE.md)) and benches (`calibration/sonar_bench.py`):
 
 * **Range accuracy.** Within about one bin plus one octree leaf (at most 0.055 m) for BlueROV2s, boxes
   and gate bars.  The beam width is as configured: 60 deg, 62.5 deg at 3 m because of the hull's
@@ -163,7 +163,7 @@ Key numbers:
     * Em1: the old scalar bound admits head currents with which not even the survey speed is
       deliverable (counterexample: 0.5 m/s).
 
-**Assumptions** (measured on the runs in [results/v2/ASSUMPTIONS.md](results/v2/ASSUMPTIONS.md)):
+**Assumptions** (measured on the runs in [results/reference/ASSUMPTIONS.md](results/reference/ASSUMPTIONS.md)):
 * both drones of a pair detect each other;
 * sonar data age <= tau_max;
 * the closing speed of a pair is <= c_max;
@@ -388,7 +388,7 @@ python formal/check_properties.py
 python -m pytest -q
 python scripts/run_all_demos.py && python scripts/make_figures_v2.py && python scripts/validate_assumptions_v2.py
 python scripts/run_demo.py --scenario lost_drone_rejoin  # watch one (fleet view)
-python scripts/render_demo.py results/v2/demos/lost_drone_timeout    # fleet-view GIF again, from the logs
+python scripts/render_demo.py results/reference/lost_drone_timeout    # fleet-view GIF again, from the logs
 ```
 
 ## 8. Reduced-progress waiting, a derived timeout, the automaton made visible
@@ -478,7 +478,7 @@ catch-up while preserving the formation.
 * **Transition log.**  Every mode change writes a `transition` event (time, from, to, edge, cause, readable
   guard) to events.jsonl and the last one to the state record.
 * **Diagram generated from the spec** (scripts/make_automaton_diagram.py, from build_edges):
-  figures/v2/automaton/automaton_full.{png,svg} (the ten states in six priority bands, all 120 edges, the exact
+  figures/automaton/automaton_full.{png,svg} (the ten states in six priority bands, all 120 edges, the exact
   guards, compact self-loops) and automaton_presentation.{png,svg} (the same automaton in plain words, for
   slides).  A test checks that every edge of the spec is drawn, nothing else, with the label of the spec.
 * **Fleet view.**  An automaton card for one selected drone (`--select K`): its state on the priority layout,

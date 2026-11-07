@@ -9,10 +9,12 @@
       "expect": "sat",
       "verdict": "sat",
       "passed": true,
-      "seconds": 0.003,
+      "seconds": 0.0,
       "counterexample": {
         "at_queue": false,
+        "committed": false,
         "d_min": 0.125,
+        "entry_abort": false,
         "form_err": 0.125,
         "has_prio": false,
         "mutex_zone": false,
@@ -28,10 +30,12 @@
       "expect": "sat",
       "verdict": "sat",
       "passed": true,
-      "seconds": 0.001,
+      "seconds": 0.0,
       "counterexample": {
         "at_queue": false,
+        "committed": false,
         "d_min": 1000000001.0,
+        "entry_abort": false,
         "form_err": -1.0,
         "has_prio": false,
         "mutex_zone": false,
@@ -50,7 +54,9 @@
       "seconds": 0.0,
       "counterexample": {
         "at_queue": false,
+        "committed": false,
         "d_min": 0.125,
+        "entry_abort": false,
         "form_err": 0.125,
         "has_prio": true,
         "mutex_zone": false,
@@ -66,10 +72,11 @@
       "expect": "sat",
       "verdict": "sat",
       "passed": true,
-      "seconds": 0.001,
+      "seconds": 0.0,
       "counterexample": {
         "at_queue": true,
         "d_min": 0.125,
+        "entry_abort": false,
         "form_err": 0.125,
         "mutex_zone": false,
         "t_ok": 0.125
@@ -87,6 +94,7 @@
       "counterexample": {
         "at_queue": false,
         "d_min": 0.125,
+        "entry_abort": false,
         "form_err": 0.125,
         "has_prio": false,
         "mutex_zone": true,
@@ -102,10 +110,12 @@
       "expect": "sat",
       "verdict": "sat",
       "passed": true,
-      "seconds": 0.001,
+      "seconds": 0.0,
       "counterexample": {
         "at_queue": false,
+        "committed": false,
         "d_min": 0.5,
+        "entry_abort": false,
         "form_err": 0.5,
         "has_prio": false,
         "mutex_zone": false,
@@ -115,15 +125,36 @@
       "note": "excludes: t_ok > 0 with form_err >= e_ok (a stale 'ok for t seconds' counter)"
     },
     {
+      "prop": "O2 I5 an entry is given up only by a committed drone in the approach zone: excludes observations admitted by the other invariants",
+      "formula": "exists obs: others & !(entry_abort -> committed & mutex_zone & !passed)",
+      "encoding": "holo_fleet/ha/observation_invariants.py + holo_fleet/ha/spec.py (shared guards)",
+      "expect": "sat",
+      "verdict": "sat",
+      "passed": true,
+      "seconds": 0.0,
+      "counterexample": {
+        "at_queue": false,
+        "committed": false,
+        "d_min": 0.125,
+        "entry_abort": true,
+        "form_err": 0.125,
+        "has_prio": false,
+        "mutex_zone": false,
+        "passed": false,
+        "t_ok": 0.125
+      },
+      "note": "excludes: entry_abort for an uncommitted drone (an abort edge that could not fire) or after the gate was passed"
+    },
+    {
       "prop": "O3 non-vacuity [FORMATION_FOLLOW]: every edge enabled on some consistent observation",
       "formula": "for each edge e: exists consistent obs with guard(e)",
       "encoding": "holo_fleet/ha/observation_invariants.py + holo_fleet/ha/spec.py (shared guards)",
       "expect": "sat",
       "verdict": "sat",
       "passed": true,
-      "seconds": 0.021,
+      "seconds": 0.019,
       "counterexample": null,
-      "note": "12 edges"
+      "note": "13 edges"
     },
     {
       "prop": "O3 non-vacuity [SEPARATION_WARNING]: every edge enabled on some consistent observation",
@@ -132,9 +163,9 @@
       "expect": "sat",
       "verdict": "sat",
       "passed": true,
-      "seconds": 0.025,
+      "seconds": 0.019,
       "counterexample": null,
-      "note": "12 edges"
+      "note": "13 edges"
     },
     {
       "prop": "O3 non-vacuity [COLLISION_AVOIDANCE]: every edge enabled on some consistent observation",
@@ -143,9 +174,9 @@
       "expect": "sat",
       "verdict": "sat",
       "passed": true,
-      "seconds": 0.023,
+      "seconds": 0.018,
       "counterexample": null,
-      "note": "12 edges"
+      "note": "13 edges"
     },
     {
       "prop": "O3 non-vacuity [MUTEX_APPROACH]: every edge enabled on some consistent observation",
@@ -154,9 +185,9 @@
       "expect": "sat",
       "verdict": "sat",
       "passed": true,
-      "seconds": 0.02,
+      "seconds": 0.019,
       "counterexample": null,
-      "note": "12 edges"
+      "note": "13 edges"
     },
     {
       "prop": "O3 non-vacuity [MUTEX_YIELD]: every edge enabled on some consistent observation",
@@ -165,9 +196,9 @@
       "expect": "sat",
       "verdict": "sat",
       "passed": true,
-      "seconds": 0.022,
+      "seconds": 0.016,
       "counterexample": null,
-      "note": "12 edges"
+      "note": "13 edges"
     },
     {
       "prop": "O3 non-vacuity [MUTEX_PASS]: every edge enabled on some consistent observation",
@@ -176,9 +207,9 @@
       "expect": "sat",
       "verdict": "sat",
       "passed": true,
-      "seconds": 0.018,
+      "seconds": 0.019,
       "counterexample": null,
-      "note": "12 edges"
+      "note": "13 edges"
     },
     {
       "prop": "O3 non-vacuity [FORMATION_RECOVERY]: every edge enabled on some consistent observation",
@@ -187,9 +218,9 @@
       "expect": "sat",
       "verdict": "sat",
       "passed": true,
-      "seconds": 0.019,
+      "seconds": 0.016,
       "counterexample": null,
-      "note": "12 edges"
+      "note": "13 edges"
     },
     {
       "prop": "O3 non-vacuity [FAILSAFE_HOLD_OR_RETREAT]: every edge enabled on some consistent observation",
@@ -198,9 +229,9 @@
       "expect": "sat",
       "verdict": "sat",
       "passed": true,
-      "seconds": 0.018,
+      "seconds": 0.017,
       "counterexample": null,
-      "note": "12 edges"
+      "note": "13 edges"
     },
     {
       "prop": "O3 non-vacuity [FORMATION_WAIT_REJOIN]: every edge enabled on some consistent observation",
@@ -209,9 +240,9 @@
       "expect": "sat",
       "verdict": "sat",
       "passed": true,
-      "seconds": 0.034,
+      "seconds": 0.018,
       "counterexample": null,
-      "note": "12 edges"
+      "note": "13 edges"
     },
     {
       "prop": "O3 non-vacuity [DEGRADED_FORMATION]: every edge enabled on some consistent observation",
@@ -220,9 +251,9 @@
       "expect": "sat",
       "verdict": "sat",
       "passed": true,
-      "seconds": 0.025,
+      "seconds": 0.018,
       "counterexample": null,
-      "note": "12 edges"
+      "note": "13 edges"
     },
     {
       "prop": "O4 consistent observation -> exactly one edge [FORMATION_FOLLOW]",
@@ -231,7 +262,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 0.001,
+      "seconds": 0.002,
       "counterexample": null,
       "note": ""
     },
@@ -242,7 +273,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 0.001,
+      "seconds": 0.002,
       "counterexample": null,
       "note": ""
     },
@@ -253,7 +284,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 0.0,
+      "seconds": 0.002,
       "counterexample": null,
       "note": ""
     },
@@ -264,7 +295,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 0.002,
+      "seconds": 0.0,
       "counterexample": null,
       "note": ""
     },
@@ -275,7 +306,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 0.003,
+      "seconds": 0.001,
       "counterexample": null,
       "note": ""
     },
@@ -286,7 +317,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 0.002,
+      "seconds": 0.001,
       "counterexample": null,
       "note": ""
     },
@@ -297,7 +328,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 0.002,
+      "seconds": 0.0,
       "counterexample": null,
       "note": ""
     },
@@ -319,7 +350,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 0.002,
+      "seconds": 0.001,
       "counterexample": null,
       "note": ""
     },
@@ -330,7 +361,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 0.001,
+      "seconds": 0.0,
       "counterexample": null,
       "note": ""
     },
@@ -341,7 +372,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 0.004,
+      "seconds": 0.002,
       "counterexample": null,
       "note": ""
     },
@@ -352,7 +383,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 0.004,
+      "seconds": 0.0,
       "counterexample": null,
       "note": ""
     },
@@ -363,20 +394,21 @@
       "expect": "sat",
       "verdict": "sat",
       "passed": true,
-      "seconds": 0.002,
+      "seconds": 0.0,
       "counterexample": {
         "at_queue": true,
         "committed": false,
-        "d_min": 2.4,
+        "d_min": 2.7,
         "degraded": false,
+        "entry_abort": false,
         "env_ok": true,
-        "form_err": 0.35,
+        "form_err": 0.25,
         "has_prio": false,
         "mutex_zone": false,
         "neighbors_ok": true,
         "passed": false,
         "sense_ok": true,
-        "t_ok": 1.85
+        "t_ok": 1.75
       },
       "note": ""
     },
@@ -387,7 +419,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 0.001,
+      "seconds": 0.002,
       "counterexample": null,
       "note": "v1 formal/common.Obs.legal had passed -> at_queue; with I2 and I3 no 'passed' observation remains, so a proof over that domain says nothing about the exit edge"
     },
@@ -398,19 +430,20 @@
       "expect": "sat",
       "verdict": "sat",
       "passed": true,
-      "seconds": 0.005,
+      "seconds": 0.0,
       "counterexample": {
-        "at_queue": false,
+        "at_queue": true,
         "committed": false,
         "d_min": 1000000001.0,
         "degraded": false,
+        "entry_abort": true,
         "env_ok": true,
-        "form_err": 1000000001.0,
+        "form_err": 1.2,
         "has_prio": true,
-        "mutex_zone": true,
-        "neighbors_ok": false,
+        "mutex_zone": false,
+        "neighbors_ok": true,
         "occ_busy": false,
-        "passed": true,
+        "passed": false,
         "sense_ok": true,
         "t_ok": 1000000001.0
       },

@@ -28,6 +28,7 @@ class AbstractObservation:
     neighbors_ok: bool = True
     degraded: bool = False
     committed: bool = False
+    entry_abort: bool = False
 
     def as_dict(self) -> Dict:
         return asdict(self)

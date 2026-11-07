@@ -1,11 +1,14 @@
 # HoloFleet-HA
 
-Communication-free coordination of BlueROV2 fleets with local hybrid automata in HoloOcean.
+Decentralised coordination of BlueROV2 fleets with local hybrid automata in HoloOcean, aided by a one-way acoustic
+identity beacon.
 
 HoloFleet-HA simulates fleets of BlueROV2 drones in HoloOcean. Every drone runs its own copy of the same
-local hybrid automaton. There is no leader and no inter-drone communication: each drone uses only its own
-sonars and onboard navigation, plus a mission plan shared before the dive (path, formation clock, formation
-template, gate map). With this, the fleet keeps a formation, keeps its separation, avoids collisions, crosses
+local hybrid automaton. There is no leader and no message with content: each drone uses its own sonars and onboard
+navigation, a mission plan shared before the dive (path, formation clock, formation template, gate map) and, in the
+operational architecture B2, the one-way identity pings every drone broadcasts on a TDMA schedule (no payload, no
+reply; the receiver measures range and direction itself). B2 is therefore one-way acoustic communication, not
+communication-free; with a silent channel it falls back to the sonar-only logic. With this, the fleet keeps a formation, keeps its separation, avoids collisions, crosses
 a narrow gate one drone at a time, recovers its formation after a disturbance and copes with lost drones.
 
 ## 1. How it works
@@ -39,9 +42,9 @@ through what each drone senses in the water.
 | Automaton specification (modes, edges, guards) | [`holo_fleet/ha/spec.py`](holo_fleet/ha/spec.py) |
 | Runtime execution | [`holo_fleet/ha/automaton.py`](holo_fleet/ha/automaton.py) |
 | Continuous mode controllers | [`holo_fleet/control/`](holo_fleet/control/) |
-| Diagrams (generated from the spec) | [`automaton_presentation.svg`](figures/v2/automaton/automaton_presentation.svg), [`automaton_full.svg`](figures/v2/automaton/automaton_full.svg) |
+| Diagrams (generated from the spec) | [`automaton_presentation.svg`](figures/automaton/automaton_presentation.svg), [`automaton_full.svg`](figures/automaton/automaton_full.svg) |
 
-![automaton](figures/v2/automaton/automaton_presentation.png)
+![automaton](figures/automaton/automaton_presentation.png)
 
 | state | what the drone does |
 |---|---|
@@ -89,6 +92,12 @@ python scripts/run_demo.py --scenario lost_drone_rejoin --select 2
 ```
 
 Other options: `--headless` (no HoloOcean window), `--no-window` (no Fleet View), `--duration S`.
+
+Degraded sensors (noise profiles CLEAN, LOW, MEDIUM):
+
+```bash
+python scripts/run_demo.py --scenario lost_drone_rejoin --profile MEDIUM --seed 1
+```
 
 ## 4. Available scenarios
 
@@ -152,7 +161,7 @@ python scripts/run_demo.py --scenario integrated_short            # survey, gate
 | command | effect |
 |---|---|
 | `python scripts/run_demo.py --scenario X` | Temporary demo, nothing is kept. |
-| `python scripts/run_demo.py --scenario X --save` | Keeps the run in `results/v2/demos/X/`, only if no result exists there yet. |
+| `python scripts/run_demo.py --scenario X --save` | Keeps the run in `results/reference/X/`, only if no result exists there yet. |
 | `python scripts/run_demo.py --scenario X --save --overwrite` | Intentionally regenerates the existing result. |
 | `python scripts/run_demo.py --scenario X --save --overwrite --media` | Also keeps the frames and the GIF. |
 
@@ -171,7 +180,7 @@ The project includes Z3 checks of:
 python formal/check_properties.py
 ```
 
-Current status: 186 / 186 checks give the expected verdict. The proofs are on abstractions of the drones
+Current status (2026-11-06, freeze b2-freeze-v7): all 224 checks give their expected verdict (the verdicts are in the summary). The proofs are on abstractions of the drones
 and their sensing, not on HoloOcean's physics. Details: [`formal/results/SUMMARY.md`](formal/results/SUMMARY.md).
 
 ## 8. Tests
@@ -193,11 +202,12 @@ holo_fleet/
   sim/          HoloOcean integration and scenarios
   referee/      evaluation only (ground truth)
   ui/           Fleet View and HoloOcean fleet camera
-scripts/        demos, figures, automaton diagram, benches
+scripts/        demos, campaign orchestrator, figures, automaton diagram
+calibration/    probes and offline analyses behind the measured / derived parameters
 formal/         Z3 verification suites and their results
 tests/          unit, integration and isolation tests
-figures/v2/     figures and automaton diagrams
-results/v2/     canonical demo results and measured assumptions
+figures/        automaton diagrams, calibration figures, demo figures
+results/        reference/ (CLEAN reference runs, measured assumptions), calibration/ (probe and analysis outputs)
 ```
 
 ## 10. Installation
@@ -225,6 +235,6 @@ See [`docs/HOLOOCEAN_OCTREE_PATCH.md`](docs/HOLOOCEAN_OCTREE_PATCH.md) for the p
 | Detailed results | [`REPORT.md`](REPORT.md) |
 | Design history and fixes | [`DESIGN_ITERATIONS.md`](DESIGN_ITERATIONS.md) |
 | Formal verification | [`formal/results/SUMMARY.md`](formal/results/SUMMARY.md) |
-| Current demo results | [`results/v2/demos/SUMMARY.md`](results/v2/demos/SUMMARY.md) |
+| Current demo results | [`results/reference/SUMMARY.md`](results/reference/SUMMARY.md) |
 | HoloOcean sonar patch | [`docs/HOLOOCEAN_OCTREE_PATCH.md`](docs/HOLOOCEAN_OCTREE_PATCH.md) |
 | Sonar validation | [`docs/v2/SONAR_PROBE.md`](docs/v2/SONAR_PROBE.md) |

@@ -1,0 +1,35 @@
+{
+ "CLEAN": {
+  "trials": 20000,
+  "receptions": 64724,
+  "nlos": 5907,
+  "accepted_nlos": 4196,
+  "false_outside": 0,
+  "false_beyond": 0,
+  "outside_tail": 0,
+  "false_outside_per_reception": 0.0,
+  "false_beyond_per_reception": 0.0
+ },
+ "LOW": {
+  "trials": 20000,
+  "receptions": 66287,
+  "nlos": 11812,
+  "accepted_nlos": 7597,
+  "false_outside": 3,
+  "false_beyond": 0,
+  "outside_tail": 0,
+  "false_outside_per_reception": 4.525774284550515e-05,
+  "false_beyond_per_reception": 0.0
+ },
+ "MEDIUM": {
+  "trials": 20000,
+  "receptions": 66444,
+  "nlos": 20818,
+  "accepted_nlos": 11682,
+  "false_outside": 3,
+  "false_beyond": 0,
+  "outside_tail": 0,
+  "false_outside_per_reception": 4.515080368430558e-05,
+  "false_beyond_per_reception": 0.0
+ }
+}

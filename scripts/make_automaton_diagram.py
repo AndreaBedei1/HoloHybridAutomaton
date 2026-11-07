@@ -2,12 +2,12 @@
 
     python scripts/make_automaton_diagram.py
 
-Writes figures/v2/automaton/automaton_full.{png,svg} (every mode, every transition, the exact readable guards)
+Writes figures/automaton/automaton_full.{png,svg} (every mode, every transition, the exact readable guards)
 and automaton_presentation.{png,svg} (the same automaton, fewer words, large text).
 
 Nothing is drawn by hand: the states, the transitions and their guards come from ``build_edges`` (the edge table
 executed at runtime and encoded in Z3).  The readable guards are the edges' ``label`` fields, exact under the
-priority order (formal/check_determinism.py, L1).  :func:`diagram_model` groups the 120 edges (12 per mode, self-
+priority order (formal/check_determinism.py, L1).  :func:`diagram_model` groups the 130 edges (13 per mode, self-
 loops included) the way the automaton is built - the hazard and mutex edges are the same from every mode, the
 formation-level edges depend on whether the drone keeps its slot - and :func:`coverage` checks that every edge of
 the spec is represented (tests/test_automaton_diagram.py).
@@ -33,7 +33,7 @@ from holo_fleet.config import DEFAULT, FleetConfig  # noqa: E402
 from holo_fleet.ha.guard_text import pretty, thresholds, UNITS  # noqa: E402
 from holo_fleet.ha.spec import IN_FORMATION, MODES, PRIORITY_ORDER, SELF_RECOVERED, Mode, build_edges  # noqa: E402
 
-OUT = ROOT / "figures" / "v2" / "automaton"
+OUT = ROOT / "figures" / "automaton"
 # the state colours of the fleet view and of the v2 figures (holo_fleet/ui/fleet_view.py, make_figures_v2.py)
 COLOR = {Mode.FORMATION_FOLLOW: "#2f9e5b", Mode.FORMATION_WAIT_REJOIN: "#e0a21c", Mode.DEGRADED_FORMATION: "#8a63c9",
          Mode.FORMATION_RECOVERY: "#ef7d32", Mode.MUTEX_APPROACH: "#7fb2e5", Mode.MUTEX_YIELD: "#3d85c6",
@@ -41,8 +41,8 @@ COLOR = {Mode.FORMATION_FOLLOW: "#2f9e5b", Mode.FORMATION_WAIT_REJOIN: "#e0a21c"
          Mode.FAILSAFE_HOLD_OR_RETREAT: "#4b4a46"}
 INK, INK2, MUTED, LINE, BAND, SURF = "#1f1e1c", "#55534d", "#8e8c84", "#6f6d66", "#f1f0eb", "#fcfcfb"
 
-GLOBAL_EDGES = ("fault", "collision_risk", "separation_warning", "pass_continue", "pass_done", "commit", "yield",
-                "approach")
+GLOBAL_EDGES = ("fault", "collision_risk", "separation_warning", "pass_abort", "pass_continue", "pass_done", "commit",
+                "yield", "approach")
 KEEPING_EDGES = ("formation_lost", "neighbour_missing", "slot_vacant", "follow")
 RECOVERED_EDGES = ("formation_recovered", "recovered_wait_rejoin", "recovered_degraded", "recover")
 # priority levels of the brief (PRIORITY_ORDER grouped): FAILSAFE > COLLISION > WARNING > MUTEX > RECOVERY > keeping
@@ -303,6 +303,9 @@ def render_full(model: Dict, cfg: FleetConfig, path: Path) -> None:
     _label(ax, (72.5, 38.2), "commit from APPROACH as well  [committed := true]", fs=7.4, color=INK2)
     _label(ax, (R(pa), B(pa) - 0.75), "↻ " + guard(rows["pass_continue"]["label"], cfg), fs=7.6,
            color=INK2, bg=False, ha="right")
+    _arrow(ax, (L(pa) + 1.2, B(pa)), (R(ap) - 1.2, B(ap)), rad=0.23)
+    _label(ax, ((L(pa) + R(ap)) / 2, min(B(pa), B(ap)) - 2.4),
+           "give up: " + guard(rows["pass_abort"]["label"], cfg) + "  [committed := false]", fs=7.4, color=INK2)
     rc = Mode.FORMATION_RECOVERY
     _arrow(ax, (L(pa) + 2.0, B(pa)), (R(rc) - 2.0, T(rc)))
     _label(ax, (82.0, 25.3), guard(rows["pass_done"]["label"], cfg) + "\n[committed := false]", fs=7.8, ha="left")
@@ -422,7 +425,7 @@ def render_presentation(model: Dict, cfg: FleetConfig, path: Path) -> None:
                         f"{cfg.form.v_recovery_max - cfg.form.v_nominal:.2f} m/s.\n\n"
                         "DEGRADED: no reconfiguration, the\nother drones keep their own slots\nat the survey speed; "
                         "the drone can\nstill come back.\n\nEvery state stays in itself when\nnothing above applies.  "
-                        "Exact guards\nand all 120 edges: automaton_full.", fontsize=11.5, color=INK2, va="center")
+                        "Exact guards\nand all 130 edges: automaton_full.", fontsize=11.5, color=INK2, va="center")
     path.parent.mkdir(parents=True, exist_ok=True)
     fig.savefig(path.with_suffix(".png"), dpi=120)
     fig.savefig(path.with_suffix(".svg"))

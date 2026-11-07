@@ -1,4 +1,4 @@
-"""Control-feasible current envelope (DI-27): one definition shared by the onboard monitor, the offline run
+"""Control-feasible current envelope: one definition shared by the onboard monitor, the offline run
 evaluation, the tests and the formal checks.
 
 A current w is acceptable for a requested velocity v_d when the deployed low-level loop can deliver

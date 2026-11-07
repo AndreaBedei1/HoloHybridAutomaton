@@ -7,6 +7,8 @@
     python scripts/run_demo.py --scenario lost_drone_rejoin --save               # keep a NEW result
     python scripts/run_demo.py --scenario lost_drone_rejoin --save --overwrite   # replace the canonical result
     python scripts/run_demo.py --scenario lost_drone_rejoin --save --overwrite --media   # ... with GIF / frames
+    python scripts/run_demo.py --scenario lost_drone_rejoin --profile MEDIUM --seed 1    # noisy sensors (live)
+    python scripts/run_demo.py --scenario lost_drone_rejoin --profile MEDIUM --b2 MEDIUM  # + B2 acoustic beacon
 
 Two windows: the HoloOcean viewport (the onboard belief is drawn on it: nearest echo per sonar
 sector coloured by class - grey structure, brown seabed, red possible vehicle, amber unknown - and
@@ -16,15 +18,20 @@ holo_fleet/ui/fleet_view.py).  The post-run summary is printed at the end.  Ctrl
 
 By default a demo is LIVE ONLY: the files the run needs (logs read back for the summary) live in a
 temporary folder that is deleted at the end; no GIF, no frames, nothing under results/, nothing in
-git status.  ``--save`` keeps a COMPLETE run in results/v2/demos/<scenario>/ (logs and metrics) and
+git status.  ``--save`` keeps a COMPLETE run in results/reference/<scenario>/ (logs and metrics) and
 refuses to replace an existing result unless ``--overwrite`` is given; an incomplete run is never
 saved.  ``--media`` (with ``--save``) also keeps the fleet-view / chase frames and the GIF.  ``--out``
 (with ``--save``) saves under another folder, for tests and smoke runs.
+
+``--profile`` runs with a sensor-noise profile of the robustness campaign (sim/sensor_noise.py) and ``--seed``
+fixes its seeded effects; ``--b2 LEVEL`` enables the variant-B2 one-way acoustic identity beacon with that channel
+level (sim/acoustic_channel.py).  Such runs are not reference demos: they are saved only with ``--out``.
 """
 
 from __future__ import annotations
 
 import argparse
+import dataclasses
 import json
 import math
 import os
@@ -37,13 +44,13 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
-from holo_fleet.config import DEFAULT  # noqa: E402
+from holo_fleet.config import DEFAULT, BeaconConfig  # noqa: E402
 from holo_fleet.runner import print_summary, run  # noqa: E402
 from holo_fleet.sim.scenarios import SCENARIOS  # noqa: E402
 from holo_fleet.ui.gif import make_gif  # noqa: E402
 from holo_fleet.ui.live import DemoUI  # noqa: E402
 
-OUT = ROOT / "results" / "v2" / "demos"
+OUT = ROOT / "results" / "reference"
 STAGE_PREFIX = "holo_fleet_demo_"
 MEDIA_DIRS = ("fleet_view", "frames", "dashboard")       # frame sequences (GIFs: *.gif)
 
@@ -102,10 +109,18 @@ def _run_scenario(a, stage: Path) -> str:
             return json.loads((stage / a.scenario / "run_status.json").read_text(encoding="utf-8"))["status"]
         except (OSError, ValueError, KeyError):
             return "INCOMPLETE"
-    sc = SCENARIOS[a.scenario](DEFAULT)
-    ui = DemoUI(sc, DEFAULT, sc.sim.names, show=not a.no_window, draw_viewport=not a.headless, selected=a.select)
+    cfg = DEFAULT
+    if a.b2:
+        cfg = dataclasses.replace(DEFAULT, beacon=BeaconConfig(mode="ACOUSTIC_RB", channel=a.b2))
+    noise = None
+    if a.profile:
+        from holo_fleet.sim.sensor_noise import profile
+
+        noise = profile(a.profile)
+    sc = SCENARIOS[a.scenario](cfg)
+    ui = DemoUI(sc, cfg, sc.sim.names, show=not a.no_window, draw_viewport=not a.headless, selected=a.select)
     m = run(a.scenario, stage, headless=a.headless, run_id=a.scenario, duration=a.duration, ui=ui,
-            frame_every_s=0.5 if a.media else math.inf)          # no frame is written without --media
+            frame_every_s=0.5 if a.media else math.inf, cfg=cfg, noise=noise, seed=a.seed)   # no frame without --media
     print_summary(a.scenario, m)
     if a.media:
         gif = make_gif((stage / a.scenario / "fleet_view").glob("fleet_*.jpg"), stage / a.scenario / f"{a.scenario}.gif",
@@ -121,13 +136,18 @@ def main(argv=None) -> int:
     ap.add_argument("--list", action="store_true")
     ap.add_argument("--headless", action="store_true", help="no HoloOcean viewport")
     ap.add_argument("--no-window", action="store_true", help="no fleet-view window")
-    ap.add_argument("--save", action="store_true", help="keep a complete run in results/v2/demos/<scenario>/")
+    ap.add_argument("--save", action="store_true", help="keep a complete run in results/reference/<scenario>/")
     ap.add_argument("--overwrite", action="store_true", help="with --save: replace an existing result")
     ap.add_argument("--media", action="store_true", help="with --save: also keep frames and the GIF")
-    ap.add_argument("--out", default=None, help="with --save: save under this folder instead of results/v2/demos")
+    ap.add_argument("--out", default=None, help="with --save: save under this folder instead of results/reference")
     ap.add_argument("--duration", type=float, default=None)
     ap.add_argument("--select", type=int, default=None, metavar="K",
                     help="drone shown in the fleet view's automaton panel (default: the scenario's choice)")
+    ap.add_argument("--profile", choices=("CLEAN", "LOW", "MEDIUM", "HIGH"), default=None,
+                    help="sensor-noise profile of the robustness campaign (default: the deployed sensors)")
+    ap.add_argument("--seed", type=int, default=None, help="seed of the noise profile's effects")
+    ap.add_argument("--b2", choices=("CLEAN", "LOW", "MEDIUM", "BLACKOUT"), default=None,
+                    help="variant B2: one-way acoustic identity beacon with this channel level (default: B0)")
     a = ap.parse_args(argv)
     if a.list or not a.scenario:
         print("scenarios (one seed each):")
@@ -140,6 +160,8 @@ def main(argv=None) -> int:
         return 0
     if not a.save and (a.overwrite or a.media or a.out):
         ap.error("--overwrite, --media and --out apply only with --save (a plain demo keeps nothing)")
+    if a.save and (a.profile or a.b2) and not a.out:
+        ap.error("a run with --profile or --b2 is not a reference demo: save it only with --out")
     dest = Path(a.out or OUT) / a.scenario
     if a.save and dest.exists() and not a.overwrite:
         print(f"{dest} already exists and was not touched; add --overwrite to replace it.", file=sys.stderr)
@@ -150,7 +172,7 @@ def main(argv=None) -> int:
         (stage / "owner.pid").write_text(str(os.getpid()), encoding="utf-8")
         status = _run_scenario(a, stage)
         if not a.save:
-            print("live demo: nothing kept (--save keeps the run in results/v2/demos/<scenario>/)")
+            print("live demo: nothing kept (--save keeps the run in results/reference/<scenario>/)")
         elif status != "COMPLETE":
             print(f"run {status}: not saved, {dest} unchanged")
         else:

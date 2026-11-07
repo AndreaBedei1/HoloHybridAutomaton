@@ -9,7 +9,7 @@ v1 iterations are summarised in REPORT.md section 6.
 
 * **Problem.** A sonar created in the scenario never echoes the Marine Race Arena gates or any other
   runtime-spawned prop. It does echo other BlueROV2s. Probe session k1: gate and box 0 % detection
-  (`figures/v2/sonar_probe/octree_props_k1_k2_k3.png`). v1 had observed the same symptom with the imaging
+  (`figures/calibration/sonar_probe/octree_props_k1_k2_k3.png`). v1 had observed the same symptom with the imaging
   sonar and worked around it with ray-cast rings.
 * **Cause.** HoloOcean sonars run on a static octree. It is built by `ECC_WorldStatic` overlap tests when
   the first sonar initialises, which happens inside `env.reset()`, before any prop can be spawned. It is
@@ -53,7 +53,7 @@ v1 iterations are summarised in REPORT.md section 6.
   hull box (half extents 0.229 x 0.288 x 0.127 m).
 * **Why the fix is principled.** The offset is measured, not fitted to the sonar. The sonar's own echoes
   (0.225 m ahead, 0.275 m abeam) independently confirm the hull extents within one bin.
-* **Result.** Errors drop to at most one bin (`figures/v2/sonar_probe/range_true_vs_sonar.png`). The same
+* **Result.** Errors drop to at most one bin (`figures/calibration/sonar_probe/range_true_vs_sonar.png`). The same
   correction will be used by the v2 referee, whose `d_ij` is measured between agent origins.
 
 ## DI-4 - Root fix instead of a workaround: a HoloOcean `RebuildSonarOctree` command
@@ -79,7 +79,7 @@ v1 iterations are summarised in REPORT.md section 6.
   * The sonar model is unchanged.
   * The engine gets the one capability it lacked: invalidating its cache when its input changes.
   * Caches of other levels and octree sizes are never touched.
-* **Result.** `probe/octree_rebuild_regression.py` passes every check, starting from the hard case
+* **Result.** `calibration/octree_rebuild_regression.py` passes every check, starting from the hard case
   (sonar created first):
   * box, arena gate and runtime BlueROV2 are invisible before the rebuild and visible after it;
   * a region rebuild works;
@@ -152,7 +152,7 @@ v1 iterations are summarised in REPORT.md section 6.
   target's true position. Cases where the target is not where it was put are marked invalid.
 * **Why the fix is principled.** The measurement is validated against ground truth instead of being
   trusted. The sensor model was never touched.
-* **Result.** `scripts/sonar_bench.py coverage` covers 204 cases (6 axes, 12 edges, 8 diagonals x 2
+* **Result.** `calibration/sonar_bench.py coverage` covers 204 cases (6 axes, 12 edges, 8 diagonals x 2
   target yaws, centre distance 1-5 m). All 204 are valid and detected, and the observed sector pattern
   is always within the geometric prediction (must <= seen <= maybe). The worst-case diagonals are
   covered at every distance.
@@ -487,7 +487,7 @@ v1 iterations are summarised in REPORT.md section 6.
   * the formation truly lost (true error > e_lost = 1.2 m);
   * the formation then recovered.
 * **What was measured.** One run each, square formation, a Gaussian jet of radius 3 m, no tuning
-  between probes (`results/v2/design_probes.json`).
+  between probes (`results/calibration/design_probes.json`).
 
   | probe | current | max true formation error | onboard | self-declared envelope violations |
   |---|---|---|---|---|
@@ -553,7 +553,7 @@ v1 iterations are summarised in REPORT.md section 6.
     rule's 0.45 m/s threshold for a FRONT target; the noisy closing estimate occasionally exceeds it.
   * Even then, giving way to the right does not resolve a crossing: both drones shift right and the
     conflict point moves with them.
-* **Probes** (`results/v2/design_probes.json`).
+* **Probes** (`results/calibration/design_probes.json`).
   * Two drones crossing at 90 deg, arriving together: both entered SEPARATION_WARNING twice. The
     onboard bound reached 1.92 m, the true minimum was 2.89 m, and there was no collision avoidance.
   * A third drone crossing through the 3.5 m gap of a two-drone line: repeated SEPARATION_WARNING,
@@ -618,7 +618,7 @@ v1 iterations are summarised in REPORT.md section 6.
   * The low level caps the norm of the normalised (surge, sway) command at AUTHORITY: 0.40 nominal, 0.50
     brake (also FAILSAFE), 0.60 escape. Its feed-forward uses the small-signal slope of 2.4 m/s per unit of
     command, and its current estimate is its own integral action expressed with that slope.
-* **Calibration.** `probe/probe_head_current_authority.py` runs one 32 s session: seven BlueROV2s, no
+* **Calibration.** `calibration/probe_head_current_authority.py` runs one 32 s session: seven BlueROV2s, no
   sonars, the deployed low level, a requested velocity of 0.30 m/s
   (`results/calibration/head_current_authority.json`).
 
@@ -676,7 +676,7 @@ v1 iterations are summarised in REPORT.md section 6.
     a calibrated plant curve.
   * One definition, with the same parameters, serves the runtime, the judging, the tests and the proofs.
   * No gain, authority or threshold was changed.
-* **Result** (re-evaluation of the logged runs, `results/v2/ASSUMPTIONS.md`).
+* **Result** (re-evaluation of the logged runs, `results/reference/ASSUMPTIONS.md`).
   * `formation_triangle`, `formation_square`, `formation_six`, `gate_single` and the P1 runs: INSIDE, with no
     violation declared.
   * `formation_recovery_head_current`: OUTSIDE (1.52 times the authority, head current 0.59 m/s). The hit
@@ -740,7 +740,7 @@ v1 iterations are summarised in REPORT.md section 6.
   completes its passage" and "every drone in the approach zone reaches its queue point or leaves".  Not
   covered: a drone that stops for good inside a queued drone's bracket, on its left (it is never seen to
   leave); scenario `lost_drone_mutex` keeps the stopped drone more than a bracket behind the queue.
-* **Result.** (one seed each, `results/v2/demos/SUMMARY.md`)
+* **Result.** (one seed each, `results/reference/SUMMARY.md`)
   * `mutex_deadlock_resolution`: entry order left-top, left-bottom, right; occupancy <= 1; static rank 0;
     every drone back in FOLLOW beyond the gate.  A third probe found that, seen from the right drone, the
     stacked pair is one echo in LEFT at one range: the pair is now confirmed as a group (DI-29).
@@ -924,7 +924,7 @@ v1 iterations are summarised in REPORT.md section 6.
   * Transition log: every mode change writes a `transition` event (from, to, edge, reason, guard), e.g.
     neighbor_missing, rejoin_timeout, neighbor_rejoined, slot_recovered, own_slot_lost, mutex_priority_and_free,
     sensor_fault / envelope_violation, fault_cleared, separation_clear.
-  * Diagram generated from build_edges (scripts/make_automaton_diagram.py): figures/v2/automaton/
+  * Diagram generated from build_edges (scripts/make_automaton_diagram.py): figures/automaton/
     automaton_full (all 120 edges, exact guards, priority bands, compact self-loops) and
     automaton_presentation (the same automaton in plain words, large text).  A test checks that every edge
     of the spec is represented and nothing else.

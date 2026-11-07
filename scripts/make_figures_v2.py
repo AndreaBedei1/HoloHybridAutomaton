@@ -1,9 +1,9 @@
-"""v2 figures from the demonstration runs (results/v2/demos) and the sensor geometry.
+"""v2 figures from the demonstration runs (results/reference) and the sensor geometry.
 
     python scripts/make_figures_v2.py            # all figures that have data
     python scripts/make_figures_v2.py sensor     # only the sensor figures (no runs needed)
 
-Writes figures/v2/{sensor,p1,p2,p3,fleet_view}/*.png and copies the demo GIFs to figures/v2/gifs/.  Ground truth
+Writes figures/v2/{sensor,p1,p2,p3,fleet_view}/*.png and copies the demo GIFs to figures/gifs/.  Ground truth
 is read here for judging and plotting only (offline), never by a controller.
 """
 
@@ -31,7 +31,7 @@ from holo_fleet.config import DEFAULT  # noqa: E402
 from holo_fleet.perception import sonar_geometry as sg  # noqa: E402
 from holo_fleet.sim.scenarios import SCENARIOS  # noqa: E402
 
-DEMOS = ROOT / "results" / "v2" / "demos"
+DEMOS = ROOT / "results" / "reference"
 FIG = ROOT / "figures" / "v2"
 SERIES = ["#2a78d6", "#eb6834", "#1baf7a", "#eda100", "#e87ba4", "#008300", "#4a3aa7", "#e34948"]
 INK = {"primary": "#0b0b0b", "secondary": "#52514e", "muted": "#898781", "grid": "#e1e0d9", "axis": "#c3c2b7",
@@ -572,7 +572,7 @@ def fig_p3_overview():
     save(fig, FIG / "p3" / "formations_triangle_square_six.png")
 
 
-# ---------------------------------------------------------------------------------------------- lost drones / mutex (DI-28..30)
+# ---------------------------------------------------------------------------------------------- lost drones / mutex
 def _events(name):
     p = DEMOS / name / "events.jsonl"
     return [json.loads(l) for l in open(p, encoding="utf-8")] if p.exists() else []
@@ -645,7 +645,7 @@ def _top_view(ax, run, sc, faulty=None, gate=False, title=""):
 
 def _dev_from_fleet(run, sc, k):
     """Ground-truth distance of drone k from its slot in the formation of the OTHER drones (robust fit, as the
-    referee): the formation may run behind the plan after a reduced-progress episode (DI-31)."""
+    referee): the formation may run behind the plan after a reduced-progress episode."""
     from holo_fleet.referee.referee import Referee
 
     n = run["n"]
@@ -680,7 +680,7 @@ def fig_lost(name):
     mode_timeline(ax2, run)
     _marks(ax2, ev)
     ax2.set_title("automaton states (red: fault injected, green: cleared,\nviolet: slot vacant)")
-    # formation reference speed of every drone (onboard: its own formation time, DI-31)
+    # formation reference speed of every drone (onboard: its own formation time)
     ax4 = fig.add_subplot(gs[1, 1])
     for k in range(run["n"]):
         tt = [r["t"] for r in run["states"][k] if "v_ref" in (r.get("form") or {})]

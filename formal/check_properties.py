@@ -18,6 +18,7 @@ HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE))
 sys.path.insert(0, str(HERE.parent))
 
+import check_acoustic  # noqa: E402
 import check_determinism  # noqa: E402
 import check_formation  # noqa: E402
 import check_mutex  # noqa: E402
@@ -32,6 +33,8 @@ SUITES = [
     ("P1 inter-vehicle separation", check_separation, "formal/check_separation.py"),
     ("P2 critical-region mutual exclusion", check_mutex, "holo_fleet/ha/mutex_rule.py + formal/check_mutex.py"),
     ("P3 formation recovery (liveness, ranking functions)", check_formation, "formal/check_formation.py"),
+    ("Variant B2 range-bearing beacon (own assumptions; B0 checks unchanged)", check_acoustic,
+     "perception/acoustic.py + perception/acoustic_gate.py + formal/check_acoustic.py"),
 ]
 
 

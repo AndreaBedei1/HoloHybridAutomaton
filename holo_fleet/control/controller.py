@@ -28,7 +28,7 @@ AVOIDANCE = (Mode.SEPARATION_WARNING, Mode.COLLISION_AVOIDANCE)
 
 class EnvelopeMonitor:
     """Onboard envelope status, ENVELOPE_OK / ENVELOPE_VIOLATION, from the control-feasibility of the
-    velocity the drone is asked to deliver (DI-27; control/current_envelope.py).
+    velocity the drone is asked to deliver (control/current_envelope.py).
 
     A control step is out of envelope when the low level cannot deliver the requested velocity: its
     horizontal command is saturated, or the steady command it needs against the estimated current
@@ -40,7 +40,7 @@ class EnvelopeMonitor:
     estimate alone could under-report a current stronger than the drone.
 
     A declared violation is cleared only after t_exit of steps in which the vehicle DELIVERS a velocity it
-    requests (DVL navigation; DI-29): a vehicle whose thrusters do not respond (a thruster failure) holding
+    requests (DVL navigation): a vehicle whose thrusters do not respond (a thruster failure) holding
     still in FAILSAFE is neither saturated nor infeasible, and requesting nothing it cannot be told from a
     healthy one.  So while the violation lasts the FAILSAFE flow adds a small heave probe (Flows.failsafe),
     and a step counts toward the clear only when, over the last ``window_s``, the vehicle delivered the
@@ -137,16 +137,21 @@ class DroneController:
 
     def step(self, frame: SensorFrame, dt: float) -> np.ndarray:
         t = frame.t
-        ftime = self.flows.ftime                               # own formation time (reduced progress, DI-31)
+        ftime = self.flows.ftime                               # own formation time (reduced progress)
         obs = self.perception.update(frame, dt, sigma=self.flows.sigma, env_ok=self.envmon.ok,
-                                     offset=self.flows.offset, in_formation=self.ha.mode in IN_FORMATION,
-                                     t_form=ftime.now(t))
+                                     offset=self.flows.offset + self.flows.lat_offset, in_formation=self.ha.mode in IN_FORMATION,
+                                     t_form=ftime.now(t),
+                                     v_req=self.v_requested if (self.envmon.ok and not self.ll.saturated) else None)
         for e in self.perception.events:                       # SLOT_DECLARED_VACANT / SLOT_REOCCUPIED
             self.events.append({**e, "mode": self.ha.mode.value})
         self.perception.events.clear()
         # observation consistency check (ha/observation_invariants.py) between perception and automaton:
         # an observation the perception cannot produce reveals a defect; it is logged and handed to the
         # automaton as a sensing fault, i.e. the existing fault edge -> FAILSAFE_HOLD_OR_RETREAT
+        # the stage-2 give-up request of the previous control step (flows.gate), only while committed (I5)
+        obs.ab.committed = self.ha.committed
+        obs.ab.entry_abort = bool(self.flows.abort_request and self.ha.committed and obs.ab.mutex_zone
+                                  and not obs.ab.passed)
         bad = observation_violations(obs.ab, self.cfg)
         self.obs_consistent = not bad
         if bad:
@@ -196,13 +201,23 @@ class DroneController:
         else:
             v = v_mis
         v = self.flows.structure_filter(obs, v)
-        cmd = self.ll.command(self.perception.nav.state, v, yaw_d, authority, dt)
+        from holo_fleet.perception.nav import NavBound
+        dvl_fresh = t - self.perception.nav.state.t_dvl <= NavBound.DVL_STALE_S
+        cmd = self.ll.command(self.perception.nav.state, v, yaw_d, authority, dt, dvl_fresh=dvl_fresh)
         # envelope: can the low level deliver the requested velocity against the (estimated) current?
         judged = mode not in AVOIDANCE
         check = check_onboard(self.ll.current_estimate(), v, self.cfg, AUTHORITY[authority]) if judged else None
         was_ok = self.envmon.ok
-        ok = self.envmon.update(self.ll.saturated, check, dt, v_nav=obs.v_world, v_req=self.v_requested)
+        # during a DVL outage the navigation velocity is the model's: not evidence of delivery (no circularity)
+        ok = self.envmon.update(self.ll.saturated, check, dt, v_nav=obs.v_world if dvl_fresh else None,
+                                v_req=self.v_requested)
         self.v_requested = np.asarray(v, dtype=float).copy()
+        for e in self.perception.gp.phantom_events:            # B2: corridor echoes no fleet drone produced
+            self.events.append({"t": e["t"], "type": "PHANTOM_ECHO", "excluding_fixes": e["fixes"]})
+        self.perception.gp.phantom_events.clear()
+        for e in self.flows.events:                            # ENTRY_HOLD_TIMEOUT (stage 2, flows.gate)
+            self.events.append({**e, "mode": mode.value})
+        self.flows.events.clear()
         if was_ok and not ok:
             self.events.append({"t": t, "type": "ENVELOPE_VIOLATION", **self.envmon.record()})
         elif ok and not was_ok:
@@ -213,12 +228,13 @@ class DroneController:
         incomplete = not obs.form.neighbors_ok or (mode not in IN_FORMATION and ftime.episode_t > 0.0
                                                    and obs.form.slot_err_norm > self.cfg.form.e_ok)
         ftime.update(t, dt, incomplete=incomplete, mutex=gate_flow, front_residual=obs.form.front_residual,
-                     keeping=mode in IN_FORMATION)
+                     keeping=mode in IN_FORMATION, behind=obs.form.behind)
         self.last_obs = obs
         ch = self.flows.last_choice
         self.last_record = {
             "t": round(t, 3), "mode": mode.value, "committed": self.ha.committed,
             "nav_p": np.round(obs.p, 3).tolist(), "nav_yaw_deg": round(float(np.degrees(obs.yaw)), 1),
+            "nav_bound": round(float(self.perception.nav_bound.value), 3),
             "v_cmd": np.round(v, 3).tolist(), "giveway": self.flows.giveway,
             "offset": np.round(self.flows.offset, 2).tolist(), "d_min": round(obs.d_min, 3) if obs.d_min < 1e8 else None,
             "sense_ok": obs.sense_ok, "env_ok": self.envmon.ok, "v_mis": np.round(v_mis, 3).tolist(),
@@ -234,16 +250,29 @@ class DroneController:
             "current_est": np.round(self.ll.current_estimate(), 3).tolist(),
             "gate": {"id": obs.gate.gate_id, "s": round(obs.gate.s, 2), "l": round(obs.gate.l, 2),
                      "at_queue": obs.gate.at_queue, "decision": obs.gate.decision, "has_prio": obs.gate.has_prio,
-                     "occ": obs.gate.occ_state, "relations": obs.gate.relations, "rank_used": obs.gate.rank_used},
+                     "occ": obs.gate.occ_state, "exit_witness": obs.gate.exit_witness, "relations": obs.gate.relations,
+                     "rank_used": obs.gate.rank_used,
+                     "loc_ok": obs.gate.loc_ok, "reloc_hold": self.flows.reloc_hold,
+                     "entry_ok": obs.gate.entry_ok, "entry": self.flows.entry_state or None,
+                     **({"acoustic": {k: v for k, v in self.perception.gp.acoustic_exit.last.items() if v}}
+                        if self.perception.gp.acoustic_exit is not None and obs.gate.occ_state == "BUSY" else {})},
             "form": {"form_err": round(obs.form.form_err, 3), "slot_err": round(obs.form.slot_err_norm, 3),
-                     "neighbors_ok": obs.form.neighbors_ok, "sigma": round(self.flows.sigma, 3),
+                     "neighbors_ok": obs.form.neighbors_ok, "sigma": round(self.flows.sigma, 3), "lam": round(self.flows.lam, 3),
                      "checks": [(c.slot, round(c.expected_d, 2), None if not c.seen else round(c.residual, 2))
                                 for c in obs.form.checks],
                      "missing": sorted(k for k in obs.form.missing if k not in self.perception.vacant),
                      "missing_t": {k: round(v, 1) for k, v in self.perception.missing_t.items() if v > 0.0},
                      "vacant": sorted(self.perception.vacant), "degraded": bool(self.perception.vacant),
                      "slot": np.round(obs.slot_pos, 2).tolist(), "rejoin": self.flows.rejoin_phase,
-                     **ftime.record(t, dt)},
+                     **ftime.record(t, dt),
+                     **({"acoustic_present": sorted(self.perception.acoustic_present),
+                         "acoustic_displaced": sorted(self.perception.acoustic_displaced),
+                         "acoustic_corr": sorted(self.perception.acoustic_corr),
+                         "acoustic_fixed": sorted(k for k in range(len(self.perception.plan.slots))
+                                                  if self.perception.acoustic.latest(k, t, self.cfg.acoustic.fresh_s))}
+                        if self.perception.acoustic.enabled else {})},
+            "nav_aid": None if self.perception.aiding.last is None else {**self.perception.aiding.last,
+                                                                         "applied_m": round(self.perception.aiding.applied_m, 3)},
             "transition": self.last_transition,
             "determinism_violations": self.ha.determinism_violations,
             "obs_consistent": self.obs_consistent, "observation_violations": self.observation_violations,

@@ -10,7 +10,7 @@ spacing correction (control/flows.py).  Neighbours expected in range but not see
 perception (perception.py) times them and declares a slot vacant after ``t_rejoin``: a vacant slot is
 no longer required (DEGRADED_FORMATION) until its drone is seen there again.  The residual of the neighbour
 directly ahead on the same lane (``front_residual``, negative when it is closer than planned with respect to the
-own slot) is what a drone follows when that neighbour slows down (control/formation_time.py, DI-31).
+own slot) is what a drone follows when that neighbour slows down (control/formation_time.py).
 """
 
 from __future__ import annotations
@@ -39,6 +39,7 @@ class NeighbourCheck:
     along_w: float = 0.0
     lateral_w: float = 0.0
     seen: bool = False
+    alias: tuple = ()          # slots a range-only sonar cannot tell apart from this one (confirmed as a group)
 
 
 @dataclass
@@ -53,6 +54,7 @@ class FormationObs:
     missing: List[int] = field(default_factory=list)      # required (expected nearby, observable), not seen recently
     required: List[int] = field(default_factory=list)     # expected nearby and observable (healthy sectors, unmasked)
     front_residual: Optional[float] = None                # range residual of the same-lane neighbour ahead (seen now)
+    behind: Optional[float] = None                        # B2: largest certain lag of a non-vacant neighbour [m]
 
 
 def same_lane_ahead(plan: MissionPlan, lane_tol: float = 1.0) -> List[int]:
@@ -105,19 +107,30 @@ def masked_by_structure(expected_d: float, exp_pat, u_body: np.ndarray, readings
 
 def check_formation(plan: MissionPlan, cfg: FleetConfig, slot_err: np.ndarray, R_formation: np.ndarray,
                     R_world_body: np.ndarray, targets, healthy: Dict[str, bool], t: float = 0.0,
-                    last_seen: Dict[int, float] = None, readings=None, vacant=()) -> FormationObs:
+                    last_seen: Dict[int, float] = None, readings=None, vacant=(),
+                    acoustic: Optional[Dict[int, np.ndarray]] = None, missing=()) -> FormationObs:
     """Expected neighbours vs sonar echoes, one-to-one per (target, sector).
 
     Association is done per sector of a target, not per target: two neighbours at similar ranges
     in adjacent sectors are merged into one target by the target builder (e.g. the side and the
     rear neighbour of a square, REAR+RIGHT), and each of its sectors can still confirm one of
-    them.  A neighbour counts as present if it was matched within ``NEIGHBOUR_MEMORY_S``; only
-    neighbours expected within ``fr.neighbour_range_m`` are required (weak returns near the
-    maximum range are intermittent), and not those whose echo would fall inside a mapped structure's
-    window (a range-only sensor classifies it STRUCTURE: unobservable, not missing).  Neighbours whose echoes
-    cannot be separated (same expected sectors and range) are confirmed as a group.  Slots in ``vacant``
-    (declared vacant by the perception after t_rejoin) are still associated when an echo fits them, but
-    they are not required."""
+    them.  An echo explains a present neighbour before one that is ``missing`` or ``vacant`` (the absence of those
+    is what has been observed), then the smallest range residual wins.  A neighbour counts as present if it was
+    matched within ``NEIGHBOUR_MEMORY_S``; only neighbours expected within ``fr.neighbour_range_m`` are required
+    (weak returns near the maximum range are intermittent), and not those whose echo would fall inside a mapped
+    structure's window (a range-only sensor classifies it STRUCTURE: unobservable, not missing).  Neighbours whose
+    echoes cannot be separated (same expected sectors and range) are confirmed as a group (``alias``).  Slots in
+    ``vacant`` (declared vacant by the perception after t_rejoin) are still associated when an echo fits them, but
+    they are not required.  A match is not an identification: the perception confirms a missing or vacant
+    neighbour only when no other neighbour can account for the echo (perception.track_missing).
+
+    B2 only: ``acoustic`` maps a slot to the relative position of its drone from a fresh accepted acoustic fix
+    (map-frame axes).  For those neighbours an echo is associated where the IDENTIFIED drone is (sector pattern
+    compatible with the fix direction, range within the range gate of the fix distance) instead of where the
+    template expects it, and only when that echo also lies within the range gate of the template distance, as in B0
+    (the fix chooses WHICH echo is the neighbour, never makes a drone far from its slot count as seen there); the
+    residual stays the one against the template (it is the formation error).  An echo where the fix of a heard
+    neighbour places it belongs to a heard drone, so it is never associated with a neighbour without a fresh fix."""
     fr = cfg.form
     o = FormationObs(slot_err=slot_err, slot_err_norm=float(np.linalg.norm(slot_err)))
     t_hat, n_hat = R_formation[:, 0], R_formation[:, 1]
@@ -133,21 +146,50 @@ def check_formation(plan: MissionPlan, cfg: FleetConfig, slot_err: np.ndarray, R
         exp_pat = far_field_pattern(u_body)
         expected.append((NeighbourCheck(slot=k, expected_d=dist, expected_pattern="+".join(sorted(exp_pat))),
                          d_world, dist, u_body, exp_pat))
-    cands = []                                     # (|residual|, neighbour index, target index, sector, d_measured)
-    for i, (_chk, _dw, dist, u_body, exp_pat) in enumerate(expected):
+    for chk, _dw, dist, _u, exp_pat in expected:
+        chk.alias = tuple(c2.slot for c2, _d2, dist2, _u2, pat2 in expected
+                          if c2 is not chk and set(pat2) == set(exp_pat) and abs(dist2 - dist) < fr.range_gate_m)
+    fixes = {}                                     # B2: slot -> (distance, body direction, sectors) of a fresh fix
+    for chk, _dw, _dist, _u, _p in expected:
+        v = None if not acoustic else acoustic.get(chk.slot)
+        if v is not None and float(np.linalg.norm(v)) > 0.3:
+            da = float(np.linalg.norm(v))
+            ua = R_world_body.T @ (np.asarray(v, float) / da)
+            fixes[chk.slot] = (da, ua, far_field_pattern(ua))
+
+    def near(look, tg, sec):                       # centre distance of the echo along ``look``, None if incompatible
+        d_a, u_a, pat_a = look
+        if sec not in pat_a or not compatible(tg.pattern, u_a):
+            return None
+        return estimate_centre_distance(tg.ranges.get(sec, tg.r_min), sec, u_a)
+
+    def heard_there(tg, sec):                      # B2: the fix of some heard neighbour places its drone at this echo
+        for f in fixes.values():
+            d = near(f, tg, sec)
+            if d is not None and abs(d - f[0]) <= fr.range_gate_m:
+                return True
+        return False
+
+    cands = []                                     # (priority, |residual|, neighbour index, target index, sector, d_m)
+    for i, (chk, _dw, dist, u_body, exp_pat) in enumerate(expected):
+        look = fixes.get(chk.slot, (dist, u_body, exp_pat))     # where to look: the fix (B2) or the template
+        prio = 2 if chk.slot in vacant else (1 if chk.slot in missing else 0)
         for j, tg in enumerate(targets):
-            if not (set(tg.pattern) & set(exp_pat)) or not compatible(tg.pattern, u_body):
-                continue
             for sec in tg.pattern:
-                if sec not in exp_pat:
+                d_m = near(look, tg, sec)
+                if d_m is None:
                     continue
-                d_m = estimate_centre_distance(tg.ranges.get(sec, tg.r_min), sec, u_body)
-                if abs(d_m - dist) <= 3.0:
+                if abs(d_m - look[0]) <= 3.0:
                     tg.possible_neighbour = True
-                if abs(d_m - dist) <= fr.range_gate_m:
-                    cands.append((abs(d_m - dist), i, j, sec, d_m))
+                # B2: near the fix AND, as in B0, within the range gate of the slot (a drone heard far from its
+                # slot is not seen at it: no formation residual from it, the missing / vacancy path as in B0)
+                if abs(d_m - look[0]) > fr.range_gate_m or abs(d_m - dist) > fr.range_gate_m:
+                    continue
+                if chk.slot not in fixes and heard_there(tg, sec):
+                    continue                       # the echo of a heard drone is not that of an unheard one
+                cands.append((prio, abs(d_m - look[0]), i, j, sec, d_m))
     used_n, used_ts = set(), set()
-    for _r, i, j, sec, d_m in sorted(cands):
+    for _p, _r, i, j, sec, d_m in sorted(cands):
         if i in used_n or (j, sec) in used_ts:
             continue
         used_n.add(i)
@@ -161,12 +203,12 @@ def check_formation(plan: MissionPlan, cfg: FleetConfig, slot_err: np.ndarray, R
         last_seen[chk.slot] = t
     # neighbours a range-only sonar cannot separate (same expected sector pattern, expected distances within the
     # range gate: e.g. a stacked pair seen from the side, one echo for both) are observable only as a group: an
-    # association of one member confirms the group (DI-29)
-    for i, (chk, d_world, dist, _u, exp_pat) in enumerate(expected):
+    # association of one member confirms the group
+    for chk, d_world, dist, _u, _p in expected:
         if chk.seen:
             continue
-        for k, (chk2, _dw2, dist2, _u2, exp_pat2) in enumerate(expected):
-            if k != i and chk2.seen and set(exp_pat2) == set(exp_pat) and abs(dist2 - dist) < fr.range_gate_m:
+        for chk2, _dw2, _d2, _u2, _p2 in expected:
+            if chk2.seen and chk2.slot in chk.alias:
                 g = d_world / dist
                 chk.measured_d, chk.residual, chk.seen = chk2.measured_d, chk2.measured_d - dist, True
                 chk.along_w, chk.lateral_w = float(g @ t_hat), float(g @ n_hat)

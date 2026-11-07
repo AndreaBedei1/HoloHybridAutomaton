@@ -1,4 +1,4 @@
-"""Local formation time: reduced progress while an expected neighbour is missing (DI-31).
+"""Local formation time: reduced progress while an expected neighbour is missing.
 
 The formation reference of every drone is the shared FormationClock of the mission plan.  When a drone is
 lost, the others slow the formation down - they do not stop - so that it catches up faster, without any
@@ -15,6 +15,21 @@ step).  The reduced progress lasts at most ``t_rejoin`` of moving formation time
 which a waiting drone declares the slot vacant and continues at the planned speed (DEGRADED_FORMATION).
 ``tau`` is kept afterwards: the formation stays behind the plan by tau seconds, it does not speed up to
 recover the schedule.
+
+Re-synchronisation (B2).  ``tau`` is private, so drones that slowed in different episodes - or falsely, on a
+neighbour missed by the sonar - end with different delays: their slots, each placed by its own formation time,
+drift apart along the track while every drone believes it is on its slot.  With identified fixes the drift is
+observable: a neighbour heard behind the slot the own clock places it at, by more than the white-noise band of the
+declared fix envelope, shows that the own clock runs ahead of its.  The drone then slows its formation time in
+proportion to the excess lag (gain k_progress, the along-track consensus gain of the sonar progress correction),
+down to v_wait at most and never above the planned speed; the neighbour behind hears the others well ahead (a veto
+on a NEW missing episode, perception rule "ahead") and keeps the planned speed.  The delays move towards the
+largest one, as the progress consensus of coordinated path following (Ghabcheloo et al. 2009,
+doi:10.1137/060678993), here from sensed progress, without communication; with the dead band it is a PRACTICAL
+consensus: the residual offset is bounded by the band (k_sigma * sigma_w(r), about 0.6-0.8 m at 3.5-5 m) plus the
+constant biases of the envelope, not driven to zero.  The speed stays in [v_wait, v_plan]: the same range as the reduced progress, so the
+catch-up margin of a recovering drone (formal F1) is unchanged.  Without receptions (a silent channel) only the
+same-lane rules below act.
 
 Who slows down, each from its own observation only:
 
@@ -67,6 +82,7 @@ class FormationTime:
         self.following = False         # the drone ahead on the same lane is closer than planned (hysteresis)
         self.ahead_away = False        # ... farther than planned: it is not slowing (hysteresis)
         self.reduced = False           # reduced progress requested at the last update
+        self.sync = 0.0                # speed reduction of the re-synchronisation at the last update [m/s]
 
     def now(self, t: float) -> float:
         """Own formation time at mission time t."""
@@ -84,11 +100,13 @@ class FormationTime:
         return self.rate * self.plan_speed(t, dt)
 
     def update(self, t: float, dt: float, incomplete: bool, mutex: bool = False,
-               front_residual: Optional[float] = None, keeping: bool = True) -> None:
+               front_residual: Optional[float] = None, keeping: bool = True, behind: Optional[float] = None) -> None:
         """Advance by one control step.  ``incomplete``: an expected neighbour is missing and not vacant (own
         perception); ``mutex``: the drone follows the gate flow (mutex zone or committed); ``front_residual``: range
         residual of the neighbour directly ahead on the same lane, None when there is none or it is not seen;
-        ``keeping``: the drone is in a formation-keeping mode (on its slot)."""
+        ``keeping``: the drone is in a formation-keeping mode (on its slot); ``behind``: the largest lag of a
+        non-vacant neighbour behind the slot the own formation time places it at, beyond the white-noise band of the
+        fixes (FormationObs.behind), None without one."""
         fr = self.cfg.form
         v_plan = self.plan_speed(t, dt)
         moving = v_plan > 1e-6
@@ -107,10 +125,18 @@ class FormationTime:
         else:
             reduced = own or self.following
         self.reduced = reduced
+        # re-synchronisation: a neighbour certainly behind the slot the own clock places it at means the own clock runs
+        # ahead of its; slow down in proportion to the lag (the along-track consensus gain k_progress), never below
+        # the reduced progress v_wait and never faster than planned - the drone behind keeps the planned speed, so
+        # the formation times converge towards the latest one (first-order progress consensus, as in coordinated
+        # path following, here from sensed rather than communicated progress)
+        self.sync = 0.0 if (mutex or behind is None or not moving or not keeping) else min(
+            fr.k_progress * behind, max(0.0, v_plan - fr.v_wait))   # only while keeping its slot (fix-age bias)
         if not moving:
             self.rate = 1.0                                   # planned hold: nothing to slow down
         else:
             target = min(1.0, fr.v_wait / v_plan) if self.reduced else 1.0
+            target = min(target, (v_plan - self.sync) / v_plan)
             a_down = fr.a_follow if self.following else fr.a_wait
             a_up = fr.a_follow if self.ahead_away else fr.a_wait
             self.rate += max(-a_down * dt / v_plan, min(a_up * dt / v_plan, target - self.rate))
@@ -118,5 +144,6 @@ class FormationTime:
 
     def record(self, t: float, dt: float = 0.1) -> dict:
         return {"tau": round(self.tau, 2), "v_ref": round(self.speed(t, dt), 3), "reduced": self.reduced,
+                "sync": round(self.sync, 3),
                 "follow": "slower" if self.following else ("away" if self.ahead_away else ""),
                 "wait_t": round(self.episode_t, 1)}

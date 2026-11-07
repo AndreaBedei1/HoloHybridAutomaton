@@ -1,0 +1,4 @@
+phase targeted: 2 runs, 0 done, 2 to do
+21:05:53 phase targeted start: orchestrator pid 29612, shard 0/1, code {'sha': '4e2f1cc010fe8583c8067b657387c20337a8c571', 'dirty_files': []}
+21:07:44 B0 CLEAN                  p1_vertical_escape               s0 PASS             P1 2.681 fail [] wall 108.8s exit 0
+21:08:47 B0 CLEAN                  p1_head_on                       s0 PASS             P1 4.051 fail [] wall 57.4s exit 0

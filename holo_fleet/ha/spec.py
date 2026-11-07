@@ -67,6 +67,7 @@ BOOL_VARS = (
     "neighbors_ok",  # every expected neighbour not declared vacant perceived recently
     "degraded",      # latched: some expected neighbour was missing for t_rejoin, its slot is declared vacant
     "committed",     # latched: this drone committed to the current gate
+    "entry_abort",   # committed, never admitted into the CR, stage-2 hold beyond the slowest release (flows.gate)
 )
 
 
@@ -214,13 +215,25 @@ def build_edges(cfg: FleetConfig = DEFAULT) -> Dict[Mode, List[Edge]]:
         def calm(o, L, s=src):
             return P.calm(o, L, s)
 
-        # 4a. a committed drone keeps passing until it is beyond the occupied zone
+        # 4a. a committed drone that was never admitted into the CR and has held before it longer than the slowest
+        #     release the protocol admits gives the passage up: it clears its commitment and returns to its queue
+        #     point, where the stage-1 rule (priority, latch FREE, t_clear) decides again.  It is outside the CR by
+        #     construction (the stage-2 hold point lies before it and the drone was never admitted past it).
+        out.append(Edge(
+            "pass_abort",
+            lambda o, L, c=calm: L.And(c(o, L), o.committed, L.Not(o.passed), o.entry_abort),
+            Mode.MUTEX_APPROACH,
+            set_committed=False,
+            decision="ABORT_PASS",
+            label="committed and not passed and entry_abort", reason=why(Mode.MUTEX_APPROACH, "entry_given_up"),
+        ))
+        # 4b. a committed drone keeps passing until it is beyond the occupied zone
         out.append(Edge(
             "pass_continue",
-            lambda o, L, c=calm: L.And(c(o, L), o.committed, L.Not(o.passed)),
+            lambda o, L, c=calm: L.And(c(o, L), o.committed, L.Not(o.passed), L.Not(o.entry_abort)),
             Mode.MUTEX_PASS,
             decision=("RESUME_PASS" if src != Mode.MUTEX_PASS else None),
-            label="committed and not passed", reason=why(Mode.MUTEX_PASS, "resume_passage"),
+            label="committed and not passed and not entry_abort", reason=why(Mode.MUTEX_PASS, "resume_passage"),
         ))
         out.append(Edge(
             "pass_done",

@@ -12,13 +12,13 @@ explains the v1 symptom ("the imaging sonar does not see the gates"). The pitfal
 measured below.
 
 Scripts:
-- probe: `probe/probe_singlebeam.py` (sessions `k1`, `k2`, `k3`, `k2_short`);
-- analysis: `probe/analyze_sonar_probe.py`.
+- probe: `calibration/probe_singlebeam.py` (sessions `k1`, `k2`, `k3`, `k2_short`);
+- analysis: `calibration/analyze_sonar_probe.py`.
 
 Outputs:
-- figures: `figures/v2/sonar_probe/`;
-- numbers: `results/v2/sonar_probe/summary.json`;
-- raw sensor outputs: `results/v2/sonar_probe/raw_examples.json`.
+- figures: `figures/calibration/sonar_probe/`;
+- numbers: `results/calibration/sonar_probe/summary.json`;
+- raw sensor outputs: `results/calibration/sonar_probe/raw_examples.json`.
 
 Ground truth is used freely here: this is a calibration bench, not a controller.
 

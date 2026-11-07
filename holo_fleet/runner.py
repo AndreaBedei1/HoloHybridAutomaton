@@ -1,8 +1,10 @@
 """Run one scenario in HoloOcean (v2): controllers (onboard only) + referee (ground truth only).
 
 Writes results/<run_id>/: run_config.json, events.jsonl, drone_<k>_state.jsonl,
-referee_timeseries.csv, referee_metrics.json, summary.csv, perf.json and (optionally) camera /
-fleet-view frames for GIFs.  A run that does not reach its end writes ``status: INCOMPLETE``.
+referee_timeseries.csv, referee_metrics.json, sensor_audit.json, summary.csv, perf.json and (optionally)
+camera / fleet-view frames for GIFs.  A run that does not reach its end writes ``status: INCOMPLETE``.
+``noise`` (sim.sensor_noise.NoiseProfile) degrades the onboard sensors, ``seed`` overrides the scenario seed
+(every seeded simulator-side effect); ``cfg.beacon`` enables the B2 one-way acoustic beacon (identity pings only).
 """
 
 from __future__ import annotations
@@ -19,6 +21,7 @@ import numpy as np
 from holo_fleet.config import DEFAULT, FleetConfig
 from holo_fleet.control.controller import DroneController
 from holo_fleet.referee.referee import Referee
+from holo_fleet.referee.sensor_audit import SensorAudit
 from holo_fleet.sim.holo_env import HoloFleetSim
 from holo_fleet.sim.scenarios import SCENARIOS, Scenario
 
@@ -35,15 +38,68 @@ def _jsonable(x):
     return str(x)
 
 
+def _error_status(exc: BaseException, t: float) -> Dict:
+    """Run status of an exception: SUT when a frame of the drones' own code (control, perception, automaton) is on
+    the traceback, INFRA otherwise (simulator, transport)."""
+    import traceback
+
+    frames = traceback.extract_tb(exc.__traceback__)
+    sut = any(any(part in f.filename.replace("\\", "/") for part in ("holo_fleet/control/", "holo_fleet/perception/",
+                                                                     "holo_fleet/ha/")) for f in frames)
+    return {"status": "ERROR", "error_kind": "SUT" if sut else "INFRA", "error": repr(exc), "t": round(float(t), 2),
+            "traceback": "".join(traceback.format_exception(type(exc), exc, exc.__traceback__))}
+
+
+TRIGGER_PENDING = 1e9      # t_on of a fault whose onset is a ground-truth condition (resolved and logged when met)
+
+
+def _triggered(f, sc, names, truth, cfg=DEFAULT) -> bool:
+    """Simulator-side fault trigger on ground truth: ``mid_cr:<gate>`` - the drone's centre is in the second half of
+    the critical region (0 <= s <= cr_half_len, inside its width and height): it stops there for good."""
+    kind, _, gid = str(f["trigger"]).partition(":")
+    g = next((x for x in sc.judged_gates if x.gate_id == gid), None)
+    if kind != "mid_cr" or g is None:
+        return False
+    G = cfg.gate
+    s, l, dz = (float(v) for v in g.to_gate_frame(np.asarray(truth.positions[names.index(f["drone"])], float)))
+    return 0.0 <= s <= G.cr_half_len and abs(l) <= G.cr_half_width and abs(dz) <= G.cr_half_height
+
+
+def beacon_identities(plans, names, plan) -> dict:
+    """Pinger code (drone index) -> slot, for the receiver flying ``plan``: only the drones of its own formation (the
+    plans built for one formation share its path).  Slot indices restart in every formation, so a code of another
+    formation is not a neighbour and is ignored by the receiver."""
+    return {names.index(q.drone_id): q.slot_index for q in plans if q.path is plan.path}
+
+
 def run(name: str, out_root: Path, headless: bool = True, run_id: Optional[str] = None,
         duration: Optional[float] = None, ui: Optional[Callable] = None, frame_every_s: float = 0.5,
-        cfg: FleetConfig = DEFAULT) -> Dict:
+        cfg: FleetConfig = DEFAULT, noise=None, seed: Optional[int] = None, noise_drones=None,
+        terminal: Optional[Dict] = None) -> Dict:
+    """``noise_drones``: indices of the drones that receive ``noise`` (None: all; the others keep the deployed
+    sensors).  ``terminal``: {"profile": sensor-profile name, "deadline_s": optional override} ends the run on SUCCESS,
+    FAILURE or DEADLINE (referee/terminal.py, criteria v3) instead of at the scenario duration; the horizon is then the
+    deadline, by default referee/criteria.deadline_v3 of the scenario and profile."""
     sc: Scenario = SCENARIOS[name](cfg)
     if sc.cfg_patch:
         cfg = dataclasses.replace(cfg, **sc.cfg_patch)
+    if seed is not None:
+        sc.sim.seed = int(seed)
+    sc.sim.noise = noise
+    sc.sim.noise_drones = None if noise_drones is None else tuple(int(k) for k in noise_drones)
+    monitor = None
+    if terminal is not None:
+        from holo_fleet.referee.criteria import CRITERIA_VERSION, horizon_v5, nominal_end_s
+        from holo_fleet.referee.terminal import TerminalMonitor
+
+        t_nom = nominal_end_s(sc)                   # the planned end: the same T_nom as the offline replay
+        duration = float(terminal.get("deadline_s") or horizon_v5(sc, cfg, terminal.get("profile")))
+        sc.sim.duration_s = duration                # noise windows, stress and logs cover the whole horizon
     run_id = run_id or name
     out = Path(out_root) / run_id
-    (out / "frames").mkdir(parents=True, exist_ok=True)
+    out.mkdir(parents=True, exist_ok=True)
+    if frame_every_s != float("inf"):
+        (out / "frames").mkdir(parents=True, exist_ok=True)
     T = float(duration or sc.duration_s)
     status = {"status": "INCOMPLETE", "reason": "started"}
     (out / "run_status.json").write_text(json.dumps(status), encoding="utf-8")
@@ -58,15 +114,39 @@ def run(name: str, out_root: Path, headless: bool = True, run_id: Optional[str] 
         finally:
             sim.close()
         raise
-    ctrls = {p.drone_id: DroneController(p, cfg) for p in sc.plans}
+    try:                              # the drones' own construction: an error here is the system under test's
+        ctrls = {p.drone_id: DroneController(p, cfg) for p in sc.plans}
+        if cfg.beacon.enabled:        # pre-mission knowledge: the static beacon identity of every slot's drone
+            for p in sc.plans:
+                ctrls[p.drone_id].perception.acoustic.set_identities(beacon_identities(sc.plans, sim.names, p))
+            if getattr(sim, "beacon", None) is not None:   # H6 payload: each drone's ONBOARD estimate and bound
+                sim.beacon.payload_source = lambda k, t: ctrls[sim.names[k]].perception.payload(t)
+    except Exception as exc:  # noqa: BLE001 - recorded, then propagated
+        (out / "run_status.json").write_text(json.dumps(_error_status(exc, 0.0)), encoding="utf-8")
+        try:
+            if ui is not None and hasattr(ui, "close"):
+                ui.close()
+        finally:
+            sim.close()
+        raise
+    audit = SensorAudit(sim.names, cfg, DT)
+    truth_prev = None
     tmpl = sc.template.offsets() if sc.template is not None else None
     ref = Referee(sim.names, tmpl, sc.path, sc.judged_gates, cfg, sc.formation_enabled,
-                  clock=sc.plans[0].clock if sc.formation_enabled else None)
+                  clock=sc.plans[0].clock if sc.formation_enabled else None, faults=getattr(sc.sim, "faults", ()))
+    if terminal is not None:
+        monitor = TerminalMonitor(sc, cfg, sim.names, duration, t_nom)
     cfg_dump = {"scenario": name, "title": sc.title, "description": sc.description, "focus": sc.focus,
                 "duration_s": T, "n_drones": len(sim.names), "template": None if sc.template is None else sc.template.name,
                 "gates": [g.gate_id for g in sc.judged_gates], "current": sc.sim.current.describe(),
                 "intruders": list(getattr(sc.sim, "intruders", ())), "cfg_patch": sc.cfg_patch,
                 "faults": list(getattr(sc.sim, "faults", ())),
+                "seed": sc.sim.seed, "noise": None if noise is None else noise.as_dict(),
+                "noise_drones": None if noise is None else sorted(getattr(sim, "noisy_idx", range(len(sim.names)))),
+                "terminal": None if monitor is None else {"criteria": CRITERIA_VERSION, "t_nom": monitor.t_nom,
+                                                           "deadline_s": monitor.deadline,
+                                                           "profile": terminal.get("profile")},
+                "heading_bias_deg": [round(float(b), 2) for b in getattr(sim, "heading_bias", ())],
                 "disturbance_windows": sc.disturbance_windows, "stress": sc.sim.stress.__dict__,
                 "setup": sim.setup_report, "comms_enabled": cfg.comms_enabled, "fleet_config": cfg.to_dict(),
                 "plans": [{"drone": p.drone_id, "slot": p.slot_index, "queue_lateral": p.queue_lateral,
@@ -89,6 +169,14 @@ def run(name: str, out_root: Path, headless: bool = True, run_id: Optional[str] 
         for step in range(n_steps):
             step_events = []
             for i, f in enumerate(getattr(sc.sim, "faults", ())):         # ground truth, never seen by a controller
+                if f.get("trigger") and f["t_on"] >= TRIGGER_PENDING and truth_prev is not None:
+                    if _triggered(f, sc, sim.names, truth_prev, cfg):      # e.g. "mid_cr:G06": stalled occupant
+                        f["t_on"] = round(sim.t, 2)
+                        if ref.permanent is not None:
+                            ref.permanent[sim.names.index(f["drone"])] = f["t_on"]
+                        tmp = out / "run_config.json.tmp"        # atomic: the resolved onset replaces the file
+                        tmp.write_text(json.dumps(cfg_dump, indent=1, default=_jsonable), encoding="utf-8")
+                        tmp.replace(out / "run_config.json")
                 on = f["t_on"] <= sim.t and (f.get("t_off") is None or sim.t < f["t_off"])
                 if on != fault_on[i]:
                     fault_on[i] = on
@@ -103,8 +191,11 @@ def run(name: str, out_root: Path, headless: bool = True, run_id: Optional[str] 
             for nm, c in ctrls.items():
                 cmds[nm] = c.step(frames[nm], DT)
             ctrl_ms.append(1000.0 * (time.perf_counter() - c0))
+            if truth_prev is not None:               # referee side: frames vs the truth at the frame time
+                audit.update(truth_prev, frames, ctrls)
             sim.step(cmds, DT)
             truth = sim.truth()
+            truth_prev = truth
             modes = [ctrls[nm].ha.mode.value for nm in sim.names]
             row = ref.update(truth, modes, sc.disturbance_active(sim.t))
             for nm, c in ctrls.items():
@@ -132,9 +223,22 @@ def run(name: str, out_root: Path, headless: bool = True, run_id: Optional[str] 
 
                     cv2.imwrite(str(out / "frames" / f"chase_{int(round(sim.t * 10)):05d}.jpg"),
                                 np.asarray(img)[:, :, :3], [cv2.IMWRITE_JPEG_QUALITY, 85])
+            if monitor is not None and monitor.update(sim.t, truth.positions, ref,
+                                                      [ctrls[nm].last_record for nm in sim.names]):
+                ev_f.write(json.dumps({"t": sim.t, "type": "TERMINAL", **monitor.summary()}, default=_jsonable) + "\n")
+                break
+        if monitor is not None and monitor.outcome is None:
+            monitor.finalize(sim.t, ref, [ctrls[nm].last_record for nm in sim.names])
+            ev_f.write(json.dumps({"t": sim.t, "type": "TERMINAL", **monitor.summary()}, default=_jsonable) + "\n")
         status = {"status": "COMPLETE"}
     except KeyboardInterrupt:
         status = {"status": "INCOMPLETE", "reason": "interrupted by the user", "t": sim.t}
+    except Exception as exc:  # noqa: BLE001 - classified, recorded and not hidden as an infrastructure failure
+        status = _error_status(exc, sim.t)
+        # recorded before the exception propagates: an error of the drones' own code is a failure of the system
+        # under test (robustness_metrics: SUT_ERROR), not an infrastructure problem to retry
+        (out / "run_status.json").write_text(json.dumps(status), encoding="utf-8")
+        raise
     finally:
         try:
             ev_f.write(json.dumps({"t": sim.t, "type": "run_finished", **status}) + "\n")
@@ -166,12 +270,25 @@ def run(name: str, out_root: Path, headless: bool = True, run_id: Optional[str] 
         for line in f:
             if '"ENVELOPE_VIOLATION"' in line:
                 env_violations += 1
+    beacon = None if getattr(sim, "beacon", None) is None else sim.beacon.summary()
     metrics["run"] = {**status, "scenario": name, "sim_time_s": round(sim.t, 2), "determinism_violations": det,
                       "observation_consistency_violations": obs_inc,
-                      "comms_enabled": cfg.comms_enabled, "inter_agent_messages": 0,
+                      # B0: no message at all; B2: every one-way identity ping counts (no payload, no reply)
+                      "comms_enabled": cfg.comms_enabled, "inter_agent_messages": 0 if beacon is None else beacon["transmissions"],
+                      "message_content": "none" if beacon is None else
+                          "static identity only (one-way ping; receiver-side OWTT range + array bearing)",
+                      "acoustic_exit_witnesses": sum(c.perception.gp.exit_kind["ACOUSTIC"] for c in ctrls.values()),
+                      "sonar_exit_witnesses": sum(c.perception.gp.exit_kind["SONAR"] for c in ctrls.values()),
+                      "acoustic_tracker": ({k: sum(c.perception.acoustic.stats[k] for c in ctrls.values())
+                                            for k in next(iter(ctrls.values())).perception.acoustic.stats}
+                                           if cfg.beacon.enabled else None),
                       "ground_truth_used_by_controllers": any(c.uses_ground_truth for c in ctrls.values()),
                       "static_rank_uses": rank_uses, "occupancy_timeouts": occ_timeouts,
-                      "self_declared_envelope_violations": env_violations, "perf": perf}
+                      "self_declared_envelope_violations": env_violations, "perf": perf,
+                      "seed": sc.sim.seed, "noise_profile": None if noise is None else noise.name,
+                      "noise_wrapper_stats": dict(getattr(sim, "noise_stats", {})),
+                      "beacon": beacon, "terminal": None if monitor is None else monitor.summary()}
+    metrics["sensor_audit"] = audit.summary()
     metrics["envelope"] = envelope_block(out, metrics["envelope"], cfg)
     (out / "referee_metrics.json").write_text(json.dumps(metrics, indent=1, default=_jsonable), encoding="utf-8")
     (out / "perf.json").write_text(json.dumps(perf, indent=1), encoding="utf-8")
@@ -201,7 +318,7 @@ def summary_row(name: str, m: Dict) -> Dict:
 
 
 def envelope_block(run_dir: Path, raw: Dict, cfg: FleetConfig = DEFAULT) -> Dict:
-    """referee_metrics['envelope']: raw current statistics + the control-feasible verdict (DI-27)."""
+    """referee_metrics['envelope']: raw current statistics + the control-feasible verdict."""
     from holo_fleet.referee.envelope import evaluate_run
 
     ev = evaluate_run(Path(run_dir), cfg)
@@ -210,7 +327,7 @@ def envelope_block(run_dir: Path, raw: Dict, cfg: FleetConfig = DEFAULT) -> Dict
 
 
 def _envelope_line(m: Dict) -> str:
-    """Envelope verdict (control-feasible, DI-27) next to the vehicles' own view (self-declared
+    """Envelope verdict (control-feasible) next to the vehicles' own view (self-declared
     ENVELOPE_VIOLATION: persistent thrust saturation or a steady command beyond the authority)."""
     e = m["envelope"]
     n_self = m["run"]["self_declared_envelope_violations"]
@@ -260,7 +377,9 @@ def print_summary(name: str, m: Dict, assumptions: Optional[str] = None) -> str:
     coll = p1["physical_contacts"] + len(p1["collision_sensor_edges"])
     det = sum((m["run"].get("determinism_violations") or {}).values())
     inc = m["run"].get("observation_consistency_violations")
-    lines += ["COLLISIONS", str(coll), "", "COMMUNICATION", f"{m['run']['inter_agent_messages']} messages", "",
+    comm = (f"{m['run']['inter_agent_messages']} messages" if not m["run"].get("beacon") else
+            f"{m['run']['inter_agent_messages']} one-way identity pings (no payload, no reply)")
+    lines += ["COLLISIONS", str(coll), "", "COMMUNICATION", comm, "",
               f"AUTOMATON DETERMINISM VIOLATIONS: {det}",
               f"OBSERVATION CONSISTENCY VIOLATIONS: {'n/a' if inc is None else sum(inc.values())}", "",
               "GROUND TRUTH USED BY CONTROLLERS", "YES" if m["run"]["ground_truth_used_by_controllers"] else "NO", "",
