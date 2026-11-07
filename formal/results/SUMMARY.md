@@ -1,6 +1,6 @@
 # Formal verification summary
 
-Generated 2026-11-06 09:06:34 by `formal/check_properties.py`.
+Generated 2026-11-07 13:19:26 by `formal/check_properties.py`.
 
 UNSAT = the negated property has no model in the abstraction, i.e. the property HOLDS for the model; SAT is expected for the satisfiability / non-vacuity checks (a witness must exist) and for the mutation tests (deliberately broken designs must yield a counterexample); mutation Om2 expects UNSAT (a broken observation domain loses the reachability of an edge).  The observation domain of every suite is the conjunction of the invariants of holo_fleet/ha/observation_invariants.py.
 
@@ -115,7 +115,7 @@ Encoding: `holo_fleet/ha/spec.py`
 | MA mutation: a give-up that keeps the commitment (the withdrawn retreat) must violate G2c | expect counterexample | SAT | SAT | yes |
 | ML mutation: a wrong readable guard (collision risk drawn at d_warning) must violate L1 | expect counterexample | SAT | SAT | yes |
 
-## Observation consistency (perception -> automaton interface)  (32/32 as expected, 0.7 s)
+## Observation consistency (perception -> automaton interface)  (32/32 as expected, 1.0 s)
 
 Encoding: `holo_fleet/ha/observation_invariants.py + holo_fleet/ha/spec.py`
 
@@ -154,7 +154,7 @@ Encoding: `holo_fleet/ha/observation_invariants.py + holo_fleet/ha/spec.py`
 | Om2 mutation: v1 constraint passed -> at_queue makes pass_done unreachable | expect UNSAT (reachability lost) | UNSAT | UNSAT | yes |
 | Om3 mutation: no monitor -> an inconsistent observation drives a mission edge | expect counterexample | SAT | SAT | yes |
 
-## P1 inter-vehicle separation  (15/15 as expected, 167.5 s)
+## P1 inter-vehicle separation  (15/15 as expected, 168.7 s)
 
 Encoding: `formal/check_separation.py`
 
@@ -176,7 +176,7 @@ Encoding: `formal/check_separation.py`
 | S3 at most one vertex angle >= 90 deg (pairwise d >= d_safe) | d_ij >= d_safe -> not(angle_i >= 90 and angle_j >= 90) | UNSAT | UNSAT | yes |
 | S4 blackout <= 0.8s starting at d >= 2.34 m keeps d >= d_safe | FAILSAFE hold with unrejected drift w_rel | UNSAT | UNSAT | yes |
 
-## P2 critical-region mutual exclusion  (38/38 as expected, 148.7 s)
+## P2 critical-region mutual exclusion  (38/38 as expected, 150.5 s)
 
 Encoding: `holo_fleet/ha/mutex_rule.py + formal/check_mutex.py`
 
@@ -221,7 +221,7 @@ Encoding: `holo_fleet/ha/mutex_rule.py + formal/check_mutex.py`
 | M3m mutation: belief without latch (FREE when nothing is seen) must violate P2 | expect counterexample | SAT | SAT | yes |
 | M3f scope: an occupant that stops inside the CR (fault) is released by the t_occ_max fallback | expect counterexample: crossing speed >= V_LO is an assumption of M3 | SAT | SAT | yes |
 
-## P3 formation recovery (liveness, ranking functions)  (24/24 as expected, 3.1 s)
+## P3 formation recovery (liveness, ranking functions)  (24/24 as expected, 3.2 s)
 
 Encoding: `formal/check_formation.py`
 
@@ -252,7 +252,7 @@ Encoding: `formal/check_formation.py`
 | Fm1 mutation: no catch-up margin (v_recovery = v_clock) must break F1 (along) | expect counterexample | SAT | SAT | yes |
 | Fm2 mutation: k_slot = 0 must break F2 (lateral) | expect counterexample | SAT | SAT | yes |
 
-## Variant B2 range-bearing beacon (own assumptions; B0 checks unchanged)  (11/11 as expected, 57.7 s)
+## Variant B2 range-bearing beacon (own assumptions; B0 checks unchanged)  (11/11 as expected, 58.5 s)
 
 Encoding: `perception/acoustic.py + perception/acoustic_gate.py + formal/check_acoustic.py`
 
