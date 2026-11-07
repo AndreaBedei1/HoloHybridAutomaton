@@ -43,7 +43,7 @@ DEMOS = ROOT / "results" / "reference"
 SEEDS = (0, 1, 2)
 ALL_SCENARIOS = ("p1_head_on", "p1_vertical_escape", "p1_two_lines", "p1_close_encounter", "formation_triangle",
                  "formation_square", "formation_six", "formation_recovery_head_current", "formation_gust", "gate_single",
-                 "integrated_short", "lost_drone_rejoin", "lost_drone_timeout", "mutex_deadlock_resolution",
+                 "integrated_short", "lost_drone_rejoin", "lost_drone_rejoin_front", "lost_drone_timeout", "mutex_deadlock_resolution",
                  "line_parallel_mutex", "lost_drone_mutex", "gate_stalled_occupant")
 PY = sys.executable
 
@@ -67,7 +67,8 @@ def scope_drones(scenario: str, scope: str) -> list:
         return list(range(n))
     lost = {f["drone"] for f in getattr(sc.sim, "faults", ()) or () if f.get("t_off") is None}
     healthy = [k for k in range(n) if sc.sim.names[k] not in lost]
-    ref_name = "gate_single" if scenario == "gate_stalled_occupant" else scenario   # same geometry and plan
+    ref_name = {"gate_stalled_occupant": "gate_single",                              # same geometry and plan
+                "lost_drone_rejoin_front": "lost_drone_rejoin"}.get(scenario, scenario)
     rows = list(csv.DictReader(open(DEMOS / ref_name / "referee_timeseries.csv", encoding="utf-8")))
     P = np.array([[[float(r[f"{a}{k}"]) for a in "xyz"] for k in range(n)] for r in rows])
     bars = [b for st in sc.plans[0].structures for b in st.bars]
@@ -134,13 +135,16 @@ FINAL_SCENARIOS = ALL_SCENARIOS
 # (docs/ACCEPTANCE_CRITERIA.md v4.4): the plan's smaller variant, chosen before any campaign run for the wall time
 # (~3.8 min per run, two instances: 920 runs ~ 29 h, 552 runs ~ 18 h): 8 cells x (11 non-gate scenarios x 3 seeds +
 # 6 gate scenarios x 6 seeds) = 552 runs on held-out seeds (100-105) never used in development
-B2_CELLS = (("B2_CLEAN", "CLEAN"), ("B2_LOW", "LOW-ALL"), ("B2_MEDIUM", "MEDIUM-ONE"), ("B2_MEDIUM", "MEDIUM-SUBSET"),
-            ("B2_MEDIUM", "MEDIUM-ALL"), ("B2_MEDIUM", "CLEAN"), ("B2_BLACKOUT", "CLEAN"), ("B2_BLACKOUT", "MEDIUM-ALL"))
+# v7 (the user's decision, 2026-11-06): three conditions - ideal, nominal and upper realistic degradation - with the
+# documented LOW and MEDIUM levels (sensors and channel together, every drone); the total acoustic blackout is outside
+# the protocol's operating assumptions and is no longer a campaign cell (a stated limit).  Order: CLEAN, nominal,
+# degraded.
+B2_CELLS = (("B2_CLEAN", "CLEAN"), ("B2_LOW", "LOW-ALL"), ("B2_MEDIUM", "MEDIUM-ALL"))
 B2_GATE_SCENARIOS = ("gate_single", "integrated_short", "mutex_deadlock_resolution", "line_parallel_mutex",
                      "lost_drone_mutex", "gate_stalled_occupant")
 B2_NONGATE_SCENARIOS = tuple(s for s in ALL_SCENARIOS if s not in B2_GATE_SCENARIOS)
-B2_SEEDS_NONGATE = tuple(range(100, 103))
-B2_SEEDS_GATE = tuple(range(100, 106))
+B2_SEEDS_NONGATE = tuple(range(800, 803))      # v10: fresh held-out seeds (100-105 v4, 200-205 v5, 300-305 v6,
+B2_SEEDS_GATE = tuple(range(800, 806))         # 400-405 v7, 500-505 v8, 700-705 v9; 600-602 the v9 probes)
 
 
 def b2_final_matrix(only=None) -> list:
@@ -204,6 +208,12 @@ def worker(args) -> int:
     prof, _, scope = args.profile.partition("-")
     # criteria v3 (referee/criteria.py): a-priori requirements, deadline from the plan and the protocol bounds
     terminal = {"profile": args.profile} if args.terminal else None
+    factor = float(os.environ.get("HOLO_FLEET_HORIZON_FACTOR", "1"))
+    if terminal is not None and factor != 1.0:          # exploratory: a multiple of the v5 horizon, never for results
+        from holo_fleet.referee.criteria import horizon_v5
+        from holo_fleet.sim.scenarios import SCENARIOS
+
+        terminal["deadline_s"] = round(factor * horizon_v5(SCENARIOS[args.scenario](DEFAULT), DEFAULT, args.profile), 1)
     runner.run(args.scenario, d.parent, headless=True, run_id=d.name, frame_every_s=float("inf"), cfg=cfg,
                noise=profile(prof), seed=args.seed, noise_drones=scope_drones(args.scenario, scope) if scope else None,
                terminal=terminal)
@@ -555,6 +565,9 @@ def main() -> int:
 
     done = 0
     version = code_version()
+    if args.phase == "b2final" and float(os.environ.get("HOLO_FLEET_HORIZON_FACTOR", "1")) != 1.0:
+        say("refused: the campaign uses the v5 horizon as frozen (HOLO_FLEET_HORIZON_FACTOR must be unset or 1)")
+        return 2
     if args.phase in ("final", "b2final") and version["dirty_files"]:
         say(f"refused: the final campaign runs only from a clean commit; modified: {version['dirty_files']}")
         return 2
@@ -568,10 +581,17 @@ def main() -> int:
         if lock is None:
             say(f"{time.strftime('%H:%M:%S')} {protocol} {prof} {sc} s{seed}: claimed by another orchestrator, skipped")
             continue
+        if not pending(raw, [(protocol, prof, sc, seed)], version["sha"]):
+            # completed by another orchestrator since this one listed its runs: never run (and archive) it again
+            lock.unlink(missing_ok=True)
+            say(f"{time.strftime('%H:%M:%S')} {protocol} {prof} {sc} s{seed}: already done by another orchestrator, skipped")
+            continue
         from holo_fleet.config import DEFAULT
         from holo_fleet.referee.criteria import deadline_v3
 
-        dur = deadline_v3(SCENARIOS[sc](DEFAULT), DEFAULT, prof)
+        from holo_fleet.referee.criteria import horizon_v5
+
+        dur = horizon_v5(SCENARIOS[sc](DEFAULT), DEFAULT, prof) * float(os.environ.get("HOLO_FLEET_HORIZON_FACTOR", "1"))
         res, attempt = None, 0
         while attempt <= args.retries:
             attempt += 1

@@ -72,6 +72,7 @@ class Scenario:
     focus: str = ""                      # what to look at (UI)
     cfg_patch: Dict = field(default_factory=dict)   # FleetConfig fields overridden for this scenario
     automaton_drone: Optional[int] = None  # drone of the fleet view's automaton panel (UI; default: the camera drone)
+    safety_only: bool = False              # mission physically infeasible by design: judged on safety (criteria v5)
 
     @property
     def duration_s(self) -> float:
@@ -316,6 +317,23 @@ def lost_drone_rejoin(cfg: FleetConfig = DEFAULT) -> Scenario:
                        "rejoins from behind along its own lane; FOLLOW again, no communication", cfg)
 
 
+def lost_drone_rejoin_front(cfg: FleetConfig = DEFAULT) -> Scenario:
+    """The rejoin of a FRONT slot: the drone of the rear slot on the same lane is in the way of a rejoin from behind
+    along the lane; the faulty drone passes it on the pass level (control/flows.py, FormationRule.pass_dz_m)."""
+    fr = cfg.form
+    sc = _lost_drone("lost_drone_rejoin_front", 8.0, 15.0, 70.0, _uniform((0.0, 0.35, 0.0)),
+                     "Lost drone: temporary thruster failure of a front drone, rejoin past the drone behind it",
+                     "4 drones (square), 0.35 m/s lateral current (inside the envelope). The front-left drone loses "
+                     "its thrusters between t = 8 s and 15 s (simulator fault, no controller is told) and is dragged "
+                     "off its lane and behind the fleet; the rear-left drone is on its lane, between it and its slot.",
+                     f"the faulty drone detects it onboard (FAILSAFE); its neighbours miss it and slow the formation "
+                     f"to {fr.v_wait:.2f} m/s; it catches up from behind and passes the rear-left drone "
+                     f"{fr.pass_dz_m:.1f} m below it, rising to its slot only past it; FOLLOW again, no communication",
+                     cfg, faulty=0)
+    sc.automaton_drone = 2               # the drone of the rear slot on the faulty drone's lane
+    return sc
+
+
 def lost_drone_timeout(cfg: FleetConfig = DEFAULT) -> Scenario:
     """80 s: every neighbour times the absence from its OWN detection, and a range-only sonar detects late when an
     echo of another neighbour stands in for the missing drone (the rear-right drone noticed it between 22 and 48 s
@@ -444,6 +462,7 @@ def gate_stalled_occupant(cfg: FleetConfig = DEFAULT) -> Scenario:
     sc.focus = "stalled occupant: occupancy latch, heard-inside veto, stage-2 hold, unknown occupant never FREE"
     sc.sim.faults = ({"drone": "drone_0", "type": "THRUSTER_FAILURE", "t_on": 1e9, "t_off": None,
                       "trigger": "mid_cr:G06"},)
+    sc.safety_only = True          # the gate is physically blocked: judged on safety over the horizon (criteria v5)
     return sc
 
 
@@ -460,6 +479,7 @@ SCENARIOS: Dict[str, Callable[..., Scenario]] = {
     "gate_single": gate_single,
     "integrated_short": integrated_short,
     "lost_drone_rejoin": lost_drone_rejoin,
+    "lost_drone_rejoin_front": lost_drone_rejoin_front,
     "lost_drone_timeout": lost_drone_timeout,
     "mutex_deadlock_resolution": mutex_deadlock_resolution,
     "line_parallel_mutex": line_parallel_mutex,

@@ -77,7 +77,9 @@ class Flows:
         self.abort_request = False            # stage-2 hold beyond the slowest release: give the passage up
         self.giveway: str = ""                # "", "RIGHT", "UP", "DOWN"
         self.giveway_t = -1e9                 # last time the head-on condition held
-        self.rejoin_phase = ""                # "", "DROP_BACK", "TO_LANE" (rejoin from behind, recovering only)
+        self.rejoin_phase = ""                # "", "DROP_BACK", "TO_LANE", "PASS" (rejoin from behind, recovering only)
+        self.passing = False                  # PASS latch (kept through avoidance episodes); see rejoin_entry
+        self.at_level = False                 # ... at the pass level (hysteresis)
 
     # ------------------------------------------------------------------ give-way (traffic rule)
     def traffic_offset(self, obs: LocalObservation, dt: float, r_trigger: float = 8.0,
@@ -156,6 +158,8 @@ class Flows:
         # ahead close in its FRONT sector at the catch-up speed and, while it is off its slot, are not recognised
         # as neighbours; no new give-way is decided then (it would push it towards the next lane)
         catching_up = recovering and float(err @ t_hat) > fr.e_ok
+        if not traffic:                                          # FAILSAFE: a PASS latch ends with the episode
+            self.passing = self.at_level = False
         self.traffic_offset(obs, dt, active=traffic, decide=not catching_up)
         entry = self.rejoin_entry(obs, R_form, s_ref) if recovering else None
         if not recovering:
@@ -187,15 +191,66 @@ class Flows:
         t_hat, n_hat = R_form[:, 0], R_form[:, 1]
         p_lane, _d, _n = self.plan.path.frame_at(s_ref + me.along)
         lane_err = float((obs.p[:2] - p_lane[:2]) @ n_hat[:2]) - me.lateral
+        blk = self._lane_blocked()
         if abs(lane_err) <= fr.rejoin_lane_tol_m:
-            self.rejoin_phase = ""
-            return None
+            if blk is None:
+                self.passing = False
+                self.rejoin_phase = ""
+                return None
+            p0, _d, _n = self.plan.path.frame_at(s_ref)
+            a = float((obs.p[:2] - p0[:2]) @ t_hat[:2])          # own along-track position in the formation frame
+            z, z_pass = float(obs.p[2]), self.plan.path.depth_z + blk[1]
+            z_slot = self.plan.path.depth_z + me.dz
+            past = min(me.along, blk[0] + fr.pass_dz_m) - 0.5    # rise from the pass level from here on
+            in_layer = abs(z - z_pass) < abs(z - z_slot)
+            # latched: entered only behind the rear slot (or in the pass layer well before the rise point), left
+            # only past it - a drone between the rear slot and its own one, or rising, is never sent back down
+            if self.passing and a >= past:
+                self.passing = False
+            elif not self.passing and (a < blk[0] or (in_layer and a < past - 1.0)):
+                self.passing = True
+            if not self.passing:
+                self.rejoin_phase = ""
+                return None
+            # pass on the pass level: descend first (advancing at most up to pass_dz_m behind the rear slot, never
+            # backwards: a vertical move only ever widens the distance to the drones on the slot level), then advance
+            # along the lane at that level up to the rise point (level hysteresis 0.3 / 0.8 m)
+            if abs(z - z_pass) <= 0.3:
+                self.at_level = True
+            elif abs(z - z_pass) > 0.8:
+                self.at_level = False
+            along = me.along if self.at_level else min(me.along, max(a, blk[0] - fr.pass_dz_m))
+            p_e, _d, n_e = self.plan.path.frame_at(s_ref + along)
+            self.rejoin_phase = "PASS"
+            return np.array([p_e[0] + me.lateral * n_e[0], p_e[1] + me.lateral * n_e[1], z_pass])
+        self.passing = False
         rear = min(sl.along for sl in self.plan.slots) - fr.rejoin_back_m
+        if blk is not None:                                      # a blocked lane is joined on the pass level, at
+            rear = min(rear, blk[0] - fr.pass_dz_m)              # least pass_dz_m behind the rear slot (review)
         p_r, _d, n_r = self.plan.path.frame_at(s_ref + rear)
-        entry = np.array([p_r[0] + me.lateral * n_r[0], p_r[1] + me.lateral * n_r[1], self.plan.path.depth_z + me.dz])
+        dz = me.dz if blk is None else blk[1]
+        entry = np.array([p_r[0] + me.lateral * n_r[0], p_r[1] + me.lateral * n_r[1], self.plan.path.depth_z + dz])
         behind = float((entry - obs.p) @ t_hat) >= -0.5          # at (or behind) the rear entry point
         self.rejoin_phase = "TO_LANE" if behind else "DROP_BACK"
         return entry
+
+    def _lane_blocked(self) -> Optional[Tuple[float, float]]:
+        """(along of the front-most slot behind the own one on its lane, dz of the pass level), or None.  A slot is
+        on the own lane when its lane and level are nearer than pass_dz_m; the pass level is pass_dz_m below the own
+        slot (above when the depth band has no room) and must keep pass_dz_m from every other slot's lane."""
+        fr, env = self.cfg.form, self.cfg.env
+        me = self.plan.my_slot
+        others = [sl for k, sl in enumerate(self.plan.slots) if k != self.plan.slot_index]
+        behind = [sl.along for sl in others
+                  if sl.along < me.along and math.hypot(sl.lateral - me.lateral, sl.dz - me.dz) < fr.pass_dz_m - 1e-6]
+        if not behind:
+            return None
+        for dz in (me.dz - fr.pass_dz_m, me.dz + fr.pass_dz_m):
+            z = self.plan.path.depth_z + dz
+            if env.z_min + 0.5 - 1e-6 <= z <= env.z_max - 0.5 + 1e-6 and all(
+                    math.hypot(sl.lateral - me.lateral, sl.dz - dz) >= fr.pass_dz_m - 1e-6 for sl in others):
+                return max(behind), dz
+        return None
 
     def _slot(self, obs):
         clock = self.plan.clock
@@ -238,6 +293,7 @@ class Flows:
         return path[-1]
 
     def gate(self, obs: LocalObservation, mode: str) -> Tuple[np.ndarray, float]:
+        self.passing = self.at_level = False                     # a gate episode ends a PASS latch (review)
         G = self.cfg.gate
         g = self.plan.gates[min(obs.gate_index, len(self.plan.gates) - 1)]
         go = obs.gate

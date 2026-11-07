@@ -180,7 +180,7 @@ The project includes Z3 checks of:
 python formal/check_properties.py
 ```
 
-Current status (2026-11-05, freeze b2-freeze-v4): all 221 checks give their expected verdict (the verdicts are in the summary). The proofs are on abstractions of the drones
+Current status (2026-11-06, freeze b2-freeze-v7): all 224 checks give their expected verdict (the verdicts are in the summary). The proofs are on abstractions of the drones
 and their sensing, not on HoloOcean's physics. Details: [`formal/results/SUMMARY.md`](formal/results/SUMMARY.md).
 
 ## 8. Tests

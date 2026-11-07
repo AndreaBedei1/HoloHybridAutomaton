@@ -66,9 +66,16 @@ def test_nav_bound_grows_with_distance_noise_and_outage_and_never_shrinks():
     lin = B2.acoustic.nav_b0_m + nb.k_lin * 6.0 + nb.const
     assert nb.horizontal == pytest.approx(lin + nb.k_rw * math.sqrt(200 * 0.01))
     before = nb.horizontal
-    for i in range(201, 211):                                  # 1 s DVL outage: no new sample
-        nb.update(i * 0.1, 0.1, s)
-    assert nb.horizontal - before > 0.3
+    for i in range(201, 211):                                  # 1 s DVL outage, model-aided: no new sample
+        nb.update(i * 0.1, 0.1, s, model=True)
+    q = float(np.interp(nb.out_len, nb.q_len, nb.q_max))
+    assert nb.outage == pytest.approx(q) and 0.3 < q < 0.5    # the calibrated max for that length
+    nb2 = NavBound(B2)
+    s2 = NavState(p=np.zeros(3), yaw=0.0)
+    s2.v_world, s2.t_dvl, s2.t_depth = np.array([0.3, 0.0, 0.0]), 20.0, 20.0
+    for i in range(201, 211):                                  # the same outage without the model: worst case
+        nb2.update(i * 0.1, 0.1, s2, model=False)
+    assert nb2.outage > nb.outage
     nb.corrected(np.array([0.3, 0.4, 0.0]))
     assert nb.aid == pytest.approx(0.5) and not nb.invalid
 
@@ -194,3 +201,57 @@ def test_stage_two_entry_is_held_while_an_occupant_is_merely_unheard():
     assert not gp.update(2., p, 0., [], {}).entry_ok
     o = gp.update(2. + B2.acoustic.fresh_s + 1.0, p, 0., [], {})   # silent (an outage longer than fresh_s)
     assert not gp.acoustic_exit.heard_inside(2. + B2.acoustic.fresh_s + 1.0, GATE) and not o.entry_ok
+
+
+def test_a_neighbour_reported_at_the_gate_is_delayed_not_lost():
+    from holo_fleet.perception.perception import Perception
+    from holo_fleet.sim.scenarios import SCENARIOS
+
+    sc = SCENARIOS["gate_single"](B2)
+    plan = sc.plans[0]
+    per = Perception(plan, B2)
+    per.acoustic.set_identities({0: 0, 1: 1, 2: 2})
+    g = plan.gates[0]
+    left = np.array([-g.axis[1], g.axis[0], 0.0])
+    me = g.center + (plan.queue_s - 1.0) * np.asarray(g.axis, float)
+    queued = g.center + plan.queue_s * np.asarray(g.axis, float) - 3.5 * left     # a neighbour at its queue point
+    far = g.center - 30.0 * np.asarray(g.axis, float)                              # far behind: not at the gate
+    per.acoustic.update(0.0, (), me, 0.0, 0.5)
+    for i, (k, q) in enumerate(((1, queued), (2, far))):
+        r = float(np.linalg.norm(q - me))
+        d = q - me
+        az, el = math.atan2(d[1], d[0]), math.asin(d[2] / r)
+        t_arr = 1.0
+        fr = pl.frame_index(t_arr - r / B2.beacon.sound_speed, B2.beacon.period_s)
+        per.acoustic.update(1.25, [(k, t_arr, r, az, el, pl.encode(fr, q, 0.5))], me, 0.0, 0.5)
+    assert per._delayed_at_gate(1, 1.3) and not per._delayed_at_gate(2, 1.3)
+    assert per.gate_delay_max > 60.0
+
+
+def test_a_corridor_echo_no_fleet_drone_can_have_produced_does_not_set_the_latch():
+    from holo_fleet.perception.targets import Target
+
+    p = np.array([-4.6, 0., -5.])
+    tracker, gp = _observer(p)
+    gp.acoustic_exit.others = [1]                              # one other drone in this plan
+    echo = Target(frozenset({"FRONT"}), 4.0, 4.0, 0., 0., "DYNAMIC")
+    _hear(tracker, p, 20.0, [-4.6, 20.0, -5.], 0.5)            # heard 20 m to the side: cannot be the echo
+    o = gp.update(2.1, p, 0., [echo], {})
+    assert gp.phantom and o.occ_state == "FREE"
+    tracker2, gp2 = _observer(p)
+    gp2.acoustic_exit.others = [1]
+    _hear(tracker2, p, 4.6, [0.0, 0., -5.], 0.5)               # heard in the CR: the echo may be it
+    o2 = gp2.update(2.1, p, 0., [echo], {})
+    assert not gp2.phantom and o2.occ_state == "BUSY"
+    tracker3, gp3 = _observer(p)                               # nobody heard: nothing excluded, the sonar rules
+    gp3.acoustic_exit.others = [1]
+    assert gp3.update(2.1, p, 0., [echo], {}).occ_state == "BUSY"
+
+
+def test_a_silent_drone_last_known_inside_is_gone_after_the_ascent_time():
+    p = np.array([-4.6, 0., -5.])
+    tracker, gp = _observer(p)
+    _hear(tracker, p, 4.6, [0.0, 0., -5.], 0.5)                # last heard in the CR, then silent
+    gone = max(B2.gate.t_occ_max + B2.gate.t_clear, B2.acoustic.silent_gone_s)
+    assert gp.acoustic_exit.last_known_inside(2. + gone - 1., GATE)
+    assert not gp.acoustic_exit.last_known_inside(2. + gone + 1., GATE)

@@ -1,6 +1,6 @@
 # Formal verification summary
 
-Generated 2026-11-05 01:38:58 by `formal/check_properties.py`.
+Generated 2026-11-06 09:06:34 by `formal/check_properties.py`.
 
 UNSAT = the negated property has no model in the abstraction, i.e. the property HOLDS for the model; SAT is expected for the satisfiability / non-vacuity checks (a witness must exist) and for the mutation tests (deliberately broken designs must yield a counterexample); mutation Om2 expects UNSAT (a broken observation domain loses the reachability of an edge).  The observation domain of every suite is the conjunction of the invariants of holo_fleet/ha/observation_invariants.py.
 
@@ -115,7 +115,7 @@ Encoding: `holo_fleet/ha/spec.py`
 | MA mutation: a give-up that keeps the commitment (the withdrawn retreat) must violate G2c | expect counterexample | SAT | SAT | yes |
 | ML mutation: a wrong readable guard (collision risk drawn at d_warning) must violate L1 | expect counterexample | SAT | SAT | yes |
 
-## Observation consistency (perception -> automaton interface)  (32/32 as expected, 0.8 s)
+## Observation consistency (perception -> automaton interface)  (32/32 as expected, 0.7 s)
 
 Encoding: `holo_fleet/ha/observation_invariants.py + holo_fleet/ha/spec.py`
 
@@ -154,7 +154,7 @@ Encoding: `holo_fleet/ha/observation_invariants.py + holo_fleet/ha/spec.py`
 | Om2 mutation: v1 constraint passed -> at_queue makes pass_done unreachable | expect UNSAT (reachability lost) | UNSAT | UNSAT | yes |
 | Om3 mutation: no monitor -> an inconsistent observation drives a mission edge | expect counterexample | SAT | SAT | yes |
 
-## P1 inter-vehicle separation  (15/15 as expected, 166.9 s)
+## P1 inter-vehicle separation  (15/15 as expected, 167.5 s)
 
 Encoding: `formal/check_separation.py`
 
@@ -176,7 +176,7 @@ Encoding: `formal/check_separation.py`
 | S3 at most one vertex angle >= 90 deg (pairwise d >= d_safe) | d_ij >= d_safe -> not(angle_i >= 90 and angle_j >= 90) | UNSAT | UNSAT | yes |
 | S4 blackout <= 0.8s starting at d >= 2.34 m keeps d >= d_safe | FAILSAFE hold with unrejected drift w_rel | UNSAT | UNSAT | yes |
 
-## P2 critical-region mutual exclusion  (38/38 as expected, 147.4 s)
+## P2 critical-region mutual exclusion  (38/38 as expected, 148.7 s)
 
 Encoding: `holo_fleet/ha/mutex_rule.py + formal/check_mutex.py`
 
@@ -221,7 +221,7 @@ Encoding: `holo_fleet/ha/mutex_rule.py + formal/check_mutex.py`
 | M3m mutation: belief without latch (FREE when nothing is seen) must violate P2 | expect counterexample | SAT | SAT | yes |
 | M3f scope: an occupant that stops inside the CR (fault) is released by the t_occ_max fallback | expect counterexample: crossing speed >= V_LO is an assumption of M3 | SAT | SAT | yes |
 
-## P3 formation recovery (liveness, ranking functions)  (22/22 as expected, 3.1 s)
+## P3 formation recovery (liveness, ranking functions)  (24/24 as expected, 3.1 s)
 
 Encoding: `formal/check_formation.py`
 
@@ -243,6 +243,8 @@ Encoding: `formal/check_formation.py`
 | F4d DEGRADED_FORMATION & own slot ok & neighbour missing -> FORMATION_WAIT_REJOIN | !self_lost & !neighbors_ok -> target = WAIT_REJOIN | UNSAT | UNSAT | yes |
 | F6 bounded waiting: a neighbour that never reappears is declared vacant within t_rejoin = 30.0 s (300 running steps), and the drone leaves FORMATION_WAIT_REJOIN | ranking t_rejoin - tau: after N running steps the WAIT_REJOIN self-loop is disabled | UNSAT | UNSAT | yes |
 | F6r ranking: t_rejoin - tau >= 0 and decreases by dt per running step until the slot is vacant | 0 <= tau < t_rejoin & tau' = tau + dt -> (t_rejoin - tau') = (t_rejoin - tau) - dt | UNSAT | UNSAT | yes |
+| F6g bounded waiting with the gate-delay hold: max(H - h, 0) + (t_rejoin - tau) >= 0 strictly decreases every running step (by dt on a timer step, by min(dt, H - h) > 0 on a hold step, at most ceil(H / dt) of them), so a neighbour that never reappears is vacant within t_rejoin + gate_delay_max + dt | h >= 0 & 0 <= tau < t_rejoin & step -> R' < R & R' >= 0 | UNSAT | UNSAT | yes |
+| F6gm mutation: a hold without its bound H may never let the timer run (vacancy never declared) | expect counterexample | SAT | SAT | yes |
 | Fm4 mutation: no timeout (v2 baseline) -> the drone may wait for ever (still waiting after N steps) | expect counterexample | SAT | SAT | yes |
 | F5 envelope at the recovery speed -> the catch-up of F1 keeps its margin | g(V + h) <= A  ->  min(V, xs - h) - v_clock - s_rate - w_res > 0 | UNSAT | UNSAT | yes |
 | Fm3 mutation: envelope at the survey speed only -> the catch-up margin of F1 can vanish | expect counterexample | SAT | SAT | yes |
@@ -250,7 +252,7 @@ Encoding: `formal/check_formation.py`
 | Fm1 mutation: no catch-up margin (v_recovery = v_clock) must break F1 (along) | expect counterexample | SAT | SAT | yes |
 | Fm2 mutation: k_slot = 0 must break F2 (lateral) | expect counterexample | SAT | SAT | yes |
 
-## Variant B2 range-bearing beacon (own assumptions; B0 checks unchanged)  (10/10 as expected, 54.4 s)
+## Variant B2 range-bearing beacon (own assumptions; B0 checks unchanged)  (11/11 as expected, 57.7 s)
 
 Encoding: `perception/acoustic.py + perception/acoustic_gate.py + formal/check_acoustic.py`
 
@@ -265,6 +267,7 @@ Encoding: `perception/acoustic.py + perception/acoustic_gate.py + formal/check_a
 | B2-M4g domain boundary, n=6: refused by the planner (queue points beyond queue_lateral_max), reported | exists 3 consecutive clear fixes with s_lower > exit face before the path end; queued drones excluded at t_lc | VIOLATED | VIOLATED | yes |
 | B2-P payload soundness: a sender truly in the CR whose estimate errs within its sent bound (cylinder |e_h| <= h, |e_z| <= z, radius hypot(h, z), through the 56-bit packet) is never cleared by the payload rule nor placed beyond the exit face | forall sampled centres in the CR and errors in the cylinder: rep_cr_possible and not A3 | HOLDS | HOLDS | yes |
 | B2-Pm mutation: the radius max(h, z) (not a ball over the cylinder) must clear an occupant | expect counterexample | VIOLATED | VIOLATED | yes |
+| B2-PE phantom-echo soundness: a fleet drone truly in the CR, heard inside the declared envelope (multipath, ages up to the tie window, with or without a payload within its bound), is never excluded by the phantom-echo rule | randomized: no_fleet_drone -> false | HOLDS | HOLDS | yes |
 | B2-S acoustic fixes never reach separation, collision avoidance, precedence or the sonar witness; acoustic exit evaluation requires the FRONT corridor empty (H6: the payload balls reach the map fit only as its identity premise, through Perception, never as a position input) | AST: no acoustic name in the safety / precedence modules; guarded call | HOLDS | HOLDS | yes |
 
 **Overall: ALL CHECKS AS EXPECTED**

@@ -1,4 +1,4 @@
-"""Analysis of the frozen B2-only campaign (docs/ACCEPTANCE_CRITERIA.md v4.3), exactly as pre-registered.
+"""Analysis of the frozen B2-only campaign (docs/ACCEPTANCE_CRITERIA.md v5, items of v4.3 as adapted by v5).
 
     python scripts/analyze_b2final.py [raw root] [out dir]
 
@@ -91,6 +91,8 @@ def load(raw: Path):
                     "deadline": (term.get("deadline_terms") and round(sum(term["deadline_terms"].values()), 1)),
                     "replay_consistent": term.get("replay_consistent"),
                     "tags": "|".join(m.get("cause_tags") or []), "invalid_reason": m.get("invalid_reason"),
+                    "on_time": m.get("on_time"), "gate_bounded_response": m.get("gate_bounded_response"),
+                    "false_vacancy_events": (m.get("conservative_events") or {}).get("false_vacancy"),
                 })
     return rows
 
@@ -110,7 +112,7 @@ def main(argv) -> int:
         w.writerows(rows)
     complete = [r for r in rows if r["class"] not in ("MISSING", "INVALID", "SUT_ERROR")]
     commits = Counter(r.get("commit") for r in complete)
-    L = ["# B2-only validation campaign: results (criteria v4, freeze b2-freeze-v4)", "",
+    L = ["# B2-only validation campaign: results (criteria v5)", "",
          f"Runs planned {len(rows)}; complete {len(complete)}; "
          f"missing {sum(r['class'] == 'MISSING' for r in rows)}; INVALID {sum(r['class'] == 'INVALID' for r in rows)}; "
          f"SUT_ERROR {sum(r['class'] == 'SUT_ERROR' for r in rows)}.  Commits: {dict(commits)}.", ""]
@@ -150,9 +152,10 @@ def main(argv) -> int:
     for r in clean_bad:
         L.append(f"  - {r['scenario']} s{r['seed']}: {r['class']} ({r['tags']})")
     # ---- item 4: per cell
-    L += ["", "## Item 4: cells (16 scenarios, gate_stalled_occupant excluded)", "",
-          "| cell | runs | PASS | SAFE_DEGRADED | STALLED | INCOMPLETE | other | PASS+SD [95 % Wilson] | KM median t_end [s] |",
-          "|---|---|---|---|---|---|---|---|---|"]
+    L += ["", "## Item 4: cells (16 scenarios, gate_stalled_occupant excluded; Kaplan-Meier censored at the v5 "
+          "horizon, 3 x the a-priori deadline)", "",
+          "| cell | runs | PASS | on time | SAFE_DEGRADED | INCOMPLETE | other | PASS+SD [95 % Wilson] | KM median t_end [s] | PASS late at the gate | PASS with transient false vacancy |",
+          "|---|---|---|---|---|---|---|---|---|---|---|"]
     cell_rows = []
     for proto, prof in camp.B2_CELLS:
         rs = [r for r in complete if r["protocol"] == proto and r["profile"] == prof and r["scenario"] != STALLED_SC]
@@ -161,9 +164,12 @@ def main(argv) -> int:
         lo, hi = wilson(ok, len(rs))
         curve = km([float(r["t_end"] or 0.0) for r in rs], [r["class"] in ("PASS", "SAFE_DEGRADED") for r in rs])
         med = km_median(curve)
-        other = len(rs) - c["PASS"] - c["SAFE_DEGRADED"] - c["STALLED"] - c["INCOMPLETE"]
-        L.append(f"| {proto} / {prof} | {len(rs)} | {c['PASS']} | {c['SAFE_DEGRADED']} | {c['STALLED']} | "
-                 f"{c['INCOMPLETE']} | {other} | {ok}/{len(rs)} [{lo:.2f}, {hi:.2f}] | {med} |")
+        other = len(rs) - c["PASS"] - c["SAFE_DEGRADED"] - c["INCOMPLETE"]
+        ontime = sum(1 for r in rs if r["class"] == "PASS" and r.get("on_time"))
+        late = sum(1 for r in rs if r["class"] == "PASS" and r.get("gate_bounded_response") is False)
+        fv = sum(1 for r in rs if r["class"] == "PASS" and (r.get("false_vacancy_events") or 0))
+        L.append(f"| {proto} / {prof} | {len(rs)} | {c['PASS']} | {ontime} | {c['SAFE_DEGRADED']} | "
+                 f"{c['INCOMPLETE']} | {other} | {ok}/{len(rs)} [{lo:.2f}, {hi:.2f}] | {med} | {late} | {fv} |")
         cell_rows.append({"cell": f"{proto}/{prof}", "runs": len(rs), **{k: c[k] for k in sorted(c)}, "ok": ok,
                           "wilson_lo": round(lo, 3), "wilson_hi": round(hi, 3), "km_median_s": med})
     with open(out / "cells.csv", "w", newline="", encoding="utf-8") as fh:
@@ -175,9 +181,10 @@ def main(argv) -> int:
     st = [r for r in complete if r["scenario"] == STALLED_SC and r["protocol"] != "B2_BLACKOUT"]
     st_ok = [r for r in st if r["P1"] and r["P2"] and not (r["contacts"] or 0) and not unsafe(r) and not (r["E5"] or 0)]
     st_inv = [r for r in rows if r["scenario"] == STALLED_SC and r["class"] == "INVALID"]
-    L += ["", f"## Item 5: {STALLED_SC}", "",
+    L += ["", f"## Item 5: {STALLED_SC} (v5: safety only over the whole horizon)", "",
           f"* non-BLACKOUT runs {len(st)}; accepted (P1, P2, no contact, E2.to_free = E3 = E4 = E5 = 0): "
-          f"**{len(st_ok)}**; INVALID (trigger never met or infrastructure): {len(st_inv)}", ""]
+          f"**{len(st_ok)}**; class PASS {sum(r['class'] == 'PASS' for r in st)}; INVALID (trigger never met or "
+          f"infrastructure): {len(st_inv)}.  Not included in the PASS rates or the completion curves.", ""]
     # ---- item 6: McNemar, two hypotheses, Holm
     def by_key(proto, prof):
         return {(r["scenario"], r["seed"]): r["class"] == "PASS" for r in complete

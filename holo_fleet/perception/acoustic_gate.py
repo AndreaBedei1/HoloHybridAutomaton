@@ -82,6 +82,7 @@ class AcousticExit:
         self.v_bound = speed_bound(cfg)
         self.sighting: Optional[Dict] = None       # last corridor sighting: t, FRONT sonar (gate frame), ranges
         self.veto: set = set()                     # drones whose heard-inside veto is on (hysteresis)
+        self.last_phantom: Dict = {}               # the excluding fixes of the latest phantom echo (audit log)
         self.heard_by: set = set()                 # ... at the latest heard_inside evaluation
         self.last: Dict = {}                       # diagnostics of the latest evaluation
 
@@ -94,6 +95,32 @@ class AcousticExit:
         m = gate_points(g, (p + R @ MOUNTS["FRONT"])[None, :])[0]
         a = g.vec_to_gate_frame(R @ AXES["FRONT"])
         self.sighting = {"t": t, "m": m, "a": a / np.linalg.norm(a), "ranges": [float(r) for r in ranges]}
+
+    def no_fleet_drone(self, t: float, g, p: np.ndarray, yaw: float, ranges: List[float]) -> bool:
+        """The corridor echo of this capture cannot be a fleet drone: every other drone of the plan is EXCLUDED at t
+        (as A1 at t_lc: an accepted fix within tie_window_s whose region, grown by its motion, can neither be a hull in
+        the CR nor the hull of one of these echoes, and no contradictory rejected fix that could).  A4 applied at the
+        sighting instant: P2 concerns the fleet's drones, and the echo stays an obstacle for the separation layer.
+        Without a fix of every other drone (a silent channel) nothing is excluded: the sonar latch rules apply."""
+        if not self.others:
+            return False
+        a = self.cfg.acoustic
+        saved = self.sighting
+        self.note_corridor(t, g, p, yaw, ranges)
+        try:
+            self.last_phantom = {}
+            for j in self.others:
+                win = self.tracker.all_fixes(j, t - a.tie_window_s, t)
+                acc = [f for f in win if f.accepted]
+                # every accepted fix of the window must exclude j (one accepted outlier never suffices), the latest no
+                # older than fresh_s, and no rejected fix of the window may place j in the CR or at the echo
+                if (not acc or t - acc[-1].t > a.fresh_s or any(self._could_be_occupant(g, f, t) for f in acc)
+                        or any(self._could_be_occupant(g, f, t) for f in win if not f.accepted)):
+                    return False
+                self.last_phantom[j] = [round(f.t, 2) for f in acc]
+            return True
+        finally:
+            self.sighting = saved
 
     # ------------------------------------------------------------------ geometry
     def _cr_possible(self, q: np.ndarray, rho: float) -> bool:
@@ -227,6 +254,9 @@ class AcousticExit:
             last = self.tracker.last_accepted.get(j)
             if last is None or last.t > t:
                 continue
+            gone = max(self.cfg.gate.t_occ_max + self.cfg.gate.t_clear, self.cfg.acoustic.silent_gone_s)
+            if t - last.t > gone and not self.tracker.all_fixes(j, last.t + 1e-9, t):
+                continue                   # silent that long: risen out of the CR (deployment assumption, config)
             # cleared only by exit_confirm consecutive accepted fixes of one track, each clear (as A2): one cleared
             # fix followed by silence does not release a possible occupant
             tail = [f for f in self.tracker.all_fixes(j, -1e9, t) if f.accepted][-n:] or [last]

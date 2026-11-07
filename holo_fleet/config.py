@@ -205,6 +205,11 @@ class FormationRule:
     t_reinclude: float = 1.0          # a vacant slot is re-included after its drone is seen there this long [s]
     rejoin_lane_tol_m: float = 1.0    # a recovering drone farther than this from its own lane rejoins from behind
     rejoin_back_m: float = 2.0        # ... through a point on its lane this far behind the rear-most slot [m]
+    # a slot with another slot behind it on its lane (lane and level nearer than pass_dz_m: square front drones,
+    # the tee centre drone) is reached from behind on a level pass_dz_m below (above when the depth band has no
+    # room), the drone rising only past that slot: the vertical give-way of the traffic rule, at the queue spacing
+    # (> d_warning_exit + estimate margin), so the drone of the rear slot never stands in the way
+    pass_dz_m: float = 3.5
     # reduced progress while an expected neighbour is missing (control/formation_time.py): the formation
     # reference of a drone that misses a neighbour advances at v_wait instead of the planned speed, reached and
     # left with a ramp of a_wait.  v_wait = 0.20: the catch-up of a rejoining drone grows from 0.20 to 0.30 m/s
@@ -342,12 +347,23 @@ class AcousticConfig:
     tie_window_s: float = 3.0            # fixes this close to the last corridor sighting account for a drone
     fresh_s: float = 2.5                 # a fix this recent counts for the neighbours (formation)
     depth_tol_m: float = 1.5             # a fix this far outside the operating depth band is a reflection
+    # deployment assumption (the owner's decision, reviewed 2026-11-06): a drone that fails completely (no power, no
+    # beacon) is net positively buoyant and rises; a SILENT drone last known in the CR is gone after
+    # max(t_occ_max + t_clear, T_rise), T_rise = 2.5 m (centre from the CR floor out of its top, fix slack included)
+    # / 0.05 m/s (a conservative passive ascent: about 3x below the ~0.15 m/s estimated for +0.2 kgf).  A drone that
+    # still pings is never released this way.  Not reproduced by the simulator (near-neutral vehicle).
+    silent_gone_s: float = 50.0
     # onboard bound of the own dead-reckoning error (perception/nav.py, NavBound), sent in the payload (H6).  Every
     # term is the declared envelope of a sensor, never the profile of a run:
     nav_b0_m: float = 0.30               # [REQ] launch survey of the shared mission frame (horizontal)
     dvl_scale_err: float = 0.01          # [LIT] DVL velocity scale error (1 %: low-cost DVL class; Nortek <= 0.1 %)
     dvl_sigma_body_mps: float = 0.0285   # [PROF] white DVL body-velocity noise, MEDIUM: 0.015 m/s per beam x 1.9
     nav_depth_err_m: float = 0.45        # [PROF] depth sensor, 3 x the MEDIUM 0.15 m noise
+    # DVL outage: model-aided dead reckoning (perception/nav.py).  The low level tracks the requested velocity as a
+    # first-order lag; calibrated on 64 MEDIUM-ONE runs of the v5 campaign (analysis/scripts/cmd_velocity_model.py):
+    dr_model_tau_s: float = 0.5          # [CAL] time constant of the commanded-velocity model (smallest p99 error)
+    # the error bound of that model per outage length is the calibration table results/calibration/
+    # dr_model_calibration.json (max integrated position error), read by perception/nav.NavBound
 
 
 @dataclass(frozen=True)

@@ -31,7 +31,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 2.016,
+      "seconds": 2.064,
       "counterexample": null,
       "note": ""
     },
@@ -42,7 +42,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 0.008,
+      "seconds": 0.007,
       "counterexample": null,
       "note": ""
     },
@@ -64,7 +64,7 @@
       "expect": "sat",
       "verdict": "sat",
       "passed": true,
-      "seconds": 0.032,
+      "seconds": 0.034,
       "counterexample": {
         "c_0": 0.04752563476562498,
         "c_1": -0.3413397216796874,
@@ -198,7 +198,7 @@
       "expect": "sat",
       "verdict": "sat",
       "passed": true,
-      "seconds": 0.17,
+      "seconds": 0.167,
       "counterexample": {
         "c_0": 1.2,
         "c_1": 1.15,
@@ -332,7 +332,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 3.065,
+      "seconds": 3.08,
       "counterexample": null,
       "note": ""
     },
@@ -398,7 +398,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 50.128,
+      "seconds": 50.238,
       "counterexample": null,
       "note": "nonlinear real arithmetic: about 50 s alone, longer under load"
     },

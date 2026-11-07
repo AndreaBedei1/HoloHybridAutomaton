@@ -54,6 +54,13 @@ Variant B2 (range-bearing beacon, perception/acoustic.py).  Identified fixes ent
   directly: it replaces the range-bearing point estimate for the lag and the "ahead" veto, with the band e_ok (the
   neighbour's own in-formation tolerance) plus its largest speed deviation from the clock over the payload's age.
   A_CONFIRM payloads of one track farther than e_lost + A_DISPLACED_MARGIN + band from the slot are rule A-D;
+* delayed at the gate (vacancy): a missing neighbour whose fresh consistent payload places it, ball included, in the
+  approach zone of a gate of the plan (its ball intersects the zone) is delayed by the mutual exclusion, not lost:
+  its vacancy timer does not run,
+  for at most the protocol's slowest serial passage of the whole fleet (n x (L / v_pass + t_occ_max + t_clear), the
+  gate term of the a-priori deadline); beyond that the ordinary timer resumes, so a drone that fails at the gate
+  is still declared vacant.  (A neighbour waiting its turn at a slow MEDIUM gate was declared vacant by a drone
+  that had passed: a false vacancy, development and v4 campaign runs.)
 * own navigation bound (perception/nav.py, NavBound): propagated every step, grown by every map-aided correction,
   and sent in the B2 beacon payload (``payload``, H6).
 Without receptions (B0, a silent channel) every one of these is inactive and the perception is the sonar one.
@@ -175,7 +182,13 @@ class Perception:
         self.acoustic_corr: List[int] = []             # neighbours whose fix fed the relative residual
         self.acoustic_lag: Dict[int, float] = {}       # B2: slot -> lag behind its slot beyond the noise band [m]
         self.acoustic_ahead: List[int] = []            # B2: neighbours heard well ahead on their lane (veto, bounded)
+        self.payload_present: List[int] = []           # H6: A_CONFIRM payloads of one track near the slot (rejoined)
+        self.present_since: Dict[int, float] = {}      # slot -> start of the current payload_present run
         self.ahead_since: Dict[int, float] = {}
+        self.gate_delay: Dict[int, float] = {}         # B2: slot -> time its vacancy timer was held (delayed at gate)
+        G = cfg.gate
+        n = len(plan.slots)
+        self.gate_delay_max = n * ((G.queue_lateral_max + G.exit_s - plan.queue_s) / G.v_pass + G.t_occ_max + G.t_clear)
 
     # ------------------------------------------------------------------ formation reference
     def slot_reference(self, t_form: float, sigma: float = 0.0):
@@ -197,7 +210,9 @@ class Perception:
         """Missing state (hysteresis), missing timers and the vacancy latch (see the module docstring)."""
         fr = self.cfg.form
         clock = self.plan.clock
-        moving = clock is None or clock.moving(t if t_form is None else t_form)
+        tf = t if t_form is None else t_form
+        ended = clock is not None and clock.s(tf) >= min(self.plan.s_end, clock.s_end) - 1e-6
+        moving = clock is None or clock.moving(tf) or ended      # after the plan end the formation is static
         for k in self.acoustic_displaced:                  # rule A-D: positively away from its slot
             if k not in form.missing:
                 form.missing.append(k)
@@ -222,16 +237,31 @@ class Perception:
             if k in form.missing:
                 if not (k in self.acoustic_ahead and not self.missing_state.get(k)):
                     self.missing_state[k] = True           # not seen for NEIGHBOUR_MEMORY_S (heard ahead: no NEW episode)
-            elif self.missing_state.get(k) and confirmed:
+            elif self.missing_state.get(k) and (confirmed or k in self.payload_present):
                 self.missing_state[k] = False              # back, confirmed
             if not self.missing_state.get(k):
                 self.missing_t[k] = 0.0
+            if k in self.payload_present:
+                self.present_since.setdefault(k, t)
+            else:
+                self.present_since.pop(k, None)
+            # re-inclusion evidence counts only after the vacancy was declared, for at least two ping periods
+            hold = max(fr.t_reinclude, 2.0 * self.cfg.beacon.period_s)
+            back = (k in self.present_since and k in self.vacant and self.present_since[k] >= self.vacant[k]
+                    and t - self.present_since[k] >= hold - 1e-9)
             if k in self.vacant:
-                if confirmed and t - self.confirmed_since[k] >= fr.t_reinclude - 1e-9:
+                # re-included after t_reinclude of a sonar confirmation, or of identified fixes within e_lost of the
+                # slot together with the drone's own reported position there (payload_present; never an
+                # unidentified echo).  A healthy drone delayed beyond its vacancy timer rejoins instead of staying
+                # excluded for good
+                if back or (confirmed and t - self.confirmed_since[k] >= fr.t_reinclude - 1e-9):
                     del self.vacant[k]
                     self.missing_state[k], self.missing_t[k] = False, 0.0
                     self.events.append({"t": t, "type": "SLOT_REOCCUPIED", "slot": k})
             elif self.missing_state.get(k) and k in form.required and in_formation and moving:
+                if self._delayed_at_gate(k, t) and self.gate_delay.get(k, 0.0) < self.gate_delay_max:
+                    self.gate_delay[k] = self.gate_delay.get(k, 0.0) + dt     # waiting its turn: not lost
+                    continue
                 self.missing_t[k] = self.missing_t.get(k, 0.0) + dt
                 if self.missing_t[k] >= fr.t_rejoin - 1e-9:
                     self.vacant[k] = t
@@ -241,6 +271,22 @@ class Perception:
         form.neighbors_ok = not [k for k in form.missing if k not in self.vacant]
 
     # ------------------------------------------------------------------ B2: identified neighbours
+    def _delayed_at_gate(self, k: int, t: float) -> bool:
+        """Neighbour k's latest fresh consistent payload places it possibly (its ball intersects) in the approach zone of a
+        gate.  Only a vacancy timer depends on it, and only for the bounded gate_delay_max."""
+        if not self.acoustic.enabled or not self.plan.gates:
+            return False
+        f = self.acoustic.latest(k, t, self.cfg.acoustic.fresh_s)
+        if f is None or not f.rep_ok:
+            return False
+        G, rad = self.cfg.gate, f.rep_radius(t, self.acoustic.v_bound)
+        half_w = max(G.corridor_half_width, G.queue_lateral_max + 1.0)
+        for g in self.plan.gates:
+            s, l, _dz = (float(v) for v in g.to_gate_frame(f.rep.p))
+            if (self.plan.queue_s - G.approach_len - rad <= s <= G.exit_s + rad and abs(l) <= half_w + rad):
+                return True
+        return False
+
     def _payload_balls(self, t: float):
         """Fresh consistent payload balls of EVERY other drone of the plan, or None if one is not accounted for."""
         if not self.acoustic.enabled or not self.acoustic.slot_of:
@@ -278,7 +324,7 @@ class Perception:
                             p_own: Optional[np.ndarray] = None) -> Optional[Dict[int, np.ndarray]]:
         """Rules A-P and A-D (module docstring); returns the fresh relative positions used for the association."""
         self.acoustic_present, self.acoustic_displaced, self.acoustic_fresh = [], [], []
-        self.acoustic_lag, self.acoustic_ahead = {}, []
+        self.acoustic_lag, self.acoustic_ahead, self.payload_present = {}, [], []
         if not self.acoustic.enabled:
             return None
         a, fr = self.cfg.acoustic, self.cfg.form
@@ -310,6 +356,12 @@ class Perception:
             # ping period), on its lane and ahead by more than e_lost plus the band
             ahead = (float(np.linalg.norm(off - along_now * t_hat)) <= fr.e_lost and along_now > fr.e_lost + band)
             reps = [] if exp_world is None else [self._rep_offset(g, t, exp_world, t_hat) for g in acc]
+            if (one_track and reps and all(r is not None for r in reps) and k in self.acoustic_present
+                    and all(float(np.linalg.norm((g.rel - exp))) <= fr.e_lost for g in acc)
+                    and all(float(np.linalg.norm(r[0])) <= fr.e_ok + r[1] for r in reps)):
+                # back near its slot: by its own estimates AND by an identified fix of it within e_lost of where it
+                # should be (a physical, identified sighting: an unidentified echo never brings a neighbour back)
+                self.payload_present.append(k)
             if one_track and reps and all(r is not None for r in reps):
                 # lag from the payloads: the median along-track offset beyond its band
                 along = float(np.median([float(r[0] @ t_hat) for r in reps]))
@@ -366,13 +418,14 @@ class Perception:
     # ------------------------------------------------------------------ main update
     def update(self, frame: SensorFrame, dt: float, sigma: float = 0.0, env_ok: bool = True,
                offset: Optional[np.ndarray] = None, in_formation: bool = True,
-               t_form: Optional[float] = None) -> LocalObservation:
+               t_form: Optional[float] = None, v_req: Optional[np.ndarray] = None) -> LocalObservation:
         t = frame.t
         t_form = t if t_form is None else t_form
         d = frame.data
         env = self.cfg.env
         nav = self.nav.update(t, dt, d.get("Compass"), d.get("DVLSensor"), d.get("DepthSensor"), d.get("IMUSensor"),
-                              stamps=frame.stamp)
+                              stamps=frame.stamp, v_req=v_req, model_tau=self.cfg.acoustic.dr_model_tau_s,
+                              stale_s=NavBound.DVL_STALE_S)
         self.att.update(d.get("IMUSensor"))
         roll, pitch = (self.att.roll, self.att.pitch) if self.use_attitude else (0.0, 0.0)
         R_wb = rot_world_body(roll, pitch, nav.yaw)
@@ -383,7 +436,7 @@ class Perception:
             key = sonar_sensor_name(s)
             profiles[s] = d.get(key)
             ages[s] = frame.age(key) if key in d else 1e9
-        self.nav_bound.update(t, dt, nav)
+        self.nav_bound.update(t, dt, nav, model=v_req is not None)
         corr = self.aiding.update(nav.p, R_wb, profiles, ages, env.tau_max, t=t, others=self._payload_balls(t),
                                   b_own=self.nav_bound.value)
         if corr is not None:                      # dead-reckoning drift bounded by the mapped gate (structure_aiding)

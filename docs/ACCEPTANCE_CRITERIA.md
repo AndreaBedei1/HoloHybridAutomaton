@@ -1,4 +1,112 @@
-# Acceptance criteria v4 of the B2-only validation campaign (pre-registered before any campaign run)
+# v10 (2026-11-06): numerical fix, same plan as v9, fresh seeds 800-805
+
+The v9 campaign (tag `b2-freeze-v9`, seeds 700-705) was stopped at CLEAN 47 PASS + 1 SUT_ERROR (formation_six s701):
+a division by zero in the sonar sector frame (Rodrigues rotation, boresight antiparallel to +x within ~1e-8 rad;
+latent since the six-sonar model, first occurrence in any campaign; results/robustness/raw_b2final_v9/STOPPED.md).
+Fixed without changing the formula elsewhere, with a regression test.  No behaviour change; cells, scenarios and
+acceptance as in v9 (216 runs).
+
+# v9 (2026-11-06): rejoin of a slot with another slot behind it on its lane; 72 runs per cell
+
+The v8 campaign (tag `b2-freeze-v8`, seeds 500-505) was stopped at CLEAN 69/69 PASS and LOW-ALL 36 PASS +
+1 INCOMPLETE (p1_vertical_escape s502; P1 held, min 2.47 m; results/robustness/raw_b2final_v8/STOPPED.md).  The tee
+centre drone, pushed behind by the escape, rejoined "from behind along its own lane" while the rear drone's slot is on
+that lane: 250 s of warning/recovery cycles behind it.  The same geometry exists for the square front slots; the
+lost-drone scenarios had always failed the rear drone, so this path was never exercised.  Behaviour change, reviewed
+independently (two rounds): such a slot is reached on a level pass_dz_m = 3.5 m below (above when the depth band has no
+room), the drone descending first without approaching the rear slot closer than 3.5 m, rising only past it (latched,
+with hysteresis; the vertical give-way of the traffic rule at the queue spacing).  Disclosed: it relies on the modelled
+up/down obstacle sonars (real BlueROV2s rarely carry them) and on depth room (the pass level -8.5 m is the band edge
+z_min + 0.5; at a shallow site the seabed would limit it).  New scenario lost_drone_rejoin_front (front-left drone
+fails and rejoins past the rear-left one).  Campaign infrastructure: an orchestrator no longer re-runs a run another
+one completed after it listed its runs (v8: 34 complete duplicates, all PASS, archived).  Cells and acceptance as in
+v7/v8; 72 runs per cell (12 non-gate scenarios x seeds 700-702, 6 gate scenarios x seeds 700-705), 216 runs; seeds
+600-602 were the pre-freeze probes.
+
+# v8 (2026-11-06): a completely failed drone rises (deployment assumption)
+
+By the owner's decision, reviewed independently: a drone that fails completely (no power, no beacon) is net
+positively buoyant and rises out of the CR; a SILENT drone last known in the CR is considered gone after
+max(t_occ_max + t_clear, 50 s) (2.5 m at a conservative 0.05 m/s; BlueROV2 datasheet +0.2 kg ballasted, no published
+ascent rate; AUVs and gliders often surface by drop weights instead, so this is a stated deployment assumption, not a
+property of every vehicle, and the simulator does not reproduce it).  A drone that still pings is never released this
+way (gate_stalled_occupant stays a test of the veto).  Same three cells as v7, fresh seeds 500-505.
+
+# v7 (2026-11-06): three conditions, by the user's decision after the v6 campaign
+
+* **Cells:** B2_CLEAN / CLEAN (ideal), B2_LOW / LOW-ALL (nominal degradation), B2_MEDIUM / MEDIUM-ALL (the upper
+  level of the declared envelope): the documented LOW and MEDIUM levels of sensors and acoustic channel, every drone degraded.  Nothing
+  beyond MEDIUM.  69 runs per cell (11 non-gate scenarios x seeds 400-402, 6 gate scenarios x seeds 400-405), 207 runs.
+* **Removed:** the total acoustic blackout.  B2 assumes a working one-way beacon; its total loss is outside the
+  protocol's operating assumptions (as removing the sensor that the protocol is built on) and is reported as a
+  stated limit, with the v4-v6 BLACKOUT runs as historical evidence (safety held in all of them).
+* **Acceptance:** safety (P1, P2, no unsafe action) in every run of every cell; every run PASS in CLEAN and in the
+  nominal cell (gate_stalled_occupant judged on safety); the MEDIUM cell is reported as the upper degradation with
+  its failure mechanisms (Wilson intervals), and the work is declared complete if CLEAN and nominal are fully PASS
+  and safety holds everywhere.  Formation tolerance 1.0 m unchanged.
+* **Behaviour change in v7:** an occupant last known possibly inside also vetoes the sonar exit witness and the
+  EXITING -> FREE release (v6: a clutter echo released the latch over a stalled, acoustically shadowed occupant).
+* Independent literature review (2026-11-06): LOW is defensible as nominal for the ASSUMED hardware (DVL, IMU,
+  compass, depth anchored on datasheets; dropouts, outages, sonar wrapper and most channel values are stated stress
+  assumptions; a one-way OWTT receiver is research hardware); MEDIUM is the upper level of the declared envelope (it
+  exceeds the proved sonar envelope in about 1.2 % of captures, and stays below the only one-way field figures).
+* Disclosed: the reduction to three cells was decided after the v4-v6 results; MEDIUM-ONE, MEDIUM-SUBSET and the
+  channel-only cells are dropped (their v4-v6 outcomes are reported); heterogeneous (mixed) fleets and channel-only
+  degradation are therefore untested in v7; the silent-channel fall-back evidence predates v7.
+
+# v6 amendment (2026-11-06): behaviour fixes after the v5 campaign, same criteria
+
+The v5 campaign (tag `b2-freeze-v5`, seeds 200-205) was stopped by the user at 201 of 552 runs: CLEAN 69/69 and
+LOW-ALL 69/69 PASS, MEDIUM-ONE with 7 INCOMPLETE (no safety event).  Their analysis showed two design defects and one
+over-conservative bound; fixed, independently reviewed, and verified on those 7 runs (7/7 PASS):
+* phantom corridor echoes (MEDIUM sonar noise) that no fleet drone can have produced no longer set the occupancy
+  latch: every accepted fix of every other drone within the tie window must exclude it, the latest fresh (A4 at the
+  sighting; formal B2-PE, randomized: an occupant truly in the CR is never excluded);
+* a healthy drone wrongly declared vacant is re-included on identified fixes and its own payload near its slot;
+* realistic navigation bound: model-aided dead reckoning during DVL outages (calibrated commanded-velocity model,
+  low level in feedforward + frozen integral), error per outage = the measured maximum for its length
+  (results/calibration/dr_model_calibration.json), outages within 10 s summed linearly, clusters root-sum-square,
+  worst case beyond the table or when the model is not used.  Coverage is logged in every run.
+Criteria v5 unchanged.  Campaign: same 8 cells and sizes, seeds 300-302 / 300-305, hardest cells first.
+
+# Acceptance criteria v5 of the B2-only validation campaign
+
+Status: written 2026-11-05 after the v4 campaign (tag `b2-freeze-v4`, stopped by the user at 404 of 552 runs), by the
+user's explicit decision.  v5 changes the LIVENESS criterion and the judgement of an infeasible mission; the safety
+items, the property definitions and the cell matrix are those of v4 below.  Both the v4 and the v5 classification of
+the v4 runs are reported, so that the change is visible.
+
+* **Liveness is eventual.** "Prima o poi ci riuscirà" (the user): no time bound on a gate passage or a wait enters
+  the class; the gate bounded-response checks of v4 are still computed and reported (`gate_bounded_response`).  The
+  run horizon is HORIZON_FACTOR = 3 x the a-priori deadline (the exploratory horizon of plan H.2); the a-priori
+  deadline remains the reported "on time" reference.  A run that reaches the horizon without SUCCESS is INCOMPLETE:
+  not observed to complete, which is not a proof of a deadlock.
+* **Feasible requirements only.** A scenario whose mission is physically infeasible by design is judged on safety
+  over the whole horizon (`Scenario.safety_only`): gate_stalled_occupant (a drone stalled in the CR blocks the gate;
+  asking the others to pass it would be meaningless).  It is PASS when P1 and P2 hold, there is no contact and no
+  unsafe action (E2.to_free = E3 = E4 = 0) until the horizon.  The BLACKOUT exception of v4.3 item 1 stays.
+* **Classes v5:** INVALID / SUT_ERROR > REPLAY_MISMATCH > SAFETY_FAILURE > UNSAFE_ACTION > SPEC_VIOLATION > PASS >
+  CENSORED > SAFE_DEGRADED > INCOMPLETE (no STALLED).
+* **Acceptance items (v4.3 as adapted by v5, fixed before the v5 campaign):** item 1 safety on ground truth for
+  every complete run (BLACKOUT x gate_stalled_occupant reported separately); item 2 zero NAV_BOUND_PREMISE_VIOLATED;
+  item 3 every B2_CLEAN / CLEAN run PASS (gate_stalled_occupant included, judged on safety): an INCOMPLETE there at
+  the 3x horizon is a design failure; item 4 per-cell PASS + SAFE_DEGRADED rates (Wilson 95 %), on-time counts, PASS
+  runs late at the gate (gate_bounded_response false) and PASS runs with a transient false vacancy, Kaplan-Meier
+  censored at the horizon, gate_stalled_occupant excluded; item 5 replaced by the safety-only judgement; item 6
+  unchanged.  Aggregator: `scripts/analyze_b2final.py` (frozen with the code).
+* **Fresh seeds.** The v5 campaign uses seeds 200-202 (non-gate) and 200-205 (gate): 100-105 were used by the v4
+  campaign, whose diagnostics motivated the v5 behaviour changes.  Same 8 cells, 552 runs.
+* **Formal.** F6g (formal/check_formation.py): with the gate-delay hold a never-returning neighbour is vacant within
+  t_rejoin + gate_delay_max + dt of running time (ranking max(H - h, 0) + max(t_rejoin - tau, 0); mutation F6gm).
+* **Behaviour change made with v5 (not a criterion):** a missing neighbour reported in a gate's approach zone is
+  delayed by the mutual exclusion, not lost; its vacancy timer is held for at most the protocol's slowest serial
+  passage (v4 campaign: false vacancies of neighbours waiting their turn at a slow MEDIUM gate); the vacancy timer also
+  runs after the plan end; a missing neighbour comes back on A_CONFIRM payloads near its slot together with an
+  identified fix within e_lost; the DVL outage term counts the excess over the nominal hold.
+
+---
+
+# Acceptance criteria v4 of the B2-only validation campaign (pre-registered before the v4 campaign)
 
 Status: written 2026-11-04 before the B2-only campaign; frozen together with the code commit recorded in every run's
 provenance.  The sections after this one are the HISTORICAL v2 criteria of the 624-run B0/B2 campaign at `ad4fb5e`,

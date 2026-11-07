@@ -272,6 +272,48 @@ def payload_soundness(cfg: FleetConfig, g, n: int = 20000, seed: int = 3, radius
     return {"samples": n, "cleared_inside": bad, "beyond_while_inside": beyond_bad}
 
 
+def phantom_soundness(cfg: FleetConfig, g, n: int = 3000, seed: int = 5) -> dict:
+    """B2-PE: a fleet drone whose centre is truly in the CR is never excluded by the phantom-echo rule
+    (AcousticExit.no_fleet_drone): its accepted fixes are generated inside the declared envelope (white and bias
+    errors at their bounds, the one-sided multipath excess, ages up to tie_window_s) from queue-side observers, with
+    and without a consistent payload whose error lies within the sent bound.  Randomized."""
+    from holo_fleet.perception import payload as pl
+    from holo_fleet.perception.acoustic import AcousticTracker
+
+    rng = np.random.default_rng(seed)
+    a = cfg.acoustic
+    br_k = a.k_sigma
+    bad = 0
+    for i in range(n):
+        tr = AcousticTracker(cfg)
+        tr.set_identities({1: 1})
+        ae = AcousticExit(cfg, tr, [1])
+        q = rng.uniform(-ae.half, ae.half)
+        true = g.center + q[0] * g.axis + q[1] * np.array([-g.axis[1], g.axis[0], 0.0]) + np.array([0, 0, q[2]])
+        obs_s = rng.uniform(-9.0, -3.0)
+        p_obs = g.center + obs_s * g.axis + rng.uniform(-3.5, 3.5) * np.array([-g.axis[1], g.axis[0], 0.0])
+        yaw = math.atan2(g.axis[1], g.axis[0])
+        t_now = 10.0
+        tr.update(t_now - 4.0, (), p_obs, yaw, 0.5)
+        for k, age in enumerate(sorted(rng.uniform(0.0, a.tie_window_s, size=3), reverse=True)):
+            t_arr = t_now - age
+            r, az, el = _meas(p_obs, yaw, true)
+            br, ba, be = box_bounds(r, cfg)
+            r_m = r + rng.uniform(-br, br) + (rng.uniform(0, a.los_excess_max_m) if rng.random() < 0.3 else 0.0)
+            az_m, el_m = az + rng.uniform(-ba, ba), el + rng.uniform(-be, be)
+            pkt = None
+            if rng.random() < 0.5:
+                b = rng.uniform(0.3, 3.0)
+                e = rng.normal(size=3)
+                e = e / max(np.linalg.norm(e), 1e-9) * rng.uniform(0, b)
+                pkt = pl.encode(pl.frame_index(t_arr - r_m / cfg.beacon.sound_speed, cfg.beacon.period_s), true + e, b)
+            tr.update(t_arr + 0.05, [(1, t_arr, r_m, az_m, el_m, pkt)], p_obs, yaw, 0.5)
+        r_e = float(np.linalg.norm(true - p_obs)) - R_OUT
+        if ae.no_fleet_drone(t_now, g, p_obs, yaw, [max(r_e, 0.3)]):
+            bad += 1
+    return {"samples": n, "occupant_excluded": bad}
+
+
 def structural() -> list:
     """Modules that decide separation, collision avoidance or precedence never touch an acoustic fix."""
     pkg = ROOT / "holo_fleet"
@@ -364,6 +406,12 @@ def run(cfg: FleetConfig = B2, verbose: bool = True) -> Report:
     rep.add(CheckResult("B2-Pm mutation: the radius max(h, z) (not a ball over the cylinder) must clear an occupant",
                         "expect counterexample", ENC, "violated", verdict="violated" if okm else "holds", passed=okm,
                         note=f"{pm}"), verbose)
+    pe = phantom_soundness(cfg, g)
+    rep.add(CheckResult("B2-PE phantom-echo soundness: a fleet drone truly in the CR, heard inside the declared envelope "
+                        "(multipath, ages up to the tie window, with or without a payload within its bound), is never "
+                        "excluded by the phantom-echo rule", "randomized: no_fleet_drone -> false", ENC, "holds",
+                        verdict="holds" if pe["occupant_excluded"] == 0 else "violated",
+                        passed=pe["occupant_excluded"] == 0, note=f"{pe}"), verbose)
     bad = structural()
     rep.add(CheckResult("B2-S acoustic fixes never reach separation, collision avoidance, precedence or the sonar witness; "
                         "acoustic exit evaluation requires the FRONT corridor empty (H6: the payload balls reach the "
