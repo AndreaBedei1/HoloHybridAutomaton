@@ -55,8 +55,8 @@ Variant B2 (range-bearing beacon, perception/acoustic.py).  Identified fixes ent
   neighbour's own in-formation tolerance) plus its largest speed deviation from the clock over the payload's age.
   A_CONFIRM payloads of one track farther than e_lost + A_DISPLACED_MARGIN + band from the slot are rule A-D;
 * vacancy by silence (v11): the failure model of the deployment is the total one - a broken drone stops transmitting -
-  so with the beacon active a slot is vacant exactly when its drone has not been heard for ``acoustic.t_silent_s``
-  (config.AcousticConfig), whatever the observer's own mode or position; displacement alone never makes a slot
+  so with the beacon active a slot is vacant exactly when its drone has not been heard for ``form.t_silent_s``
+  (config.FormationRule), whatever the observer's own mode or position; displacement alone never makes a slot
   vacant, and a drone heard again is required again;
 * own navigation bound (perception/nav.py, NavBound): propagated every step, grown by every map-aided correction,
   and sent in the B2 beacon payload (``payload``, H6).
@@ -160,7 +160,8 @@ class Perception:
         self.use_attitude = use_attitude
         bars = [b for g in plan.structures for b in g.bars]
         self.clf = EchoClassifier(gate_bars=bars, cfg=cfg)
-        self.aiding = StructureAiding(self.clf, cfg, gates=plan.structures)     # map-aided position correction near the gate
+        # map-aided position correction near the gate, out to the queue line
+        self.aiding = StructureAiding(self.clf, cfg, gates=plan.structures, acq_min=abs(plan.queue_s) + 0.5)
         self.tracker = SectorTracker(cfg)
         self.echo_hold = EchoHold(cfg.env.tau_max)     # missed detections become stale readings (targets.py)
         self.acoustic = AcousticTracker(cfg)           # B2 range-bearing beacon (inactive in B0)
@@ -249,25 +250,33 @@ class Perception:
                 # slot together with the drone's own reported position there (payload_present; never an
                 # unidentified echo).  A healthy drone delayed beyond its vacancy timer rejoins instead of staying
                 # excluded for good
-                if back or (confirmed and t - self.confirmed_since[k] >= fr.t_reinclude - 1e-9):
+                if ((not self.acoustic.enabled or self.acoustic.deaf(t))
+                        and (back or (confirmed and t - self.confirmed_since[k] >= fr.t_reinclude - 1e-9))):
+                    # (with the beacon working a slot is re-included only when its drone is heard again, below: an echo near
+                    # the slot of a silent drone is not that drone)
                     del self.vacant[k]
                     self.missing_state[k], self.missing_t[k] = False, 0.0
                     self.events.append({"t": t, "type": "SLOT_REOCCUPIED", "slot": k})
-            elif (not self.acoustic.enabled and self.missing_state.get(k) and k in form.required and in_formation
-                  and moving):
-                # without a beacon (B0, a silent channel) silence is unobservable: the displacement timer of the baseline
+            elif ((not self.acoustic.enabled or self.acoustic.deaf(t)) and self.missing_state.get(k) and k in form.required
+                  and in_formation and moving):
+                # without a beacon (B0), or hearing nobody at all (a silent channel), silence is unobservable: the displacement
+                # timer of the baseline
                 self.missing_t[k] = self.missing_t.get(k, 0.0) + dt
                 if self.missing_t[k] >= fr.t_rejoin - 1e-9:
                     self.vacant[k] = t
                     self.events.append({"t": t, "type": "SLOT_DECLARED_VACANT", "slot": k,
                                         "missing_s": round(self.missing_t[k], 1)})
-        if self.acoustic.enabled:
+        if self.acoustic.enabled and not self.acoustic.deaf(t):
             # vacancy by silence: a drone not heard for t_silent is dead (nothing is emitted any more), whatever the
             # observer's own mode or position; displacement alone never makes a slot vacant.  A drone heard again is
             # alive: its slot is required again (it may still be missing, by the sonar rules, until it is back)
-            for k in range(len(self.plan.slots)):
+            me = self.plan.slots[self.plan.slot_index]
+            for k, sl in enumerate(self.plan.slots):
                 if k == self.plan.slot_index:
                     continue
+                if math.dist((sl.along, sl.lateral, sl.dz), (me.along, me.lateral, me.dz)) > fr.neighbour_range_m:
+                    continue                               # only an expected neighbour's slot matters (far pairs are
+                                                           # often silent: a line of six, 17.5 m apart, shadowed)
                 if self.acoustic.silent(k, t):
                     if k not in self.vacant:
                         self.vacant[k] = t
@@ -298,10 +307,18 @@ class Perception:
                 out.append((f.pts, f.slack + self.acoustic.v_bound * max(t - f.t, 0.0)))
                 continue
             st = self.acoustic.status.get(k)
-            if self.acoustic.silent(k, t) or (st is not None and st.phase == GP_PASSED and st.gate_idx == self.gp.idx % 4):
+            if self.acoustic.silent(k, t, a.t_silent_gate_s) or (st is not None and st.phase == GP_PASSED and st.gate_idx == self.gp.idx % 4):
                 continue
             return None
         return out
+
+    def apply_position_correction(self, corr) -> None:
+        """Correct the own position estimate (a map fit, a measured gate crossing); the navigation bound grows by it and the
+        stored acoustic fixes and poses stay in the frame of the estimate."""
+        c = np.asarray(corr, float)
+        self.nav.state.p += np.array([c[0], c[1], 0.0])
+        self.nav_bound.corrected(c)
+        self.acoustic.shift(np.array([c[0], c[1], 0.0]))
 
     def payload(self, t_emit: float):
         """What this drone sends in its B2 beacon payload (H6) at t_emit: its onboard position estimate and the error
@@ -442,8 +459,7 @@ class Perception:
         self.nav_bound.update(t, dt, nav, model=v_req is not None)
         corr = self.aiding.update(nav.p, R_wb, profiles, ages, env.tau_max, t=t, others=self._other_regions(t))
         if corr is not None:                      # dead-reckoning drift bounded by the mapped gate (structure_aiding)
-            self.nav.state.p += corr
-            self.nav_bound.corrected(corr)
+            self.apply_position_correction(corr)
         self.t_nav = t
         self.acoustic.update(t, d.get("AcousticRx"), nav.p, nav.yaw, self.nav_bound.value)   # B2 fixes
         readings = self.clf.classify(profiles, ages, nav.p, R_wb, seabed_z, tau_healthy=env.tau_max)

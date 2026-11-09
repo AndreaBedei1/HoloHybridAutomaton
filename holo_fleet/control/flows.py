@@ -177,6 +177,10 @@ class Flows:
             # off its lane for good (v10: the slot error stayed constant until the deadline), so it backs up, at the
             # recovery speed bound, to the entry point behind the rear-most slot
             v_min = 0.0 if v_clock > 1e-6 else -fr.v_recovery_max
+            for g in self.plan.gates:                  # never backing up toward a gate already passed
+                s_g = g.to_gate_frame(obs.p)[0]
+                if 0.0 < s_g <= self.cfg.gate.exit_s + 1.0:
+                    v_min = 0.0
             v_al = float(np.clip(v_clock + fr.k_slot * float(e @ t_hat), v_min, max(v_clock, 0.0)))
             v = v_al * t_hat + np.array([0.0, 0.0, fr.k_slot * float(e[2])])
         else:                                    # TO_LANE: to the own lane behind the rear-most slot
@@ -405,6 +409,26 @@ class Flows:
 
     def clear_failsafe(self) -> None:
         self.hold_pos = None
+
+    # ------------------------------------------------------------------ keep-out of the critical region (no commit: no entry)
+    def keepout_filter(self, obs: LocalObservation, v: np.ndarray) -> np.ndarray:
+        """Flow barrier of a drone that is not committed to the gate: it is never brought closer to the CR than the keep-out
+        plane (the CR, the hull's circumscribed ball, the declared gate-frame navigation error) by any flow of the
+        automaton (avoidance included).  It is what makes a status GP_NONE mean "behind the keep-out" (perception/payload.py)
+        under the declared navigation error."""
+        go, G = obs.gate, self.cfg.gate
+        if go.gate_id is None or go.passed or go.s <= -(G.cr_half_len + float(R_OUT) + G.nav_err_m) - 1e-6:
+            return v
+        reach = G.cr_half_width + float(R_OUT) + G.nav_err_m
+        if abs(go.l) > reach or abs(go.dz) > G.cr_half_height + float(R_OUT) + G.nav_err_m or go.s > G.cr_half_len:
+            return v
+        g = self.plan.gates[min(obs.gate_index, len(self.plan.gates) - 1)]
+        v = np.asarray(v, dtype=float).copy()
+        a = np.asarray(g.axis, float)
+        va = float(v @ a)
+        if va > 0.0:
+            v -= va * a
+        return v
 
     # ------------------------------------------------------------------ mapped structures (all modes)
     def structure_filter(self, obs: LocalObservation, v: np.ndarray) -> np.ndarray:

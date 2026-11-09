@@ -1,33 +1,44 @@
 """Onboard verification of the drone's own passage through a gate (payload v2, gate phase GP_PASSED).
 
 The gate phase a drone reports must not rest on the long-term dead reckoning: its drift is exactly what breaks the rest
-of the gate logic under MEDIUM sensors.  A passage is VERIFIED when, since the drone was admitted (stage 2, a gate
-localization validated against the map at the hold point, Flows.gate):
+of the gate logic under MEDIUM sensors.  Since the drone was admitted (stage 2), a passage is verified by what its own
+sensors observe of the gate itself:
 
-* its along-axis DVL displacement carries it beyond the exit face (``exit_s``), and its navigation estimate agrees, and
-* its REAR sonar shows an echo of the gate frame at the range that displacement predicts: a physical observation of the
-  frame BEHIND it (in the MEDIUM logs of v10 such an echo is in 97 % of the captures past the exit), counted over
-  ``REAR_N`` captures.
+* the CROSSING signature: while passing the gate plane the LEFT and RIGHT sonars both see the frame posts at a sum of ranges
+  that matches the opening (L + R = inner width - the sonar mounts, within ``CROSS_TOL_M``), for ``CROSS_N`` captures: a
+  direct measurement of being inside the opening, independent of the navigation estimate (in the MEDIUM logs of v10 both
+  sides are seen in 94 % of the captures at |s| <= 0.2 m).  It also gives the lateral position in the gate (R - L) / 2
+  and the vertical one (D - U) / 2, measured, not estimated.  Then the along-axis DVL displacement carries the drone
+  beyond the exit face: verified.
+* otherwise (the signature was missed: a fade): the DVL displacement from the map-validated hold point beyond the exit face, the
+  navigation estimate agreeing, and a REAR sonar echo of the frame at the range the displacement predicts (97 % of the captures
+  in the MEDIUM logs), for ``REAR_N`` captures;
+* failing that too (a sonar fault), the displacement and the estimate alone after ``T_ODO_MAX_S``, so that a sonar fault
+  does not stall the fleet behind a drone that has passed: only the odometry over the last few metres from a map-validated
+  start is then relied on.
 
-If the REAR echo does not come (a sonar fault, a fade), the displacement and the navigation estimate alone verify the
-passage after ``T_ODO_MAX_S``, so that a sonar fault cannot stall the fleet behind a drone that has passed: only the odometry
-over the last few metres, from a map-validated start, is then relied on.  A drone that never reaches this point (it is
-stopped by a bar, avoidance holds it, or it dies) keeps reporting GP_ADMITTED and the gate stays closed behind it.
-
-Each gate is verified at most once; ``verified`` is monotone.
+A drone that never reaches this point (stopped by a bar, or holding, or it dies) keeps reporting GP_ADMITTED and the gate stays
+closed behind it.  ``verified`` is monotone; each gate is verified at most once.
 """
 
 from __future__ import annotations
 
-from typing import Optional, Sequence
+from typing import Dict, Optional, Sequence
 
 import numpy as np
 
+from holo_fleet.perception.sonar_geometry import MOUNTS
+
+CROSS_TOL_M = 0.25                # L + R agrees with the opening within this
+CROSS_N = 3                       # consecutive captures with the signature
+CROSS_MAX_RANGE_M = 1.6           # the posts are seen this close
+CROSS_S_WINDOW_M = 1.2            # only near the gate plane, by the odometry from the hold point
 REAR_RANGE_OFFSET_M = 0.50        # the REAR echo of the frame is this much shorter than the own distance to the gate plane
-                                  # (the sonar mount and the bar half-depth, measured in the MEDIUM logs: 0.4 - 0.6 m)
-REAR_TOL_M = 0.80                 # the echo agrees within this (DVL scale and heading error over the last metres, sonar jitter)
-REAR_N = 3                        # captures with a matching REAR echo
-T_ODO_MAX_S = 10.0                # without a REAR echo, the odometry and the estimate suffice after this long
+REAR_TOL_M = 0.50                 # the echo agrees within this (DVL scale and heading error over the last metres, sonar jitter)
+REAR_N = 3                        # consecutive captures with a matching REAR echo
+T_ODO_MAX_S = 10.0                # without any sonar evidence, the odometry and the estimate suffice after this long
+CROSSING_RESTART_M = 0.6          # horizontal error bound at a detected crossing: along the axis, the signature lasts
+                                  # |s| <~ 0.4 m; laterally the measured (R - L) / 2 has sd 0.03 m in the MEDIUM logs
 
 
 class PassageVerifier:
@@ -37,11 +48,13 @@ class PassageVerifier:
         self.gate = None                   # its GateSpec
         self.admitted = False
         self.verified = False
-        self.by = ""                       # "rear" | "odometry"
+        self.by = ""                       # "crossing" | "rear" | "odometry"
         self.s0 = 0.0
         self.d = 0.0
         self.t_odo: Optional[float] = None
-        self.hits = 0
+        self.rear_hits = 0
+        self.cross_hits = 0
+        self.crossing: Optional[tuple] = None   # (l, dz or None) measured inside the opening; None until detected
 
     @property
     def in_progress(self) -> bool:
@@ -59,21 +72,45 @@ class PassageVerifier:
         self.s0 = float(gate.to_gate_frame(np.asarray(p_est, float))[0])
         self.d = 0.0
 
-    def update(self, t: float, dt: float, p_est, v_world, rear_ranges: Sequence[float]) -> bool:
+    def _crossing_now(self, sectors: Dict[str, Sequence[float]]) -> Optional[tuple]:
+        G = self.gate
+        near = {s: [float(r) for r in sectors.get(s, ()) if float(r) <= CROSS_MAX_RANGE_M] for s in ("LEFT", "RIGHT", "UP", "DOWN")}
+        if not near["LEFT"] or not near["RIGHT"]:
+            return None
+        L, R = min(near["LEFT"]), min(near["RIGHT"])
+        width = float(G.inner_width) - abs(float(MOUNTS["LEFT"][1])) - abs(float(MOUNTS["RIGHT"][1]))
+        if abs(L + R - width) > CROSS_TOL_M:
+            return None
+        dz = (min(near["DOWN"]) - min(near["UP"])) / 2.0 if near["UP"] and near["DOWN"] else None
+        return (R - L) / 2.0, dz
+
+    def update(self, t: float, dt: float, p_est, v_world, sectors: Dict[str, Sequence[float]], dvl_fresh: bool = True) -> bool:
+        """``sectors``: the echo ranges of this step for the sonars LEFT, RIGHT, UP, DOWN and REAR.  Only DVL measurements
+        integrate the displacement (``dvl_fresh``: during a DVL outage it is not advanced, never using the model velocity)."""
         if not self.in_progress or self.gate is None:
             return self.verified
         G = self.cfg.gate
         axis = np.asarray(self.gate.axis, float)
-        self.d += float(np.asarray(v_world, float)[:2] @ axis[:2]) * dt
+        if dvl_fresh:
+            self.d += float(np.asarray(v_world, float)[:2] @ axis[:2]) * dt
         s_odo = self.s0 + self.d
         s_nav = float(self.gate.to_gate_frame(np.asarray(p_est, float))[0])
+        if self.crossing is None and abs(s_odo) <= CROSS_S_WINDOW_M:
+            c = self._crossing_now(sectors)
+            self.cross_hits = self.cross_hits + 1 if c is not None else 0
+            if self.cross_hits >= CROSS_N:
+                self.crossing = c                  # measured position in the opening; from now on s_odo restarts at the plane
+                self.s0 = -self.d
+                s_odo = 0.0
+        if self.crossing is not None and s_odo >= G.exit_s:
+            self.verified, self.by = True, "crossing"
+            return True
         if s_odo < G.exit_s or s_nav < G.exit_s:
             return False
         self.t_odo = t if self.t_odo is None else self.t_odo
         expected = s_odo - REAR_RANGE_OFFSET_M
-        if any(abs(float(r) - expected) <= REAR_TOL_M for r in rear_ranges):
-            self.hits += 1
-        if self.hits >= REAR_N:
+        self.rear_hits = self.rear_hits + 1 if any(abs(float(r) - expected) <= REAR_TOL_M for r in sectors.get("REAR", ())) else 0
+        if self.rear_hits >= REAR_N:
             self.verified, self.by = True, "rear"
         elif t - self.t_odo >= T_ODO_MAX_S:
             self.verified, self.by = True, "odometry"

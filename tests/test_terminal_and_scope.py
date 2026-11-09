@@ -53,7 +53,7 @@ def test_deadline_terms_come_from_the_plan_the_protocol_and_the_profile():
     assert terms["formation"] == pytest.approx(F.t_rejoin + criteria.t_hold_s(DEFAULT), abs=0.1)
     assert terms["failsafe"] > 0.0 and criteria.deadline_terms(sc, DEFAULT, "CLEAN")["failsafe"] == 0.0
     lost = criteria.deadline_terms(SCENARIOS["lost_drone_timeout"](DEFAULT), DEFAULT, "CLEAN")
-    assert lost["faults"] == pytest.approx(F.t_rejoin * (1.0 - F.v_wait / F.v_nominal), abs=0.1)
+    assert lost["faults"] == pytest.approx(max(F.t_rejoin, F.t_silent_s) * (1.0 - F.v_wait / F.v_nominal), abs=0.1)
     p1 = criteria.deadline_terms(SCENARIOS["p1_head_on"](DEFAULT), DEFAULT, "CLEAN")
     assert p1["gate"] == 0.0 and p1["formation"] == 0.0 and p1["avoidance"] > 0.0   # single drones: give-way detour
     assert criteria.profile_family("LOW-ALL") == "LOW" and criteria.profile_family(None) == "CLEAN"

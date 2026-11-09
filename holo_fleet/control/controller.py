@@ -129,7 +129,6 @@ class DroneController:
         self.ha = LocalHybridAutomaton(cfg)
         self.flows = Flows(plan, cfg)
         self.passage = PassageVerifier(cfg)        # what the drone reports about its gate passage (payload v2)
-        self.passage_restarted = False             # the navigation bound restart at this gate is done
         self.ll = LowLevelController(cfg)
         self.envmon = EnvelopeMonitor()
         self.observation_violations = 0            # control steps with an inconsistent abstract observation
@@ -206,6 +205,8 @@ class DroneController:
         else:
             v = v_mis
         v = self.flows.structure_filter(obs, v)
+        if not self.ha.committed:
+            v = self.flows.keepout_filter(obs, v)      # a drone not committed to the gate never moves toward the CR
         from holo_fleet.perception.nav import NavBound
         dvl_fresh = t - self.perception.nav.state.t_dvl <= NavBound.DVL_STALE_S
         cmd = self.ll.command(self.perception.nav.state, v, yaw_d, authority, dt, dvl_fresh=dvl_fresh)
@@ -287,26 +288,38 @@ class DroneController:
         }
         return thruster_command(cmd["surge"], cmd["sway"], cmd["heave"], cmd["yaw"], self.cfg.plant.thruster_limit)
 
+    def _apply_crossing(self, t: float, gate, p_est) -> None:
+        """A detected crossing is a direct measurement of the position in the opening: the estimate is corrected to it (the
+        navigation bound keeps growing, as with every correction; it never decreases)."""
+        l_meas, dz = self.passage.crossing
+        s_est, l_est, _dz_est = (float(v) for v in gate.to_gate_frame(np.asarray(p_est, float)))
+        axis = np.asarray(gate.axis, float)
+        left = np.array([-axis[1], axis[0], 0.0])
+        corr = (0.0 - s_est) * axis + (l_meas - l_est) * left
+        self.perception.apply_position_correction(corr)
+        self.events.append({"t": t, "type": "GATE_CROSSING_MEASURED", "gate": self.passage.idx, "l": round(l_meas, 3),
+                            "dz": None if dz is None else round(dz, 3), "correction": np.round(corr, 3).tolist()})
+
     def _update_gate_report(self, t: float, dt: float, obs: LocalObservation) -> None:
         """Gate phase this drone reports about itself (payload v2): the facts of its own automaton and flow, never a command
         or a request.  It stays on the gate of an unfinished passage until that passage is verified."""
         p, gp = self.passage, self.perception.gp
-        if not p.in_progress and p.idx != gp.idx:
-            p.next_gate(gp.idx)
-            self.passage_restarted = False
+        if p.idx != gp.idx and not p.in_progress and (not p.verified or self.ha.committed):
+            p.next_gate(gp.idx)      # a verified passage keeps being reported until the drone engages the next gate
         gate = self.plan.gates[p.idx] if p.idx < len(self.plan.gates) else None
         if self.flows.cr_cleared and self.ha.committed and gate is not None and not p.admitted:
             p.admit(p.idx, gate, obs.p)
-        rd = obs.readings.get("REAR")
-        rear = [float(e.r0) for e in rd.echoes] if rd is not None else []
+        sectors = {sec: [float(e.r0) for e in obs.readings[sec].echoes] for sec in ("LEFT", "RIGHT", "UP", "DOWN", "REAR")
+                   if sec in obs.readings}
         was = p.verified
-        p.update(t, dt, obs.p, obs.v_world, rear)
+        crossed = p.crossing is not None
+        from holo_fleet.perception.nav import NavBound
+
+        p.update(t, dt, obs.p, obs.v_world, sectors, dvl_fresh=t - self.perception.nav.state.t_dvl <= NavBound.DVL_STALE_S)
+        if p.crossing is not None and not crossed and gate is not None:
+            self._apply_crossing(t, gate, obs.p)
         if p.verified and not was:
             self.events.append({"t": t, "type": "GATE_PASSAGE_VERIFIED", "by": p.by, "gate": p.idx})
-        if p.verified and not self.passage_restarted and gate is not None:
-            self.passage_restarted = True
-            G, H = self.cfg.gate, float(HULL_HALF[1])     # the opening's half-width (the hull inside it): both ends of the error
-            self.perception.nav_bound.restart(2.0 * (G.cr_half_width - H) + 0.3)
         if p.verified:
             idx, phase = p.idx, GP_PASSED
         elif p.in_progress:

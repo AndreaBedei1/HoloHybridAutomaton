@@ -80,6 +80,11 @@ class GatePerception:
             from holo_fleet.perception.acoustic_gate import AcousticExit
 
             self.acoustic_exit = AcousticExit(cfg, acoustic, [k for k in range(len(plan.slots)) if k != plan.slot_index])
+            G = cfg.gate
+            # the shortest time from the queue point to the CR at the speed bound, with the queue tolerance and the declared
+            # gate-frame navigation error: a GP_NONE report fresher than that cannot be followed by an unseen entry
+            t_min = (abs(plan.queue_s) - (G.cr_half_len + R_OUT) - G.queue_tol - G.nav_err_m) / self.acoustic_exit.v_bound
+            self.acoustic_exit.status_fresh_s = max(0.0, min(cfg.acoustic.status_fresh_s, t_min - cfg.acoustic.latency_max_s))
         self.exit_kind = {"SONAR": 0, "ACOUSTIC": 0}           # what moved the latch to EXITING (counts)
         self.idx = 0                                          # index of the current gate in plan.gates
         self.prio_since: Optional[float] = None
@@ -158,7 +163,7 @@ class GatePerception:
         targets = persistent
         ae = self.acoustic_exit
         if ae is not None:
-            ae.gate_idx = self.idx % 4
+            ae.gate_idx, ae.g = self.idx % 4, g
         corridor = [tg for tg in targets if "FRONT" in tg.pattern and r_near <= tg.r_min <= r_far]
         # B2: an echo that no fleet drone can have produced (every other drone positively elsewhere) is no occupant;
         # under MEDIUM sonar noise such phantom echoes refreshed the latch every few seconds and blocked the queue
@@ -166,10 +171,12 @@ class GatePerception:
         # ---------------------------------------------------------------- queue relations (sector patterns)
         rels = []
         for tg in targets:
-            # precedence concerns the drones of the fleet: a target no fleet drone can be makes no relation (a bar echo
-            # that the navigation error left unexplained, the v10 queue deadlock); a phantom corridor echo neither.  With
-            # any drone not located by a fresh fix the sonar rule stands unchanged
-            if ae is not None and ((self.phantom and tg in corridor) or ae.target_not_a_drone(t, p, yaw, tg.pattern, tg.ranges)):
+            # A FRONT-only echo in the corridor band (widened by the declared gate-frame navigation error) is the occupancy
+            # latch's business (occ_busy is a guard of the commit), not a queue precedence: drones abreast at their queue
+            # points see each other only in LEFT / RIGHT (mutex_rule), and a merged target (FRONT plus another sector)
+            # keeps its relation.  With the navigation error at the queue the frame's bar echo is unexplained and fell
+            # in this band for ever (the v10 queue deadlock).
+            if set(tg.pattern) == {"FRONT"} and r_near - G.nav_err_m <= tg.r_min <= r_far:
                 continue
             if "FRONT" in tg.pattern:
                 if tg.r_min > r_far:

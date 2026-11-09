@@ -282,11 +282,32 @@ class AcousticTracker:
             prev.reason = f.reason = "restart"
             self.stats["track_restarts"] += 1
 
+    def shift(self, corr: np.ndarray) -> None:
+        """A correction of the own position estimate moves the frame the stored fixes and poses are expressed in with it (a
+        map fit, a measured gate crossing): they are kept in the frame of the estimate."""
+        done = set()
+        for lst in list(self.fixes.values()) + [list(self.last_accepted.values())]:
+            for f in lst:
+                if id(f) not in done:
+                    done.add(id(f))
+                    f.p = f.p + corr
+                    f.pts = f.pts + corr
+        self.pose.buf = deque((t, p + corr, y, b) for t, p, y, b in self.pose.buf)
+
+    def deaf(self, t: float) -> bool:
+        """Nobody at all has been heard for the silence interval (a deaf receiver, a silent channel): the absence of every
+        other drone is no evidence about any of them."""
+        return bool(self.heard) and all(t - h >= self.cfg.form.t_silent_s for h in self.heard.values())
+
     # ------------------------------------------------------------------ queries
-    def silent(self, slot: int, t: float) -> bool:
-        """Not heard for the declared silence interval: a dead drone (nothing is emitted any more), or lost pings that
-        could not be told from it."""
-        return t - self.heard.get(slot, t) >= self.cfg.acoustic.t_silent_s
+    def silent(self, slot: int, t: float, after: Optional[float] = None) -> bool:
+        """Not heard for the declared silence interval (``after``, default t_silent_s): a dead drone, or lost pings that
+        cannot be told from one.  A receiver that hears nobody at all (a deaf receiver or a silent channel) declares
+        no one silent: the absence of every other drone is no evidence about any of them."""
+        lim = self.cfg.form.t_silent_s if after is None else after
+        if t - self.heard.get(slot, t) < lim:
+            return False
+        return any(t - h < lim for k, h in self.heard.items() if k != slot)     # someone else is heard: the receiver works
 
     def all_fixes(self, slot: int, t0: float = -1e9, t1: float = 1e9) -> List[Fix]:
         return [f for f in self.fixes.get(slot, []) if t0 <= f.t <= t1]

@@ -44,8 +44,10 @@ fresher than ``status_fresh_s``, or GP_PASSED, or a phase of another gate, exclu
 other drone holds the latch BUSY until the drone reports otherwise; a drone that fell silent (``t_silent_s``) while
 GP_ADMITTED stays an unknown occupant for ever (silence never clears a possibly occupied gate), one that fell silent
 while GP_NONE or GP_COMMITTED was outside the CR when it stopped and is excluded.  The freshness bound is below the
-smallest time a drone needs from its queue point to the CR: a report of GP_NONE fresher than that cannot be followed by
-an occupied CR unseen.
+smallest time a drone needs from its queue point to the CR, with the speed bound and the declared gate-frame navigation
+error (GatePerception computes it per plan): a report of GP_NONE fresher than that cannot be followed by an occupied CR
+unseen.  A drone that fell silent after GP_COMMITTED stays a possible occupant (a committed drone is before the CR only
+in its own estimated frame).
 
 Soundness argument (mutual exclusion rests on A1 and A2 only): under the B0 assumption that every
 entry into the CR crosses the FRONT corridor visibly (formal M3/M4), a drone in the CR at t either was in it or
@@ -96,6 +98,9 @@ class AcousticExit:
         self.heard_by: set = set()                 # ... at the latest heard_inside evaluation
         self.last: Dict = {}                       # diagnostics of the latest evaluation
         self.gate_idx = 0                          # the gate the receiver is working on (mod 4; GatePerception.update)
+        self.g = None                              # its GateSpec
+        self.status_fresh_s = cfg.acoustic.status_fresh_s   # shortened per plan (GatePerception): never above the freshness
+                                                            # the queue geometry allows
 
     def reset(self) -> None:
         self.sighting = None
@@ -142,70 +147,33 @@ class AcousticExit:
     def status_excluded(self, j: int, t: float) -> bool:
         """Drone j cannot be an occupant of the current gate's CR, by what it reports about itself (module docstring):
         it reports another gate or GP_NONE and the report is fresh, or it reports GP_PASSED (monotone: final), or it fell
-        silent while not admitted (GP_NONE / GP_COMMITTED: a drone that stopped outside cannot enter)."""
+        silent for t_silent_gate_s after reporting GP_NONE (a drone that stopped outside, and rose, cannot enter)."""
         st = self.tracker.status.get(j)
         if st is None:
             return False
-        fresh = t - st.t_tx <= self.cfg.acoustic.status_fresh_s
-        dead = self.tracker.silent(j, t)
+        # evidence order: a status older than a later accepted fix that placed the drone possibly inside is superseded by it
+        last = self.tracker.last_accepted.get(j)
+        if self.g is not None and last is not None and last.t_tx > st.t_tx + 1e-6 and not self.clear_of_cr(self.g, last, last.t):
+            return False
+        fresh = t - st.t_tx <= self.status_fresh_s
+        gone = self.tracker.silent(j, t, self.cfg.acoustic.t_silent_gate_s)
         if st.gate_idx != self.gate_idx:
-            return fresh or dead
+            return fresh or gone
         if st.phase == GP_PASSED:
             return True
-        if st.phase == GP_NONE:
-            return fresh or dead
-        return st.phase == GP_COMMITTED and dead
+        return st.phase == GP_NONE and (fresh or gone)
 
     def status_claim(self, j: int, t: float) -> bool:
-        """Drone j holds the gate by what it reports: committed or admitted to this gate, and not (fallen silent while
-        only committed).  A drone silent after GP_ADMITTED keeps the claim for ever: silence never clears a possibly
-        occupied gate."""
+        """Drone j holds the gate by what it reports: committed or admitted to this gate.  Silence never clears a
+        possibly occupied gate: the claim of a drone that fell silent stays for ever (a committed drone's hold point is
+        before the CR only in its own estimated frame)."""
         st = self.tracker.status.get(j)
-        if st is None or st.gate_idx != self.gate_idx or st.phase not in (GP_COMMITTED, GP_ADMITTED):
-            return False
-        return not (st.phase == GP_COMMITTED and self.tracker.silent(j, t))
+        return st is not None and st.gate_idx == self.gate_idx and st.phase in (GP_COMMITTED, GP_ADMITTED)
 
     def claims(self, t: float) -> set:
         return {j for j in self.others if self.status_claim(j, t)}
 
     # ------------------------------------------------------------------ geometry
-    def target_not_a_drone(self, t: float, p: np.ndarray, yaw: float, pattern, ranges) -> bool:
-        """No drone of the fleet can be this sonar target: every other drone has a fresh accepted fix and none of the
-        fixes' regions (own frame: no navigation bound enters; a dead drone needs none), grown by the motion since the fix, reaches any sector of
-        the pattern at the target's range.  Without a fresh fix of some drone the answer is False: it could be that one."""
-        env, a = self.cfg.env, self.cfg.acoustic
-        if not self.others:
-            return False
-        R = _rot(yaw)
-        pts_grow = []
-        for j in self.others:
-            if self.tracker.silent(j, t):
-                continue                                    # a dead drone takes no turn at the gate: no relation is owed
-            f = self.tracker.latest(j, t, a.fresh_s)
-            if f is None:
-                return False
-            pts_grow.append((f.pts, f.slack + self.v_bound * max(t - f.t, 0.0)))
-        half0 = math.radians(self.cfg.perc.sonar.half_angle_deg)
-        for sec in pattern:
-            if sec not in MOUNTS:
-                continue
-            m = p + R @ MOUNTS[sec]
-            u = R @ AXES[sec]
-            u = u / np.linalg.norm(u)
-            r_e = ranges.get(sec) if isinstance(ranges, dict) else ranges
-            if r_e is None:
-                continue
-            lo, hi = max(float(r_e) - env.eps_range_far, 0.0), float(r_e) + env.eps_range_near
-            half = half0 + math.atan2(NEAR_FIELD_WIDEN_M, max(lo, 1e-3))
-            for pts, rho in pts_grow:
-                grow = R_OUT + rho
-                d = pts - m
-                dist = np.maximum(np.linalg.norm(d, axis=1), 1e-6)
-                ang = np.arccos(np.clip((d @ u) / dist, -1.0, 1.0))
-                if np.any((dist >= lo - grow) & (dist <= hi + grow) & (ang <= half + np.arcsin(np.clip(grow / dist, 0.0, 1.0)))):
-                    return False
-        return True
-
     def _cr_possible(self, q: np.ndarray, rho: float) -> bool:
         """Some point within rho of a sample q (gate frame) can be the centre of a hull in the CR."""
         gap = np.linalg.norm(q - np.clip(q, -self.half, self.half), axis=1)

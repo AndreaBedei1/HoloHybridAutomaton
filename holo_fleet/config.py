@@ -217,6 +217,11 @@ class FormationRule:
     # times grows at v_nominal - v_wait = 0.10 m/s, so a detection spread of 7 s (lost-drone runs) stays below
     # e_ok after the ramp (0.10 * (7 - T_ramp / 2) = 0.45 m); slower than that would trade formation keeping
     # for catch-up.  Never 0: the fleet keeps surveying and keeps steerage.
+    # silence of a drone: not heard for this long = dead (TOTAL_FAILURE: nothing is emitted any more), whatever the
+    # observer's own state.  Justified against the channel: in MEDIUM-ALL the longest silence between two drones of the
+    # 72 v10 runs was 31 s, median over the runs 9 s, reception rate ~45-70 %.  Silence never clears a possibly occupied
+    # gate (perception/acoustic_gate.py)
+    t_silent_s: float = 45.0
     v_wait: float = 0.20
     a_wait: float = 0.02              # [m/s^2]: 0.30 -> 0.20 m/s in 5 s, far below the braking capability (a_brake)
     t_rejoin_margin: float = 5.0      # [s] on top of the catch-up time: ramp-in (~0.8 s), confirmation (<= 1 s) and
@@ -347,14 +352,17 @@ class AcousticConfig:
     tie_window_s: float = 3.0            # fixes this close to the last corridor sighting account for a drone
     fresh_s: float = 2.5                 # a fix this recent counts for the neighbours (formation)
     depth_tol_m: float = 1.5             # a fix this far outside the operating depth band is a reflection
-    # silence of a drone: not heard for this long = dead (TOTAL_FAILURE: nothing is emitted any more), whatever the
-    # observer's own state.  Justified against the channel: in MEDIUM-ALL the longest silence between two drones of the
-    # 72 v10 runs was 31 s, median over the runs 9 s, reception rate ~45-70 %.  Silence never clears a possibly occupied
-    # gate (perception/acoustic_gate.py)
-    t_silent_s: float = 45.0
-    # a gate phase NOT_ENGAGED excludes its sender as an occupant while fresher than this: below the smallest time a
-    # drone needs from its queue point to the CR, 3.4 m / (v_pass + w_drift) = 5.2 s, minus the reception latency
-    status_fresh_s: float = 4.5
+    # a drone fallen silent is excluded as a possible occupant of a gate only after this longer interval (and only if
+    # it was not engaged with the gate when it fell silent: never a drone that reported committed or admitted): the
+    # argument is that a live drone cannot stay unheard this long on a link of the queue geometry (model of the MEDIUM
+    # channel: P(silence >= 70 s) on a shadowed queue link < 1e-3 per mission, docs/ACOUSTIC_CHANNEL_MODEL.md), while a
+    # dead drone has risen several metres above the gate by then (config.FailureModel)
+    t_silent_gate_s: float = 70.0
+    # a gate phase NOT_ENGAGED excludes its sender as an occupant while fresher than this: not above the time a queued
+    # drone needs to reach a position where the corridor echo of a real entry would stop being visible (formal/check_status.py,
+    # M3-status BMC: 2.5 s holds, 4.5 s does not), and per plan not above the time from the queue point to the CR at the
+    # speed bound with the queue tolerance and the declared navigation error (GatePerception.__init__)
+    status_fresh_s: float = 2.5
     # onboard bound of the own dead-reckoning error (perception/nav.py, NavBound), sent in the payload (H6).  Every
     # term is the declared envelope of a sensor, never the profile of a run:
     nav_b0_m: float = 0.30               # [REQ] launch survey of the shared mission frame (horizontal)
@@ -373,14 +381,15 @@ class FailureModel:
     """Simulator side only (never read onboard): the failure model of a drone, the deployment's (the owner's decision).
 
     A broken drone is completely broken: propulsion, electronics and acoustic transmission stop together, and, being
-    ballasted positively buoyant, it rises.  The engine's BlueROV2 is exactly neutral, so the ascent is applied as a
-    vertical current command on that drone only (holo_env.ascent_command; the terminal speed is calibrated by
-    calibration/probe_buoyant_ascent.py).  ``v_rise_mps``: BlueRobotics ballasts the vehicle to about +0.2 kg net
-    (datasheet); the steady ascent of a body with net buoyancy F and vertical drag area C_d A is
-    sqrt(2 F / (rho C_d A)) = sqrt(2 * 1.96 / (1000 * 1.1 * 0.154)) = 0.15 m/s, a stated estimate (no ascent rate is
-    published).  ``surface_z_m``: the hull centre stops rising here (just awash)."""
+    ballasted positively buoyant (a deployment requirement of the vehicle, ~ +0.2 kg net), it rises.  The engine's
+    BlueROV2 is exactly neutral, so the ascent is applied as a vertical current command on that drone only, added to the
+    current drift vector (holo_env.truth; the terminal speed is calibrated by calibration/probe_buoyant_ascent.py).
+    ``v_rise_mps``: steady ascent of net buoyancy F against the vertical drag: sqrt(2 F / (rho C_d A)) for F = 1.96 N
+    and C_d A of the BlueROV2 Heavy plan area (0.458 x 0.576 m x 1.1) gives about 0.12 m/s; published heave damping
+    gives about 0.06 m/s; stated range 0.05 - 0.18 m/s, nominal 0.10 m/s.  ``surface_z_m``: the centre stops rising
+    here (just awash).  It is an emulation: the engine's drag acts on the whole relative velocity."""
 
-    v_rise_mps: float = 0.15
+    v_rise_mps: float = 0.10
     surface_z_m: float = -0.25
 
 

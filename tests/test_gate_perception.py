@@ -43,7 +43,8 @@ def test_free_without_echoes_and_priority_after_t_clear():
 def test_corridor_echo_latches_busy_and_masking_keeps_it():
     gp = perception()
     o, t = run(gp, [[tg({"FRONT"}, 4.6)]] * 3)
-    assert o.occ_state == "BUSY" and o.decision == "WAIT"
+    # the FRONT-only corridor echo is the latch's business (occ_busy guards the commit), it makes no precedence relation
+    assert o.occ_state == "BUSY" and o.decision == "PRIORITY"
     o, t = run(gp, [[]] * 60, t0=t)                          # 6 s masked by the gate bars
     assert o.occ_state == "BUSY" and o.occ_busy
 

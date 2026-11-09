@@ -378,24 +378,20 @@ class HoloFleetSim:
         drift = np.array([self.spec.current.drift_at(P[k], self.t) for k in range(n)])
         cmd = np.array([self.spec.current.command_at(P[k], self.t) for k in range(n)])
         for k, name in enumerate(self.names):
-            if self.spec.dead(name, self.t):      # positively buoyant: the ascent of a completely failed drone
-                cmd[k, 2] += self.ascent_command(P[k, 2])
+            if self.spec.dead(name, self.t) and P[k, 2] < self.cfg.failure.surface_z_m:
+                # positively buoyant: the ascent of a completely failed drone, added to the drift vector (the engine's
+                # current force depends on the norm of the command, so a sum of commands would couple the two)
+                w = drift[k] + np.array([0.0, 0.0, self.cfg.failure.v_rise_mps])
+                from holo_fleet.sim.currents import drift_to_command
+
+                norm = float(np.linalg.norm(w))
+                cmd[k] = w / norm * drift_to_command(norm) if norm > 1e-9 else np.zeros(3)
         intr = None
         if self.intruder_names:
             intr = np.array([agent_origin_from_pose(np.asarray(self.latest[nm]["PoseSensor"], float))
                              if self.latest[nm].get("PoseSensor") is not None else self.intruder_position(d, self.t)
                              for nm, d in zip(self.intruder_names, self.intruders)])
         return Truth(self.t, P, R, Y, V, C, released, drift, cmd, intr)
-
-    def ascent_command(self, z: float) -> float:
-        """Vertical current command that gives a completely failed drone its calibrated ascent speed (the engine's
-        BlueROV2 is exactly neutral: config.FailureModel, calibration/probe_buoyant_ascent.py), none at the surface."""
-        from holo_fleet.sim.currents import drift_to_command
-
-        fm = self.cfg.failure
-        if z >= fm.surface_z_m:
-            return 0.0
-        return drift_to_command(fm.v_rise_mps, self.cfg.plant.current_cmd_to_drift_z)
 
     def frames(self) -> Dict[str, SensorFrame]:
         out = {}

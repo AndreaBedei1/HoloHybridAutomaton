@@ -159,7 +159,8 @@ class BeaconTransport:
             return
         rng_m, az_m, el_m, nlos = m
         t_arr = t_tx + geom[2] / self.cfg.sound_speed
-        if packet is not None and self.payload_rng.random() < ch.ch.payload_loss:
+        # a data packet has far less processing gain than the chirp and suffers more from a shadowed or multipath arrival
+        if packet is not None and self.payload_rng.random() < min(1.0, ch.ch.payload_loss * (3.0 if nlos else 1.0)):
             packet = None                                       # the ping was detected, its data packet was not decoded
             self.payload_stats["lost"] += 1
         elif packet is not None:

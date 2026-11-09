@@ -175,7 +175,8 @@ def deadline_terms(sc, cfg, profile: Optional[str] = None) -> Dict[str, float]:
         if f["drone"] not in names:
             continue
         if f.get("t_off") is None:
-            t_fault += F.t_rejoin * (1.0 - F.v_wait / F.v_nominal)
+            # the drones wait until they have declared the silent drone dead (the silence interval, or t_rejoin)
+            t_fault += max(F.t_rejoin, cfg.form.t_silent_s) * (1.0 - F.v_wait / F.v_nominal)
         else:
             t_fault += (F.v_nominal + cfg.env.w_drift_max) * (float(f["t_off"]) - float(f["t_on"])) / F.catch_up
     base = t_nom + t_gate + t_form + t_avoid + t_fault

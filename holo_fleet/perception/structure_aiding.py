@@ -109,11 +109,13 @@ def acquisition_distance(cfg, gate=None, pts=None) -> float:
 
 
 class StructureAiding:
-    def __init__(self, clf, cfg, gates=()):
+    def __init__(self, clf, cfg, gates=(), acq_min: float = 0.0):
         self.clf = clf
         self.cfg = cfg
         self.gates = list(gates)                 # GateSpecs: the free opening of the robust clearance
-        self.acq = {g.gate_id: acquisition_distance(cfg, g) for g in self.gates}
+        # the aiding also runs out to the queue line (``acq_min``): off-axis queue points see the frame in two sectors, and
+        # with every echo identified as a bar (the identity rule below) a fit there may be applied; v10 stopped at 4.2 m
+        self.acq = {g.gate_id: max(acquisition_distance(cfg, g), acq_min) for g in self.gates}
         self.loc_t = -1e9                        # last confirmation of the gate localization
         self.loc_u: Optional[float] = None       # its uncertainty [m]
         self.recent: Deque[np.ndarray] = deque(maxlen=CONSIST_N)

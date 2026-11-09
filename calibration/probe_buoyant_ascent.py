@@ -7,8 +7,8 @@ drone would hang in the water.  The deployed vehicles are ballasted positively b
 as a vertical current on that drone only (holo_env.ascent_command).  This probe measures, with zero thrust and the real
 gate geometry:
 
-* free ascent: the terminal speed for vertical current commands around the calibrated value, against the target
-  FailureModel.v_rise_mps, the attitude while it rises and the stop at the surface;
+* free ascent: the terminal speed for vertical current commands, against the target FailureModel.v_rise_mps, the
+  stop at the surface;
 * under the top bar of G06: whether a drone that fails inside the critical region is stopped by the bar or passes it,
   as a function of its along-track position in the opening, i.e. what "the CR is physically clear" really depends on;
 * with a horizontal current: the ascent is not disturbed by the drift of the current.
@@ -52,7 +52,8 @@ def run_case(name, pos, yaw, cfg, seconds, gate_ids=(), current=None):
             sim.step({"drone_0": np.zeros(8)}, DT)
             tr = sim.truth()
             R = tr.rotations[0]
-            tilt = float(np.degrees(np.arccos(np.clip(R[2, 2], -1.0, 1.0))))
+            up = np.array([0.0, 0.0, 1.0])
+            tilt = float(np.degrees(np.arccos(np.clip(float(np.max(np.abs(R @ up))), -1.0, 1.0))))   # angle of the hull z axis to the vertical
             rows.append([round(sim.t, 2), *[round(float(x), 3) for x in tr.positions[0]],
                          round(float(tr.velocities[0][2]), 3), round(tilt, 1), int(tr.collision[0])])
     finally:
@@ -66,42 +67,57 @@ def terminal_speed(rows, t0, t1):
     return float(np.mean(a[m, 4])) if m.any() else None
 
 
+def yaw_and_tilt(rows):
+    a = np.array(rows, float)
+    return float(a[:, 5].max())
+
+
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--out", default=str(ROOT / "results" / "calibration" / "buoyant_ascent.json"))
     ap.add_argument("--quick", action="store_true")
     args = ap.parse_args()
     g = load_arena_gates(HORSESHOE_TRACK, ["G06"])[0]
-    yaw = float(np.degrees(np.arctan2(g.axis[1], g.axis[0])))
+    yaw0 = float(np.degrees(np.arctan2(g.axis[1], g.axis[0])))
     out = {"target_v_rise_mps": DEFAULT.failure.v_rise_mps, "surface_z_m": DEFAULT.failure.surface_z_m, "free": [], "gate": [],
-           "current": []}
+           "current": [], "checks": {}}
     p0 = g.from_gate_frame([-12.0, 8.0, -3.0]).tolist()    # open water, away from the gate
-    for v in ([0.05, 0.15, 0.25] if not args.quick else [0.15]):
+    for v in ([0.05, 0.10, 0.15, 0.20] if not args.quick else [0.10]):
         cfg = dataclasses.replace(DEFAULT, failure=dataclasses.replace(DEFAULT.failure, v_rise_mps=v))
-        rows = run_case(f"ascent_{v}", p0, yaw, cfg, 40.0 if v >= 0.1 else 45.0)
+        rows = run_case(f"ascent_{v}", p0, yaw0, cfg, 45.0)
         a = np.array(rows, float)
+        vt = terminal_speed(rows, 15.0, 35.0)
         out["free"].append({"v_target": v, "z0": round(float(a[0, 3]), 3), "z_end": round(float(a[-1, 3]), 3),
-                            "v_terminal_mean": round(terminal_speed(rows, 15.0, 30.0), 3),
-                            "tilt_max_deg": float(a[:, 5].max())})
-    # failure inside the opening at several along-track positions under the top bar: stopped by the bar or not
-    for s in ([-0.6, -0.2, 0.0, 0.2, 0.5, 0.75] if not args.quick else [0.0, 0.5]):
-        rows = run_case(f"ascent_gate_{s}", g.from_gate_frame([s, 0.0, 0.0]).tolist(), yaw, DEFAULT, 40.0, gate_ids=("G06",))
+                            "v_terminal_mean": round(vt, 3), "ratio": round(vt / v, 3)})
+    # failure inside the opening: along-track grid around the bar edge, lateral offsets near the posts, and hull yaw
+    cases = [(s, 0.0, 0.0) for s in (-0.6, -0.45, -0.38, -0.3, -0.2, 0.0, 0.2, 0.3, 0.38, 0.45, 0.6)]
+    cases += [(0.0, 0.7, 0.0), (0.5, 0.7, 0.0), (0.0, 0.0, 45.0), (0.0, 0.0, 90.0), (0.45, 0.0, 45.0), (0.45, 0.0, 90.0)]
+    if args.quick:
+        cases = [(0.0, 0.0, 0.0), (0.5, 0.0, 0.0)]
+    for s0, l0, yaw_extra in cases:
+        rows = run_case(f"ascent_gate_{s0}_{l0}_{yaw_extra}", g.from_gate_frame([s0, l0, 0.0]).tolist(), yaw0 + yaw_extra, DEFAULT, 40.0,
+                        gate_ids=("G06",))
         a = np.array(rows, float)
         dz = a[:, 3] - float(g.center[2])
         idx = np.flatnonzero(dz >= 1.0)
-        out["gate"].append({"s0": s, "dz0": round(float(dz[0]), 3), "dz_end": round(float(dz[-1]), 3),
+        out["gate"].append({"s0": s0, "l0": l0, "yaw_extra_deg": yaw_extra, "dz0": round(float(dz[0]), 3), "dz_end": round(float(dz[-1]), 3),
                             "t_leaves_cr_top_s": round(float(a[idx[0], 0]), 1) if idx.size else None,
-                            "s_end": round(float(g.to_gate_frame(a[-1, 1:4])[0]), 3), "contact_steps": int(a[:, 6].sum()),
-                            "z_trace": a[::20, 3].round(2).tolist()})
-    cur = CurrentField([CurrentComponent("uniform", drift=(0.15, 0.0, 0.0))])
-    rows = run_case("ascent_current", p0, yaw, DEFAULT, 30.0, current=cur)
-    a = np.array(rows, float)
-    out["current"].append({"drift_x": 0.15, "v_terminal_mean": round(terminal_speed(rows, 15.0, 28.0), 3),
-                           "dx_end": round(float(a[-1, 1] - a[0, 1]), 2)})
+                            "pinned_in_cr": bool(not idx.size and float(dz[-1]) <= 1.0),
+                            "s_end": round(float(g.to_gate_frame(a[-1, 1:4])[0]), 3), "contact_steps": int(a[:, 6].sum())})
+    for dx in ([0.05, 0.15, 0.30] if not args.quick else [0.15]):
+        cur = CurrentField([CurrentComponent("uniform", drift=(dx, 0.0, 0.0))])
+        rows = run_case(f"ascent_current_{dx}", p0, yaw0, DEFAULT, 30.0, current=cur)
+        a = np.array(rows, float)
+        out["current"].append({"drift_x": dx, "v_terminal_mean": round(terminal_speed(rows, 15.0, 28.0), 3),
+                               "dx_end": round(float(a[-1, 1] - a[0, 1]), 2)})
+    out["checks"] = {"terminal_speed_within_15pct_of_target": all(abs(f["ratio"] - 1.0) <= 0.15 for f in out["free"]),
+                     "a_drone_under_the_bar_stays_pinned_in_the_cr": any(c["pinned_in_cr"] for c in out["gate"]),
+                     "ascent_independent_of_current_within_15pct": all(abs(c["v_terminal_mean"] / DEFAULT.failure.v_rise_mps - 1.0) <= 0.15
+                                                                       for c in out["current"])}
     Path(args.out).parent.mkdir(parents=True, exist_ok=True)
     Path(args.out).write_text(json.dumps(out, indent=1), encoding="utf-8")
     print(json.dumps(out, indent=1))
-    return 0
+    return 0 if all(out["checks"].values()) else 1
 
 
 if __name__ == "__main__":
