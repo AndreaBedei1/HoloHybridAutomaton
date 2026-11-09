@@ -490,28 +490,32 @@ def gate_pinned_occupant(cfg: FleetConfig = DEFAULT) -> Scenario:
     sc = gate_stalled_occupant(cfg)
     g6 = sc.judged_gates[0]
     sc.name, sc.title = "gate_pinned_occupant", "P2: a drone fails at rest under the top bar of G06"
-    sc.description = "the first drone starts at rest in the opening and fails completely at t = 1 s: it rises against the top bar and stays."
+    sc.description = ("the first drone rests in the opening, its electronics running (it reports a claim), and fails completely at t = 6 s: it rises against "
+                      "the top bar and stays.")
     sc.sim.spawn_positions[0] = g6.from_gate_frame([0.0, 0.0, 0.0]).tolist()
-    sc.sim.faults = ({"drone": "drone_0", "type": "TOTAL_FAILURE", "t_on": 1.0, "t_off": None},)
+    # SCENARIO_HOLD only sets the initial condition: its commands are not executed, so it does not coast past the bar before it fails
+    sc.sim.faults = ({"drone": "drone_0", "type": "SCENARIO_HOLD", "t_on": 0.0, "t_off": 6.0},
+                     {"drone": "drone_0", "type": "TOTAL_FAILURE", "t_on": 6.0, "t_off": None},)
     return sc
 
 
 def lost_drone_mutex_carried(cfg: FleetConfig = DEFAULT) -> Scenario:
-    """Stress (not in the acceptance matrix): a uniform 0.3 m/s current along the gate axis; the first drone to reach the queue line fails
-    there and is carried towards the frame while it rises (review round 2)."""
+    """Stress (not in the acceptance matrix): a 0.3 m/s current along the gate axis; the middle drone, on the axis and waiting for the left one
+    (so not engaged), fails on arrival at the queue line and is carried into the frame while it rises slowly (review rounds 2 and 3)."""
     sc = lost_drone_mutex(cfg)
     g6 = sc.judged_gates[0]
-    sc.name, sc.title = "lost_drone_mutex_carried", "Lost drone carried towards the gate by a current"
-    sc.description = "as lost_drone_mutex, with a 0.3 m/s current along the gate axis and the failure on arrival at the queue line."
+    sc.name, sc.title = "lost_drone_mutex_carried", "Lost drone carried into the gate by a current"
+    sc.description = "as lost_drone_mutex, with a 0.3 m/s current along the gate axis; the middle drone fails on arrival at the queue line and rises at the low end of the range."
     sc.sim.current = _uniform((0.3 * float(g6.axis[0]), 0.3 * float(g6.axis[1]), 0.0))
-    sc.sim.faults = ({"drone": "drone_0", "type": "TOTAL_FAILURE", "t_on": 1e9, "t_off": None, "trigger": "queue:G06"},)
+    sc.sim.faults = ({"drone": "drone_1", "type": "TOTAL_FAILURE", "t_on": 1e9, "t_off": None, "trigger": "queue:G06"},)
     sc.disturbance_windows = []
+    sc.cfg_patch = dict(sc.cfg_patch, failure=dataclasses.replace(cfg.failure, v_rise_mps=0.06))
     return sc
 
 
 def _rise_variant(base, name: str, v: float):
-    """Sensitivity to the rise speed (the commanded value, calibration/probe_buoyant_ascent.py gives about 0.05 m/s measured for 0.06 and
-    0.13 for 0.135)."""
+    """Sensitivity to the rise speed (the commanded value; interpolating calibration/probe_buoyant_ascent.py, 0.06 gives about 0.05 m/s and
+    0.135 about 0.13 m/s: not bench points)."""
     def make(cfg: FleetConfig = DEFAULT) -> Scenario:
         sc = base(cfg)
         sc.name = name

@@ -357,7 +357,7 @@ class AcousticConfig:
     # argument is that a live drone cannot stay unheard this long on a link of the queue geometry (model of the MEDIUM
     # channel: P(silence >= 70 s) on a shadowed queue link < 1e-3 per mission, docs/ACOUSTIC_CHANNEL_MODEL.md), while a
     # dead drone has risen several metres above the gate by then (config.FailureModel)
-    t_silent_gate_s: float = 70.0
+    t_silent_gate_s: float = 70.0        # a silent drone leaves the identity premise of the map fit only (Perception._other_regions); never a gate decision
     # a gate phase NOT_ENGAGED excludes its sender as an occupant while fresher than this: not above the time a queued
     # drone needs to reach a position where the corridor echo of a real entry would stop being visible (formal/check_status.py,
     # M3-status BMC: 2.5 s holds, 4.5 s does not), and per plan not above the time from the queue point to the CR at the

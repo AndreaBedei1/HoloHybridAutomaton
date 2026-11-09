@@ -198,7 +198,7 @@ def test_the_stress_scenarios_build_and_keep_the_failure_model():
     for name in ("gate_pinned_occupant", "lost_drone_mutex_carried", "lost_drone_mutex_rise_low", "lost_drone_mutex_rise_high",
                  "gate_stalled_occupant_rise_low", "gate_stalled_occupant_rise_high"):
         sc = SCENARIOS[name](DEFAULT)
-        assert sc.name == name and sc.sim.faults and all(f["type"] == "TOTAL_FAILURE" for f in sc.sim.faults)
+        assert sc.name == name and any(f["type"] == "TOTAL_FAILURE" and f["t_off"] is None for f in sc.sim.faults)
     assert SCENARIOS["lost_drone_mutex_rise_low"](DEFAULT).cfg_patch["failure"].v_rise_mps == 0.06
 
 

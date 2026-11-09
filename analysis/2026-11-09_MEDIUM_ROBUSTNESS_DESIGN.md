@@ -56,7 +56,7 @@ Root causes, from the logs of the ten runs (`results/robustness/raw_b2final_v10`
   no ping and no packet, has zero thrust and rises. The engine's BlueROV2 is exactly neutral (`BlueROV2.cpp`), so the ascent is applied on
   the simulator side as a vertical current on that drone only, added to the drift vector (`config.FailureModel`, `sim/holo_env.py`).
   Nothing onboard reads it.
-* **Rise speed.** Nominal `v_rise_mps` = 0.10 m/s (plausible range 0.05-0.18 m/s, an estimate for a ballasted vehicle, not a measurement of a
+* **Rise speed.** Nominal `v_rise_mps` = 0.10 m/s (credible range 0.05-0.13 m/s, an estimate for a ballasted vehicle, not a measurement of a
   real one). Bench `calibration/probe_buoyant_ascent.py`, `results/calibration/buoyant_ascent.json`: measured terminal speed 0.095 m/s
   at the nominal target (ratio 0.95), 0.144 at 0.15, 0.188 at 0.20; 0.040 at 0.05 (ratio 0.80, outside the 15 % check, which is left
   failing and reported). The ascent is independent of a horizontal current up to 0.30 m/s (0.094-0.099 m/s).
@@ -99,7 +99,7 @@ round 2, F1: the first version left a 1 m band with neither); a merged echo keep
 * **Sender rule** (`passage.report_phase`): a drone inside the keep-out box (the CR grown by the hull and the declared navigation error) reports a claim whatever its history, about the gate it is at: carried in
   uncommitted, or back after a passage, it does not report that it is not there.
 * **A positive echo is discarded only on fresh evidence** about every other drone (`no_fleet_drone`); silence or an old report never discards one (round 2, F2).
-* **Silence never clears a committed or admitted drone.** A `GP_NONE` drone is excluded by silence only after `t_silent_gate_s` = 70 s.
+* **Silence excludes nobody from a gate decision.** A `GP_NONE` drone is excluded only by a fresh report; after a failure the latch is released by the sonar fallback (`t_occ_max`). Silence never clears a committed or admitted drone.
   A failure under the bar therefore blocks the gate for the survivors for good, by design; `gate_stalled_occupant` accepts this outcome.
 * **Keep-out filter** (`Flows.keepout_filter`): the mission velocity of a drone not committed has no along-axis component towards the CR. Mission modes only, the avoidance output is not edited. The status logic does not rest on it.
 
@@ -110,7 +110,7 @@ round 2, F1: the first version left a 1 m band with neither); a merged echo keep
   and is skipped above 1.2 m. The correction moves the stored fixes with the estimate (`AcousticTracker.shift`).
 * `NavBound` is never restarted (reviewer finding): the bound stays monotone.
 * **Along-axis correction from one FRONT echo** (RC7, `StructureAiding._axial`): with every other drone excluded as the source of the echo, unique and consistent over 4 captures, along the axis only; it never validates the localization.
-* A dead drone stays left out of the identity premise of the map fit (`Perception._other_regions`), against the reviewer's suggestion: there the echo only moves the own estimate, by at most `MAX_CORR_M`, and no occupancy decision reads the premise. Removing it would disable the fit in every failure run.
+* A dead drone stays left out of the identity premise of the map fit (`Perception._other_regions`), against the reviewer's suggestion: there the echo moves the own estimate, by at most `MAX_CORR_M`, and the corrected estimate sets the structure window, so a hull silent for 70 s can be taken for a bar. This narrow path is accepted and disclosed; removing it would disable the fit in every failure run.
 
 ## 6. Formation
 

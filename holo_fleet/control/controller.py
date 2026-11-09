@@ -21,8 +21,7 @@ from holo_fleet.ha.observation_invariants import violated as observation_violati
 from holo_fleet.ha.spec import IN_FORMATION, Mode
 from holo_fleet.mission import MissionPlan
 from holo_fleet.perception.frame import SensorFrame
-from holo_fleet.perception.passage import PassageVerifier, inside_keepout, report_phase
-from holo_fleet.perception.payload import GP_ADMITTED, GP_PASSED
+from holo_fleet.perception.passage import PassageVerifier, gate_report
 from holo_fleet.perception.sonar_geometry import HULL_HALF
 from holo_fleet.perception.perception import LocalObservation, Perception
 
@@ -324,8 +323,4 @@ class DroneController:
             self._apply_crossing(t, gate, obs.p)
         if p.verified and not was:
             self.events.append({"t": t, "type": "GATE_PASSAGE_VERIFIED", "by": p.by, "gate": p.idx})
-        go = obs.gate
-        near = go.gate_id is not None and not go.passed and inside_keepout(go.s, go.l, go.dz, self.cfg.gate)
-        phase = report_phase(p.verified, p.in_progress, self.ha.committed, near)
-        idx = p.idx if phase in (GP_ADMITTED, GP_PASSED) else gp.idx     # a claim is always about the gate the drone is at
-        self.perception.tx_gate_idx, self.perception.tx_phase = idx % 4, phase
+        self.perception.tx_gate_idx, self.perception.tx_phase = gate_report(p, obs.gate, obs.p, self.ha.committed, gp.idx, self.cfg.gate)

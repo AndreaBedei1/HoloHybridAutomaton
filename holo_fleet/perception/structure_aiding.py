@@ -65,8 +65,10 @@ object there is outside this premise and stays an obstacle for the separation la
 On the axis of the gate only the FRONT sector sees the frame until about 2.2 m, so an along-axis error leaves the first bar echo
 unexplained, the separation layer stops the drone at the band, and the side sectors never see the bars: a deadlock of the perception (RC7,
 MEDIUM-ALL lost_drone_mutex s920).  With the same identity premise (every other drone excluded as the source of that echo) a single FRONT echo may
-correct the ALONG-AXIS estimate only, uniquely and consistently over CONSIST_N captures.  It never moves the lateral estimate and never validates the
-localization.
+correct the ALONG-AXIS estimate only, uniquely and consistently over CONSIST_N captures, by at most MAX_CORR_M in total until a validated fit.  It
+never moves the lateral estimate and never validates the localization.  Identification is by elimination only: any single echo within the correction range is adopted, and is then
+labelled STRUCTURE by the classifier.  A hull not accounted for by the premise (a drone silent for t_silent_gate_s) can therefore be taken for a bar.  It relies on the wide FRONT sonar: a
+25 deg beam would not see the bars from the axis at this range.
 
 The correction changes the drone's OWN position estimate only: the collision-avoidance distance bound uses the raw echo
 ranges in the body frame and does not depend on it, and the structure test keeps its tolerance (structure_tol_m is not
@@ -127,6 +129,8 @@ class StructureAiding:
         self.loc_u: Optional[float] = None       # its uncertainty [m]
         self.recent: Deque[np.ndarray] = deque(maxlen=CONSIST_N)
         self.recent_ax: Deque[float] = deque(maxlen=CONSIST_N)
+        self.axial_total = 0.0                   # along-axis correction applied since the last validated fit: bounded
+        self._ax_touched = False
         self.applied_m = 0.0                     # total applied correction (for the log)
         self.last: Optional[Dict] = None
         self.pts = np.asarray(clf.struct_pts)[::POINT_STRIDE]
@@ -251,6 +255,7 @@ class StructureAiding:
 
     def _axial(self, p: np.ndarray, R_wb: np.ndarray, obs: Dict, g, others) -> Optional[np.ndarray]:
         """Along-axis correction from a single FRONT echo identified as a bar (module docstring), or None."""
+        self._ax_touched = True
         edges = obs.get("FRONT")
         if edges is None or not edges.size or others is None:
             self.recent_ax.clear()
@@ -275,12 +280,24 @@ class StructureAiding:
         if float(a.max() - a.min()) > 2.0 * CONSIST_M:
             return None
         self.recent_ax.clear()
+        if abs(self.axial_total + float(a.mean())) > MAX_CORR_M:   # no more than one correction's worth until a validated fit
+            return None
+        self.axial_total += float(a.mean())
         self.applied_m += abs(float(a.mean()))
         self.last["axial"] = round(float(a.mean()), 3)
         return GAIN * float(a.mean()) * np.array([axis[0], axis[1], 0.0])
 
     def update(self, p: np.ndarray, R_wb: np.ndarray, profiles: Dict, ages: Dict, tau: float,
                t: float = 0.0, others=None) -> Optional[np.ndarray]:
+        """The map fit (``_update``); the along-axis confirmation count survives only consecutive captures that reached it."""
+        self._ax_touched = False
+        out = self._update(p, R_wb, profiles, ages, tau, t, others)
+        if not self._ax_touched:
+            self.recent_ax.clear()
+        return out
+
+    def _update(self, p: np.ndarray, R_wb: np.ndarray, profiles: Dict, ages: Dict, tau: float,
+                t: float = 0.0, others=None) -> Optional[np.ndarray]:
         """Horizontal correction to add to the position estimate now (None: nothing accepted).  ``others``: where every
         other drone of the plan can be (Perception._other_regions), or None when one is not accounted for."""
         self.last = None
@@ -337,6 +354,7 @@ class StructureAiding:
             return self._axial(p, R_wb, obs, g, others) if (self.gates and matched_k < MIN_MATCHED) else None
         if safe and float(np.linalg.norm(d)) <= CONSIST_M:   # the current estimate is confirmed (consistency band)
             self.loc_t, self.loc_u = t, u
+            self.axial_total = 0.0
         if not (np.isfinite(c0[0]) and c0[0] - cost_k >= GAIN_MIN):
             self.recent.clear()
             return None
@@ -351,4 +369,5 @@ class StructureAiding:
         self.applied_m += float(np.linalg.norm(corr))
         if safe:
             self.loc_t, self.loc_u = t, u           # the corrected estimate is the confirmed one
+            self.axial_total = 0.0
         return np.array([corr[0], corr[1], 0.0])

@@ -319,3 +319,15 @@ def test_an_echo_another_drone_could_have_made_never_moves_the_estimate():
     near_bar = np.array([_world(-0.2, 0.3)])                      # a drone located in the sonar's cone at the echo range
     p = _axial_run(aid, clf, _world(-2.7, 0.0), p_est, _R(), others=[(near_bar, 0.5)])
     assert np.allclose(p, p_est)
+
+
+def test_the_along_axis_correction_is_bounded_and_randomly_sound():
+    clf, _a = _axial_setup()
+    rng = np.random.default_rng(3)
+    for _ in range(12):
+        aid = StructureAiding(clf, DEFAULT, gates=[GATE], acq_min=6.0)
+        s_true = float(rng.uniform(-3.4, -2.2))
+        err = float(rng.choice([-1.0, -0.6, 0.6, 1.0]))
+        p = _axial_run(aid, clf, _world(s_true, 0.0), _world(s_true + err, 0.0), _R(), others=[])
+        assert abs(float(GATE.to_gate_frame(p)[0]) - s_true) <= abs(err)
+        assert abs(aid.axial_total) <= MAX_CORR_M + 1e-9

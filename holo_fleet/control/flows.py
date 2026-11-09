@@ -151,7 +151,7 @@ class Flows:
             self.sigma = float(np.clip(self.sigma, -fr.progress_max, fr.progress_max))
             self.lam += dt * (fr.k_lateral * obs.form.lateral_corr - 0.02 * self.lam)
             self.lam = float(np.clip(self.lam, -fr.progress_max, fr.progress_max))
-        elif obs.form.lateral_far is not None:
+        elif obs.form.lateral_far is not None and float(np.linalg.norm(self.offset)) < 1e-3:   # (a running give-way is intentional)
             # away from the slot the ranges say nothing, the identified fixes still measure how far the own lane is from where
             # the neighbours are (Perception.lateral_far): the reference moves with them, along-track stays with the own clock
             self.lam += dt * (fr.k_lateral * obs.form.lateral_far - 0.02 * self.lam)

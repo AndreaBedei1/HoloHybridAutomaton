@@ -44,8 +44,8 @@ hold the latch BUSY until the drone reports otherwise, for ever if it falls sile
 gate.  A drone inside the keep-out box reports a claim whatever its history (passage.report_phase), so a drone carried into
 the CR uncommitted, or back after a passage, does not report that it is not there.  GP_NONE or a phase of another gate excludes a
 drone while the report is younger than ``status_fresh_s``, a bound below the smallest time from its queue point to the CR at
-the speed bound (GatePerception computes it per plan); GP_PASSED excludes it for good, except for the rule below.  A drone silent
-for ``t_silent_s`` after GP_NONE is excluded from the exit evaluation, which requires the FRONT corridor empty.
+the speed bound (GatePerception computes it per plan); GP_PASSED excludes it for good, except for the rule below.  Silence excludes
+nobody: with a dead drone that was not engaged, the latch is released by the sonar rules (t_occ_max).
 
 A positive corridor echo is discarded as no fleet drone (``no_fleet_drone``) only on evidence about every other drone that is
 fresh: silence, or an old report of any kind, never discards one.
@@ -146,9 +146,9 @@ class AcousticExit:
 
     # ------------------------------------------------------------------ gate status of the other drones (payload v2)
     def status_excluded(self, j: int, t: float, fresh_only: bool = False) -> bool:
-        """Drone j cannot be an occupant of the current gate's CR, by what it reports about itself (module docstring):
-        it reports another gate or GP_NONE and the report is fresh, or it reports GP_PASSED (monotone: final), or it fell
-        silent for t_silent_gate_s after reporting GP_NONE (a drone that stopped outside, and rose, cannot enter)."""
+        """Drone j cannot be an occupant of the current gate's CR, by what it reports about itself (module docstring): a fresh
+        report of another gate or of not engaged, or a report of having passed (``fresh_only``: only if fresh).  Silence never excludes
+        a drone: the latch of a dead drone that was not engaged is released by the sonar rules (t_occ_max)."""
         st = self.tracker.status.get(j)
         if st is None:
             return False
@@ -159,12 +159,11 @@ class AcousticExit:
         fresh = t - st.t_tx <= self.status_fresh_s
         if fresh_only and not fresh:                       # silence or an old report never discards a positive echo
             return False
-        gone = self.tracker.silent(j, t, self.cfg.acoustic.t_silent_gate_s)
         if st.gate_idx != self.gate_idx:
-            return fresh or gone
+            return fresh
         if st.phase == GP_PASSED:
             return True
-        return st.phase == GP_NONE and (fresh or gone)
+        return st.phase == GP_NONE and fresh
 
     def status_claim(self, j: int, t: float) -> bool:
         """Drone j holds the gate by what it reports: committed or admitted to this gate.  Silence never clears a

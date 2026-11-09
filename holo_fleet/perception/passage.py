@@ -62,6 +62,19 @@ def report_phase(verified: bool, in_progress: bool, committed: bool, in_keepout:
     return GP_COMMITTED if committed else GP_NONE
 
 
+def gate_report(verifier, go, p_est, committed: bool, cur_idx: int, G):
+    """(gate index modulo 4, phase) the drone reports: the box of the gate it is at and that of the gate it has verified both count, so a
+    drone back in the box of a gate it passed claims that gate."""
+    near_cur = go.gate_id is not None and not go.passed and inside_keepout(go.s, go.l, go.dz, G)
+    near_done = False
+    if verifier.verified and verifier.gate is not None:
+        s, l, dz = (float(x) for x in verifier.gate.to_gate_frame(np.asarray(p_est, float)))
+        near_done = inside_keepout(s, l, dz, G)
+    phase = report_phase(verifier.verified, verifier.in_progress, committed, near_cur or near_done)
+    idx = verifier.idx if (near_done or phase in (GP_ADMITTED, GP_PASSED)) else cur_idx
+    return idx % 4, phase
+
+
 class PassageVerifier:
     def __init__(self, cfg):
         self.cfg = cfg

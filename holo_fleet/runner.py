@@ -295,8 +295,8 @@ def run(name: str, out_root: Path, headless: bool = True, run_id: Optional[str] 
                           "static identity only (one-way ping; receiver-side OWTT range + array bearing)",
                       "acoustic_exit_witnesses": sum(c.perception.gp.exit_kind["ACOUSTIC"] for c in ctrls.values()),
                       "sonar_exit_witnesses": sum(c.perception.gp.exit_kind["SONAR"] for c in ctrls.values()),
-                      "acoustic_tracker": ({k: sum(c.perception.acoustic.stats[k] for c in ctrls.values())
-                                            for k in next(iter(ctrls.values())).perception.acoustic.stats}
+                      "acoustic_tracker": ({k: sum(c.perception.acoustic.stats.get(k, 0) for c in ctrls.values())
+                                            for k in sorted({x for c in ctrls.values() for x in c.perception.acoustic.stats})}
                                            if cfg.beacon.enabled else None),
                       "ground_truth_used_by_controllers": any(c.uses_ground_truth for c in ctrls.values()),
                       "static_rank_uses": rank_uses, "occupancy_timeouts": occ_timeouts,

@@ -139,7 +139,7 @@ class ChannelModel:
                 t += float(self.rng.exponential(ch.outage_every_s)) + ch.outage_len_s
         self.link_off: Dict[Tuple[int, int], List[Tuple[float, float]]] = {}
         if ch.link_on_mean_s > 0:                                         # its own generator: the other draws are unchanged
-            lr = np.random.default_rng([int(seed), 5102])
+            lr = np.random.default_rng([int(seed), 5111])
             for a in range(n):
                 for b in range(n):
                     if a != b:

@@ -265,7 +265,8 @@ def passage_soundness(cfg: FleetConfig, g, n_cases: int = 2000, seed: int = 19) 
 def sender_rule(cfg: FleetConfig, n_cases: int = 20000, seed: int = 23, margin_cut: float = 0.0) -> dict:
     """S9: a true centre in the CR with the estimate within the declared navigation error lies inside the keep-out box, and from
     inside the box no history reports not engaged or passed.  ``margin_cut``: the mutation, the box without that margin."""
-    from holo_fleet.perception.passage import inside_keepout, report_phase
+    from holo_fleet.perception.gate_perception import GateObs
+    from holo_fleet.perception.passage import PassageVerifier, gate_report, inside_keepout, report_phase
 
     rng = np.random.default_rng(seed)
     G = cfg.gate if not margin_cut else dataclasses.replace(cfg.gate, nav_err_m=cfg.gate.nav_err_m - margin_cut)
@@ -277,6 +278,10 @@ def sender_rule(cfg: FleetConfig, n_cases: int = 20000, seed: int = 23, margin_c
         e = q + u / max(float(np.linalg.norm(u)), 1e-9) * cfg.gate.nav_err_m
         outside += int(not inside_keepout(float(e[0]), float(e[1]), float(e[2]), G))
     wrong = sum(int(report_phase(v, False, c, True) not in (pl.GP_COMMITTED, pl.GP_ADMITTED)) for v in (False, True) for c in (False, True))
+    g = _gate()                                                 # the report as the controller makes it: back in the box of a gate it has passed
+    v = PassageVerifier(cfg)
+    v.idx, v.gate, v.admitted, v.verified = 0, g, True, True
+    wrong += int(gate_report(v, GateObs(gate_id=None), g.from_gate_frame([0.0, 0.0, 0.0]), False, 1, cfg.gate) != (0, pl.GP_COMMITTED))
     return {"cases": n_cases, "estimate_outside_the_box": outside, "not_a_claim": wrong}
 
 
@@ -325,8 +330,7 @@ def silence_keeps_the_echo(cfg: FleetConfig, g, n_cases: int = 300, seed: int = 
         ae = gp.acoustic_exit
         ae.gate_idx, ae.g, ae.others = 0, g, [1, 2]
         if mutate:
-            orig = ae.status_excluded
-            ae.status_excluded = lambda j, tt, fresh_only=False, o=orig: o(j, tt, False)
+            ae.status_excluded = lambda j, tt, fresh_only=False: tr.silent(j, tt, cfg.acoustic.t_silent_gate_s)
         t = 1.0 + cfg.acoustic.t_silent_gate_s + float(rng.uniform(1.0, 500.0))
         for k in (1, 2):
             q = g.from_gate_frame([rng.uniform(-8.0, -5.0), float(rng.uniform(-3.0, 3.0)), 0.0])
@@ -334,6 +338,7 @@ def silence_keeps_the_echo(cfg: FleetConfig, g, n_cases: int = 300, seed: int = 
         tr.heard[0] = t - 0.2
         r = float(np.linalg.norm(g.center - p)) - R_OUT
         bad += int(ae.no_fleet_drone(t, g, p, yaw, [r]))
+        bad += int(any(tr.status[k].phase == pl.GP_NONE and ae.status_excluded(k, t) for k in (1, 2)))
     return {"cases": n_cases, "echo_discarded": bad}
 
 
@@ -356,7 +361,7 @@ def run(cfg: FleetConfig = B2, verbose: bool = True) -> Report:
             if view["corridor_from_s"] is None or view["mask_from_s"] is None or view["visible_again_s"] is None or view["beyond_s"] is None:
                 continue
             ts = min(cfg.acoustic.status_fresh_s, (abs(geo["queue_s"]) - cfg.gate.cr_half_len - R_OUT - cfg.gate.queue_tol - cfg.gate.nav_err_m) / v_hi - cfg.acoustic.latency_max_s)
-            rep.add(check(f"S2h M3-status n={n}, observer l={view['queue_l']:+.2f}, the crossing drone may stop before the CR: never both in the CR",
+            rep.add(check(f"S2h M3-status n={n}, observer l={view['queue_l']:+.2f}, the crossing drone may stop before the CR, 32 s bound: never both in the CR",
                           "as S2, the speed floor applying only inside the CR", ENC, m3_status_model(cfg, geo, view, ts, v_hi, e0, hold=True), timeout_ms=180000), verbose)
             rep.add(check(f"S2 M3-status n={n}, observer l={view['queue_l']:+.2f}, freshness of a report of not engaged {ts:.2f} s, v {v_hi}, offset {e0}: never both in the CR",
                           "latch + status phantom (last report younger than freshness) + FRONT-only no relation -> not(A in CR and B commits)",
@@ -365,6 +370,9 @@ def run(cfg: FleetConfig = B2, verbose: bool = True) -> Report:
     view3 = max(geo3["views"], key=lambda w: w["queue_l"])
     rep.add(check("S2m mutation: a freshness of 5 s (the first design) violates P2 at the declared worst case", "expect counterexample", ENC,
                   m3_status_model(cfg, geo3, view3, 5.0, 0.70, 1.35), expect="sat", timeout_ms=180000), verbose)
+    side = max(geo3["views"], key=lambda w: w["queue_l"])
+    rep.add(check("S2hs scope: beyond the 32 s bound a drone stopped behind the bars before the CR, with no claim heard, is released by the t_occ_max fallback", "expect counterexample (claims S1, S4 cover it when heard)", ENC,
+                  m3_status_model(cfg, geo3, side, 1.0, 0.70, 1.35, steps=420, hold=True), expect="sat", timeout_ms=600000), verbose)
     centre = min(geo3["views"], key=lambda w: abs(w["queue_l"]))
     rep.add(check("S2b mutation: no latch input in the band of a FRONT-only echo (round 2, F1) violates P2", "expect counterexample", ENC,
                   m3_status_model(cfg, geo3, centre, 1.0, 0.70, 1.35, hold=True, band_latch=False), expect="sat", timeout_ms=180000), verbose)
@@ -414,7 +422,7 @@ def run(cfg: FleetConfig = B2, verbose: bool = True) -> Report:
     rep.add(CheckResult("S6b no relation implies latch input (real class, no beacon): a FRONT-only echo anywhere in the band makes no relation and the latch is BUSY",
                         "randomized over the band", ENC, "holds", verdict="holds" if r["violations"] == 0 else "violated", passed=r["violations"] == 0, note=str(r)), verbose)
     r = silence_keeps_the_echo(cfg, g)
-    rep.add(CheckResult("S11 silence or a stale report never discards a corridor echo", "randomized: no fresh evidence -> no_fleet_drone false", ENC, "holds",
+    rep.add(CheckResult("S11 silence or a stale report never discards a corridor echo, and silence never excludes a drone from the exit evaluation", "randomized: no fresh evidence -> no_fleet_drone false and status_excluded false", ENC, "holds",
                         verdict="holds" if r["echo_discarded"] == 0 else "violated", passed=r["echo_discarded"] == 0, note=str(r)), verbose)
     rm = silence_keeps_the_echo(cfg, g, n_cases=100, mutate=True)
     okm = rm["echo_discarded"] > 0

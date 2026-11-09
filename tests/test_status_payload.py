@@ -84,7 +84,7 @@ def test_a_drone_that_dies_while_admitted_keeps_the_gate_closed_for_ever():
     assert gp.update(t, P, 0., [], {}).occ_busy
 
 
-def test_a_drone_silent_after_committed_keeps_the_gate_held_after_not_engaged_it_does_not():
+def test_a_drone_silent_after_committed_keeps_the_gate_held_after_not_engaged_it_makes_no_claim():
     """Silence never clears a drone that held the gate (committed or admitted); a drone that reported not being engaged and
     then fell silent is no occupant once it can be taken for dead."""
     tr, gp = _observer(P, others=(1, 2))
@@ -99,7 +99,7 @@ def test_a_drone_silent_after_committed_keeps_the_gate_held_after_not_engaged_it
     _rx(tr2, P, 1.0, 1, [-5.4, -3.5, -5.], phase=pl.GP_NONE)
     t = 1.0 + B2.acoustic.t_silent_gate_s + 1.0
     tr2.heard[2] = t - 1.0
-    assert ae2.status_excluded(1, t) and ae2.claims(t) == set()
+    assert not ae2.status_excluded(1, t) and ae2.claims(t) == set()      # no claim, and silence excludes nobody
     assert not ae2.status_excluded(1, 1.0 + B2.form.t_silent_s + 1.0)    # 45 s < t_silent_gate_s
 
 
@@ -503,3 +503,44 @@ def test_a_recovering_drone_on_a_giveway_is_not_sent_back_to_its_lane():
         unhealthy = []
     fl.formation(O, 0.1, recovering=True)
     assert fl.rejoin_phase != "TO_LANE" and fl.rejoin_phase != "DROP_BACK"
+
+
+def test_a_drone_back_in_the_box_of_the_gate_it_passed_claims_that_gate():
+    from holo_fleet.perception.gate_perception import GateObs
+    from holo_fleet.perception.passage import PassageVerifier, gate_report
+
+    v = PassageVerifier(B2)
+    v.idx, v.gate, v.admitted, v.verified = 0, GATE, True, True
+    assert gate_report(v, GateObs(gate_id=None), np.array([0.0, 0.0, -5.0]), False, 1, B2.gate) == (0, pl.GP_COMMITTED)
+    assert gate_report(v, GateObs(gate_id=None), np.array([6.0, 0.0, -5.0]), False, 1, B2.gate) == (0, pl.GP_PASSED)
+
+
+def test_silence_excludes_nobody_from_the_gate():
+    tr, gp = _observer(P, others=(1,))
+    gp.update(0.5, P, 0., [], {})
+    _rx(tr, P, 1.0, 1, [-5.4, 3.5, -5.], bound=9.0, phase=pl.GP_NONE)
+    assert gp.acoustic_exit.status_excluded(1, 1.1)
+    assert not gp.acoustic_exit.status_excluded(1, 1.0 + B2.acoustic.t_silent_gate_s + 9.0)
+
+
+def test_the_lateral_residual_stands_down_during_a_giveway():
+    from holo_fleet.config import DEFAULT as D
+    from holo_fleet.control.flows import Flows
+    from holo_fleet.perception.formation_perception import FormationObs
+
+    plan = _plan()
+    fl = Flows(plan, D)
+    fl.offset = np.array([0.0, -2.5, 0.0])
+    me = plan.slots[0]
+
+    class O:
+        t = 20.0
+        p = np.array([3.0, me.lateral - 2.5, -5.0 + me.dz])
+        R_wb = np.eye(3)
+        yaw = 0.0
+        slot_pos = np.array([9.0, me.lateral - 2.5, -5.0 + me.dz])
+        form = FormationObs(lateral_far=2.5)
+        targets = []
+        unhealthy = []
+    fl.formation(O, 0.1, recovering=True)
+    assert fl.lam == 0.0

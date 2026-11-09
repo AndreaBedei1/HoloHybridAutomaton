@@ -173,3 +173,5 @@ azimuth by construction, so the check B2-A1 cannot see them; thruster self-noise
 arrivals keep the payload loss of a clear path.  The loss process is independent per ping with outages common to all links; `MEDIUM_HT`
 (per-link OFF periods, Pareto, P(OFF > 40 s) = 0.10, parameters from a plot of lake links at 43-720 m, transfer to 3-7 m unknown) is a sensitivity only.
 The 1 kbit/s frame of H6 is an assumption: M64 modems run at 64 bit/s, where one packet would take 1 s and a cycle 3-6 s, above `status_fresh_s`.
+
+Added after round 3: the 45 s threshold is calibrated on this simulated channel (the 31 s statistic is from far pairs of `formation_six`, for which vacancy is not used; on expected-neighbour links the worst gap in the v10 MEDIUM runs was 21 s), and no analytic false-vacancy bound is derived in this repository. `Perception.lateral_far` has a one-sided multipath pull towards the neighbour (about +0.8 m at the 99th percentile with one lateral neighbour); only the 2 m cap of the integrator bounds it. The engine applies drag without the N to cN conversion (`HolodeckBuoyantAgent.cpp`), so coasting distances are longer than a real vehicle's.

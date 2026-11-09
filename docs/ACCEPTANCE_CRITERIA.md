@@ -23,6 +23,10 @@ per cell, 216 runs. Held-out seeds 1000-1005, used by nothing before the freeze.
    The test and the Wilson interval are reported whatever the outcome.
 5. `gate_stalled_occupant`: judged on safety as in v5; survivors never enter while a claim stands.
 
+**Reported beside the acceptance, whatever the outcome.** The MEDIUM-ALL result on the scenarios unchanged from v10 (`lost_drone_rejoin`, `lost_drone_rejoin_front` and the failure scenarios removed: v10 is 46/51 there; only 51/51 would reach p < 0.05, so this subset is descriptive).
+
+**Stress set, pre-registered.** `gate_pinned_occupant`, `lost_drone_mutex_carried`, the four rise-speed variants, and `MEDIUM_HT` on `lost_drone_mutex`, `lost_drone_timeout`, `gate_single`, `formation_square`, `integrated_short`, `lost_drone_rejoin`: seeds 1100-1102, 36 runs, on the frozen code. Metric: no SAFETY_FAILURE and no UNSAFE_ACTION; the rest is reported, including, for `gate_pinned_occupant`, the runs where a survivor never heard the failed drone. Not part of the acceptance above.
+
 If an item fails the candidate is not accepted and is not merged; a further change needs fresh seeds. The stress scenarios (`gate_pinned_occupant`, `lost_drone_mutex_carried`, the rise-speed variants, the channel
 `MEDIUM_HT`) are sensitivities: they are reported and are not part of the acceptance.
 

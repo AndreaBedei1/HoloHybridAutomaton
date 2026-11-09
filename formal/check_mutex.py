@@ -713,7 +713,7 @@ def run(cfg: FleetConfig = DEFAULT, verbose: bool = True) -> Report:
                           note=f"masked s in {info['mask_s']}, beyond s > {info['beyond_s']}, B needs >= {info['reach_steps']} "
                                f"steps to the CR, A crosses at >= {V_LO} m/s"), verbose)
             cons, info = latch_bmc(cfg, geos[n], view=view, hold=True)
-            rep.add(check(f"M3h occupancy latch, n={n}, observer at l={view['queue_l']:+.2f}: the crossing drone may stop anywhere before the CR: never both in the CR",
+            rep.add(check(f"M3h occupancy latch, n={n}, observer at l={view['queue_l']:+.2f}: the crossing drone may stop anywhere before the CR, 42 s bound: never both in the CR",
                           "as M3, the speed floor applying only inside the CR", ENC, cons, timeout_ms=900000, note=f"band from s {view['band_from_s']}, FRONT-only s {view['front_only_s']}"), verbose)
     # the queue closest to the gate (n = 2): the shortest way to the CR, where the masked interval matters most
     worst = max(geos[2]["views"], key=lambda v: v["queue_l"])
@@ -725,6 +725,11 @@ def run(cfg: FleetConfig = DEFAULT, verbose: bool = True) -> Report:
     cons, _ = latch_bmc(cfg, geos[3], view=centre, band_latch=False, hold=True)
     rep.add(check("M3b mutation: a FRONT-only echo nearer than the corridor makes neither a relation nor a latch input (round 2, F1): must violate P2",
                   "expect counterexample", ENC, cons, expect="sat", note="n=3, centre queue point"), verbose)
+    side3 = max(geos[3]["views"], key=lambda v: v["queue_l"])
+    cons, _ = latch_bmc(cfg, geos[3], view=side3, hold=True, steps=480)
+    rep.add(check("M3hs scope: beyond the 42 s bound a drone stopped behind the bars before the CR is released by the t_occ_max fallback",
+                  "expect counterexample: the stop before the CR is bounded by the give-up of the code (26 s), not modelled; B2 claims cover it when heard", ENC, cons, expect="sat", timeout_ms=900000,
+                  note="n=3, side queue point, 48 s BMC"), verbose)
     # M3f the scope of the t_occ_max fallback: the latch release after t_occ_max without corridor echoes assumes that a
     # healthy occupant crosses (speed >= V_LO).  An occupant stopped inside the CR by a fault, masked by the bars, is
     # released by it: P2 does not cover faults inside the CR (B2: heard_inside blocks the fallback while it pings).
