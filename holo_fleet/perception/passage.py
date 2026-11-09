@@ -51,13 +51,15 @@ def inside_keepout(s: float, l: float, dz: float, G) -> bool:
 
 def report_phase(verified: bool, in_progress: bool, committed: bool, in_keepout: bool) -> int:
     """The gate phase a drone reports about itself.  A drone inside the keep-out box that is not committed (carried there by a
-    current or an escape) cannot say "not engaged": the others would exclude it as an occupant.  It reports a claim, which can
-    only hold the gate BUSY (formal B2-PE and its mutation)."""
-    if verified:
-        return GP_PASSED
+    current or an escape, or back after a passage) cannot say "not engaged" or "passed": the others would exclude it as an
+    occupant.  It reports a claim, which can only hold the gate BUSY (formal B2-PE and S9)."""
     if in_progress:
         return GP_ADMITTED
-    return GP_COMMITTED if (committed or in_keepout) else GP_NONE
+    if in_keepout:
+        return GP_COMMITTED
+    if verified:
+        return GP_PASSED
+    return GP_COMMITTED if committed else GP_NONE
 
 
 class PassageVerifier:

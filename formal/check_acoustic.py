@@ -272,7 +272,7 @@ def payload_soundness(cfg: FleetConfig, g, n: int = 20000, seed: int = 3, radius
     return {"samples": n, "cleared_inside": bad, "beyond_while_inside": beyond_bad}
 
 
-def phantom_soundness(cfg: FleetConfig, g, n: int = 3000, seed: int = 5, sender_rule: bool = True) -> dict:
+def phantom_soundness(cfg: FleetConfig, g, n: int = 3000, seed: int = 5, sender_rule: bool = True, use_status: bool = True) -> dict:
     """B2-PE: a fleet drone whose centre is truly in the CR is never excluded by the phantom-echo rule
     (AcousticExit.no_fleet_drone): its accepted fixes are generated inside the declared envelope (white and bias
     errors at their bounds, the one-sided multipath excess, ages up to tie_window_s) from queue-side observers, with
@@ -317,6 +317,8 @@ def phantom_soundness(cfg: FleetConfig, g, n: int = 3000, seed: int = 5, sender_
                 pkt = pl.encode(pl.frame_index(t_arr - r_m / cfg.beacon.sound_speed, cfg.beacon.period_s), true + e, b, 0, phase)
             tr.update(t_arr + 0.05, [(1, t_arr, r_m, az_m, el_m, pkt)], p_obs, yaw, 0.5)
         r_e = float(np.linalg.norm(true - p_obs)) - R_OUT
+        if not use_status:
+            tr.status.clear()
         if ae.no_fleet_drone(t_now, g, p_obs, yaw, [max(r_e, 0.3)]):
             bad += 1
     return {"samples": n, "occupant_excluded": bad}
@@ -420,6 +422,10 @@ def run(cfg: FleetConfig = B2, verbose: bool = True) -> Report:
                         "excluded by the phantom-echo rule", "randomized: no_fleet_drone -> false", ENC, "holds",
                         verdict="holds" if pe["occupant_excluded"] == 0 else "violated",
                         passed=pe["occupant_excluded"] == 0, note=f"{pe}"), verbose)
+    peg = phantom_soundness(cfg, g, use_status=False)
+    rep.add(CheckResult("B2-PEg phantom-echo soundness of the fix geometry alone (no status in any packet): an occupant is never excluded",
+                        "randomized: no_fleet_drone -> false, status removed", ENC, "holds", verdict="holds" if peg["occupant_excluded"] == 0 else "violated",
+                        passed=peg["occupant_excluded"] == 0, note=f"{peg}"), verbose)
     pem = phantom_soundness(cfg, g, sender_rule=False)
     okem = pem["occupant_excluded"] > 0
     rep.add(CheckResult("B2-PEm mutation: without the keep-out claim a drone carried into the CR uncommitted reports not engaged and is excluded",

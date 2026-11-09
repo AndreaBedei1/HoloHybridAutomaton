@@ -17,7 +17,8 @@ GATE_SCENARIOS = ("gate_single", "integrated_short", "mutex_deadlock_resolution"
 
 
 def test_catalogue_is_small_and_short():
-    assert set(SCENARIOS) == set(EXPECTED)
+    from holo_fleet.sim.scenarios import STRESS_SCENARIOS
+    assert set(SCENARIOS) - set(STRESS_SCENARIOS) == set(EXPECTED)  # the acceptance matrix
     for name, n in EXPECTED.items():
         sc = SCENARIOS[name](DEFAULT)
         assert len(sc.plans) == n == len(sc.sim.names), name
@@ -188,3 +189,23 @@ def test_b2_final_matrix_is_the_preregistered_smaller_variant():
     runs = c.b2_final_matrix()
     assert len(runs) == 216 == len(set(runs)) and len(c.B2_CELLS) == 3
     assert {r[3] for r in runs} == set(range(800, 806))                       # fresh held-out seeds (v10)
+
+
+def test_the_stress_scenarios_build_and_keep_the_failure_model():
+    from holo_fleet.config import DEFAULT
+    from holo_fleet.sim.scenarios import SCENARIOS
+
+    for name in ("gate_pinned_occupant", "lost_drone_mutex_carried", "lost_drone_mutex_rise_low", "lost_drone_mutex_rise_high",
+                 "gate_stalled_occupant_rise_low", "gate_stalled_occupant_rise_high"):
+        sc = SCENARIOS[name](DEFAULT)
+        assert sc.name == name and sc.sim.faults and all(f["type"] == "TOTAL_FAILURE" for f in sc.sim.faults)
+    assert SCENARIOS["lost_drone_mutex_rise_low"](DEFAULT).cfg_patch["failure"].v_rise_mps == 0.06
+
+
+def test_the_heavy_tailed_channel_is_per_link_and_the_others_are_unchanged():
+    from holo_fleet.sim.acoustic_channel import ChannelModel, channel
+
+    ht = ChannelModel(channel("MEDIUM_HT"), 3, 7, 30.0, duration_s=2000.0)
+    assert ht.link_off[(0, 1)] != ht.link_off[(1, 0)]
+    a, b = ChannelModel(channel("MEDIUM"), 3, 7, 30.0, duration_s=2000.0), ChannelModel(channel("MEDIUM_HT"), 3, 7, 30.0, duration_s=2000.0)
+    assert a.outages == b.outages and not a.link_off

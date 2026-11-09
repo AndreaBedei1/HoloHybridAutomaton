@@ -164,7 +164,10 @@ class GatePerception:
         ae = self.acoustic_exit
         if ae is not None:
             ae.gate_idx, ae.g = self.idx % 4, g
-        corridor = [tg for tg in targets if "FRONT" in tg.pattern and r_near <= tg.r_min <= r_far]
+        # the band in which a FRONT-only echo makes no queue relation (below) feeds the latch: an echo is never without effect
+        r_band = r_near - G.nav_err_m
+        corridor = [tg for tg in targets if "FRONT" in tg.pattern
+                    and (r_near <= tg.r_min <= r_far or (set(tg.pattern) == {"FRONT"} and r_band <= tg.r_min < r_near))]
         # B2: an echo that no fleet drone can have produced (every other drone positively elsewhere) is no occupant;
         # under MEDIUM sonar noise such phantom echoes refreshed the latch every few seconds and blocked the queue
         self.phantom = bool(corridor and ae is not None and ae.no_fleet_drone(t, g, p, yaw, [tg.r_min for tg in corridor]))
@@ -176,7 +179,7 @@ class GatePerception:
             # points see each other only in LEFT / RIGHT (mutex_rule), and a merged target (FRONT plus another sector)
             # keeps its relation.  With the navigation error at the queue the frame's bar echo is unexplained and fell
             # in this band for ever (the v10 queue deadlock).
-            if set(tg.pattern) == {"FRONT"} and r_near - G.nav_err_m <= tg.r_min <= r_far:
+            if set(tg.pattern) == {"FRONT"} and r_band <= tg.r_min <= r_far:
                 continue
             if "FRONT" in tg.pattern:
                 if tg.r_min > r_far:

@@ -446,4 +446,60 @@ def test_a_drone_inside_the_keepout_box_never_reports_not_engaged():
     assert inside_keepout(0.0, 0.0, 0.0, G) and not inside_keepout(-5.4, 0.0, 0.0, G)
     assert report_phase(False, False, False, True) == pl.GP_COMMITTED
     assert report_phase(False, False, False, False) == pl.GP_NONE
-    assert report_phase(False, True, False, True) == pl.GP_ADMITTED and report_phase(True, False, False, True) == pl.GP_PASSED
+    assert report_phase(False, True, False, True) == pl.GP_ADMITTED
+    assert report_phase(True, False, False, True) == pl.GP_COMMITTED      # back in the box after a passage, or at the next gate
+    assert report_phase(True, False, False, False) == pl.GP_PASSED and report_phase(True, False, True, False) == pl.GP_PASSED
+
+
+def test_silence_never_discards_a_corridor_echo_a_fresh_report_may():
+    """Formal review round 2, F2: a drone unheard for t_silent_gate after reporting not engaged may be alive and in the CR."""
+    for silent in (False, True):
+        tr, gp = _observer(P, others=(1,))
+        gp.update(0.5, P, 0., [], {})
+        t0 = 1.0
+        _rx(tr, P, t0, 1, [-5.4, 3.5, -5.], bound=9.0, phase=pl.GP_NONE)
+        t = t0 + (B2.acoustic.t_silent_gate_s + 9.0 if silent else 0.1)
+        echo = Target(frozenset({"FRONT"}), 4.4, 4.4, 0., 0., "UNKNOWN")
+        gp.update(t, P, 0., [echo], {})
+        o = gp.update(t + 0.1, P, 0., [echo], {})
+        if silent:
+            assert not gp.phantom and o.occ_busy
+        else:
+            assert gp.phantom and not o.occ_busy
+
+
+def test_no_relation_implies_latch_input_in_the_whole_front_only_band():
+    """Formal review round 2, F1: without a beacon a FRONT-only echo nearer than the corridor made neither a relation nor a latch input."""
+    tr, gp = _observer(P, others=(1,))
+    gp.acoustic_exit = None
+    r_near = float(gp.cr_ranges(GATE, P, 0.)[0]) - 0.389 - B2.env.eps_range_far
+    for r in np.linspace(r_near - B2.gate.nav_err_m, r_near - 0.05, 7):
+        tr, gp = _observer(P, others=(1,))
+        gp.acoustic_exit = None
+        echo = Target(frozenset({"FRONT"}), float(r), float(r), 0., 0., "UNKNOWN")
+        gp.update(1.0, P, 0., [echo], {})
+        o = gp.update(1.1, P, 0., [echo], {})
+        assert o.relations == [] and o.occ_busy
+
+
+def test_a_recovering_drone_on_a_giveway_is_not_sent_back_to_its_lane():
+    from holo_fleet.config import DEFAULT as D
+    from holo_fleet.control.flows import Flows
+    from holo_fleet.perception.formation_perception import FormationObs
+
+    plan = _plan()
+    fl = Flows(plan, D)
+    me = plan.slots[0]
+    fl.offset = np.array([0.0, -2.5, 0.0])                       # a give-way to the right is running
+
+    class O:
+        t = 20.0
+        p = np.array([3.0, me.lateral - 2.5, -5.0 + me.dz])
+        R_wb = np.eye(3)
+        yaw = 0.0
+        slot_pos = np.array([9.0, me.lateral - 2.5, -5.0 + me.dz])
+        form = FormationObs()
+        targets = []
+        unhealthy = []
+    fl.formation(O, 0.1, recovering=True)
+    assert fl.rejoin_phase != "TO_LANE" and fl.rejoin_phase != "DROP_BACK"

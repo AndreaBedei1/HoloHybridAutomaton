@@ -58,7 +58,8 @@ from typing import Dict, List, Optional
 
 import numpy as np
 
-CRITERIA_VERSION = "v5"   # v5 (2026-11-05, the user's decision after the v4 campaign): liveness is eventual - no
+CRITERIA_VERSION = "v6"   # v6 (2026-11-09): the requirements and classes of v5; the fault term of the deadline uses the silence
+                          # interval of the total failure model (docs/ACCEPTANCE_CRITERIA.md).  v5 (2026-11-05, the user's decision after the v4 campaign): liveness is eventual - no
                           # time bound on a gate passage enters the class; the run horizon is HORIZON_FACTOR x the
                           # a-priori deadline (which stays the reported "on time" reference); scenarios whose mission
                           # is physically infeasible are judged on safety only.

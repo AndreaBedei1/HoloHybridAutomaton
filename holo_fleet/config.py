@@ -385,8 +385,10 @@ class FailureModel:
     BlueROV2 is exactly neutral, so the ascent is applied as a vertical current command on that drone only, added to the
     current drift vector (holo_env.truth; the terminal speed is calibrated by calibration/probe_buoyant_ascent.py).
     ``v_rise_mps``: steady ascent of net buoyancy F against the vertical drag: sqrt(2 F / (rho C_d A)) for F = 1.96 N
-    and C_d A of the BlueROV2 Heavy plan area (0.458 x 0.576 m x 1.1) gives about 0.12 m/s; published heave damping
-    gives about 0.06 m/s; stated range 0.05 - 0.18 m/s, nominal 0.10 m/s.  ``surface_z_m``: the centre stops rising
+    and C_d A of the BlueROV2 Heavy plan area (0.458 x 0.576 m x 1.1) gives about 0.12 m/s; with an identified heave damping of
+    the vehicle (linear 33 N s/m, quadratic 190 N s^2/m^2, reviewer round 2) it is 0.047 m/s, 0.102 m/s with the quadratic term
+    alone.  Credible range 0.05 - 0.13 m/s; the nominal 0.10 m/s is in its upper part and is an assumption: the +0.2 kg is not
+    measured; the sensitivity runs use the ends of the range (*_rise_low, *_rise_high).  ``surface_z_m``: the centre stops rising
     here (just awash).  It is an emulation: the engine's drag acts on the whole relative velocity."""
 
     v_rise_mps: float = 0.10

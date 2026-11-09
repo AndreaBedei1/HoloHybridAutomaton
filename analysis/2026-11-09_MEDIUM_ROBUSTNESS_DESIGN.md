@@ -44,6 +44,11 @@ Root causes, from the logs of the ten runs (`results/robustness/raw_b2final_v10`
   after a 30 m run. The planned lanes (3.5 m) are then 2.6 m apart in reality; the drone returning along its lane enters the warning
   band of the neighbour on the next lane (trigger at about 3.3 m between centres) and stops 2.3-3.9 m short of its slot until the deadline.
   The sonar consensus could not help: it is disabled beyond `e_lost` because the ranges then measure the drone's own displacement.
+* **RC7 (med4 `lost_drone_mutex` s920, also the earlier failures of that scenario). An along-axis error stops the drone before it can relocalize.** On the axis only the FRONT sector
+  sees the frame until about 2.2 m. With a true-to-estimated error of 0.5-1.1 m along the axis the bar echo is unexplained, the separation layer holds the drone at about 2.7 m, and
+  the side sectors that the map fit needs never see the bars.
+* **RC8 (med4 `p1_two_lines` s921). The rejoin logic undid a running give-way.** The lane error ignored the give-way offset; a recovering drone was sent back to the lane it had left,
+  head-on again, and stayed in a standoff until the deadline.
 
 ## 2. Failure model and vacancy (as implemented)
 
@@ -84,15 +89,19 @@ was a design choice, not a physical limit.
 ## 4. Gate logic (perception only; automaton unchanged)
 
 **The status never enters the precedence.** After the first independent reviews the relation logic was made independent of the beacon:
-a FRONT-only echo inside the corridor band makes no precedence relation, unconditionally (it is the latch's business); a merged echo keeps its WAIT.
+a FRONT-only echo inside the band `[r_near - nav_err_m, r_far]` makes no precedence relation, unconditionally, and always feeds the latch: an echo is never without effect (formal review
+round 2, F1: the first version left a 1 m band with neither); a merged echo keeps its WAIT. M3 and S2 now model this predicate.
 
 * A drone is **excluded as an occupant** only by `status_excluded` (`perception/acoustic_gate.py`): a fresh status not engaged or for another gate, or
   `GP_PASSED` for this gate. Evidence order: a later accepted fix in the CR beats an older status. Freshness is per layout:
   `min(2.5 s, t_min - latency)`, `t_min` the shortest travel time from the queue line to the CR at the speed bound.
 * **Positive occupancy**: `GP_COMMITTED` / `GP_ADMITTED` of another drone keeps the gate BUSY.
+* **Sender rule** (`passage.report_phase`): a drone inside the keep-out box (the CR grown by the hull and the declared navigation error) reports a claim whatever its history, about the gate it is at: carried in
+  uncommitted, or back after a passage, it does not report that it is not there.
+* **A positive echo is discarded only on fresh evidence** about every other drone (`no_fleet_drone`); silence or an old report never discards one (round 2, F2).
 * **Silence never clears a committed or admitted drone.** A `GP_NONE` drone is excluded by silence only after `t_silent_gate_s` = 70 s.
   A failure under the bar therefore blocks the gate for the survivors for good, by design; `gate_stalled_occupant` accepts this outcome.
-* **Keep-out barrier** (`Flows.keepout_filter`): a drone not committed cannot move towards the CR beyond the queue line.
+* **Keep-out filter** (`Flows.keepout_filter`): the mission velocity of a drone not committed has no along-axis component towards the CR. Mission modes only, the avoidance output is not edited. The status logic does not rest on it.
 
 ## 5. Navigation and gate localization
 
@@ -100,6 +109,8 @@ a FRONT-only echo inside the corridor band makes no precedence relation, uncondi
 * A measured gate crossing corrects the **lateral** estimate only (the along-axis correction caused a contact in development, med2 gate_single s902),
   and is skipped above 1.2 m. The correction moves the stored fixes with the estimate (`AcousticTracker.shift`).
 * `NavBound` is never restarted (reviewer finding): the bound stays monotone.
+* **Along-axis correction from one FRONT echo** (RC7, `StructureAiding._axial`): with every other drone excluded as the source of the echo, unique and consistent over 4 captures, along the axis only; it never validates the localization.
+* A dead drone stays left out of the identity premise of the map fit (`Perception._other_regions`), against the reviewer's suggestion: there the echo only moves the own estimate, by at most `MAX_CORR_M`, and no occupancy decision reads the premise. Removing it would disable the fit in every failure run.
 
 ## 6. Formation
 
@@ -109,6 +120,7 @@ a FRONT-only echo inside the corridor band makes no precedence relation, uncondi
   `f.rel - d_k - (slot - p)`: the relative navigation error, independent of the own displacement. With `slot` including the correction, the residual goes to zero
   with it. Its median feeds the existing lateral integrator `lam` (bound `progress_max`, 2 m), and the rejoin lane follows `lam`. Near the slot the
   ordinary consensus acts as before. Only the mission reference moves: the separation layer and its formal checks are untouched.
+* **The rejoin lane follows a running give-way** (RC8), laterally and in depth.
 
 ## 7. Verification
 

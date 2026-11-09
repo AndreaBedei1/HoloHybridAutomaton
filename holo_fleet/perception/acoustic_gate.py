@@ -39,15 +39,16 @@ histories of the range-bearing measurement alone (a drone beyond the exit with a
 independent navigation estimate.  An inconsistent or missing payload leaves the measurement-only rules.
 
 Gate phase (payload v2, perception/payload.py).  A drone reports its own phase with this gate.  It is used only to exclude
-it as a possible occupant, or as positive occupancy, never to give precedence: GP_NONE (never admitted to this gate),
-fresher than ``status_fresh_s``, or GP_PASSED, or a phase of another gate, excludes it; GP_COMMITTED / GP_ADMITTED of any
-other drone holds the latch BUSY until the drone reports otherwise; a drone that fell silent (``t_silent_s``) while
-GP_ADMITTED stays an unknown occupant for ever (silence never clears a possibly occupied gate), one that fell silent
-while GP_NONE or GP_COMMITTED was outside the CR when it stopped and is excluded.  The freshness bound is below the
-smallest time a drone needs from its queue point to the CR, with the speed bound and the declared gate-frame navigation
-error (GatePerception computes it per plan): a report of GP_NONE fresher than that cannot be followed by an occupied CR
-unseen.  A drone that fell silent after GP_COMMITTED stays a possible occupant (a committed drone is before the CR only
-in its own estimated frame).
+it as a possible occupant, or as positive occupancy, never to give precedence.  GP_COMMITTED / GP_ADMITTED of another drone
+hold the latch BUSY until the drone reports otherwise, for ever if it falls silent: silence never clears a possibly occupied
+gate.  A drone inside the keep-out box reports a claim whatever its history (passage.report_phase), so a drone carried into
+the CR uncommitted, or back after a passage, does not report that it is not there.  GP_NONE or a phase of another gate excludes a
+drone while the report is younger than ``status_fresh_s``, a bound below the smallest time from its queue point to the CR at
+the speed bound (GatePerception computes it per plan); GP_PASSED excludes it for good, except for the rule below.  A drone silent
+for ``t_silent_s`` after GP_NONE is excluded from the exit evaluation, which requires the FRONT corridor empty.
+
+A positive corridor echo is discarded as no fleet drone (``no_fleet_drone``) only on evidence about every other drone that is
+fresh: silence, or an old report of any kind, never discards one.
 
 Soundness argument (mutual exclusion rests on A1 and A2 only): under the B0 assumption that every
 entry into the CR crosses the FRONT corridor visibly (formal M3/M4), a drone in the CR at t either was in it or
@@ -128,7 +129,7 @@ class AcousticExit:
             for j in self.others:
                 if self.status_claim(j, t):                # a drone holding the gate may well be this echo
                     return False
-                if self.status_excluded(j, t):             # by what it reports about itself
+                if self.status_excluded(j, t, fresh_only=True):    # by what it reports about itself, now
                     self.last_phantom[j] = "status"
                     continue
                 win = self.tracker.all_fixes(j, t - a.tie_window_s, t)
@@ -144,7 +145,7 @@ class AcousticExit:
             self.sighting = saved
 
     # ------------------------------------------------------------------ gate status of the other drones (payload v2)
-    def status_excluded(self, j: int, t: float) -> bool:
+    def status_excluded(self, j: int, t: float, fresh_only: bool = False) -> bool:
         """Drone j cannot be an occupant of the current gate's CR, by what it reports about itself (module docstring):
         it reports another gate or GP_NONE and the report is fresh, or it reports GP_PASSED (monotone: final), or it fell
         silent for t_silent_gate_s after reporting GP_NONE (a drone that stopped outside, and rose, cannot enter)."""
@@ -156,6 +157,8 @@ class AcousticExit:
         if self.g is not None and last is not None and last.t_tx > st.t_tx + 1e-6 and not self.clear_of_cr(self.g, last, last.t):
             return False
         fresh = t - st.t_tx <= self.status_fresh_s
+        if fresh_only and not fresh:                       # silence or an old report never discards a positive echo
+            return False
         gone = self.tracker.silent(j, t, self.cfg.acoustic.t_silent_gate_s)
         if st.gate_idx != self.gate_idx:
             return fresh or gone

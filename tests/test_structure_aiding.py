@@ -282,3 +282,40 @@ def test_another_drone_ahead_does_not_move_a_correct_estimate():
             aid = StructureAiding(clf, DEFAULT, gates=GATES)
             q = _run(aid, clf, p, p.copy(), R, n=8, extra={"FRONT": float(r_other)})
             assert np.linalg.norm(q[:2] - p[:2]) <= 0.15, (s_gate, r_other, q - p, aid.last)
+
+
+def _axial_run(aid, clf, p_true, p_est, R, others, n=20):
+    p = p_est.copy()
+    for _ in range(n):
+        corr = aid.update(p, R, _profiles(clf, p_true, R), {s: 0.0 for s in sg.SECTORS}, 0.25, others=others)
+        if corr is not None:
+            p = p + corr
+    return p
+
+
+def _axial_setup():
+    clf = EchoClassifier(gate_bars=BARS, cfg=DEFAULT)
+    return clf, StructureAiding(clf, DEFAULT, gates=[GATE], acq_min=6.0)
+
+
+def test_with_every_other_drone_excluded_a_single_front_echo_corrects_the_along_axis_error_only():
+    clf, aid = _axial_setup()
+    p_true, p_est = _world(-2.7, 0.0), _world(-3.3, 0.0)
+    p = _axial_run(aid, clf, p_true, p_est, _R(), others=[])
+    assert abs(float(GATE.to_gate_frame(p)[0]) - (-2.7)) <= 0.15
+    assert abs(float(GATE.to_gate_frame(p)[1])) <= 1e-6
+
+
+def test_without_identity_a_single_front_echo_never_moves_the_estimate():
+    clf, aid = _axial_setup()
+    p_est = _world(-3.3, 0.0)
+    p = _axial_run(aid, clf, _world(-2.7, 0.0), p_est, _R(), others=None)
+    assert np.allclose(p, p_est)
+
+
+def test_an_echo_another_drone_could_have_made_never_moves_the_estimate():
+    clf, aid = _axial_setup()
+    p_est = _world(-3.3, 0.0)
+    near_bar = np.array([_world(-0.2, 0.3)])                      # a drone located in the sonar's cone at the echo range
+    p = _axial_run(aid, clf, _world(-2.7, 0.0), p_est, _R(), others=[(near_bar, 0.5)])
+    assert np.allclose(p, p_est)

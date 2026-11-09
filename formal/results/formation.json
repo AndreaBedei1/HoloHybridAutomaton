@@ -31,7 +31,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 0.012,
+      "seconds": 0.013,
       "counterexample": null,
       "note": "e* = 0.439 m (A4 needs the onboard form_err below e_ok = 0.5 m)"
     },
@@ -64,7 +64,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 0.011,
+      "seconds": 0.014,
       "counterexample": null,
       "note": "e* = 0.355 m (A4 needs the onboard form_err below e_ok = 0.5 m)"
     },
@@ -86,7 +86,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 0.01,
+      "seconds": 0.009,
       "counterexample": null,
       "note": ""
     },
@@ -108,7 +108,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 0.009,
+      "seconds": 0.008,
       "counterexample": null,
       "note": ""
     },
@@ -119,7 +119,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 0.013,
+      "seconds": 0.007,
       "counterexample": null,
       "note": ""
     },
@@ -130,7 +130,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 0.01,
+      "seconds": 0.008,
       "counterexample": null,
       "note": ""
     },
@@ -152,7 +152,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 0.008,
+      "seconds": 0.01,
       "counterexample": null,
       "note": ""
     },
@@ -163,7 +163,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 0.036,
+      "seconds": 0.037,
       "counterexample": null,
       "note": "perception.track_missing (timer, latch) + spec guards; frozen steps (planned holds, drone not on its slot) do not count, A5; with the B2 gate-delay hold the bound is F6g"
     },
@@ -174,7 +174,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 0.0,
+      "seconds": 0.001,
       "counterexample": null,
       "note": ""
     },
@@ -185,7 +185,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 0.005,
+      "seconds": 0.004,
       "counterexample": null,
       "note": "perception.track_missing (gate_delay never resets, so the hold is spent once)"
     },
@@ -212,7 +212,7 @@
       "expect": "sat",
       "verdict": "sat",
       "passed": true,
-      "seconds": 0.092,
+      "seconds": 0.09,
       "counterexample": {
         "at_queue_w0": false,
         "at_queue_w1": false,
@@ -624,7 +624,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 0.016,
+      "seconds": 0.018,
       "counterexample": null,
       "note": "head current admitted at V; xs: one-axis through-water speed at the nominal authority"
     },
@@ -635,7 +635,7 @@
       "expect": "sat",
       "verdict": "sat",
       "passed": true,
-      "seconds": 0.009,
+      "seconds": 0.011,
       "counterexample": {
         "h": 0.25,
         "xs": 0.7126002621221232
@@ -663,12 +663,12 @@
       "expect": "sat",
       "verdict": "sat",
       "passed": true,
-      "seconds": 0.006,
+      "seconds": 0.004,
       "counterexample": {
         "e": 0.6666666666666666,
         "sigma_dot": 0.136,
         "v_ref": 0.2,
-        "w": -0.05
+        "w": 0.0
       },
       "note": ""
     },
@@ -679,11 +679,11 @@
       "expect": "sat",
       "verdict": "sat",
       "passed": true,
-      "seconds": 0.007,
+      "seconds": 0.008,
       "counterexample": {
-        "corr": -4.1666666666666667e-07,
+        "corr": -0.004546363636363637,
         "e": -0.4,
-        "w": -5.416666666666667e-06
+        "w": 0.05
       },
       "note": ""
     }

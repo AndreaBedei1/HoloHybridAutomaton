@@ -6,20 +6,22 @@ speed bound of a drone, the queue tolerance, a received packet is genuine (CRC-1
 a function of the queue layout.
 
 * S1 positive occupancy: with a claim (a report of committed or admitted) of another drone the latch is BUSY and stage 2 holds
-  the entry, in every state of the latch.
-* S2 M3-status (Z3, bounded model checking, the timed latch abstraction of formal/check_mutex.py): the phantom exclusion of
-  corridor echoes while the crossing drone's last report says it is not engaged (its later packets lost), with the FRONT-only
-  corridor echoes never making a relation, never lets a queued drone commit while the crosser is in the CR, at the deployed
-  freshness bound, for the queue layouts; the mutation with the larger freshness that the design first proposed must be
-  violated.  (Model checked for the worst speed and offset of the crossing drone: speed bound, queue tolerance plus the
-  declared navigation error.)
+  the entry, in every state of the latch (S1m: claims ignored).
+* S2 M3-status (Z3, bounded model checking, the timed latch abstraction of formal/check_mutex.py with the code's predicate: a
+  FRONT-only echo in the band makes no relation and feeds the latch).  It covers the freshness of a report of not engaged: the
+  phantom exclusion of corridor echoes while the crossing drone's last report, its later packets lost, is younger than the freshness
+  bound.  S2h: the crossing drone may stop anywhere before the CR.  S2m: a larger freshness.  S2b: no latch input in the band.
 * S3 evidence order: a status older than an accepted fix that places the drone possibly inside the CR never excludes it.
-* S4 silence: a drone that fell silent after reporting committed or admitted keeps the gate held for ever.
-* S5 structural: the precedence relations are never computed from acoustic data or status.
-* S6 the relation dropped for a FRONT-only echo in the corridor band is never one between drones at their queue points.
+* S4 silence: a drone that fell silent after reporting committed or admitted keeps the gate held for ever (S4m: silence clears it).
+* S5 text search: no acoustic or status name in the relation loop of GatePerception.update (a search, it does not see indirect paths).
+* S6 drones at abreast queue points with their tolerances are never FRONT-only targets of each other (only those points).
+* S6b on the real class, without a beacon: a FRONT-only echo anywhere in the band makes no relation and the latch is BUSY.
 * S7 a verified passage is sound: a drone reported past the gate has its true centre beyond the CR grown by R_OUT (randomized
   over the fit error at admission, the DVL scale and heading error, a drone blocked at a bar never verifying).
-* S8 the freshness bound is below the shortest time from a queue point to the CR at the speed bound.
+* S8 the freshness bound the deployed class uses is positive and below the shortest time from a queue point to the CR.
+* S9 sender rule: a true centre in the CR, the estimate within the declared navigation error, is inside the keep-out box, and a drone
+  inside the box reports a claim whatever its history (S9m: no margin).
+* S11 silence never discards a corridor echo: a report of not engaged or passed that is not fresh leaves the echo in (S11m: it does).
 """
 
 from __future__ import annotations
@@ -80,12 +82,14 @@ def _rx(tr, p, yaw, t, k, q, cfg, phase, bound=0.5, gate_idx=0):
     tr.update(t, [(k, t_arr, r, az, el, pl.encode(fr, q, bound, gate_idx, phase))], p, yaw, 0.5)
 
 
-def positive_occupancy(cfg: FleetConfig, g, n_cases: int = 300, seed: int = 11) -> dict:
+def positive_occupancy(cfg: FleetConfig, g, n_cases: int = 300, seed: int = 11, mutate: bool = False) -> dict:
     """S1: any state of the latch, a claim of another drone (random position, committed or admitted): BUSY, no admission."""
     rng = np.random.default_rng(seed)
     bad = 0
     for _ in range(n_cases):
         tr, gp, p, yaw = _observer(g, 3, cfg)
+        if mutate:
+            gp.acoustic_exit.status_claim = lambda j, t: False
         gp.occ_state = str(rng.choice(["FREE", "EXITING", "BUSY"]))
         gp.exit_seen_t = -10.0
         k = int(rng.integers(1, 3))
@@ -97,7 +101,7 @@ def positive_occupancy(cfg: FleetConfig, g, n_cases: int = 300, seed: int = 11) 
     return {"cases": n_cases, "violations": bad}
 
 
-def m3_status_model(cfg, geo, view, t_status, v_hi, e0, steps=320):
+def m3_status_model(cfg, geo, view, t_status, v_hi, e0, steps=320, hold=False, band_latch=True):
     """The timed latch abstraction of M3 extended with the phantom rule of the payload v2: B ignores the corridor echoes of A
     while A's last report (before A commits, the later packets being lost) is younger than t_status; the FRONT-only corridor
     echoes make no relation at all."""
@@ -109,6 +113,10 @@ def m3_status_model(cfg, geo, view, t_status, v_hi, e0, steps=320):
     m_lo_s = view["mask_from_s"]
     m_hi_s = view["visible_again_s"]
     b_s = view["beyond_s"]
+    band_lo = view["band_from_s"] if view.get("band_from_s") is not None else 99.0
+    fo_lo, fo_hi = view["front_only_s"] if view.get("front_only_s") else (99.0, -99.0)
+    no_rel = lambda x: z3.And(x >= band_lo, x <= b_s, x >= fo_lo, x <= fo_hi)
+    in_band = lambda x: z3.And(x >= band_lo, x < s_corr_lo, x >= fo_lo, x <= fo_hi)
     reach = int(math.floor((abs(geo["queue_s"]) - G.cr_half_len) / v_hi / dt))
     V = lambda n, f: [f(f"{n}_{k}") for k in range(steps + 1)]
     sA, seen, corr, beyond, busy = V("sA", z3.Real), V("seen", z3.Bool), V("corr", z3.Bool), V("beyond", z3.Bool), V("busy", z3.Bool)
@@ -116,10 +124,13 @@ def m3_status_model(cfg, geo, view, t_status, v_hi, e0, steps=320):
     C = [sA[0] == geo["queue_s"] + e0, z3.Not(busy[0]), quiet[0] == tc, prio[0] == 0, z3.Not(commit[0]), since[0] == 0]
     ph = [(k * dt <= t_status) for k in range(steps + 1)]
     for k in range(steps):
-        C.append(z3.And(sA[k + 1] - sA[k] >= cm.V_LO * dt, sA[k + 1] - sA[k] <= v_hi * dt))
+        floor = z3.If(sA[k] >= -G.cr_half_len, cm.V_LO, 0.0) if hold else cm.V_LO
+        C.append(z3.And(sA[k + 1] - sA[k] >= floor * dt, sA[k + 1] - sA[k] <= v_hi * dt))
     for k in range(steps + 1):
         C.append(seen[k] == z3.Or(sA[k] < m_lo_s, sA[k] > m_hi_s))
         rng = z3.And(sA[k] >= s_corr_lo, sA[k] <= b_s)
+        if band_latch:
+            rng = z3.Or(rng, in_band(sA[k]))
         conf = z3.And(seen[k], rng) if k == 0 else z3.And(seen[k], seen[k - 1], rng)
         C.append(corr[k] == z3.And(conf, z3.BoolVal(not ph[k])))
         C.append(beyond[k] == z3.And(seen[k], sA[k] > b_s))
@@ -127,8 +138,7 @@ def m3_status_model(cfg, geo, view, t_status, v_hi, e0, steps=320):
         C.append(since[k + 1] == z3.If(corr[k + 1], 0, since[k] + 1))
         C.append(busy[k + 1] == z3.If(corr[k + 1], True, z3.If(z3.And(busy[k], z3.Or(beyond[k + 1], since[k + 1] > t_occ)), False, busy[k])))
         C.append(quiet[k + 1] == z3.If(z3.Or(corr[k + 1], busy[k + 1]), 0, quiet[k] + 1))
-        rng = z3.And(sA[k + 1] >= s_corr_lo, sA[k + 1] <= b_s)
-        wait = z3.And(seen[k + 1], sA[k + 1] < s_corr_lo)    # FRONT-only echoes in the corridor band make no relation
+        wait = z3.And(seen[k + 1], sA[k + 1] <= b_s, z3.Not(no_rel(sA[k + 1])))    # the code's predicate
         C.append(prio[k + 1] == z3.If(wait, 0, prio[k] + 1))
         C.append(commit[k + 1] == z3.Or(commit[k], z3.And(prio[k + 1] >= tc, z3.Not(busy[k + 1]), quiet[k + 1] >= tc)))
     viol = []
@@ -160,7 +170,7 @@ def evidence_order(cfg: FleetConfig, g, n_cases: int = 300, mutate: bool = False
     return {"cases": n_cases, "excluded_by_stale_status": bad}
 
 
-def silence_never_clears(cfg: FleetConfig, g, n_cases: int = 200, seed: int = 17) -> dict:
+def silence_never_clears(cfg: FleetConfig, g, n_cases: int = 200, seed: int = 17, mutate: bool = False) -> dict:
     """S4: a drone that reported committed or admitted, silent for up to a day: the claim stands, it is not excluded."""
     rng = np.random.default_rng(seed)
     bad = 0
@@ -172,6 +182,9 @@ def silence_never_clears(cfg: FleetConfig, g, n_cases: int = 200, seed: int = 17
         _rx(tr, p, yaw, 1.0, 1, q, cfg, phase)
         t = 1.0 + float(rng.uniform(cfg.acoustic.t_silent_gate_s + 1.0, 86400.0))
         tr.heard[2] = t - 0.5                                     # the receiver works: drone 2 is still heard
+        if mutate:
+            orig = ae.status_claim
+            ae.status_claim = lambda j, tt, o=orig: o(j, tt) and not tr.silent(j, tt, cfg.acoustic.t_silent_gate_s)
         bad += int(ae.status_excluded(1, t) or 1 not in ae.claims(t) or not tr.silent(1, t))
     return {"cases": n_cases, "violations": bad}
 
@@ -249,54 +262,79 @@ def passage_soundness(cfg: FleetConfig, g, n_cases: int = 2000, seed: int = 19) 
     return {"cases": n_cases, "verified_inside": bad, "blocked_verified": blocked_bad}
 
 
-def keepout_barrier(cfg: FleetConfig, g, n_cases: int = 5000, seed: int = 23) -> dict:
-    """S9: the flow barrier of a drone not committed to the gate never moves it closer to the CR once inside the keep-out band."""
-    from holo_fleet.control.flows import Flows
-    from holo_fleet.perception.gate_perception import GateObs
+def sender_rule(cfg: FleetConfig, n_cases: int = 20000, seed: int = 23, margin_cut: float = 0.0) -> dict:
+    """S9: a true centre in the CR with the estimate within the declared navigation error lies inside the keep-out box, and from
+    inside the box no history reports not engaged or passed.  ``margin_cut``: the mutation, the box without that margin."""
+    from holo_fleet.perception.passage import inside_keepout, report_phase
 
     rng = np.random.default_rng(seed)
-    slots = abreast_slots(2)
-    plan = MissionPlan(drone_id="d0", slot_index=0, slots=slots, path=MPath(np.array([[-30., 0.], [30., 0.]]), float(g.center[2])),
-                       gates=[g], structures=[g], launch_position=np.zeros(3), launch_yaw_deg=0., static_rank=0, s_end=40.,
-                       queue_lateral=0., queue_s=queue_line(slots, cfg.gate))
-    fl = Flows(plan, cfg)
-    G, bad = cfg.gate, 0
-    axis = np.asarray(g.axis, float)
-    s_keep = -(G.cr_half_len + R_OUT + G.nav_err_m)
+    G = cfg.gate if not margin_cut else dataclasses.replace(cfg.gate, nav_err_m=cfg.gate.nav_err_m - margin_cut)
+    half = np.array([cfg.gate.cr_half_len, cfg.gate.cr_half_width, cfg.gate.cr_half_height])
+    outside = 0
     for _ in range(n_cases):
-        s = float(rng.uniform(s_keep - 1.0, G.cr_half_len))
-        go = GateObs(gate_id=g.gate_id, s=s, l=float(rng.uniform(-1.5, 1.5)), dz=float(rng.uniform(-1.0, 1.0)))
-        v = rng.uniform(-0.6, 0.6, 3)
-        vout = fl.keepout_filter(type("O", (), {"gate": go, "gate_index": 0})(), v)
-        if s >= s_keep and float(vout @ axis) > 1e-9:
-            bad += 1
-    return {"cases": n_cases, "toward_cr_inside_band": bad}
+        q = rng.uniform(-half, half)
+        u = rng.normal(size=3)
+        e = q + u / max(float(np.linalg.norm(u)), 1e-9) * cfg.gate.nav_err_m
+        outside += int(not inside_keepout(float(e[0]), float(e[1]), float(e[2]), G))
+    wrong = sum(int(report_phase(v, False, c, True) not in (pl.GP_COMMITTED, pl.GP_ADMITTED)) for v in (False, True) for c in (False, True))
+    return {"cases": n_cases, "estimate_outside_the_box": outside, "not_a_claim": wrong}
 
 
-def backing_up_guard(cfg: FleetConfig) -> list:
-    """S10: DROP_BACK at a stationary reference (control/flows.py) never backs a drone up toward a gate it has passed: the
-    plane from which the reversal is refused (exit_s + 1 m) is beyond the CR grown by the hull and the navigation error."""
-    G, bad = cfg.gate, []
-    plane = G.exit_s + 1.0
-    if plane < G.cr_half_len + R_OUT + G.nav_err_m:
-        bad.append(("plane", plane))
-    return bad
-
-
-def freshness_arithmetic(cfg: FleetConfig) -> list:
-    """S8: the freshness bound used per plan <= the time from the queue point to the CR at the speed bound minus the latency."""
-    G = cfg.gate
+def freshness_deployed(cfg: FleetConfig, g) -> list:
+    """S8: the freshness bound the class deploys per queue layout is positive and below the shortest time to the CR minus the latency."""
     from holo_fleet.perception.exit_witness import speed_bound
 
+    G, bad = cfg.gate, []
     v = speed_bound(cfg)
-    bad = []
     for n in (2, 3):
-        qs = queue_line(abreast_slots(n), G)
-        t_min = (abs(qs) - G.cr_half_len - R_OUT - G.queue_tol - G.nav_err_m) / v
-        fresh = min(cfg.acoustic.status_fresh_s, t_min - cfg.acoustic.latency_max_s)
-        if fresh > t_min - cfg.acoustic.latency_max_s + 1e-9 or fresh < 0.0:
+        _tr, gp, _p, _yaw = _observer(g, n, cfg)
+        fresh = gp.acoustic_exit.status_fresh_s
+        t_min = (abs(gp.plan.queue_s) - G.cr_half_len - R_OUT - G.queue_tol - G.nav_err_m) / v
+        if not (0.0 < fresh <= t_min - cfg.acoustic.latency_max_s + 1e-9):
             bad.append((n, fresh, t_min))
     return bad
+
+
+def band_is_a_latch_input(cfg: FleetConfig, g, n_cases: int = 400, seed: int = 29) -> dict:
+    """S6b: the real class without a beacon: a persistent FRONT-only echo anywhere in the band: no relation and BUSY."""
+    from holo_fleet.perception.targets import Target
+
+    rng = np.random.default_rng(seed)
+    cfg0 = dataclasses.replace(cfg, beacon=BeaconConfig())
+    bad = 0
+    for _ in range(n_cases):
+        _tr, gp, p, yaw = _observer(g, 3, cfg, idx=1)
+        gp.acoustic_exit = None
+        gp.cfg = cfg0
+        r_near = float(gp.cr_ranges(g, p, yaw)[0]) - R_OUT - cfg.env.eps_range_far
+        r_far = float(gp.cr_ranges(g, p, yaw)[1]) + cfg.env.eps_range_near
+        r = float(rng.uniform(r_near - cfg.gate.nav_err_m, r_far))
+        echo = Target(frozenset({"FRONT"}), r, r, 0.0, 0.0, "UNKNOWN")
+        gp.update(1.0, p, yaw, [echo], {})
+        o = gp.update(1.1, p, yaw, [echo], {})
+        bad += int(bool(o.relations) or not o.occ_busy)
+    return {"cases": n_cases, "violations": bad}
+
+
+def silence_keeps_the_echo(cfg: FleetConfig, g, n_cases: int = 300, seed: int = 31, mutate: bool = False) -> dict:
+    """S11: every other drone either silent beyond t_silent_gate after a report of not engaged or passed, or stale: a corridor echo stays."""
+    rng = np.random.default_rng(seed)
+    bad = 0
+    for _ in range(n_cases):
+        tr, gp, p, yaw = _observer(g, 3, cfg)
+        ae = gp.acoustic_exit
+        ae.gate_idx, ae.g, ae.others = 0, g, [1, 2]
+        if mutate:
+            orig = ae.status_excluded
+            ae.status_excluded = lambda j, tt, fresh_only=False, o=orig: o(j, tt, False)
+        t = 1.0 + cfg.acoustic.t_silent_gate_s + float(rng.uniform(1.0, 500.0))
+        for k in (1, 2):
+            q = g.from_gate_frame([rng.uniform(-8.0, -5.0), float(rng.uniform(-3.0, 3.0)), 0.0])
+            _rx(tr, p, yaw, 1.0, k, q, cfg, int(rng.choice([pl.GP_NONE, pl.GP_PASSED])), bound=9.0)
+        tr.heard[0] = t - 0.2
+        r = float(np.linalg.norm(g.center - p)) - R_OUT
+        bad += int(ae.no_fleet_drone(t, g, p, yaw, [r]))
+    return {"cases": n_cases, "echo_discarded": bad}
 
 
 def run(cfg: FleetConfig = B2, verbose: bool = True) -> Report:
@@ -306,6 +344,10 @@ def run(cfg: FleetConfig = B2, verbose: bool = True) -> Report:
     rep.add(CheckResult("S1 positive occupancy: a report of committed or admitted of another drone makes the latch BUSY and holds the entry",
                         "randomized: claim -> occ_busy and not entry_ok", ENC, "holds",
                         verdict="holds" if r["violations"] == 0 else "violated", passed=r["violations"] == 0, note=str(r)), verbose)
+    rm = positive_occupancy(cfg, g, n_cases=60, mutate=True)
+    okm = rm["violations"] > 0
+    rep.add(CheckResult("S1m mutation: claims ignored, the latch is not held", "expect violation", ENC, "violated",
+                        verdict="violated" if okm else "holds", passed=okm, note=str(rm)), verbose)
     for n, v_hi, e0 in ((2, 0.70, 1.35), (3, 0.70, 1.35), (4, 0.70, 1.35)):
         geo = cm.geometry(cfg, n)
         for view in geo["views"]:
@@ -314,13 +356,18 @@ def run(cfg: FleetConfig = B2, verbose: bool = True) -> Report:
             if view["corridor_from_s"] is None or view["mask_from_s"] is None or view["visible_again_s"] is None or view["beyond_s"] is None:
                 continue
             ts = min(cfg.acoustic.status_fresh_s, (abs(geo["queue_s"]) - cfg.gate.cr_half_len - R_OUT - cfg.gate.queue_tol - cfg.gate.nav_err_m) / v_hi - cfg.acoustic.latency_max_s)
-            rep.add(check(f"S2 M3-status n={n}, observer l={view['queue_l']:+.2f}, freshness {ts:.2f} s, v {v_hi}, offset {e0}: never both in the CR",
+            rep.add(check(f"S2h M3-status n={n}, observer l={view['queue_l']:+.2f}, the crossing drone may stop before the CR: never both in the CR",
+                          "as S2, the speed floor applying only inside the CR", ENC, m3_status_model(cfg, geo, view, ts, v_hi, e0, hold=True), timeout_ms=180000), verbose)
+            rep.add(check(f"S2 M3-status n={n}, observer l={view['queue_l']:+.2f}, freshness of a report of not engaged {ts:.2f} s, v {v_hi}, offset {e0}: never both in the CR",
                           "latch + status phantom (last report younger than freshness) + FRONT-only no relation -> not(A in CR and B commits)",
                           ENC, m3_status_model(cfg, geo, view, ts, v_hi, e0), timeout_ms=180000), verbose)
     geo3 = cm.geometry(cfg, 3)
     view3 = max(geo3["views"], key=lambda w: w["queue_l"])
     rep.add(check("S2m mutation: a freshness of 5 s (the first design) violates P2 at the declared worst case", "expect counterexample", ENC,
                   m3_status_model(cfg, geo3, view3, 5.0, 0.70, 1.35), expect="sat", timeout_ms=180000), verbose)
+    centre = min(geo3["views"], key=lambda w: abs(w["queue_l"]))
+    rep.add(check("S2b mutation: no latch input in the band of a FRONT-only echo (round 2, F1) violates P2", "expect counterexample", ENC,
+                  m3_status_model(cfg, geo3, centre, 1.0, 0.70, 1.35, hold=True, band_latch=False), expect="sat", timeout_ms=180000), verbose)
     r = evidence_order(cfg, g)
     rep.add(CheckResult("S3 evidence order: a status older than a later fix placing the drone possibly in the CR never excludes it",
                         "randomized: last accepted fix in the CR with t_tx > status t_tx -> not excluded", ENC, "holds",
@@ -334,12 +381,16 @@ def run(cfg: FleetConfig = B2, verbose: bool = True) -> Report:
     rep.add(CheckResult("S4 silence: a drone silent after reporting committed or admitted keeps the gate held (claim, never excluded), at any duration",
                         "randomized over silence durations up to a day", ENC, "holds",
                         verdict="holds" if r["violations"] == 0 else "violated", passed=r["violations"] == 0, note=str(r)), verbose)
+    rm = silence_never_clears(cfg, g, n_cases=60, mutate=True)
+    okm = rm["violations"] > 0
+    rep.add(CheckResult("S4m mutation: silence releasing a claim is detected", "expect violation", ENC, "violated",
+                        verdict="violated" if okm else "holds", passed=okm, note=str(rm)), verbose)
     bad = structural()
-    rep.add(CheckResult("S5 structural: no acoustic quantity or status in the computation of the precedence relations",
+    rep.add(CheckResult("S5 text search: no acoustic or status name in the relation loop of GatePerception.update (does not see indirect paths)",
                         "text: the relation loop and decision of GatePerception.update", ENC, "holds",
                         verdict="holds" if not bad else "violated", passed=not bad, note="; ".join(bad) or "clean"), verbose)
     bad = front_band_queue_pairs(cfg)
-    rep.add(CheckResult("S6 relation drop: drones at their queue points are never FRONT-only targets of each other (n=2,3, tolerances)",
+    rep.add(CheckResult("S6 drones at abreast queue points are never FRONT-only targets of each other (n=2,3, tolerances; only those points)",
                         "enumeration over queue points, tolerances, heading tolerance", ENC, "holds",
                         verdict="holds" if not bad else "violated", passed=not bad, note=f"{len(bad)} violations"), verbose)
     r = passage_soundness(cfg, g)
@@ -347,18 +398,28 @@ def run(cfg: FleetConfig = B2, verbose: bool = True) -> Report:
     rep.add(CheckResult("S7 verified passage: never verified with the true centre inside the CR grown by R_OUT, a blocked drone never verifies",
                         "randomized: fit error, DVL scale and dropouts, blocked drones", ENC, "holds", verdict="holds" if ok else "violated",
                         passed=ok, note=str(r)), verbose)
-    r = keepout_barrier(cfg, g)
-    rep.add(CheckResult("S9 keep-out barrier: a drone not committed to the gate is never moved closer to the CR inside the keep-out band",
-                        "randomized: s in the band -> v . axis <= 0 after the filter", ENC, "holds",
-                        verdict="holds" if r["toward_cr_inside_band"] == 0 else "violated", passed=r["toward_cr_inside_band"] == 0, note=str(r)), verbose)
-    bad = backing_up_guard(cfg)
-    rep.add(CheckResult("S10 a recovering drone backing up after the gate is never sent toward the CR: the reversal is refused from the guard plane on",
-                        "exit_s + 1 m >= cr_half_len + R_OUT + E", ENC, "holds", verdict="holds" if not bad else "violated", passed=not bad,
-                        note=str(bad) or "ok"), verbose)
-    bad = freshness_arithmetic(cfg)
-    rep.add(CheckResult("S8 freshness: the bound per layout is below the shortest time from the queue to the CR at the speed bound",
-                        "(|queue_s| - CR - R_OUT - queue_tol - nav_err) / v_bound - latency >= status_fresh", ENC, "holds",
+    r = sender_rule(cfg)
+    ok = r["estimate_outside_the_box"] == 0 and r["not_a_claim"] == 0
+    rep.add(CheckResult("S9 sender rule: a true centre in the CR (estimate within the declared navigation error) is in the keep-out box, and inside the box the report is a claim for every history",
+                        "randomized + enumeration of passage.report_phase", ENC, "holds", verdict="holds" if ok else "violated", passed=ok, note=str(r)), verbose)
+    rm = sender_rule(cfg, n_cases=5000, margin_cut=cfg.gate.nav_err_m)
+    okm = rm["estimate_outside_the_box"] > 0
+    rep.add(CheckResult("S9m mutation: a box without the navigation-error margin leaves an occupant outside", "expect violation", ENC, "violated",
+                        verdict="violated" if okm else "holds", passed=okm, note=str(rm)), verbose)
+    bad = freshness_deployed(cfg, g)
+    rep.add(CheckResult("S8 freshness deployed by GatePerception per layout: positive and below the shortest time from the queue to the CR at the speed bound",
+                        "0 < status_fresh_s <= (|queue_s| - CR - R_OUT - queue_tol - nav_err) / v_bound - latency", ENC, "holds",
                         verdict="holds" if not bad else "violated", passed=not bad, note=str(bad)), verbose)
+    r = band_is_a_latch_input(cfg, g)
+    rep.add(CheckResult("S6b no relation implies latch input (real class, no beacon): a FRONT-only echo anywhere in the band makes no relation and the latch is BUSY",
+                        "randomized over the band", ENC, "holds", verdict="holds" if r["violations"] == 0 else "violated", passed=r["violations"] == 0, note=str(r)), verbose)
+    r = silence_keeps_the_echo(cfg, g)
+    rep.add(CheckResult("S11 silence or a stale report never discards a corridor echo", "randomized: no fresh evidence -> no_fleet_drone false", ENC, "holds",
+                        verdict="holds" if r["echo_discarded"] == 0 else "violated", passed=r["echo_discarded"] == 0, note=str(r)), verbose)
+    rm = silence_keeps_the_echo(cfg, g, n_cases=100, mutate=True)
+    okm = rm["echo_discarded"] > 0
+    rep.add(CheckResult("S11m mutation: letting silence exclude a drone discards the echo", "expect violation", ENC, "violated",
+                        verdict="violated" if okm else "holds", passed=okm, note=str(rm)), verbose)
     return rep
 
 

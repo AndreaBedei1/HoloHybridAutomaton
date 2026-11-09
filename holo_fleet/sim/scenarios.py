@@ -40,6 +40,7 @@ lost drones and the mutex queue:
 from __future__ import annotations
 
 import math
+import dataclasses
 from dataclasses import dataclass, field
 from typing import Callable, Dict, List, Optional, Sequence, Tuple
 
@@ -482,6 +483,47 @@ def gate_stalled_occupant(cfg: FleetConfig = DEFAULT) -> Scenario:
     return sc
 
 
+def gate_pinned_occupant(cfg: FleetConfig = DEFAULT) -> Scenario:
+    """Stress (not in the acceptance matrix): a drone fails at rest under the top bar and stays pinned in the CR, the physical case of
+    results/calibration/buoyant_ascent.json.  gate_stalled_occupant does not reach it: the drone coasts past the bar.  The others must
+    never enter; judged on safety."""
+    sc = gate_stalled_occupant(cfg)
+    g6 = sc.judged_gates[0]
+    sc.name, sc.title = "gate_pinned_occupant", "P2: a drone fails at rest under the top bar of G06"
+    sc.description = "the first drone starts at rest in the opening and fails completely at t = 1 s: it rises against the top bar and stays."
+    sc.sim.spawn_positions[0] = g6.from_gate_frame([0.0, 0.0, 0.0]).tolist()
+    sc.sim.faults = ({"drone": "drone_0", "type": "TOTAL_FAILURE", "t_on": 1.0, "t_off": None},)
+    return sc
+
+
+def lost_drone_mutex_carried(cfg: FleetConfig = DEFAULT) -> Scenario:
+    """Stress (not in the acceptance matrix): a uniform 0.3 m/s current along the gate axis; the first drone to reach the queue line fails
+    there and is carried towards the frame while it rises (review round 2)."""
+    sc = lost_drone_mutex(cfg)
+    g6 = sc.judged_gates[0]
+    sc.name, sc.title = "lost_drone_mutex_carried", "Lost drone carried towards the gate by a current"
+    sc.description = "as lost_drone_mutex, with a 0.3 m/s current along the gate axis and the failure on arrival at the queue line."
+    sc.sim.current = _uniform((0.3 * float(g6.axis[0]), 0.3 * float(g6.axis[1]), 0.0))
+    sc.sim.faults = ({"drone": "drone_0", "type": "TOTAL_FAILURE", "t_on": 1e9, "t_off": None, "trigger": "queue:G06"},)
+    sc.disturbance_windows = []
+    return sc
+
+
+def _rise_variant(base, name: str, v: float):
+    """Sensitivity to the rise speed (the commanded value, calibration/probe_buoyant_ascent.py gives about 0.05 m/s measured for 0.06 and
+    0.13 for 0.135)."""
+    def make(cfg: FleetConfig = DEFAULT) -> Scenario:
+        sc = base(cfg)
+        sc.name = name
+        sc.cfg_patch = dict(sc.cfg_patch, failure=dataclasses.replace(cfg.failure, v_rise_mps=v))
+        return sc
+    make.__name__ = name
+    return make
+
+
+STRESS_SCENARIOS = ("gate_pinned_occupant", "lost_drone_mutex_carried", "lost_drone_mutex_rise_low", "lost_drone_mutex_rise_high",
+                    "gate_stalled_occupant_rise_low", "gate_stalled_occupant_rise_high")     # sensitivity, not in the acceptance matrix
+
 SCENARIOS: Dict[str, Callable[..., Scenario]] = {
     "p1_head_on": p1_head_on,
     "p1_vertical_escape": p1_vertical_escape,
@@ -501,4 +543,10 @@ SCENARIOS: Dict[str, Callable[..., Scenario]] = {
     "line_parallel_mutex": line_parallel_mutex,
     "lost_drone_mutex": lost_drone_mutex,
     "gate_stalled_occupant": gate_stalled_occupant,
+    "gate_pinned_occupant": gate_pinned_occupant,
+    "lost_drone_mutex_carried": lost_drone_mutex_carried,
+    "lost_drone_mutex_rise_low": _rise_variant(lost_drone_mutex, "lost_drone_mutex_rise_low", 0.06),
+    "lost_drone_mutex_rise_high": _rise_variant(lost_drone_mutex, "lost_drone_mutex_rise_high", 0.135),
+    "gate_stalled_occupant_rise_low": _rise_variant(gate_stalled_occupant, "gate_stalled_occupant_rise_low", 0.06),
+    "gate_stalled_occupant_rise_high": _rise_variant(gate_stalled_occupant, "gate_stalled_occupant_rise_high", 0.135),
 }

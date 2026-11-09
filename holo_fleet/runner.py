@@ -64,13 +64,16 @@ TRIGGER_PENDING = 1e9      # t_on of a fault whose onset is a ground-truth condi
 
 def _triggered(f, sc, names, truth, cfg=DEFAULT) -> bool:
     """Simulator-side fault trigger on ground truth: ``mid_cr:<gate>`` - the drone's centre is in the second half of
-    the critical region (0 <= s <= cr_half_len, inside its width and height): it stops there for good."""
+    the critical region (0 <= s <= cr_half_len, inside its width and height): it stops there for good; ``queue:<gate>`` - it
+    has reached the queue line."""
     kind, _, gid = str(f["trigger"]).partition(":")
     g = next((x for x in sc.judged_gates if x.gate_id == gid), None)
-    if kind != "mid_cr" or g is None:
+    if kind not in ("mid_cr", "queue") or g is None:
         return False
     G = cfg.gate
     s, l, dz = (float(v) for v in g.to_gate_frame(np.asarray(truth.positions[names.index(f["drone"])], float)))
+    if kind == "queue":                                # stopped-and-carried case: dies on arrival at its queue line
+        return s >= -(G.cr_half_len + 4.6) and abs(l) <= 6.0
     return 0.0 <= s <= G.cr_half_len and abs(l) <= G.cr_half_width and abs(dz) <= G.cr_half_height
 
 

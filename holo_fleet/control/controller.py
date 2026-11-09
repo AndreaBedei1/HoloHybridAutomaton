@@ -22,6 +22,7 @@ from holo_fleet.ha.spec import IN_FORMATION, Mode
 from holo_fleet.mission import MissionPlan
 from holo_fleet.perception.frame import SensorFrame
 from holo_fleet.perception.passage import PassageVerifier, inside_keepout, report_phase
+from holo_fleet.perception.payload import GP_ADMITTED, GP_PASSED
 from holo_fleet.perception.sonar_geometry import HULL_HALF
 from holo_fleet.perception.perception import LocalObservation, Perception
 
@@ -188,6 +189,8 @@ class DroneController:
         else:
             v_mis, yaw_d = self.flows.formation(obs, dt, recovering=(mode == Mode.FORMATION_RECOVERY),
                                                 traffic=(mode != Mode.FAILSAFE_HOLD_OR_RETREAT))
+        if not self.ha.committed:
+            v_mis = self.flows.keepout_filter(obs, v_mis)   # the mission of a drone not committed never heads for the CR
         authority = "nominal"
         if mode not in AVOIDANCE:
             self.flows.last_choice = None
@@ -204,8 +207,6 @@ class DroneController:
         else:
             v = v_mis
         v = self.flows.structure_filter(obs, v)
-        if not self.ha.committed:
-            v = self.flows.keepout_filter(obs, v)      # a drone not committed to the gate never moves toward the CR
         from holo_fleet.perception.nav import NavBound
         dvl_fresh = t - self.perception.nav.state.t_dvl <= NavBound.DVL_STALE_S
         cmd = self.ll.command(self.perception.nav.state, v, yaw_d, authority, dt, dvl_fresh=dvl_fresh)
@@ -326,5 +327,5 @@ class DroneController:
         go = obs.gate
         near = go.gate_id is not None and not go.passed and inside_keepout(go.s, go.l, go.dz, self.cfg.gate)
         phase = report_phase(p.verified, p.in_progress, self.ha.committed, near)
-        idx = p.idx if (p.verified or p.in_progress) else gp.idx
+        idx = p.idx if phase in (GP_ADMITTED, GP_PASSED) else gp.idx     # a claim is always about the gate the drone is at
         self.perception.tx_gate_idx, self.perception.tx_phase = idx % 4, phase

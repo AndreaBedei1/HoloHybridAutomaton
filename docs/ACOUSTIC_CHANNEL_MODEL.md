@@ -164,3 +164,12 @@ Required per drone, every drone being both pinger and receiver: (1) a chip-scale
 - B2 still **blocks the `t_occ_max` fallback while an occupant is heard inside the CR** (`AcousticExit.heard_inside`: a fresh accepted fix places some drone possibly inside the CR, its region grown by the motion since the fix). This only adds caution; it never moves the latch while a corridor echo is seen, never touches precedence, separation or collision avoidance, and its absence means nothing.
 
 The check reports availability, not safety: the B2-M4g rows are recorded as reported violations (expected and observed "violated"), not as failures of the suite, and where the acoustic evidence does not exist the latch is the sonar one, that of B0.
+
+## 10. Limits found by the second independent review (2026-11-09)
+
+Not represented, so a report must not claim them: a surface bounce at mission depth has a path excess of 4-6 m at 3.5-7 m, outside the modelled
+0.3-3 m (such arrivals would be rejected by the depth gate, the model is not an image-source model); reflections in the plane are capped at 5 deg of
+azimuth by construction, so the check B2-A1 cannot see them; thruster self-noise is absent; the CRC path is never exercised in the simulator; diffracted
+arrivals keep the payload loss of a clear path.  The loss process is independent per ping with outages common to all links; `MEDIUM_HT`
+(per-link OFF periods, Pareto, P(OFF > 40 s) = 0.10, parameters from a plot of lake links at 43-720 m, transfer to 3-7 m unknown) is a sensitivity only.
+The 1 kbit/s frame of H6 is an assumption: M64 modems run at 64 bit/s, where one packet would take 1 s and a cycle 3-6 s, above `status_fresh_s`.

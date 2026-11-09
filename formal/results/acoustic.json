@@ -113,6 +113,17 @@
       "note": "{'samples': 3000, 'occupant_excluded': 0}"
     },
     {
+      "prop": "B2-PEg phantom-echo soundness of the fix geometry alone (no status in any packet): an occupant is never excluded",
+      "formula": "randomized: no_fleet_drone -> false, status removed",
+      "encoding": "perception/acoustic.py + perception/acoustic_gate.py",
+      "expect": "holds",
+      "verdict": "holds",
+      "passed": true,
+      "seconds": 0.0,
+      "counterexample": null,
+      "note": "{'samples': 3000, 'occupant_excluded': 0}"
+    },
+    {
       "prop": "B2-PEm mutation: without the keep-out claim a drone carried into the CR uncommitted reports not engaged and is excluded",
       "formula": "expect counterexample",
       "encoding": "perception/acoustic.py + perception/acoustic_gate.py",

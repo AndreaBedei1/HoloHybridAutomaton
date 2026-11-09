@@ -1,3 +1,31 @@
+# v6 (2026-11-09): total failure model, payload v2. Pre-registered before the final campaign of the candidate
+
+Baseline, immutable: tag `b2-freeze-v10`, MEDIUM-ALL 56/66 PASS outside `gate_stalled_occupant`, CLEAN and LOW-ALL 66/66.
+
+**Changes from v5.** The classes and requirements are unchanged. One term moves: the fault term of the deadline uses the silence interval
+(`max(t_rejoin, t_silent_s)`), because the drones now wait for it. Referee times are logged at 1 microsecond (a replayed hold timer on 1 ms times could
+fall short of the online one); no tolerance enters a criterion.
+
+**Scenario changes, disclosed.** Permanent faults are `TOTAL_FAILURE` (propulsion, electronics and beacon stop together, the drone rises). `lost_drone_rejoin` and
+`lost_drone_rejoin_front` displace a healthy drone with a temporary jet instead of a temporary thruster loss. The comparison with v10 of these two scenarios, and of the
+failure scenarios, is not like for like. Partial failures are outside this phase.
+
+**Campaign.** The matrix of v10: cells B2_CLEAN / CLEAN, B2_LOW / LOW-ALL, B2_MEDIUM / MEDIUM-ALL; 12 non-gate scenarios x 3 seeds, 6 gate scenarios x 6 seeds; 72 runs
+per cell, 216 runs. Held-out seeds 1000-1005, used by nothing before the freeze. Code and criteria frozen by a tag before the first run. The failures are not determined by the seed
+(the engine's noise is unseeded), so the evaluation is statistical.
+
+**Acceptance, per campaign, decided before the runs.**
+
+1. Safety, every run of the 216: no SAFETY_FAILURE and no UNSAFE_ACTION.
+2. No SUT_ERROR and no REPLAY_MISMATCH. An INVALID run is rerun only if an infrastructure cause is shown.
+3. CLEAN and LOW-ALL: 66/66 PASS outside `gate_stalled_occupant` (no regression from v10).
+4. MEDIUM-ALL: at least 63/66 PASS outside `gate_stalled_occupant`: the smallest count with a one-sided Fisher exact test against 56/66 below 0.05 (p = 0.038).
+   The test and the Wilson interval are reported whatever the outcome.
+5. `gate_stalled_occupant`: judged on safety as in v5; survivors never enter while a claim stands.
+
+If an item fails the candidate is not accepted and is not merged; a further change needs fresh seeds. The stress scenarios (`gate_pinned_occupant`, `lost_drone_mutex_carried`, the rise-speed variants, the channel
+`MEDIUM_HT`) are sensitivities: they are reported and are not part of the acceptance.
+
 # v10 (2026-11-06): numerical fix, same plan as v9, fresh seeds 800-805
 
 The v9 campaign (tag `b2-freeze-v9`, seeds 700-705) was stopped at CLEAN 47 PASS + 1 SUT_ERROR (formation_six s701):
