@@ -292,10 +292,14 @@ class DroneController:
         """A detected crossing is a direct measurement of the position in the opening: the estimate is corrected to it (the
         navigation bound keeps growing, as with every correction; it never decreases)."""
         l_meas, dz = self.passage.crossing
-        s_est, l_est, _dz_est = (float(v) for v in gate.to_gate_frame(np.asarray(p_est, float)))
+        _s_est, l_est, _dz_est = (float(v) for v in gate.to_gate_frame(np.asarray(p_est, float)))
         axis = np.asarray(gate.axis, float)
         left = np.array([-axis[1], axis[0], 0.0])
-        corr = (0.0 - s_est) * axis + (l_meas - l_est) * left
+        # the LATERAL position only: the along-axis place of the crossing is known to +-0.4 m at best and a jump of s moves
+        # the estimate past the post the drone is beside (its echo is then unexplained: gate_single s902 in the first batch)
+        if abs(l_meas - l_est) > 1.2:
+            return
+        corr = (l_meas - l_est) * left
         self.perception.apply_position_correction(corr)
         self.events.append({"t": t, "type": "GATE_CROSSING_MEASURED", "gate": self.passage.idx, "l": round(l_meas, 3),
                             "dz": None if dz is None else round(dz, 3), "correction": np.round(corr, 3).tolist()})

@@ -249,6 +249,40 @@ def passage_soundness(cfg: FleetConfig, g, n_cases: int = 2000, seed: int = 19) 
     return {"cases": n_cases, "verified_inside": bad, "blocked_verified": blocked_bad}
 
 
+def keepout_barrier(cfg: FleetConfig, g, n_cases: int = 5000, seed: int = 23) -> dict:
+    """S9: the flow barrier of a drone not committed to the gate never moves it closer to the CR once inside the keep-out band."""
+    from holo_fleet.control.flows import Flows
+    from holo_fleet.perception.gate_perception import GateObs
+
+    rng = np.random.default_rng(seed)
+    slots = abreast_slots(2)
+    plan = MissionPlan(drone_id="d0", slot_index=0, slots=slots, path=MPath(np.array([[-30., 0.], [30., 0.]]), float(g.center[2])),
+                       gates=[g], structures=[g], launch_position=np.zeros(3), launch_yaw_deg=0., static_rank=0, s_end=40.,
+                       queue_lateral=0., queue_s=queue_line(slots, cfg.gate))
+    fl = Flows(plan, cfg)
+    G, bad = cfg.gate, 0
+    axis = np.asarray(g.axis, float)
+    s_keep = -(G.cr_half_len + R_OUT + G.nav_err_m)
+    for _ in range(n_cases):
+        s = float(rng.uniform(s_keep - 1.0, G.cr_half_len))
+        go = GateObs(gate_id=g.gate_id, s=s, l=float(rng.uniform(-1.5, 1.5)), dz=float(rng.uniform(-1.0, 1.0)))
+        v = rng.uniform(-0.6, 0.6, 3)
+        vout = fl.keepout_filter(type("O", (), {"gate": go, "gate_index": 0})(), v)
+        if s >= s_keep and float(vout @ axis) > 1e-9:
+            bad += 1
+    return {"cases": n_cases, "toward_cr_inside_band": bad}
+
+
+def backing_up_guard(cfg: FleetConfig) -> list:
+    """S10: DROP_BACK at a stationary reference (control/flows.py) never backs a drone up toward a gate it has passed: the
+    plane from which the reversal is refused (exit_s + 1 m) is beyond the CR grown by the hull and the navigation error."""
+    G, bad = cfg.gate, []
+    plane = G.exit_s + 1.0
+    if plane < G.cr_half_len + R_OUT + G.nav_err_m:
+        bad.append(("plane", plane))
+    return bad
+
+
 def freshness_arithmetic(cfg: FleetConfig) -> list:
     """S8: the freshness bound used per plan <= the time from the queue point to the CR at the speed bound minus the latency."""
     G = cfg.gate
@@ -272,13 +306,17 @@ def run(cfg: FleetConfig = B2, verbose: bool = True) -> Report:
     rep.add(CheckResult("S1 positive occupancy: a report of committed or admitted of another drone makes the latch BUSY and holds the entry",
                         "randomized: claim -> occ_busy and not entry_ok", ENC, "holds",
                         verdict="holds" if r["violations"] == 0 else "violated", passed=r["violations"] == 0, note=str(r)), verbose)
-    for n, v_hi, e0, expect in ((2, 0.70, 1.35, "unsat"), (3, 0.70, 1.35, "unsat")):
+    for n, v_hi, e0 in ((2, 0.70, 1.35), (3, 0.70, 1.35), (4, 0.70, 1.35)):
         geo = cm.geometry(cfg, n)
-        view = max(geo["views"], key=lambda w: w["queue_l"])
-        ts = min(cfg.acoustic.status_fresh_s, (abs(geo["queue_s"]) - cfg.gate.cr_half_len - R_OUT - cfg.gate.queue_tol - cfg.gate.nav_err_m) / v_hi - cfg.acoustic.latency_max_s)
-        rep.add(check(f"S2 M3-status n={n}, observer l={view['queue_l']:+.2f}, freshness {ts:.2f} s, v {v_hi}, offset {e0}: never both in the CR",
-                      "latch + status phantom (last report younger than freshness) + FRONT-only no relation -> not(A in CR and B commits)",
-                      ENC, m3_status_model(cfg, geo, view, ts, v_hi, e0), timeout_ms=180000), verbose)
+        for view in geo["views"]:
+            if view["queue_l"] < -1e-6 and any(abs(w["queue_l"] + view["queue_l"]) < 1e-6 for w in geo["views"]):
+                continue                                          # mirror image of a view already checked
+            if view["corridor_from_s"] is None or view["mask_from_s"] is None or view["visible_again_s"] is None or view["beyond_s"] is None:
+                continue
+            ts = min(cfg.acoustic.status_fresh_s, (abs(geo["queue_s"]) - cfg.gate.cr_half_len - R_OUT - cfg.gate.queue_tol - cfg.gate.nav_err_m) / v_hi - cfg.acoustic.latency_max_s)
+            rep.add(check(f"S2 M3-status n={n}, observer l={view['queue_l']:+.2f}, freshness {ts:.2f} s, v {v_hi}, offset {e0}: never both in the CR",
+                          "latch + status phantom (last report younger than freshness) + FRONT-only no relation -> not(A in CR and B commits)",
+                          ENC, m3_status_model(cfg, geo, view, ts, v_hi, e0), timeout_ms=180000), verbose)
     geo3 = cm.geometry(cfg, 3)
     view3 = max(geo3["views"], key=lambda w: w["queue_l"])
     rep.add(check("S2m mutation: a freshness of 5 s (the first design) violates P2 at the declared worst case", "expect counterexample", ENC,
@@ -309,6 +347,14 @@ def run(cfg: FleetConfig = B2, verbose: bool = True) -> Report:
     rep.add(CheckResult("S7 verified passage: never verified with the true centre inside the CR grown by R_OUT, a blocked drone never verifies",
                         "randomized: fit error, DVL scale and dropouts, blocked drones", ENC, "holds", verdict="holds" if ok else "violated",
                         passed=ok, note=str(r)), verbose)
+    r = keepout_barrier(cfg, g)
+    rep.add(CheckResult("S9 keep-out barrier: a drone not committed to the gate is never moved closer to the CR inside the keep-out band",
+                        "randomized: s in the band -> v . axis <= 0 after the filter", ENC, "holds",
+                        verdict="holds" if r["toward_cr_inside_band"] == 0 else "violated", passed=r["toward_cr_inside_band"] == 0, note=str(r)), verbose)
+    bad = backing_up_guard(cfg)
+    rep.add(CheckResult("S10 a recovering drone backing up after the gate is never sent toward the CR: the reversal is refused from the guard plane on",
+                        "exit_s + 1 m >= cr_half_len + R_OUT + E", ENC, "holds", verdict="holds" if not bad else "violated", passed=not bad,
+                        note=str(bad) or "ok"), verbose)
     bad = freshness_arithmetic(cfg)
     rep.add(CheckResult("S8 freshness: the bound per layout is below the shortest time from the queue to the CR at the speed bound",
                         "(|queue_s| - CR - R_OUT - queue_tol - nav_err) / v_bound - latency >= status_fresh", ENC, "holds",

@@ -239,6 +239,24 @@ def test_vacancy_is_by_silence_whatever_the_observers_mode():
     assert set(per.vacant) == {1}
 
 
+def test_a_silent_channel_keeps_the_baseline_vacancy_timer_and_declares_no_one_dead():
+    from holo_fleet.perception.formation_perception import FormationObs, NeighbourCheck
+
+    per = Perception(_plan(), B2)
+    per.acoustic.set_identities({0: 0, 1: 1, 2: 2, 3: 3})
+    for k in (1, 2, 3):
+        per.acoustic.heard[k] = 0.0                            # the channel falls silent: nobody heard any more
+    o = FormationObs()
+    o.checks = [NeighbourCheck(slot=1, expected_d=3.5, expected_pattern="")]
+    o.required, o.missing = [1], [1]
+    assert per.acoustic.deaf(100.0)
+    t = 100.0
+    while t < 100.0 + B2.form.t_rejoin + 2.0:
+        per.track_missing(t, 0.1, o, in_formation=True)
+        t += 0.1
+    assert set(per.vacant) == {1}                              # the baseline displacement timer, not the silence rule
+
+
 def test_a_drone_that_keeps_transmitting_is_never_vacant():
     from holo_fleet.perception.formation_perception import FormationObs, NeighbourCheck
 
@@ -314,8 +332,8 @@ def test_a_drone_stopped_at_a_bar_does_not_verify_its_passage():
     assert not v.verified and v.in_progress
 
 
-def test_drop_back_reverses_only_when_the_reference_stands_still():
-    """v10 RC3: at the end of the path a recovering drone in DROP_BACK can never drop back; it now backs up."""
+def test_a_recovering_drone_goes_straight_to_its_slot_when_the_reference_stands_still():
+    """v10 RC3: at the end of the path the rejoin phases kept a recovering drone off its slot for good."""
     from holo_fleet.config import DEFAULT as D
     from holo_fleet.control.flows import Flows
     from holo_fleet.formations import TEMPLATES
@@ -327,10 +345,10 @@ def test_drop_back_reverses_only_when_the_reference_stands_still():
                        gates=[], structures=[], launch_position=np.zeros(3), launch_yaw_deg=0.0, static_rank=0, s_end=20.0,
                        clock=FormationClock(0.0, 0.3, 0.0, s_end=20.0))
     fl = Flows(plan, D)
-    # past the end of the clock: reference not moving
+
     class O:                                                          # the observation the formation flow reads
         t = 500.0
-        p = np.array([18.0, 8.0, -5.0])                                # off its lane, level with the fleet
+        p = np.array([19.0, 6.0, -8.5])                                # off its lane and on the pass level, past the plan end
         R_wb = np.eye(3)
         yaw = 0.0
         slot_pos = np.array([21.75, 1.75, -5.0])
@@ -338,4 +356,4 @@ def test_drop_back_reverses_only_when_the_reference_stands_still():
         targets = []
         unhealthy = []
     v, _ = fl.formation(O, 0.1, recovering=True)
-    assert fl.rejoin_phase == "DROP_BACK" and v[0] < -0.01          # it backs up along the track
+    assert fl.rejoin_phase == "" and v[2] > 0.0 and v[1] < 0.0     # straight to the slot: up and across, no rejoin phases
