@@ -49,6 +49,7 @@ class FormationObs:
     checks: List[NeighbourCheck] = field(default_factory=list)
     along_corr: float = 0.0           # weighted along-track range residual [m]
     lateral_corr: float = 0.0
+    lateral_far: Optional[float] = None   # away from the slot: lateral error of the own reference from the fixes [m]
     form_err: float = 0.0             # onboard formation-error estimate used by the guards [m]
     neighbors_ok: bool = True
     missing: List[int] = field(default_factory=list)      # required (expected nearby, observable), not seen recently

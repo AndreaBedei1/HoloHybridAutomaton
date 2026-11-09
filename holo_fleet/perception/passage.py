@@ -27,7 +27,8 @@ from typing import Dict, Optional, Sequence
 
 import numpy as np
 
-from holo_fleet.perception.sonar_geometry import MOUNTS
+from holo_fleet.perception.payload import GP_ADMITTED, GP_COMMITTED, GP_NONE, GP_PASSED
+from holo_fleet.perception.sonar_geometry import MOUNTS, R_OUT
 
 CROSS_TOL_M = 0.25                # L + R agrees with the opening within this
 CROSS_N = 3                       # consecutive captures with the signature
@@ -39,6 +40,24 @@ REAR_N = 3                        # consecutive captures with a matching REAR ec
 T_ODO_MAX_S = 10.0                # without any sonar evidence, the odometry and the estimate suffice after this long
 CROSSING_RESTART_M = 0.6          # horizontal error bound at a detected crossing: along the axis, the signature lasts
                                   # |s| <~ 0.4 m; laterally the measured (R - L) / 2 has sd 0.03 m in the MEDIUM logs
+
+
+def inside_keepout(s: float, l: float, dz: float, G) -> bool:
+    """The own gate-frame estimate is near enough to the CR that the drone may really be in it (hull ball plus the declared
+    gate-frame navigation error)."""
+    m = R_OUT + G.nav_err_m
+    return abs(s) <= G.cr_half_len + m and abs(l) <= G.cr_half_width + m and abs(dz) <= G.cr_half_height + m
+
+
+def report_phase(verified: bool, in_progress: bool, committed: bool, in_keepout: bool) -> int:
+    """The gate phase a drone reports about itself.  A drone inside the keep-out box that is not committed (carried there by a
+    current or an escape) cannot say "not engaged": the others would exclude it as an occupant.  It reports a claim, which can
+    only hold the gate BUSY (formal B2-PE and its mutation)."""
+    if verified:
+        return GP_PASSED
+    if in_progress:
+        return GP_ADMITTED
+    return GP_COMMITTED if (committed or in_keepout) else GP_NONE
 
 
 class PassageVerifier:

@@ -32,7 +32,7 @@ def _slot(plan, t):
 
 def _obs(p, t, plan, fl, lateral_corr):
     return SimpleNamespace(t=t, p=np.asarray(p, float), slot_pos=_slot(plan, t) + fl.lat_offset, targets=[],
-                           R_wb=np.eye(3), yaw=0.0, form=SimpleNamespace(along_corr=0.0, lateral_corr=lateral_corr))
+                           R_wb=np.eye(3), yaw=0.0, form=SimpleNamespace(along_corr=0.0, lateral_corr=lateral_corr, lateral_far=None))
 
 
 def _fly(cfg, bias, t_end=120.0):

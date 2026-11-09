@@ -188,7 +188,7 @@ class Referee:
     def update(self, truth, modes: Sequence[str], disturbance_active: bool = False) -> Dict:
         t, P = truth.t, truth.positions
         sep = self.cfg.sep
-        row = {"t": round(t, 3)}
+        row = {"t": round(t, 6)}            # as the online monitor sees it: a hold timer replayed on rounded times can fall short
         for (i, j) in self.pairs:
             d = float(np.linalg.norm(P[i] - P[j]))
             row[f"d_{i}_{j}"] = round(d, 4)

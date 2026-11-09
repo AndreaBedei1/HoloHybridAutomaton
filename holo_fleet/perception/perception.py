@@ -412,9 +412,42 @@ class Perception:
                 self.acoustic_displaced.append(k)
         return out
 
-    def acoustic_residuals(self, t: float, form: FormationObs, R_form: np.ndarray) -> None:
-        """Relative formation residual from the fresh fixes of neighbours near their expected position (B2)."""
+    def lateral_far(self, t: float, form: FormationObs, R_form: np.ndarray, p_own: np.ndarray,
+                    offset: Optional[np.ndarray] = None) -> None:
+        """Lateral error of the own slot reference measured on the neighbours' fixes, while the drone is away from its slot.
+
+        A neighbour k holding its slot is measured at d_k + (slot - p) + e, d_k the template offset, (slot - p) the own
+        displacement from the slot and e the relative navigation error; two opposite compass biases give e of 1-2 m after a
+        30 m run.  The lanes of the plan are then nearer in reality than the spacing, and a drone returning from behind runs
+        into the separation band of the neighbour of the next lane for good (MEDIUM-ALL formation_gust s912,
+        lost_drone_rejoin s911).  Only neighbours that report being near their slot count, the identified fix being the
+        measurement (no association of echoes is involved); with (slot - p) taken with the correction in, the residual goes
+        to zero with the correction.  Near the slot the ordinary consensus acts instead."""
+        fr = self.cfg.form
+        form.lateral_far = None
+        if not self.acoustic.enabled or form.slot_err_norm < fr.e_lost:
+            return
+        t_hat, n_hat = R_form[:, 0], R_form[:, 1]
+        own = np.zeros(3) if offset is None else np.asarray(offset, float)
+        vals = []
+        for k, d_world in expected_relative(self.plan, R_form).items():
+            f = self.acoustic.latest(k, t, A_CORR_AGE_S)
+            if f is None or k in self.vacant or f.r > fr.neighbour_range_m:
+                continue
+            rep = self._rep_offset(f, t, p_own + form.slot_err - own + d_world, t_hat)
+            if rep is None or float(np.linalg.norm(rep[0])) > fr.e_lost + rep[1]:
+                continue                                         # not on its slot by its own estimate: no reference
+            vals.append(float((f.rel - d_world - form.slot_err) @ n_hat))
+        if vals:
+            form.lateral_far = float(np.median(vals))
+
+    def acoustic_residuals(self, t: float, form: FormationObs, R_form: np.ndarray, p_own: Optional[np.ndarray] = None,
+                           offset: Optional[np.ndarray] = None) -> None:
+        """Relative formation residual from the fresh fixes of neighbours near their expected position (B2), and, away
+        from the own slot, the lateral error of the own reference (``lateral_far``)."""
         self.acoustic_corr = []
+        if p_own is not None:
+            self.lateral_far(t, form, R_form, p_own, offset)
         if not self.acoustic.enabled:
             return
         t_hat, n_hat = R_form[:, 0], R_form[:, 1]
@@ -484,7 +517,7 @@ class Perception:
         form = check_formation(self.plan, self.cfg, slot - nav.p, R_form, R_wb, targets, healthy, t, self.neighbour_seen,
                                readings, vacant=self.vacant, acoustic=ac_rel,
                                missing={k for k, v in self.missing_state.items() if v})
-        self.acoustic_residuals(t, form, R_form)
+        self.acoustic_residuals(t, form, R_form, nav.p, offset)
         self.track_missing(t, dt, form, in_formation, t_form)
         lags = [v for k, v in self.acoustic_lag.items() if k not in self.vacant]
         form.behind = max(lags) if lags else None          # clock re-synchronisation input (formation_time.py)

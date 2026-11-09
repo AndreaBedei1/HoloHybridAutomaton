@@ -1,6 +1,6 @@
 # Formal verification summary
 
-Generated 2026-11-07 13:19:26 by `formal/check_properties.py`.
+Generated 2026-11-09 20:30:08 by `formal/check_properties.py`.
 
 UNSAT = the negated property has no model in the abstraction, i.e. the property HOLDS for the model; SAT is expected for the satisfiability / non-vacuity checks (a witness must exist) and for the mutation tests (deliberately broken designs must yield a counterexample); mutation Om2 expects UNSAT (a broken observation domain loses the reachability of an edge).  The observation domain of every suite is the conjunction of the invariants of holo_fleet/ha/observation_invariants.py.
 
@@ -115,7 +115,7 @@ Encoding: `holo_fleet/ha/spec.py`
 | MA mutation: a give-up that keeps the commitment (the withdrawn retreat) must violate G2c | expect counterexample | SAT | SAT | yes |
 | ML mutation: a wrong readable guard (collision risk drawn at d_warning) must violate L1 | expect counterexample | SAT | SAT | yes |
 
-## Observation consistency (perception -> automaton interface)  (32/32 as expected, 1.0 s)
+## Observation consistency (perception -> automaton interface)  (32/32 as expected, 0.8 s)
 
 Encoding: `holo_fleet/ha/observation_invariants.py + holo_fleet/ha/spec.py`
 
@@ -154,7 +154,7 @@ Encoding: `holo_fleet/ha/observation_invariants.py + holo_fleet/ha/spec.py`
 | Om2 mutation: v1 constraint passed -> at_queue makes pass_done unreachable | expect UNSAT (reachability lost) | UNSAT | UNSAT | yes |
 | Om3 mutation: no monitor -> an inconsistent observation drives a mission edge | expect counterexample | SAT | SAT | yes |
 
-## P1 inter-vehicle separation  (15/15 as expected, 168.7 s)
+## P1 inter-vehicle separation  (15/15 as expected, 170.9 s)
 
 Encoding: `formal/check_separation.py`
 
@@ -176,7 +176,7 @@ Encoding: `formal/check_separation.py`
 | S3 at most one vertex angle >= 90 deg (pairwise d >= d_safe) | d_ij >= d_safe -> not(angle_i >= 90 and angle_j >= 90) | UNSAT | UNSAT | yes |
 | S4 blackout <= 0.8s starting at d >= 2.34 m keeps d >= d_safe | FAILSAFE hold with unrejected drift w_rel | UNSAT | UNSAT | yes |
 
-## P2 critical-region mutual exclusion  (38/38 as expected, 150.5 s)
+## P2 critical-region mutual exclusion  (38/38 as expected, 154.0 s)
 
 Encoding: `holo_fleet/ha/mutex_rule.py + formal/check_mutex.py`
 
@@ -221,7 +221,7 @@ Encoding: `holo_fleet/ha/mutex_rule.py + formal/check_mutex.py`
 | M3m mutation: belief without latch (FREE when nothing is seen) must violate P2 | expect counterexample | SAT | SAT | yes |
 | M3f scope: an occupant that stops inside the CR (fault) is released by the t_occ_max fallback | expect counterexample: crossing speed >= V_LO is an assumption of M3 | SAT | SAT | yes |
 
-## P3 formation recovery (liveness, ranking functions)  (24/24 as expected, 3.2 s)
+## P3 formation recovery (liveness, ranking functions)  (24/24 as expected, 3.4 s)
 
 Encoding: `formal/check_formation.py`
 
@@ -252,7 +252,7 @@ Encoding: `formal/check_formation.py`
 | Fm1 mutation: no catch-up margin (v_recovery = v_clock) must break F1 (along) | expect counterexample | SAT | SAT | yes |
 | Fm2 mutation: k_slot = 0 must break F2 (lateral) | expect counterexample | SAT | SAT | yes |
 
-## Variant B2 range-bearing beacon (own assumptions; B0 checks unchanged)  (11/11 as expected, 58.5 s)
+## Variant B2 range-bearing beacon (own assumptions; B0 checks unchanged)  (12/12 as expected, 61.1 s)
 
 Encoding: `perception/acoustic.py + perception/acoustic_gate.py + formal/check_acoustic.py`
 
@@ -268,6 +268,30 @@ Encoding: `perception/acoustic.py + perception/acoustic_gate.py + formal/check_a
 | B2-P payload soundness: a sender truly in the CR whose estimate errs within its sent bound (cylinder |e_h| <= h, |e_z| <= z, radius hypot(h, z), through the 56-bit packet) is never cleared by the payload rule nor placed beyond the exit face | forall sampled centres in the CR and errors in the cylinder: rep_cr_possible and not A3 | HOLDS | HOLDS | yes |
 | B2-Pm mutation: the radius max(h, z) (not a ball over the cylinder) must clear an occupant | expect counterexample | VIOLATED | VIOLATED | yes |
 | B2-PE phantom-echo soundness: a fleet drone truly in the CR, heard inside the declared envelope (multipath, ages up to the tie window, with or without a payload within its bound), is never excluded by the phantom-echo rule | randomized: no_fleet_drone -> false | HOLDS | HOLDS | yes |
+| B2-PEm mutation: without the keep-out claim a drone carried into the CR uncommitted reports not engaged and is excluded | expect counterexample | VIOLATED | VIOLATED | yes |
 | B2-S acoustic fixes never reach separation, collision avoidance, precedence or the sonar witness; acoustic exit evaluation requires the FRONT corridor empty (H6: the payload balls reach the map fit only as its identity premise, through Perception, never as a position input) | AST: no acoustic name in the safety / precedence modules; guarded call | HOLDS | HOLDS | yes |
+
+## Payload v2: gate status, silence, verified passage  (16/16 as expected, 94.4 s)
+
+Encoding: `perception/payload.py + perception/acoustic_gate.py + perception/passage.py + formal/check_status.py`
+
+| check | formula | expected | verdict | ok |
+|---|---|---|---|---|
+| S1 positive occupancy: a report of committed or admitted of another drone makes the latch BUSY and holds the entry | randomized: claim -> occ_busy and not entry_ok | HOLDS | HOLDS | yes |
+| S2 M3-status n=2, observer l=+1.75, freshness 1.95 s, v 0.7, offset 1.35: never both in the CR | latch + status phantom (last report younger than freshness) + FRONT-only no relation -> not(A in CR and B commits) | UNSAT | UNSAT | yes |
+| S2 M3-status n=3, observer l=+3.50, freshness 2.50 s, v 0.7, offset 1.35: never both in the CR | latch + status phantom (last report younger than freshness) + FRONT-only no relation -> not(A in CR and B commits) | UNSAT | UNSAT | yes |
+| S2 M3-status n=3, observer l=+0.00, freshness 2.50 s, v 0.7, offset 1.35: never both in the CR | latch + status phantom (last report younger than freshness) + FRONT-only no relation -> not(A in CR and B commits) | UNSAT | UNSAT | yes |
+| S2 M3-status n=4, observer l=+5.25, freshness 2.50 s, v 0.7, offset 1.35: never both in the CR | latch + status phantom (last report younger than freshness) + FRONT-only no relation -> not(A in CR and B commits) | UNSAT | UNSAT | yes |
+| S2 M3-status n=4, observer l=+1.75, freshness 2.50 s, v 0.7, offset 1.35: never both in the CR | latch + status phantom (last report younger than freshness) + FRONT-only no relation -> not(A in CR and B commits) | UNSAT | UNSAT | yes |
+| S2m mutation: a freshness of 5 s (the first design) violates P2 at the declared worst case | expect counterexample | SAT | SAT | yes |
+| S3 evidence order: a status older than a later fix placing the drone possibly in the CR never excludes it | randomized: last accepted fix in the CR with t_tx > status t_tx -> not excluded | HOLDS | HOLDS | yes |
+| S3m mutation: without the evidence order the stale status excludes the drone | expect violation | VIOLATED | VIOLATED | yes |
+| S4 silence: a drone silent after reporting committed or admitted keeps the gate held (claim, never excluded), at any duration | randomized over silence durations up to a day | HOLDS | HOLDS | yes |
+| S5 structural: no acoustic quantity or status in the computation of the precedence relations | text: the relation loop and decision of GatePerception.update | HOLDS | HOLDS | yes |
+| S6 relation drop: drones at their queue points are never FRONT-only targets of each other (n=2,3, tolerances) | enumeration over queue points, tolerances, heading tolerance | HOLDS | HOLDS | yes |
+| S7 verified passage: never verified with the true centre inside the CR grown by R_OUT, a blocked drone never verifies | randomized: fit error, DVL scale and dropouts, blocked drones | HOLDS | HOLDS | yes |
+| S9 keep-out barrier: a drone not committed to the gate is never moved closer to the CR inside the keep-out band | randomized: s in the band -> v . axis <= 0 after the filter | HOLDS | HOLDS | yes |
+| S10 a recovering drone backing up after the gate is never sent toward the CR: the reversal is refused from the guard plane on | exit_s + 1 m >= cr_half_len + R_OUT + E | HOLDS | HOLDS | yes |
+| S8 freshness: the bound per layout is below the shortest time from the queue to the CR at the speed bound | (/queue_s/ - CR - R_OUT - queue_tol - nav_err) / v_bound - latency >= status_fresh | HOLDS | HOLDS | yes |
 
 **Overall: ALL CHECKS AS EXPECTED**

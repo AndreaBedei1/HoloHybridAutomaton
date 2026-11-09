@@ -151,6 +151,11 @@ class Flows:
             self.sigma = float(np.clip(self.sigma, -fr.progress_max, fr.progress_max))
             self.lam += dt * (fr.k_lateral * obs.form.lateral_corr - 0.02 * self.lam)
             self.lam = float(np.clip(self.lam, -fr.progress_max, fr.progress_max))
+        elif obs.form.lateral_far is not None:
+            # away from the slot the ranges say nothing, the identified fixes still measure how far the own lane is from where
+            # the neighbours are (Perception.lateral_far): the reference moves with them, along-track stays with the own clock
+            self.lam += dt * (fr.k_lateral * obs.form.lateral_far - 0.02 * self.lam)
+            self.lam = float(np.clip(self.lam, -fr.progress_max, fr.progress_max))
         _slot, R_form, s_ref = self._slot(obs)
         t_hat, n_hat = R_form[:, 0], R_form[:, 1]
         self.lat_offset = self.lam * np.array([n_hat[0], n_hat[1], 0.0])
@@ -196,7 +201,8 @@ class Flows:
         me = self.plan.my_slot
         t_hat, n_hat = R_form[:, 0], R_form[:, 1]
         p_lane, _d, _n = self.plan.path.frame_at(s_ref + me.along)
-        lane_err = float((obs.p[:2] - p_lane[:2]) @ n_hat[:2]) - me.lateral
+        lane = me.lateral + self.lam                             # the own lane, as corrected by the consensus
+        lane_err = float((obs.p[:2] - p_lane[:2]) @ n_hat[:2]) - lane
         blk = self._lane_blocked()
         if abs(lane_err) <= fr.rejoin_lane_tol_m:
             if blk is None:
@@ -228,14 +234,14 @@ class Flows:
             along = me.along if self.at_level else min(me.along, max(a, blk[0] - fr.pass_dz_m))
             p_e, _d, n_e = self.plan.path.frame_at(s_ref + along)
             self.rejoin_phase = "PASS"
-            return np.array([p_e[0] + me.lateral * n_e[0], p_e[1] + me.lateral * n_e[1], z_pass])
+            return np.array([p_e[0] + lane * n_e[0], p_e[1] + lane * n_e[1], z_pass])
         self.passing = False
         rear = min(sl.along for sl in self.plan.slots) - fr.rejoin_back_m
         if blk is not None:                                      # a blocked lane is joined on the pass level, at
             rear = min(rear, blk[0] - fr.pass_dz_m)              # least pass_dz_m behind the rear slot (review)
         p_r, _d, n_r = self.plan.path.frame_at(s_ref + rear)
         dz = me.dz if blk is None else blk[1]
-        entry = np.array([p_r[0] + me.lateral * n_r[0], p_r[1] + me.lateral * n_r[1], self.plan.path.depth_z + dz])
+        entry = np.array([p_r[0] + lane * n_r[0], p_r[1] + lane * n_r[1], self.plan.path.depth_z + dz])
         behind = float((entry - obs.p) @ t_hat) >= -0.5          # at (or behind) the rear entry point
         self.rejoin_phase = "TO_LANE" if behind else "DROP_BACK"
         return entry

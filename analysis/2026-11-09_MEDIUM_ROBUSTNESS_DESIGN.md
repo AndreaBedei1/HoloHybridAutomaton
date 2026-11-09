@@ -1,7 +1,7 @@
-# MEDIUM-ALL robustness: root causes of the v10 failures and proposed design
+# MEDIUM-ALL robustness: root causes of the v10 failures and design
 
 Branch `feature/b2-medium-robustness`, from `main` (120b400). Baseline: tag `b2-freeze-v10` (9866242), kept immutable.
-Status: PROPOSAL, before implementation and independent review.
+Status: as implemented at the current branch head, after the first independent reviews. Sections 1 and the root causes are from the v10 logs.
 
 ## 1. What the v10 failures are
 
@@ -39,92 +39,80 @@ Root causes, from the logs of the ten runs (`results/robustness/raw_b2final_v10`
   keeps reporting a position. Its neighbours can only infer loss from displacement, and the vacancy logic has to tell a
   dead drone from a delayed one with no information. The owner's failure model is total: propulsion, electronics and
   acoustic transmission stop together, and the (positively buoyant) drone rises.
+* **RC6 (found in development batch med3, `formation_gust` s912, `lost_drone_rejoin` s911). The relative navigation error blocks the
+  return from behind.** MEDIUM draws a compass bias of +/-2 deg per drone. Two drones with opposite signs differ by 1-2 m laterally
+  after a 30 m run. The planned lanes (3.5 m) are then 2.6 m apart in reality; the drone returning along its lane enters the warning
+  band of the neighbour on the next lane (trigger at about 3.3 m between centres) and stops 2.3-3.9 m short of its slot until the deadline.
+  The sonar consensus could not help: it is disabled beyond `e_lost` because the ranges then measure the drone's own displacement.
 
-## 2. Failure model and vacancy
+## 2. Failure model and vacancy (as implemented)
 
-* **`TOTAL_FAILURE` replaces `THRUSTER_FAILURE`** in every scenario of the new matrix. From `t_on` the drone: runs no
-  controller, emits no ping and no packet, receives nothing, has zero thrust, and rises at the buoyant terminal speed.
-  The engine's BlueROV2 is exactly neutral, so the ascent is applied as a vertical per-agent current command calibrated
-  by `calibration/probe_buoyant_ascent.py` against the target `v_rise` (0.15 m/s, the estimate for the +0.2 kg net
-  buoyancy of the ballasted vehicle). Sim-side only (`config.FailureModel`); nothing reads it onboard.
-* `lost_drone_timeout`, `lost_drone_mutex` and `gate_stalled_occupant` become total failures. `lost_drone_rejoin` and
-  `lost_drone_rejoin_front` (temporary thruster loss in v10) can no longer be a failure of the drone: a temporary
-  thruster loss is not in the failure model. They become a temporary localized jet that displaces a healthy drone beyond
-  its authority (same structure as `formation_gust`). The before/after comparison of these two scenarios is therefore
-  not a like-for-like comparison and is reported as such.
-* **Vacancy by silence (replaces the vacancy timer).** Each drone keeps the time of the last reception of every other
-  drone (identified by its pinger code, the fix need not be accepted, a CRC-valid or absent payload both count). A drone
-  not heard for `t_silent` = 30 s is dead: its slot is declared vacant, **whatever the observer's mode and position**.
-  A slot is re-included when its drone is heard again (and near its slot, as today). `t_silent` must exceed the channel's
-  longest silent stretch: in MEDIUM the longest absence between two drones in all 72 v10 runs is 31 s (`formation_six`,
-  reception rate 45 %, line of 6, the extreme pairs at 17.5 m, shadowed by the hulls in between); median of the runs 9 s.
-  A false death needs a silent stretch that is impossible to tell from a dead drone. `t_silent` is therefore larger than
-  the channel's longest absence: **45 s** (the existing `t_rejoin` plus 15 s, and bounded by the deadline term). Alive
-  drones are never declared vacant by displacement: there is no vacancy without silence.
+* **`TOTAL_FAILURE` replaces the thruster-only failure** in every permanent-fault scenario. From `t_on` the drone runs no controller, emits
+  no ping and no packet, has zero thrust and rises. The engine's BlueROV2 is exactly neutral (`BlueROV2.cpp`), so the ascent is applied on
+  the simulator side as a vertical current on that drone only, added to the drift vector (`config.FailureModel`, `sim/holo_env.py`).
+  Nothing onboard reads it.
+* **Rise speed.** Nominal `v_rise_mps` = 0.10 m/s (plausible range 0.05-0.18 m/s, an estimate for a ballasted vehicle, not a measurement of a
+  real one). Bench `calibration/probe_buoyant_ascent.py`, `results/calibration/buoyant_ascent.json`: measured terminal speed 0.095 m/s
+  at the nominal target (ratio 0.95), 0.144 at 0.15, 0.188 at 0.20; 0.040 at 0.05 (ratio 0.80, outside the 15 % check, which is left
+  failing and reported). The ascent is independent of a horizontal current up to 0.30 m/s (0.094-0.099 m/s).
+* **Failure inside the opening.** A drone failing under the top bar of G06 with |s| <= 0.2 m (also at yaw 45 and 90 deg, and at l = 0.7 m)
+  stays pinned at dz = 0.87 m, inside the critical region, for as long as the bench ran. From |s| >= 0.3 m it clears the bar and leaves the
+  CR through the top in 12.5-13.2 s. So a failed drone may leave the CR by itself or may never leave it, and nothing onboard can tell which:
+  this is why silence never clears a gate.
+* **Scope of the failure model, disclosed.** Only total loss is modelled. Partial failures (thrusters lost, electronics alive) are outside this
+  phase's experiments, by the owner's decision. `lost_drone_rejoin` and `lost_drone_rejoin_front` (temporary thruster loss in v10) use a
+  temporary localized jet instead: the before/after comparison of these two is not like for like.
+* **Vacancy by silence.** A drone not heard for `t_silent_s` = 45 s is dead and its slot vacant, whatever the observer's mode and position, for
+  expected neighbours only (within `neighbour_range_m`; far pairs are often silent). Basis: the longest silence between two drones in the
+  72 v10 MEDIUM runs was 31 s. A drone heard again is alive and its slot required again. A receiver hearing nobody at all is deaf
+  (`AcousticTracker.deaf`): silence then says nothing and the B0 displacement timer applies. Displacement alone never makes a slot vacant
+  while the beacon works.
 
 ## 3. Payload v2 (hardware assumption H6, still strictly one-way)
 
-No request, reply, acknowledgement, leader or control command. Each drone keeps broadcasting a periodic packet of 64 bits
-(8 bytes, was 56): frame (2), x, y (24), depth (8), bound (6), **gate index (2), gate phase (2)**, reserved (4),
-CRC-16 (16). Air time at 1 kbit/s: 64 ms; slot budget for n = 6 at the 1 s period: 40 ms chirp + 64 ms packet + 33 ms
-propagation spread = 137 ms of 167 ms. The restriction of the earlier briefs (identity only; later position and bound
-only) was a design choice, not a physical limit of the channel.
+No request, reply, acknowledgement, leader or control command. 64 bits: frame (2), x, y (24), depth (8), bound (6), gate index (2), gate phase (2),
+reserved (4), CRC-16 (16). Air time at 1 kbit/s: 64 ms. Slot budget for n = 6 at the 1 s period: 40 ms chirp + 64 ms packet + 33 ms propagation
+spread = 137 ms of 167 ms. Data-packet loss is per link and three times higher on NLOS links (`sim/beacon.py`). The restriction of the earlier briefs
+was a design choice, not a physical limit.
 
-* **Bound encoding** non-uniform, conservative (rounded up), 0-3.9 m in 0.10 m steps then 0.50 m steps to 15.4 m, 63 =
-  invalid only for a truly invalid bound. So RC2's disappearance of the payload at 6.2 m is removed.
-* **Gate phase** (per gate index, the sender's own automaton and flow state, monotone within an attempt):
-  `NOT_ENGAGED` (never admitted to this gate) / `COMMITTED` (stage-1 commit, held before the CR, not admitted: outside the
-  CR by construction, invariant I5) / `ADMITTED` (stage 2 granted, possibly inside the CR) / `PASSED` (verified, below).
-  The field is a statement of fact about the sender, not a command.
-* **Independently verified passage.** `PASSED` needs a validated gate localization at admission AND the along-axis
-  DVL displacement since admission of at least the distance to `exit_s` AND a REAR sonar echo of the frame at the range
-  consistent with that displacement (seen in 97 % of the captures beyond the gate in the MEDIUM logs of v10). It is
-  therefore independent of the long-term navigation estimate and of its drift.
+* **Bound encoding**: conservative, 0.1 m steps to 3.9 m, then 0.5 m steps to 15.4 m; 63 means invalid.
+* **Gate phase**: `GP_NONE` / `GP_COMMITTED` / `GP_ADMITTED` / `GP_PASSED`, a statement of fact about the sender.
+* **Verified passage** (`perception/passage.py`): after admission, the crossing signature (the sum of the LEFT and RIGHT ranges matches the opening)
+  followed by the DVL displacement beyond the exit; otherwise a REAR echo of the frame at the consistent range; otherwise the DVL odometry alone,
+  only after `T_ODO_MAX_S`. `GP_PASSED` is held until the next gate is engaged.
 
-## 4. Gate logic (perception only; sonar precedence and the automaton are unchanged)
+## 4. Gate logic (perception only; automaton unchanged)
 
-Status is used only to EXCLUDE a drone from being an occupant, and as positive occupancy. It never grants precedence.
+**The status never enters the precedence.** After the first independent reviews the relation logic was made independent of the beacon:
+a FRONT-only echo inside the corridor band makes no precedence relation, unconditionally (it is the latch's business); a merged echo keeps its WAIT.
 
-* A drone j is **status-excluded** for gate g iff its latest CRC-valid status, not older than `t_status` = 5 s, says
-  NOT_ENGAGED or PASSED for g (or it is engaged with a later/earlier gate index than g). `t_status` is below the
-  shortest possible time from the queue line to the CR at the maximum speed (3.4 m at 0.65 m/s = 5.2 s).
-* **Positive occupancy:** a status COMMITTED or ADMITTED of any other drone, latched until a newer status of that drone,
-  keeps the latch BUSY. A drone silent for `t_silent` whose last status was ADMITTED stays an unknown occupant for
-  ever: **silence never clears a possibly occupied gate** (the v8 `silent_gone_s` release is removed). A silent drone
-  whose last status was COMMITTED was outside the CR by construction and is excluded after `t_silent`.
-* **Phantom echoes.** A corridor echo is not a fleet drone when every other drone is excluded (status or fix regions as
-  in v10): the latch stays free. This extends the existing phantom rule (B2-PE) with status.
-* **Precedence relations and echoes that are no drone.** A sonar target creates a precedence relation only if some fleet
-  drone could be that target: for every other drone j either status/fix exclude j from the target's sector cone and
-  range (in the receiver's own body frame, from the range-bearing measurement, so no navigation bound is involved), or
-  the relation stands. With no information about a drone the relation stands (conservative). RC1(a) is removed while the
-  sonar pattern rule itself, ties and the static rank are unchanged.
-* Stage-2 entry (`entry_ok`) and the A1/A2/A3/A4 acoustic rules use the same exclusion. `heard_inside` and
-  `last_known_inside` skip a status-excluded drone.
+* A drone is **excluded as an occupant** only by `status_excluded` (`perception/acoustic_gate.py`): a fresh status not engaged or for another gate, or
+  `GP_PASSED` for this gate. Evidence order: a later accepted fix in the CR beats an older status. Freshness is per layout:
+  `min(2.5 s, t_min - latency)`, `t_min` the shortest travel time from the queue line to the CR at the speed bound.
+* **Positive occupancy**: `GP_COMMITTED` / `GP_ADMITTED` of another drone keeps the gate BUSY.
+* **Silence never clears a committed or admitted drone.** A `GP_NONE` drone is excluded by silence only after `t_silent_gate_s` = 70 s.
+  A failure under the bar therefore blocks the gate for the survivors for good, by design; `gate_stalled_occupant` accepts this outcome.
+* **Keep-out barrier** (`Flows.keepout_filter`): a drone not committed cannot move towards the CR beyond the queue line.
 
 ## 5. Navigation and gate localization
 
-* The map fit beside the opening (`identified`, C5 restriction) needs every other drone excluded as the source of each
-  matched echo. v10 required small payload balls (never available in MEDIUM). Proposed: every matched echo must be
-  incompatible with every other drone's region (own frame, from the fix: sector cone and range including the one-sided
-  multipath excess), or the drone is status-excluded and located by a fresh fix. This restores the relocalization at
-  the hold point when the drone drifted in front of a bar, the mechanism behind the s804 livelock.
-* `NavBound` keeps being the sum of worst cases and never decreasing EXCEPT at a verified gate passage: the drone was
-  physically inside the opening, so the bound restarts from the opening geometry
-  (`hypot(2 (w/2 - hull), dz)`, plus the local odometry since), and the estimate is corrected to the fit. The bound
-  stops growing without limit along the mission. The bound remains a stated assumption.
+* The map fit acquires up to the queue line (`acq_min = |queue_s| + 0.5`); matched echoes must be incompatible with every other drone's fix region.
+* A measured gate crossing corrects the **lateral** estimate only (the along-axis correction caused a contact in development, med2 gate_single s902),
+  and is skipped above 1.2 m. The correction moves the stored fixes with the estimate (`AcousticTracker.shift`).
+* `NavBound` is never restarted (reviewer finding): the bound stays monotone.
 
 ## 6. Formation
 
-* `DROP_BACK`: when the reference is not moving (`v_clock` = 0, end of the path or a planned hold), the "let the fleet
-  pass" rule has no purpose: the drone may reverse to its entry point (bounded speed, the separation layer unchanged).
+* **Static reference.** With `v_clock` = 0 the DROP_BACK has no purpose. The drone goes straight to its slot; a reversal instead made a DROP_BACK/PASS
+  limit cycle (most of the INCOMPLETE runs of med2).
+* **Lateral residual away from the slot** (RC6, `Perception.lateral_far`). For a neighbour holding its slot by its own report, the identified fix gives
+  `f.rel - d_k - (slot - p)`: the relative navigation error, independent of the own displacement. With `slot` including the correction, the residual goes to zero
+  with it. Its median feeds the existing lateral integrator `lam` (bound `progress_max`, 2 m), and the rejoin lane follows `lam`. Near the slot the
+  ordinary consensus acts as before. Only the mission reference moves: the separation layer and its formal checks are untouched.
 
-## 7. Verification plan
+## 7. Verification
 
-* Unit tests for every item; Z3 (new suite or extension of `formal/check_acoustic.py`): status exclusion is sound under
-  the freshness premise (a drone in the CR is not excluded; `t_status` < minimum travel time); the status latch never
-  releases on silence; positive occupancy blocks commitment; the extended phantom/relation exclusion never removes a real
-  drone (randomized, envelope); mutations of each.
-* Experiments: MEDIUM-ALL first: repeat the ten scenarios, then fresh seeds with larger N, then CLEAN and LOW for
-  regressions; freeze; final validation on held-out seeds. The acceptance criteria (v6) are frozen before the final
-  campaign and include: every safety item unchanged; failure model change declared.
+* Unit tests: `tests/test_status_payload.py` and the updated suites.
+* Z3: `formal/check_status.py` S1-S10 with mutations; included in `formal/check_properties.py`.
+* Development batches: `analysis/MEDIUM_CAMPAIGN_LOG.md`. The failures are stochastic, so the comparison with v10 is statistical and on held-out seeds.
+* Order: MEDIUM-ALL fresh seeds, CLEAN and LOW regressions, freeze of the candidate and of the criteria, final validation.

@@ -357,3 +357,93 @@ def test_a_recovering_drone_goes_straight_to_its_slot_when_the_reference_stands_
         unhealthy = []
     v, _ = fl.formation(O, 0.1, recovering=True)
     assert fl.rejoin_phase == "" and v[2] > 0.0 and v[1] < 0.0     # straight to the slot: up and across, no rejoin phases
+
+
+def _far_setup(lateral_error=0.9, behind=2.5, k=2):
+    """Observer 0 of the square, behind its slot by ``behind``; its own estimate is off sideways by ``lateral_error``: the
+    neighbour k, on its slot, is measured where the true geometry puts it and reports its slot."""
+    from holo_fleet.perception.formation_perception import FormationObs, expected_relative
+
+    plan = _plan()
+    per = Perception(plan, B2)
+    per.acoustic.set_identities({j: j for j in range(4)})
+    p = np.array([10.0, 2.0, -5.0])
+    d = expected_relative(plan, np.eye(3))
+    slot_err = np.array([behind, 0.0, 0.0])
+    return per, p, d, slot_err, FormationObs(slot_err=slot_err, slot_err_norm=float(np.linalg.norm(slot_err))), np.array([0.0, lateral_error, 0.0])
+
+
+def _rx_meas(per, p, t, k, rel, reported, bound=2.0):
+    r = float(np.linalg.norm(rel))
+    az, el = math.atan2(rel[1], rel[0]), math.asin(rel[2] / r)
+    t_arr = t - 0.05
+    fr = pl.frame_index(t_arr - r / B2.beacon.sound_speed, B2.beacon.period_s)
+    per.acoustic.update(t, [(k, t_arr, r, az, el, pl.encode(fr, reported, bound, 0, pl.GP_NONE))], p, 0., 0.5)
+
+
+def test_far_from_its_slot_the_fixes_measure_the_lateral_error_of_the_own_reference():
+    """The residual is compensated for the own displacement from the slot: a drone behind its slot does not read the neighbours
+    as misplaced, and the part left is the relative navigation error (RC6: two opposite compass biases)."""
+    per, p, d, se, o, e_me = _far_setup()
+    for k in (1, 2):
+        _rx_meas(per, p, 5.0, k, d[k] + se + e_me, p + se + d[k])
+    per.acoustic_residuals(5.05, o, np.eye(3), p)
+    assert o.lateral_far is not None and abs(o.lateral_far - e_me[1]) < 0.05
+
+
+def test_the_far_residual_is_off_near_the_slot_and_ignores_a_neighbour_off_its_own_slot():
+    per, p, d, se, o, e_me = _far_setup()
+    near = type(o)(slot_err=np.zeros(3), slot_err_norm=0.1)
+    _rx_meas(per, p, 5.0, 2, d[2] + se + e_me, p + se + d[2])
+    per.acoustic_residuals(5.05, near, np.eye(3), p)
+    assert near.lateral_far is None
+    per2, p, d, se, o2, e_me = _far_setup()
+    _rx_meas(per2, p, 5.0, 2, d[2] + se + e_me, p + se + d[2] + np.array([-4.0, 0.0, 0.0]))     # by its own estimate, 4 m off
+    per2.acoustic_residuals(5.05, o2, np.eye(3), p)
+    assert o2.lateral_far is None
+
+
+def test_a_drone_behind_its_slot_shifts_its_lane_with_the_far_residual_and_stays_on_the_corrected_lane():
+    from holo_fleet.config import DEFAULT as D
+    from holo_fleet.control.flows import Flows
+    from holo_fleet.perception.formation_perception import FormationObs
+
+    plan = _plan()
+    fl = Flows(plan, D)
+    me = plan.slots[0]
+
+    class O:
+        t = 20.0
+        p = np.array([3.0, me.lateral, -5.0 + me.dz])
+        R_wb = np.eye(3)
+        yaw = 0.0
+        slot_pos = np.array([9.0, me.lateral, -5.0 + me.dz])
+        form = FormationObs(lateral_far=-0.9)
+        targets = []
+        unhealthy = []
+    for _ in range(10):
+        fl.formation(O, 0.1, recovering=True)
+    assert -0.09 < fl.lam < -0.05
+    # near the slot only the ordinary consensus acts
+    fl2 = Flows(plan, D)
+    O.slot_pos = O.p + np.array([0.3, 0.0, 0.0])
+    fl2.formation(O, 0.1, recovering=True)
+    assert fl2.lam == 0.0
+    # the lane follows the correction: on the corrected lane the drone is not sent around the formation
+    fl3 = Flows(plan, D)
+    fl3.lam = -1.5
+    O.p = np.array([3.0, me.lateral - 1.5, -5.0 + me.dz])
+    O.slot_pos = np.array([9.0, me.lateral - 1.5, -5.0 + me.dz])
+    O.form = FormationObs()
+    fl3.formation(O, 0.1, recovering=True)
+    assert fl3.rejoin_phase in ("", "PASS")
+
+
+def test_a_drone_inside_the_keepout_box_never_reports_not_engaged():
+    from holo_fleet.perception.passage import inside_keepout, report_phase
+
+    G = B2.gate
+    assert inside_keepout(0.0, 0.0, 0.0, G) and not inside_keepout(-5.4, 0.0, 0.0, G)
+    assert report_phase(False, False, False, True) == pl.GP_COMMITTED
+    assert report_phase(False, False, False, False) == pl.GP_NONE
+    assert report_phase(False, True, False, True) == pl.GP_ADMITTED and report_phase(True, False, False, True) == pl.GP_PASSED
