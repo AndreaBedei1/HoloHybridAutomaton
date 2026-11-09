@@ -21,6 +21,9 @@ from holo_fleet.ha.observation_invariants import violated as observation_violati
 from holo_fleet.ha.spec import IN_FORMATION, Mode
 from holo_fleet.mission import MissionPlan
 from holo_fleet.perception.frame import SensorFrame
+from holo_fleet.perception.passage import PassageVerifier
+from holo_fleet.perception.payload import GP_ADMITTED, GP_COMMITTED, GP_NONE, GP_PASSED
+from holo_fleet.perception.sonar_geometry import HULL_HALF
 from holo_fleet.perception.perception import LocalObservation, Perception
 
 AVOIDANCE = (Mode.SEPARATION_WARNING, Mode.COLLISION_AVOIDANCE)
@@ -125,6 +128,8 @@ class DroneController:
         self.perception = Perception(plan, cfg, nav_init_err)
         self.ha = LocalHybridAutomaton(cfg)
         self.flows = Flows(plan, cfg)
+        self.passage = PassageVerifier(cfg)        # what the drone reports about its gate passage (payload v2)
+        self.passage_restarted = False             # the navigation bound restart at this gate is done
         self.ll = LowLevelController(cfg)
         self.envmon = EnvelopeMonitor()
         self.observation_violations = 0            # control steps with an inconsistent abstract observation
@@ -212,6 +217,7 @@ class DroneController:
         ok = self.envmon.update(self.ll.saturated, check, dt, v_nav=obs.v_world if dvl_fresh else None,
                                 v_req=self.v_requested)
         self.v_requested = np.asarray(v, dtype=float).copy()
+        self._update_gate_report(t, dt, obs)
         for e in self.perception.gp.phantom_events:            # B2: corridor echoes no fleet drone produced
             self.events.append({"t": e["t"], "type": "PHANTOM_ECHO", "excluding_fixes": e["fixes"]})
         self.perception.gp.phantom_events.clear()
@@ -254,6 +260,7 @@ class DroneController:
                      "rank_used": obs.gate.rank_used,
                      "loc_ok": obs.gate.loc_ok, "reloc_hold": self.flows.reloc_hold,
                      "entry_ok": obs.gate.entry_ok, "entry": self.flows.entry_state or None,
+                     "tx": [self.perception.tx_gate_idx, self.perception.tx_phase],
                      **({"acoustic": {k: v for k, v in self.perception.gp.acoustic_exit.last.items() if v}}
                         if self.perception.gp.acoustic_exit is not None and obs.gate.occ_state == "BUSY" else {})},
             "form": {"form_err": round(obs.form.form_err, 3), "slot_err": round(obs.form.slot_err_norm, 3),
@@ -279,3 +286,33 @@ class DroneController:
             "saturated": self.ll.saturated,
         }
         return thruster_command(cmd["surge"], cmd["sway"], cmd["heave"], cmd["yaw"], self.cfg.plant.thruster_limit)
+
+    def _update_gate_report(self, t: float, dt: float, obs: LocalObservation) -> None:
+        """Gate phase this drone reports about itself (payload v2): the facts of its own automaton and flow, never a command
+        or a request.  It stays on the gate of an unfinished passage until that passage is verified."""
+        p, gp = self.passage, self.perception.gp
+        if not p.in_progress and p.idx != gp.idx:
+            p.next_gate(gp.idx)
+            self.passage_restarted = False
+        gate = self.plan.gates[p.idx] if p.idx < len(self.plan.gates) else None
+        if self.flows.cr_cleared and self.ha.committed and gate is not None and not p.admitted:
+            p.admit(p.idx, gate, obs.p)
+        rd = obs.readings.get("REAR")
+        rear = [float(e.r0) for e in rd.echoes] if rd is not None else []
+        was = p.verified
+        p.update(t, dt, obs.p, obs.v_world, rear)
+        if p.verified and not was:
+            self.events.append({"t": t, "type": "GATE_PASSAGE_VERIFIED", "by": p.by, "gate": p.idx})
+        if p.verified and not self.passage_restarted and gate is not None:
+            self.passage_restarted = True
+            G, H = self.cfg.gate, float(HULL_HALF[1])     # the opening's half-width (the hull inside it): both ends of the error
+            self.perception.nav_bound.restart(2.0 * (G.cr_half_width - H) + 0.3)
+        if p.verified:
+            idx, phase = p.idx, GP_PASSED
+        elif p.in_progress:
+            idx, phase = p.idx, GP_ADMITTED
+        elif self.ha.committed:
+            idx, phase = gp.idx, GP_COMMITTED
+        else:
+            idx, phase = gp.idx, GP_NONE
+        self.perception.tx_gate_idx, self.perception.tx_phase = idx % 4, phase

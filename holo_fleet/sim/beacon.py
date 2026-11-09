@@ -3,9 +3,9 @@
 Drone k pings on a fixed TDMA schedule (slot k of every period, slots aligned to simulator ticks so that the
 scheduled emission instant is exact), and every reception becomes a range-bearing measurement through the channel
 model of sim/acoustic_channel.py (noise, biases, NLOS reflections, dropouts, outages, latency).  A ping carries the
-sender's static identity and, with ``payload`` (H6, perception/payload.py), a 56-bit packet with the sender's
-ONBOARD position estimate and error bound, taken from its own perception through ``payload_source`` (never from
-the simulator state).  The packet is lost on its own (``payload_loss``, a separate seeded stream) even when the
+sender's static identity and, with ``payload`` (H6, perception/payload.py), a 64-bit packet with the sender's
+ONBOARD position estimate, error bound and gate phase, taken from its own perception through ``payload_source`` (never
+from the simulator state).  The packet is lost on its own (``payload_loss``, a separate seeded stream) even when the
 ping is detected.  No mode, queue or control data is sent, and nobody replies.
 
 Every drone carries a HoloOcean ``AcousticBeaconSensor`` (id = drone index, engine range limit ``MaxDistance``
@@ -63,6 +63,7 @@ class BeaconTransport:
         self.payload_source = None        # callable (k, t_emit) -> (p_est, bound) from drone k's ONBOARD perception
         self.payload_rng = np.random.default_rng([int(seed), 5102])     # separate stream: pings unchanged
         self.payload_stats = {"sent": 0, "lost": 0, "delivered": 0}
+        self.is_dead = None               # callable (name, t) -> bool: a drone with a TOTAL_FAILURE emits nothing
         if cfg.payload:
             from holo_fleet.perception.payload import air_time_s
 
@@ -86,11 +87,13 @@ class BeaconTransport:
         for k, n in enumerate(self.names):
             if (tick - k * self.slot_ticks) % self.period_ticks != 0:
                 continue
+            if self.is_dead is not None and self.is_dead(n, t):
+                continue                          # completely broken: no ping, no packet, and it hears nothing either
             self.stats["transmissions"] += 1
             self.tx_log.append((round(t, 4), n))
             packet = self._packet(k, t, tick)
             for r in self.names:
-                if r == n:
+                if r == n or (self.is_dead is not None and self.is_dead(r, t)):
                     continue
                 env._client.command_center.enqueue_command(SendAcousticMessageCommand(n, SENSOR_NAME, r, SENSOR_NAME))
                 self.pending[r].append((n, t, packet))
@@ -104,9 +107,9 @@ class BeaconTransport:
         src = self.payload_source(k, t)
         if src is None:
             return None
-        p_est, bound = src                # the sender's own bound already covers the age of its estimate at t
+        p_est, bound, gate_idx, phase = src    # the sender's own bound already covers the age of its estimate at t
         self.payload_stats["sent"] += 1
-        return encode(tick // self.period_ticks, p_est, bound)
+        return encode(tick // self.period_ticks, p_est, bound, gate_idx, phase)
 
     def after_tick(self, env, t: float) -> None:
         """Resolve the engine results of this tick into receptions (or losses)."""

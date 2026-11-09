@@ -347,12 +347,14 @@ class AcousticConfig:
     tie_window_s: float = 3.0            # fixes this close to the last corridor sighting account for a drone
     fresh_s: float = 2.5                 # a fix this recent counts for the neighbours (formation)
     depth_tol_m: float = 1.5             # a fix this far outside the operating depth band is a reflection
-    # deployment assumption (the owner's decision, reviewed 2026-11-06): a drone that fails completely (no power, no
-    # beacon) is net positively buoyant and rises; a SILENT drone last known in the CR is gone after
-    # max(t_occ_max + t_clear, T_rise), T_rise = 2.5 m (centre from the CR floor out of its top, fix slack included)
-    # / 0.05 m/s (a conservative passive ascent: about 3x below the ~0.15 m/s estimated for +0.2 kgf).  A drone that
-    # still pings is never released this way.  Not reproduced by the simulator (near-neutral vehicle).
-    silent_gone_s: float = 50.0
+    # silence of a drone: not heard for this long = dead (TOTAL_FAILURE: nothing is emitted any more), whatever the
+    # observer's own state.  Justified against the channel: in MEDIUM-ALL the longest silence between two drones of the
+    # 72 v10 runs was 31 s, median over the runs 9 s, reception rate ~45-70 %.  Silence never clears a possibly occupied
+    # gate (perception/acoustic_gate.py)
+    t_silent_s: float = 45.0
+    # a gate phase NOT_ENGAGED excludes its sender as an occupant while fresher than this: below the smallest time a
+    # drone needs from its queue point to the CR, 3.4 m / (v_pass + w_drift) = 5.2 s, minus the reception latency
+    status_fresh_s: float = 4.5
     # onboard bound of the own dead-reckoning error (perception/nav.py, NavBound), sent in the payload (H6).  Every
     # term is the declared envelope of a sensor, never the profile of a run:
     nav_b0_m: float = 0.30               # [REQ] launch survey of the shared mission frame (horizontal)
@@ -367,6 +369,22 @@ class AcousticConfig:
 
 
 @dataclass(frozen=True)
+class FailureModel:
+    """Simulator side only (never read onboard): the failure model of a drone, the deployment's (the owner's decision).
+
+    A broken drone is completely broken: propulsion, electronics and acoustic transmission stop together, and, being
+    ballasted positively buoyant, it rises.  The engine's BlueROV2 is exactly neutral, so the ascent is applied as a
+    vertical current command on that drone only (holo_env.ascent_command; the terminal speed is calibrated by
+    calibration/probe_buoyant_ascent.py).  ``v_rise_mps``: BlueRobotics ballasts the vehicle to about +0.2 kg net
+    (datasheet); the steady ascent of a body with net buoyancy F and vertical drag area C_d A is
+    sqrt(2 F / (rho C_d A)) = sqrt(2 * 1.96 / (1000 * 1.1 * 0.154)) = 0.15 m/s, a stated estimate (no ascent rate is
+    published).  ``surface_z_m``: the hull centre stops rising here (just awash)."""
+
+    v_rise_mps: float = 0.15
+    surface_z_m: float = -0.25
+
+
+@dataclass(frozen=True)
 class FleetConfig:
     sep: SeparationThresholds = field(default_factory=SeparationThresholds)
     env: Envelope = field(default_factory=Envelope)
@@ -377,6 +395,7 @@ class FleetConfig:
     ref: RefereeConfig = field(default_factory=RefereeConfig)
     beacon: BeaconConfig = field(default_factory=BeaconConfig)   # B2 one-way acoustic beacon (OFF in B0)
     acoustic: AcousticConfig = field(default_factory=AcousticConfig)   # B2 onboard envelope (used only when beacon.enabled)
+    failure: FailureModel = field(default_factory=FailureModel)        # simulator side: what a broken drone does
     comms_enabled: bool = False       # inter-agent communication is OFF by default
     traffic_rule: bool = True         # head-on give-way rule (liveness aid); off only to exercise the safety layer alone
 

@@ -50,6 +50,15 @@ def _error_status(exc: BaseException, t: float) -> Dict:
             "traceback": "".join(traceback.format_exception(type(exc), exc, exc.__traceback__))}
 
 
+def dead_record(t: float) -> Dict:
+    """Log record of a completely failed drone (no controller runs any more; the fields the offline tools read)."""
+    return {"t": round(float(t), 3), "mode": "DEAD", "committed": False, "nav_p": None, "nav_yaw_deg": 0.0, "nav_bound": None,
+            "v_cmd": [0.0, 0.0, 0.0], "v_mis": [0.0, 0.0, 0.0], "giveway": "", "offset": [0.0, 0.0, 0.0], "d_min": None,
+            "sense_ok": False, "env_ok": False, "envelope": {}, "sectors": {}, "targets": [], "escape": None,
+            "current_est": [0.0, 0.0, 0.0], "gate": {}, "form": {}, "nav_aid": None, "transition": None,
+            "determinism_violations": 0, "obs_consistent": True, "observation_violations": 0, "saturated": False}
+
+
 TRIGGER_PENDING = 1e9      # t_on of a fault whose onset is a ground-truth condition (resolved and logged when met)
 
 
@@ -189,6 +198,10 @@ def run(name: str, out_root: Path, headless: bool = True, run_id: Optional[str] 
             cmds = {}
             c0 = time.perf_counter()
             for nm, c in ctrls.items():
+                if sc.sim.dead(nm, sim.t):
+                    cmds[nm] = np.zeros(8)                 # completely broken: its controller no longer runs
+                    c.last_record = dead_record(sim.t)
+                    continue
                 cmds[nm] = c.step(frames[nm], DT)
             ctrl_ms.append(1000.0 * (time.perf_counter() - c0))
             if truth_prev is not None:               # referee side: frames vs the truth at the frame time
@@ -196,7 +209,7 @@ def run(name: str, out_root: Path, headless: bool = True, run_id: Optional[str] 
             sim.step(cmds, DT)
             truth = sim.truth()
             truth_prev = truth
-            modes = [ctrls[nm].ha.mode.value for nm in sim.names]
+            modes = ["DEAD" if sc.sim.dead(nm, sim.t) else ctrls[nm].ha.mode.value for nm in sim.names]
             row = ref.update(truth, modes, sc.disturbance_active(sim.t))
             for nm, c in ctrls.items():
                 rec = dict(c.last_record)

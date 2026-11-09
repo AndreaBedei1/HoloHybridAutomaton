@@ -92,6 +92,8 @@ class SensorAudit:
         self._yaw_prev = np.array(truth.yaw_deg, float)
         for k, name in enumerate(self.names):
             fr = frames[name]
+            if not fr.data:
+                continue                               # a completely failed drone has no sensors any more
             c = ctrls.get(name)
             obs = None if c is None else c.last_obs
             # ---- sonar freshness

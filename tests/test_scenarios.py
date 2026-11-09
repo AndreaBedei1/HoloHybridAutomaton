@@ -49,26 +49,33 @@ def test_gate_scenarios_use_only_arena_gate_g06():
 
 
 def test_lost_drone_scenarios_inject_one_simulator_fault_on_a_rear_drone():
-    for name, permanent in (("lost_drone_rejoin", False), ("lost_drone_timeout", True), ("lost_drone_mutex", True)):
+    """The failure model of the deployment: a broken drone is completely broken and rises (TOTAL_FAILURE); a temporary
+    event is a jet that displaces a healthy drone, no failure of the drone at all."""
+    for name in ("lost_drone_timeout", "lost_drone_mutex"):
         sc = SCENARIOS[name](DEFAULT)
-        assert len(sc.sim.faults) == 1
-        f = sc.sim.faults[0]
+        (f,) = sc.sim.faults
         k = int(f["drone"].split("_")[1])
-        assert f["type"] == "THRUSTER_FAILURE" and (f["t_off"] is None) == permanent
+        assert f["type"] == "TOTAL_FAILURE" and f["t_off"] is None
         assert sc.template.slots[k].along == min(sl.along for sl in sc.template.slots)     # nobody runs into it
         if name == "lost_drone_mutex":                       # the left drone of the line: the leftmost present goes
             assert sc.template.name == "line3" and k == 0
         assert sc.disturbance_active(f["t_on"] + 0.1)
-    # v9: the rejoin of a FRONT slot (temporary fault; the drone of the rear slot on its lane is in the way)
+    from holo_fleet.sim.scenarios import JET_DISPLACE_DRIFT
+
+    for name in ("lost_drone_rejoin", "lost_drone_rejoin_front"):         # temporary: a healthy drone, displaced
+        sc = SCENARIOS[name](DEFAULT)
+        assert not sc.sim.faults
+        jets = [c for c in sc.sim.current.components if c.kind == "jet"]
+        assert len(jets) == 1 and tuple(jets[0].drift) == JET_DISPLACE_DRIFT and sc.disturbance_active(jets[0].t_on + 0.1)
+    # v9: the rejoin of a FRONT slot (the drone of the rear slot on its lane is in the way)
     sc = SCENARIOS["lost_drone_rejoin_front"](DEFAULT)
-    (f,) = sc.sim.faults
-    k = int(f["drone"].split("_")[1])
+    k = 0
     me = sc.template.slots[k]
-    assert f["type"] == "THRUSTER_FAILURE" and f["t_off"] is not None and sc.disturbance_active(f["t_on"] + 0.1)
     assert any(sl.along < me.along and abs(sl.lateral - me.lateral) < 1e-9 for sl in sc.template.slots)
-    for name in set(EXPECTED) - {"lost_drone_rejoin", "lost_drone_rejoin_front", "lost_drone_timeout", "lost_drone_mutex",
-                                 "gate_stalled_occupant"}:
+    for name in set(EXPECTED) - {"lost_drone_timeout", "lost_drone_mutex", "gate_stalled_occupant"}:
         assert not SCENARIOS[name](DEFAULT).sim.faults, name
+    for name, sc_f in SCENARIOS.items():                       # no thruster-only failure anywhere in the matrix
+        assert not any(f["type"] == "THRUSTER_FAILURE" for f in sc_f(DEFAULT).sim.faults), name
 
 
 def test_stalled_occupant_is_gate_single_with_a_ground_truth_mid_cr_trigger():

@@ -293,13 +293,30 @@ def formation_gust(cfg: FleetConfig = DEFAULT) -> Scenario:
 
 
 # ---------------------------------------------------------------------------------------------- lost drones
+JET_DISPLACE_DRIFT = (-0.70, 0.55, 0.0)     # [m/s] the temporary jet of lost_drone_rejoin / lost_drone_rejoin_front: beyond the
+                                            # authority of the drone (as formation_gust), against the motion and across the lane
+
+
 def _lost_drone(name: str, t_on: float, t_off: Optional[float], duration: float, current: CurrentField, title: str,
                 desc: str, focus: str, cfg: FleetConfig, faulty: int = 2) -> Scenario:
-    """Square survey; drone ``faulty`` (rear-left: nobody runs into it when it stops) loses its thrusters
-    (simulator fault, invisible to every controller) at t_on, until t_off (None: for good)."""
+    """Square survey around drone ``faulty`` (rear-left: nobody runs into it when it stops).
+
+    ``t_off`` None: the drone suffers a TOTAL_FAILURE at t_on (simulator side, no controller is told): propulsion,
+    electronics and transmission stop together and it rises (the failure model: config.FailureModel).  With a
+    ``t_off`` the drone stays healthy: from t_on to t_off a localized jet beyond its authority, centred on it at the
+    middle of the window, drags it off its lane and behind the fleet (there is no temporary failure of a drone in the
+    failure model); it rejoins by itself."""
     sc = _survey(name, "square", 34.0, current, duration, title, desc, focus, windows=[(t_on, t_off or duration)],
                  cfg=cfg, camera=faulty)
-    sc.sim.faults = ({"drone": f"drone_{faulty}", "type": "THRUSTER_FAILURE", "t_on": t_on, "t_off": t_off},)
+    if t_off is None:
+        sc.sim.faults = ({"drone": f"drone_{faulty}", "type": "TOTAL_FAILURE", "t_on": t_on, "t_off": None},)
+    else:
+        sl = sc.template.slots[faulty]
+        s_mid = sc.plans[faulty].clock.s(0.5 * (t_on + t_off)) + sl.along
+        p, _d, n = sc.path.frame_at(s_mid)
+        jet = CurrentComponent("jet", drift=JET_DISPLACE_DRIFT, center=(float(p[0] + sl.lateral * n[0]), float(p[1] + sl.lateral * n[1])),
+                               radius=3.0, t_on=t_on, t_off=t_off, ramp=1.5)
+        sc.sim.current.components.append(jet)
     sc.sim.chase_offset, sc.sim.side_offset = (-7.0, 0.0, 3.0), (2.0, 10.0, 2.0)
     sc.automaton_drone = 0               # the faulty drone's neighbour ahead on its lane: it waits for it
     return sc
@@ -308,13 +325,12 @@ def _lost_drone(name: str, t_on: float, t_off: Optional[float], duration: float,
 def lost_drone_rejoin(cfg: FleetConfig = DEFAULT) -> Scenario:
     fr = cfg.form
     return _lost_drone("lost_drone_rejoin", 8.0, 15.0, 60.0, _uniform((0.0, 0.35, 0.0)),
-                       "Lost drone: temporary thruster failure, reduced progress and rejoin from behind",
-                       "4 drones (square), 0.35 m/s lateral current (inside the envelope). The rear-left drone loses "
-                       "its thrusters between t = 8 s and 15 s (simulator fault, no controller is told) and is dragged "
-                       "off its lane and behind the fleet.",
-                       f"the faulty drone detects it onboard (FAILSAFE); its neighbours miss it and slow the formation "
-                       f"to {fr.v_wait:.2f} m/s (FORMATION_WAIT_REJOIN); it catches up at {fr.catch_up:.2f} m/s, "
-                       "rejoins from behind along its own lane; FOLLOW again, no communication", cfg)
+                       "Displaced drone: a strong jet, reduced progress and rejoin from behind",
+                       "4 drones (square), 0.35 m/s lateral current (inside the envelope). A localized jet beyond the "
+                       "authority of the rear-left drone (t = 8 s to 15 s) drags it off its lane and behind the fleet; "
+                       "the drone stays healthy and keeps transmitting.",
+                       f"its neighbours miss it and slow the formation to {fr.v_wait:.2f} m/s (FORMATION_WAIT_REJOIN); "
+                       f"it catches up at {fr.catch_up:.2f} m/s, rejoins from behind along its own lane; FOLLOW again", cfg)
 
 
 def lost_drone_rejoin_front(cfg: FleetConfig = DEFAULT) -> Scenario:
@@ -322,11 +338,11 @@ def lost_drone_rejoin_front(cfg: FleetConfig = DEFAULT) -> Scenario:
     along the lane; the faulty drone passes it on the pass level (control/flows.py, FormationRule.pass_dz_m)."""
     fr = cfg.form
     sc = _lost_drone("lost_drone_rejoin_front", 8.0, 15.0, 70.0, _uniform((0.0, 0.35, 0.0)),
-                     "Lost drone: temporary thruster failure of a front drone, rejoin past the drone behind it",
-                     "4 drones (square), 0.35 m/s lateral current (inside the envelope). The front-left drone loses "
-                     "its thrusters between t = 8 s and 15 s (simulator fault, no controller is told) and is dragged "
-                     "off its lane and behind the fleet; the rear-left drone is on its lane, between it and its slot.",
-                     f"the faulty drone detects it onboard (FAILSAFE); its neighbours miss it and slow the formation "
+                     "Displaced drone: a strong jet on a front drone, rejoin past the drone behind it",
+                     "4 drones (square), 0.35 m/s lateral current (inside the envelope). A localized jet beyond the "
+                     "authority of the front-left drone (t = 8 s to 15 s) drags it off its lane and behind the fleet; "
+                     "the rear-left drone is on its lane, between it and its slot.",
+                     f"its neighbours miss it and slow the formation "
                      f"to {fr.v_wait:.2f} m/s; it catches up from behind and passes the rear-left drone "
                      f"{fr.pass_dz_m:.1f} m below it, rising to its slot only past it; FOLLOW again, no communication",
                      cfg, faulty=0)
@@ -341,8 +357,8 @@ def lost_drone_timeout(cfg: FleetConfig = DEFAULT) -> Scenario:
     fr = cfg.form
     return _lost_drone("lost_drone_timeout", 8.0, None, 80.0, CurrentField(),
                        "Lost drone: permanent failure, timeout and degraded formation",
-                       "4 drones (square), no current. The rear-left drone loses its thrusters for good at t = 8 s "
-                       "(simulator fault, no controller is told).",
+                       "4 drones (square), no current. The rear-left drone fails completely at t = 8 s (no propulsion, "
+                       "electronics or transmitter) and rises.",
                        f"the neighbours miss it and slow down to {fr.v_wait:.2f} m/s (FORMATION_WAIT_REJOIN); after "
                        f"t_rejoin = {fr.t_rejoin:.0f} s they declare its slot vacant (DEGRADED_FORMATION), resume "
                        f"{fr.v_nominal:.2f} m/s and keep their original slots: no reconfiguration, the hole stays", cfg)
@@ -435,13 +451,13 @@ def lost_drone_mutex(cfg: FleetConfig = DEFAULT) -> Scenario:
     a drone that stops for good INSIDE the bracket of a queued drone, on its left, would block it (M5)."""
     sc = _gate_mission("lost_drone_mutex", "line3", 72.0, CurrentField(), cfg, lead_in=9.0,
                        title="Lost drone before the gate: the leftmost drone present goes first",
-                       desc="3 drones abreast survey towards gate G06; the left drone loses its thrusters for good at "
-                            "t = 1 s and stays behind. The other two miss it, queue at their own queue points (the left "
+                       desc="3 drones abreast survey towards gate G06; the left drone fails completely (no propulsion, no "
+                            "electronics, no transmitter) at t = 1 s and rises. The other two miss it, queue at their own queue points (the left "
                             "one stays vacant) and pass one at a time: the middle drone, now the leftmost present, goes "
                             "first. No communication.",
                        focus="missing neighbour (FORMATION_WAIT_REJOIN; timer frozen in the mutex modes and during the "
                              "rendezvous hold), queue order relative to the drones present, occupancy <= 1")
-    sc.sim.faults = ({"drone": "drone_0", "type": "THRUSTER_FAILURE", "t_on": 1.0, "t_off": None},)
+    sc.sim.faults = ({"drone": "drone_0", "type": "TOTAL_FAILURE", "t_on": 1.0, "t_off": None},)
     sc.disturbance_windows = [(1.0, sc.duration_s)]
     return sc
 
@@ -457,10 +473,10 @@ def gate_stalled_occupant(cfg: FleetConfig = DEFAULT) -> Scenario:
     # current it drifts into a bar within ~20 s and leaves the region (seen in a development run, 2026-11-05)
     sc.sim.current = CurrentField()
     sc.name, sc.title = "gate_stalled_occupant", "P2: a drone stalls inside the critical region of G06"
-    sc.description = ("gate_single; the first drone loses its thrusters for good in the middle of the critical region. "
-                      "The others must never enter it.")
+    sc.description = ("gate_single; the first drone fails completely (no propulsion, electronics or transmitter) in the "
+                      "middle of the critical region and rises. The others must never enter it while it may be there.")
     sc.focus = "stalled occupant: occupancy latch, heard-inside veto, stage-2 hold, unknown occupant never FREE"
-    sc.sim.faults = ({"drone": "drone_0", "type": "THRUSTER_FAILURE", "t_on": 1e9, "t_off": None,
+    sc.sim.faults = ({"drone": "drone_0", "type": "TOTAL_FAILURE", "t_on": 1e9, "t_off": None,
                       "trigger": "mid_cr:G06"},)
     sc.safety_only = True          # the gate is physically blocked: judged on safety over the horizon (criteria v5)
     return sc

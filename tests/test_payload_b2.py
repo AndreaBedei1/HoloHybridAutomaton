@@ -21,18 +21,31 @@ def test_packet_round_trip_quantisation_and_bound_rounded_up():
     p = np.array([-20.1234, 17.276, -4.2031])
     pkt = pl.encode(7, p, 1.234)
     rep = pl.decode(pkt)
-    assert rep.frame == 7 % pl.FRAMES and len(pkt) * 8 == pl.PAYLOAD_BITS == 56
+    assert rep.frame == 7 % pl.FRAMES and len(pkt) * 8 == pl.PAYLOAD_BITS == 64
     assert np.linalg.norm(rep.p - p) <= pl.QUANT_ERR + 1e-9
-    assert 1.234 + pl.QUANT_ERR <= rep.bound < 1.234 + pl.QUANT_ERR + pl.BOUND_Q
+    assert 1.234 + pl.QUANT_ERR <= rep.bound < 1.234 + pl.QUANT_ERR + pl.BOUND_FINE_Q
+    assert rep.gate_idx == 0 and rep.phase == pl.GP_NONE
+    rep2 = pl.decode(pl.encode(1, p, 7.0, gate_idx=2, phase=pl.GP_ADMITTED))
+    assert rep2.gate_idx == 2 and rep2.phase == pl.GP_ADMITTED
+
+
+def test_the_bound_field_is_rounded_up_and_never_saturates_to_a_smaller_value():
+    for b in (0.0, 0.31, 1.0, 3.89, 3.9, 3.91, 6.2, 7.1, 12.34, 15.4):
+        code = pl.encode_bound(b)
+        assert code != pl.BOUND_INVALID and pl.decode_bound(code) >= b - 1e-9
+        assert pl.decode_bound(code) - b <= (pl.BOUND_FINE_Q if b <= pl.BOUND_FINE_MAX else pl.BOUND_COARSE_Q) + 1e-9
+    assert pl.encode_bound(15.5) == pl.BOUND_INVALID and pl.encode_bound(math.inf) == pl.BOUND_INVALID
 
 
 def test_corrupted_or_unrepresentable_packets_are_not_used():
     pkt = bytearray(pl.encode(1, [1., 2., -3.], 0.5))
     pkt[3] ^= 0x10
     assert pl.decode(bytes(pkt)) is None                       # CRC
-    assert pl.decode(pl.encode(1, [1., 2., -3.], float("inf"))) is None   # integrity monitor fired
-    assert pl.decode(pl.encode(1, [150., 2., -3.], 0.5)) is None   # outside the representable frame
-    assert pl.decode(pl.encode(1, [1., 2., -3.], 9.0)) is None     # bound beyond the field: invalid code
+    # an unusable position is still a packet: the gate phase in it remains the sender's statement about itself
+    for rep in (pl.decode(pl.encode(1, [1., 2., -3.], float("inf"))),      # integrity monitor fired
+                pl.decode(pl.encode(1, [150., 2., -3.], 0.5)),            # outside the representable frame
+                pl.decode(pl.encode(1, [1., 2., -3.], 99.0))):            # bound beyond the field
+        assert rep is not None and not rep.valid_position
 
 
 def test_frame_index_is_robust_to_millisecond_errors_at_every_slot():
@@ -49,7 +62,7 @@ def test_payload_fits_the_tdma_slot_for_six_drones_and_is_refused_when_it_cannot
 
     cfg = BeaconConfig(mode="ACOUSTIC_RB")
     BeaconTransport([f"d{k}" for k in range(6)], cfg, 0)
-    with pytest.raises(ValueError):                            # 8 drones: 100 ms slots < 129 ms needed
+    with pytest.raises(ValueError):                            # 8 drones: 100 ms slots < 137 ms needed
         BeaconTransport([f"d{k}" for k in range(8)], cfg, 0)
 
 
@@ -91,7 +104,7 @@ def test_a_correction_larger_than_the_bound_invalidates_it():
     nb = NavBound(B2)
     nb.corrected(np.array([nb.horizontal + 0.5, 0.0, 0.0]))
     assert nb.invalid and nb.value == math.inf
-    assert pl.decode(pl.encode(0, [0., 0., -3.], nb.value)) is None
+    assert not pl.decode(pl.encode(0, [0., 0., -3.], nb.value)).valid_position
 
 
 def test_held_dvl_samples_count_as_an_outage_through_the_frame_stamps():
@@ -131,6 +144,7 @@ def _hear(tracker, p, r, rep_p, bound, times=(1., 2.)):
         t_arr = t - .25
         frame = pl.frame_index(t_arr - r / B2.beacon.sound_speed, B2.beacon.period_s)
         tracker.update(t, [(1, t_arr, r, 0., 0., pl.encode(frame, rep_p, bound))], p, 0., 0.5)
+        tracker.status.clear()                                   # these tests exercise the geometry of the fixes alone
 
 
 def test_payload_separates_the_indistinguishable_multipath_histories():
@@ -203,31 +217,6 @@ def test_stage_two_entry_is_held_while_an_occupant_is_merely_unheard():
     assert not gp.acoustic_exit.heard_inside(2. + B2.acoustic.fresh_s + 1.0, GATE) and not o.entry_ok
 
 
-def test_a_neighbour_reported_at_the_gate_is_delayed_not_lost():
-    from holo_fleet.perception.perception import Perception
-    from holo_fleet.sim.scenarios import SCENARIOS
-
-    sc = SCENARIOS["gate_single"](B2)
-    plan = sc.plans[0]
-    per = Perception(plan, B2)
-    per.acoustic.set_identities({0: 0, 1: 1, 2: 2})
-    g = plan.gates[0]
-    left = np.array([-g.axis[1], g.axis[0], 0.0])
-    me = g.center + (plan.queue_s - 1.0) * np.asarray(g.axis, float)
-    queued = g.center + plan.queue_s * np.asarray(g.axis, float) - 3.5 * left     # a neighbour at its queue point
-    far = g.center - 30.0 * np.asarray(g.axis, float)                              # far behind: not at the gate
-    per.acoustic.update(0.0, (), me, 0.0, 0.5)
-    for i, (k, q) in enumerate(((1, queued), (2, far))):
-        r = float(np.linalg.norm(q - me))
-        d = q - me
-        az, el = math.atan2(d[1], d[0]), math.asin(d[2] / r)
-        t_arr = 1.0
-        fr = pl.frame_index(t_arr - r / B2.beacon.sound_speed, B2.beacon.period_s)
-        per.acoustic.update(1.25, [(k, t_arr, r, az, el, pl.encode(fr, q, 0.5))], me, 0.0, 0.5)
-    assert per._delayed_at_gate(1, 1.3) and not per._delayed_at_gate(2, 1.3)
-    assert per.gate_delay_max > 60.0
-
-
 def test_a_corridor_echo_no_fleet_drone_can_have_produced_does_not_set_the_latch():
     from holo_fleet.perception.targets import Target
 
@@ -248,10 +237,11 @@ def test_a_corridor_echo_no_fleet_drone_can_have_produced_does_not_set_the_latch
     assert gp3.update(2.1, p, 0., [echo], {}).occ_state == "BUSY"
 
 
-def test_a_silent_drone_last_known_inside_is_gone_after_the_ascent_time():
+def test_silence_never_clears_a_drone_last_known_possibly_inside():
+    """v11: the buoyancy-rise release of v8 is gone: a silent drone last known possibly in the CR stays a possible
+    occupant for ever (silence alone is no proof that the gate is physically clear)."""
     p = np.array([-4.6, 0., -5.])
     tracker, gp = _observer(p)
     _hear(tracker, p, 4.6, [0.0, 0., -5.], 0.5)                # last heard in the CR, then silent
-    gone = max(B2.gate.t_occ_max + B2.gate.t_clear, B2.acoustic.silent_gone_s)
-    assert gp.acoustic_exit.last_known_inside(2. + gone - 1., GATE)
-    assert not gp.acoustic_exit.last_known_inside(2. + gone + 1., GATE)
+    for t in (2. + 60., 2. + 3600.):
+        assert gp.acoustic_exit.last_known_inside(t, GATE)

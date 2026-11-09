@@ -192,6 +192,17 @@ class NavBound:
         self.outage = math.sqrt(self.clusters_sq + (self.cluster + self.out_cur) ** 2)
         self.z = self.depth_err if t - s.t_depth <= self.DVL_STALE_S else self.z + self.v_bound * dt
 
+    def restart(self, b_h: float) -> None:
+        """A verified gate passage (perception/passage.py): the hull was physically inside the gate opening, so the bound
+        restarts from the geometry of the opening (``b_h``), the only event that lowers it.  The integrity flag is reset:
+        the position has been re-established."""
+        self.ref = float(b_h)
+        self.lin = self.var = self.outage = self.aid = 0.0
+        self.out_cur = self.out_len = self.out_worst = 0.0
+        self.cluster = self.clusters_sq = 0.0
+        self.out_model = True
+        self.invalid = False
+
     def corrected(self, corr) -> None:
         c = float(np.linalg.norm(np.asarray(corr, dtype=float)[:2]))
         if c > self.horizontal:

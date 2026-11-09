@@ -112,6 +112,14 @@ class Fix:
         return float(np.max(np.linalg.norm(self.pts - self.p, axis=1))) + self.slack
 
 
+@dataclass(frozen=True)
+class GateStatus:
+    """Latest gate phase a drone reported about itself (payload v2, perception/payload.py)."""
+    t_tx: float                      # emission instant of the packet that carried it
+    gate_idx: int                    # gate it refers to (mod 4)
+    phase: int                       # GP_NONE / GP_COMMITTED / GP_ADMITTED / GP_PASSED
+
+
 @dataclass
 class PoseHistory:
     keep_s: float = 3.0
@@ -150,6 +158,8 @@ class AcousticTracker:
         self.fixes: Dict[int, List[Fix]] = {}             # slot -> fixes (accepted and rejected), oldest first
         self.track_id: Dict[int, int] = {}
         self.last_accepted: Dict[int, Fix] = {}          # slot -> latest accepted fix, never forgotten
+        self.heard: Dict[int, float] = {}                # slot -> arrival time of its latest reception of any kind
+        self.status: Dict[int, GateStatus] = {}          # slot -> latest gate status it reported (payload v2)
         self.pose = PoseHistory()
         self.stats = {"received": 0, "stale": 0, "no_pose": 0, "implausible_depth": 0, "accepted": 0, "rejected": 0,
                       "track_restarts": 0}
@@ -172,6 +182,7 @@ class AcousticTracker:
             if slot is None:
                 continue
             self.stats["received"] += 1
+            self.heard[slot] = max(self.heard.get(slot, -1e9), t_arr)     # alive: whatever becomes of this reception
             if t - t_arr > a.latency_max_s + 1e-9:
                 self.stats["stale"] += 1
                 continue
@@ -201,21 +212,27 @@ class AcousticTracker:
         return new
 
     def _attach(self, f: Fix, packet) -> None:
-        """Decode the payload and keep it only if it is consistent with the measurement (module docstring)."""
-        from holo_fleet.perception.payload import decode
+        """Decode the payload: the gate status of the sender is kept when the packet is intact and of this frame (even if
+        the fix itself is rejected: a reflected arrival carries the same packet); the position payload is kept only if
+        the fix is accepted and consistent with the measurement (module docstring)."""
+        from holo_fleet.perception.payload import decode, frame_index
 
         rep = decode(packet) if packet is not None else None
         if rep is None:
             f.rep_reason = "missing"
             return
-        if not f.accepted:
-            f.rep_reason = "rejected_fix"
-            return
-        from holo_fleet.perception.payload import frame_index
-
         if rep.frame != frame_index(f.t_tx, self.cfg.beacon.period_s):
             f.rep_reason = "frame"                       # not this frame's packet: misassociated or stale
             self.stats["payload_frame"] = self.stats.get("payload_frame", 0) + 1
+            return
+        old = self.status.get(f.slot)
+        if old is None or f.t_tx >= old.t_tx:
+            self.status[f.slot] = GateStatus(t_tx=f.t_tx, gate_idx=rep.gate_idx, phase=rep.phase)
+        if not rep.valid_position:
+            f.rep_reason = "invalid_bound"
+            return
+        if not f.accepted:
+            f.rep_reason = "rejected_fix"
             return
         b_own = self.pose.bound_at(f.t)
         if b_own is None or not math.isfinite(b_own):          # own integrity lost: no cross-check, no payload
@@ -266,6 +283,11 @@ class AcousticTracker:
             self.stats["track_restarts"] += 1
 
     # ------------------------------------------------------------------ queries
+    def silent(self, slot: int, t: float) -> bool:
+        """Not heard for the declared silence interval: a dead drone (nothing is emitted any more), or lost pings that
+        could not be told from it."""
+        return t - self.heard.get(slot, t) >= self.cfg.acoustic.t_silent_s
+
     def all_fixes(self, slot: int, t0: float = -1e9, t1: float = 1e9) -> List[Fix]:
         return [f for f in self.fixes.get(slot, []) if t0 <= f.t <= t1]
 

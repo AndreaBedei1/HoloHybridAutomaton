@@ -170,9 +170,14 @@ class Flows:
             if np.linalg.norm(corr) > fr.v_corr_max:
                 corr *= fr.v_corr_max / np.linalg.norm(corr)
             v = v + corr
-        elif self.rejoin_phase == "DROP_BACK":   # let the fleet pass: slow down (never reverse), no lateral motion
+        elif self.rejoin_phase == "DROP_BACK":   # let the fleet pass: slow down, no lateral motion
             e = entry - obs.p
-            v_al = float(np.clip(v_clock + fr.k_slot * float(e @ t_hat), 0.0, max(v_clock, 0.0)))
+            # the moving fleet overtakes the drone: it only slows down, never reverses.  With the reference not moving
+            # (a planned hold or the end of the path) nothing will overtake it, and without reversing it would stay
+            # off its lane for good (v10: the slot error stayed constant until the deadline), so it backs up, at the
+            # recovery speed bound, to the entry point behind the rear-most slot
+            v_min = 0.0 if v_clock > 1e-6 else -fr.v_recovery_max
+            v_al = float(np.clip(v_clock + fr.k_slot * float(e @ t_hat), v_min, max(v_clock, 0.0)))
             v = v_al * t_hat + np.array([0.0, 0.0, fr.k_slot * float(e[2])])
         else:                                    # TO_LANE: to the own lane behind the rear-most slot
             v = t_hat * v_clock + fr.k_slot * (entry - obs.p)

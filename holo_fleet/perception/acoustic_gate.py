@@ -38,6 +38,15 @@ occupant at t_lc only when both regions allow it (A1), and is beyond the exit fa
 histories of the range-bearing measurement alone (a drone beyond the exit with a +3 m excess) are separated by the
 independent navigation estimate.  An inconsistent or missing payload leaves the measurement-only rules.
 
+Gate phase (payload v2, perception/payload.py).  A drone reports its own phase with this gate.  It is used only to exclude
+it as a possible occupant, or as positive occupancy, never to give precedence: GP_NONE (never admitted to this gate),
+fresher than ``status_fresh_s``, or GP_PASSED, or a phase of another gate, excludes it; GP_COMMITTED / GP_ADMITTED of any
+other drone holds the latch BUSY until the drone reports otherwise; a drone that fell silent (``t_silent_s``) while
+GP_ADMITTED stays an unknown occupant for ever (silence never clears a possibly occupied gate), one that fell silent
+while GP_NONE or GP_COMMITTED was outside the CR when it stopped and is excluded.  The freshness bound is below the
+smallest time a drone needs from its queue point to the CR: a report of GP_NONE fresher than that cannot be followed by
+an occupied CR unseen.
+
 Soundness argument (mutual exclusion rests on A1 and A2 only): under the B0 assumption that every
 entry into the CR crosses the FRONT corridor visibly (formal M3/M4), a drone in the CR at t either was in it or
 produced the corridor echo at t_lc, or entered later visibly (a new t_lc).  (A1) leaves every such drone among
@@ -57,6 +66,7 @@ import numpy as np
 from holo_fleet.config import DEFAULT, FleetConfig
 from holo_fleet.perception.acoustic import AcousticTracker, Fix, box_bounds
 from holo_fleet.perception.exit_witness import speed_bound
+from holo_fleet.perception.payload import GP_ADMITTED, GP_COMMITTED, GP_NONE, GP_PASSED
 from holo_fleet.perception.sonar_geometry import AXES, MOUNTS, NEAR_FIELD_WIDEN_M, R_OUT
 
 
@@ -85,6 +95,7 @@ class AcousticExit:
         self.last_phantom: Dict = {}               # the excluding fixes of the latest phantom echo (audit log)
         self.heard_by: set = set()                 # ... at the latest heard_inside evaluation
         self.last: Dict = {}                       # diagnostics of the latest evaluation
+        self.gate_idx = 0                          # the gate the receiver is working on (mod 4; GatePerception.update)
 
     def reset(self) -> None:
         self.sighting = None
@@ -110,6 +121,11 @@ class AcousticExit:
         try:
             self.last_phantom = {}
             for j in self.others:
+                if self.status_claim(j, t):                # a drone holding the gate may well be this echo
+                    return False
+                if self.status_excluded(j, t):             # by what it reports about itself
+                    self.last_phantom[j] = "status"
+                    continue
                 win = self.tracker.all_fixes(j, t - a.tie_window_s, t)
                 acc = [f for f in win if f.accepted]
                 # every accepted fix of the window must exclude j (one accepted outlier never suffices), the latest no
@@ -122,7 +138,74 @@ class AcousticExit:
         finally:
             self.sighting = saved
 
+    # ------------------------------------------------------------------ gate status of the other drones (payload v2)
+    def status_excluded(self, j: int, t: float) -> bool:
+        """Drone j cannot be an occupant of the current gate's CR, by what it reports about itself (module docstring):
+        it reports another gate or GP_NONE and the report is fresh, or it reports GP_PASSED (monotone: final), or it fell
+        silent while not admitted (GP_NONE / GP_COMMITTED: a drone that stopped outside cannot enter)."""
+        st = self.tracker.status.get(j)
+        if st is None:
+            return False
+        fresh = t - st.t_tx <= self.cfg.acoustic.status_fresh_s
+        dead = self.tracker.silent(j, t)
+        if st.gate_idx != self.gate_idx:
+            return fresh or dead
+        if st.phase == GP_PASSED:
+            return True
+        if st.phase == GP_NONE:
+            return fresh or dead
+        return st.phase == GP_COMMITTED and dead
+
+    def status_claim(self, j: int, t: float) -> bool:
+        """Drone j holds the gate by what it reports: committed or admitted to this gate, and not (fallen silent while
+        only committed).  A drone silent after GP_ADMITTED keeps the claim for ever: silence never clears a possibly
+        occupied gate."""
+        st = self.tracker.status.get(j)
+        if st is None or st.gate_idx != self.gate_idx or st.phase not in (GP_COMMITTED, GP_ADMITTED):
+            return False
+        return not (st.phase == GP_COMMITTED and self.tracker.silent(j, t))
+
+    def claims(self, t: float) -> set:
+        return {j for j in self.others if self.status_claim(j, t)}
+
     # ------------------------------------------------------------------ geometry
+    def target_not_a_drone(self, t: float, p: np.ndarray, yaw: float, pattern, ranges) -> bool:
+        """No drone of the fleet can be this sonar target: every other drone has a fresh accepted fix and none of the
+        fixes' regions (own frame: no navigation bound enters; a dead drone needs none), grown by the motion since the fix, reaches any sector of
+        the pattern at the target's range.  Without a fresh fix of some drone the answer is False: it could be that one."""
+        env, a = self.cfg.env, self.cfg.acoustic
+        if not self.others:
+            return False
+        R = _rot(yaw)
+        pts_grow = []
+        for j in self.others:
+            if self.tracker.silent(j, t):
+                continue                                    # a dead drone takes no turn at the gate: no relation is owed
+            f = self.tracker.latest(j, t, a.fresh_s)
+            if f is None:
+                return False
+            pts_grow.append((f.pts, f.slack + self.v_bound * max(t - f.t, 0.0)))
+        half0 = math.radians(self.cfg.perc.sonar.half_angle_deg)
+        for sec in pattern:
+            if sec not in MOUNTS:
+                continue
+            m = p + R @ MOUNTS[sec]
+            u = R @ AXES[sec]
+            u = u / np.linalg.norm(u)
+            r_e = ranges.get(sec) if isinstance(ranges, dict) else ranges
+            if r_e is None:
+                continue
+            lo, hi = max(float(r_e) - env.eps_range_far, 0.0), float(r_e) + env.eps_range_near
+            half = half0 + math.atan2(NEAR_FIELD_WIDEN_M, max(lo, 1e-3))
+            for pts, rho in pts_grow:
+                grow = R_OUT + rho
+                d = pts - m
+                dist = np.maximum(np.linalg.norm(d, axis=1), 1e-6)
+                ang = np.arccos(np.clip((d @ u) / dist, -1.0, 1.0))
+                if np.any((dist >= lo - grow) & (dist <= hi + grow) & (ang <= half + np.arcsin(np.clip(grow / dist, 0.0, 1.0)))):
+                    return False
+        return True
+
     def _cr_possible(self, q: np.ndarray, rho: float) -> bool:
         """Some point within rho of a sample q (gate frame) can be the centre of a hull in the CR."""
         gap = np.linalg.norm(q - np.clip(q, -self.half, self.half), axis=1)
@@ -230,6 +313,9 @@ class AcousticExit:
         fresh = a.fresh_s
         self.heard_by = set()
         for j in self.others:
+            if self.status_excluded(j, t):
+                self.veto.discard(j)
+                continue
             acc = [f for f in self.tracker.all_fixes(j, t - 2.0 * period - fresh, t) if f.accepted][-2:]
             if not acc or t - acc[-1].t > fresh:
                 self.veto.discard(j)
@@ -247,16 +333,17 @@ class AcousticExit:
     def last_known_inside(self, t: float, g) -> bool:
         """Some other drone's LATEST accepted fix (within the tracker memory) placed it possibly in the CR at its own
         time, and no later accepted fix has cleared it: its whereabouts since are unknown, so it is a possible
-        occupant and the CR cannot become FREE by a timeout (an unknown occupant never silently becomes FREE).
-        Without any fix of a drone (a silent channel) the sonar outage-mode rules apply."""
+        occupant and the CR cannot become FREE by a timeout (an unknown occupant never silently becomes FREE).  A drone
+        that reports not being engaged, or that has passed, is excluded (status_excluded).  Silence alone never releases
+        it: a silent drone last known possibly in the CR stays a possible occupant for ever.  Without any fix of a drone
+        (a silent channel) the sonar outage-mode rules apply."""
         n = self.cfg.acoustic.exit_confirm
         for j in self.others:
+            if self.status_excluded(j, t):
+                continue
             last = self.tracker.last_accepted.get(j)
             if last is None or last.t > t:
                 continue
-            gone = max(self.cfg.gate.t_occ_max + self.cfg.gate.t_clear, self.cfg.acoustic.silent_gone_s)
-            if t - last.t > gone and not self.tracker.all_fixes(j, last.t + 1e-9, t):
-                continue                   # silent that long: risen out of the CR (deployment assumption, config)
             # cleared only by exit_confirm consecutive accepted fixes of one track, each clear (as A2): one cleared
             # fix followed by silence does not release a possible occupant
             tail = [f for f in self.tracker.all_fixes(j, -1e9, t) if f.accepted][-n:] or [last]
@@ -270,7 +357,8 @@ class AcousticExit:
         drone when not given).  Without a corridor sighting, an entry by another drone would have crossed the FRONT
         corridor visibly (the sonar latch premise, formal M3/M4) and started a sonar episode instead."""
         need = self.others if suspects is None else [j for j in self.others if j in suspects]
-        if need and all(self.outside_now(g, j, t, since) is not None for j in need):
+        if need and not self.claims(t) and all(self.status_excluded(j, t) or self.outside_now(g, j, t, since) is not None
+                                               for j in need):
             return {"sector": "ACOUSTIC", "slots": sorted(need), "range": None, "rule": "A2"}
         return None
 
@@ -287,6 +375,9 @@ class AcousticExit:
         t_lc = self.sighting["t"]
         possible = []
         for j in self.others:
+            if self.status_excluded(j, t):
+                self.last["excluded"].append(j)
+                continue
             win = self.tracker.all_fixes(j, t_lc - a.tie_window_s, t_lc + a.tie_window_s)
             acc = [f for f in win if f.accepted and not self._could_be_occupant(g, f, t_lc)]
             contra = [f for f in win if not f.accepted and self._could_be_occupant(g, f, t_lc)]
@@ -300,7 +391,7 @@ class AcousticExit:
             # OUTSIDE the CR now (A2), so no fleet drone is in it whether or not a later entry was seen.  P2 concerns
             # the fleet's drones; an unexplained echo that is no drone stays an obstacle for the separation layer.
             # (A phantom corridor echo held the latch for minutes while both other drones were excluded.)
-            if all(self.outside_now(g, j, t, t_lc) is not None for j in self.others):
+            if all(self.status_excluded(j, t) or self.outside_now(g, j, t, t_lc) is not None for j in self.others):
                 return {"sector": "ACOUSTIC", "slots": [], "range": None, "rule": "A4"}
             return None
         exited, ranges = [], []

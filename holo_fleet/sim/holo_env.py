@@ -99,6 +99,7 @@ class HoloFleetSim:
 
             self.beacon = BeaconTransport(self.names, cfg.beacon, spec.seed, ticks_per_sec=TICKS_PER_SEC)
             self.beacon.scene = self._beacon_scene
+            self.beacon.is_dead = spec.dead
 
     def _beacon_scene(self):
         """Simulator truth for the B2 channel model (never onboard): agent origins, headings, gate bars."""
@@ -376,6 +377,9 @@ class HoloFleetSim:
         released = np.array([self.t >= r for r in self.spec.release_s])
         drift = np.array([self.spec.current.drift_at(P[k], self.t) for k in range(n)])
         cmd = np.array([self.spec.current.command_at(P[k], self.t) for k in range(n)])
+        for k, name in enumerate(self.names):
+            if self.spec.dead(name, self.t):      # positively buoyant: the ascent of a completely failed drone
+                cmd[k, 2] += self.ascent_command(P[k, 2])
         intr = None
         if self.intruder_names:
             intr = np.array([agent_origin_from_pose(np.asarray(self.latest[nm]["PoseSensor"], float))
@@ -383,9 +387,23 @@ class HoloFleetSim:
                              for nm, d in zip(self.intruder_names, self.intruders)])
         return Truth(self.t, P, R, Y, V, C, released, drift, cmd, intr)
 
+    def ascent_command(self, z: float) -> float:
+        """Vertical current command that gives a completely failed drone its calibrated ascent speed (the engine's
+        BlueROV2 is exactly neutral: config.FailureModel, calibration/probe_buoyant_ascent.py), none at the surface."""
+        from holo_fleet.sim.currents import drift_to_command
+
+        fm = self.cfg.failure
+        if z >= fm.surface_z_m:
+            return 0.0
+        return drift_to_command(fm.v_rise_mps, self.cfg.plant.current_cmd_to_drift_z)
+
     def frames(self) -> Dict[str, SensorFrame]:
         out = {}
         for name in self.names:
+            if self.spec.dead(name, self.t):
+                self.beacon_inbox[name] = []      # nothing is received: its electronics are off
+                out[name] = SensorFrame(t=self.t, data={}, stamp={})
+                continue
             data = {k: v for k, v in self.latest[name].items() if is_onboard(k)}
             stamp = {k: v for k, v in self.stamp[name].items() if is_onboard(k)}
             if self.beacon is not None:                # receptions since the previous frame (identities only)
@@ -409,7 +427,7 @@ class HoloFleetSim:
                                                [0.0, 0.0, float(self.spec.spawn_yaw_deg[k])])
                 self.env.act(name, np.zeros(8))
             elif self.spec.fault_active(name, self.t):
-                self.env.act(name, np.zeros(8))          # injected thruster failure: commands are not executed
+                self.env.act(name, np.zeros(8))          # injected failure: commands are not executed
             else:
                 self.env.act(name, np.zeros(8) if cmd is None else np.asarray(cmd, dtype=float))
         for name in self.intruder_names:

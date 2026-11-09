@@ -54,13 +54,10 @@ Variant B2 (range-bearing beacon, perception/acoustic.py).  Identified fixes ent
   directly: it replaces the range-bearing point estimate for the lag and the "ahead" veto, with the band e_ok (the
   neighbour's own in-formation tolerance) plus its largest speed deviation from the clock over the payload's age.
   A_CONFIRM payloads of one track farther than e_lost + A_DISPLACED_MARGIN + band from the slot are rule A-D;
-* delayed at the gate (vacancy): a missing neighbour whose fresh consistent payload places it, ball included, in the
-  approach zone of a gate of the plan (its ball intersects the zone) is delayed by the mutual exclusion, not lost:
-  its vacancy timer does not run,
-  for at most the protocol's slowest serial passage of the whole fleet (n x (L / v_pass + t_occ_max + t_clear), the
-  gate term of the a-priori deadline); beyond that the ordinary timer resumes, so a drone that fails at the gate
-  is still declared vacant.  (A neighbour waiting its turn at a slow MEDIUM gate was declared vacant by a drone
-  that had passed: a false vacancy, development and v4 campaign runs.)
+* vacancy by silence (v11): the failure model of the deployment is the total one - a broken drone stops transmitting -
+  so with the beacon active a slot is vacant exactly when its drone has not been heard for ``acoustic.t_silent_s``
+  (config.AcousticConfig), whatever the observer's own mode or position; displacement alone never makes a slot
+  vacant, and a drone heard again is required again;
 * own navigation bound (perception/nav.py, NavBound): propagated every step, grown by every map-aided correction,
   and sent in the B2 beacon payload (``payload``, H6).
 Without receptions (B0, a silent channel) every one of these is inactive and the perception is the sonar one.
@@ -185,10 +182,8 @@ class Perception:
         self.payload_present: List[int] = []           # H6: A_CONFIRM payloads of one track near the slot (rejoined)
         self.present_since: Dict[int, float] = {}      # slot -> start of the current payload_present run
         self.ahead_since: Dict[int, float] = {}
-        self.gate_delay: Dict[int, float] = {}         # B2: slot -> time its vacancy timer was held (delayed at gate)
-        G = cfg.gate
-        n = len(plan.slots)
-        self.gate_delay_max = n * ((G.queue_lateral_max + G.exit_s - plan.queue_s) / G.v_pass + G.t_occ_max + G.t_clear)
+        self.tx_gate_idx = 0                           # what this drone reports about itself (payload v2): the gate ...
+        self.tx_phase = 0                              # ... and its phase with it (payload.GP_*), set by the controller
 
     # ------------------------------------------------------------------ formation reference
     def slot_reference(self, t_form: float, sigma: float = 0.0):
@@ -258,56 +253,64 @@ class Perception:
                     del self.vacant[k]
                     self.missing_state[k], self.missing_t[k] = False, 0.0
                     self.events.append({"t": t, "type": "SLOT_REOCCUPIED", "slot": k})
-            elif self.missing_state.get(k) and k in form.required and in_formation and moving:
-                if self._delayed_at_gate(k, t) and self.gate_delay.get(k, 0.0) < self.gate_delay_max:
-                    self.gate_delay[k] = self.gate_delay.get(k, 0.0) + dt     # waiting its turn: not lost
-                    continue
+            elif (not self.acoustic.enabled and self.missing_state.get(k) and k in form.required and in_formation
+                  and moving):
+                # without a beacon (B0, a silent channel) silence is unobservable: the displacement timer of the baseline
                 self.missing_t[k] = self.missing_t.get(k, 0.0) + dt
                 if self.missing_t[k] >= fr.t_rejoin - 1e-9:
                     self.vacant[k] = t
                     self.events.append({"t": t, "type": "SLOT_DECLARED_VACANT", "slot": k,
                                         "missing_s": round(self.missing_t[k], 1)})
+        if self.acoustic.enabled:
+            # vacancy by silence: a drone not heard for t_silent is dead (nothing is emitted any more), whatever the
+            # observer's own mode or position; displacement alone never makes a slot vacant.  A drone heard again is
+            # alive: its slot is required again (it may still be missing, by the sonar rules, until it is back)
+            for k in range(len(self.plan.slots)):
+                if k == self.plan.slot_index:
+                    continue
+                if self.acoustic.silent(k, t):
+                    if k not in self.vacant:
+                        self.vacant[k] = t
+                        self.events.append({"t": t, "type": "SLOT_DECLARED_VACANT", "slot": k, "cause": "silence",
+                                            "silent_s": round(t - self.acoustic.heard.get(k, t), 1)})
+                elif k in self.vacant:
+                    del self.vacant[k]
+                    self.missing_state[k], self.missing_t[k] = False, 0.0
+                    self.events.append({"t": t, "type": "SLOT_REOCCUPIED", "slot": k, "cause": "heard_again"})
         form.missing = [k for k in form.required if self.missing_state.get(k)]
         form.neighbors_ok = not [k for k in form.missing if k not in self.vacant]
 
     # ------------------------------------------------------------------ B2: identified neighbours
-    def _delayed_at_gate(self, k: int, t: float) -> bool:
-        """Neighbour k's latest fresh consistent payload places it possibly (its ball intersects) in the approach zone of a
-        gate.  Only a vacancy timer depends on it, and only for the bounded gate_delay_max."""
-        if not self.acoustic.enabled or not self.plan.gates:
-            return False
-        f = self.acoustic.latest(k, t, self.cfg.acoustic.fresh_s)
-        if f is None or not f.rep_ok:
-            return False
-        G, rad = self.cfg.gate, f.rep_radius(t, self.acoustic.v_bound)
-        half_w = max(G.corridor_half_width, G.queue_lateral_max + 1.0)
-        for g in self.plan.gates:
-            s, l, _dz = (float(v) for v in g.to_gate_frame(f.rep.p))
-            if (self.plan.queue_s - G.approach_len - rad <= s <= G.exit_s + rad and abs(l) <= half_w + rad):
-                return True
-        return False
-
-    def _payload_balls(self, t: float):
-        """Fresh consistent payload balls of EVERY other drone of the plan, or None if one is not accounted for."""
+    def _other_regions(self, t: float):
+        """Where every other drone of the plan can be, from the identified measurements in the own frame (no navigation
+        bound enters): a fresh accepted fix's region [(samples (n, 3), growth m)].  None when one is not accounted for:
+        a drone may be left out only if it is dead (silent) or has reported passing this gate (it is beyond it)."""
         if not self.acoustic.enabled or not self.acoustic.slot_of:
             return None
-        out = []
+        from holo_fleet.perception.payload import GP_PASSED
+
+        out, a = [], self.cfg.acoustic
         for k in range(len(self.plan.slots)):
             if k == self.plan.slot_index:
                 continue
-            f = self.acoustic.latest(k, t, self.cfg.acoustic.fresh_s)
-            if f is None or not f.rep_ok:
-                return None
-            out.append((f.rep.p, f.rep_radius(t, self.acoustic.v_bound)))
+            f = self.acoustic.latest(k, t, a.fresh_s)
+            if f is not None:
+                out.append((f.pts, f.slack + self.acoustic.v_bound * max(t - f.t, 0.0)))
+                continue
+            st = self.acoustic.status.get(k)
+            if self.acoustic.silent(k, t) or (st is not None and st.phase == GP_PASSED and st.gate_idx == self.gp.idx % 4):
+                continue
+            return None
         return out
 
     def payload(self, t_emit: float):
         """What this drone sends in its B2 beacon payload (H6) at t_emit: its onboard position estimate and the error
         bound, grown by the speed bound over the age of the estimate (inf, sent as invalid, after an integrity
-        failure)."""
+        failure), and its own gate phase (payload v2, set by the controller each step)."""
         if self.t_nav is None:
             return None
-        return self.nav.state.p.copy(), self.nav_bound.value + self.acoustic.v_bound * max(0.0, t_emit - self.t_nav)
+        return (self.nav.state.p.copy(), self.nav_bound.value + self.acoustic.v_bound * max(0.0, t_emit - self.t_nav),
+                self.tx_gate_idx, self.tx_phase)
 
     def _rep_offset(self, f, t: float, exp_world: np.ndarray, t_hat: np.ndarray):
         """Offset of a neighbour's reported position from where the own formation time places its slot, moved to t
@@ -437,8 +440,7 @@ class Perception:
             profiles[s] = d.get(key)
             ages[s] = frame.age(key) if key in d else 1e9
         self.nav_bound.update(t, dt, nav, model=v_req is not None)
-        corr = self.aiding.update(nav.p, R_wb, profiles, ages, env.tau_max, t=t, others=self._payload_balls(t),
-                                  b_own=self.nav_bound.value)
+        corr = self.aiding.update(nav.p, R_wb, profiles, ages, env.tau_max, t=t, others=self._other_regions(t))
         if corr is not None:                      # dead-reckoning drift bounded by the mapped gate (structure_aiding)
             self.nav.state.p += corr
             self.nav_bound.corrected(corr)
@@ -461,6 +463,7 @@ class Perception:
             for k in range(len(self.plan.slots)):
                 if k != self.plan.slot_index:
                     self.neighbour_seen[k], self.missing_state[k] = t, False
+                    self.acoustic.heard.setdefault(k, t)
         ac_rel = self.acoustic_neighbours(t, slot - nav.p, R_form, nav.p)
         form = check_formation(self.plan, self.cfg, slot - nav.p, R_form, R_wb, targets, healthy, t, self.neighbour_seen,
                                readings, vacant=self.vacant, acoustic=ac_rel,

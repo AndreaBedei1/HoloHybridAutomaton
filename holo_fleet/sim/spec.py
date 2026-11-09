@@ -38,8 +38,11 @@ class SimSpec:
     # scripted vehicles that are NOT part of the fleet (no controller, no reaction): each dict has
     # name, start [x,y,z], velocity [vx,vy,vz], yaw_deg, t_start.  Seen by the sonars like any hull.
     intruders: Tuple[Dict[str, Any], ...] = ()
-    # injected faults (simulator side, never visible to a controller): each dict has drone, type
-    # ("THRUSTER_FAILURE": the 8 thruster commands of that drone are zeroed), t_on and t_off (None: permanent)
+    # injected faults (simulator side, never visible to a controller): each dict has drone, type, t_on and t_off (None:
+    # permanent).  "TOTAL_FAILURE": the drone is completely broken (the deployment failure model, FailureModel in
+    # config.py): propulsion, electronics and transmission stop together, it runs no controller any more and,
+    # positively buoyant, rises.  "THRUSTER_FAILURE": the 8 thruster commands are zeroed and everything else keeps
+    # working (the v10 baseline's model only; no scenario of the current matrix uses it)
     faults: Tuple[Dict[str, Any], ...] = ()
     # sensor degradation (sim.sensor_noise.NoiseProfile): HoloOcean noise parameters + seeded wrapper effects on
     # the onboard streams; None = the deployed sensors (the baseline)
@@ -49,6 +52,11 @@ class SimSpec:
     def fault_active(self, name: str, t: float) -> bool:
         return any(f["drone"] == name and f["t_on"] <= t and (f.get("t_off") is None or t < f["t_off"])
                    for f in self.faults)
+
+    def dead(self, name: str, t: float) -> bool:
+        """The drone suffered a TOTAL_FAILURE by time t: no propulsion, no electronics, no transmission."""
+        return any(f["drone"] == name and f["type"] == "TOTAL_FAILURE" and f["t_on"] <= t
+                   and (f.get("t_off") is None or t < f["t_off"]) for f in self.faults)
 
     def __post_init__(self) -> None:
         if self.release_s is None:
