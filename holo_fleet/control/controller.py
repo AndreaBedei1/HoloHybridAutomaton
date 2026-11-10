@@ -260,7 +260,7 @@ class DroneController:
                      "occ": obs.gate.occ_state, "exit_witness": obs.gate.exit_witness, "relations": obs.gate.relations,
                      "rank_used": obs.gate.rank_used,
                      "loc_ok": obs.gate.loc_ok, "reloc_hold": self.flows.reloc_hold,
-                     "entry_ok": obs.gate.entry_ok, "entry": self.flows.entry_state or None,
+                     "entry_ok": obs.gate.entry_ok, "entry": self.flows.entry_state or None, "adrift": obs.gate.adrift,
                      "tx": [self.perception.tx_gate_idx, self.perception.tx_phase],
                      **({"acoustic": {k: v for k, v in self.perception.gp.acoustic_exit.last.items() if v}}
                         if self.perception.gp.acoustic_exit is not None and obs.gate.occ_state == "BUSY" else {})},

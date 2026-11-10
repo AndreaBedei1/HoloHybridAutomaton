@@ -69,6 +69,7 @@ class GateObs:
     exit_witness: Optional[Dict] = None                      # {sector, range} of this capture's exit witness
     loc_ok: bool = False                                     # gate localization confirmed (structure_aiding.valid)
     entry_ok: bool = True                                    # stage 2: no hull seen or heard in the CR (update)
+    adrift: List[int] = field(default_factory=list)          # drones holding the gate as a possible passive hull (log only)
 
 
 class GatePerception:
@@ -273,4 +274,5 @@ class GatePerception:
         quiet = t - self.last_corridor_t > ENTRY_QUIET_CAPTURES / self.cfg.perc.sonar.hz
         # an occupant merely unheard (no fresh fix after a fix that placed it possibly inside) also holds the entry
         o.entry_ok = bool(quiet and not heard and not known_inside)
+        o.adrift = sorted(adrift)
         return o
