@@ -169,6 +169,7 @@ def analyze_run(run_dir: Path, reference: Optional[Dict] = None, cfg=DEFAULT, pr
     out["P1"] = {"holds": bool(dmin_t.min() >= cfg.sep.d_safe), "min_true_separation_m": round(float(dmin_t.min()), 3),
                  "min_true_separation_t_nom_m": round(float(dmin_t[t <= t_nom].min()), 3) if (t <= t_nom).any() else None,
                  "intruder_min_m": intr.get("min_distance"), "collisions": contacts,
+                 "dead_hull_contacts": len(p1.get("dead_drone_contacts") or []),   # recorded, not a contact of the fleet (criteria v7)
                  "warning_entries": sum(1 for e in tr if e["to"] == "SEPARATION_WARNING"),
                  "ca_entries": sum(1 for e in tr if e["to"] == "COLLISION_AVOIDANCE"),
                  "time_warning_s": round(float((modes == "SEPARATION_WARNING").sum()) * dt, 1),

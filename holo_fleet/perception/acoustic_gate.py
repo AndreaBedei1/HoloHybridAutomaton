@@ -45,7 +45,9 @@ gate.  A drone inside the keep-out box reports a claim whatever its history (pas
 the CR uncommitted, or back after a passage, does not report that it is not there.  GP_NONE or a phase of another gate excludes a
 drone while the report is younger than ``status_fresh_s``, a bound below the smallest time from its queue point to the CR at
 the speed bound (GatePerception computes it per plan); GP_PASSED excludes it for good, except for the rule below.  Silence excludes
-nobody: with a dead drone that was not engaged, the latch is released by the sonar rules (t_occ_max).
+nobody, and it can also hold the gate (``adrift``): a drone not heard lately may be a passive hull, and if its last fix is within the distance the water can
+carry a hull before it has risen over the top of the frame, it holds the latch BUSY and the admission as a claim does, until it is heard again, for ever if it stays silent.
+A hull beyond that reach cannot be in the CR, and only the sonar rules (t_occ_max) apply: this is the case of a dead drone far from the gate.
 
 A positive corridor echo is discarded as no fleet drone (``no_fleet_drone``) only on evidence about every other drone that is
 fresh: silence, or an old report of any kind, never discards one.
@@ -62,7 +64,8 @@ the residual risk, quantified in calibration/analyze_b2_channel.py.
 from __future__ import annotations
 
 import math
-from typing import Dict, List, Optional, Sequence
+from collections import deque
+from typing import Dict, List, Optional, Sequence, Set
 
 import numpy as np
 
@@ -100,6 +103,7 @@ class AcousticExit:
         self.last: Dict = {}                       # diagnostics of the latest evaluation
         self.gate_idx = 0                          # the gate the receiver is working on (mod 4; GatePerception.update)
         self.g = None                              # its GateSpec
+        self.water_speeds: deque = deque(maxlen=300)        # |water current estimate| of the last 30 s (note_water, the controller at 10 Hz)
         self.status_fresh_s = cfg.acoustic.status_fresh_s   # shortened per plan (GatePerception): never above the freshness
                                                             # the queue geometry allows
 
@@ -174,6 +178,36 @@ class AcousticExit:
 
     def claims(self, t: float) -> set:
         return {j for j in self.others if self.status_claim(j, t)}
+
+    # ------------------------------------------------------------------ a silent drone as a passive hull
+    def note_water(self, current) -> None:
+        """The low level's estimate of the water current (world frame), one sample per control step."""
+        self.water_speeds.append(float(np.linalg.norm(np.asarray(current, float)[:2])))
+
+    def adrift(self, t: float, g) -> Set[int]:
+        """Other drones that may be a dead hull in the CR (module docstring): not heard lately, with no fresh report excluding them, and with the region of
+        the last accepted fix, grown by what the water can carry a hull until it has risen over the top of the CR, reaching the CR.  This is no statement that the
+        drone is dead: it holds the gate while that hypothesis cannot be ruled out, and one fix ends it.  A receiver hearing nobody learns nothing (B0 rules)."""
+        a = self.cfg.acoustic
+        if self.tracker.deaf(t):
+            return set()
+        v = (float(np.median(self.water_speeds)) if self.water_speeds else 0.0) + a.drift_margin_mps
+        out: Set[int] = set()
+        for j in self.others:
+            f = self.tracker.last_accepted.get(j)
+            if f is None or t - f.t <= self.status_fresh_s or self.status_excluded(j, t):
+                continue
+            q = gate_points(g, f.pts)
+            dz = float(gate_points(g, f.rep.p[None, :])[0][2]) if f.rep_ok else float(q[:, 2].min())
+            rho = v * min(t - f.t, max(self.half[2] + R_OUT - dz, 0.0) / a.v_rise_min_mps)
+            if not self._cr_possible(q, f.slack + rho):
+                continue
+            if f.rep_ok:                                   # the true position is in both regions, as in A1 and A2
+                qr = gate_points(g, f.rep.p[None, :])
+                if float(np.linalg.norm(qr - np.clip(qr, -self.half, self.half), axis=1)[0]) > R_OUT + float(f.rep.bound) + rho:
+                    continue
+            out.add(j)
+        return out
 
     # ------------------------------------------------------------------ geometry
     def _cr_possible(self, q: np.ndarray, rho: float) -> bool:

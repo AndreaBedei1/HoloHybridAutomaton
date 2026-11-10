@@ -210,9 +210,10 @@ class GatePerception:
             self.phantom_events.append({"t": round(t, 2), "fixes": dict(self.acoustic_exit.last_phantom)})
             corridor = []
         claims = self.acoustic_exit.claims(t) if self.acoustic_exit is not None else set()   # payload v2: positive occupancy
-        heard = self.acoustic_exit is not None and (self.acoustic_exit.heard_inside(t, g) or bool(claims))
-        if claims:
-            self.acoustic_exit.heard_by |= claims
+        adrift = self.acoustic_exit.adrift(t, g) if self.acoustic_exit is not None else set()   # a silent drone that may be a hull in the CR: held as a claim
+        heard = self.acoustic_exit is not None and (self.acoustic_exit.heard_inside(t, g) or bool(claims) or bool(adrift))
+        if claims or adrift:
+            self.acoustic_exit.heard_by |= claims | adrift
         # an occupant last known possibly inside and not heard since (shadowed by the bars, a lost ping) is unknown,
         # not gone: no exit witness, no release and no admission while it is (v6 campaign: a MEDIUM clutter echo
         # beyond the exit released the latch over a stalled occupant whose pings were shadowed)
@@ -267,8 +268,8 @@ class GatePerception:
         # stage 2, entry admission (control/flows.py, at the hold point before the CR): from the own pose now, no
         # persistent unexplained FRONT echo compatible with a hull in the CR over the last ENTRY_QUIET_CAPTURES sonar
         # captures, and (B2) no drone heard possibly inside under the declared region. From the hold point only part of the CR
-        # is observable apart from the bars (formal/check_stage2.py, M4h): elsewhere hull and bar echoes share
-        # ranges and a silent occupant is not seen (a stated limit; the latch argument covers it)
+        # is observable apart from the bars (formal/check_stage2.py, M4h): elsewhere hull and bar echoes share ranges and a silent occupant is not seen.
+        # The check does not read the latch: a drone committed before a hull arrives is held here only by ``heard`` (AcousticExit.adrift for a hull)
         quiet = t - self.last_corridor_t > ENTRY_QUIET_CAPTURES / self.cfg.perc.sonar.hz
         # an occupant merely unheard (no fresh fix after a fix that placed it possibly inside) also holds the entry
         o.entry_ok = bool(quiet and not heard and not known_inside)

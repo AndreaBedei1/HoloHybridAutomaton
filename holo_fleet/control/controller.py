@@ -141,6 +141,8 @@ class DroneController:
     def step(self, frame: SensorFrame, dt: float) -> np.ndarray:
         t = frame.t
         ftime = self.flows.ftime                               # own formation time (reduced progress)
+        if self.perception.gp.acoustic_exit is not None:
+            self.perception.gp.acoustic_exit.note_water(self.ll.current_estimate())
         obs = self.perception.update(frame, dt, sigma=self.flows.sigma, env_ok=self.envmon.ok,
                                      offset=self.flows.offset + self.flows.lat_offset, in_formation=self.ha.mode in IN_FORMATION,
                                      t_form=ftime.now(t),

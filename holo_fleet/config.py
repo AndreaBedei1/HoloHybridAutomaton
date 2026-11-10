@@ -219,7 +219,7 @@ class FormationRule:
     # for catch-up.  Never 0: the fleet keeps surveying and keeps steerage.
     # silence of a drone: not heard for this long = dead (TOTAL_FAILURE: nothing is emitted any more), whatever the
     # observer's own state.  Calibrated on the simulated channel, no analytic bound: on expected-neighbour links the longest
-    # silence of the 72 v10 MEDIUM-ALL runs was 21 s (31 s over all pairs, on far pairs of formation_six, where vacancy is not used).  Silence never clears a possibly occupied
+    # silence of the 72 v10 MEDIUM-ALL runs was 29.3 s by a reviewer's proxy (31 s over all pairs, on far pairs of formation_six, where vacancy is not used).  Silence never clears a possibly occupied
     # gate (perception/acoustic_gate.py)
     t_silent_s: float = 45.0
     v_wait: float = 0.20
@@ -354,6 +354,11 @@ class AcousticConfig:
     depth_tol_m: float = 1.5             # a fix this far outside the operating depth band is a reflection
     # a drone silent this long leaves the identity premise of the map fit (Perception._other_regions), where an echo can only move the own
     # estimate, by at most MAX_CORR_M.  It is never excluded from a gate decision: silence alone proves nothing.  Calibrated on the simulated channel, no analytic bound.
+    # a drone not heard may be dead: a passive hull carried by the water and rising (AcousticExit.adrift).  The hull drifts at most at the water speed
+    # estimated onboard (median of the last 30 s; median error <= 0.04 m/s on the uniform currents of the med6 runs) plus this margin, and rises at no less than
+    # the lower end of the credible range of FailureModel (0.05 - 0.13 m/s): both are assumptions, stated in docs/GUARANTEES.md
+    drift_margin_mps: float = 0.10
+    v_rise_min_mps: float = 0.05
     t_silent_gate_s: float = 70.0        # a silent drone leaves the identity premise of the map fit only (Perception._other_regions); never a gate decision
     # a gate phase NOT_ENGAGED excludes its sender as an occupant while fresher than this: not above the time a queued
     # drone needs to reach a position where the corridor echo of a real entry would stop being visible (formal/check_status.py,

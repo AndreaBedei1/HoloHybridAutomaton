@@ -213,7 +213,7 @@ class Referee:
         col = np.asarray(truth.collision, dtype=bool)
         for k in np.flatnonzero(col & ~self._coll_prev):
             # the body of a dead drone touching the structure is the failure model (it rises against what is above it), not an action of the
-            # fleet: recorded, and no contact (criteria v7).  A live drone that touches it has its own edge and the pair distance below d_collision.
+            # fleet: recorded, and no contact (criteria v7).  A live drone that touches it has its own edge, and P1 judges every pair by distance.
             (self.dead_contacts if modes[int(k)] == "DEAD" else self.collision_edges).append({"t": t, "drone": self.names[int(k)]})
         self._coll_prev = col.copy()
         for g in self.gates:

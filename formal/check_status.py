@@ -22,6 +22,8 @@ a function of the queue layout.
 * S9 sender rule: a true centre in the CR, the estimate within the declared navigation error, is inside the keep-out box, and a drone
   inside the box reports a claim whatever its history (S9m: no margin).
 * S11 silence never discards a corridor echo: a report of not engaged or passed that is not fresh leaves the echo in (S11m: it does).
+* S12 a passive hull that can be in the CR holds the gate: for a drone last heard not engaged, with the water estimate within the declared margin and a rise of at least the
+  declared lower bound, every true path of the hull that reaches the CR (where it may then stay, pinned) has AcousticExit.adrift true (randomized on the real class; S12m: no reach).
 """
 
 from __future__ import annotations
@@ -342,6 +344,35 @@ def silence_keeps_the_echo(cfg: FleetConfig, g, n_cases: int = 300, seed: int = 
     return {"cases": n_cases, "echo_discarded": bad}
 
 
+def adrift_holds_the_gate(cfg: FleetConfig, g, n_cases: int = 1500, seed: int = 37, mutate: bool = False) -> dict:
+    """S12: see the module docstring."""
+    rng = np.random.default_rng(seed)
+    a, G = cfg.acoustic, cfg.gate
+    half = np.array([G.cr_half_len, G.cr_half_width, G.cr_half_height])
+    cfg_m = dataclasses.replace(cfg, acoustic=dataclasses.replace(a, drift_margin_mps=0.0)) if mutate else cfg
+    cases = in_cr = missed = 0
+    for _ in range(n_cases):
+        tr, gp, p, yaw = _observer(g, 3, cfg)
+        ae = gp.acoustic_exit
+        ae.gate_idx, ae.g, ae.others, ae.cfg = 0, g, [1], cfg_m
+        # a hull path built to reach a point of the CR at tau1, within the premises, and observed then or later (it may stay there, pinned)
+        t0, tau1 = 1.0, float(rng.uniform(3.0, 28.0))
+        speed, ang, rise = float(rng.uniform(0.02, 0.4)), float(rng.uniform(0.0, 2.0 * math.pi)), float(rng.uniform(a.v_rise_min_mps, 0.13))
+        rate = np.array([speed * math.cos(ang), speed * math.sin(ang), rise])
+        q0 = rng.uniform(-half, half) - tau1 * rate
+        _rx(tr, p, yaw, t0, 1, g.from_gate_frame(q0), cfg, pl.GP_NONE, bound=0.5)
+        if tr.last_accepted.get(1) is None:
+            continue
+        cases += 1
+        tau = tau1 + float(rng.uniform(0.0, 60.0))
+        tr.heard[0] = t0 + tau - 0.2                       # the receiver works
+        est = 0.0 if mutate else max(speed - float(rng.uniform(0.0, a.drift_margin_mps)), 0.0)
+        ae.water_speeds.extend([est] * 10)
+        in_cr += 1
+        missed += int(1 not in ae.adrift(t0 + tau, g))
+    return {"cases": cases, "hull_reaches_cr": in_cr, "missed": missed}
+
+
 def run(cfg: FleetConfig = B2, verbose: bool = True) -> Report:
     rep = Report("status")
     g = _gate()
@@ -427,6 +458,14 @@ def run(cfg: FleetConfig = B2, verbose: bool = True) -> Report:
     rm = silence_keeps_the_echo(cfg, g, n_cases=100, mutate=True)
     okm = rm["echo_discarded"] > 0
     rep.add(CheckResult("S11m mutation: letting silence exclude a drone discards the echo", "expect violation", ENC, "violated",
+                        verdict="violated" if okm else "holds", passed=okm, note=str(rm)), verbose)
+    r = adrift_holds_the_gate(cfg, g)
+    ok12 = r["missed"] == 0 and r["hull_reaches_cr"] >= 1000
+    rep.add(CheckResult("S12 a passive hull that can be in the CR holds the gate (water estimate within the margin, rise at least the lower bound)", "randomized on the real class", ENC, "holds",
+                        verdict="holds" if ok12 else "violated", passed=ok12, note=str(r)), verbose)
+    rm = adrift_holds_the_gate(cfg, g, n_cases=500, mutate=True)
+    okm = rm["missed"] > 0
+    rep.add(CheckResult("S12m mutation: no drift reach misses hulls in the CR", "expect violation", ENC, "violated",
                         verdict="violated" if okm else "holds", passed=okm, note=str(rm)), verbose)
     return rep
 

@@ -49,6 +49,7 @@ Root causes, from the logs of the ten runs (`results/robustness/raw_b2final_v10`
   the side sectors that the map fit needs never see the bars.
 * **RC8 (med4 `p1_two_lines` s921). The rejoin logic undid a running give-way.** The lane error ignored the give-way offset; a recovering drone was sent back to the lane it had left,
   head-on again, and stayed in a standoff until the deadline.
+* **RC9 (med7 `lost_drone_mutex_carried` s981, found by the underwater review of round 4).** A drone committed before another one died was admitted into a CR that holds its hull, pinned under the top bar: P2 violated, separation 1.18 m. The hull is masked by the map window, the stage-2 check does not read the latch, and the drone had reported not being engaged. Fixed by `AcousticExit.adrift`: a silent drone whose last fix is within the reach of a passive hull holds the gate.
 
 ## 2. Failure model and vacancy (as implemented)
 
@@ -69,7 +70,7 @@ Root causes, from the logs of the ten runs (`results/robustness/raw_b2final_v10`
   temporary localized jet instead: the before/after comparison of these two is not like for like.
 * **Vacancy by silence.** A drone not heard for `t_silent_s` = 45 s is dead and its slot vacant, whatever the observer's mode and position, for
   expected neighbours only (within `neighbour_range_m`; far pairs are often silent). Basis, calibrated on the simulated channel with no analytic bound: on expected-neighbour links the longest silence in the
-  72 v10 MEDIUM runs was 21 s (31 s over all pairs, on far pairs of `formation_six`, for which vacancy by silence is not used). A drone heard again is alive and its slot required again. A receiver hearing nobody at all is deaf
+  72 v10 MEDIUM runs was 29.3 s by a reviewer's proxy (31 s over all pairs, on far pairs of `formation_six`, for which vacancy by silence is not used). A drone heard again is alive and its slot required again. A receiver hearing nobody at all is deaf
   (`AcousticTracker.deaf`): silence then says nothing and the B0 displacement timer applies. Displacement alone never makes a slot vacant
   while the beacon works.
 
