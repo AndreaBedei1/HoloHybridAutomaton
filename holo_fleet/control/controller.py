@@ -126,6 +126,8 @@ class DroneController:
         self.cfg = cfg
         self.perception = Perception(plan, cfg, nav_init_err)
         self.ha = LocalHybridAutomaton(cfg)
+        self.undo_pending = False                  # a hold ended with no valid localization: the unconfirmed corrections wait for the give-up edge
+        self.was_committed = False
         self.flows = Flows(plan, cfg)
         self.passage = PassageVerifier(cfg)        # what the drone reports about its gate passage (payload v2)
         self.ll = LowLevelController(cfg)
@@ -222,7 +224,7 @@ class DroneController:
         for e in self.perception.gp.phantom_events:            # B2: corridor echoes no fleet drone produced
             self.events.append({"t": e["t"], "type": "PHANTOM_ECHO", "excluding_fixes": e["fixes"]})
         self.perception.gp.phantom_events.clear()
-        self._drain_flow_events(mode)
+        self._drain_flow_events(t, mode)
         if was_ok and not ok:
             self.events.append({"t": t, "type": "ENVELOPE_VIOLATION", **self.envmon.record()})
         elif ok and not was_ok:
@@ -299,18 +301,27 @@ class DroneController:
             return
         corr = (l_meas - l_est) * left
         self.perception.apply_position_correction(corr)
+        self.perception.aiding.take_unconfirmed()               # a direct measurement of the position in the opening: nothing before it is left to undo
+        self.undo_pending = False
         self.events.append({"t": t, "type": "GATE_CROSSING_MEASURED", "gate": self.passage.idx, "l": round(l_meas, 3),
                             "dz": None if dz is None else round(dz, 3), "correction": np.round(corr, 3).tolist()})
 
-    def _drain_flow_events(self, mode: Mode) -> None:
-        """The events of the flows (ENTRY_HOLD_TIMEOUT of stage 2, flows.gate; PAST_CENTRE).  A hold that ends with no valid localization refutes the corrections not yet confirmed by a validated fit."""
+    def _drain_flow_events(self, t: float, mode: Mode) -> None:
+        """The events of the flows (ENTRY_HOLD_TIMEOUT of stage 2, flows.gate; PAST_CENTRE).  A hold that ends with no valid localization undoes the corrections of this commitment not confirmed by a validated fit (a recovery heuristic, structure_aiding).
+        The step waits for the give-up edge: while committed, a jump of the estimate would feed the position-gated transitions of the hold (past_centre, the give-up plane, flows.gate)."""
+        if self.ha.committed and not self.was_committed:
+            self.perception.aiding.start_commitment()
+        self.was_committed = self.ha.committed
         for e in self.flows.events:
             self.events.append({**e, "mode": mode.value})
             if e["type"] == "ENTRY_HOLD_TIMEOUT" and not e["loc_ok"]:
-                c = self.perception.undo_unconfirmed_corrections()
-                if c is not None:
-                    self.events.append({"t": e["t"], "type": "UNCONFIRMED_CORRECTIONS_UNDONE", "correction": np.round(c, 3).tolist()})
+                self.undo_pending = True
         self.flows.events.clear()
+        if self.undo_pending and not self.ha.committed:
+            self.undo_pending = False
+            c = self.perception.undo_unconfirmed_corrections()
+            if c is not None:
+                self.events.append({"t": t, "type": "UNCONFIRMED_CORRECTIONS_UNDONE", "correction": np.round(c, 3).tolist()})
 
     def _update_gate_report(self, t: float, dt: float, obs: LocalObservation) -> None:
         """Gate phase this drone reports about itself (payload v2): the facts of its own automaton and flow, never a command

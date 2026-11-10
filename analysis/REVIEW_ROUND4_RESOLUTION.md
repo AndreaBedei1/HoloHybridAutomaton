@@ -63,3 +63,25 @@ Batch med8 was stopped and is not evidence: by an error of the orchestration two
 | MINOR the past-centre rule has no lateral term | Declared (GUARANTEES, past-centre row) |
 
 Disclosure. `check_status.py` has mutation runs for S1, S3, S4, S9, S11 and S12. S5, S6, S6b, S7 and S8 have none.
+
+## Round 7, formal (reviewed at 9e9cade; report `review_round7_formal.md`)
+
+| Finding | Resolution |
+|---|---|
+| N13 MAJOR, the undo step fed position-gated transitions of the hold on the next tick, and the give-up request of the same tick | Fixed: the step waits until the commitment is cleared (give-up edge). The reviewer proposed clipping the along-axis part and blocking the latch; this removes the interaction instead, since `past_centre`, `abort_request` and the hold exist only while committed |
+| False claims: the GUARANTEES row, `GUARANTEES.md:41`, the design note and `config.py` on `MAX_CORR_M`, the docstring on dead reckoning | Corrected |
+| Tests: 5 of 11 mutations survived; identity-rule path, tick after an undo, `entry_ok` false | Added, including a noise-free wrong identity-rule correction through to its undo |
+| `unconfirmed` not cleared by a measured crossing | Fixed |
+| The RC12 statistic does not reproduce | Both counts stated; the conclusion stands |
+| `sighting` and `hold_pos` are not shifted by a correction | Declared here: true of every correction of the estimate, not new with the undo |
+
+## Round 7, underwater (reviewed at 9e9cade; report `review_round7_underwater.md`)
+
+| Finding | Resolution |
+|---|---|
+| The round 6 condition is not met: 9 `ENTRY_HOLD_TIMEOUT` in the 18 standard gate runs, s995 a new mechanism | Accepted. Fixed below; the condition is re-evaluated on the targeted batch |
+| R1 MAJOR, the undo should cover only the corrections since the last commit | Done (`start_commitment`, reset on the commit edge) |
+| R2 MAJOR, cap the step of an identity fit at about 0.5 m | Done (`IDENTITY_STEP_M`); the axial path keeps its bound on the total |
+| R3 MAJOR, the batch must show `lost_drone_mutex` completing over enough seeds | The batch has 12 seeds of it plus 4 each of the two rise variants; completion, timeouts and recurrence of a wrong fit reported |
+| A hold without validation does not refute a correction | Wording corrected: a recovery heuristic |
+| MINOR figures, corrections by type and initial error, s960 declared | Done (design note, GUARANTEES); the refusal reason is now logged |

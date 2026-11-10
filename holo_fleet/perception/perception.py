@@ -321,7 +321,7 @@ class Perception:
         self.acoustic.shift(np.array([c[0], c[1], 0.0]))
 
     def undo_unconfirmed_corrections(self):
-        """A hold at the gate ended with no valid localization: the corrections accepted since the last validated fit are refuted (structure_aiding, module docstring); the applied step, or None."""
+        """A hold at the gate ended with no valid localization: the corrections of this commitment with no validated fit are undone (structure_aiding, module docstring); the applied step, or None."""
         c = self.aiding.take_unconfirmed()
         if c is not None:
             self.apply_position_correction(c)

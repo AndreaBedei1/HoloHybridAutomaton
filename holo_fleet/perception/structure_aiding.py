@@ -75,9 +75,11 @@ ranges in the body frame and does not depend on it, and the structure test keeps
 widened), so a vehicle in front of a bar stays an obstacle (tests/test_structure_aiding.py).
 
 A correction accepted without a validated fit (the identity rule, the along-axis correction) is a hypothesis.  Near the gate the sectors see the bars at the edge of their cones and a fit mirrored
-about the axis can explain the echoes as well as the true pose (RC12, MEDIUM-ALL lost_drone_mutex s995: two such fits moved the estimate 2.2 m the wrong way, beyond the reach MAX_CORR_M of any later fit).
-Over 309 corrections of this kind in the MEDIUM batches the error did not fall on average (mean change +0.02 m).  ``unconfirmed`` is their sum since the last validated fit; a hold at the gate that ends with
-no valid localization refutes them and ``take_unconfirmed`` undoes them (Perception.undo_unconfirmed_corrections).  The estimate goes back to what dead reckoning says, with the bound grown by the step.
+about the axis can explain the echoes about as well as the true pose (RC12, MEDIUM-ALL lost_drone_mutex s995: two such fits moved the estimate 2.2 m the wrong way, beyond the reach MAX_CORR_M of any later
+fit).  So the step of a correction under the identity rule is capped (IDENTITY_STEP_M): a wrong fit stays within reach of a later one; a right one arrives in steps.  ``unconfirmed`` is the sum of these
+corrections since the start of the current commitment or the last validated fit, whichever is later (a measured crossing also ends it; those made before the commitment include real drift corrected during the
+wait at the queue).  When a hold at the gate ends with no valid localization ``take_unconfirmed`` undoes them, after the give-up edge (DroneController._drain_flow_events,
+Perception.undo_unconfirmed_corrections).  This is a recovery heuristic: a hold without validation does not refute a correction.  The bound grows by the step.
 """
 
 from __future__ import annotations
@@ -99,6 +101,7 @@ GAIN_MIN = 0.05          # the best offset must lower the total squared residual
 AMBIGUITY = 0.005        # [m^2] candidates this close to the best total cost must lie within UNIQUE_M of it
 UNIQUE_M = 0.4           # ranges near the gate plane change little with the offset: bounded, not zero ambiguity
 MAX_CORR_M = 1.2
+IDENTITY_STEP_M = 0.5    # largest step of a correction under the identity rule (module docstring)
 CONSIST_M = 0.15
 CONSIST_N = 4
 AXIAL_AMBIGUITY_M = 0.04   # a single range: candidates within this of the best residual
@@ -234,6 +237,10 @@ class StructureAiding:
             return None
         return float(g.inner_width / 2.0 - (abs(l_g) + HULL_LAT_M + u))
 
+    def start_commitment(self) -> None:
+        """Only the corrections of the current commitment can be undone (module docstring)."""
+        self.unconfirmed = np.zeros(2)
+
     def take_unconfirmed(self) -> Optional[np.ndarray]:
         """The correction that undoes every correction since the last validated fit (None: there is none to undo); they are forgotten."""
         c = -self.unconfirmed
@@ -366,6 +373,7 @@ class StructureAiding:
         identified = (not safe and fit_ok and others is not None
                       and self.echoes_not_drones(p, R_wb, matched_echoes, others))
         self.last["identified"] = bool(identified)
+        self.last["others"] = None if others is None else len(others)    # None: some other drone not accounted for (log only)
         if not fit_ok or not (safe or identified):       # beside the opening: only with every echo identified as a bar
             self.recent.clear()
             return self._axial(p, R_wb, obs, g, others) if (self.gates and matched_k < MIN_MATCHED) else None
@@ -383,6 +391,8 @@ class StructureAiding:
         if np.max(np.linalg.norm(Rr - Rr.mean(axis=0), axis=1)) > CONSIST_M:
             return None
         corr = GAIN * Rr.mean(axis=0)
+        if not safe and float(np.linalg.norm(corr)) > IDENTITY_STEP_M:
+            corr = corr * IDENTITY_STEP_M / float(np.linalg.norm(corr))
         self.recent.clear()
         self.applied_m += float(np.linalg.norm(corr))
         if safe:

@@ -200,3 +200,18 @@ lanes done: 0
 tracebacks in lane logs: 0
 Holodeck processes on the machine: 4; free RAM GB: 56.4; free F: GB: 590
 ```
+
+### 2026-11-10 07:11 reg1 @ 3e3db7b (lanes ended or 6 h limit)
+```
+PASS 72
+INCOMPLETE 2
+05:51:37 B2_MEDIUM MEDIUM-ALL             lost_drone_mutex_carried         s997 INCOMPLETE       P1 3.389 fail ['progress', 'gate', 'P3-deg re-formed', 'not waiting'] wal
+05:55:27 B2_MEDIUM MEDIUM-ALL             lost_drone_mutex_carried         s996 INCOMPLETE       P1 1.482 fail ['progress', 'gate'] wall 1612.4s exit 0
+lanes done: 4
+tracebacks in lane logs: 0
+Holodeck processes on the machine: 0; free RAM GB: 63.5; free F: GB: 590
+```
+
+## reg1 closed (3e3db7b): B2_CLEAN 36/36 PASS, B2_LOW 36/36 PASS, no SAFETY_FAILURE, no UNSAFE_ACTION
+
+The two repeats of `lost_drone_mutex_carried` (s996, s997) are INCOMPLETE as predicted. No `ENTRY_HOLD_TIMEOUT` in CLEAN or LOW, so the path changed after this batch did not run in it.

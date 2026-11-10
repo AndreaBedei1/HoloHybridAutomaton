@@ -353,7 +353,7 @@ class AcousticConfig:
     fresh_s: float = 2.5                 # a fix this recent counts for the neighbours (formation)
     depth_tol_m: float = 1.5             # a fix this far outside the operating depth band is a reflection
     # a drone silent this long leaves the identity premise of the map fit (Perception._other_regions), where an echo can only move the own
-    # estimate, by at most MAX_CORR_M.  It is never excluded from a gate decision: silence alone proves nothing.  Calibrated on the simulated channel, no analytic bound.
+    # estimate, by at most MAX_CORR_M per correction (their sum is not bounded until a validated fit: RC12).  It is never excluded from a gate decision: silence alone proves nothing.  Calibrated on the simulated channel, no analytic bound.
     # a drone not heard may be dead: a passive hull carried by the water and rising (AcousticExit.adrift).  The hull drifts at most at the water speed
     # estimated onboard (median of the last 30 s; median error <= 0.04 m/s on the uniform currents of the med6 runs) plus this margin, and rises at no less than
     # the lower end of the credible range of FailureModel (0.05 - 0.13 m/s): both are assumptions, stated in docs/GUARANTEES.md
