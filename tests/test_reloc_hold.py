@@ -116,3 +116,29 @@ def test_a_drone_pushed_only_before_the_middle_of_the_cr_still_holds():
     fl.gate(_obs(plan, -3.0, False, 0.0, entry_ok=False), "MUTEX_PASS")
     v, _ = fl.gate(_obs(plan, -0.5, False, 5.0, entry_ok=False), "MUTEX_PASS")
     assert fl.reloc_hold and _along(plan, v) < 0.0
+
+
+def test_a_one_step_spike_of_the_estimate_decides_nothing():
+    plan = SCENARIOS["lost_drone_mutex"](DEFAULT).plans[0]
+    fl = Flows(plan, DEFAULT)
+    s_hold = -(G.cr_half_len + 0.229 + 0.15)
+    fl.gate(_obs(plan, s_hold + 0.02, False, 1.0, entry_ok=False), "MUTEX_PASS")
+    fl.gate(_obs(plan, 0.3, False, 1.1, entry_ok=False), "MUTEX_PASS")
+    v, _ = fl.gate(_obs(plan, s_hold + 0.02, False, 1.2, entry_ok=False), "MUTEX_PASS")
+    assert fl.reloc_hold and not fl.past_centre and _along(plan, v) <= 0.0
+
+
+def test_inside_the_declared_error_of_the_cr_entry_the_hold_stands():
+    plan = SCENARIOS["lost_drone_mutex"](DEFAULT).plans[0]
+    fl = Flows(plan, DEFAULT)
+    v, _ = fl.gate(_obs(plan, G.nav_err_m - G.cr_half_len - 0.01, False, 1.0, entry_ok=False), "MUTEX_PASS")
+    assert fl.reloc_hold and not fl.past_centre and _along(plan, v) < 0.0
+
+
+def test_the_past_centre_rule_is_logged_once():
+    plan = SCENARIOS["lost_drone_mutex"](DEFAULT).plans[0]
+    fl = Flows(plan, DEFAULT)
+    fl.events.clear()
+    for k in range(3):
+        fl.gate(_obs(plan, 0.5 + 0.1 * k, False, 1.0 + k, entry_ok=False), "MUTEX_PASS")
+    assert [e["type"] for e in fl.events].count("PAST_CENTRE") == 1

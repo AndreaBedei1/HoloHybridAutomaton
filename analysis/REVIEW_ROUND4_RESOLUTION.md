@@ -40,3 +40,14 @@ The reach rule is new code, so both reviewers are asked to check it, and the sta
 Disclosures. The round 4 formal file has two unfilled placeholders; the reviewer gave the values afterwards: S2hs at the deployed 2.5 s SAT in 174 s, `check_status.run()` all PASS. In round 5 the formal reviewer ran by mistake a script of the other reviewer found in the shared scratch directory; it read med6 and med7 logs, wrote nothing, and the reviewer did not use the output. Both initial assessments had been delivered four rounds earlier.
 
 Batch med8 was stopped and is not evidence: by an error of the orchestration two launches ran at once on 32116e6 and ef54530 (`results/robustness/raw_dev/med8_mixed_stopped`). The one finished run read from it is the source of RC11.
+
+## Round 6, formal (reviewed at e034755; report `review_round6_formal.md`)
+
+| Finding | Resolution |
+|---|---|
+| N6 to N8 | Closed by the reviewer |
+| N9 MAJOR, one step past the centre disabled the hold for the whole episode | Fixed as the reviewer proposed: released when the estimate falls back before the CR; unit test of the spike |
+| N10 the threshold against the declared navigation error | Fixed: `nav_err_m - cr_half_len`, inside the CR under the declared error |
+| N11 the rule was neither declared nor logged | Declared (GUARANTEES), logged as `PAST_CENTRE` |
+| N12 no verified passage on this branch | Declared (GUARANTEES) |
+| `formal/results` not regenerated | Generated at the tag, from a clean tree |

@@ -334,8 +334,12 @@ class Flows:
             # navigation error (the hull's circumscribed ball R_OUT included)
             s_abort = -(G.cr_half_len + float(R_OUT) + G.nav_err_m)
             self.abort_request = False
-            # carried past the middle of the CR (by the avoidance layer or the water) the exit is the way out: a hold would send the drone back through the CR
-            self.past_centre = self.past_centre or go.s > 0.0
+            # carried into the far part of the CR or beyond (by the avoidance layer or the water; the threshold is inside the CR whatever the declared navigation error) the
+            # exit is the way out: a hold would send the drone back through the CR.  Released if the estimate falls back before the CR: a spike decides nothing.
+            was = self.past_centre
+            self.past_centre = bool(go.s > G.nav_err_m - G.cr_half_len or (was and go.s > -G.cr_half_len))
+            if self.past_centre and not was:
+                self.events.append({"t": obs.t, "type": "PAST_CENTRE", "s": round(float(go.s), 2)})
             if not self.cr_cleared and not self.past_centre and (c[0] > s_hold or self.hold_timeout):
                 self.hold_since = obs.t if self.hold_since is None else self.hold_since
                 if obs.t - self.hold_since > G.t_occ_max + G.t_clear and not self.hold_timeout:
