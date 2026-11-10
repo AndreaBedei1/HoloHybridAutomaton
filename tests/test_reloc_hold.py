@@ -96,3 +96,23 @@ def test_give_up_only_behind_the_entry_plane_and_never_once_admitted():
     assert fl.cr_cleared and not fl.abort_request
     fl.gate(_obs(plan, -0.5, False, t_out + 8.0), "MUTEX_PASS")                   # inside the CR
     assert not fl.abort_request
+
+
+def test_a_drone_carried_past_the_middle_of_the_cr_goes_on_to_the_exit_and_never_back_through_it():
+    plan = SCENARIOS["lost_drone_mutex"](DEFAULT).plans[0]
+    fl = Flows(plan, DEFAULT)
+    s_hold = -(G.cr_half_len + 0.229 + 0.15)
+    fl.gate(_obs(plan, s_hold + 0.02, False, 1.0, entry_ok=False), "MUTEX_PASS")
+    assert fl.reloc_hold
+    v, _ = fl.gate(_obs(plan, 0.3, False, 5.0, entry_ok=False), "MUTEX_PASS")       # pushed in by the avoidance layer
+    assert not fl.reloc_hold and _along(plan, v) > 0.3
+    v, _ = fl.gate(_obs(plan, -0.1, False, 6.0, entry_ok=False), "MUTEX_PASS")      # the estimate falls back a little: it stays decided
+    assert not fl.reloc_hold and _along(plan, v) > 0.3
+
+
+def test_a_drone_pushed_only_before_the_middle_of_the_cr_still_holds():
+    plan = SCENARIOS["lost_drone_mutex"](DEFAULT).plans[0]
+    fl = Flows(plan, DEFAULT)
+    fl.gate(_obs(plan, -3.0, False, 0.0, entry_ok=False), "MUTEX_PASS")
+    v, _ = fl.gate(_obs(plan, -0.5, False, 5.0, entry_ok=False), "MUTEX_PASS")
+    assert fl.reloc_hold and _along(plan, v) < 0.0

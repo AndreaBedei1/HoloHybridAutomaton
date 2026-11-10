@@ -134,3 +134,16 @@ lanes done: 4
 tracebacks in lane logs: 0
 Holodeck processes on the machine: 0; free RAM GB: 63.9; free F: GB: 591
 ```
+
+### 2026-11-10 03:03 med7 @ 02f6a52 (lanes ended or 6 h limit)
+```
+SAFETY_FAILURE 1
+PASS 10
+INCOMPLETE 1
+02:27:49 B2_MEDIUM MEDIUM-ALL             lost_drone_mutex_carried         s981 SAFETY_FAILURE   P1 1.184 fail ['progress', 'gate', 'P3-deg re-formed', 'P3-deg vacancy'] 
+03:03:36 B2_MEDIUM MEDIUM-ALL             lost_drone_mutex                 s981 INCOMPLETE       P1 2.854 fail ['progress', 'gate'] wall 1270.8s exit 0
+02:27:49 B2_MEDIUM MEDIUM-ALL             lost_drone_mutex_carried         s981 SAFETY_FAILURE   P1 1.184 fail ['progress', 'gate', 'P3-deg re-formed', 'P3-deg vacancy'] 
+lanes done: 4
+tracebacks in lane logs: 0
+Holodeck processes on the machine: 0; free RAM GB: 63.2; free F: GB: 591
+```

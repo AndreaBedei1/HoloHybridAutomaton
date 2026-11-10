@@ -2,8 +2,8 @@
 
 **Change from v6.** A contact is counted for a drone under control only. The collision sensor of a drone after its `TOTAL_FAILURE` is recorded (`dead_drone_contacts` in the referee metrics) and neither ends the run nor
 fails it: the hull has no actuation and the failure model makes it rise against whatever is above it (`results/calibration/buoyant_ascent.json`), so the event is not an action of the fleet. P1, P2, every pair distance and the
-collision sensor of every live drone are unchanged, so a live drone that touches a dead one still fails the run. The change affects no earlier result of the candidate: of the 240 runs of batches med3 to med6 only 5 have a
-contact, and each is the hull of a dead drone in a stress scenario. Without it those stress runs stop at the contact and cannot show what the other drones then do.
+collision sensor of every live drone are unchanged, so a live drone that touches a dead one still fails the run. The change affects no earlier result of the candidate: of the 240 run directories of batches med3 to med6, retried attempts not counted, only 5 have a
+contact (one of them, med5 s941, was INVALID for an unrelated defect of the runner), and each is the hull of a dead drone in a stress scenario. Without it those stress runs stop at the contact and cannot show what the other drones then do.
 
 # v6 (2026-11-09): total failure model, payload v2. Pre-registered before the final campaign of the candidate
 

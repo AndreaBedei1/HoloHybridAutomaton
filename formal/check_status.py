@@ -23,7 +23,7 @@ a function of the queue layout.
   inside the box reports a claim whatever its history (S9m: no margin).
 * S11 silence never discards a corridor echo: a report of not engaged or passed that is not fresh leaves the echo in (S11m: it does).
 * S12 a passive hull that can be in the CR holds the gate: for a drone last heard not engaged, with the water estimate within the declared margin and a rise of at least the
-  declared lower bound, every true path of the hull that reaches the CR (where it may then stay, pinned) has AcousticExit.adrift true (randomized on the real class; S12m: no reach).
+  declared lower bound, every true path of the hull that reaches the CR (where it may then stay, pinned) has AcousticExit.adrift true, also after the water estimate falls (randomized on the real class; S12m: no reach).
 """
 
 from __future__ import annotations
@@ -369,7 +369,12 @@ def adrift_holds_the_gate(cfg: FleetConfig, g, n_cases: int = 1500, seed: int = 
         est = 0.0 if mutate else max(speed - float(rng.uniform(0.0, a.drift_margin_mps)), 0.0)
         ae.water_speeds.extend([est] * 10)
         in_cr += 1
-        missed += int(1 not in ae.adrift(t0 + tau, g))
+        held = 1 in ae.adrift(t0 + tau, g)
+        if held:                                           # the water falls: the hold rests on the fix, not on the current estimate
+            ae.water_speeds.clear()
+            ae.water_speeds.extend([0.0] * 10)
+            held = 1 in ae.adrift(t0 + tau + 5.0, g)
+        missed += int(not held)
     return {"cases": cases, "hull_reaches_cr": in_cr, "missed": missed}
 
 

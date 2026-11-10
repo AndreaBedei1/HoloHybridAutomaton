@@ -69,6 +69,7 @@ class Flows:
         self.hold_pos: Optional[np.ndarray] = None
         self.offset = np.zeros(3)             # give-way offset of the mission target (world) [m]
         self.cr_cleared = False               # gate localization valid at the hold point: may enter the CR
+        self.past_centre = False              # carried past the middle of the CR while committed: it goes on to the exit
         self.reloc_hold = False               # holding before the CR for the gate localization (logged)
         self.hold_since: Optional[float] = None   # relocalization hold before the CR started at
         self.hold_timeout = False             # the stage-2 hold exceeded t_occ_max + t_clear (logged once)
@@ -333,7 +334,9 @@ class Flows:
             # navigation error (the hull's circumscribed ball R_OUT included)
             s_abort = -(G.cr_half_len + float(R_OUT) + G.nav_err_m)
             self.abort_request = False
-            if not self.cr_cleared and (c[0] > s_hold or self.hold_timeout):
+            # carried past the middle of the CR (by the avoidance layer or the water) the exit is the way out: a hold would send the drone back through the CR
+            self.past_centre = self.past_centre or go.s > 0.0
+            if not self.cr_cleared and not self.past_centre and (c[0] > s_hold or self.hold_timeout):
                 self.hold_since = obs.t if self.hold_since is None else self.hold_since
                 if obs.t - self.hold_since > G.t_occ_max + G.t_clear and not self.hold_timeout:
                     self.hold_timeout = True
@@ -352,7 +355,7 @@ class Flows:
             tgt = g.from_gate_frame(c)
             vmax = G.v_pass
         else:  # MUTEX_APPROACH / MUTEX_YIELD: go to / hold the own queue point
-            self.cr_cleared, self.hold_since, self.entry_state, self.hold_timeout = False, None, "", False
+            self.cr_cleared, self.hold_since, self.entry_state, self.hold_timeout, self.past_centre = False, None, "", False, False
             self.abort_request = False
             tgt = g.from_gate_frame([go.queue_s, go.queue_l, go.queue_dz])
             vmax = G.v_approach

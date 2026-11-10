@@ -103,6 +103,7 @@ class AcousticExit:
         self.last: Dict = {}                       # diagnostics of the latest evaluation
         self.gate_idx = 0                          # the gate the receiver is working on (mod 4; GatePerception.update)
         self.g = None                              # its GateSpec
+        self.adrift_held: Dict = {}                         # (drone, gate) -> time of the fix its hold rests on (adrift)
         self.water_speeds: deque = deque(maxlen=300)        # |water current estimate| of the last 30 s (note_water, the controller at 10 Hz)
         self.status_fresh_s = cfg.acoustic.status_fresh_s   # shortened per plan (GatePerception): never above the freshness
                                                             # the queue geometry allows
@@ -187,15 +188,23 @@ class AcousticExit:
     def adrift(self, t: float, g) -> Set[int]:
         """Other drones that may be a dead hull in the CR (module docstring): not heard lately, with no fresh report excluding them, and with the region of
         the last accepted fix, grown by what the water can carry a hull until it has risen over the top of the CR, reaching the CR.  This is no statement that the
-        drone is dead: it holds the gate while that hypothesis cannot be ruled out, and one fix ends it.  A receiver hearing nobody learns nothing (B0 rules)."""
+        drone is dead: it holds the gate while that hypothesis cannot be ruled out, and one new fix or a fresh report ends it.  The hold does not depend on what the
+        water does later, nor on the receiver still hearing someone: only a new fix ends it.  A receiver hearing nobody starts no new hold (B0 rules)."""
         a = self.cfg.acoustic
-        if self.tracker.deaf(t):
-            return set()
+        deaf = self.tracker.deaf(t)
         v = (float(np.median(self.water_speeds)) if self.water_speeds else 0.0) + a.drift_margin_mps
         out: Set[int] = set()
         for j in self.others:
             f = self.tracker.last_accepted.get(j)
-            if f is None or t - f.t <= self.status_fresh_s or self.status_excluded(j, t):
+            key = (j, g.gate_id)
+            if f is None or self.status_excluded(j, t):
+                self.adrift_held.pop(key, None)
+                continue
+            if self.adrift_held.get(key) == f.t:           # no new fix since the hold began
+                out.add(j)
+                continue
+            self.adrift_held.pop(key, None)
+            if deaf or t - f.t <= self.status_fresh_s:
                 continue
             q = gate_points(g, f.pts)
             dz = float(gate_points(g, f.rep.p[None, :])[0][2]) if f.rep_ok else float(q[:, 2].min())
@@ -207,6 +216,7 @@ class AcousticExit:
                 if float(np.linalg.norm(qr - np.clip(qr, -self.half, self.half), axis=1)[0]) > R_OUT + float(f.rep.bound) + rho:
                     continue
             out.add(j)
+            self.adrift_held[key] = f.t
         return out
 
     # ------------------------------------------------------------------ geometry

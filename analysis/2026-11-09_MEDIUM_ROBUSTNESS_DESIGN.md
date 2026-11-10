@@ -50,6 +50,8 @@ Root causes, from the logs of the ten runs (`results/robustness/raw_b2final_v10`
 * **RC8 (med4 `p1_two_lines` s921). The rejoin logic undid a running give-way.** The lane error ignored the give-way offset; a recovering drone was sent back to the lane it had left,
   head-on again, and stayed in a standoff until the deadline.
 * **RC9 (med7 `lost_drone_mutex_carried` s981, found by the underwater review of round 4).** A drone committed before another one died was admitted into a CR that holds its hull, pinned under the top bar: P2 violated, separation 1.18 m. The hull is masked by the map window, the stage-2 check does not read the latch, and the drone had reported not being engaged. Fixed by `AcousticExit.adrift`: a silent drone whose last fix is within the reach of a passive hull holds the gate.
+* **RC10 (med7 `lost_drone_mutex` s981).** The heading loop was proportional only. During a wait of minutes the heading error of a queued drone grew to 6-16 degrees, beyond the 6 degree tolerance of the queue point, so the drone with priority no longer counted as queued and did not commit for 350 s. Fixed by an integral term on the heading (`LowLevelController`). The tolerance is unchanged. Heading beyond 6 degrees for more than 5 % of the time at the queue: 5 of 57 drone-runs in med6 and med7.
+* **RC11 (med8 `lost_drone_mutex_carried` s986, with the reach rule active).** A committed drone held at the hold point was pushed through the CR by the avoidance layer, a hull closing from behind on the same axis. Past the CR the hold sent it back through it, and it met the hull there: P2 violated at 53.4 s, separation 1.55 m. Fixed: a committed drone past the middle of the CR goes on to the exit.
 
 ## 2. Failure model and vacancy (as implemented)
 

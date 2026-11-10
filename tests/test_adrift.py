@@ -113,3 +113,34 @@ def test_a_passed_report_excludes_it_for_good_a_declared_limit():
     _rx(tr, 1.0, [3.0, 0.0, -5.], phase=pl.GP_PASSED)
     tr.heard[2] = 100.0
     assert ae.adrift(100.0, GATE) == set()
+
+
+def test_the_hold_rests_on_the_fix_and_not_on_what_the_water_does_afterwards():
+    tr, gp = _observer()
+    ae = gp.acoustic_exit
+    _water(ae, 0.3)
+    _rx(tr, 1.0, [-5.4, 3.5, -5.])
+    tr.heard[2] = 61.0
+    assert ae.adrift(61.0, GATE) == {1}
+    ae.water_speeds.clear()
+    _water(ae, 0.0)
+    tr.heard[2] = 91.0
+    o = gp.update(91.0, P, 0.0, [], {})
+    assert ae.adrift(91.0, GATE) == {1} and o.occ_busy and not o.entry_ok
+
+
+def test_a_receiver_that_goes_deaf_keeps_the_holds_it_has_and_starts_no_new_one():
+    tr, gp = _observer()
+    ae = gp.acoustic_exit
+    _water(ae, 0.3)
+    _rx(tr, 1.0, [-5.4, 3.5, -5.])
+    tr.heard[2] = 30.0
+    assert ae.adrift(30.0, GATE) == {1}
+    t = 30.0 + B2.form.t_silent_s + 1.0
+    assert tr.deaf(t) and ae.adrift(t, GATE) == {1}
+    assert not gp.update(t, P, 0.0, [], {}).entry_ok
+    tr2, gp2 = _observer()
+    ae2 = gp2.acoustic_exit
+    _water(ae2, 0.3)
+    _rx(tr2, 1.0, [-5.4, 3.5, -5.])
+    assert tr2.deaf(t) and ae2.adrift(t, GATE) == set()
