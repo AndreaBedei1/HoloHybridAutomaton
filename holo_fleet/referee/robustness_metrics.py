@@ -7,7 +7,8 @@ and the run class of criteria v3 (referee/criteria.py):
 * INVALID         the run did not complete for a reason outside the system under test (simulator, infrastructure);
 * SUT_ERROR       the run stopped on an exception raised in the drones' own code (control, perception, automaton):
                   a failure of the system under test, never retried as INVALID;
-* SAFETY_FAILURE  P1 or P2 violated, a contact, or a scripted vehicle closer than d_safe;
+* SAFETY_FAILURE  P1 or P2 violated, a contact of a live drone (the hull of a dead drone against the structure is recorded, v7), or a scripted
+                  vehicle closer than d_safe;
 * UNSAFE_ACTION   no violation, but an entry into the CR was authorised while another drone was truly in it (E4,
                   referee/gate_events.py: an unsafe control action in the STPA sense);
 * SPEC_VIOLATION  a determinism or observation-consistency violation of the automaton at run time;

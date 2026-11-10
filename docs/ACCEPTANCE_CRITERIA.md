@@ -1,3 +1,10 @@
+# v7 (2026-11-10): v6 with the definition of a contact stated for a dead drone. Pre-registered before the final campaign of the candidate
+
+**Change from v6.** A contact is counted for a drone under control only. The collision sensor of a drone after its `TOTAL_FAILURE` is recorded (`dead_drone_contacts` in the referee metrics) and neither ends the run nor
+fails it: the hull has no actuation and the failure model makes it rise against whatever is above it (`results/calibration/buoyant_ascent.json`), so the event is not an action of the fleet. P1, P2, every pair distance and the
+collision sensor of every live drone are unchanged, so a live drone that touches a dead one still fails the run. The change affects no earlier result of the candidate: of the 251 runs of batches med3 to med6 only 4 have a
+contact, and each is the hull of a dead drone in a stress scenario. Without it those stress runs stop at the contact and cannot show what the other drones then do.
+
 # v6 (2026-11-09): total failure model, payload v2. Pre-registered before the final campaign of the candidate
 
 Baseline, immutable: tag `b2-freeze-v10`, MEDIUM-ALL 56/66 PASS outside `gate_stalled_occupant`, CLEAN and LOW-ALL 66/66.
@@ -25,7 +32,7 @@ per cell, 216 runs. Held-out seeds 1000-1005, used by nothing before the freeze.
 
 **Reported beside the acceptance, whatever the outcome.** The MEDIUM-ALL result on the scenarios unchanged from v10 (`lost_drone_rejoin`, `lost_drone_rejoin_front` and the failure scenarios removed: v10 is 46/51 there; only 51/51 would reach p < 0.05, so this subset is descriptive).
 
-**Stress set, pre-registered.** `gate_pinned_occupant`, `lost_drone_mutex_carried`, the four rise-speed variants, and `MEDIUM_HT` on `lost_drone_mutex`, `lost_drone_timeout`, `gate_single`, `formation_square`, `integrated_short`, `lost_drone_rejoin`: seeds 1100-1102, 36 runs, on the frozen code. Metric: no SAFETY_FAILURE and no UNSAFE_ACTION; the rest is reported, including, for `gate_pinned_occupant`, the runs where a survivor never heard the failed drone. Not part of the acceptance above.
+**Stress set, pre-registered.** `gate_pinned_occupant`, `lost_drone_mutex_carried`, `lost_drone_front_rise_low`, the four rise-speed variants, and `MEDIUM_HT` on `lost_drone_mutex`, `lost_drone_timeout`, `gate_single`, `formation_square`, `integrated_short`, `lost_drone_rejoin`: seeds 1100-1102, 39 runs, on the frozen code. Metric: no SAFETY_FAILURE and no UNSAFE_ACTION; the rest is reported, including, for `gate_pinned_occupant`, the runs where a survivor never heard the failed drone. Not part of the acceptance above.
 
 If an item fails the candidate is not accepted and is not merged; a further change needs fresh seeds. The stress scenarios (`gate_pinned_occupant`, `lost_drone_mutex_carried`, the rise-speed variants, the channel
 `MEDIUM_HT`) are sensitivities: they are reported and are not part of the acceptance.

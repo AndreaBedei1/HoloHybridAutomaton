@@ -218,8 +218,8 @@ class FormationRule:
     # e_ok after the ramp (0.10 * (7 - T_ramp / 2) = 0.45 m); slower than that would trade formation keeping
     # for catch-up.  Never 0: the fleet keeps surveying and keeps steerage.
     # silence of a drone: not heard for this long = dead (TOTAL_FAILURE: nothing is emitted any more), whatever the
-    # observer's own state.  Justified against the channel: in MEDIUM-ALL the longest silence between two drones of the
-    # 72 v10 runs was 31 s, median over the runs 9 s, reception rate ~45-70 %.  Silence never clears a possibly occupied
+    # observer's own state.  Calibrated on the simulated channel, no analytic bound: on expected-neighbour links the longest
+    # silence of the 72 v10 MEDIUM-ALL runs was 21 s (31 s over all pairs, on far pairs of formation_six, where vacancy is not used).  Silence never clears a possibly occupied
     # gate (perception/acoustic_gate.py)
     t_silent_s: float = 45.0
     v_wait: float = 0.20
@@ -352,11 +352,8 @@ class AcousticConfig:
     tie_window_s: float = 3.0            # fixes this close to the last corridor sighting account for a drone
     fresh_s: float = 2.5                 # a fix this recent counts for the neighbours (formation)
     depth_tol_m: float = 1.5             # a fix this far outside the operating depth band is a reflection
-    # a drone fallen silent is excluded as a possible occupant of a gate only after this longer interval (and only if
-    # it was not engaged with the gate when it fell silent: never a drone that reported committed or admitted): the
-    # argument is that a live drone cannot stay unheard this long on a link of the queue geometry (model of the MEDIUM
-    # channel: P(silence >= 70 s) on a shadowed queue link < 1e-3 per mission, docs/ACOUSTIC_CHANNEL_MODEL.md), while a
-    # dead drone has risen several metres above the gate by then (config.FailureModel)
+    # a drone silent this long leaves the identity premise of the map fit (Perception._other_regions), where an echo can only move the own
+    # estimate, by at most MAX_CORR_M.  It is never excluded from a gate decision: silence alone proves nothing.  Calibrated on the simulated channel, no analytic bound.
     t_silent_gate_s: float = 70.0        # a silent drone leaves the identity premise of the map fit only (Perception._other_regions); never a gate decision
     # a gate phase NOT_ENGAGED excludes its sender as an occupant while fresher than this: not above the time a queued
     # drone needs to reach a position where the corridor echo of a real entry would stop being visible (formal/check_status.py,

@@ -492,7 +492,9 @@ def gate_pinned_occupant(cfg: FleetConfig = DEFAULT) -> Scenario:
     sc.name, sc.title = "gate_pinned_occupant", "P2: a drone fails at rest under the top bar of G06"
     sc.description = ("the first drone rests in the opening, its electronics running (it reports a claim), and fails completely at t = 6 s: it rises against "
                       "the top bar and stays.")
-    sc.sim.spawn_positions[0] = g6.from_gate_frame([0.0, 0.0, 0.0]).tolist()
+    centre = np.asarray(g6.from_gate_frame([0.0, 0.0, 0.0]), float)
+    sc.sim.spawn_positions[0] = centre.tolist()
+    sc.plans[0].launch_position = centre        # its navigation starts where it is: it reports the gate it is in
     # SCENARIO_HOLD only sets the initial condition: its commands are not executed, so it does not coast past the bar before it fails
     sc.sim.faults = ({"drone": "drone_0", "type": "SCENARIO_HOLD", "t_on": 0.0, "t_off": 6.0},
                      {"drone": "drone_0", "type": "TOTAL_FAILURE", "t_on": 6.0, "t_off": None},)
@@ -513,6 +515,19 @@ def lost_drone_mutex_carried(cfg: FleetConfig = DEFAULT) -> Scenario:
     return sc
 
 
+def lost_drone_front_rise_low(cfg: FleetConfig = DEFAULT) -> Scenario:
+    """Stress (not in the acceptance matrix): a front drone fails at the low end of the rise range, so that the drone behind it on its lane reaches
+    the hull while it is still at mission depth (the other failure scenarios keep the hull out of every lane)."""
+    sc = _lost_drone("lost_drone_front_rise_low", 8.0, None, 80.0, CurrentField(),
+                     "Lost drone: a front drone fails and rises slowly in the lane of its follower",
+                     "4 drones (square), no current. The front-left drone fails completely at t = 8 s (no propulsion, electronics or transmitter) and rises at the low "
+                     "end of the range.",
+                     "the follower on the same lane meets the hull at mission depth: separation and avoidance, then vacancy by silence", cfg, faulty=0)
+    sc.automaton_drone = 2                      # the follower on its lane
+    sc.cfg_patch = dict(sc.cfg_patch, failure=dataclasses.replace(cfg.failure, v_rise_mps=0.06))
+    return sc
+
+
 def _rise_variant(base, name: str, v: float):
     """Sensitivity to the rise speed (the commanded value; interpolating calibration/probe_buoyant_ascent.py, 0.06 gives about 0.05 m/s and
     0.135 about 0.13 m/s: not bench points)."""
@@ -525,7 +540,7 @@ def _rise_variant(base, name: str, v: float):
     return make
 
 
-STRESS_SCENARIOS = ("gate_pinned_occupant", "lost_drone_mutex_carried", "lost_drone_mutex_rise_low", "lost_drone_mutex_rise_high",
+STRESS_SCENARIOS = ("gate_pinned_occupant", "lost_drone_mutex_carried", "lost_drone_front_rise_low", "lost_drone_mutex_rise_low", "lost_drone_mutex_rise_high",
                     "gate_stalled_occupant_rise_low", "gate_stalled_occupant_rise_high")     # sensitivity, not in the acceptance matrix
 
 SCENARIOS: Dict[str, Callable[..., Scenario]] = {
@@ -549,6 +564,7 @@ SCENARIOS: Dict[str, Callable[..., Scenario]] = {
     "gate_stalled_occupant": gate_stalled_occupant,
     "gate_pinned_occupant": gate_pinned_occupant,
     "lost_drone_mutex_carried": lost_drone_mutex_carried,
+    "lost_drone_front_rise_low": lost_drone_front_rise_low,
     "lost_drone_mutex_rise_low": _rise_variant(lost_drone_mutex, "lost_drone_mutex_rise_low", 0.06),
     "lost_drone_mutex_rise_high": _rise_variant(lost_drone_mutex, "lost_drone_mutex_rise_high", 0.135),
     "gate_stalled_occupant_rise_low": _rise_variant(gate_stalled_occupant, "gate_stalled_occupant_rise_low", 0.06),

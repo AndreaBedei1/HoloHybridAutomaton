@@ -10,6 +10,7 @@ validation: the seeds were used to find and fix causes. The validation campaign 
 | med2 | 419a780 | 18 scenarios, 900-902 | 54 | 42 | 10 | 1 | 1 REPLAY_MISMATCH |
 | med3 | be4333a | 18 scenarios, 910-912 | 54 | 52 | 2 | 0 | |
 | med4 | c6d8c98 | 18 scenarios, 920-922 | 54 | 52 | 2 | 0 | |
+| med5 | 6ce8ba7 | 18 scenarios, 930-932 | 54 | 54 | 0 | 0 | |
 
 Causes closed between batches:
 
@@ -24,6 +25,8 @@ Causes closed between batches:
   `t_ok_hold` at the last sample. Fix: times logged at 1 microsecond; no tolerance added to the criteria.
 
 * med4: `p1_two_lines` s921 (RC8) and `lost_drone_mutex` s920 (RC7); both fixed afterwards, design note section 1.
+
+* med6 (d2ca747, stress 960-961 and standard 970-972): 54/54 standard PASS. Stress: 7 PASS, 1 INCOMPLETE (`lost_drone_mutex_rise_low` s960), 4 SAFETY_FAILURE (the hull of a dead drone against the top bar: see REVIEW_ROUND3_RESOLUTION, criteria v7).
 
 ## Status records
 
@@ -54,4 +57,80 @@ PASS 51
 lanes done: 0
 tracebacks in lane logs: 0
 Holodeck processes on the machine: 4; free RAM GB: 56; free F: GB: 591
+```
+
+### 2026-11-10 00:14 med5 @ 6ce8ba7
+```
+PASS 62
+UNSAFE_ACTION 1
+INCOMPLETE 2
+INVALID 2
+23:26:48 B2_MEDIUM MEDIUM-ALL             gate_pinned_occupant             s940 UNSAFE_ACTION    P1 1.968 fail [] wall 1259.8s exit 0
+23:27:50 B2_MEDIUM MEDIUM-ALL             gate_pinned_occupant             s941 INVALID          P1 None fail None wall 15.3s exit 1
+23:29:27 B2_MEDIUM MEDIUM-ALL             gate_pinned_occupant             s941 INVALID          P1 None fail None wall 38.2s exit 1
+23:50:18 B2_MEDIUM MEDIUM-ALL             lost_drone_mutex_carried         s941 INCOMPLETE       P1 3.396 fail ['progress', 'gate', 'P3-deg re-formed', 'not waiting'] wal
+23:50:34 B2_MEDIUM MEDIUM-ALL             lost_drone_mutex_carried         s940 INCOMPLETE       P1 3.413 fail ['progress', 'gate', 'P3-deg re-formed', 'not waiting'] wal
+23:26:48 B2_MEDIUM MEDIUM-ALL             gate_pinned_occupant             s940 UNSAFE_ACTION    P1 1.968 fail [] wall 1259.8s exit 0
+23:27:50 B2_MEDIUM MEDIUM-ALL             gate_pinned_occupant             s941 INVALID          P1 None fail None wall 15.3s exit 1
+23:29:27 B2_MEDIUM MEDIUM-ALL             gate_pinned_occupant             s941 INVALID          P1 None fail None wall 38.2s exit 1
+lanes done: 0
+tracebacks in lane logs: 0
+Holodeck processes on the machine: 3; free RAM GB: 58.3; free F: GB: 591
+```
+
+### 2026-11-10 00:24 med5 @ 6ce8ba7 (lanes ended or 6 h limit)
+```
+PASS 74
+UNSAFE_ACTION 1
+INCOMPLETE 2
+INVALID 2
+23:26:48 B2_MEDIUM MEDIUM-ALL             gate_pinned_occupant             s940 UNSAFE_ACTION    P1 1.968 fail [] wall 1259.8s exit 0
+23:27:50 B2_MEDIUM MEDIUM-ALL             gate_pinned_occupant             s941 INVALID          P1 None fail None wall 15.3s exit 1
+23:29:27 B2_MEDIUM MEDIUM-ALL             gate_pinned_occupant             s941 INVALID          P1 None fail None wall 38.2s exit 1
+23:50:18 B2_MEDIUM MEDIUM-ALL             lost_drone_mutex_carried         s941 INCOMPLETE       P1 3.396 fail ['progress', 'gate', 'P3-deg re-formed', 'not waiting'] wal
+23:50:34 B2_MEDIUM MEDIUM-ALL             lost_drone_mutex_carried         s940 INCOMPLETE       P1 3.413 fail ['progress', 'gate', 'P3-deg re-formed', 'not waiting'] wal
+23:26:48 B2_MEDIUM MEDIUM-ALL             gate_pinned_occupant             s940 UNSAFE_ACTION    P1 1.968 fail [] wall 1259.8s exit 0
+23:27:50 B2_MEDIUM MEDIUM-ALL             gate_pinned_occupant             s941 INVALID          P1 None fail None wall 15.3s exit 1
+23:29:27 B2_MEDIUM MEDIUM-ALL             gate_pinned_occupant             s941 INVALID          P1 None fail None wall 38.2s exit 1
+lanes done: 4
+tracebacks in lane logs: 0
+Holodeck processes on the machine: 0; free RAM GB: 63.4; free F: GB: 591
+```
+
+### 2026-11-10 01:25 med6 @ d2ca747
+```
+SAFETY_FAILURE 4
+PASS 34
+INCOMPLETE 1
+00:25:03 B2_MEDIUM MEDIUM-ALL             gate_pinned_occupant             s960 SAFETY_FAILURE   P1 1.57 fail [] wall 42.9s exit 0
+00:25:24 B2_MEDIUM MEDIUM-ALL             gate_pinned_occupant             s961 SAFETY_FAILURE   P1 1.599 fail [] wall 43.7s exit 0
+00:26:34 B2_MEDIUM MEDIUM-ALL             lost_drone_mutex_carried         s960 SAFETY_FAILURE   P1 2.778 fail ['progress', 'gate', 'P3-deg re-formed', 'P3-deg vacancy'] 
+00:26:48 B2_MEDIUM MEDIUM-ALL             lost_drone_mutex_carried         s961 SAFETY_FAILURE   P1 2.514 fail ['progress', 'gate', 'P3-deg re-formed', 'P3-deg vacancy'] 
+00:50:23 B2_MEDIUM MEDIUM-ALL             lost_drone_mutex_rise_low        s960 INCOMPLETE       P1 2.828 fail ['progress', 'gate'] wall 1473.9s exit 0
+00:25:03 B2_MEDIUM MEDIUM-ALL             gate_pinned_occupant             s960 SAFETY_FAILURE   P1 1.57 fail [] wall 42.9s exit 0
+00:25:24 B2_MEDIUM MEDIUM-ALL             gate_pinned_occupant             s961 SAFETY_FAILURE   P1 1.599 fail [] wall 43.7s exit 0
+00:26:34 B2_MEDIUM MEDIUM-ALL             lost_drone_mutex_carried         s960 SAFETY_FAILURE   P1 2.778 fail ['progress', 'gate', 'P3-deg re-formed', 'P3-deg vacancy'] 
+00:26:48 B2_MEDIUM MEDIUM-ALL             lost_drone_mutex_carried         s961 SAFETY_FAILURE   P1 2.514 fail ['progress', 'gate', 'P3-deg re-formed', 'P3-deg vacancy'] 
+lanes done: 0
+tracebacks in lane logs: 0
+Holodeck processes on the machine: 4; free RAM GB: 56.9; free F: GB: 591
+```
+
+### 2026-11-10 02:12 med6 @ d2ca747 (lanes ended or 6 h limit)
+```
+SAFETY_FAILURE 4
+PASS 61
+INCOMPLETE 1
+00:25:03 B2_MEDIUM MEDIUM-ALL             gate_pinned_occupant             s960 SAFETY_FAILURE   P1 1.57 fail [] wall 42.9s exit 0
+00:25:24 B2_MEDIUM MEDIUM-ALL             gate_pinned_occupant             s961 SAFETY_FAILURE   P1 1.599 fail [] wall 43.7s exit 0
+00:26:34 B2_MEDIUM MEDIUM-ALL             lost_drone_mutex_carried         s960 SAFETY_FAILURE   P1 2.778 fail ['progress', 'gate', 'P3-deg re-formed', 'P3-deg vacancy'] 
+00:26:48 B2_MEDIUM MEDIUM-ALL             lost_drone_mutex_carried         s961 SAFETY_FAILURE   P1 2.514 fail ['progress', 'gate', 'P3-deg re-formed', 'P3-deg vacancy'] 
+00:50:23 B2_MEDIUM MEDIUM-ALL             lost_drone_mutex_rise_low        s960 INCOMPLETE       P1 2.828 fail ['progress', 'gate'] wall 1473.9s exit 0
+00:25:03 B2_MEDIUM MEDIUM-ALL             gate_pinned_occupant             s960 SAFETY_FAILURE   P1 1.57 fail [] wall 42.9s exit 0
+00:25:24 B2_MEDIUM MEDIUM-ALL             gate_pinned_occupant             s961 SAFETY_FAILURE   P1 1.599 fail [] wall 43.7s exit 0
+00:26:34 B2_MEDIUM MEDIUM-ALL             lost_drone_mutex_carried         s960 SAFETY_FAILURE   P1 2.778 fail ['progress', 'gate', 'P3-deg re-formed', 'P3-deg vacancy'] 
+00:26:48 B2_MEDIUM MEDIUM-ALL             lost_drone_mutex_carried         s961 SAFETY_FAILURE   P1 2.514 fail ['progress', 'gate', 'P3-deg re-formed', 'P3-deg vacancy'] 
+lanes done: 4
+tracebacks in lane logs: 0
+Holodeck processes on the machine: 0; free RAM GB: 63.9; free F: GB: 591
 ```

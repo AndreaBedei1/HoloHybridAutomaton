@@ -68,8 +68,8 @@ Root causes, from the logs of the ten runs (`results/robustness/raw_b2final_v10`
   phase's experiments, by the owner's decision. `lost_drone_rejoin` and `lost_drone_rejoin_front` (temporary thruster loss in v10) use a
   temporary localized jet instead: the before/after comparison of these two is not like for like.
 * **Vacancy by silence.** A drone not heard for `t_silent_s` = 45 s is dead and its slot vacant, whatever the observer's mode and position, for
-  expected neighbours only (within `neighbour_range_m`; far pairs are often silent). Basis: the longest silence between two drones in the
-  72 v10 MEDIUM runs was 31 s. A drone heard again is alive and its slot required again. A receiver hearing nobody at all is deaf
+  expected neighbours only (within `neighbour_range_m`; far pairs are often silent). Basis, calibrated on the simulated channel with no analytic bound: on expected-neighbour links the longest silence in the
+  72 v10 MEDIUM runs was 21 s (31 s over all pairs, on far pairs of `formation_six`, for which vacancy by silence is not used). A drone heard again is alive and its slot required again. A receiver hearing nobody at all is deaf
   (`AcousticTracker.deaf`): silence then says nothing and the B0 displacement timer applies. Displacement alone never makes a slot vacant
   while the beacon works.
 

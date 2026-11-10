@@ -118,6 +118,30 @@ def test_a_drone_that_goes_over_the_frame_has_not_passed_the_gate():
     assert mon.passed[0] is None and "drone_0" in mon.bypassed
 
 
+def _truth(t, P, col):
+    z = np.zeros((2, 3))
+    return SimpleNamespace(t=t, positions=np.asarray(P, float), collision=np.asarray(col, bool), current_drift=z, velocities=z, intruders=None, rotations=None)
+
+
+def test_the_hull_of_a_dead_drone_against_the_structure_is_recorded_and_is_no_contact():
+    r = Referee(["drone_0", "drone_1"], None, None, [], DEFAULT, False)
+    r.update(_truth(20.0, [[0, 0, 0], [9, 0, 0]], [True, False]), ["DEAD", "MUTEX_YIELD"])
+    assert not r.collision_edges and r.dead_contacts == [{"t": 20.0, "drone": "drone_0"}] and not r.contacts
+
+
+def test_a_live_drone_that_touches_a_dead_one_is_a_contact():
+    r = Referee(["drone_0", "drone_1"], None, None, [], DEFAULT, False)
+    d = 0.5 * DEFAULT.sep.d_collision
+    r.update(_truth(20.0, [[0, 0, 0], [d, 0, 0]], [True, True]), ["DEAD", "MUTEX_PASS"])
+    assert [e["drone"] for e in r.collision_edges] == ["drone_1"] and r.contacts
+
+
+def test_a_live_drone_against_the_structure_is_a_contact():
+    r = Referee(["drone_0", "drone_1"], None, None, [], DEFAULT, False)
+    r.update(_truth(20.0, [[0, 0, 0], [9, 0, 0]], [True, False]), ["MUTEX_PASS", "MUTEX_YIELD"])
+    assert [e["drone"] for e in r.collision_edges] == ["drone_0"] and not r.dead_contacts
+
+
 def test_a_safety_violation_ends_the_run_as_failure():
     mon, tg, n = _monitor()
     r = Ref(n)
