@@ -320,6 +320,13 @@ class Perception:
         self.nav_bound.corrected(c)
         self.acoustic.shift(np.array([c[0], c[1], 0.0]))
 
+    def undo_unconfirmed_corrections(self):
+        """A hold at the gate ended with no valid localization: the corrections accepted since the last validated fit are refuted (structure_aiding, module docstring); the applied step, or None."""
+        c = self.aiding.take_unconfirmed()
+        if c is not None:
+            self.apply_position_correction(c)
+        return c
+
     def payload(self, t_emit: float):
         """What this drone sends in its B2 beacon payload (H6) at t_emit: its onboard position estimate and the error
         bound, grown by the speed bound over the age of the estimate (inf, sent as invalid, after an integrity

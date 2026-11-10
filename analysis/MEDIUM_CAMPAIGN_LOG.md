@@ -147,3 +147,56 @@ lanes done: 4
 tracebacks in lane logs: 0
 Holodeck processes on the machine: 0; free RAM GB: 63.2; free F: GB: 591
 ```
+
+### 2026-11-10 04:14 med9 @ e034755
+```
+PASS 15
+INCOMPLETE 2
+03:37:10 B2_MEDIUM MEDIUM-ALL             lost_drone_mutex_carried         s988 INCOMPLETE       P1 2.282 fail ['progress', 'gate', 'P3-deg re-formed', 'not waiting'] wal
+03:40:31 B2_MEDIUM MEDIUM-ALL             lost_drone_mutex_carried         s987 INCOMPLETE       P1 1.499 fail ['progress', 'gate'] wall 1627.2s exit 0
+lanes done: 0
+tracebacks in lane logs: 0
+Holodeck processes on the machine: 4; free RAM GB: 56.9; free F: GB: 590
+```
+
+### 2026-11-10 05:14 med9 @ e034755
+```
+PASS 60
+INCOMPLETE 2
+03:37:10 B2_MEDIUM MEDIUM-ALL             lost_drone_mutex_carried         s988 INCOMPLETE       P1 2.282 fail ['progress', 'gate', 'P3-deg re-formed', 'not waiting'] wal
+03:40:31 B2_MEDIUM MEDIUM-ALL             lost_drone_mutex_carried         s987 INCOMPLETE       P1 1.499 fail ['progress', 'gate'] wall 1627.2s exit 0
+lanes done: 0
+tracebacks in lane logs: 0
+Holodeck processes on the machine: 4; free RAM GB: 56.9; free F: GB: 590
+```
+
+### 2026-11-10 05:27 med9 @ e034755 (lanes ended or 6 h limit)
+```
+PASS 65
+INCOMPLETE 3
+03:37:10 B2_MEDIUM MEDIUM-ALL             lost_drone_mutex_carried         s988 INCOMPLETE       P1 2.282 fail ['progress', 'gate', 'P3-deg re-formed', 'not waiting'] wal
+03:40:31 B2_MEDIUM MEDIUM-ALL             lost_drone_mutex_carried         s987 INCOMPLETE       P1 1.499 fail ['progress', 'gate'] wall 1627.2s exit 0
+05:19:54 B2_MEDIUM MEDIUM-ALL             lost_drone_mutex                 s995 INCOMPLETE       P1 3.46 fail ['progress', 'gate', 'P3-deg re-formed', 'not waiting'] wall
+lanes done: 4
+tracebacks in lane logs: 0
+Holodeck processes on the machine: 0; free RAM GB: 63.9; free F: GB: 590
+```
+
+## med9 closed (e034755): 65 PASS, 3 INCOMPLETE of 68, no SAFETY_FAILURE, no UNSAFE_ACTION
+
+* Standard set (seeds 993 to 995): 53 of 54 PASS.
+* The carried scenario, s987 and s988: INCOMPLETE as predicted (gate blocked by the hull, P2 holds).
+* `lost_drone_mutex` s995: INCOMPLETE, a new case. Root cause RC12 (design note): two corrections mirrored about the gate axis, error 2.7 m, 8 hold timeouts, P1 3.46 m, P2 holds. Fixed afterwards.
+* `ENTRY_HOLD_TIMEOUT` in the whole batch: 10 (s995: 8; `lost_drone_mutex` s994: 1, PASS; carried s987: 1). All with `loc_ok` false. med6: 9, all in `lost_drone_mutex_rise_low` s960.
+* reg1 (CLEAN and LOW at 3e3db7b) was started on the code before the fix, on purpose: the fix acts only on the path of a hold timeout.
+
+### 2026-11-10 06:30 reg1 @ 3e3db7b
+```
+PASS 53
+INCOMPLETE 2
+05:51:37 B2_MEDIUM MEDIUM-ALL             lost_drone_mutex_carried         s997 INCOMPLETE       P1 3.389 fail ['progress', 'gate', 'P3-deg re-formed', 'not waiting'] wal
+05:55:27 B2_MEDIUM MEDIUM-ALL             lost_drone_mutex_carried         s996 INCOMPLETE       P1 1.482 fail ['progress', 'gate'] wall 1612.4s exit 0
+lanes done: 0
+tracebacks in lane logs: 0
+Holodeck processes on the machine: 4; free RAM GB: 56.4; free F: GB: 590
+```

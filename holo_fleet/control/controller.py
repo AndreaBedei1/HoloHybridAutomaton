@@ -222,9 +222,7 @@ class DroneController:
         for e in self.perception.gp.phantom_events:            # B2: corridor echoes no fleet drone produced
             self.events.append({"t": e["t"], "type": "PHANTOM_ECHO", "excluding_fixes": e["fixes"]})
         self.perception.gp.phantom_events.clear()
-        for e in self.flows.events:                            # ENTRY_HOLD_TIMEOUT (stage 2, flows.gate)
-            self.events.append({**e, "mode": mode.value})
-        self.flows.events.clear()
+        self._drain_flow_events(mode)
         if was_ok and not ok:
             self.events.append({"t": t, "type": "ENVELOPE_VIOLATION", **self.envmon.record()})
         elif ok and not was_ok:
@@ -303,6 +301,16 @@ class DroneController:
         self.perception.apply_position_correction(corr)
         self.events.append({"t": t, "type": "GATE_CROSSING_MEASURED", "gate": self.passage.idx, "l": round(l_meas, 3),
                             "dz": None if dz is None else round(dz, 3), "correction": np.round(corr, 3).tolist()})
+
+    def _drain_flow_events(self, mode: Mode) -> None:
+        """The events of the flows (ENTRY_HOLD_TIMEOUT of stage 2, flows.gate; PAST_CENTRE).  A hold that ends with no valid localization refutes the corrections not yet confirmed by a validated fit."""
+        for e in self.flows.events:
+            self.events.append({**e, "mode": mode.value})
+            if e["type"] == "ENTRY_HOLD_TIMEOUT" and not e["loc_ok"]:
+                c = self.perception.undo_unconfirmed_corrections()
+                if c is not None:
+                    self.events.append({"t": e["t"], "type": "UNCONFIRMED_CORRECTIONS_UNDONE", "correction": np.round(c, 3).tolist()})
+        self.flows.events.clear()
 
     def _update_gate_report(self, t: float, dt: float, obs: LocalObservation) -> None:
         """Gate phase this drone reports about itself (payload v2): the facts of its own automaton and flow, never a command

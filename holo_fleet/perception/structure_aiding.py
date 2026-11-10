@@ -73,6 +73,11 @@ labelled STRUCTURE by the classifier.  A hull not accounted for by the premise (
 The correction changes the drone's OWN position estimate only: the collision-avoidance distance bound uses the raw echo
 ranges in the body frame and does not depend on it, and the structure test keeps its tolerance (structure_tol_m is not
 widened), so a vehicle in front of a bar stays an obstacle (tests/test_structure_aiding.py).
+
+A correction accepted without a validated fit (the identity rule, the along-axis correction) is a hypothesis.  Near the gate the sectors see the bars at the edge of their cones and a fit mirrored
+about the axis can explain the echoes as well as the true pose (RC12, MEDIUM-ALL lost_drone_mutex s995: two such fits moved the estimate 2.2 m the wrong way, beyond the reach MAX_CORR_M of any later fit).
+Over 309 corrections of this kind in the MEDIUM batches the error did not fall on average (mean change +0.02 m).  ``unconfirmed`` is their sum since the last validated fit; a hold at the gate that ends with
+no valid localization refutes them and ``take_unconfirmed`` undoes them (Perception.undo_unconfirmed_corrections).  The estimate goes back to what dead reckoning says, with the bound grown by the step.
 """
 
 from __future__ import annotations
@@ -132,6 +137,7 @@ class StructureAiding:
         self.axial_total = 0.0                   # along-axis correction applied since the last validated fit: bounded
         self._ax_touched = False
         self.applied_m = 0.0                     # total applied correction (for the log)
+        self.unconfirmed = np.zeros(2)           # sum of the corrections since the last validated fit (module docstring)
         self.last: Optional[Dict] = None
         self.pts = np.asarray(clf.struct_pts)[::POINT_STRIDE]
         self.acq_pts = acquisition_distance(cfg, pts=self.pts) if len(self.pts) else 0.0
@@ -228,6 +234,15 @@ class StructureAiding:
             return None
         return float(g.inner_width / 2.0 - (abs(l_g) + HULL_LAT_M + u))
 
+    def take_unconfirmed(self) -> Optional[np.ndarray]:
+        """The correction that undoes every correction since the last validated fit (None: there is none to undo); they are forgotten."""
+        c = -self.unconfirmed
+        self.unconfirmed = np.zeros(2)
+        self.axial_total = 0.0
+        self.recent.clear()
+        self.recent_ax.clear()
+        return None if float(np.linalg.norm(c)) == 0.0 else np.array([c[0], c[1], 0.0])
+
     def valid(self, t: float) -> bool:
         """Gate localization confirmed within LOC_TTL_S (robust clearance included)."""
         return t - self.loc_t <= LOC_TTL_S
@@ -285,7 +300,9 @@ class StructureAiding:
         self.axial_total += float(a.mean())
         self.applied_m += abs(float(a.mean()))
         self.last["axial"] = round(float(a.mean()), 3)
-        return GAIN * float(a.mean()) * np.array([axis[0], axis[1], 0.0])
+        corr = GAIN * float(a.mean()) * np.array([axis[0], axis[1], 0.0])
+        self.unconfirmed += corr[:2]
+        return corr
 
     def update(self, p: np.ndarray, R_wb: np.ndarray, profiles: Dict, ages: Dict, tau: float,
                t: float = 0.0, others=None) -> Optional[np.ndarray]:
@@ -355,6 +372,7 @@ class StructureAiding:
         if safe and float(np.linalg.norm(d)) <= CONSIST_M:   # the current estimate is confirmed (consistency band)
             self.loc_t, self.loc_u = t, u
             self.axial_total = 0.0
+            self.unconfirmed = np.zeros(2)
         if not (np.isfinite(c0[0]) and c0[0] - cost_k >= GAIN_MIN):
             self.recent.clear()
             return None
@@ -370,4 +388,7 @@ class StructureAiding:
         if safe:
             self.loc_t, self.loc_u = t, u           # the corrected estimate is the confirmed one
             self.axial_total = 0.0
+            self.unconfirmed = np.zeros(2)
+        else:
+            self.unconfirmed += corr
         return np.array([corr[0], corr[1], 0.0])

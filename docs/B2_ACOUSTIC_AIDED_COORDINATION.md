@@ -1,5 +1,7 @@
 # Variant B2: acoustic-aided coordination (one-way range-bearing beacon)
 
+*Sections 1 to 7 describe the validated v10. What the MEDIUM robustness phase changes is in section 8.*
+
 B0 is the communication-free baseline: the same decentralised hybrid automaton on every drone, driven by the shared
 mission plan and local sensing (six single-beam sonars, DVL, IMU, compass, depth).  B2 keeps that automaton, its
 guards and thresholds unchanged (apart from the explicit give-up edge of a gate entry, ha/spec.py pass_abort) and
@@ -205,3 +207,13 @@ phase and before any B2 run with degraded sensors or channel (429 runs):
 
 Phases before it, in the same raw root and reused by it: `b2_gate` (five gate scenarios, CLEAN, B0 and B2_CLEAN)
 and `b2_formation` (formation scenarios, CLEAN and MEDIUM-ALL, B0 and B2).
+
+## 8. MEDIUM robustness phase (branch `feature/b2-medium-robustness`)
+
+Candidate on top of v10, which stays the immutable baseline. Rationale and root causes RC1 to RC12: `analysis/2026-11-09_MEDIUM_ROBUSTNESS_DESIGN.md`. Evidence and limits, row by row: `GUARANTEES.md`. Criteria: `ACCEPTANCE_CRITERIA.md` (v7).
+
+* **Failure model.** A failed drone stops propulsion, electronics and beacon together, and rises (positively buoyant, nominal 0.10 m/s, credible 0.05-0.13 m/s). The thruster-only failure of section 5 is no longer an experimental condition.
+* **Payload v2.** 64 bits, 8 more than section 2b: gate index (2), passage phase (2: none, committed, admitted, passed), reserved (4), CRC-16. Still strictly one-way and periodic; the phase is a report of the sender's own state and never enters the precedence decision, which stays with the sonar.
+* **Vacancy.** A neighbour expected in the formation and silent for 45 s has its slot declared vacant. A receiver that hears nobody learns nothing from silence and falls back to the B0 timer.
+* **Silence and the gate.** Silence excludes nobody from a gate decision, and a claim on the gate is never released by silence. A silent drone whose last accepted fix, grown by what the water can carry a hull until it has risen over the CR, reaches the CR holds the gate like a claim, until a new fix or a fresh report (`AcousticExit.adrift`, formal S12). A failure within that reach blocks the gate for the rest of the mission: safe, and INCOMPLETE.
+* **Control and localization.** Integral action on the heading (RC10); a committed drone carried past the middle of the CR goes on to the exit (RC11); corrections of the estimate with no validated fit are undone when a hold ends with no valid localization (RC12).

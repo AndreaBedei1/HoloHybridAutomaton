@@ -51,3 +51,15 @@ Batch med8 was stopped and is not evidence: by an error of the orchestration two
 | N11 the rule was neither declared nor logged | Declared (GUARANTEES), logged as `PAST_CENTRE` |
 | N12 no verified passage on this branch | Declared (GUARANTEES) |
 | `formal/results` not regenerated | Generated at the tag, from a clean tree |
+
+## Round 6, underwater (reviewed at e034755; report `review_round6_underwater.md`)
+
+| Finding | Resolution |
+|---|---|
+| Condition 1, carried scenario at the deployed code | Lifted by the reviewer |
+| Condition 2, the standard set | Finished: 53 of 54 PASS, and one new INCOMPLETE, `lost_drone_mutex` s995. Root cause RC12, fixed, and sent back to both reviewers |
+| The carried scenario at the frozen commit | Part of the pre-registered stress set, run on the frozen code |
+| MINOR compass bias depending on thruster current | Declared (GUARANTEES, heading row) |
+| MINOR the past-centre rule has no lateral term | Declared (GUARANTEES, past-centre row) |
+
+Disclosure. `check_status.py` has mutation runs for S1, S3, S4, S9, S11 and S12. S5, S6, S6b, S7 and S8 have none.
