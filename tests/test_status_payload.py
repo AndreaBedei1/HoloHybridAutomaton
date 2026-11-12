@@ -97,6 +97,22 @@ def test_a_receiver_that_hears_nobody_declares_no_one_dead():
     assert not ae.dead(1, t) and ae.claims(t) == {1} and not ae.status_excluded(1, t)
 
 
+def test_a_drone_never_heard_is_dead_once_silent_since_the_receiver_started():
+    """A failure before the first reception: the drone is in the plan, so its silence runs from the start of the receiver."""
+    tr, gp = _observer(P, others=(1, 2))
+    ae = gp.acoustic_exit
+    _rx(tr, P, 1.0, 1, [-5.4, -3.5, -5.], phase=pl.GP_NONE)        # the receiver starts at t = 1 s; drone 2 is never heard
+    t = 1.0 + B2.acoustic.t_silent_gate_s - 1.0
+    tr.heard[1] = t - 1.0
+    assert not ae.dead(2, t)
+    t = 1.0 + B2.acoustic.t_silent_gate_s + 1.0
+    tr.heard[1] = t - 1.0
+    assert ae.dead(2, t) and ae.status_excluded(2, t)
+    assert ae.silence(t) == [1.0, round(t - 1.0, 1)]                # the log of premise V
+    tr.heard[1] = 1.0                                               # hearing nobody, it declares no one dead
+    assert not ae.dead(2, t)
+
+
 def test_a_drone_silent_after_not_engaged_is_excluded_only_once_dead():
     tr, gp = _observer(P, others=(1, 2))
     ae = gp.acoustic_exit

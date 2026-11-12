@@ -180,6 +180,11 @@ class AcousticExit:
     def claims(self, t: float) -> set:
         return {j for j in self.others if self.status_claim(j, t)}
 
+    def silence(self, t: float) -> List[float]:
+        """Time since the latest reception of each other drone (since the start for one never heard): premise V (log only)."""
+        tr = self.tracker
+        return [round(t - tr.heard.get(j, t if tr.t_start is None else tr.t_start), 1) for j in self.others]
+
     def dead(self, j: int, t: float) -> bool:
         """Not heard for ``t_silent_gate_s`` by this receiver while it hears the others (module docstring); a receiver that hears
         nobody declares no one dead."""

@@ -159,6 +159,7 @@ class AcousticTracker:
         self.track_id: Dict[int, int] = {}
         self.last_accepted: Dict[int, Fix] = {}          # slot -> latest accepted fix, never forgotten
         self.heard: Dict[int, float] = {}                # slot -> arrival time of its latest reception of any kind
+        self.t_start: Optional[float] = None             # first update: a drone of the plan never heard is silent since then
         self.status: Dict[int, GateStatus] = {}          # slot -> latest gate status it reported (payload v2)
         self.pose = PoseHistory()
         self.stats = {"received": 0, "stale": 0, "no_pose": 0, "implausible_depth": 0, "accepted": 0, "rejected": 0,
@@ -171,6 +172,8 @@ class AcousticTracker:
     def update(self, t: float, rx, p_now: np.ndarray, yaw_now: float, bound_now: Optional[float] = None) -> List[Fix]:
         """Store the own pose (and own navigation bound) of this step and turn the receptions of this frame into
         fixes."""
+        if self.t_start is None:
+            self.t_start = t
         self.pose.push(t, p_now, yaw_now, bound_now)
         new = []
         if not self.enabled:
@@ -303,9 +306,10 @@ class AcousticTracker:
     def silent(self, slot: int, t: float, after: Optional[float] = None) -> bool:
         """Not heard for the declared silence interval (``after``, default t_silent_s): a dead drone, or lost pings that
         cannot be told from one.  A receiver that hears nobody at all (a deaf receiver or a silent channel) declares
-        no one silent: the absence of every other drone is no evidence about any of them."""
+        no one silent: the absence of every other drone is no evidence about any of them.  A drone of the plan never heard is
+        silent since the receiver started (a failure before its first reception)."""
         lim = self.cfg.form.t_silent_s if after is None else after
-        if t - self.heard.get(slot, t) < lim:
+        if t - self.heard.get(slot, t if self.t_start is None else self.t_start) < lim:
             return False
         return any(t - h < lim for k, h in self.heard.items() if k != slot)     # someone else is heard: the receiver works
 
