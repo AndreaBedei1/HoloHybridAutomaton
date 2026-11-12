@@ -250,3 +250,7 @@ Accept rule D for the next steps when all hold:
 5. The 16 other scenarios: at least 15 of 16 PASS.
 Otherwise: a safety failure or a live drone declared dead rejects rule D; any other miss is analysed before CLEAN and LOW.
 
+## st1, the compact stress batch (d243840), development seeds 2000-2001, MEDIUM-ALL, written before any run
+
+17 scenarios of `STRESS_BATCH` x 2 seeds = 34 runs, chained after med11. Development evidence only: the held-out seeds are kept for the final campaign. Expected: no SAFETY_FAILURE or UNSAFE_ACTION anywhere (a safety failure is investigated at once); `st_gate_head_030` is outside the envelope at the passage speed, so only P1 and P2 are required of it; every other run PASS, any INCOMPLETE analysed and its cause stated before the batch is used to set the operating scope.
+
