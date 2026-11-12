@@ -569,6 +569,14 @@ STRESS_BATCH: Dict[str, Callable[..., Scenario]] = {
     "st_p1_two_lines_sinus": _stress(p1_two_lines, "st_p1_two_lines_sinus", CurrentField([CurrentComponent("sinusoid",
                                      drift=(0.0, 0.05, 0.0), amplitude=(0.20, 0.0, 0.0), period=30.0)]), note="0.20 m/s sinusoid along the lines"),
     "st_formation_six_oblique": _stress(formation_six, "st_formation_six_oblique", _uniform((-0.21, 0.21, 0.0)), note="6 drones, 0.30 m/s oblique"),
+    # boundary probes: beyond the steady envelope at the passage speed, declared outside it over the whole run (P1 and P2 required)
+    "st_bd_head_040": _stress(gate_single, "st_bd_head_040", _U(head=0.40), whole_window=True, note="0.40 m/s head current"),
+    "st_bd_cross_050": _stress(gate_single, "st_bd_cross_050", _U(cross=0.50), whole_window=True, note="0.50 m/s cross current"),
+    "st_bd_tail_050": _stress(gate_single, "st_bd_tail_050", _U(head=-0.50), whole_window=True, note="0.50 m/s following current"),
+    "st_bd_oblique_040": _stress(gate_single, "st_bd_oblique_040", _U(head=0.283, cross=0.283), whole_window=True, note="0.40 m/s oblique (head-left)"),
+    "st_bd_gusts_030": _stress(gate_single, "st_bd_gusts_030", CurrentField([CurrentComponent("gusts", amplitude=(0.30, 0.30, 0.0), seed=5)]),
+                               whole_window=True, note="random gusts up to 0.42 m/s"),
+    "st_bd_lost_cross_030": _stress(_gate_line3_failure, "st_bd_lost_cross_030", _U(cross=0.30), faulty=0, note="left drone lost, 0.30 m/s cross"),
 }
 
 
