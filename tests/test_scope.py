@@ -33,12 +33,14 @@ def test_above_the_frame_nothing_is_excluded():
 
 
 def _max_current(sc):
-    """Upper bound of the horizontal and downward water speed of the scenario (sum over its components)."""
+    """Upper bound of the horizontal and downward water speed of the scenario (sum over its components, steady part and
+    amplitude of the sinusoids and gusts)."""
     w_h = w_dn = 0.0
     for c in sc.sim.current.describe():
-        d = np.asarray(c.get("drift", (0.0, 0.0, 0.0)), float)
-        w_h += float(np.hypot(d[0], d[1]))
-        w_dn += max(-float(d[2]), 0.0)
+        for key in ("drift", "amplitude"):
+            d = np.asarray(c.get(key, (0.0, 0.0, 0.0)), float)
+            w_h += float(np.hypot(d[0], d[1]))
+            w_dn += abs(float(d[2]))
     return w_h, w_dn
 
 
@@ -59,4 +61,4 @@ def test_every_failure_scenario_fails_outside_the_exclusion_zone():
                 p = p0 + min(v * float(f["t_on"]), float(np.linalg.norm(u))) * u / max(float(np.linalg.norm(u)), 1e-9)
                 assert not failure_excluded(g, p, w_h, w_dn), name
                 n += 1
-    assert n >= 3                                         # lost_drone_mutex and its two rise variants
+    assert n >= 6                                         # lost_drone_mutex, its two rise variants and the stress batch

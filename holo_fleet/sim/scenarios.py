@@ -487,6 +487,91 @@ def _rise_variant(base, name: str, v: float):
     return make
 
 
+# ---------------------------------------------------------------------------------------------- compact stress batch
+# P1, P2 and P3 under currents of several strengths and directions, time-varying water, other fleet configurations and
+# permanent failures away from the gate (outside the exclusion zone of holo_fleet/scope.py, checked by tests/test_scope.py).
+# The gate geometry and the six sonars are those of the standard set.  Directions are relative to the gate axis (head:
+# against the motion; cross: towards the left of the motion).  The steady limits of the control-feasible envelope at the
+# passage speed v_pass 0.5 m/s are about 0.21 m/s head and 0.57 m/s lateral, 0.41 m/s head at the survey speed
+# (control/current_envelope.py): st_gate_head_020 sits at the boundary, st_gate_head_030 beyond it (declared outside the
+# envelope over the whole run: P1 and P2 are required, the mission is not).
+
+def _g6():
+    return {g.gate_id: g for g in load_arena_gates(HORSESHOE_TRACK)}["G06"]
+
+
+def _rel(head: float = 0.0, cross: float = 0.0) -> tuple:
+    """A world drift from components relative to the motion through G06 (head > 0 against it, cross > 0 to its left)."""
+    g = _g6()
+    ax, left = np.asarray(g.axis[:2], float), np.array([-g.axis[1], g.axis[0]])
+    v = -head * ax + cross * left
+    return (round(float(v[0]), 3), round(float(v[1]), 3), 0.0)
+
+
+def _stress(base, name: str, current: Optional[CurrentField] = None, faulty: Optional[int] = None, whole_window: bool = False,
+            note: str = ""):
+    def make(cfg: FleetConfig = DEFAULT) -> Scenario:
+        sc = base(cfg)
+        sc.name = sc.sim.name = name
+        if current is not None:
+            sc.sim.current = CurrentField([dataclasses.replace(c) for c in current.components])
+        if faulty is not None:
+            sc.sim.faults = ({"drone": f"drone_{faulty}", "type": "TOTAL_FAILURE", "t_on": 1.0, "t_off": None},)
+            sc.disturbance_windows = [(1.0, sc.duration_s)]
+        if whole_window:
+            sc.disturbance_windows = [(0.0, sc.duration_s)]
+        sc.title = f"{sc.title} [stress: {note}]" if note else sc.title
+        return sc
+    make.__name__ = name
+    return make
+
+
+def _gate_line3_failure(cfg: FleetConfig = DEFAULT) -> Scenario:
+    return lost_drone_mutex(cfg)
+
+
+def _gate_pair(cfg: FleetConfig = DEFAULT) -> Scenario:
+    return _gate_mission("gate_pair", "pair_column", 70.0, CurrentField(), cfg, title="Two drones on one lane through G06",
+                         desc="2 drones in column reach gate G06 and pass one at a time.", focus="n = 2, column order")
+
+
+def _survey_square_failure(cfg: FleetConfig = DEFAULT) -> Scenario:
+    return _lost_drone("survey_failure", 8.0, None, 80.0, CurrentField(), "Lost drone in a survey", "4 drones (square); the rear-left "
+                       "drone fails completely at t = 8 s.", "vacancy by silence and degraded formation", cfg, faulty=2)
+
+
+_U = lambda head=0.0, cross=0.0: CurrentField([CurrentComponent("uniform", drift=_rel(head, cross))])
+STRESS_BATCH: Dict[str, Callable[..., Scenario]] = {
+    # P2 and P3 at the gate: strength and direction of the water
+    "st_gate_head_020": _stress(gate_single, "st_gate_head_020", _U(head=0.20), note="0.20 m/s head current, the boundary"),
+    "st_gate_head_030": _stress(gate_single, "st_gate_head_030", _U(head=0.30), whole_window=True,
+                                note="0.30 m/s head current, beyond the envelope at v_pass"),
+    "st_gate_tail_030": _stress(gate_single, "st_gate_tail_030", _U(head=-0.30), note="0.30 m/s following current"),
+    "st_gate_cross_030": _stress(gate_single, "st_gate_cross_030", _U(cross=0.30), note="0.30 m/s cross current"),
+    "st_gate_oblique_025": _stress(gate_single, "st_gate_oblique_025", _U(head=0.177, cross=-0.177), note="0.25 m/s oblique (head-right)"),
+    # time-varying water
+    "st_gate_sinus": _stress(gate_single, "st_gate_sinus", CurrentField([CurrentComponent("sinusoid", drift=_rel(cross=0.10),
+                             amplitude=_rel(head=0.15), period=40.0)]), note="0.10 m/s cross + 0.15 m/s head sinusoid, 40 s"),
+    "st_gate_gusts": _stress(gate_single, "st_gate_gusts", CurrentField([CurrentComponent("uniform", drift=_rel(cross=0.05)),
+                             CurrentComponent("gusts", amplitude=(0.15, 0.15, 0.0), seed=7)]), note="random gusts up to 0.21 m/s, 6 s cells"),
+    # fleet configurations
+    "st_gate_pair": _stress(_gate_pair, "st_gate_pair", note="n = 2, column"),
+    "st_gate_line3_cross": _stress(line_parallel_mutex, "st_gate_line3_cross", _U(cross=0.20), note="line abreast, 0.20 m/s cross"),
+    "st_gate_stack_cross": _stress(mutex_deadlock_resolution, "st_gate_stack_cross", _U(cross=0.20), note="stacked queue, 0.20 m/s cross"),
+    # permanent failures away from the gate
+    "st_lost_left_cross": _stress(_gate_line3_failure, "st_lost_left_cross", _U(cross=0.20), faulty=0, note="left drone lost, 0.20 m/s cross"),
+    "st_lost_middle": _stress(_gate_line3_failure, "st_lost_middle", faulty=1, note="middle drone lost"),
+    "st_lost_right_tail": _stress(_gate_line3_failure, "st_lost_right_tail", _U(head=-0.20), faulty=2, note="right drone lost, 0.20 m/s following"),
+    "st_lost_survey_gusts": _stress(_survey_square_failure, "st_lost_survey_gusts", CurrentField([CurrentComponent("gusts",
+                                    amplitude=(0.15, 0.15, 0.0), seed=11)]), note="survey, rear-left drone lost at 8 s, random gusts"),
+    # P1 under water
+    "st_p1_head_on_cross": _stress(p1_head_on, "st_p1_head_on_cross", _uniform((0.0, 0.30, 0.0)), note="0.30 m/s cross current"),
+    "st_p1_two_lines_sinus": _stress(p1_two_lines, "st_p1_two_lines_sinus", CurrentField([CurrentComponent("sinusoid",
+                                     drift=(0.0, 0.05, 0.0), amplitude=(0.20, 0.0, 0.0), period=30.0)]), note="0.20 m/s sinusoid along the lines"),
+    "st_formation_six_oblique": _stress(formation_six, "st_formation_six_oblique", _uniform((-0.21, 0.21, 0.0)), note="6 drones, 0.30 m/s oblique"),
+}
+
+
 STRESS_SCENARIOS = ("lost_drone_front_rise_low", "lost_drone_mutex_rise_low", "lost_drone_mutex_rise_high")     # sensitivity, not in the acceptance matrix
 
 SCENARIOS: Dict[str, Callable[..., Scenario]] = {
@@ -511,3 +596,4 @@ SCENARIOS: Dict[str, Callable[..., Scenario]] = {
     "lost_drone_mutex_rise_low": _rise_variant(lost_drone_mutex, "lost_drone_mutex_rise_low", 0.06),
     "lost_drone_mutex_rise_high": _rise_variant(lost_drone_mutex, "lost_drone_mutex_rise_high", 0.135),
 }
+SCENARIOS.update(STRESS_BATCH)
