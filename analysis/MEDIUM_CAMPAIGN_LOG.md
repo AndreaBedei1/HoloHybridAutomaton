@@ -279,3 +279,7 @@ By the criteria written before the batch: (1) met; (2) no live drone declared de
 
 The INCOMPLETE run, `lost_drone_mutex_rise_high` s1103, is the open class of s960: drone_1 holds at s = -2.5 m with a true lateral error of 0.5-0.9 m (0.33 m already at 20 s, before the gate), the map fit has one matched echo and alternates between offsets of about -0.6 and +0.85 m (the mirror), so the localization is never validated; 7 `ENTRY_HOLD_TIMEOUT` (`loc_ok` false), one undo of 0.41 m, bar echoes classified DYNAMIC drive SEPARATION_WARNING and COLLISION_AVOIDANCE at the hold. P1 and P2 hold. In the failure scenarios the identity rule is refused until the dead drone is declared dead (`others` None for the first 70 s), so the lateral error is not corrected on the approach as it is when every drone is heard. Stated as a limit.
 
+
+## reg2 (5c80591), written before any run
+
+B2_CLEAN / CLEAN and B2_LOW / LOW-ALL, the 17 standard scenarios x seeds 1150-1151 (68 runs), chained after st1. Expected: every run PASS (reg1: 36/36 and 36/36); any other class analysed before the freeze.
