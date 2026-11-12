@@ -131,7 +131,6 @@ def analyze_run(run_dir: Path, reference: Optional[Dict] = None, cfg=DEFAULT, pr
     sc = SCENARIOS[name](cfg)
     if faults:                                   # the logged faults, with any ground-truth onset resolved (runner)
         sc.sim.faults = tuple(dict(f) for f in faults)
-    pending_trigger = [f["drone"] for f in faults if f.get("trigger") and float(f["t_on"]) >= 1e9]
 
     # ------------------------------------------------------------------ criteria v3: replay, then one horizon
     profile = profile or ((rc.get("terminal") or {}).get("profile")) or _profile_from_path(run_dir)
@@ -367,10 +366,7 @@ def analyze_run(run_dir: Path, reference: Optional[Dict] = None, cfg=DEFAULT, pr
     fs_end = [k for k in healthy if m and modes[-1, k] == FS and "sensor_fault" in fs_last.get(names[k], "")]
     caused = (_degradation_explains(term, mon, ref3, P, fs_end, healthy, t, cfg)
               if (fs_end and set(fs_end) <= noisy) else False)
-    if pending_trigger:
-        cls = "INVALID"                        # precondition unmet: the scripted ground-truth fault never fired
-        out["invalid_reason"] = "fault trigger never met: " + ", ".join(pending_trigger)
-    elif term.get("replay_consistent") is False:
+    if term.get("replay_consistent") is False:
         cls = "REPLAY_MISMATCH"                # the offline replay disagrees with the online stop: not judged
     elif not safe:
         cls = "SAFETY_FAILURE"

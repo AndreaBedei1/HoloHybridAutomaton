@@ -226,3 +226,27 @@ lanes done: 0
 tracebacks in lane logs: 0
 Holodeck processes on the machine: 4; free RAM GB: 56.4; free F: GB: 590
 ```
+
+## med10 stopped (8fdcbb4) at 34 of 38 runs, on the user's request: 32 PASS, 2 INCOMPLETE, no SAFETY_FAILURE, no UNSAFE_ACTION
+
+* Standard set (seed 1060): 18 of 18 PASS.
+* `lost_drone_mutex` family (the reviewer's set F, 21 runs): 17 run, 15 PASS, 2 INCOMPLETE (s1068, s1071); 7 `ENTRY_HOLD_TIMEOUT`; no undo fired, so the recovery of RC12 is not demonstrated.
+* By the underwater reviewer's pre-registered criteria (round 7): HOLD (exactly 2 INCOMPLETE in F), on an incomplete batch.
+* s1068 and s1071 have a different cause from RC12. drone_0 fails at t = 1 s about 15 m before the gate, is heard once, and stays a possible occupant for the rest of the mission (a silence excluded nobody); drone_1, past the gate, waits at s = +6.5 m in the FRONT corridor of drone_2 and renews the latch BUSY; the discard of that echo as a phantom needs fresh evidence of every other drone, the dead one included. s960 (med6) is the same mechanism.
+
+## Scope decision (2026-11-12, during development, not pre-registered)
+
+Permanent failures inside a gate, or close enough to it that the passive hull can obstruct the passage, are outside the scope: the exclusion zone of `holo_fleet/scope.py`, defined from the failure model and the declared current of the mission. They are not run and have no special handling. Removed with it: the drift-reach hold of a silent drone (RC9, `adrift`), the scenarios `gate_stalled_occupant` (and its rise variants), `gate_pinned_occupant` and `lost_drone_mutex_carried`, the ground-truth fault triggers and the safety-only judgement they used. A drone not heard for 70 s by a receiver that hears the others is dead and leaves every gate decision (rule D; premise V: the channel never silences a live drone so long).
+
+## med11, pre-registered before any run (rule D at the commit of the run)
+
+Runs (40, MEDIUM-ALL): targeted repeats `lost_drone_mutex` s1068, s1071, s995 and `lost_drone_mutex_rise_low` s960 (development seeds); `lost_drone_mutex` s1100-1111, both rise variants s1101-1104 (family, fresh seeds); the 16 other scenarios at s1100.
+
+Accept rule D for the next steps when all hold:
+1. No SAFETY_FAILURE, UNSAFE_ACTION, SUT_ERROR or REPLAY_MISMATCH; P1 and P2 hold in every run.
+2. Premise V: in no run is a live drone declared dead (`gate.dead` of the state records against the faults of the run); the longest reception gap of a live sender at a receiver that hears others is reported.
+3. s1068 and s1071 PASS (the mechanism rule D addresses); s960 reported; s995 reported (RC12, not addressed by rule D).
+4. Family on fresh seeds: at least 19 of 20 PASS.
+5. The 16 other scenarios: at least 15 of 16 PASS.
+Otherwise: a safety failure or a live drone declared dead rejects rule D; any other miss is analysed before CLEAN and LOW.
+

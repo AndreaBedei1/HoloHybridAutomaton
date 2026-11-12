@@ -63,9 +63,6 @@ class TerminalMonitor:
         self.reason = ""
         self.last_missing: List[str] = []
         self.met_since: Dict[str, Optional[float]] = {r: None for r in REQUIREMENTS}
-        # a scenario whose mission is physically infeasible by design (a drone stalled in the gate) is judged on
-        # safety over the whole horizon only: no requirement can be asked of the drones it blocks
-        self.safety_only = bool(getattr(scenario, "safety_only", False))
 
     def _failure(self, referee) -> Optional[str]:
         if referee.p1_violations:
@@ -108,11 +105,6 @@ class TerminalMonitor:
             elif self.met_since[r] is None:
                 self.met_since[r] = round(float(t), 2)
         self.last_missing = miss
-        if self.safety_only:
-            self.last_missing = []                  # nothing is required of drones the stalled one blocks
-            if t >= self.deadline - 1e-9:
-                return self._finish("SUCCESS", t, "safety held over the whole horizon (mission infeasible by design)")
-            return None
         if t >= self.t_nom - 1e-9 and not miss:
             return self._finish("SUCCESS", t, "every required outcome reached")
         if t >= self.deadline - 1e-9:
@@ -121,8 +113,6 @@ class TerminalMonitor:
 
     def finalize(self, t: float, referee, records: List[Dict]) -> str:
         """End of the horizon without an outcome: the deadline (the loop's last step falls one step short of it)."""
-        if self.outcome is None and self.safety_only:
-            self._finish("SUCCESS", t, "safety held over the whole horizon (mission infeasible by design)")
         if self.outcome is None:
             self._finish("DEADLINE", t, "required outcomes not all reached: " + ", ".join(self.last_missing))
         return self.outcome

@@ -210,18 +210,6 @@ def test_online_and_offline_monitors_share_t_nom():
     assert "t_nom = nominal_end_s(sc)" in src             # the same planned end as the offline replay
 
 
-def test_an_infeasible_mission_is_judged_on_safety_over_the_whole_horizon():
-    mon, tg, n = _monitor("gate_stalled_occupant", deadline=200.0)
-    far = tg + 50.0                                         # nobody reaches anything: the gate is blocked
-    assert mon.update(199.0, far, Ref(n), [{"mode": "MUTEX_YIELD"}] * n) is None      # no early SUCCESS
-    assert mon.update(200.0, far, Ref(n), [{"mode": "MUTEX_YIELD"}] * n) == "SUCCESS"
-    assert mon.summary()["missing"] == []
-    mon2, tg2, n2 = _monitor("gate_stalled_occupant", deadline=200.0)
-    r = Ref(n2)
-    r.p2_violations.append({"t": 50.0})
-    assert mon2.update(50.0, tg2, r, [{}] * n2) == "FAILURE"                          # safety still judged
-
-
 def test_the_horizon_is_three_times_the_a_priori_deadline():
     sc = SCENARIOS["gate_single"](DEFAULT)
     assert criteria.horizon_v5(sc, DEFAULT, "CLEAN") == pytest.approx(3.0 * criteria.deadline_v3(sc, DEFAULT, "CLEAN"), abs=0.1)

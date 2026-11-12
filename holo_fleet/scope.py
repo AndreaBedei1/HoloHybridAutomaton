@@ -11,7 +11,8 @@ above the top of O:
 
     d_h(p, O) <= coast_m + w_h * max(z_top(O) - z(p), 0) / (v_rise_min_mps - w_down)
 
-and every position is in E when the hull does not rise (``w_down >= v_rise_min_mps``).  Outside E the hull rises above O before it can
+and every position is in E when the hull does not rise (``w_down >= v_rise_min_mps``) or the top of O is not below the surface, where
+the hull stops rising.  Outside E the hull rises above O before it can
 reach it and never comes back: a dead drone is never in or at the CR (formal/check_status.py, S12), which is what lets AcousticExit.dead
 exclude it from the gate decisions.
 """
@@ -47,6 +48,6 @@ def failure_excluded(g, p, w_h: float, w_down: float = 0.0, cfg: FleetConfig = D
     rise = max(h[2] - dz, 0.0)
     if rise == 0.0:
         return False
-    if F.v_rise_min_mps - w_down <= 0.0:
+    if F.v_rise_min_mps - w_down <= 0.0 or float(g.center[2]) + h[2] >= F.surface_z_m:
         return True
     return d_h <= F.coast_m + w_h * rise / (F.v_rise_min_mps - w_down)

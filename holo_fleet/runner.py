@@ -59,24 +59,6 @@ def dead_record(t: float) -> Dict:
             "determinism_violations": 0, "obs_consistent": True, "observation_violations": 0, "saturated": False}
 
 
-TRIGGER_PENDING = 1e9      # t_on of a fault whose onset is a ground-truth condition (resolved and logged when met)
-
-
-def _triggered(f, sc, names, truth, cfg=DEFAULT) -> bool:
-    """Simulator-side fault trigger on ground truth: ``mid_cr:<gate>`` - the drone's centre is in the second half of
-    the critical region (0 <= s <= cr_half_len, inside its width and height): it stops there for good; ``queue:<gate>`` - it
-    has reached the queue line."""
-    kind, _, gid = str(f["trigger"]).partition(":")
-    g = next((x for x in sc.judged_gates if x.gate_id == gid), None)
-    if kind not in ("mid_cr", "queue") or g is None:
-        return False
-    G = cfg.gate
-    s, l, dz = (float(v) for v in g.to_gate_frame(np.asarray(truth.positions[names.index(f["drone"])], float)))
-    if kind == "queue":                                # stopped-and-carried case: dies on arrival at its queue line
-        return s >= -(G.cr_half_len + 4.6) and abs(l) <= 6.0
-    return 0.0 <= s <= G.cr_half_len and abs(l) <= G.cr_half_width and abs(dz) <= G.cr_half_height
-
-
 def beacon_identities(plans, names, plan) -> dict:
     """Pinger code (drone index) -> slot, for the receiver flying ``plan``: only the drones of its own formation (the
     plans built for one formation share its path).  Slot indices restart in every formation, so a code of another
@@ -181,14 +163,6 @@ def run(name: str, out_root: Path, headless: bool = True, run_id: Optional[str] 
         for step in range(n_steps):
             step_events = []
             for i, f in enumerate(getattr(sc.sim, "faults", ())):         # ground truth, never seen by a controller
-                if f.get("trigger") and f["t_on"] >= TRIGGER_PENDING and truth_prev is not None:
-                    if _triggered(f, sc, sim.names, truth_prev, cfg):      # e.g. "mid_cr:G06": stalled occupant
-                        f["t_on"] = round(sim.t, 2)
-                        if ref.permanent is not None:
-                            ref.permanent[sim.names.index(f["drone"])] = f["t_on"]
-                        tmp = out / "run_config.json.tmp"        # atomic: the resolved onset replaces the file
-                        tmp.write_text(json.dumps(cfg_dump, indent=1, default=_jsonable), encoding="utf-8")
-                        tmp.replace(out / "run_config.json")
                 on = f["t_on"] <= sim.t and (f.get("t_off") is None or sim.t < f["t_off"])
                 if on != fault_on[i]:
                     fault_on[i] = on

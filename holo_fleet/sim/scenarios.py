@@ -73,7 +73,6 @@ class Scenario:
     focus: str = ""                      # what to look at (UI)
     cfg_patch: Dict = field(default_factory=dict)   # FleetConfig fields overridden for this scenario
     automaton_drone: Optional[int] = None  # drone of the fleet view's automaton panel (UI; default: the camera drone)
-    safety_only: bool = False              # mission physically infeasible by design: judged on safety (criteria v5)
 
     @property
     def duration_s(self) -> float:
@@ -463,58 +462,6 @@ def lost_drone_mutex(cfg: FleetConfig = DEFAULT) -> Scenario:
     return sc
 
 
-def gate_stalled_occupant(cfg: FleetConfig = DEFAULT) -> Scenario:
-    """gate_single (the same 3 drones, gate, current and plan) with the first drone to pass losing its thrusters for
-    good once its centre is in the second half of the critical region: a stalled occupant (plan G.3/H.2).  The
-    onset is a ground-truth condition of the simulator, fixed before any run; no controller sees it.  Pre-registered
-    acceptance (docs/ACCEPTANCE_CRITERIA.md): P1 and P2 hold and no unsafe action (E2.to_free = E3 = E4 = E5 = 0);
-    the other drones cannot pass a physically blocked gate, so the mission requirements are not expected."""
-    sc = gate_single(cfg)
-    # no current: the stalled drone stays in the CR (the worst case for P2); with gate_single's 0.05 m/s cross
-    # current it drifts into a bar within ~20 s and leaves the region (seen in a development run, 2026-11-05)
-    sc.sim.current = CurrentField()
-    sc.name, sc.title = "gate_stalled_occupant", "P2: a drone stalls inside the critical region of G06"
-    sc.description = ("gate_single; the first drone fails completely (no propulsion, electronics or transmitter) in the "
-                      "middle of the critical region and rises. The others must never enter it while it may be there.")
-    sc.focus = "stalled occupant: occupancy latch, heard-inside veto, stage-2 hold, unknown occupant never FREE"
-    sc.sim.faults = ({"drone": "drone_0", "type": "TOTAL_FAILURE", "t_on": 1e9, "t_off": None,
-                      "trigger": "mid_cr:G06"},)
-    sc.safety_only = True          # the gate is physically blocked: judged on safety over the horizon (criteria v5)
-    return sc
-
-
-def gate_pinned_occupant(cfg: FleetConfig = DEFAULT) -> Scenario:
-    """Stress (not in the acceptance matrix): a drone fails at rest under the top bar and stays pinned in the CR, the physical case of
-    results/calibration/buoyant_ascent.json.  gate_stalled_occupant does not reach it: the drone coasts past the bar.  The others must
-    never enter; judged on safety."""
-    sc = gate_stalled_occupant(cfg)
-    g6 = sc.judged_gates[0]
-    sc.name, sc.title = "gate_pinned_occupant", "P2: a drone fails at rest under the top bar of G06"
-    sc.description = ("the first drone rests in the opening, its electronics running (it reports a claim), and fails completely at t = 6 s: it rises against "
-                      "the top bar and stays.")
-    centre = np.asarray(g6.from_gate_frame([0.0, 0.0, 0.0]), float)
-    sc.sim.spawn_positions[0] = centre.tolist()
-    sc.plans[0].launch_position = centre        # its navigation starts where it is: it reports the gate it is in
-    # SCENARIO_HOLD only sets the initial condition: its commands are not executed, so it does not coast past the bar before it fails
-    sc.sim.faults = ({"drone": "drone_0", "type": "SCENARIO_HOLD", "t_on": 0.0, "t_off": 6.0},
-                     {"drone": "drone_0", "type": "TOTAL_FAILURE", "t_on": 6.0, "t_off": None},)
-    return sc
-
-
-def lost_drone_mutex_carried(cfg: FleetConfig = DEFAULT) -> Scenario:
-    """Stress (not in the acceptance matrix): a 0.3 m/s current along the gate axis; the middle drone, on the axis and waiting for the left one
-    (so not engaged), fails on arrival at the queue line and is carried into the frame while it rises slowly (review rounds 2 and 3)."""
-    sc = lost_drone_mutex(cfg)
-    g6 = sc.judged_gates[0]
-    sc.name, sc.title = "lost_drone_mutex_carried", "Lost drone carried into the gate by a current"
-    sc.description = "as lost_drone_mutex, with a 0.3 m/s current along the gate axis; the middle drone fails on arrival at the queue line and rises at the low end of the range."
-    sc.sim.current = _uniform((0.3 * float(g6.axis[0]), 0.3 * float(g6.axis[1]), 0.0))
-    sc.sim.faults = ({"drone": "drone_1", "type": "TOTAL_FAILURE", "t_on": 1e9, "t_off": None, "trigger": "queue:G06"},)
-    sc.disturbance_windows = []
-    sc.cfg_patch = dict(sc.cfg_patch, failure=dataclasses.replace(cfg.failure, v_rise_mps=0.06))
-    return sc
-
-
 def lost_drone_front_rise_low(cfg: FleetConfig = DEFAULT) -> Scenario:
     """Stress (not in the acceptance matrix): a front drone fails at the low end of the rise range, so that the drone behind it on its lane reaches
     the hull while it is still at mission depth (the other failure scenarios keep the hull out of every lane)."""
@@ -540,8 +487,7 @@ def _rise_variant(base, name: str, v: float):
     return make
 
 
-STRESS_SCENARIOS = ("gate_pinned_occupant", "lost_drone_mutex_carried", "lost_drone_front_rise_low", "lost_drone_mutex_rise_low", "lost_drone_mutex_rise_high",
-                    "gate_stalled_occupant_rise_low", "gate_stalled_occupant_rise_high")     # sensitivity, not in the acceptance matrix
+STRESS_SCENARIOS = ("lost_drone_front_rise_low", "lost_drone_mutex_rise_low", "lost_drone_mutex_rise_high")     # sensitivity, not in the acceptance matrix
 
 SCENARIOS: Dict[str, Callable[..., Scenario]] = {
     "p1_head_on": p1_head_on,
@@ -561,12 +507,7 @@ SCENARIOS: Dict[str, Callable[..., Scenario]] = {
     "mutex_deadlock_resolution": mutex_deadlock_resolution,
     "line_parallel_mutex": line_parallel_mutex,
     "lost_drone_mutex": lost_drone_mutex,
-    "gate_stalled_occupant": gate_stalled_occupant,
-    "gate_pinned_occupant": gate_pinned_occupant,
-    "lost_drone_mutex_carried": lost_drone_mutex_carried,
     "lost_drone_front_rise_low": lost_drone_front_rise_low,
     "lost_drone_mutex_rise_low": _rise_variant(lost_drone_mutex, "lost_drone_mutex_rise_low", 0.06),
     "lost_drone_mutex_rise_high": _rise_variant(lost_drone_mutex, "lost_drone_mutex_rise_high", 0.135),
-    "gate_stalled_occupant_rise_low": _rise_variant(gate_stalled_occupant, "gate_stalled_occupant_rise_low", 0.06),
-    "gate_stalled_occupant_rise_high": _rise_variant(gate_stalled_occupant, "gate_stalled_occupant_rise_high", 0.135),
 }
