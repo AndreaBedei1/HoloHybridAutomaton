@@ -250,7 +250,32 @@ Accept rule D for the next steps when all hold:
 5. The 16 other scenarios: at least 15 of 16 PASS.
 Otherwise: a safety failure or a live drone declared dead rejects rule D; any other miss is analysed before CLEAN and LOW.
 
-## st1, the compact stress batch (d243840), development seeds 2000-2001, MEDIUM-ALL, written before any run
+## st1, the compact stress batch (5c80591; launched there instead of d243840 before any run, to include the never-heard fix and the silence log), development seeds 2000-2001, MEDIUM-ALL, written before any run
 
 17 scenarios of `STRESS_BATCH` x 2 seeds = 34 runs, chained after med11. Development evidence only: the held-out seeds are kept for the final campaign. Expected: no SAFETY_FAILURE or UNSAFE_ACTION anywhere (a safety failure is investigated at once); `st_gate_head_030` is outside the envelope at the passage speed, so only P1 and P2 are required of it; every other run PASS, any INCOMPLETE analysed and its cause stated before the batch is used to set the operating scope.
+
+
+### 2026-11-12 19:49 med11 @ daeae63
+```
+PASS 31
+lanes done: 0
+tracebacks in lane logs: 0
+Holodeck processes on the machine: 4; free RAM GB: 53.3; free F: GB: 577
+```
+
+### 2026-11-12 20:04 med11 @ daeae63 (lanes ended or 6 h limit)
+```
+PASS 39
+INCOMPLETE 1
+20:02:09 B2_MEDIUM MEDIUM-ALL             lost_drone_mutex_rise_high       s1103 INCOMPLETE       P1 2.666 fail ['progress', 'gate'] wall 2221.9s exit 0
+lanes done: 4
+tracebacks in lane logs: 0
+Holodeck processes on the machine: 1; free RAM GB: 58.9; free F: GB: 577
+```
+
+## med11 closed (daeae63): 39 PASS, 1 INCOMPLETE of 40, no SAFETY_FAILURE, UNSAFE_ACTION, SUT_ERROR or REPLAY_MISMATCH. Rule D accepted
+
+By the criteria written before the batch: (1) met; (2) no live drone declared dead in any of the 40 runs (`gate.dead` against the faults; the silence of each sender is logged only from 5c80591, so the longest live gap is not measured here); (3) s1068, s1071, s960 and s995 PASS; (4) family on fresh seeds 19 of 20 PASS; (5) the 16 other scenarios 16 of 16 PASS.
+
+The INCOMPLETE run, `lost_drone_mutex_rise_high` s1103, is the open class of s960: drone_1 holds at s = -2.5 m with a true lateral error of 0.5-0.9 m (0.33 m already at 20 s, before the gate), the map fit has one matched echo and alternates between offsets of about -0.6 and +0.85 m (the mirror), so the localization is never validated; 7 `ENTRY_HOLD_TIMEOUT` (`loc_ok` false), one undo of 0.41 m, bar echoes classified DYNAMIC drive SEPARATION_WARNING and COLLISION_AVOIDANCE at the hold. P1 and P2 hold. In the failure scenarios the identity rule is refused until the dead drone is declared dead (`others` None for the first 70 s), so the lateral error is not corrected on the approach as it is when every drone is heard. Stated as a limit.
 
