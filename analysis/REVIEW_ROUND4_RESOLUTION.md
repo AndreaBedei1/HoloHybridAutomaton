@@ -85,3 +85,14 @@ Disclosure. `check_status.py` has mutation runs for S1, S3, S4, S9, S11 and S12.
 | R3 MAJOR, the batch must show `lost_drone_mutex` completing over enough seeds | The batch has 12 seeds of it plus 4 each of the two rise variants; completion, timeouts and recurrence of a wrong fit reported |
 | A hold without validation does not refute a correction | Wording corrected: a recovery heuristic |
 | MINOR figures, corrections by type and initial error, s960 declared | Done (design note, GUARANTEES); the refusal reason is now logged |
+
+## Round 7 re-check, underwater (at 8fdcbb4; appended to `review_round7_underwater.md`)
+
+| Finding | Resolution |
+|---|---|
+| M1 MAJOR, the undo also took corrections made after the timeout | Fixed: the sum is sealed at the timeout and undone at the give-up edge; a validated fit or a measured crossing drops the seal |
+| M2 MAJOR, the figure 14/10/4 and "did restore it" not reproducible | Removed; the row states the one case that matters in replay |
+| R3, criteria pre-registered by the reviewer before any med10 result | To be judged on med10. Runs with a correction between a timeout and its give-up edge need repeating on the fixed code |
+| MINOR wording (reach per step, one-step truncation, the noise-free case is the far side of a bar, 0.73 m, the `GAIN` comment) | Done |
+
+Disclosure. The reviewer's priority call (`SetPriorityClass` through `ctypes` without declared types) fails silently on this machine: its scripts ran at normal priority in this re-check and in earlier rounds where it used that call, against the instruction. It lowered the long replay by hand after about 13 minutes; that replay held about 15 GB with 44 GB free. Whether it slowed a simulation cannot be told.

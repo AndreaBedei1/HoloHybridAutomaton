@@ -322,7 +322,7 @@ class Perception:
 
     def undo_unconfirmed_corrections(self):
         """A hold at the gate ended with no valid localization: the corrections of this commitment with no validated fit are undone (structure_aiding, module docstring); the applied step, or None."""
-        c = self.aiding.take_unconfirmed()
+        c = self.aiding.take_sealed()
         if c is not None:
             self.apply_position_correction(c)
         return c

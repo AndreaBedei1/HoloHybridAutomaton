@@ -64,3 +64,94 @@ They rescue a drone with a large error and damage one with a small error. Harm i
 ## Not verified
 
 No engine run at `9e9cade`. The working tree carries uncommitted edits by someone else (the undo deferred to the give-up edge in `controller.py`, comments in `structure_aiding.py` and `config.py`); they are not part of this review and do not touch the scoring code my replays used. Replays are open-loop and reconstruct the unconfirmed sum from log fields. The step-cap effect is one correction at a time; its closed-loop value is untested. `reg1` was partial and at `3e3db7b`: in its 20 gate runs at CLEAN and LOW, no identity or axial corrections and no hold timeouts, so the new path did not run there [M].
+
+## Re-check at 8fdcbb4
+
+Tags as above. Code and tests taken with `git archive` of `8fdcbb4`; `HEAD` was `8fdcbb4` with these files clean throughout. No `med10` result was read. Read-only; no simulator; scripts in my own folder `r7_recheck`. I did not open any formal review.
+
+**Verdict. R1 and R2 are implemented as I meant, and the cap does what it was for. Freeze on `8fdcbb4` exactly as committed: no, for one small code change (M1) and one correction to GUARANTEES (M2). With those two, yes, subject to `med10` and the criteria below.** No BLOCKER. If the owner will not change the code again, `8fdcbb4` can be frozen only with M1 declared as a limit, giving the s981 number.
+
+M1 comes from the deferral of the undo to the give-up edge. The deferral is right in itself (never move the estimate while committed). But the sum is read at the edge, so it also takes corrections made after the timeout, which the timeout says nothing about. In the logs this removes a correct fit: 0.04 m becomes 1.18 m. Reading the sum at the timeout and applying it at the edge removes that case and changes no other.
+
+`med10` transfers to the fixed commit for every run in which no correction was applied between a `loc_ok`-false timeout and its give-up edge, because the two codes then behave the same. Only the runs where that fails need rerunning.
+
+### Pre-registration of the evidence for R3
+
+Written and appended to this file before reading any `med10` result. None of my scripts in this re-check opens `med10`; the baseline counts come from `med4`-`med9`.
+
+Family F: `lost_drone_mutex` seeds 1060-1072 (13 runs) and the two rise variants, seeds 1061-1064 (8 runs), 21 runs. Whole batch: 18 standard + 12 + 8 = 38 runs. A run classed INVALID is rerun on the same seed and does not count. An incomplete batch cannot be accepted.
+Baseline of F, `med5`-`med9` [M]: 24 of 27 PASS, 3 INCOMPLETE (s960 rise_low, s981, s995), 22 hold timeouts, 3 runs with more than 2, the wrong-fit signature in 1 run. With `med4`: 26 of 30 PASS, 27 timeouts, 4 runs with more than 2.
+Wrong-fit signature: an identity or axial correction after which the true horizontal error is at least 1.2 m and has risen by at least 0.3 m.
+
+**ACCEPT, all of:**
+
+- A1. All 38 runs: 0 SAFETY_FAILURE, 0 UNSAFE_ACTION, 0 SUT_ERROR; P2 holds everywhere.
+- A2. F: at least 20 of 21 PASS.
+- A3. F: at most 10 `ENTRY_HOLD_TIMEOUT` in total and at most 1 run with more than 2.
+- A4. Signature: in no run of F; across the 38 at most 1, and that run PASSES.
+- A5. The 18 standard runs: at least 17 PASS.
+- A6. Each `UNCONFIRMED_CORRECTIONS_UNDONE` of at least 0.3 m: true error afterwards at most 0.1 m above the error before in at least 2 of 3 such events, and none worse by more than 0.5 m. If no such event occurs, recovery by the undo is **not demonstrated**: this does not block the freeze, and the report must say so.
+
+**HOLD** (no freeze; root cause, then up to 12 fresh seeds of `lost_drone_mutex`): exactly 2 INCOMPLETE in F, or A3, A5 or A6 failed with no reject condition.
+
+**REJECT, any of:** a SAFETY_FAILURE or UNSAFE_ACTION; 3 or more INCOMPLETE in F; a run of F INCOMPLETE with the signature; an undo worse by more than 0.5 m in a run that ends INCOMPLETE.
+
+Power, so that nobody reads more into it [D]: P(at least 20 of 21) is 0.31 at the baseline failure rate of 1 in 9, 0.72 at 5 %, 0.93 at 2 %. 21 runs cannot show that the failure rate fell. Acceptance means "not worse, and the mechanism did not recur".
+
+### 1. R1 and R2 as committed
+
+**Implemented as meant.** [M]
+
+- R1: the sum is reset at the commit edge (`start_commitment`), by a validated fit, and by a measured crossing. R2: the cap acts only on the path with `safe` false; validated fits are not capped; the capped value, not the raw one, enters the sum (`structure_aiding.py` lines 394-403).
+- `tests/test_unconfirmed_corrections.py`: 11 of 11 pass on the archive of `8fdcbb4`.
+- `reg1` (`3e3db7b`) still stands for these paths [D]: CLEAN 36/36 and LOW 36/36 PASS, 0 hold timeouts, so the undo never acts. The only identity steps are 0.416, 0.297 and 0.389 m, all below the cap. The two MEDIUM `lost_drone_mutex_carried` runs in `reg1` (s996, s997, INCOMPLETE) are outside that claim.
+
+**Replays through the committed `StructureAiding`, cap on and off.** [D] Open loop: logged echoes along the logged trajectory. Whether the identity rule is available can only be bracketed: "logged" allows it only at steps where the log shows it, "always" at every step. The truth lies between.
+
+| Case, \|e\| [m] at +5 / +20 / +35 s after the logged fit | Uncapped | Capped, logged | Capped, always |
+|---|---|---|---|
+| s995 trigger (start 76.4 s, the two wrong fits) | 2.74 / 2.68 / 2.56 | 1.08 / 1.02 / 0.89 | 0.58 / 0.03 / 0.11 |
+| s981 rescue (1.32 m initial) | 0.08 / 0.10 / 0.09 | 0.73 / 0.63 / 0.59 | 0.14 / 0.10 / 0.14 |
+
+- **Does the cap harm the rescues? Not materially.** Only 6 identity fits at 0.7 m or more lie outside the carried stress runs, and one of those is the s995 wrong fit. In the other four besides s981, the change at +35 s is -0.14 to +0.04 m in both availability modes. s981 is the one that depends on availability: 0.59 m if the rule is lost after the first step, 0.14 m if not. Summary over the 6: at +5 s median 0.15 m uncapped, 0.36 m capped and logged, 0.17 m capped and always; cases still above 0.5 m at +35 s: 4, 4, 2.
+- **Repeated capped steps towards a wrong pose: not seen.** On the s995 trigger the uncapped replay reproduces the logged failure (2.74 m). With the rule as logged only the first capped step lands, in the wrong direction (1.08 m). With the rule always available the estimate reaches the truth after three steps (0.58 m at +5 s, 0.03 m at +20 s). That is one case.
+- Over 14 wrong fits from a small error (below 0.2 m, then worse by more than 0.4 m): median of the peak error 1.00 m uncapped, 0.63 capped; worst 1.50 and 1.25. Outside the carried runs (8 cases): median 0.82 and 0.51, worst 1.18 and 0.69. Final error at +35 s, capped against uncapped: 6 better by more than 0.1 m, 4 worse, 4 unchanged. In the 4 worse the uncapped replay made 2 to 4 corrections that removed the jump, and the capped one ended at 0.45 to 1.10 m after 1 to 3 steps. 2 of the 14 (carried s988) produce no correction in replay, capped or not, and count as unchanged.
+- Carried s988 (hull at the bar, 100-200 s): 5 corrections uncapped, 2 capped; peak 1.21 and 0.87 m; but median error 0.44 and 0.76 m. Fewer flips, not a smaller error.
+- A replay started at 60 s does **not** reproduce s995: no correction with the rule as logged, and with it always available the fit acts before its premise existed (71.1 s) and stays right. That window says nothing about the cap. The sensitivity to the starting state is itself a warning.
+
+### 2. M1: the undo takes corrections made after the timeout
+
+The undo as committed on the logged corrections of `med5`, `med6`, `med7`, `med9`, against the sum read at the timeout and applied at the edge. [D]
+
+| Semantics, 23 timeouts with `loc_ok` false | With something to undo | Improved / worsened | Worst | At least 0.3 m and worse by over 0.1 m |
+|---|---|---|---|---|
+| As committed (read at the edge) | 9 | 4 / 5 | +1.14 m | 1 of 8 |
+| Sealed at the timeout | 8 | 4 / 4 | +0.08 m | 0 of 7 |
+
+- The only event that differs is med7 `lost_drone_mutex` s981 drone_1: timeout at 324.3 s, a correct identity fit at 339.0 s (error 1.32 to 0.17 m), give-up edge at 342.4 s. As committed the undo removes it; error 0.04 to 1.18 m. With the cap the step would have been 0.5 m at a time, so the loss is 0.5 m if one step landed and up to 1.15 m if all did.
+- Evidence is thin in both directions. All 8 events of 0.3 m or more come from **two runs**. One rescue (s995, first timeout, 2.74 to 0.46 m) and one harm (s981). The other 6 are later timeouts of s995 replaying a stuck state that the first undo would have prevented; they are not independent and the error barely moves (2.70 to 2.71, 2.57 to 2.66).
+- Limit of the proposal: one logged case supports it. The argument is that a timeout condemns what preceded it, not what follows.
+
+### 3. The rewritten statements
+
+- **Physically accurate** [M/D]: the undo after the give-up edge and never while committed; step at most 0.5 m; the sum unbounded until a validated fit (config comment); a hold without validation does not refute a correction; separation uses raw ranges while target selection depends on the pose; admission needs a validated fit and the past-centre path does not; the undo can remove a correct correction (s981); 8 timeouts in 732 s, and true lateral offset at those timeouts +3.38 to +3.74 m, so "3.5 m off the axis" holds.
+- **Not accurate, M2.** GUARANTEES row 81: "14 timeouts with something to undo, 10 improved, 4 worsened by 0.21 m or less". I cannot reproduce it. I get 8 to 11 events under five semantics (read at the edge, sealed, at the timeout instant; with and without the reset at the commit edge), never 14/10/4. It also contradicts the same row's s981 sentence: at committed semantics one undo worsens by 1.14 m. "In the logged cases with a large error it did restore it" holds for one event. If the count used other batches or another definition, it should say so; otherwise use the table above.
+- **"So a wrong fit stays within reach of a later one"** (design note, docstring): true per step only. The replay supports it on one trigger; there is no bound on the sum. Say "per step".
+- **"Open-loop replay: 44 worse and 75 better..."**: my round-7 figure, quoted correctly, but it is a one-step truncation of the logged corrections with no new fit. The replays above are the ones with a new fit.
+- **"Also without noise (RC12)"** (row 81): the noise-free test covers the far side of a bar only. The mirrored near-tie was measured on noisy logged echoes. The design note has it right.
+- First fit "0.73 m from the mirror": I measured 0.62 m (definition-dependent, no consequence).
+- `GAIN = 1.0` comment, "a partial step can stop at an ambiguous pose": the cap now makes partial steps. Two of the 4 worse cases above (s932, s995 `gate_stalled_occupant`) stop after one capped step at about 0.5 m, consistent with that, not shown to be it. Worth one sentence.
+
+### 4. What must be fixed first
+
+- **BLOCKER: none.** Separation is untouched by R1, R2 or the undo.
+- **MAJOR M1 (code).** Seal the sum when the timeout fires, apply it at the give-up edge, drop it on a validated fit or a measured crossing. Add a test: a correction after the timeout survives the undo.
+- **MAJOR M2 (documents).** Replace or source the 14/10/4 figure and "did restore it".
+- **R3 stays open** until `med10` is judged against the pre-registration above; the report must not claim the s995 mechanism fixed before that.
+- **MINOR.** The wording items of section 3.
+
+### Not verified
+
+No engine run at `8fdcbb4`. Replays are open-loop: the changed estimate does not feed back into the trajectory, so they show what the fit does with those echoes, not what the fleet would do. The corrections in section 2 were logged by older code, without the cap. Sealing is proposed and evaluated on logs only; I did not implement or run it. No check of the formal side of the proposal (N13).
+
+Process: the call I used for below-normal priority in my scripts (`SetPriorityClass(GetCurrentProcess(), 0x4000)` through `ctypes` without declared types) fails silently on this machine with error 6, invalid handle. My scripts therefore ran at normal priority, in this re-check and in the earlier rounds where I used the same call. I noticed it during this re-check and lowered the long replay by hand after about 13 minutes. I cannot tell whether this slowed any simulation.

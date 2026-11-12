@@ -76,10 +76,11 @@ widened), so a vehicle in front of a bar stays an obstacle (tests/test_structure
 
 A correction accepted without a validated fit (the identity rule, the along-axis correction) is a hypothesis.  Near the gate the sectors see the bars at the edge of their cones and a fit mirrored
 about the axis can explain the echoes about as well as the true pose (RC12, MEDIUM-ALL lost_drone_mutex s995: two such fits moved the estimate 2.2 m the wrong way, beyond the reach MAX_CORR_M of any later
-fit).  So the step of a correction under the identity rule is capped (IDENTITY_STEP_M): a wrong fit stays within reach of a later one; a right one arrives in steps.  ``unconfirmed`` is the sum of these
+fit).  So the step of a correction under the identity rule is capped (IDENTITY_STEP_M): one wrong step stays within reach of a later fit; a right correction arrives in steps.  ``unconfirmed`` is the sum of these
 corrections since the start of the current commitment or the last validated fit, whichever is later (a measured crossing also ends it; those made before the commitment include real drift corrected during the
-wait at the queue).  When a hold at the gate ends with no valid localization ``take_unconfirmed`` undoes them, after the give-up edge (DroneController._drain_flow_events,
-Perception.undo_unconfirmed_corrections).  This is a recovery heuristic: a hold without validation does not refute a correction.  The bound grows by the step.
+wait at the queue).  When a hold at the gate ends with no valid localization the sum is sealed (``seal_unconfirmed``) and undone after the give-up edge (``take_sealed``; DroneController._drain_flow_events,
+Perception.undo_unconfirmed_corrections); what is corrected between the two stays (med7 s981: a right fit between the timeout and the edge would have been removed), and a validated fit or a measured crossing
+drops the seal.  This is a recovery heuristic: a hold without validation does not refute a correction.  The bound grows by the step.
 """
 
 from __future__ import annotations
@@ -105,7 +106,7 @@ IDENTITY_STEP_M = 0.5    # largest step of a correction under the identity rule 
 CONSIST_M = 0.15
 CONSIST_N = 4
 AXIAL_AMBIGUITY_M = 0.04   # a single range: candidates within this of the best residual
-GAIN = 1.0               # the offset confirmed in CONSIST_N updates is applied in full (a partial step can stop at an ambiguous pose)
+GAIN = 1.0               # the offset confirmed in CONSIST_N updates is applied in full (a partial step can stop at an ambiguous pose), but for the cap IDENTITY_STEP_M of a fit under the identity rule
 COARSE_M, FINE_M = 0.3, 0.05
 POINT_STRIDE = 3        # bar sample points used (every 3rd of the classifier's, ~3 cm apart)
 HULL_LAT_M = float(HULL_HALF[1] + HULL_HALF[0] * np.sin(np.radians(5.0)))   # lateral half-extent, yaw within 5 deg
@@ -141,6 +142,7 @@ class StructureAiding:
         self._ax_touched = False
         self.applied_m = 0.0                     # total applied correction (for the log)
         self.unconfirmed = np.zeros(2)           # sum of the corrections since the last validated fit (module docstring)
+        self.sealed: Optional[np.ndarray] = None # that sum when a hold ended with no valid localization: to be undone after the give-up edge
         self.last: Optional[Dict] = None
         self.pts = np.asarray(clf.struct_pts)[::POINT_STRIDE]
         self.acq_pts = acquisition_distance(cfg, pts=self.pts) if len(self.pts) else 0.0
@@ -241,10 +243,21 @@ class StructureAiding:
         """Only the corrections of the current commitment can be undone (module docstring)."""
         self.unconfirmed = np.zeros(2)
 
-    def take_unconfirmed(self) -> Optional[np.ndarray]:
-        """The correction that undoes every correction since the last validated fit (None: there is none to undo); they are forgotten."""
-        c = -self.unconfirmed
+    def forget_unconfirmed(self) -> None:
+        """A validated fit or a measured crossing: nothing before it is left to undo."""
         self.unconfirmed = np.zeros(2)
+        self.sealed = None
+
+    def seal_unconfirmed(self) -> None:
+        """A hold ended with no valid localization: what is undone after the give-up edge is the sum at this moment."""
+        self.sealed = self.unconfirmed.copy()
+
+    def take_sealed(self) -> Optional[np.ndarray]:
+        """The correction that undoes the sealed sum (None: there is none to undo); the sums are forgotten."""
+        if self.sealed is None:
+            return None
+        c = -self.sealed
+        self.forget_unconfirmed()
         self.axial_total = 0.0
         self.recent.clear()
         self.recent_ax.clear()
@@ -380,7 +393,7 @@ class StructureAiding:
         if safe and float(np.linalg.norm(d)) <= CONSIST_M:   # the current estimate is confirmed (consistency band)
             self.loc_t, self.loc_u = t, u
             self.axial_total = 0.0
-            self.unconfirmed = np.zeros(2)
+            self.forget_unconfirmed()
         if not (np.isfinite(c0[0]) and c0[0] - cost_k >= GAIN_MIN):
             self.recent.clear()
             return None
@@ -398,7 +411,7 @@ class StructureAiding:
         if safe:
             self.loc_t, self.loc_u = t, u           # the corrected estimate is the confirmed one
             self.axial_total = 0.0
-            self.unconfirmed = np.zeros(2)
+            self.forget_unconfirmed()
         else:
             self.unconfirmed += corr
         return np.array([corr[0], corr[1], 0.0])

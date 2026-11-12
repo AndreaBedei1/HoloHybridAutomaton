@@ -31,9 +31,10 @@ def test_an_along_axis_correction_without_a_validated_fit_can_be_undone():
     p_est = _world(-3.3, 0.0)
     p = _axial_run(aid, clf, _world(-2.7, 0.0), p_est, _R(), others=[])
     assert not np.allclose(p, p_est) and aid.loc_t < 0.0
-    c = aid.take_unconfirmed()
+    aid.seal_unconfirmed()
+    c = aid.take_sealed()
     assert np.allclose(p + c, p_est, atol=1e-9)
-    assert aid.take_unconfirmed() is None and aid.axial_total == 0.0
+    assert aid.take_sealed() is None and aid.axial_total == 0.0
     assert not aid.recent and not aid.recent_ax
 
 
@@ -49,7 +50,8 @@ def test_a_correction_under_the_identity_rule_can_be_undone_also_when_it_went_th
     assert np.linalg.norm(applied) > 0.3 and aid.loc_t < 0.0 and aid.last["identified"]
     assert np.allclose(aid.unconfirmed, applied[:2])
     assert abs(GATE.to_gate_frame(p)[1] - 1.8) > abs(GATE.to_gate_frame(p_est)[1] - 1.8)          # it did go the wrong way
-    assert np.allclose(p + aid.take_unconfirmed(), p_est, atol=1e-9)
+    aid.seal_unconfirmed()
+    assert np.allclose(p + aid.take_sealed(), p_est, atol=1e-9)
 
 
 def _validated(aid, clf, offset):
@@ -66,15 +68,17 @@ def _validated(aid, clf, offset):
 def test_a_validated_fit_in_the_consistency_band_confirms_the_corrections_before_it():
     clf, aid = _aid()
     aid.unconfirmed = np.array([0.1, -0.7])
+    aid.seal_unconfirmed()
     assert not _validated(aid, clf, 0.05)
-    assert aid.valid(11.0) and aid.take_unconfirmed() is None
+    assert aid.valid(11.0) and aid.sealed is None and np.allclose(aid.unconfirmed, 0.0)
 
 
 def test_a_validated_correction_confirms_the_corrections_before_it():
     clf, aid = _aid()
     aid.unconfirmed = np.array([0.1, -0.7])
+    aid.seal_unconfirmed()
     assert _validated(aid, clf, 0.45)
-    assert aid.valid(11.0) and aid.take_unconfirmed() is None
+    assert aid.valid(11.0) and aid.sealed is None and np.allclose(aid.unconfirmed, 0.0)
 
 
 def _controller():
@@ -97,17 +101,18 @@ def test_the_undo_waits_for_the_give_up_edge_and_then_moves_the_estimate_and_the
     ctl.was_committed = True
     _timeout(ctl)
     ctl._drain_flow_events(100.0, Mode.MUTEX_PASS)
-    assert np.allclose(ctl.perception.nav.state.p, p0) and not shifted and ctl.undo_pending      # still committed: nothing moves
+    assert np.allclose(ctl.perception.nav.state.p, p0) and not shifted and ctl.perception.aiding.sealed is not None      # still committed: nothing moves
+    ctl.perception.aiding.unconfirmed += np.array([0.3, 0.3])               # a correction after the end of the hold is not undone
     ctl._drain_flow_events(100.1, Mode.MUTEX_PASS)
     assert np.allclose(ctl.perception.nav.state.p, p0)
     ctl.ha.committed = False
     ctl._drain_flow_events(101.0, Mode.MUTEX_APPROACH)
     step = np.array([-0.25, 2.2, 0.0])
-    assert np.allclose(ctl.perception.nav.state.p - p0, step) and not ctl.undo_pending
+    assert np.allclose(ctl.perception.nav.state.p - p0, step) and ctl.perception.aiding.sealed is None
     assert len(shifted) == 1 and np.allclose(shifted[0], step)
     assert abs(ctl.perception.nav_bound.horizontal - (b0 + float(np.hypot(0.25, 2.2)))) < 1e-9
     assert not ctl.perception.nav_bound.invalid
-    assert ctl.perception.aiding.take_unconfirmed() is None
+    assert ctl.perception.aiding.take_sealed() is None and np.allclose(ctl.perception.aiding.unconfirmed, 0.0)
     assert [e["type"] for e in ctl.events] == ["ENTRY_HOLD_TIMEOUT", "UNCONFIRMED_CORRECTIONS_UNDONE"]
     assert ctl.events[1]["t"] == 101.0 and not ctl.flows.events
 
@@ -127,7 +132,7 @@ def test_a_hold_that_ends_with_a_valid_localization_undoes_nothing():
     p0 = ctl.perception.nav.state.p.copy()
     _timeout(ctl, loc_ok=True, entry_ok=False)
     ctl._drain_flow_events(100.0, Mode.MUTEX_APPROACH)
-    assert np.allclose(ctl.perception.nav.state.p, p0) and not ctl.undo_pending
+    assert np.allclose(ctl.perception.nav.state.p, p0) and ctl.perception.aiding.sealed is None
     assert [e["type"] for e in ctl.events] == ["ENTRY_HOLD_TIMEOUT"]
 
 
@@ -143,10 +148,10 @@ def test_a_measured_crossing_ends_what_there_was_to_undo():
     ctl = _controller()
     gate = ctl.plan.gates[0]
     ctl.perception.aiding.unconfirmed = np.array([0.25, -0.5])
-    ctl.undo_pending = True
+    ctl.perception.aiding.seal_unconfirmed()
     ctl.passage.crossing = (0.0, 0.0)
     ctl._apply_crossing(50.0, gate, gate.from_gate_frame([0.0, 0.2, 0.0]))
-    assert ctl.perception.aiding.take_unconfirmed() is None and not ctl.undo_pending
+    assert ctl.perception.aiding.take_sealed() is None and np.allclose(ctl.perception.aiding.unconfirmed, 0.0)
 
 
 def test_only_the_corrections_of_the_current_commitment_can_be_undone():

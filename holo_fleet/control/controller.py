@@ -126,7 +126,6 @@ class DroneController:
         self.cfg = cfg
         self.perception = Perception(plan, cfg, nav_init_err)
         self.ha = LocalHybridAutomaton(cfg)
-        self.undo_pending = False                  # a hold ended with no valid localization: the unconfirmed corrections wait for the give-up edge
         self.was_committed = False
         self.flows = Flows(plan, cfg)
         self.passage = PassageVerifier(cfg)        # what the drone reports about its gate passage (payload v2)
@@ -301,8 +300,7 @@ class DroneController:
             return
         corr = (l_meas - l_est) * left
         self.perception.apply_position_correction(corr)
-        self.perception.aiding.take_unconfirmed()               # a direct measurement of the position in the opening: nothing before it is left to undo
-        self.undo_pending = False
+        self.perception.aiding.forget_unconfirmed()             # a direct measurement of the position in the opening: nothing before it is left to undo
         self.events.append({"t": t, "type": "GATE_CROSSING_MEASURED", "gate": self.passage.idx, "l": round(l_meas, 3),
                             "dz": None if dz is None else round(dz, 3), "correction": np.round(corr, 3).tolist()})
 
@@ -315,10 +313,9 @@ class DroneController:
         for e in self.flows.events:
             self.events.append({**e, "mode": mode.value})
             if e["type"] == "ENTRY_HOLD_TIMEOUT" and not e["loc_ok"]:
-                self.undo_pending = True
+                self.perception.aiding.seal_unconfirmed()
         self.flows.events.clear()
-        if self.undo_pending and not self.ha.committed:
-            self.undo_pending = False
+        if self.perception.aiding.sealed is not None and not self.ha.committed:
             c = self.perception.undo_unconfirmed_corrections()
             if c is not None:
                 self.events.append({"t": t, "type": "UNCONFIRMED_CORRECTIONS_UNDONE", "correction": np.round(c, 3).tolist()})

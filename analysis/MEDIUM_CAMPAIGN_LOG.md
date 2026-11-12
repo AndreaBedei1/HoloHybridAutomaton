@@ -215,3 +215,14 @@ Holodeck processes on the machine: 0; free RAM GB: 63.5; free F: GB: 590
 ## reg1 closed (3e3db7b): B2_CLEAN 36/36 PASS, B2_LOW 36/36 PASS, no SAFETY_FAILURE, no UNSAFE_ACTION
 
 The two repeats of `lost_drone_mutex_carried` (s996, s997) are INCOMPLETE as predicted. No `ENTRY_HOLD_TIMEOUT` in CLEAN or LOW, so the path changed after this batch did not run in it.
+
+### 2026-11-10 08:41 med10 @ 8fdcbb4
+```
+PASS 32
+INCOMPLETE 2
+08:35:49 B2_MEDIUM MEDIUM-ALL             lost_drone_mutex                 s1068 INCOMPLETE       P1 3.477 fail ['progress', 'gate', 'P3-deg re-formed', 'not waiting'] wa
+08:40:00 B2_MEDIUM MEDIUM-ALL             lost_drone_mutex                 s1071 INCOMPLETE       P1 3.409 fail ['progress', 'gate', 'P3-deg re-formed', 'not waiting'] wa
+lanes done: 0
+tracebacks in lane logs: 0
+Holodeck processes on the machine: 4; free RAM GB: 56.4; free F: GB: 590
+```
