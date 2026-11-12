@@ -142,7 +142,6 @@ class DroneController:
     def step(self, frame: SensorFrame, dt: float) -> np.ndarray:
         t = frame.t
         ftime = self.flows.ftime                               # own formation time (reduced progress)
-        self.perception.note_water(self.ll.current_estimate())
         obs = self.perception.update(frame, dt, sigma=self.flows.sigma, env_ok=self.envmon.ok,
                                      offset=self.flows.offset + self.flows.lat_offset, in_formation=self.ha.mode in IN_FORMATION,
                                      t_form=ftime.now(t),
@@ -259,7 +258,7 @@ class DroneController:
                      "occ": obs.gate.occ_state, "exit_witness": obs.gate.exit_witness, "relations": obs.gate.relations,
                      "rank_used": obs.gate.rank_used,
                      "loc_ok": obs.gate.loc_ok, "reloc_hold": self.flows.reloc_hold,
-                     "entry_ok": obs.gate.entry_ok, "entry": self.flows.entry_state or None, "adrift": obs.gate.adrift,
+                     "entry_ok": obs.gate.entry_ok, "entry": self.flows.entry_state or None, "dead": obs.gate.dead,
                      "tx": [self.perception.tx_gate_idx, self.perception.tx_phase],
                      **({"acoustic": {k: v for k, v in self.perception.gp.acoustic_exit.last.items() if v}}
                         if self.perception.gp.acoustic_exit is not None and obs.gate.occ_state == "BUSY" else {})},

@@ -40,14 +40,15 @@ independent navigation estimate.  An inconsistent or missing payload leaves the 
 
 Gate phase (payload v2, perception/payload.py).  A drone reports its own phase with this gate.  It is used only to exclude
 it as a possible occupant, or as positive occupancy, never to give precedence.  GP_COMMITTED / GP_ADMITTED of another drone
-hold the latch BUSY until the drone reports otherwise, for ever if it falls silent: silence never clears a possibly occupied
-gate.  A drone inside the keep-out box reports a claim whatever its history (passage.report_phase), so a drone carried into
+hold the latch BUSY until the drone reports otherwise or is dead (below).  A drone inside the keep-out box reports a claim whatever its history (passage.report_phase), so a drone carried into
 the CR uncommitted, or back after a passage, does not report that it is not there.  GP_NONE or a phase of another gate excludes a
 drone while the report is younger than ``status_fresh_s``, a bound below the smallest time from its queue point to the CR at
-the speed bound (GatePerception computes it per plan); GP_PASSED excludes it for good, except for the rule below.  Silence excludes
-nobody, and it can also hold the gate (``adrift``): a drone not heard lately may be a passive hull, and if its last fix is within the distance the water can
-carry a hull before it has risen over the top of the frame, it holds the latch BUSY and the admission as a claim does, until it is heard again, for ever if it stays silent.
-A hull beyond that reach cannot be in the CR, and only the sonar rules (t_occ_max) apply: this is the case of a dead drone far from the gate.
+the speed bound (GatePerception computes it per plan); GP_PASSED excludes it for good.  A silence shorter than ``t_silent_gate_s``
+excludes nobody and releases no claim.  A drone not heard for ``t_silent_gate_s`` by a receiver that hears the others is dead (``dead``:
+the channel never silences a live drone so long, the premise of the vacancy by silence with a wider margin), and a dead drone is excluded
+from every gate decision, its claim included.  This rests on the operating scope (holo_fleet/scope.py): no permanent failure inside the
+exclusion zone of a gate, from where a passive hull could reach the gate before it has risen above it, so a dead hull is never in or at
+the CR.  A failure inside that zone is outside the scope.
 
 A positive corridor echo is discarded as no fleet drone (``no_fleet_drone``) only on evidence about every other drone that is
 fresh: silence, or an old report of any kind, never discards one.
@@ -64,8 +65,7 @@ the residual risk, quantified in calibration/analyze_b2_channel.py.
 from __future__ import annotations
 
 import math
-from collections import deque
-from typing import Dict, List, Optional, Sequence, Set
+from typing import Dict, List, Optional, Sequence
 
 import numpy as np
 
@@ -103,8 +103,6 @@ class AcousticExit:
         self.last: Dict = {}                       # diagnostics of the latest evaluation
         self.gate_idx = 0                          # the gate the receiver is working on (mod 4; GatePerception.update)
         self.g = None                              # its GateSpec
-        self.adrift_held: Dict = {}                         # (drone, gate) -> time of the fix its hold rests on (adrift)
-        self.water_speeds: deque = deque(maxlen=300)        # |water current estimate| of the last 30 s (note_water, the controller at 10 Hz)
         self.status_fresh_s = cfg.acoustic.status_fresh_s   # shortened per plan (GatePerception): never above the freshness
                                                             # the queue geometry allows
 
@@ -152,8 +150,10 @@ class AcousticExit:
     # ------------------------------------------------------------------ gate status of the other drones (payload v2)
     def status_excluded(self, j: int, t: float, fresh_only: bool = False) -> bool:
         """Drone j cannot be an occupant of the current gate's CR, by what it reports about itself (module docstring): a fresh
-        report of another gate or of not engaged, or a report of having passed (``fresh_only``: only if fresh).  Silence never excludes
-        a drone: the latch of a dead drone that was not engaged is released by the sonar rules (t_occ_max)."""
+        report of another gate or of not engaged, or a report of having passed (``fresh_only``: only if fresh); or it is dead.  A shorter
+        silence never excludes a drone."""
+        if self.dead(j, t):
+            return True
         st = self.tracker.status.get(j)
         if st is None:
             return False
@@ -171,53 +171,19 @@ class AcousticExit:
         return st.phase == GP_NONE and fresh
 
     def status_claim(self, j: int, t: float) -> bool:
-        """Drone j holds the gate by what it reports: committed or admitted to this gate.  Silence never clears a
-        possibly occupied gate: the claim of a drone that fell silent stays for ever (a committed drone's hold point is
-        before the CR only in its own estimated frame)."""
+        """Drone j holds the gate by what it reports: committed or admitted to this gate.  A silent drone keeps its claim until it
+        is dead (a committed drone's hold point is before the CR only in its own estimated frame)."""
         st = self.tracker.status.get(j)
-        return st is not None and st.gate_idx == self.gate_idx and st.phase in (GP_COMMITTED, GP_ADMITTED)
+        return (st is not None and st.gate_idx == self.gate_idx and st.phase in (GP_COMMITTED, GP_ADMITTED)
+                and not self.dead(j, t))
 
     def claims(self, t: float) -> set:
         return {j for j in self.others if self.status_claim(j, t)}
 
-    # ------------------------------------------------------------------ a silent drone as a passive hull
-    def note_water(self, current) -> None:
-        """The low level's estimate of the water current (world frame), one sample per control step."""
-        self.water_speeds.append(float(np.linalg.norm(np.asarray(current, float)[:2])))
-
-    def adrift(self, t: float, g) -> Set[int]:
-        """Other drones that may be a dead hull in the CR (module docstring): not heard lately, with no fresh report excluding them, and with the region of
-        the last accepted fix, grown by what the water can carry a hull until it has risen over the top of the CR, reaching the CR.  This is no statement that the
-        drone is dead: it holds the gate while that hypothesis cannot be ruled out, and one new fix or a fresh report ends it.  The hold does not depend on what the
-        water does later, nor on the receiver still hearing someone: only a new fix ends it.  A receiver hearing nobody starts no new hold (B0 rules)."""
-        a = self.cfg.acoustic
-        deaf = self.tracker.deaf(t)
-        v = (float(np.median(self.water_speeds)) if self.water_speeds else 0.0) + a.drift_margin_mps
-        out: Set[int] = set()
-        for j in self.others:
-            f = self.tracker.last_accepted.get(j)
-            key = (j, g.gate_id)
-            if f is None or self.status_excluded(j, t):
-                self.adrift_held.pop(key, None)
-                continue
-            if self.adrift_held.get(key) == f.t:           # no new fix since the hold began
-                out.add(j)
-                continue
-            self.adrift_held.pop(key, None)
-            if deaf or t - f.t <= self.status_fresh_s:
-                continue
-            q = gate_points(g, f.pts)
-            dz = float(gate_points(g, f.rep.p[None, :])[0][2]) if f.rep_ok else float(q[:, 2].min())
-            rho = v * min(t - f.t, max(self.half[2] + R_OUT - dz, 0.0) / a.v_rise_min_mps)
-            if not self._cr_possible(q, f.slack + rho):
-                continue
-            if f.rep_ok:                                   # the true position is in both regions, as in A1 and A2
-                qr = gate_points(g, f.rep.p[None, :])
-                if float(np.linalg.norm(qr - np.clip(qr, -self.half, self.half), axis=1)[0]) > R_OUT + float(f.rep.bound) + rho:
-                    continue
-            out.add(j)
-            self.adrift_held[key] = f.t
-        return out
+    def dead(self, j: int, t: float) -> bool:
+        """Not heard for ``t_silent_gate_s`` by this receiver while it hears the others (module docstring); a receiver that hears
+        nobody declares no one dead."""
+        return self.tracker.silent(j, t, self.cfg.acoustic.t_silent_gate_s)
 
     # ------------------------------------------------------------------ geometry
     def _cr_possible(self, q: np.ndarray, rho: float) -> bool:

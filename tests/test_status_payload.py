@@ -73,34 +73,40 @@ def test_committed_and_admitted_hold_the_gate_and_passed_releases_it():
     assert ae.status_excluded(1, 5.2) and ae.claims(5.2) == set()
 
 
-def test_a_drone_that_dies_while_admitted_keeps_the_gate_closed_for_ever():
-    """Silence never clears a possibly occupied gate."""
+def test_a_silent_drone_keeps_its_claim_until_it_is_dead():
+    """A drone that reported committed or admitted holds the gate while it may be alive; silent for t_silent_gate_s at a receiver that
+    hears the others it is dead, and inside the operating scope a dead hull is never at the CR (holo_fleet/scope.py)."""
+    for phase in (pl.GP_COMMITTED, pl.GP_ADMITTED):
+        tr, gp = _observer(P, others=(1, 2))
+        ae = gp.acoustic_exit
+        _rx(tr, P, 1.0, 1, [0.0, 0.0, -5.], phase=phase)
+        t = 1.0 + B2.acoustic.t_silent_gate_s - 1.0
+        tr.heard[2] = t - 1.0
+        assert ae.claims(t) == {1} and not ae.status_excluded(1, t) and gp.update(t, P, 0., [], {}).occ_busy
+        t = 1.0 + B2.acoustic.t_silent_gate_s + 1.0
+        tr.heard[2] = t - 1.0
+        assert ae.dead(1, t) and ae.claims(t) == set() and ae.status_excluded(1, t)
+
+
+def test_a_receiver_that_hears_nobody_declares_no_one_dead():
     tr, gp = _observer(P, others=(1, 2))
     ae = gp.acoustic_exit
     _rx(tr, P, 1.0, 1, [0.0, 0.0, -5.], phase=pl.GP_ADMITTED)
-    t = 1.0 + B2.form.t_silent_s + 300.0
-    tr.heard[2] = t - 1.0                                       # the receiver hears somebody: the silence of drone 1 is observed
-    assert tr.silent(1, t) and ae.claims(t) == {1} and not ae.status_excluded(1, t)
-    assert gp.update(t, P, 0., [], {}).occ_busy
+    tr.heard[2] = 1.0
+    t = 1.0 + B2.acoustic.t_silent_gate_s + 300.0
+    assert not ae.dead(1, t) and ae.claims(t) == {1} and not ae.status_excluded(1, t)
 
 
-def test_a_drone_silent_after_committed_keeps_the_gate_held_after_not_engaged_it_makes_no_claim():
-    """Silence never clears a drone that held the gate (committed or admitted); a drone that reported not being engaged and
-    then fell silent is no occupant once it can be taken for dead."""
+def test_a_drone_silent_after_not_engaged_is_excluded_only_once_dead():
     tr, gp = _observer(P, others=(1, 2))
     ae = gp.acoustic_exit
-    tr.heard[2] = 0.0
-    _rx(tr, P, 1.0, 1, [-3.0, -3.5, -5.], phase=pl.GP_COMMITTED)
-    t = 1.0 + B2.acoustic.t_silent_gate_s + 100.0
-    tr.heard[2] = t - 1.0                    # the receiver works: somebody else is heard
-    assert tr.silent(1, t) and ae.claims(t) == {1} and not ae.status_excluded(1, t)
-    tr2, gp2 = _observer(P, others=(1, 2))
-    ae2 = gp2.acoustic_exit
-    _rx(tr2, P, 1.0, 1, [-5.4, -3.5, -5.], phase=pl.GP_NONE)
+    _rx(tr, P, 1.0, 1, [-5.4, -3.5, -5.], phase=pl.GP_NONE)
+    t = 1.0 + B2.form.t_silent_s + 1.0                          # vacant in the formation, not dead for the gate
+    tr.heard[2] = t - 1.0
+    assert not ae.status_excluded(1, t) and ae.claims(t) == set()
     t = 1.0 + B2.acoustic.t_silent_gate_s + 1.0
-    tr2.heard[2] = t - 1.0
-    assert not ae2.status_excluded(1, t) and ae2.claims(t) == set()      # no claim, and silence excludes nobody
-    assert not ae2.status_excluded(1, 1.0 + B2.form.t_silent_s + 1.0)    # 45 s < t_silent_gate_s
+    tr.heard[2] = t - 1.0
+    assert ae.status_excluded(1, t)
 
 
 def test_a_deaf_receiver_declares_no_one_silent():

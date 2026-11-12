@@ -476,11 +476,6 @@ class Perception:
             form.lateral_corr = float(np.mean(lat))
 
     # ------------------------------------------------------------------ main update
-    def note_water(self, current) -> None:
-        """The water current estimated by the low level: it bounds where a passive hull can have drifted (the gate occupancy)."""
-        if self.gp.acoustic_exit is not None:
-            self.gp.acoustic_exit.note_water(current)
-
     def update(self, frame: SensorFrame, dt: float, sigma: float = 0.0, env_ok: bool = True,
                offset: Optional[np.ndarray] = None, in_formation: bool = True,
                t_form: Optional[float] = None, v_req: Optional[np.ndarray] = None) -> LocalObservation:

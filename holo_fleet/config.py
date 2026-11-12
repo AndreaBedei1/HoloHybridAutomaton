@@ -354,12 +354,10 @@ class AcousticConfig:
     depth_tol_m: float = 1.5             # a fix this far outside the operating depth band is a reflection
     # a drone silent this long leaves the identity premise of the map fit (Perception._other_regions), where an echo can only move the own
     # estimate, by at most MAX_CORR_M per correction (their sum is not bounded until a validated fit: RC12).  It is never excluded from a gate decision: silence alone proves nothing.  Calibrated on the simulated channel, no analytic bound.
-    # a drone not heard may be dead: a passive hull carried by the water and rising (AcousticExit.adrift).  The hull drifts at most at the water speed
-    # estimated onboard (median of the last 30 s; median error <= 0.04 m/s on the uniform currents of the med6 runs) plus this margin, and rises at no less than
-    # the lower end of the credible range of FailureModel (0.05 - 0.13 m/s): both are assumptions, stated in docs/GUARANTEES.md
-    drift_margin_mps: float = 0.10
-    v_rise_min_mps: float = 0.05
-    t_silent_gate_s: float = 70.0        # a silent drone leaves the identity premise of the map fit only (Perception._other_regions); never a gate decision
+    # a drone not heard this long by a receiver that hears the others is dead: it leaves the identity premise of the map fit and every gate decision
+    # (AcousticExit.dead; the premise: the channel never silences a live drone so long, longest silence of a live sender observed 31 s; the scope:
+    # holo_fleet/scope.py)
+    t_silent_gate_s: float = 70.0
     # a gate phase NOT_ENGAGED excludes its sender as an occupant while fresher than this: not above the time a queued
     # drone needs to reach a position where the corridor echo of a real entry would stop being visible (formal/check_status.py,
     # M3-status BMC: 2.5 s holds, 4.5 s does not), and per plan not above the time from the queue point to the CR at the
@@ -395,6 +393,8 @@ class FailureModel:
 
     v_rise_mps: float = 0.10
     surface_z_m: float = -0.25
+    v_rise_min_mps: float = 0.05          # lower end of the credible range: the operating scope (holo_fleet/scope.py)
+    coast_m: float = 1.0                  # largest distance a hull coasts after the failure at the speed cap (quadratic drag, about 0.6 m)
 
 
 @dataclass(frozen=True)
