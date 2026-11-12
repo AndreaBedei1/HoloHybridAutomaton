@@ -283,3 +283,17 @@ The INCOMPLETE run, `lost_drone_mutex_rise_high` s1103, is the open class of s96
 ## reg2 (5c80591), written before any run
 
 B2_CLEAN / CLEAN and B2_LOW / LOW-ALL, the 17 standard scenarios x seeds 1150-1151 (68 runs), chained after st1. Expected: every run PASS (reg1: 36/36 and 36/36); any other class analysed before the freeze.
+
+### 2026-11-12 20:56 st1 @ 5c80591 (lanes ended or 6 h limit)
+```
+PASS 34
+lanes done: 4
+tracebacks in lane logs: 0
+Holodeck processes on the machine: 0; free RAM GB: 62.4; free F: GB: 577
+```
+
+## st1 closed (5c80591): 34 of 34 PASS, no live drone declared dead, longest silence of a live sender at a working receiver 25.2 s
+
+## st2 (c3de0a8), boundary probes, written before any run
+
+The six `st_bd_*` scenarios x seeds 2000-2001, MEDIUM-ALL, chained after reg2. Beyond the steady envelope: P1 and P2 required, the mission not; the outcome maps where the mission stops completing.
