@@ -158,3 +158,59 @@ Only P3_FAILURE contradicts liveness.
 - M6 class split;
 - M7 results regenerated and committed;
 - re-run the referee on med11-med13, and the P2 regression scenarios near the gate.
+
+## Re-check at 1aa207a
+
+Scope: only B1 and M1-M7, plus the v8 criteria. Every run was at below-normal priority, and the scripts are in the scratchpad (`r9b/`). Nothing was written but this section.
+
+Reproduced:
+- My purge scenario, with drone 2 heard through `update()` every second:
+  - hull in the CR, and 6.5 m before the gate at w_h = 0.3: the fix list is empty from 40 s, `last_accepted` holds the fix, and the claim is kept at 72, 75 and 100 s;
+  - hull 25 m away: released at 72 s;
+  - never heard: released.
+- S4: 0 of 300 violations. S4b: 25 of 120 (caught). S4m: 29 of 60.
+- `test_scope` and `test_p3_contract`: 10 passed.
+- With the new precedence term: F0s and F2 UNSAT for n = 2, 3, 4; F2s4 SAT.
+
+**B1 - RESOLVED.** Rule D reads `last_accepted`. Never heard means absent from `heard`; never located holds the gate. S4 runs on real receptions. Minor: S4 does not cover the "heard after the fix" motion term or the never-located branch.
+
+**M1 - RESOLVED.**
+- Motion is counted from the fix to the last reception, plus t_lost.
+- There is no rejected-fix fallback.
+- The vertical margin raises h0, which is conservative.
+- The uncapped own bound only adds conservatism. Its band is declared (`st_lost_after_exit`, v8 items 7 and 10) and logged in `gate.rule_d`.
+
+Minor: the payload branch makes rule D rest on H6, which the GUARANTEES rule-D row omits. Its motion term starts at `f.t`, not `f.t_tx`.
+
+**M2 - PARTIAL.** Premise H is in `check_fleet.py` and in P3_CONTRACT, and F2s4 is SAT. The composition row, GUARANTEES:89, still claims recovery for n >= 3 without H or F2s4. This is a documentation fix.
+
+**M3 - PARTIAL (acceptable).** The fairness gap is monitored per run, and premise C is declared unmonitored. A fairness excess has no class consequence, which is conservative because the thresholds count complete runs.
+
+**M4 - RESOLVED.**
+- N uses e_ok = 0.5.
+- Both clauses of A are checked.
+- An n = 2 committed failure is inadmissible, and NOT_ADMISSIBLE is classed PREMISE_VIOLATED.
+- The band runs fall into the declared rule-D class.
+- The docstring is fixed.
+
+**M5 - PARTIAL (acceptable).** Under the validation profiles, N and gate-nav are tags, which closes the main loophole; `self_induced` is now per drone and W uses `v_mis`. Still present:
+- no time or magnitude link beyond the validation profiles;
+- O is proximity;
+- `refine_v8` still masks a failed `not waiting`.
+
+None of this can create a pass: items 5-7 count PASS or P3_LATE over all runs.
+
+**M6 - RESOLVED (conservative).** P3_LATE means met within the run; P3_FAILURE means never met. A P3_FAILURE censored before D_cert (≈ 102 s at e0 = 2.4 m) does not contradict the certificate.
+
+**M7 - OPEN by plan.** The results are to be regenerated at the freeze; the working copy is still modified and `fleet.json` is untracked.
+
+**v8 criteria - acceptable.**
+- No in-zone probe: the owner's scope decision. The holding branch is exercised end to end by `st_lost_after_exit` (a safe stop, judged on P1 and P2) and at unit level by S4 case 3, S4b and `test_scope`.
+- No n = 2 committed run: minor m6, covered by F2s2 and by the PREMISE_VIOLATED class.
+- Premise V has a consequence, safety is judged on all 448 runs, and the stop rules are fixed before the first run.
+
+**Freeze: yes**, under these conditions:
+1. Before the tag, GUARANTEES:89 is made conditional on premise H with F2s4, and the rule-D row names H6.
+2. M7 is regenerated and committed at the frozen commit, with its hash and z3 5.1.0.
+3. Item 10 reports every PREMISE_VIOLATED run with its premise, drone and window.
+4. Any P3_FAILURE censored before D_cert is reported as such.
