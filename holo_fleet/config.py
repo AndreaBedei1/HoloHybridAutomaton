@@ -393,8 +393,29 @@ class FailureModel:
 
     v_rise_mps: float = 0.10
     surface_z_m: float = -0.25
-    v_rise_min_mps: float = 0.05          # lower end of the credible range: the operating scope (holo_fleet/scope.py)
-    coast_m: float = 1.0                  # largest distance a hull coasts after the failure at the speed cap (quadratic drag, about 0.6 m)
+
+
+@dataclass(frozen=True)
+class ScopeConfig:
+    """The operating scope of the permanent-failure model (holo_fleet/scope.py), known onboard: what a broken drone can do at
+    most, and the current declared for the mission.  ``v_rise_min_mps`` below the model value of FailureModel (0.047 m/s with the
+    identified heave damping): a hull that does not rise (a leak) is outside the model.  ``coast_h_m``: measured in the simulator,
+    at most 0.39 m at 0.39 m/s through the water and at most 1.22 s times the speed at the failure (39 failure runs), about 0.9 m
+    at 0.75 m/s; not validated on a vehicle.  ``coast_v_m``: the vertical speed is at most 0.25 m/s.  ``rise_lag_s``: the heave
+    time constant is about 0.35 s (mass over linear damping).  ``drift_factor``: a hull drifted up to 4 % faster than the effective
+    drift in the runs.  ``t_lost_s``: a drone fails within this time of its last reception heard (one TDMA period): the margin
+    of its last fix.  ``w_h_max_mps``, ``w_down_max_mps``: the current declared for the mission (the runner declares the bound of
+    the scenario's field)."""
+
+    v_rise_min_mps: float = 0.045
+    coast_h_m: float = 1.0
+    coast_v_m: float = 0.3
+    rise_lag_s: float = 2.0
+    drift_factor: float = 1.1
+    surface_z_m: float = -0.25
+    t_lost_s: float = 1.0
+    w_h_max_mps: float = 0.0
+    w_down_max_mps: float = 0.0
 
 
 @dataclass(frozen=True)
@@ -409,6 +430,7 @@ class FleetConfig:
     beacon: BeaconConfig = field(default_factory=BeaconConfig)   # B2 one-way acoustic beacon (OFF in B0)
     acoustic: AcousticConfig = field(default_factory=AcousticConfig)   # B2 onboard envelope (used only when beacon.enabled)
     failure: FailureModel = field(default_factory=FailureModel)        # simulator side: what a broken drone does
+    scope: ScopeConfig = field(default_factory=ScopeConfig)            # onboard: the operating scope of the failure model
     comms_enabled: bool = False       # inter-agent communication is OFF by default
     traffic_rule: bool = True         # head-on give-way rule (liveness aid); off only to exercise the safety layer alone
 

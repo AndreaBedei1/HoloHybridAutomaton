@@ -96,3 +96,22 @@ Disclosure. `check_status.py` has mutation runs for S1, S3, S4, S9, S11 and S12.
 | MINOR wording (reach per step, one-step truncation, the noise-free case is the far side of a bar, 0.73 m, the `GAIN` comment) | Done |
 
 Disclosure. The reviewer's priority call (`SetPriorityClass` through `ctypes` without declared types) fails silently on this machine: its scripts ran at normal priority in this re-check and in earlier rounds where it used that call, against the instruction. It lowered the long replay by hand after about 13 minutes; that replay held about 15 GB with 44 GB free. Whether it slowed a simulation cannot be told.
+
+## Round 8 (reviewed at c3de0a8; reports `review_round8_formal.md`, `review_round8_underwater.md`)
+
+| Finding | Resolution |
+|---|---|
+| B1 (both): rule D drops the claim of a hull pinned in the CR after 70 s (the RC9 path); the zone covers the gate phase under current | Rule D only for a drone last known outside the zone for the declared current, grown by the fix region, the own bound and one TDMA period; otherwise the claim stands for ever (safe stop). The exposure is stated in GUARANTEES |
+| Formal B2: no rule D at n = 2; failures while committed outside the zone | Modelled as the code (deaf-receiver guard, claim kept); recovery proved for n = 2 without failures while committed and for n >= 3 with at most n - 2 failures; the rest declared and checked as limits (F2s2, F2s3). In-scope failure scenarios near the gate and a two-drone failure added |
+| Formal M1: the latch premise of S2 (32 s) | Stated as premise C of P2 |
+| Formal M2: the model leaves out the localization block and the release delays | Stated as not modelled; the open class stays empirical |
+| Formal M3: fairness of 10 s refuted (26 s in st1) | 35 s window; bounds re-computed (26, 40, 52 steps) |
+| Formal M4: S12 and the zone ignored the downward coast and the rise lag | Both in the zone and in S12 (from above the top too); mutation S12l |
+| Formal M5, underwater: no per-run scope check | The referee classes a run with a failure inside the zone INVALID |
+| Underwater M1: s1103 was validated by a wrong fit while committed | Log corrected; a validated correction above nav_err_m no longer validates and is capped at 0.5 m; per-run monitor of the gate-frame navigation premise |
+| Underwater M2: the open class is mostly compass bias, and rule D's 70 s blocks the identity correction | Stated; sensitivity on the compass bias to be run before the freeze |
+| Underwater M3: premise V is a premise of P2; long-tail channel | Listed in the P2 table, monitored per run; MEDIUM_HT sensitivity to be run before the freeze |
+| Underwater M4: rise speed above the model value, leak, coast bound | v_rise_min 0.045 m/s; a leak outside the model; coast measured in the simulator (at most 0.39 m at 0.39 m/s), not validated on a vehicle |
+| Underwater M5: two-drone fleets | As formal B2 |
+| Underwater M6 and formal M6: sample sizes, development decisions | The final campaign sizes follow the reviewers' criteria; the scope and rule D are declared as development decisions |
+

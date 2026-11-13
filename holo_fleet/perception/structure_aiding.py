@@ -404,6 +404,8 @@ class StructureAiding:
         if np.max(np.linalg.norm(Rr - Rr.mean(axis=0), axis=1)) > CONSIST_M:
             return None
         corr = GAIN * Rr.mean(axis=0)
+        if safe and float(np.linalg.norm(corr)) > self.cfg.gate.nav_err_m:
+            safe = False                            # a fit that says the error exceeds the premise of P2 does not validate (round 8, s1103)
         if not safe and float(np.linalg.norm(corr)) > IDENTITY_STEP_M:
             corr = corr * IDENTITY_STEP_M / float(np.linalg.norm(corr))
         self.recent.clear()

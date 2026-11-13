@@ -44,11 +44,13 @@ hold the latch BUSY until the drone reports otherwise or is dead (below).  A dro
 the CR uncommitted, or back after a passage, does not report that it is not there.  GP_NONE or a phase of another gate excludes a
 drone while the report is younger than ``status_fresh_s``, a bound below the smallest time from its queue point to the CR at
 the speed bound (GatePerception computes it per plan); GP_PASSED excludes it for good.  A silence shorter than ``t_silent_gate_s``
-excludes nobody and releases no claim.  A drone not heard for ``t_silent_gate_s`` by a receiver that hears the others is dead (``dead``:
-the channel never silences a live drone so long, the premise of the vacancy by silence with a wider margin), and a dead drone is excluded
-from every gate decision, its claim included.  This rests on the operating scope (holo_fleet/scope.py): no permanent failure inside the
-exclusion zone of a gate, from where a passive hull could reach the gate before it has risen above it, so a dead hull is never in or at
-the CR.  A failure inside that zone is outside the scope.
+excludes nobody and releases no claim.  A drone not heard for ``t_silent_gate_s`` by a receiver that hears another drone is dead for
+the gate decisions (``dead``) only if its last known position, grown by its uncertainty, is outside the exclusion zone of the gate for
+the current declared for the mission (holo_fleet/scope.py): from there its hull rises above the gate before it can reach it, so it is
+never in or at the CR, and it is excluded from every gate decision, its claim included.  Otherwise it keeps holding the gate, for ever:
+a failure inside the zone is outside the scope, and this safe stop is its only treatment.  Premise V: the channel never silences a
+live drone so long.  A receiver that hears nobody declares no one dead (it cannot tell its own deafness from the others' death): in a
+fleet of two, or for the last survivor, a dead drone that held a claim keeps the gate closed.
 
 A positive corridor echo is discarded as no fleet drone (``no_fleet_drone``) only on evidence about every other drone that is
 fresh: silence, or an old report of any kind, never discards one.
@@ -74,6 +76,7 @@ from holo_fleet.perception.acoustic import AcousticTracker, Fix, box_bounds
 from holo_fleet.perception.exit_witness import speed_bound
 from holo_fleet.perception.payload import GP_ADMITTED, GP_COMMITTED, GP_NONE, GP_PASSED
 from holo_fleet.perception.sonar_geometry import AXES, MOUNTS, NEAR_FIELD_WIDEN_M, R_OUT
+from holo_fleet.scope import declared_excluded
 
 
 def gate_points(g, P: np.ndarray) -> np.ndarray:
@@ -186,9 +189,24 @@ class AcousticExit:
         return [round(t - tr.heard.get(j, t if tr.t_start is None else tr.t_start), 1) for j in self.others]
 
     def dead(self, j: int, t: float) -> bool:
-        """Not heard for ``t_silent_gate_s`` by this receiver while it hears the others (module docstring); a receiver that hears
-        nobody declares no one dead."""
-        return self.tracker.silent(j, t, self.cfg.acoustic.t_silent_gate_s)
+        """Not heard for ``t_silent_gate_s`` by this receiver while it hears another drone, and last known outside the exclusion
+        zone of the gate (module docstring).  A drone never heard failed at its launch, outside every zone (a premise of the plan,
+        tests/test_scope.py)."""
+        if not self.tracker.silent(j, t, self.cfg.acoustic.t_silent_gate_s):
+            return False
+        fx = self.tracker.fixes.get(j) or []
+        if not fx or self.g is None:
+            return True
+        f = self.tracker.last_accepted.get(j) or fx[-1]
+        return not declared_excluded(self.g, f.p, self.cfg, self._fix_margin(f))
+
+    def _fix_margin(self, f: Fix) -> float:
+        """Where the drone of fix f can have failed: the error region of the fix, the receiver's own navigation bound, and the motion
+        in ``t_lost_s`` at the speed bound."""
+        pts = np.asarray(f.pts, float).reshape(-1, 3)
+        spread = float(np.max(np.linalg.norm(pts[:, :2] - np.asarray(f.p, float)[:2], axis=1))) if len(pts) else 0.0
+        own = self.tracker.pose.buf[-1][3] if self.tracker.pose.buf else None
+        return spread + float(f.slack) + float(own or 0.0) + self.v_bound * self.cfg.scope.t_lost_s
 
     # ------------------------------------------------------------------ geometry
     def _cr_possible(self, q: np.ndarray, rho: float) -> bool:

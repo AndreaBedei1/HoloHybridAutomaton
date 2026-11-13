@@ -12,8 +12,9 @@ a function of the queue layout.
   phantom exclusion of corridor echoes while the crossing drone's last report, its later packets lost, is younger than the freshness
   bound.  S2h: the crossing drone may stop anywhere before the CR.  S2m: a larger freshness.  S2b: no latch input in the band.
 * S3 evidence order: a status older than an accepted fix that places the drone possibly inside the CR never excludes it.
-* S4 silence and death: a drone that reported committed or admitted keeps its claim while silent for less than t_silent_gate_s, and at a
-  receiver that hears nobody; silent longer at a receiver that hears the others it is dead: no claim, excluded (S4m: a short silence releases it).
+* S4 silence and death: a drone that reported committed or admitted keeps its claim while silent for less than t_silent_gate_s, at a
+  receiver that hears nobody, and for ever if last heard inside the exclusion zone; silent longer, last heard outside the zone, at a
+  receiver that hears another drone it is dead: no claim, excluded (S4m: a short silence releases it).
 * S5 text search: no acoustic or status name in the relation loop of GatePerception.update (a search, it does not see indirect paths).
 * S6 drones at abreast queue points with their tolerances are never FRONT-only targets of each other (only those points).
 * S6b on the real class, without a beacon: a FRONT-only echo anywhere in the band makes no relation and the latch is BUSY.
@@ -25,7 +26,8 @@ a function of the queue layout.
 * S11 a silence shorter than t_silent_gate_s never discards a corridor echo: a report of not engaged or passed that is not fresh leaves the echo
   in (S11m: a silence of status_fresh_s excludes the drone).
 * S12 the exclusion zone (Z3, nonlinear real arithmetic): a hull that fails outside the zone of holo_fleet/scope.py never enters the obstruction
-  volume of the gate, for every water current within the bounds, coast and rise speed (S12m: the zone without the coast term misses hulls).
+  volume of the gate, for every water current within the bounds, horizontal and downward coast, rise lag and rise speed, also from above
+  the top (S12m, S12l: the zone without the coast or without the lag misses hulls).
 """
 
 from __future__ import annotations
@@ -183,9 +185,10 @@ def silence_never_clears(cfg: FleetConfig, g, n_cases: int = 300, seed: int = 17
         tr, gp, p, yaw = _observer(g, 3, cfg)
         ae = gp.acoustic_exit
         phase = int(rng.choice([pl.GP_COMMITTED, pl.GP_ADMITTED]))
-        q = g.from_gate_frame([rng.uniform(-3.0, 3.0), 0.0, 0.0])
+        case = int(rng.integers(4))         # 0 live and silent, 1 dead far from the gate, 2 a receiver that hears nobody, 3 dead in the zone
+        q = g.from_gate_frame([rng.uniform(-25.0, -14.0) if case == 1 else rng.uniform(-3.0, 3.0), 0.0, 0.0])
         _rx(tr, p, yaw, 1.0, 1, q, cfg, phase)
-        case = int(rng.integers(3))                                 # 0 live and silent, 1 dead, 2 a receiver that hears nobody
+        ae.g = g
         t = 1.0 + float(rng.uniform(0.0, lim - 0.01) if case == 0 else rng.uniform(lim + 0.01, 86400.0))
         tr.heard[2] = t - 0.5 if case != 2 else 0.0
         if mutate:
@@ -349,19 +352,26 @@ def silence_keeps_the_echo(cfg: FleetConfig, g, n_cases: int = 300, seed: int = 
     return {"cases": n_cases, "echo_discarded": bad}
 
 
-def exclusion_zone(cfg: FleetConfig, coast: bool = True) -> dict:
-    """S12: a hull failing outside the zone of holo_fleet/scope.py (horizontal gap d0 to the obstruction volume, depth h0 below its top) never
-    enters the volume: the gap at t is at least d0 - c - w t, the depth below the top at most h0 - (v - w_dn) t (Z3, nonlinear reals)."""
-    F = cfg.failure
-    d0, h0, w, wd, v, c, t, W, Wd = z3.Reals("d0 h0 w wd v c t W Wd")
-    s = z3.Solver()
-    s.add(d0 >= 0, h0 > 0, W >= 0, Wd >= 0, Wd < F.v_rise_min_mps, w >= 0, w <= W, wd >= 0, wd <= Wd, v >= F.v_rise_min_mps,
-          c >= 0, c <= F.coast_m, t >= 0)
-    reach = (F.coast_m if coast else 0.0) + W * h0 / (F.v_rise_min_mps - Wd)
-    s.add(d0 > reach)                                   # outside the zone
-    s.add(d0 - c - w * t <= 0, h0 - (v - wd) * t > 0)    # inside the volume at t: reached horizontally, still below the top
-    r = s.check()
-    return {"result": str(r), "model": str(s.model()) if r == z3.sat else None}
+def exclusion_zone(cfg: FleetConfig, coast: bool = True, lag: bool = True) -> dict:
+    """S12: a hull failing outside the zone of holo_fleet/scope.py never enters the obstruction volume O.  Variables: d0 the horizontal
+    gap to O, h0 the depth of the centre below the top of O (negative: above it), coasts c (horizontal) and cv (downward), current w
+    (horizontal, up to drift_factor times the declared W) and wd (downward, up to Wd), rise speed v from the lag on.  The gap at t is
+    at least d0 - c - w t; the depth below the top is h0 + cv + wd t - v max(t - lag, 0) (Z3, nonlinear reals).  The mutations
+    drop the coast (S12m) or the lag (S12l) from the zone."""
+    S = cfg.scope
+    d0, h0, w, wd, v, c, cv, t, W, Wd = z3.Reals("d0 h0 w wd v c cv t W Wd")
+    sv = z3.Solver()
+    vmin, L = z3.RealVal(repr(S.v_rise_min_mps)), z3.RealVal(repr(S.rise_lag_s))
+    sv.add(d0 >= 0, W >= 0, Wd >= 0, Wd < vmin, w >= 0, w <= z3.RealVal(repr(S.drift_factor)) * W, wd >= 0, wd <= Wd, v >= vmin,
+           c >= 0, c <= S.coast_h_m, cv >= 0, cv <= S.coast_v_m, t >= 0)
+    lag_z = L if lag else z3.RealVal(0)
+    t_star = z3.If(h0 + S.coast_v_m + vmin * lag_z > 0, (h0 + S.coast_v_m + vmin * lag_z) / (vmin - Wd), z3.RealVal(0))
+    reach = (S.coast_h_m if coast else 0.0) + z3.RealVal(repr(S.drift_factor)) * W * t_star
+    sv.add(d0 > reach)                                                       # outside the zone
+    depth = h0 + cv + wd * t - v * z3.If(t > L, t - L, z3.RealVal(0))
+    sv.add(d0 - c - w * t <= 0, depth > 0)                                   # inside O at t: reached horizontally, still below the top
+    r = sv.check()
+    return {"result": str(r), "model": str(sv.model()) if r == z3.sat else None}
 
 
 def run(cfg: FleetConfig = B2, verbose: bool = True) -> Report:
@@ -408,7 +418,7 @@ def run(cfg: FleetConfig = B2, verbose: bool = True) -> Report:
     rep.add(CheckResult("S3m mutation: without the evidence order the stale status excludes the drone", "expect violation", ENC, "violated",
                         verdict="violated" if okm else "holds", passed=okm, note=str(rm)), verbose)
     r = silence_never_clears(cfg, g)
-    rep.add(CheckResult("S4 silence and death: a claim stands while the drone is silent for less than t_silent_gate_s or the receiver hears nobody; a dead drone holds none",
+    rep.add(CheckResult("S4 silence and death: a claim stands while the drone is silent for less than t_silent_gate_s, the receiver hears nobody, or it was last heard in the exclusion zone; a dead drone last heard outside it holds none",
                         "randomized over silence durations up to a day", ENC, "holds",
                         verdict="holds" if r["violations"] == 0 else "violated", passed=r["violations"] == 0, note=str(r)), verbose)
     rm = silence_never_clears(cfg, g, n_cases=60, mutate=True)
@@ -457,6 +467,9 @@ def run(cfg: FleetConfig = B2, verbose: bool = True) -> Report:
     rm = exclusion_zone(cfg, coast=False)
     rep.add(CheckResult("S12m mutation: the zone without the coast term misses hulls", "expect violation", ENC, "violated",
                         verdict="violated" if rm["result"] == "sat" else "holds", passed=rm["result"] == "sat", note=str(rm)), verbose)
+    rl = exclusion_zone(cfg, lag=False)
+    rep.add(CheckResult("S12l mutation: the zone without the rise lag misses hulls", "expect violation", ENC, "violated",
+                        verdict="violated" if rl["result"] == "sat" else "holds", passed=rl["result"] == "sat", note=str(rl)), verbose)
     return rep
 
 

@@ -176,3 +176,20 @@ def test_a_correction_under_the_identity_rule_is_capped_and_a_right_one_arrives_
             p = p + c
     assert steps and max(steps) <= IDENTITY_STEP_M + 1e-9 and len(steps) >= 2
     assert float(np.linalg.norm(p[:2] - p_true[:2])) < e0 - 0.5
+
+
+def test_a_validated_fit_beyond_the_navigation_premise_does_not_validate_and_is_capped():
+    """A fit inside the opening that says the error exceeds nav_err_m (the premise of P2) does not validate the localization and
+    moves the estimate by at most IDENTITY_STEP_M; a later fit within the premise validates it (round 8, s1103)."""
+    clf, aid = _aid()
+    R, p_true = _R(), _world(-1.6, 0.05)
+    est, steps, first_valid = p_true + np.array([0.0, 1.1, 0.0]), [], None
+    for k in range(24):
+        c = _update(aid, clf, p_true, est, R, float(k), None)
+        if c is not None:
+            steps.append(float(np.linalg.norm(c)))
+            est = est + c
+        if first_valid is None and aid.valid(float(k)):
+            first_valid = len(steps)
+    assert steps and steps[0] <= IDENTITY_STEP_M + 1e-9
+    assert first_valid is not None and first_valid >= 1 and float(np.linalg.norm(est[:2] - p_true[:2])) < 0.3

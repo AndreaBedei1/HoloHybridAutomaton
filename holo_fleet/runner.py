@@ -21,6 +21,7 @@ import numpy as np
 from holo_fleet.config import DEFAULT, FleetConfig
 from holo_fleet.control.controller import DroneController
 from holo_fleet.referee.referee import Referee
+from holo_fleet.scope import current_bound
 from holo_fleet.referee.sensor_audit import SensorAudit
 from holo_fleet.sim.holo_env import HoloFleetSim
 from holo_fleet.sim.scenarios import SCENARIOS, Scenario
@@ -59,6 +60,18 @@ def dead_record(t: float) -> Dict:
             "determinism_violations": 0, "obs_consistent": True, "observation_violations": 0, "saturated": False}
 
 
+AT_PENDING = 1e9          # t_on of a fault whose onset is a position on ground truth (resolved and logged when reached)
+
+
+def _reached(f, sc, names, truth) -> bool:
+    """Simulator-side onset on ground truth: ``at`` = {"gate": id, "s_min": s} - the drone's centre has reached s (gate frame)."""
+    at = f["at"]
+    g = next((x for x in sc.judged_gates if x.gate_id == at["gate"]), None)
+    if g is None:
+        return False
+    return float(g.to_gate_frame(np.asarray(truth.positions[names.index(f["drone"])], float))[0]) >= float(at["s_min"])
+
+
 def beacon_identities(plans, names, plan) -> dict:
     """Pinger code (drone index) -> slot, for the receiver flying ``plan``: only the drones of its own formation (the
     plans built for one formation share its path).  Slot indices restart in every formation, so a code of another
@@ -77,6 +90,8 @@ def run(name: str, out_root: Path, headless: bool = True, run_id: Optional[str] 
     sc: Scenario = SCENARIOS[name](cfg)
     if sc.cfg_patch:
         cfg = dataclasses.replace(cfg, **sc.cfg_patch)
+    w_h, w_dn = current_bound(sc.sim.current)              # the current declared for the mission: its bound (holo_fleet/scope.py)
+    cfg = dataclasses.replace(cfg, scope=dataclasses.replace(cfg.scope, w_h_max_mps=w_h, w_down_max_mps=w_dn))
     if seed is not None:
         sc.sim.seed = int(seed)
     sc.sim.noise = noise
@@ -163,6 +178,13 @@ def run(name: str, out_root: Path, headless: bool = True, run_id: Optional[str] 
         for step in range(n_steps):
             step_events = []
             for i, f in enumerate(getattr(sc.sim, "faults", ())):         # ground truth, never seen by a controller
+                if f.get("at") and f["t_on"] >= AT_PENDING and truth_prev is not None and _reached(f, sc, sim.names, truth_prev):
+                    f["t_on"] = round(sim.t, 2)
+                    if ref.permanent is not None:
+                        ref.permanent[sim.names.index(f["drone"])] = f["t_on"]
+                    tmp = out / "run_config.json.tmp"        # atomic: the resolved onset replaces the file
+                    tmp.write_text(json.dumps(cfg_dump, indent=1, default=_jsonable), encoding="utf-8")
+                    tmp.replace(out / "run_config.json")
                 on = f["t_on"] <= sim.t and (f.get("t_off") is None or sim.t < f["t_off"])
                 if on != fault_on[i]:
                     fault_on[i] = on

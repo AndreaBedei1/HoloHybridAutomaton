@@ -21,8 +21,15 @@ counting as present until it has risen (T_RISE).  Modelled here:
   * a drone waiting at B leaves for D only when no live drone has still to pass and every dead drone is vacant (t_silent_s);
   * separation: before step L any live drone can be stopped for any number of steps (collision avoidance preempts the gate
     modes, H1-H3), the timers running;
-  * permanent failures: before step L, at most n - 1, only in A, Q, B or D: never in C or X, by the operating scope
-    (holo_fleet/scope.py; a failure at B is outside the zone when the current is small, so it is allowed).
+  * permanent failures: before step L, in A, Q, C, B or D, never in X; the scope (holo_fleet/scope.py) puts them outside the
+    exclusion zone with the margin a receiver adds to a fix, where rule D applies (inside it a dead drone holds the gate for ever:
+    out of the scope, not modelled).  A drone that fails committed keeps its claim until it is known dead;
+  * rule D at a receiver needs another live drone it hears (acoustic.py: a receiver that hears nobody declares no one dead).
+Premises of the recovery: n = 2 at most one failure and none while committed; n = 3, 4 at most n - 2 failures (every receiver
+keeps hearing another drone).  The two cases left out are declared limits and checked as such (F2s2, F2s3).  Not modelled: the
+admission blocked by the localization of the gate (loc_ok; the give-up branch of the hold is unreachable under the invariant, so
+the open class of s960 and s1103 is outside F2), the release delays of the latch (t_occ_max, t_clear, exit confirmation) beyond
+one step, and the premise that every queued drone learns of a commitment within the bound of S2 (32 s).
 Properties, for n = 2, 3, 4.  F0: the invariant (at most one drone in C or X) holds at the launch and is inductive under every
 step, failures and stops included, so P2 holds at every time with no bound (k-induction, k = 1).  F2: from any state of the
 invariant, with no further failure or stop and the fairness of the fixes, every live drone reaches D within K steps: after the
@@ -55,16 +62,26 @@ NAMES = "abcdef"
 
 def timers(cfg: FleetConfig = DEFAULT, dt: float = 5.0) -> dict:
     """Timers in steps of dt seconds, rounded up (the order of the thresholds is kept: vacancy before death)."""
+    from holo_fleet.scope import obstruction_half
+    from holo_fleet.sim.scenarios import SCENARIOS
+
     up = lambda s: int(math.ceil(s / dt - 1e-9))
+    S = cfg.scope
+    h_top = float(obstruction_half(SCENARIOS["lost_drone_mutex"](cfg).judged_gates[0], cfg)[2])
+    # T_RISE: a hull at the depth of the gate leaves the corridor of the queue (the height of the obstruction volume) after its
+    # downward coast and the rise lag; FAIR: the longest stretch with no instant at which every link is fresh, 26 s in st1, rounded up
     return {"DT": dt, "T_DEAD": up(cfg.acoustic.t_silent_gate_s), "T_VAC": up(cfg.form.t_silent_s),
-            "T_HOLD": up(cfg.gate.t_occ_max + cfg.gate.t_clear), "T_RISE": up(2.0 / cfg.failure.v_rise_min_mps),
-            "T_APP": 4, "FAIR": 2}
+            "T_HOLD": up(cfg.gate.t_occ_max + cfg.gate.t_clear),
+            "T_RISE": up(S.rise_lag_s + (h_top + S.coast_v_m) / S.v_rise_min_mps), "T_APP": 4, "FAIR": up(35.0)}
 
 
 class Fleet:
     def __init__(self, n: int, depth: int, L: int, T: dict, rule_d: bool = True, fair: bool = True, latch_claims: bool = True,
-                 free: bool = False):
-        """free: the first state is any state of the invariant (inv), not the launch; L: failures and stops only before step L."""
+                 free: bool = False, max_fail: int = None, fail_in_c: bool = True):
+        """free: the first state is any state of the invariant (inv), not the launch; L: failures and stops only before step L;
+        max_fail: at most this many permanent failures (default n - 1); fail_in_c: failures also while committed, before the CR."""
+        max_fail = n - 1 if max_fail is None else max_fail
+        self.fail_in_c = fail_in_c
         self.n, self.depth, self.L, self.T = n, depth, L, T
         self.cap = cap = max(T.values()) + 2
         S = z3.Solver()
@@ -88,8 +105,12 @@ class Fleet:
             for i in range(n):
                 S.add(m[t][i] >= A, m[t][i] <= F, ct[t][i] >= 0, age[t][i] >= 0)
         # a receiver accounts for another drone: a live one when its fix is fresh (free, fair below), a dead one by rule D
-        known = (lambda t, i, k: z3.If(dead(t, k), age[t][k] >= T["T_DEAD"], acc[t][i][k])) if rule_d else \
-            (lambda t, i, k: z3.And(z3.Not(dead(t, k)), acc[t][i][k]))
+        # rule D needs a receiver that hears another drone (acoustic.py silent: a receiver that hears nobody declares no one dead)
+        hears = lambda t, i, k: z3.Or([z3.Not(dead(t, l)) for l in range(n) if l not in (i, k)] or [z3.BoolVal(False)])
+        if rule_d:
+            known = lambda t, i, k: z3.If(dead(t, k), z3.And(age[t][k] >= T["T_DEAD"], hears(t, i, k)), acc[t][i][k])
+        else:
+            known = lambda t, i, k: z3.And(z3.Not(dead(t, k)), acc[t][i][k])
         allfresh = lambda t: z3.And([z3.Or(dead(t, k), acc[t][i][k]) for i in range(n) for k in range(n) if k != i])
         if fair:
             for t in range(0, depth + 2 - T["FAIR"]):
@@ -97,9 +118,11 @@ class Fleet:
         # the latch of each receiver, on the current state (the delay is covered by S2)
         for t in range(depth + 1):
             for i in range(n):
-                occ = z3.Or([z3.And(z3.Not(dead(t, k)), z3.Or(m[t][k] == X, m[t][k] == C) if latch_claims else m[t][k] == X)
+                # a drone that failed committed keeps its claim until it is known dead (rule D), and its hull is in the corridor
+                occ = z3.Or([z3.Or(z3.And(z3.Not(dead(t, k)), z3.Or(m[t][k] == X, m[t][k] == C) if latch_claims else m[t][k] == X),
+                                   z3.And(dead(t, k), loc[t][k] == C, z3.Not(known(t, i, k))))
                              for k in range(n) if k != i] or [z3.BoolVal(False)])
-                echo = z3.Or([z3.Or(m[t][k] == B, z3.And(dead(t, k), loc[t][k] == B, age[t][k] < T["T_RISE"]))
+                echo = z3.Or([z3.Or(m[t][k] == B, z3.And(dead(t, k), z3.Or(loc[t][k] == B, loc[t][k] == C), age[t][k] < T["T_RISE"]))
                               for k in range(n) if k != i] or [z3.BoolVal(False)])
                 allk = z3.And([known(t, i, k) for k in range(n) if k != i] or [z3.BoolVal(True)])
                 prev = busy[t - 1][i] if t > 0 else (z3.Bool(f"busy{NAMES[i]}_init") if free else z3.BoolVal(False))
@@ -116,7 +139,7 @@ class Fleet:
                 vacant = z3.And([z3.Implies(dead(t, k), age[t][k] >= T["T_VAC"]) for k in others] or [z3.BoolVal(True)])
                 if t >= L:
                     S.add(z3.Not(fail[t][i]), z3.Not(stall[t][i]))
-                S.add(z3.Implies(fail[t][i], z3.Or(mi == A, mi == Q, mi == B, mi == D)))
+                S.add(z3.Implies(fail[t][i], z3.Or([mi == A, mi == Q, mi == B, mi == D] + ([mi == C] if fail_in_c else []))))
                 nf.append(z3.If(fail[t][i], 1, 0))
                 S.add(age[t + 1][i] == z3.If(dead(t, i), sat(age[t][i] + 1), 0))
                 S.add(loc[t + 1][i] == z3.If(fail[t][i], mi, loc[t][i]))
@@ -133,7 +156,7 @@ class Fleet:
                 S.add(z3.If(dead(t, i), z3.And(mn == F, cn == 0),
                       z3.If(fail[t][i], z3.And(mn == F, cn == 0),
                       z3.If(stall[t][i], stay, live_step))))
-        S.add(z3.Sum(nf + [z3.If(m[0][i] == F, 1, 0) for i in range(n)]) <= n - 1)
+        S.add(z3.Sum(nf + [z3.If(m[0][i] == F, 1, 0) for i in range(n)]) <= max_fail)
         self.S = S
 
     def inv(self, t):
@@ -142,7 +165,7 @@ class Fleet:
         m, ct, age, loc, n, cap = self.m, self.ct, self.age, self.loc, self.n, self.cap
         one = z3.Sum([z3.If(z3.Or(m[t][i] == C, m[t][i] == X), 1, 0) for i in range(n)]) <= 1
         book = [z3.And(m[t][i] >= A, m[t][i] <= F, ct[t][i] >= 0, ct[t][i] <= cap, age[t][i] >= 0, age[t][i] <= cap,
-                       z3.If(m[t][i] == F, z3.Or(loc[t][i] == A, loc[t][i] == Q, loc[t][i] == B, loc[t][i] == D),
+                       z3.If(m[t][i] == F, z3.Or([loc[t][i] == A, loc[t][i] == Q, loc[t][i] == B, loc[t][i] == D] + ([loc[t][i] == C] if self.fail_in_c else [])),
                              z3.And(loc[t][i] == -1, age[t][i] == 0))) for i in range(n)]
         return z3.And([one] + book)
 
@@ -167,44 +190,55 @@ def _run(fl: Fleet, prop) -> list:
     return list(fl.S.assertions()) + [prop]
 
 
-K_FREE = {2: 22, 3: 30, 4: 38}      # smallest even bound found (the check K - 2 shows it is tight)
+K_FREE = {2: 26, 3: 40, 4: 52}      # smallest even bound found (the check K - 2 shows it is tight)
+PREMISES = {2: dict(max_fail=1, fail_in_c=False), 3: dict(max_fail=1), 4: dict(max_fail=2)}
 
 
 def run(cfg: FleetConfig = DEFAULT, verbose: bool = True) -> Report:
     rep = Report("fleet")
     T = timers(cfg)
-    tag = f"DT {T['DT']:.0f} s, T_DEAD {T['T_DEAD']}, T_VAC {T['T_VAC']}, T_HOLD {T['T_HOLD']}, T_RISE {T['T_RISE']}, FAIR {T['FAIR']}"
+    tag = (f"DT {T['DT']:.0f} s, T_DEAD {T['T_DEAD']}, T_VAC {T['T_VAC']}, T_HOLD {T['T_HOLD']}, T_RISE {T['T_RISE']}, FAIR {T['FAIR']} "
+           f"steps")
     for n in (2, 3, 4):
-        fl = Fleet(n, 0, 0, T)
+        kw = PREMISES[n]
+        prem = ("at most one failure, none while committed" if n == 2 else f"at most {kw['max_fail']} failure(s), also while committed")
+        fl = Fleet(n, 0, 0, T, **kw)
         rep.add(check(f"F0i n={n}: the launch satisfies the invariant", "init -> inv", ENC, _run(fl, z3.Not(fl.inv(0))), "unsat",
                       note=tag), verbose)
-        fl = Fleet(n, 1, 1, T, free=True)
-        rep.add(check(f"F0s n={n}: the invariant is inductive under every step, failures and stops included",
+        fl = Fleet(n, 1, 1, T, free=True, **kw)
+        rep.add(check(f"F0s n={n}: the invariant is inductive under every step, failures ({prem}) and stops included",
                       "inv & step -> inv'  (inv: at most one drone in C or X; bookkeeping)", ENC, _run(fl, z3.Not(fl.inv(1))),
                       "unsat", note=tag), verbose)
         K = K_FREE[n]
-        fl = Fleet(n, K, 0, T, free=True)
-        rep.add(check(f"F2 n={n}: from any state of the invariant, with no further failure or stop, every live drone re-forms within "
-                      f"{K} steps ({K * T['DT']:.0f} s)",
+        fl = Fleet(n, K, 0, T, free=True, **kw)
+        rep.add(check(f"F2 n={n} ({prem}): from any state of the invariant, with no further failure or stop, every live drone "
+                      f"re-forms within {K} steps",
                       "inv & fairness of the fixes -> all live drones in D at K (no deadlock, no livelock)", ENC,
                       _run(fl, fl.not_recovered()), "unsat", timeout_ms=900000, note=tag), verbose)
-        fl = Fleet(n, K - 2, 0, T, free=True)
+        fl = Fleet(n, K - 2, 0, T, free=True, **kw)
         rep.add(check(f"F2t n={n}: the bound is tight (some state needs more than {K - 2} steps)", "expect a run short of D at K - 2",
                       ENC, _run(fl, fl.not_recovered()), "sat", timeout_ms=900000, note=tag), verbose)
     L, K = 12, K_FREE[3]
-    fl = Fleet(3, L + K, L, T)
+    fl = Fleet(3, L + K, L, T, **PREMISES[3])
     rep.add(check("F3 non-vacuity, n=3: from the launch, a run with a permanent failure re-forms the degraded formation",
                   "exists a run with a failure and every live drone in D", ENC, _run(fl, fl.recovered_with_failure()), "sat",
                   timeout_ms=600000, note=tag), verbose)
-    fm = Fleet(3, K, 0, T, free=True, rule_d=False)
+    fs2 = Fleet(2, 60, 0, T, free=True, max_fail=1, fail_in_c=True)
+    rep.add(check("F2s2 declared limit: with two drones, a failure while committed blocks the survivor (it hears nobody, so it declares "
+                  "no one dead)", "expect a run short of D at 60 steps", ENC, _run(fs2, fs2.not_recovered()), "sat",
+                  timeout_ms=900000, note=tag), verbose)
+    fs3 = Fleet(3, 60, 0, T, free=True, max_fail=2)
+    rep.add(check("F2s3 declared limit: the last survivor of three is blocked by a dead drone that failed committed",
+                  "expect a run short of D at 60 steps", ENC, _run(fs3, fs3.not_recovered()), "sat", timeout_ms=900000, note=tag), verbose)
+    fm = Fleet(3, K, 0, T, free=True, rule_d=False, **PREMISES[3])
     rep.add(check("F2m mutation: without rule D a dead drone is never accounted for and the composition deadlocks (n=3)",
                   "expect a run with a live drone short of D at K", ENC, _run(fm, fm.not_recovered()), "sat",
                   timeout_ms=900000, note=tag), verbose)
-    ff = Fleet(3, K, 0, T, free=True, fair=False)
+    ff = Fleet(3, K, 0, T, free=True, fair=False, **PREMISES[3])
     rep.add(check("F2f scope: without the fairness of the fixes the recovery is not guaranteed (n=3)",
                   "expect a run with a live drone short of D at K", ENC, _run(ff, ff.not_recovered()), "sat",
                   timeout_ms=900000, note=tag), verbose)
-    fc = Fleet(3, L + K, L, T, latch_claims=False)
+    fc = Fleet(3, L + K, L, T, latch_claims=False, **PREMISES[3])
     rep.add(check("F1m mutation: a latch that ignores the drones in the stage-2 hold lets two into the CR (n=3, from the launch)",
                   "expect a run with two drones in X", ENC, _run(fc, fc.two_in_cr()), "sat", timeout_ms=600000, note=tag), verbose)
     return rep

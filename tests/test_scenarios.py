@@ -198,3 +198,20 @@ def test_the_heavy_tailed_channel_is_per_link_and_the_others_are_unchanged():
     assert ht.link_off[(0, 1)] != ht.link_off[(1, 0)]
     a, b = ChannelModel(channel("MEDIUM"), 3, 7, 30.0, duration_s=2000.0), ChannelModel(channel("MEDIUM_HT"), 3, 7, 30.0, duration_s=2000.0)
     assert a.outages == b.outages and not a.link_off
+
+
+def test_a_failure_at_a_position_fires_on_ground_truth_only_there():
+    from types import SimpleNamespace
+
+    from holo_fleet.runner import AT_PENDING, _reached
+
+    sc = SCENARIOS["st_lost_committed"](DEFAULT)
+    (f,) = sc.sim.faults
+    assert f["t_on"] >= AT_PENDING and f["at"]["gate"] == sc.judged_gates[0].gate_id
+    g = sc.judged_gates[0]
+
+    def at(s):
+        P = np.zeros((len(sc.sim.names), 3))
+        P[0] = g.from_gate_frame([s, 0.0, 0.0])
+        return SimpleNamespace(positions=P)
+    assert not _reached(f, sc, sc.sim.names, at(f["at"]["s_min"] - 0.1)) and _reached(f, sc, sc.sim.names, at(f["at"]["s_min"] + 0.1))

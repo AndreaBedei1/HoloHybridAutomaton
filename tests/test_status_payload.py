@@ -74,8 +74,9 @@ def test_committed_and_admitted_hold_the_gate_and_passed_releases_it():
 
 
 def test_a_silent_drone_keeps_its_claim_until_it_is_dead():
-    """A drone that reported committed or admitted holds the gate while it may be alive; silent for t_silent_gate_s at a receiver that
-    hears the others it is dead, and inside the operating scope a dead hull is never at the CR (holo_fleet/scope.py)."""
+    """A drone that reported committed or admitted holds the gate while it may be alive.  Silent for t_silent_gate_s at a receiver
+    that hears another drone it is dead only if last heard outside the exclusion zone (tests/test_scope.py); last heard in the CR it
+    holds the gate for ever."""
     for phase in (pl.GP_COMMITTED, pl.GP_ADMITTED):
         tr, gp = _observer(P, others=(1, 2))
         ae = gp.acoustic_exit
@@ -83,9 +84,9 @@ def test_a_silent_drone_keeps_its_claim_until_it_is_dead():
         t = 1.0 + B2.acoustic.t_silent_gate_s - 1.0
         tr.heard[2] = t - 1.0
         assert ae.claims(t) == {1} and not ae.status_excluded(1, t) and gp.update(t, P, 0., [], {}).occ_busy
-        t = 1.0 + B2.acoustic.t_silent_gate_s + 1.0
+        t = 1.0 + B2.acoustic.t_silent_gate_s + 300.0
         tr.heard[2] = t - 1.0
-        assert ae.dead(1, t) and ae.claims(t) == set() and ae.status_excluded(1, t)
+        assert not ae.dead(1, t) and ae.claims(t) == {1} and gp.update(t, P, 0., [], {}).occ_busy
 
 
 def test_a_receiver_that_hears_nobody_declares_no_one_dead():

@@ -277,7 +277,7 @@ Holodeck processes on the machine: 1; free RAM GB: 58.9; free F: GB: 577
 
 By the criteria written before the batch: (1) met; (2) no live drone declared dead in any of the 40 runs (`gate.dead` against the faults; the silence of each sender is logged only from 5c80591, so the longest live gap is not measured here); (3) s1068, s1071, s960 and s995 PASS; (4) family on fresh seeds 19 of 20 PASS; (5) the 16 other scenarios 16 of 16 PASS.
 
-The INCOMPLETE run, `lost_drone_mutex_rise_high` s1103, is the open class of s960: drone_1 holds at s = -2.5 m with a true lateral error of 0.5-0.9 m (0.33 m already at 20 s, before the gate), the map fit has one matched echo and alternates between offsets of about -0.6 and +0.85 m (the mirror), so the localization is never validated; 7 `ENTRY_HOLD_TIMEOUT` (`loc_ok` false), one undo of 0.41 m, bar echoes classified DYNAMIC drive SEPARATION_WARNING and COLLISION_AVOIDANCE at the hold. P1 and P2 hold. In the failure scenarios the identity rule is refused until the dead drone is declared dead (`others` None for the first 70 s), so the lateral error is not corrected on the approach as it is when every drone is heard. Stated as a limit.
+The INCOMPLETE run, `lost_drone_mutex_rise_high` s1103, is the open class of s960: drone_1 holds at s = -2.5 m with a true lateral error of 0.5-0.9 m (0.33 m already at 20 s, before the gate), the map fit has one matched echo and alternates between offsets of about -0.6 and +0.85 m (the mirror); corrected after the underwater review of round 8: at 440 s a fit inside the opening did validate the localization while drone_1 was committed, and moved its gate-frame error from 1.02 to 2.17 m, where it stayed (up to 2.49 m) for the last 290 s, beyond the 1 m navigation premise of G2 and S9; 7 `ENTRY_HOLD_TIMEOUT` (`loc_ok` false), one undo of 0.41 m, bar echoes classified DYNAMIC drive SEPARATION_WARNING and COLLISION_AVOIDANCE at the hold. P1 and P2 hold. In the failure scenarios the identity rule is refused until the dead drone is declared dead (`others` None for the first 70 s), so the lateral error is not corrected on the approach as it is when every drone is heard. Stated as a limit.
 
 
 ## reg2 (5c80591), written before any run
@@ -297,3 +297,45 @@ Holodeck processes on the machine: 0; free RAM GB: 62.4; free F: GB: 577
 ## st2 (c3de0a8), boundary probes, written before any run
 
 The six `st_bd_*` scenarios x seeds 2000-2001, MEDIUM-ALL, chained after reg2. Beyond the steady envelope: P1 and P2 required, the mission not; the outcome maps where the mission stops completing.
+
+### 2026-11-12 21:59 reg2 @ 5c80591
+```
+PASS 64
+lanes done: 0
+tracebacks in lane logs: 0
+Holodeck processes on the machine: 4; free RAM GB: 53; free F: GB: 577
+```
+
+### 2026-11-12 22:03 reg2 @ 5c80591 (lanes ended or 6 h limit)
+```
+PASS 68
+lanes done: 4
+tracebacks in lane logs: 0
+Holodeck processes on the machine: 0; free RAM GB: 60; free F: GB: 577
+```
+
+### 2026-11-12 22:36 st2 @ c3de0a8 (lanes ended or 6 h limit)
+```
+PASS 12
+lanes done: 4
+tracebacks in lane logs: 0
+Holodeck processes on the machine: 0; free RAM GB: 60; free F: GB: 577
+```
+
+## reg2 closed (5c80591): B2_CLEAN 34 of 34 PASS, B2_LOW 34 of 34 PASS; no live drone declared dead; longest silence of a live sender at a working receiver 13.1 s
+
+## st2 closed (c3de0a8): 12 of 12 PASS, beyond the steady envelope (head 0.40, cross 0.50, following 0.50, oblique 0.40 m/s, gusts up to 0.42 m/s; lost drone under 0.30 m/s cross); longest live silence 14.2 s. `st_bd_lost_cross_030` is outside the scope under the zone of round 8 and is removed.
+
+## Round 8 (both reviewers: freeze no) and its resolution
+
+Rule D is conditional on the exclusion zone for the declared current (a dead drone last known inside it holds the gate for ever, a safe stop); the zone and S12 include the downward coast and the rise lag; a validated fit beyond the navigation premise does not validate; the fleet model has the deaf-receiver guard and failures while committed, with the premises of the recovery and the two declared limits; per-run monitors of premise V, of the gate-frame navigation premise and of the scope; in-scope failures near the gate (`st_lost_at_queue`, `st_lost_committed`, `st_lost_after_exit`) and a two-drone failure (`st_gate_pair_lost`). Resolution note: analysis/REVIEW_ROUND4_RESOLUTION.md.
+
+## med12, the regression of round 8, written before any run (development seeds 1200-1212)
+
+56 runs: `lost_drone_mutex` x 6 and its rise variants x 2 each; the four failures of the stress batch x 2; the in-scope failures near the gate (`st_lost_at_queue`, `st_lost_committed`, `st_lost_after_exit`) and `st_gate_pair_lost` x 3; the four standard gate scenarios x 2; six stress gate scenarios under current x 1 (MEDIUM-ALL); sensitivity: channel MEDIUM_HT (6 runs) and compass bias 4 deg (MEDIUM_HB4-ALL, 6 runs).
+1. No SAFETY_FAILURE, UNSAFE_ACTION, SUT_ERROR or REPLAY_MISMATCH anywhere, sensitivity included; no INVALID (every failure outside the zone).
+2. No live drone declared dead and no gate-frame navigation premise violated in the MEDIUM runs; in the sensitivity runs both are reported.
+3. Failure runs (30): at least 28 PASS. A run INCOMPLETE because a receiver keeps a dead drone held (its last fix inside the zone with the margin) is a cost of the conservative rule, reported as such.
+4. Gate runs without failure (14): at least 13 PASS.
+5. Sensitivity: reported only.
+

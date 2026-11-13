@@ -156,6 +156,7 @@ def analyze_run(run_dir: Path, reference: Optional[Dict] = None, cfg=DEFAULT, pr
                 nb_min = (float(b) - e) if nb_min is None else min(nb_min, float(b) - e)
     out["nav_bound"] = {"samples": nb_n, "exceeded": nb_exc,
                         "min_margin_m": None if nb_min is None else round(nb_min, 3)}
+    out.update(premise_monitors(sc, cfg, names, faults, t, P, states, m))
 
     # ------------------------------------------------------------------ P1
     p1 = met["P1_separation"]
@@ -366,7 +367,11 @@ def analyze_run(run_dir: Path, reference: Optional[Dict] = None, cfg=DEFAULT, pr
     fs_end = [k for k in healthy if m and modes[-1, k] == FS and "sensor_fault" in fs_last.get(names[k], "")]
     caused = (_degradation_explains(term, mon, ref3, P, fs_end, healthy, t, cfg)
               if (fs_end and set(fs_end) <= noisy) else False)
-    if term.get("replay_consistent") is False:
+    if out["scope"]["pending_onset"] or out["scope"]["failures_inside_zone"]:
+        cls = "INVALID"                        # out of the operating scope, or the scripted onset never reached: not judged
+        out["invalid_reason"] = ("failure inside the exclusion zone: " + ", ".join(out["scope"]["failures_inside_zone"])
+                                 if out["scope"]["failures_inside_zone"] else "fault onset never reached: " + ", ".join(out["scope"]["pending_onset"]))
+    elif term.get("replay_consistent") is False:
         cls = "REPLAY_MISMATCH"                # the offline replay disagrees with the online stop: not judged
     elif not safe:
         cls = "SAFETY_FAILURE"
@@ -488,12 +493,56 @@ def _applies(req: str, mon) -> bool:
     return True
 
 
+def premise_monitors(sc, cfg, names, faults, t, P, states, m) -> Dict:
+    """Per-run checks of the premises on ground truth: premise V (no live drone held dead by a receiver), the gate-frame navigation
+    premise while committed (|error| <= nav_err_m), and the scope (every permanent failure outside the exclusion zone of every gate
+    for the bound of the scenario's current; holo_fleet/scope.py)."""
+    from holo_fleet.scope import current_bound, failure_excluded
+
+    onset = {f["drone"]: float(f["t_on"]) for f in faults if f.get("t_off") is None}
+    gates = {g.gate_id: g for g in sc.judged_gates}
+    n = len(names)
+    pv, nav_n, nav_max = [], 0, 0.0
+    for k in range(n):
+        for i in range(m):
+            r = states[k][i]
+            if r.get("mode") == "DEAD":
+                continue
+            gr = r.get("gate") or {}
+            for j in gr.get("dead") or []:
+                nm = names[int(j)] if 0 <= int(j) < n else str(j)
+                if nm not in onset or t[i] < onset[nm]:
+                    pv.append({"t": round(float(t[i]), 2), "receiver": names[k], "drone": nm})
+            g = gates.get(gr.get("id"))
+            if r.get("committed") and r.get("nav_p") is not None and g is not None:
+                e = g.vec_to_gate_frame(np.asarray(r["nav_p"], float) - P[i, k])
+                d = float(math.hypot(e[0], e[1]))
+                nav_max = max(nav_max, d)
+                nav_n += int(d > cfg.gate.nav_err_m)
+    w_h, w_dn = current_bound(sc.sim.current)
+    inside, pending = [], []
+    for nm, ton in onset.items():
+        if ton >= 1e8:
+            pending.append(nm)
+            continue
+        i0 = int(np.searchsorted(t, ton))
+        if i0 < m and nm in names and any(failure_excluded(g, P[i0, names.index(nm)], w_h, w_dn, cfg) for g in gates.values()):
+            inside.append(nm)
+    return {"premise_v": {"live_declared_dead": len(pv), "first": pv[:3]},
+            "gate_nav": {"committed_beyond": nav_n, "max_committed_error_m": round(nav_max, 3)},
+            "scope": {"declared_current": [w_h, w_dn], "failures_inside_zone": inside, "pending_onset": pending}}
+
+
 def cause_tags(out: Dict, fm: Dict, fs_sensor, term, states, healthy, m: int, dt: float, met: Dict) -> List[str]:
     """Diagnostic mechanism tags of a run (never used by the class, fixed before the final campaign): which known
     mechanisms were active, so that a non-PASS run can be read without re-deriving its cause by hand."""
     tags = []
     if (out.get("nav_bound") or {}).get("exceeded"):
         tags.append("NAV_BOUND_PREMISE_VIOLATED")        # the H6 payload premise failed: no P2 claim rests on this run
+    if (out.get("premise_v") or {}).get("live_declared_dead"):
+        tags.append("PREMISE_V_VIOLATED")                # a live drone held dead by a receiver: no P2 claim rests on this run
+    if (out.get("gate_nav") or {}).get("committed_beyond"):
+        tags.append("GATE_NAV_PREMISE_VIOLATED")         # committed with a gate-frame error beyond nav_err_m (G2, S9)
     if not out["P1"]["holds"] or out["P1"]["collisions"]:
         tags.append("P1_violation")
     if not out["P2"]["holds"]:

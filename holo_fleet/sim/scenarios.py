@@ -526,6 +526,21 @@ def _stress(base, name: str, current: Optional[CurrentField] = None, faulty: Opt
     return make
 
 
+def _stress_at(base, name: str, faulty: int, s_min: float, note: str):
+    """A permanent failure of drone ``faulty`` once its true centre reaches s_min in the frame of the judged gate (runner.AT_PENDING)."""
+    def make(cfg: FleetConfig = DEFAULT) -> Scenario:
+        sc = base(cfg)
+        sc.name = sc.sim.name = name
+        sc.sim.current = CurrentField()
+        sc.sim.faults = ({"drone": f"drone_{faulty}", "type": "TOTAL_FAILURE", "t_on": 1e9, "t_off": None,
+                          "at": {"gate": sc.judged_gates[0].gate_id, "s_min": s_min}},)
+        sc.disturbance_windows = [(0.0, sc.duration_s)]
+        sc.title = f"{sc.title} [stress: {note}]"
+        return sc
+    make.__name__ = name
+    return make
+
+
 def _gate_line3_failure(cfg: FleetConfig = DEFAULT) -> Scenario:
     return lost_drone_mutex(cfg)
 
@@ -576,7 +591,11 @@ STRESS_BATCH: Dict[str, Callable[..., Scenario]] = {
     "st_bd_oblique_040": _stress(gate_single, "st_bd_oblique_040", _U(head=0.283, cross=0.283), whole_window=True, note="0.40 m/s oblique (head-left)"),
     "st_bd_gusts_030": _stress(gate_single, "st_bd_gusts_030", CurrentField([CurrentComponent("gusts", amplitude=(0.30, 0.30, 0.0), seed=5)]),
                                whole_window=True, note="random gusts up to 0.42 m/s"),
-    "st_bd_lost_cross_030": _stress(_gate_line3_failure, "st_bd_lost_cross_030", _U(cross=0.30), faulty=0, note="left drone lost, 0.30 m/s cross"),
+    # permanent failures near the gate, inside the scope (still water: the zone ends about 1.5 m outside the frame)
+    "st_lost_at_queue": _stress_at(gate_single, "st_lost_at_queue", 0, -5.6, "the first drone fails on reaching its queue point"),
+    "st_lost_committed": _stress_at(gate_single, "st_lost_committed", 0, -4.3, "the first drone fails committed, 3 m before the frame"),
+    "st_lost_after_exit": _stress_at(gate_single, "st_lost_after_exit", 0, 4.5, "the first drone fails 3.3 m past the frame"),
+    "st_gate_pair_lost": _stress(_gate_pair, "st_gate_pair_lost", faulty=1, note="n = 2, the rear drone lost far before the gate"),
 }
 
 
