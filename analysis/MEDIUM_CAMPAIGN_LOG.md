@@ -406,3 +406,7 @@ By the criteria written before the batch: (1) met; (2) met: no live drone declar
 
 Cause of `st_lost_at_queue` and `st_lost_committed` (all six): rule D works (the dead drone is in `gate.dead` of both survivors about 70 s after the failure and the latch is FREE), but the hull rises and floats at the surface above the queue in still water, 4 m above the survivors and inside the range of their LEFT and UP sonars; the precedence, which uses the sonar only, reads it as a queued drone on the left (LEFT) or above (UP, the top-first rule of stacked queues) and the survivors yield to it for ever. P1 and P2 hold. Declared as a limit of the sonar-only precedence (not of the exclusion zone: the floating hull does not obstruct the passage); a fix would bring the death of rule D or a 3-D target position into the precedence, against the isolation of the acoustic data from the precedence (B2-S), and is left out. These two scenarios stay as limitation probes: P1 and P2 required, the mission not.
 
+
+## med13 (cb2f5a7), the regression of the P3 contract and of the A-P band, written before any run
+
+54 runs: the 17 standard scenarios at seed 1300 under MEDIUM-ALL and LOW-ALL; `st_lost_middle`, `lost_drone_mutex`, `integrated_short` x 3 (1301-1303); five failure scenarios of the stress batch x 1; compass bias 4 deg (MEDIUM_HB4) on `gate_single`, `integrated_short`, `lost_drone_mutex` x 2. Judged by criteria v8. Expected: no safety failure; no P3_FAILURE in the MEDIUM and LOW runs with the premises held; every LOW run PASS; the sensitivity runs reported.
