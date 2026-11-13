@@ -43,6 +43,9 @@ Kinds of evidence used below:
 | Premises of P2 under B2 | - | premise V: the channel never silences a live drone for `t_silent_gate_s` = 70 s at a receiver that hears another drone (logged per run, `PREMISE_V_VIOLATED`); premise C: every queued drone learns of a commitment, by the claim or the corridor echo, within the bound of S2 (32 s); the gate-frame navigation error of a committed drone is at most nav_err_m = 1 m (logged per run, `GATE_NAV_PREMISE_VIOLATED`) |
 | Under every profile, no P2 violation | empirical (campaign) | - |
 | Declared limit of liveness: a permanent failure at or near the queue in still water | empirical (med12: `st_lost_at_queue`, `st_lost_committed`, 0 of 6 complete, P1 and P2 held) | the hull floats at the surface above the queue, inside the range of the LEFT and UP sonars of the survivors, and the sonar-only precedence yields to it for ever; with a current it drifts away |
+| Declared limit of liveness: a permanent failure outside the exclusion zone but within the onboard margin of it (the error region of the last fix, the receiver's own bound, the motion to the last reception) | empirical (val1: `st_lost_after_exit`, a drone failed 3.3 m past the frame, 0 of 2 complete, P1 and P2 held) | rule D holds the gate for good when it cannot place the hull outside the zone: the safe side of the fix of round 9 |
+| Declared limit of liveness: two drones, or the last survivor, after a failure while committed | formal F2s2, F2s3 (SAT) | a receiver that hears nobody declares no one dead |
+| Open class of liveness: the localization at the gate | empirical (s960, s1103, s1400 of `st_lost_middle`; compass bias 4 deg 3 of 6 complete in med13) | a lateral error of 0.5-1 m at the hold point with an ambiguous map fit; sensitive to the compass bias |
 
 ## P3 - formation (liveness)
 

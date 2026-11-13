@@ -435,3 +435,36 @@ Holodeck processes on the machine: 0; free RAM GB: 62.9; free F: GB: 577
 ## val1 (3f1a626), the validation of the round 9 fix of rule D, written before any run
 
 36 runs (seeds 1400-1405): the `lost_drone_mutex` family, every failure scenario of the stress batch (including the declared floating-hull limit), the three survey failure scenarios, `lost_drone_mutex` under CLEAN and LOW. Rule D now reads the last accepted fix, so a dead drone whose last known position (with the onboard margin, several metres) is inside the exclusion zone for the declared current holds the gate for good: expected safe stops (INCOMPLETE) in the failures under 0.2 m/s current that passed before; P1 and P2 must hold everywhere. The outcome restates the envelope of recovery after a failure; no criterion of PASS is set for it.
+
+### 2026-11-13 16:21 val1 @ 3f1a626
+```
+PASS 19
+INCOMPLETE 4
+16:04:57 B2_MEDIUM MEDIUM-ALL             st_lost_middle                   s1400 INCOMPLETE       P1 2.807 fail ['progress', 'gate'] wall 1767.6s exit 0
+16:09:09 B2_MEDIUM MEDIUM-ALL             st_lost_after_exit               s1400 INCOMPLETE       P1 3.163 fail ['progress', 'gate', 'P3-deg re-formed'] wall 1413.4s exit
+16:09:50 B2_MEDIUM MEDIUM-ALL             st_lost_after_exit               s1401 INCOMPLETE       P1 3.174 fail ['progress', 'gate', 'P3-deg re-formed'] wall 1391.0s exit
+16:21:01 B2_MEDIUM MEDIUM-ALL             st_lost_at_queue                 s1400 INCOMPLETE       P1 3.241 fail ['progress', 'gate', 'P3-deg re-formed'] wall 1409.1s exit
+lanes done: 0
+tracebacks in lane logs: 0
+Holodeck processes on the machine: 4; free RAM GB: 54.6; free F: GB: 577
+```
+
+### 2026-11-13 16:41 val1 @ 3f1a626 (lanes ended or 6 h limit)
+```
+PASS 29
+INCOMPLETE 7
+16:04:57 B2_MEDIUM MEDIUM-ALL             st_lost_middle                   s1400 INCOMPLETE       P1 2.807 fail ['progress', 'gate'] wall 1767.6s exit 0
+16:09:09 B2_MEDIUM MEDIUM-ALL             st_lost_after_exit               s1400 INCOMPLETE       P1 3.163 fail ['progress', 'gate', 'P3-deg re-formed'] wall 1413.4s exit
+16:09:50 B2_MEDIUM MEDIUM-ALL             st_lost_after_exit               s1401 INCOMPLETE       P1 3.174 fail ['progress', 'gate', 'P3-deg re-formed'] wall 1391.0s exit
+16:21:01 B2_MEDIUM MEDIUM-ALL             st_lost_at_queue                 s1400 INCOMPLETE       P1 3.241 fail ['progress', 'gate', 'P3-deg re-formed'] wall 1409.1s exit
+16:29:02 B2_MEDIUM MEDIUM-ALL             st_lost_at_queue                 s1401 INCOMPLETE       P1 3.269 fail ['progress', 'gate', 'P3-deg re-formed'] wall 1417.8s exit
+16:32:33 B2_MEDIUM MEDIUM-ALL             st_lost_committed                s1400 INCOMPLETE       P1 3.212 fail ['progress', 'gate', 'P3-deg re-formed'] wall 1383.2s exit
+16:33:20 B2_MEDIUM MEDIUM-ALL             st_lost_committed                s1401 INCOMPLETE       P1 3.318 fail ['progress', 'gate', 'P3-deg re-formed'] wall 1388.0s exit
+lanes done: 4
+tracebacks in lane logs: 0
+Holodeck processes on the machine: 0; free RAM GB: 61.3; free F: GB: 577
+```
+
+## val1 closed (3f1a626): 29 PASS, 7 INCOMPLETE of 36; no safety failure, no live drone declared dead
+
+`lost_drone_mutex` family 10 of 10 (CLEAN and LOW 4 of 4); the failures under 0.2 m/s current (`st_lost_left_cross`, `st_lost_right_tail`) 4 of 4, `st_gate_pair_lost` 2 of 2, the survey failures 6 of 6. `st_lost_after_exit` 0 of 2 (3 of 3 before the fix): the survivors never declare the hull dead, its last fix with the onboard margin being inside the zone, and the gate stays closed: the safe stop of the fixed rule D, a declared limit. `st_lost_at_queue`, `st_lost_committed` 0 of 4 (the floating hull, declared). `st_lost_middle` s1400 INCOMPLETE: the localization at the gate (relocalization holds, gate-frame navigation beyond 1 m), the open class.
