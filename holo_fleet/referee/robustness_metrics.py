@@ -158,7 +158,10 @@ def analyze_run(run_dir: Path, reference: Optional[Dict] = None, cfg=DEFAULT, pr
                         "min_margin_m": None if nb_min is None else round(nb_min, 3)}
     out.update(premise_monitors(sc, cfg, names, faults, t, P, states, m))
     from holo_fleet.referee import p3 as p3_contract
-    out["p3"] = p3_contract.evaluate(sc, cfg, names, faults, t, P, states, modes, m)
+    channel = ((rc.get("fleet_config") or {}).get("beacon") or {}).get("channel")
+    out["validation_profile"] = bool((profile or "").split("-")[0] in ("CLEAN", "LOW", "MEDIUM") and channel in (None, "CLEAN", "LOW", "MEDIUM"))
+    out["p3"] = p3_contract.evaluate(sc, cfg, names, faults, t, P, states, modes, m, validation=out["validation_profile"])
+    out["wrong_validated_fits"] = wrong_validated_fits(names, t, P, states, m, faults)
 
     # ------------------------------------------------------------------ P1
     p1 = met["P1_separation"]
@@ -515,7 +518,8 @@ def refine_v8(cls: str, out: Dict) -> str:
     failed = set(out.get("failed_requirements") or [])
     gate_failed = "gate" in failed
     gate_premise = bool((out.get("premise_v") or {}).get("live_declared_dead")) or (
-        bool((out.get("gate_nav") or {}).get("committed_beyond")) and not (out.get("gate_nav") or {}).get("self_induced"))
+        not out.get("validation_profile", False)
+        and bool((out.get("gate_nav") or {}).get("committed_beyond")) and not (out.get("gate_nav") or {}).get("self_induced"))
     if cls == "PASS" and not parts:
         return "PASS"
     if gate_failed:
@@ -527,6 +531,29 @@ def refine_v8(cls: str, out: Dict) -> str:
     if parts or failed & {"P3 recovered", "P3-deg re-formed", "P3-deg vacancy", "no false vacancy", "not waiting"}:
         return "P3_FAILURE"                  # the gate passed and the formation not re-established as the contract requires
     return cls
+
+
+def wrong_validated_fits(names, t, P, states, m, faults, worse_m: float = 0.3) -> int:
+    """Corrections of the map fit after which the gate localization is validated and the true horizontal error of the estimate has
+    grown by more than worse_m (1 s before against 1 s after): the round 8 monitor of a wrong validated fit."""
+    n = len(names)
+    out = 0
+    for k in range(n):
+        prev = None
+        for i in range(m):
+            r = states[k][i]
+            a = float(((r.get("nav_aid") or {}).get("applied_m")) or 0.0)
+            if prev is not None and a > prev + 1e-6 and (r.get("gate") or {}).get("loc_ok") and r.get("nav_p") is not None:
+                i0 = int(np.searchsorted(t, t[i] - 1.0))
+                i1 = min(int(np.searchsorted(t, t[i] + 1.0)), m - 1)
+                e0 = states[k][i0].get("nav_p")
+                e1 = states[k][i1].get("nav_p")
+                if e0 is not None and e1 is not None:
+                    d0 = float(np.hypot(*(np.asarray(e0, float)[:2] - P[i0, k, :2])))
+                    d1 = float(np.hypot(*(np.asarray(e1, float)[:2] - P[i1, k, :2])))
+                    out += int(d1 - d0 > worse_m)
+            prev = a
+    return out
 
 
 def fairness_gap(names, onset, t, states, m, cfg) -> Dict:
@@ -616,6 +643,8 @@ def cause_tags(out: Dict, fm: Dict, fs_sensor, term, states, healthy, m: int, dt
         tags.append("PREMISE_V_VIOLATED")                # a live drone held dead by a receiver: no P2 claim rests on this run
     if (out.get("gate_nav") or {}).get("committed_beyond"):
         tags.append("GATE_NAV_PREMISE_VIOLATED")         # committed with a gate-frame error beyond nav_err_m (G2, S9)
+    if out.get("wrong_validated_fits"):
+        tags.append("WRONG_VALIDATED_FIT")               # a validated map-fit correction that moved the estimate away from the truth
     if not out["P1"]["holds"] or out["P1"]["collisions"]:
         tags.append("P1_violation")
     if not out["P2"]["holds"]:

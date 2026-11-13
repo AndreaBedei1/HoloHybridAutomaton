@@ -24,7 +24,8 @@ Premises, monitored per window [start, deadline] on ground truth (a verdict NOT_
      them measured, never otherwise):
   W  current: the true current at the drone keeps the velocity of its mission reference control-feasible (control/current_envelope.py), all but
      at most 2 s in a row;
-  N  navigation: the horizontal error of the onboard estimate is <= e_ok = 0.5 m (the controller's band inside E_TOL), all but at
+  N  navigation (a premise only beyond the validation profiles; under CLEAN, LOW and MEDIUM with the nominal channel it is a tag,
+     the navigation being part of what is validated): the horizontal error of the onboard estimate is <= e_ok = 0.5 m (the controller's band inside E_TOL), all but at
      most 2 s in a row; an excess that follows a correction of the drone's own map fit within 30 s is the controller's, not the
      premise's (self-induced: counted as NOT_MET);
   A  acoustics (P3c): the receiver hears another drone during the window, and no live sender is silent for t_silent_s;
@@ -86,7 +87,7 @@ def _longest(t, bad, i0, i1) -> float:
     return best
 
 
-def evaluate(sc, cfg, names, faults, t, P, states, modes, m) -> Dict:
+def evaluate(sc, cfg, names, faults, t, P, states, modes, m, validation: bool = True) -> Dict:
     from holo_fleet.control.current_envelope import check_current
     from holo_fleet.scope import current_bound, failure_excluded
 
@@ -167,7 +168,8 @@ def evaluate(sc, cfg, names, faults, t, P, states, modes, m) -> Dict:
     def verdict(met, prem):
         if met:
             return "MET"
-        ext_p = [p for p in prem if p != "N_self"]
+        # under the validation profiles (CLEAN, LOW, MEDIUM, nominal channel) the navigation is part of what is validated: N is a tag
+        ext_p = [p for p in prem if p != "N_self" and not (validation and p == "N")]
         return "PREMISE_VIOLATED" if ext_p else "NOT_MET"
 
     w_h, w_dn = current_bound(sc.sim.current)
@@ -212,7 +214,7 @@ def evaluate(sc, cfg, names, faults, t, P, states, modes, m) -> Dict:
             tr = _held(t, ok, i0, dl - hold, hold)
             late = None if tr is not None else _held(t, ok, i0, float(t[-1]), hold)
             prem = premises(k, start, dl)
-            p3a[names[k]] = {"verdict": "LATE" if (tr is None and late is not None and not [x for x in prem if x != "N_self"]) else verdict(tr is not None, prem), "late_recovered": late, "start": round(start, 2), "deadline": round(dl, 2),
+            p3a[names[k]] = {"verdict": "LATE" if (tr is None and late is not None and not [x for x in prem if x != "N_self" and not (validation and x == "N")]) else verdict(tr is not None, prem), "late_recovered": late, "start": round(start, 2), "deadline": round(dl, 2),
                              "recovered": None if tr is None else round(tr, 2), "d_m": round(d_k, 2), "premises": prem,
                              "censored": tr is None and t[-1] < dl}
     out["P3a"] = p3a
@@ -278,7 +280,7 @@ def evaluate(sc, cfg, names, faults, t, P, states, modes, m) -> Dict:
         tr = _held(t, ok, i0, dl - hold, hold)
         late = None if tr is not None else _held(t, ok, i0, float(t[-1]), hold)
         prem = sorted({p for k in healthy for p in premises(k, start, dl)})
-        out["P3b"] = {"verdict": "LATE" if (tr is None and late is not None and not [x for x in prem if x != "N_self"]) else verdict(tr is not None, prem), "late_recovered": late, "start": round(start, 2), "deadline": round(dl, 2), "e0_m": round(e0, 2),
+        out["P3b"] = {"verdict": "LATE" if (tr is None and late is not None and not [x for x in prem if x != "N_self" and not (validation and x == "N")]) else verdict(tr is not None, prem), "late_recovered": late, "start": round(start, 2), "deadline": round(dl, 2), "e0_m": round(e0, 2),
                       "recovered": None if tr is None else round(tr, 2), "premises": prem, "censored": tr is None and t[-1] < dl}
     if lost:
         vs = [v["verdict"] for v in vac.values()]

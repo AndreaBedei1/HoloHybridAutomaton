@@ -202,7 +202,17 @@ class AcousticExit:
         if self.g is None:
             return True
         m_h, m_z = self._fix_margin(f, self.tracker.heard[j])
-        return not declared_excluded(self.g, f.p, self.cfg, m_h, m_z)
+        p = np.asarray(f.p, float)
+        rep = getattr(f, "rep", None)
+        if rep is not None and getattr(f, "rep_ok", False) and math.isfinite(float(rep.bound)):
+            # the sender's own estimate, within its sent bound (premise H6, monitored per run): its depth is a measurement, the
+            # elevation of the fix is not (round 9, underwater); the smaller of the two regions holds the drone when both premises hold
+            motion = self.v_bound * (max(float(self.tracker.heard[j]) - float(f.t), 0.0) + self.cfg.scope.t_lost_s)
+            own = self.tracker.pose.buf[-1][3] if self.tracker.pose.buf else None
+            r_h, r_z = float(rep.bound) + float(own or 0.0) + motion, float(rep.bound) + motion
+            if r_h + r_z < m_h + m_z:
+                p, m_h, m_z = np.asarray(rep.p, float), r_h, r_z
+        return not declared_excluded(self.g, p, self.cfg, m_h, m_z)
 
     def _fix_margin(self, f: Fix, heard_t: float):
         """Where the drone of fix f can have failed (horizontal, vertical): the error region of the fix, the receiver's own navigation
