@@ -36,3 +36,9 @@ def test_the_classes_of_criteria_v8():
     assert refine_v8("INCOMPLETE", _out(("gate",), gate_nav=5)) == "PREMISE_VIOLATED"
     assert refine_v8("INCOMPLETE", _out(("gate",), gate_nav=5, self_induced=True)) == "INCOMPLETE"   # the drone's own map fit
     assert refine_v8("SAFETY_FAILURE", _out(b="MET")) == "SAFETY_FAILURE"
+
+
+def test_a_late_recovery_is_not_a_pass_nor_a_failure():
+    assert refine_v8("PASS", _out(b="LATE")) == "P3_LATE"
+    assert refine_v8("PASS", _out(a="LATE", b="NOT_MET")) == "P3_FAILURE"
+    assert refine_v8("INCOMPLETE", _out(("gate",), b="LATE")) == "INCOMPLETE"

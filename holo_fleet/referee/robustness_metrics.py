@@ -500,6 +500,7 @@ def _applies(req: str, mon) -> bool:
 def refine_v8(cls: str, out: Dict) -> str:
     """Criteria v8: the P3 contract (referee/p3.py) and the premise monitors refine PASS and INCOMPLETE.
     PASS             online SUCCESS and every part of P3 MET or not applicable;
+    P3_LATE          the gate passed; a part of P3 met only after its deadline (within the run), the premises held;
     P3_FAILURE       the gate passed, a part of P3 NOT_MET with its premises held (a genuine liveness failure of the formation);
     PREMISE_VIOLATED every failed part of P3, and a failed gate, explained by a premise measured on ground truth (P3: W, N, A, O;
                      gate: premise V, the gate-frame navigation premise not induced by the drone's own map fit);
@@ -507,6 +508,8 @@ def refine_v8(cls: str, out: Dict) -> str:
     if cls not in ("PASS", "INCOMPLETE"):
         return cls
     q = out.get("p3") or {}
+    if (q.get("P3c") or {}).get("verdict") == "NOT_ADMISSIBLE":
+        return "PREMISE_VIOLATED"            # premise S: more failures than the contract admits, or n = 2 with a failure while committed
     parts = [v.get("verdict") for v in (q.get("P3a") or {}).values()] + [(q.get(x) or {}).get("verdict") for x in ("P3b", "P3c")]
     parts = [v for v in parts if v not in (None, "NA", "MET")]
     failed = set(out.get("failed_requirements") or [])
@@ -519,9 +522,40 @@ def refine_v8(cls: str, out: Dict) -> str:
         return "PREMISE_VIOLATED" if gate_premise and all(v == "PREMISE_VIOLATED" for v in parts) else "INCOMPLETE"
     if parts and all(v == "PREMISE_VIOLATED" for v in parts):
         return "PREMISE_VIOLATED"
+    if parts and all(v in ("LATE", "PREMISE_VIOLATED") for v in parts) and not (failed - {"progress"}):
+        return "P3_LATE"
     if parts or failed & {"P3 recovered", "P3-deg re-formed", "P3-deg vacancy", "no false vacancy", "not waiting"}:
         return "P3_FAILURE"                  # the gate passed and the formation not re-established as the contract requires
     return cls
+
+
+def fairness_gap(names, onset, t, states, m, cfg) -> Dict:
+    """Premise of formal/check_fleet.py: the longest stretch with no instant at which every live drone has a fresh reception
+    (status_fresh_s) of every other live drone (gate.silence, logged from 5c80591)."""
+    n = len(names)
+    fresh_lim = cfg.acoustic.status_fresh_s
+    longest, since, seen = 0.0, None, False
+    for i in range(m):
+        live = [k for k in range(n) if names[k] not in onset or t[i] < onset[names[k]]]
+        ok = True
+        for k in live:
+            sil = (states[k][i].get("gate") or {}).get("silence")
+            if not sil:
+                ok = None
+                break
+            others = [j for j in range(n) if j != k]
+            if any(s > fresh_lim for j, s in zip(others, sil) if j in live):
+                ok = False
+                break
+        if ok is None:
+            continue
+        seen = True
+        if ok:
+            since = None
+        else:
+            since = t[i] if since is None else since
+            longest = max(longest, float(t[i] - since))
+    return {"logged": seen, "longest_gap_s": round(longest, 1), "window_s": 35.0, "holds": (not seen) or longest <= 35.0}
 
 
 def premise_monitors(sc, cfg, names, faults, t, P, states, m) -> Dict:
@@ -533,7 +567,7 @@ def premise_monitors(sc, cfg, names, faults, t, P, states, m) -> Dict:
     onset = {f["drone"]: float(f["t_on"]) for f in faults if f.get("t_off") is None}
     gates = {g.gate_id: g for g in sc.judged_gates}
     n = len(names)
-    pv, nav_n, nav_max, nav_self = [], 0, 0.0, None
+    pv, nav_n, nav_max, nav_self = [], 0, 0.0, {}
     for k in range(n):
         for i in range(m):
             r = states[k][i]
@@ -551,11 +585,11 @@ def premise_monitors(sc, cfg, names, faults, t, P, states, m) -> Dict:
                 nav_max = max(nav_max, d)
                 if d > cfg.gate.nav_err_m:
                     nav_n += 1
-                    if nav_self is None:     # the first excess: after an own map-fit correction within 30 s, it is the controller's
+                    if k not in nav_self:    # the first excess of drone k: after its own map-fit correction within 30 s, it is the controller's
                         a1 = float(((r.get("nav_aid") or {}).get("applied_m")) or 0.0)
                         j0 = int(np.searchsorted(t, t[i] - 30.0))
                         a0 = float(((states[k][j0].get("nav_aid") or {}).get("applied_m")) or 0.0)
-                        nav_self = a1 - a0 > 1e-6
+                        nav_self[k] = a1 - a0 > 1e-6
     w_h, w_dn = current_bound(sc.sim.current)
     inside, pending = [], []
     for nm, ton in onset.items():
@@ -566,7 +600,9 @@ def premise_monitors(sc, cfg, names, faults, t, P, states, m) -> Dict:
         if i0 < m and nm in names and any(failure_excluded(g, P[i0, names.index(nm)], w_h, w_dn, cfg) for g in gates.values()):
             inside.append(nm)
     return {"premise_v": {"live_declared_dead": len(pv), "first": pv[:3]},
-            "gate_nav": {"committed_beyond": nav_n, "max_committed_error_m": round(nav_max, 3), "self_induced": bool(nav_self)},
+            "gate_nav": {"committed_beyond": nav_n, "max_committed_error_m": round(nav_max, 3),
+                         "self_induced": bool(nav_self) and all(nav_self.values())},
+            "fairness": fairness_gap(names, onset, t, states, m, cfg),
             "scope": {"declared_current": [w_h, w_dn], "failures_inside_zone": inside, "pending_onset": pending}}
 
 

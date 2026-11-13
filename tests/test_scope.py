@@ -87,7 +87,8 @@ def test_rule_d_releases_a_silent_claim_only_outside_the_zone():
         tr, ae, _rx, P = _receiver(w_h)
         _rx(tr, P, 1.0, 1, q, phase=pl.GP_ADMITTED)
         t = 1.0 + D.acoustic.t_silent_gate_s + 5.0
-        tr.heard[2] = t - 1.0
+        for tt in np.arange(2.0, t, 1.0):                   # the other drone heard every second: the tracker prunes old fixes
+            _rx(tr, P, float(tt), 2, [-20.0, 6.0, -5.], phase=pl.GP_NONE)
         assert ae.dead(1, t) == released and (ae.claims(t) == set()) == released, (q, w_h)
 
 

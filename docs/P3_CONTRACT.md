@@ -33,9 +33,11 @@ Monitored on ground truth over the window from its start to its deadline (`p3.pr
 
 | Premise | Monitor |
 | --- | --- |
-| W, current and control authority | the true current at the drone keeps its commanded velocity control-feasible (`control/current_envelope.check_current`), except for at most 2 s in a row |
+| W, current and control authority | the true current at the drone keeps the velocity of its mission reference control-feasible (`control/current_envelope.check_current`), except for at most 2 s in a row |
 | N, navigation | the horizontal error of the onboard estimate is at most e_ok = 0.5 m (the controller's band inside E_TOL), except for at most 2 s in a row. An excess that starts within 30 s of a correction applied by the drone's own map fit is the controller's (self-induced) and does not count as a premise violation |
-| A, acoustics (P3c) | the receiver hears another drone in the window, and no live sender is silent for t_silent_s at a working receiver (`gate.silence`) |
+| A, acoustics (P3c) | the receiver hears another drone in the window, and no live sender is silent for t_silent_s at it (`gate.silence`) |
+| H, the hull clears the queue | a dead hull stops counting as a queued drone for the sonar precedence once it has risen; not monitored, a premise of formal F2 (F2s4); it fails when the hull floats at the surface above the queue in still water (med12) |
+| fairness (formal F2) | within every 35 s some instant at which every live drone has a fresh reception of every other: monitored per run (`fairness`), longest gap reported |
 | O, feasible path | no dead hull within d_warning_exit = 2.7 m of the drone for more than 10 s of the window (a physical obstruction) |
 | S, admissible failures | every permanent failure outside the exclusion zone of `holo_fleet/scope.py` (a run with one inside is INVALID); at most n - 2 failures for n >= 3; for n = 2 none while committed (formal F2s2) |
 
@@ -46,7 +48,8 @@ Sonar availability enters as the FAILSAFE pre-emption that extends the deadline,
 | Class | Meaning |
 | --- | --- |
 | PASS | online SUCCESS (every requirement of criteria v3 at the end) and every part of P3 MET or not applicable |
-| P3_FAILURE | the gate passed; a part of P3 NOT_MET, or a formation requirement missed at the end, with the premises held: a genuine liveness failure of the formation |
+| P3_LATE | the gate passed; a part of P3 met only after its deadline, within the run, with the premises held (a performance miss of the nominal deadline; the certified ranking bound is longer) |
+| P3_FAILURE | the gate passed; a part of P3 never met in the run, or a formation requirement missed at the end, with the premises held: a genuine liveness failure of the formation |
 | PREMISE_VIOLATED | every failed part of P3, and a failed gate, explained by a premise measured on ground truth (P3: W, N, A, O; gate: premise V, or the gate-frame navigation premise when it does not follow the drone's own correction) |
 | INCOMPLETE | the gate or the planned progress not reached with the premises held: a genuine liveness failure of the passage |
 | SAFETY_FAILURE, UNSAFE_ACTION, INVALID, REPLAY_MISMATCH, SUT_ERROR | as in criteria v7 |

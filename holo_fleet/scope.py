@@ -44,8 +44,9 @@ def obstruction_half(g, cfg: FleetConfig = DEFAULT) -> np.ndarray:
     return half + R_OUT
 
 
-def failure_excluded(g, p, w_h: float, w_down: float = 0.0, cfg: FleetConfig = DEFAULT, margin: float = 0.0) -> bool:
-    """A permanent failure with the hull centre at p (world), known within ``margin`` metres horizontally (the depth is measured), is inside the exclusion zone E of
+def failure_excluded(g, p, w_h: float, w_down: float = 0.0, cfg: FleetConfig = DEFAULT, margin: float = 0.0,
+                     margin_z: float = 0.0) -> bool:
+    """A permanent failure with the hull centre at p (world), known within ``margin`` metres horizontally and ``margin_z`` vertically, is inside the exclusion zone E of
     gate g for a current bounded by w_h (horizontal) and w_down (downward) (module docstring)."""
     S = cfg.scope
     h = obstruction_half(g, cfg)
@@ -53,14 +54,14 @@ def failure_excluded(g, p, w_h: float, w_down: float = 0.0, cfg: FleetConfig = D
         return True
     s, l, dz = (float(v) for v in g.to_gate_frame(np.asarray(p, float)))
     d_h = math.hypot(max(abs(s) - h[0], 0.0), max(abs(l) - h[1], 0.0)) - margin
-    h0 = h[2] - dz
+    h0 = h[2] - dz + margin_z
     t_star = max(0.0, (h0 + S.coast_v_m + S.v_rise_min_mps * S.rise_lag_s) / (S.v_rise_min_mps - w_down))
     return d_h <= S.coast_h_m + S.drift_factor * w_h * t_star
 
 
-def declared_excluded(g, p, cfg: FleetConfig = DEFAULT, margin: float = 0.0) -> bool:
+def declared_excluded(g, p, cfg: FleetConfig = DEFAULT, margin: float = 0.0, margin_z: float = 0.0) -> bool:
     """failure_excluded for the current declared for the mission (cfg.scope)."""
-    return failure_excluded(g, p, cfg.scope.w_h_max_mps, cfg.scope.w_down_max_mps, cfg, margin)
+    return failure_excluded(g, p, cfg.scope.w_h_max_mps, cfg.scope.w_down_max_mps, cfg, margin, margin_z)
 
 
 def current_bound(current) -> tuple:

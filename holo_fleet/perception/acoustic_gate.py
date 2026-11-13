@@ -194,19 +194,25 @@ class AcousticExit:
         tests/test_scope.py)."""
         if not self.tracker.silent(j, t, self.cfg.acoustic.t_silent_gate_s):
             return False
-        fx = self.tracker.fixes.get(j) or []
-        if not fx or self.g is None:
+        if j not in self.tracker.heard:
+            return True                                    # never heard: failed at its launch
+        f = self.tracker.last_accepted.get(j)              # never forgotten (the fix lists keep 30 s only: round 9, B1)
+        if f is None:
+            return False                                   # heard, never located: where it failed is unknown, it holds the gate
+        if self.g is None:
             return True
-        f = self.tracker.last_accepted.get(j) or fx[-1]
-        return not declared_excluded(self.g, f.p, self.cfg, self._fix_margin(f))
+        m_h, m_z = self._fix_margin(f, self.tracker.heard[j])
+        return not declared_excluded(self.g, f.p, self.cfg, m_h, m_z)
 
-    def _fix_margin(self, f: Fix) -> float:
-        """Where the drone of fix f can have failed: the error region of the fix, the receiver's own navigation bound, and the motion
-        in ``t_lost_s`` at the speed bound."""
+    def _fix_margin(self, f: Fix, heard_t: float):
+        """Where the drone of fix f can have failed (horizontal, vertical): the error region of the fix, the receiver's own navigation
+        bound, and the motion at the speed bound from the fix to its last reception heard and ``t_lost_s`` beyond."""
         pts = np.asarray(f.pts, float).reshape(-1, 3)
-        spread = float(np.max(np.linalg.norm(pts[:, :2] - np.asarray(f.p, float)[:2], axis=1))) if len(pts) else 0.0
+        d = pts - np.asarray(f.p, float)[None, :] if len(pts) else np.zeros((1, 3))
+        spread = float(np.max(np.linalg.norm(d[:, :2], axis=1)))
         own = self.tracker.pose.buf[-1][3] if self.tracker.pose.buf else None
-        return spread + float(f.slack) + float(own or 0.0) + self.v_bound * self.cfg.scope.t_lost_s
+        motion = self.v_bound * (max(float(heard_t) - float(f.t), 0.0) + self.cfg.scope.t_lost_s)
+        return spread + float(f.slack) + float(own or 0.0) + motion, float(np.max(np.abs(d[:, 2]))) + motion
 
     # ------------------------------------------------------------------ geometry
     def _cr_possible(self, q: np.ndarray, rho: float) -> bool:

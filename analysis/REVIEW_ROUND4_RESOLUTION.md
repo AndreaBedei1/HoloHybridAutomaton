@@ -115,3 +115,17 @@ Disclosure. The reviewer's priority call (`SetPriorityClass` through `ctypes` wi
 | Underwater M5: two-drone fleets | As formal B2 |
 | Underwater M6 and formal M6: sample sizes, development decisions | The final campaign sizes follow the reviewers' criteria; the scope and rule D are declared as development decisions |
 
+## Round 9, formal (reviewed at 176b8b8; report `review_round9_formal.md`)
+
+| Finding | Resolution |
+|---|---|
+| B1: rule D read the zone from the fix list, pruned after 30 s, so at 70 s a hull last heard in the CR was declared dead and released | Fixed: the last accepted fix (kept for ever); never heard = absent from `heard`; heard but never located holds the gate. S4 now runs on real receptions, mutation S4b (the round 8 code) is caught; the test of rule D drives the tracker for 75 s |
+| M1: margin of rule D | Motion from the fix to the last reception plus one period, vertical margin, no fall back on a rejected fix |
+| M2: F2 contradicted by med12 (floating hull) | Premise H stated, declared limit F2s4 (SAT); GUARANTEES and the P3 document conditional on it |
+| M3: fairness and premise C unmonitored | Fairness monitored per run (`fairness`, longest all-fresh gap); premise C stated, not monitored (a declared gap of the evidence) |
+| M4: p3 against its document | Premise N at the controller band e_ok = 0.5 m; premise A second clause; n = 2 failure while committed not admissible; NOT_ADMISSIBLE classed PREMISE_VIOLATED (premise S); docstring of D_b |
+| M5: deadlocks classed PREMISE_VIOLATED | Gate-frame navigation attributed per drone (external only if some drone's first excess does not follow its own correction); W judged on the mission velocity; O and the progress of a blocked passage stay as declared |
+| M6: P3_FAILURE wording | Split: P3_LATE (met after the deadline within the run, premises held) and P3_FAILURE (never met) |
+| M7: stale formal results | Regenerated and committed at the freeze |
+| MINOR | Declared in the P3 document |
+

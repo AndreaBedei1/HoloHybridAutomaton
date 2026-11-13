@@ -43,6 +43,7 @@ import z3
 from common import ROOT, CheckResult, Report, check  # noqa: E402
 
 from holo_fleet.config import DEFAULT, BeaconConfig, FleetConfig
+from holo_fleet.scope import declared_excluded  # noqa: E402
 from holo_fleet.mission import GateSpec, MissionPlan, Path as MPath, abreast_slots, queue_line
 from holo_fleet.perception import payload as pl
 from holo_fleet.perception.acoustic import AcousticTracker
@@ -176,7 +177,7 @@ def evidence_order(cfg: FleetConfig, g, n_cases: int = 300, mutate: bool = False
     return {"cases": n_cases, "excluded_by_stale_status": bad}
 
 
-def silence_never_clears(cfg: FleetConfig, g, n_cases: int = 300, seed: int = 17, mutate: bool = False) -> dict:
+def silence_never_clears(cfg: FleetConfig, g, n_cases: int = 300, seed: int = 17, mutate: bool = False, mutate_b1: bool = False) -> dict:
     """S4: see the module docstring."""
     rng = np.random.default_rng(seed)
     bad = 0
@@ -190,7 +191,20 @@ def silence_never_clears(cfg: FleetConfig, g, n_cases: int = 300, seed: int = 17
         _rx(tr, p, yaw, 1.0, 1, q, cfg, phase)
         ae.g = g
         t = 1.0 + float(rng.uniform(0.0, lim - 0.01) if case == 0 else rng.uniform(lim + 0.01, 86400.0))
-        tr.heard[2] = t - 0.5 if case != 2 else 0.0
+        far = g.from_gate_frame([-20.0, 5.0, 0.0])
+        # real receptions of the other drone (they run the tracker's pruning of old fixes, round 9 B1): late, or only early (deaf)
+        _rx(tr, p, yaw, (t - 0.5) if case != 2 else 1.5, 2, far, cfg, pl.GP_NONE)
+        tr.update(t, [], p, yaw, 0.5)
+        if mutate_b1:                                   # the round 8 code: the zone read from the pruned fix list
+            def old_dead(j, tt, ae=ae, tr=tr):
+                if not tr.silent(j, tt, cfg.acoustic.t_silent_gate_s):
+                    return False
+                fx = tr.fixes.get(j) or []
+                if not fx or ae.g is None:
+                    return True
+                f = tr.last_accepted.get(j) or fx[-1]
+                return not declared_excluded(ae.g, f.p, ae.cfg, *ae._fix_margin(f, tr.heard[j]))
+            ae.dead = old_dead
         if mutate:
             orig = ae.status_claim
             ae.status_claim = lambda j, tt, o=orig: o(j, tt) and not tr.silent(j, tt, cfg.acoustic.status_fresh_s)
@@ -421,6 +435,10 @@ def run(cfg: FleetConfig = B2, verbose: bool = True) -> Report:
     rep.add(CheckResult("S4 silence and death: a claim stands while the drone is silent for less than t_silent_gate_s, the receiver hears nobody, or it was last heard in the exclusion zone; a dead drone last heard outside it holds none",
                         "randomized over silence durations up to a day", ENC, "holds",
                         verdict="holds" if r["violations"] == 0 else "violated", passed=r["violations"] == 0, note=str(r)), verbose)
+    rb = silence_never_clears(cfg, g, n_cases=120, mutate_b1=True)
+    rep.add(CheckResult("S4b mutation: rule D reading the zone from the pruned fix list (round 8 code) releases a claim of a hull at the gate",
+                        "expect violation", ENC, "violated", verdict="violated" if rb["violations"] > 0 else "holds",
+                        passed=rb["violations"] > 0, note=str(rb)), verbose)
     rm = silence_never_clears(cfg, g, n_cases=60, mutate=True)
     okm = rm["violations"] > 0
     rep.add(CheckResult("S4m mutation: a short silence releasing a claim is detected", "expect violation", ENC, "violated",

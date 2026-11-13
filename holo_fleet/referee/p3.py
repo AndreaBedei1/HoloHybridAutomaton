@@ -8,7 +8,7 @@ P3a  individual slot recovery after the gate.  Healthy drone k crosses the gate 
      after having been before the CR).  Within D_a(k) of t_x - or of the second crossing, for the first drone - its deviation
      from its template slot, relative to the healthy drones already across (median translation), is <= E_TOL for T_HOLD.
 P3b  fleet formation after the gate.  After the last healthy crossing t_last, the formation error of the healthy drones on
-     their original slots is <= E_TOL for T_HOLD within D_b = max_k D_a(k) of t_last.  A mission without a gate: from the end
+     their original slots is <= E_TOL for T_HOLD within D_b of t_last (the deadline formula below, e0 the formation error at t_last).  A mission without a gate: from the end
      of the last declared disturbance, within t_rejoin + T_HOLD.
 P3c  degraded formation after an admissible permanent failure (at t_f): every healthy drone that expects the lost drone as a
      neighbour declares its slot vacant within t_silent_s + 2 s of t_f (premise of a working receiver; the last survivor, which
@@ -22,7 +22,7 @@ Deadline  D = e0 / v_close + t_rejoin_margin + T_HOLD, e0 the deviation (P3a) or
      inside declared disturbance windows.  Guaranteed (not required) bound: the ranking functions of formal/check_formation.py.
 Premises, monitored per window [start, deadline] on ground truth (a verdict NOT_MET becomes PREMISE_VIOLATED only with one of
      them measured, never otherwise):
-  W  current: the true current at the drone keeps its commanded velocity control-feasible (control/current_envelope.py), all but
+  W  current: the true current at the drone keeps the velocity of its mission reference control-feasible (control/current_envelope.py), all but
      at most 2 s in a row;
   N  navigation: the horizontal error of the onboard estimate is <= e_ok = 0.5 m (the controller's band inside E_TOL), all but at
      most 2 s in a row; an excess that follows a correction of the drone's own map fit within 30 s is the controller's, not the
@@ -123,7 +123,7 @@ def evaluate(sc, cfg, names, faults, t, P, states, modes, m) -> Dict:
     w_bad = np.zeros((m, n), bool)
     for i in range(0, m):
         for k in healthy:
-            v = states[k][i].get("v_cmd")
+            v = states[k][i].get("v_mis") or states[k][i].get("v_cmd")    # the velocity the mission asks, not the controller's choice
             if v is None:
                 continue
             w = sc.sim.current.drift_at(P[i, k], t[i]) if hasattr(sc.sim.current, "drift_at") else np.zeros(3)
@@ -139,7 +139,7 @@ def evaluate(sc, cfg, names, faults, t, P, states, modes, m) -> Dict:
         out = []
         if _longest(t, w_bad[:, k], i0, i1) > GAP_S:
             out.append("W")
-        bad = nav_err[:, k] > cfg.ref.e_ok
+        bad = nav_err[:, k] > cfg.form.e_ok
         if _longest(t, bad, i0, i1) > GAP_S:
             first = next((i for i in range(i0, min(i1 + 1, m)) if bad[i]), None)
             if first is not None:
@@ -154,7 +154,12 @@ def evaluate(sc, cfg, names, faults, t, P, states, modes, m) -> Dict:
         if acoustic:
             for i in range(i0, min(i1 + 1, m)):
                 sil = (states[k][i].get("gate") or {}).get("silence")
-                if sil and not any(s < cfg.form.t_silent_s for s in sil):
+                if not sil:
+                    continue
+                others = [j for j in range(n) if j != k]
+                live_sil = [s for j, s in zip(others, sil) if j in healthy]
+                deaf = not any(s < cfg.form.t_silent_s for s in sil)
+                if deaf or any(s >= cfg.form.t_silent_s for s in live_sil):   # deaf, or a live sender silent for t_silent_s
                     out.append("A")
                     break
         return out
@@ -169,7 +174,8 @@ def evaluate(sc, cfg, names, faults, t, P, states, modes, m) -> Dict:
     gates = list(sc.judged_gates)
     scope_ok = all(not any(failure_excluded(g, P[int(np.searchsorted(t, onset[names[j]])) if np.searchsorted(t, onset[names[j]]) < m else -1, j],
                                              w_h, w_dn, cfg) for g in gates) for j in lost)
-    n_ok = (len(lost) <= max(n - 2, 0)) if n >= 3 else (len(lost) <= 1)
+    committed_fail = any(bool(states[j][min(int(np.searchsorted(t, onset[names[j]])), m - 1)].get("committed")) for j in lost)
+    n_ok = (len(lost) <= max(n - 2, 0)) if n >= 3 else (len(lost) <= 1 and not committed_fail)
     out = {"applies": True, "tol_m": E_TOL_M, "hold_s": round(hold, 2), "admissible": bool(scope_ok and n_ok)}
 
     # ------------------------------------------------------------------ crossings and P3a
@@ -204,8 +210,9 @@ def evaluate(sc, cfg, names, faults, t, P, states, modes, m) -> Dict:
                 idx = [j for j in healthy if j in tx and tx[j] <= t[i] + 1e-9]
                 ok[i] = len(idx) >= 2 and _frame_dev(sc, P[i], idx, k) <= E_TOL_M
             tr = _held(t, ok, i0, dl - hold, hold)
+            late = None if tr is not None else _held(t, ok, i0, float(t[-1]), hold)
             prem = premises(k, start, dl)
-            p3a[names[k]] = {"verdict": verdict(tr is not None, prem), "start": round(start, 2), "deadline": round(dl, 2),
+            p3a[names[k]] = {"verdict": "LATE" if (tr is None and late is not None and not [x for x in prem if x != "N_self"]) else verdict(tr is not None, prem), "late_recovered": late, "start": round(start, 2), "deadline": round(dl, 2),
                              "recovered": None if tr is None else round(tr, 2), "d_m": round(d_k, 2), "premises": prem,
                              "censored": tr is None and t[-1] < dl}
     out["P3a"] = p3a
@@ -269,8 +276,9 @@ def evaluate(sc, cfg, names, faults, t, P, states, modes, m) -> Dict:
         i0 = int(np.searchsorted(t, start))
         ok = np.array([_frame_dev(sc, P[i], healthy) <= E_TOL_M for i in range(m)])
         tr = _held(t, ok, i0, dl - hold, hold)
+        late = None if tr is not None else _held(t, ok, i0, float(t[-1]), hold)
         prem = sorted({p for k in healthy for p in premises(k, start, dl)})
-        out["P3b"] = {"verdict": verdict(tr is not None, prem), "start": round(start, 2), "deadline": round(dl, 2), "e0_m": round(e0, 2),
+        out["P3b"] = {"verdict": "LATE" if (tr is None and late is not None and not [x for x in prem if x != "N_self"]) else verdict(tr is not None, prem), "late_recovered": late, "start": round(start, 2), "deadline": round(dl, 2), "e0_m": round(e0, 2),
                       "recovered": None if tr is None else round(tr, 2), "premises": prem, "censored": tr is None and t[-1] < dl}
     if lost:
         vs = [v["verdict"] for v in vac.values()]

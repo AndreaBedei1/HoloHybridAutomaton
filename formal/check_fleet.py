@@ -25,7 +25,9 @@ counting as present until it has risen (T_RISE).  Modelled here:
     exclusion zone with the margin a receiver adds to a fix, where rule D applies (inside it a dead drone holds the gate for ever:
     out of the scope, not modelled).  A drone that fails committed keeps its claim until it is known dead;
   * rule D at a receiver needs another live drone it hears (acoustic.py: a receiver that hears nobody declares no one dead).
-Premises of the recovery: n = 2 at most one failure and none while committed; n = 3, 4 at most n - 2 failures (every receiver
+Premises of the recovery: H, a dead hull stops counting as a queued drone for the sonar precedence once it has risen (it does
+not when it floats at the surface above the queue in still water: F2s4, a declared limit observed in med12); n = 2 at most one
+failure and none while committed; n = 3, 4 at most n - 2 failures (every receiver
 keeps hearing another drone).  The two cases left out are declared limits and checked as such (F2s2, F2s3).  Not modelled: the
 admission blocked by the localization of the gate (loc_ok; the give-up branch of the hold is unreachable under the invariant, so
 the open class of s960 and s1103 is outside F2), the release delays of the latch (t_occ_max, t_clear, exit confirmation) beyond
@@ -77,7 +79,7 @@ def timers(cfg: FleetConfig = DEFAULT, dt: float = 5.0) -> dict:
 
 class Fleet:
     def __init__(self, n: int, depth: int, L: int, T: dict, rule_d: bool = True, fair: bool = True, latch_claims: bool = True,
-                 free: bool = False, max_fail: int = None, fail_in_c: bool = True):
+                 free: bool = False, max_fail: int = None, fail_in_c: bool = True, hull_clears: bool = True):
         """free: the first state is any state of the invariant (inv), not the launch; L: failures and stops only before step L;
         max_fail: at most this many permanent failures (default n - 1); fail_in_c: failures also while committed, before the CR."""
         max_fail = n - 1 if max_fail is None else max_fail
@@ -133,7 +135,10 @@ class Fleet:
                 mi, mn, c, cn = m[t][i], m[t + 1][i], ct[t][i], ct[t + 1][i]
                 others = [k for k in range(n) if k != i]
                 live_x = z3.Or([z3.And(m[t][k] == X) for k in others] or [z3.BoolVal(False)])
-                prio = z3.And([z3.Not(z3.Or(m[t][k] == Q, z3.And(dead(t, k), loc[t][k] == Q, age[t][k] < T["T_RISE"])))
+                # premise H: a dead hull stops counting as a queued drone for the sonar precedence once it has risen (T_RISE);
+                # hull_clears=False is the floating hull of med12 (st_lost_at_queue, st_lost_committed), which never stops
+                seen = (lambda tt, kk: age[tt][kk] < T["T_RISE"]) if hull_clears else (lambda tt, kk: z3.BoolVal(True))
+                prio = z3.And([z3.Not(z3.Or(m[t][k] == Q, z3.And(dead(t, k), z3.Or(loc[t][k] == Q, loc[t][k] == C), seen(t, k))))
                                for k in range(i)] or [z3.BoolVal(True)])
                 pending = z3.Or([z3.Or(m[t][k] == A, m[t][k] == Q, m[t][k] == C, m[t][k] == X) for k in others] or [z3.BoolVal(False)])
                 vacant = z3.And([z3.Implies(dead(t, k), age[t][k] >= T["T_VAC"]) for k in others] or [z3.BoolVal(True)])
@@ -230,6 +235,10 @@ def run(cfg: FleetConfig = DEFAULT, verbose: bool = True) -> Report:
     fs3 = Fleet(3, 60, 0, T, free=True, max_fail=2)
     rep.add(check("F2s3 declared limit: the last survivor of three is blocked by a dead drone that failed committed",
                   "expect a run short of D at 60 steps", ENC, _run(fs3, fs3.not_recovered()), "sat", timeout_ms=900000, note=tag), verbose)
+    fh = Fleet(3, 60, 0, T, free=True, hull_clears=False, **PREMISES[3])
+    rep.add(check("F2s4 declared limit: without premise H (a hull floating above the queue keeps counting as a queued drone) the "
+                  "survivors yield to it for ever (med12)", "expect a run short of D at 60 steps", ENC, _run(fh, fh.not_recovered()),
+                  "sat", timeout_ms=900000, note=tag), verbose)
     fm = Fleet(3, K, 0, T, free=True, rule_d=False, **PREMISES[3])
     rep.add(check("F2m mutation: without rule D a dead drone is never accounted for and the composition deadlocks (n=3)",
                   "expect a run with a live drone short of D at K", ENC, _run(fm, fm.not_recovered()), "sat",
