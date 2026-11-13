@@ -42,6 +42,7 @@ Kinds of evidence used below:
 | A drone stopped inside the CR by a fault is released by the t_occ_max fallback | BMC M3f (counterexample, scope) | outside the B0 guarantee; B2 blocks the fallback while that drone is heard inside, and a drone last heard inside the exclusion zone keeps its claim for ever (rule D, B2 table) |
 | Premises of P2 under B2 | - | premise V: the channel never silences a live drone for `t_silent_gate_s` = 70 s at a receiver that hears another drone (logged per run, `PREMISE_V_VIOLATED`); premise C: every queued drone learns of a commitment, by the claim or the corridor echo, within the bound of S2 (32 s); the gate-frame navigation error of a committed drone is at most nav_err_m = 1 m (logged per run, `GATE_NAV_PREMISE_VIOLATED`) |
 | Under every profile, no P2 violation | empirical (campaign) | - |
+| Declared limit of liveness: a permanent failure at or near the queue in still water | empirical (med12: `st_lost_at_queue`, `st_lost_committed`, 0 of 6 complete, P1 and P2 held) | the hull floats at the surface above the queue, inside the range of the LEFT and UP sonars of the survivors, and the sonar-only precedence yields to it for ever; with a current it drifts away |
 
 ## P3 - formation (liveness)
 

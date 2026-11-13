@@ -339,3 +339,70 @@ Rule D is conditional on the exclusion zone for the declared current (a dead dro
 4. Gate runs without failure (14): at least 13 PASS.
 5. Sensitivity: reported only.
 
+
+### 2026-11-13 02:19 med12 @ 33e59aa
+```
+PASS 18
+INCOMPLETE 2
+02:16:44 B2_MEDIUM MEDIUM-ALL             st_lost_at_queue                 s1200 INCOMPLETE       P1 3.107 fail ['progress', 'gate', 'P3-deg re-formed'] wall 1078.6s exit
+02:17:58 B2_MEDIUM MEDIUM-ALL             st_lost_at_queue                 s1201 INCOMPLETE       P1 3.269 fail ['progress', 'gate', 'P3-deg re-formed'] wall 1036.0s exit
+lanes done: 0
+tracebacks in lane logs: 0
+Holodeck processes on the machine: 2; free RAM GB: 58.5; free F: GB: 577
+```
+
+### 2026-11-13 03:19 med12 @ 33e59aa
+```
+PASS 32
+INCOMPLETE 6
+02:16:44 B2_MEDIUM MEDIUM-ALL             st_lost_at_queue                 s1200 INCOMPLETE       P1 3.107 fail ['progress', 'gate', 'P3-deg re-formed'] wall 1078.6s exit
+02:17:58 B2_MEDIUM MEDIUM-ALL             st_lost_at_queue                 s1201 INCOMPLETE       P1 3.269 fail ['progress', 'gate', 'P3-deg re-formed'] wall 1036.0s exit
+02:34:12 B2_MEDIUM MEDIUM-ALL             st_lost_at_queue                 s1202 INCOMPLETE       P1 3.302 fail ['progress', 'gate', 'P3-deg re-formed'] wall 1034.3s exit
+02:35:28 B2_MEDIUM MEDIUM-ALL             st_lost_committed                s1200 INCOMPLETE       P1 3.294 fail ['progress', 'gate', 'P3-deg re-formed'] wall 1036.5s exit
+02:51:27 B2_MEDIUM MEDIUM-ALL             st_lost_committed                s1201 INCOMPLETE       P1 3.349 fail ['progress', 'gate', 'P3-deg re-formed'] wall 1022.0s exit
+02:52:40 B2_MEDIUM MEDIUM-ALL             st_lost_committed                s1202 INCOMPLETE       P1 3.329 fail ['progress', 'gate', 'P3-deg re-formed'] wall 1018.6s exit
+lanes done: 0
+tracebacks in lane logs: 0
+Holodeck processes on the machine: 2; free RAM GB: 58.5; free F: GB: 577
+```
+
+### 2026-11-13 04:20 med12 @ 33e59aa
+```
+PASS 42
+INCOMPLETE 8
+02:16:44 B2_MEDIUM MEDIUM-ALL             st_lost_at_queue                 s1200 INCOMPLETE       P1 3.107 fail ['progress', 'gate', 'P3-deg re-formed'] wall 1078.6s exit
+02:17:58 B2_MEDIUM MEDIUM-ALL             st_lost_at_queue                 s1201 INCOMPLETE       P1 3.269 fail ['progress', 'gate', 'P3-deg re-formed'] wall 1036.0s exit
+02:34:12 B2_MEDIUM MEDIUM-ALL             st_lost_at_queue                 s1202 INCOMPLETE       P1 3.302 fail ['progress', 'gate', 'P3-deg re-formed'] wall 1034.3s exit
+02:35:28 B2_MEDIUM MEDIUM-ALL             st_lost_committed                s1200 INCOMPLETE       P1 3.294 fail ['progress', 'gate', 'P3-deg re-formed'] wall 1036.5s exit
+02:51:27 B2_MEDIUM MEDIUM-ALL             st_lost_committed                s1201 INCOMPLETE       P1 3.349 fail ['progress', 'gate', 'P3-deg re-formed'] wall 1022.0s exit
+02:52:40 B2_MEDIUM MEDIUM-ALL             st_lost_committed                s1202 INCOMPLETE       P1 3.329 fail ['progress', 'gate', 'P3-deg re-formed'] wall 1018.6s exit
+03:55:18 B2_MEDIUM_HT MEDIUM-ALL             lost_drone_mutex                 s1211 INCOMPLETE       P1 2.735 fail ['progress', 'gate', 'P3-deg re-formed'] wall 1128.3s e
+04:09:05 B2_MEDIUM_HT MEDIUM-ALL             st_lost_committed                s1210 INCOMPLETE       P1 2.946 fail ['progress', 'gate', 'P3-deg re-formed'] wall 1025.3s e
+lanes done: 0
+tracebacks in lane logs: 0
+Holodeck processes on the machine: 2; free RAM GB: 58.3; free F: GB: 577
+```
+
+### 2026-11-13 04:47 med12 @ 33e59aa (lanes ended or 6 h limit)
+```
+PASS 42
+INCOMPLETE 8
+02:16:44 B2_MEDIUM MEDIUM-ALL             st_lost_at_queue                 s1200 INCOMPLETE       P1 3.107 fail ['progress', 'gate', 'P3-deg re-formed'] wall 1078.6s exit
+02:17:58 B2_MEDIUM MEDIUM-ALL             st_lost_at_queue                 s1201 INCOMPLETE       P1 3.269 fail ['progress', 'gate', 'P3-deg re-formed'] wall 1036.0s exit
+02:34:12 B2_MEDIUM MEDIUM-ALL             st_lost_at_queue                 s1202 INCOMPLETE       P1 3.302 fail ['progress', 'gate', 'P3-deg re-formed'] wall 1034.3s exit
+02:35:28 B2_MEDIUM MEDIUM-ALL             st_lost_committed                s1200 INCOMPLETE       P1 3.294 fail ['progress', 'gate', 'P3-deg re-formed'] wall 1036.5s exit
+02:51:27 B2_MEDIUM MEDIUM-ALL             st_lost_committed                s1201 INCOMPLETE       P1 3.349 fail ['progress', 'gate', 'P3-deg re-formed'] wall 1022.0s exit
+02:52:40 B2_MEDIUM MEDIUM-ALL             st_lost_committed                s1202 INCOMPLETE       P1 3.329 fail ['progress', 'gate', 'P3-deg re-formed'] wall 1018.6s exit
+03:55:18 B2_MEDIUM_HT MEDIUM-ALL             lost_drone_mutex                 s1211 INCOMPLETE       P1 2.735 fail ['progress', 'gate', 'P3-deg re-formed'] wall 1128.3s e
+04:09:05 B2_MEDIUM_HT MEDIUM-ALL             st_lost_committed                s1210 INCOMPLETE       P1 2.946 fail ['progress', 'gate', 'P3-deg re-formed'] wall 1025.3s e
+lanes done: 2
+tracebacks in lane logs: 0
+Holodeck processes on the machine: 0; free RAM GB: 61.8; free F: GB: 577
+```
+
+## med12 closed (33e59aa, two lanes: another user's HoloOcean was running): 44 PASS, 12 INCOMPLETE of 56; no SAFETY_FAILURE, UNSAFE_ACTION, SUT_ERROR, REPLAY_MISMATCH or INVALID
+
+By the criteria written before the batch: (1) met; (2) met: no live drone declared dead anywhere (longest live silence 44.2 s, MEDIUM_HT), no gate-frame navigation premise violated in the MEDIUM runs; (3) NOT met: 24 of 30 failure runs PASS (lost_drone_mutex family 10/10, failures of the stress batch 8/8, `st_lost_after_exit` 3/3, `st_gate_pair_lost` 3/3; `st_lost_at_queue` 0/3, `st_lost_committed` 0/3); (4) met: 14 of 14; (5) sensitivity: MEDIUM_HT 4 of 6 PASS (`lost_drone_mutex` s1211 with the gate-frame navigation premise violated; `st_lost_committed` s1210), MEDIUM_HB4 (compass bias 4 deg) 2 of 6 PASS (the open localization class: relocalization holds, the navigation premise violated in s1212).
+
+Cause of `st_lost_at_queue` and `st_lost_committed` (all six): rule D works (the dead drone is in `gate.dead` of both survivors about 70 s after the failure and the latch is FREE), but the hull rises and floats at the surface above the queue in still water, 4 m above the survivors and inside the range of their LEFT and UP sonars; the precedence, which uses the sonar only, reads it as a queued drone on the left (LEFT) or above (UP, the top-first rule of stacked queues) and the survivors yield to it for ever. P1 and P2 hold. Declared as a limit of the sonar-only precedence (not of the exclusion zone: the floating hull does not obstruct the passage); a fix would bring the death of rule D or a 3-D target position into the precedence, against the isolation of the acoustic data from the precedence (B2-S), and is left out. These two scenarios stay as limitation probes: P1 and P2 required, the mission not.
+
