@@ -410,3 +410,24 @@ Cause of `st_lost_at_queue` and `st_lost_committed` (all six): rule D works (the
 ## med13 (cb2f5a7), the regression of the P3 contract and of the A-P band, written before any run
 
 54 runs: the 17 standard scenarios at seed 1300 under MEDIUM-ALL and LOW-ALL; `st_lost_middle`, `lost_drone_mutex`, `integrated_short` x 3 (1301-1303); five failure scenarios of the stress batch x 1; compass bias 4 deg (MEDIUM_HB4) on `gate_single`, `integrated_short`, `lost_drone_mutex` x 2. Judged by criteria v8. Expected: no safety failure; no P3_FAILURE in the MEDIUM and LOW runs with the premises held; every LOW run PASS; the sensitivity runs reported.
+
+### 2026-11-13 10:54 med13 @ cb2f5a7
+```
+PASS 48
+lanes done: 0
+tracebacks in lane logs: 0
+Holodeck processes on the machine: 4; free RAM GB: 56.1; free F: GB: 577
+```
+
+### 2026-11-13 11:14 med13 @ cb2f5a7 (lanes ended or 6 h limit)
+```
+PASS 48
+lanes done: 4
+tracebacks in lane logs: 0
+Holodeck processes on the machine: 0; free RAM GB: 62.9; free F: GB: 577
+```
+
+## med13 closed (cb2f5a7, criteria v8): 51 PASS of 54; MEDIUM-ALL 31 of 31, LOW-ALL 17 of 17; no safety failure, no live drone declared dead (longest live silence 17.5 s)
+
+`integrated_short` 4 of 4 and `st_lost_middle` 3 of 3 PASS: the late recovery and the mutual wait of the re-evaluation are gone with the band of rule A-P. Compass bias 4 deg (sensitivity): 3 of 6 PASS (2 of 6 before); `lost_drone_mutex` s1310 PREMISE_VIOLATED (navigation N), s1311 P3_FAILURE (P3a of drone_2 not met with the premises held; the gate-frame navigation premise violated), `integrated_short` s1310 INCOMPLETE (the gate not passed; its navigation excess follows the drone's own map fit, so it is not counted as a premise violation).
+
