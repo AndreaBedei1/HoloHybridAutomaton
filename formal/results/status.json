@@ -31,7 +31,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 98.847,
+      "seconds": 54.841,
       "counterexample": null,
       "note": ""
     },
@@ -42,7 +42,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 10.364,
+      "seconds": 7.093,
       "counterexample": null,
       "note": ""
     },
@@ -53,7 +53,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 85.663,
+      "seconds": 40.382,
       "counterexample": null,
       "note": ""
     },
@@ -64,7 +64,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 12.028,
+      "seconds": 9.067,
       "counterexample": null,
       "note": ""
     },
@@ -75,7 +75,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 74.934,
+      "seconds": 39.572,
       "counterexample": null,
       "note": ""
     },
@@ -86,7 +86,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 12.595,
+      "seconds": 9.33,
       "counterexample": null,
       "note": ""
     },
@@ -97,7 +97,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 34.967,
+      "seconds": 19.974,
       "counterexample": null,
       "note": ""
     },
@@ -108,7 +108,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 7.207,
+      "seconds": 5.359,
       "counterexample": null,
       "note": ""
     },
@@ -119,7 +119,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 37.438,
+      "seconds": 21.162,
       "counterexample": null,
       "note": ""
     },
@@ -130,7 +130,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 14.114,
+      "seconds": 10.701,
       "counterexample": null,
       "note": ""
     },
@@ -141,7 +141,7 @@
       "expect": "sat",
       "verdict": "sat",
       "passed": true,
-      "seconds": 3.424,
+      "seconds": 2.479,
       "counterexample": {
         "beyond_0": false,
         "beyond_1": false,
@@ -553,7 +553,7 @@
       "expect": "sat",
       "verdict": "sat",
       "passed": true,
-      "seconds": 119.824,
+      "seconds": 78.041,
       "counterexample": {
         "beyond_0": false,
         "beyond_1": false,
@@ -965,7 +965,7 @@
       "expect": "sat",
       "verdict": "sat",
       "passed": true,
-      "seconds": 10.23,
+      "seconds": 5.183,
       "counterexample": {
         "beyond_0": false,
         "beyond_1": false,
@@ -1393,7 +1393,7 @@
       "note": "{'cases': 100, 'excluded_by_stale_status': 100}"
     },
     {
-      "prop": "S4 silence: a drone silent after reporting committed or admitted keeps the gate held (claim, never excluded), at any duration",
+      "prop": "S4 silence and death: a claim stands while the drone is silent for less than t_silent_gate_s, the receiver hears nobody, or it was last heard in the exclusion zone; a dead drone last heard outside it holds none",
       "formula": "randomized over silence durations up to a day",
       "encoding": "perception/payload.py + perception/acoustic_gate.py + perception/gate_perception.py + perception/passage.py",
       "expect": "holds",
@@ -1401,10 +1401,10 @@
       "passed": true,
       "seconds": 0.0,
       "counterexample": null,
-      "note": "{'cases': 200, 'violations': 0}"
+      "note": "{'cases': 300, 'violations': 0}"
     },
     {
-      "prop": "S4m mutation: silence releasing a claim is detected",
+      "prop": "S4b mutation: rule D reading the zone from the pruned fix list (round 8 code) releases a claim of a hull at the gate",
       "formula": "expect violation",
       "encoding": "perception/payload.py + perception/acoustic_gate.py + perception/gate_perception.py + perception/passage.py",
       "expect": "violated",
@@ -1412,7 +1412,18 @@
       "passed": true,
       "seconds": 0.0,
       "counterexample": null,
-      "note": "{'cases': 60, 'violations': 60}"
+      "note": "{'cases': 120, 'violations': 25}"
+    },
+    {
+      "prop": "S4m mutation: a short silence releasing a claim is detected",
+      "formula": "expect violation",
+      "encoding": "perception/payload.py + perception/acoustic_gate.py + perception/gate_perception.py + perception/passage.py",
+      "expect": "violated",
+      "verdict": "violated",
+      "passed": true,
+      "seconds": 0.0,
+      "counterexample": null,
+      "note": "{'cases': 60, 'violations': 29}"
     },
     {
       "prop": "S5 text search: no acoustic or status name in the relation loop of GatePerception.update (does not see indirect paths)",
@@ -1492,7 +1503,7 @@
       "note": "{'cases': 400, 'violations': 0}"
     },
     {
-      "prop": "S11 silence or a stale report never discards a corridor echo, and silence never excludes a drone from the exit evaluation",
+      "prop": "S11 a silence shorter than t_silent_gate_s or a stale report never discards a corridor echo, nor excludes a drone from the exit evaluation",
       "formula": "randomized: no fresh evidence -> no_fleet_drone false and status_excluded false",
       "encoding": "perception/payload.py + perception/acoustic_gate.py + perception/gate_perception.py + perception/passage.py",
       "expect": "holds",
@@ -1503,7 +1514,7 @@
       "note": "{'cases': 300, 'echo_discarded': 0}"
     },
     {
-      "prop": "S11m mutation: letting silence exclude a drone discards the echo",
+      "prop": "S11m mutation: letting a silence of status_fresh_s exclude a drone discards the echo",
       "formula": "expect violation",
       "encoding": "perception/payload.py + perception/acoustic_gate.py + perception/gate_perception.py + perception/passage.py",
       "expect": "violated",
@@ -1512,6 +1523,39 @@
       "seconds": 0.0,
       "counterexample": null,
       "note": "{'cases': 100, 'echo_discarded': 177}"
+    },
+    {
+      "prop": "S12 the exclusion zone: a hull that fails outside it never enters the obstruction volume of the gate",
+      "formula": "Z3: outside E and inside O at some t >= 0 is unsat",
+      "encoding": "perception/payload.py + perception/acoustic_gate.py + perception/gate_perception.py + perception/passage.py",
+      "expect": "holds",
+      "verdict": "holds",
+      "passed": true,
+      "seconds": 0.0,
+      "counterexample": null,
+      "note": "{'result': 'unsat', 'model': None}"
+    },
+    {
+      "prop": "S12m mutation: the zone without the coast term misses hulls",
+      "formula": "expect violation",
+      "encoding": "perception/payload.py + perception/acoustic_gate.py + perception/gate_perception.py + perception/passage.py",
+      "expect": "violated",
+      "verdict": "violated",
+      "passed": true,
+      "seconds": 0.0,
+      "counterexample": null,
+      "note": "{'result': 'sat', 'model': '[t = 0,\\n w = 0,\\n Wd = 0,\\n cv = 1/4,\\n v = 2,\\n d0 = 1,\\n W = 0,\\n c = 1,\\n wd = 0,\\n h0 = 0,\\n /0 = [(39/100, 9/200) -> 26/3, else -> 0]]'}"
+    },
+    {
+      "prop": "S12l mutation: the zone without the rise lag misses hulls",
+      "formula": "expect violation",
+      "encoding": "perception/payload.py + perception/acoustic_gate.py + perception/gate_perception.py + perception/passage.py",
+      "expect": "violated",
+      "verdict": "violated",
+      "passed": true,
+      "seconds": 0.0,
+      "counterexample": null,
+      "note": "{'result': 'sat', 'model': '[t = 1,\\n wd = 0,\\n v = 2,\\n w = 35/32,\\n Wd = 0,\\n cv = 19/64,\\n h0 = -9/32,\\n d0 = 2,\\n W = 1,\\n c = 15/16,\\n /0 = [(3/160, 9/200) -> 5/12, else -> 0]]'}"
     }
   ]
 }
