@@ -431,3 +431,7 @@ Holodeck processes on the machine: 0; free RAM GB: 62.9; free F: GB: 577
 
 `integrated_short` 4 of 4 and `st_lost_middle` 3 of 3 PASS: the late recovery and the mutual wait of the re-evaluation are gone with the band of rule A-P. Compass bias 4 deg (sensitivity): 3 of 6 PASS (2 of 6 before); `lost_drone_mutex` s1310 PREMISE_VIOLATED (navigation N), s1311 P3_FAILURE (P3a of drone_2 not met with the premises held; the gate-frame navigation premise violated), `integrated_short` s1310 INCOMPLETE (the gate not passed; its navigation excess follows the drone's own map fit, so it is not counted as a premise violation).
 
+
+## val1 (3f1a626), the validation of the round 9 fix of rule D, written before any run
+
+36 runs (seeds 1400-1405): the `lost_drone_mutex` family, every failure scenario of the stress batch (including the declared floating-hull limit), the three survey failure scenarios, `lost_drone_mutex` under CLEAN and LOW. Rule D now reads the last accepted fix, so a dead drone whose last known position (with the onboard margin, several metres) is inside the exclusion zone for the declared current holds the gate for good: expected safe stops (INCOMPLETE) in the failures under 0.2 m/s current that passed before; P1 and P2 must hold everywhere. The outcome restates the envelope of recovery after a failure; no criterion of PASS is set for it.
