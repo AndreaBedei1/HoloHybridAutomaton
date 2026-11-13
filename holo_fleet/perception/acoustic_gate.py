@@ -106,6 +106,7 @@ class AcousticExit:
         self.last: Dict = {}                       # diagnostics of the latest evaluation
         self.gate_idx = 0                          # the gate the receiver is working on (mod 4; GatePerception.update)
         self.g = None                              # its GateSpec
+        self.rule_d: Dict = {}                     # the latest rule D decision per silent drone (log only)
         self.status_fresh_s = cfg.acoustic.status_fresh_s   # shortened per plan (GatePerception): never above the freshness
                                                             # the queue geometry allows
 
@@ -195,9 +196,11 @@ class AcousticExit:
         if not self.tracker.silent(j, t, self.cfg.acoustic.t_silent_gate_s):
             return False
         if j not in self.tracker.heard:
+            self.rule_d[j] = {"released": True, "why": "never heard"}
             return True                                    # never heard: failed at its launch
         f = self.tracker.last_accepted.get(j)              # never forgotten (the fix lists keep 30 s only: round 9, B1)
         if f is None:
+            self.rule_d[j] = {"released": False, "why": "never located"}
             return False                                   # heard, never located: where it failed is unknown, it holds the gate
         if self.g is None:
             return True
@@ -212,7 +215,10 @@ class AcousticExit:
             r_h, r_z = float(rep.bound) + float(own or 0.0) + motion, float(rep.bound) + motion
             if r_h + r_z < m_h + m_z:
                 p, m_h, m_z = np.asarray(rep.p, float), r_h, r_z
-        return not declared_excluded(self.g, p, self.cfg, m_h, m_z)
+        released = not declared_excluded(self.g, p, self.cfg, m_h, m_z)
+        self.rule_d[j] = {"released": released, "margin_h": round(m_h, 2), "margin_z": round(m_z, 2),
+                          "fix_age_s": round(t - float(f.t), 1), "depth": "payload" if p is not f.p and not np.array_equal(p, f.p) else "fix"}
+        return released
 
     def _fix_margin(self, f: Fix, heard_t: float):
         """Where the drone of fix f can have failed (horizontal, vertical): the error region of the fix, the receiver's own navigation

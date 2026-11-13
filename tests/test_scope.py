@@ -90,6 +90,7 @@ def test_rule_d_releases_a_silent_claim_only_outside_the_zone():
         for tt in np.arange(2.0, t, 1.0):                   # the other drone heard every second: the tracker prunes old fixes
             _rx(tr, P, float(tt), 2, [-20.0, 6.0, -5.], phase=pl.GP_NONE)
         assert ae.dead(1, t) == released and (ae.claims(t) == set()) == released, (q, w_h)
+        assert ae.rule_d[1]["released"] == released and ae.rule_d[1]["fix_age_s"] > 70.0     # the decision is logged
 
 
 def test_the_declared_current_is_the_bound_of_the_field():

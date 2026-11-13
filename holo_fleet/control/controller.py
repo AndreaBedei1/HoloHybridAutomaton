@@ -259,6 +259,8 @@ class DroneController:
                      "rank_used": obs.gate.rank_used,
                      "loc_ok": obs.gate.loc_ok, "reloc_hold": self.flows.reloc_hold,
                      "entry_ok": obs.gate.entry_ok, "entry": self.flows.entry_state or None, "dead": obs.gate.dead,
+                     "rule_d": ({str(j): v for j, v in self.perception.gp.acoustic_exit.rule_d.items()}
+                                if self.perception.gp.acoustic_exit is not None and self.perception.gp.acoustic_exit.rule_d else None),
                      "silence": self.perception.gp.acoustic_exit.silence(t) if self.perception.gp.acoustic_exit is not None else None,
                      "tx": [self.perception.tx_gate_idx, self.perception.tx_phase],
                      **({"acoustic": {k: v for k, v in self.perception.gp.acoustic_exit.last.items() if v}}
