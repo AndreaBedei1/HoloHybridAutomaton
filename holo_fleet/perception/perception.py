@@ -29,7 +29,9 @@ Variant B2 (range-bearing beacon, perception/acoustic.py).  Identified fixes ent
 * gate: a second way to an exit witness of the CR latch (perception/acoustic_gate.py);
 * association: a sonar echo is associated with a neighbour where its fix places it (formation_perception);
 * presence (rule A-P): while the latest accepted fix is fresh (``acoustic.fresh_s``: one lost ping plus the
-  latency) and within ``e_lost`` of the neighbour's expected position, the neighbour counts as sighted now for the
+  latency) and within ``e_lost`` plus the uncertainty of the fix (its error region, ``fix_uncertainty``) of the neighbour's
+  expected position (without it, two drones 7 m apart with opposite compass biases never counted each other present: st1
+  st_lost_middle s2000, a mutual wait), the neighbour counts as sighted now for the
   NEIGHBOUR_MEMORY_S timer (a drone occluded for the sonar but heard where it should be is not missing); it never
   confirms a MISSING neighbour back (only the sonar confirmation does) and never clears a vacancy;
 * ahead (veto): the latest fresh fix puts the neighbour more than ``e_lost`` plus the white-noise band AHEAD of where
@@ -80,6 +82,13 @@ from holo_fleet.perception.formation_perception import (NEIGHBOUR_MEMORY_S, Form
 CONFIRM_N = 3              # associations ...
 CONFIRM_WINDOW_S = 1.0     # ... within this window confirm that a missing neighbour is back,
 CONFIRM_GATE = 0.5         # ... each within this fraction of the range gate (near its slot)
+def fix_uncertainty(f) -> float:
+    """Horizontal radius of the error region of a fix (samples of the declared range, bearing and pose errors) plus its slack."""
+    pts = np.asarray(f.pts, float).reshape(-1, 3)
+    spread = float(np.max(np.linalg.norm(pts[:, :2] - np.asarray(f.p, float)[:2], axis=1))) if len(pts) else 0.0
+    return spread + float(f.slack)
+
+
 A_CONFIRM = 2              # B2 rule A-D: consecutive accepted fixes ...
 A_DISPLACED_MARGIN = 1.0   # ... whose region lies beyond e_lost + this from the expected position [m]
 A_CORR_AGE_S = 1.5         # a fix this recent feeds the relative formation residual
@@ -364,7 +373,7 @@ class Perception:
             out[k] = f.rel
             self.acoustic_fresh.append(k)
             exp = d_world + np.asarray(slot_err, float)          # where k should be, relative to me
-            if float(np.linalg.norm(f.rel - exp)) <= fr.e_lost:
+            if float(np.linalg.norm(f.rel - exp)) <= fr.e_lost + fix_uncertainty(f):
                 self.acoustic_present.append(k)
                 self.neighbour_seen[k] = t                       # sighted while the fix is fresh (rule A-P)
             acc = [g for g in self.acoustic.all_fixes(k, t - a.fresh_s, t) if g.accepted][-A_CONFIRM:]
@@ -384,7 +393,7 @@ class Perception:
             ahead = (float(np.linalg.norm(off - along_now * t_hat)) <= fr.e_lost and along_now > fr.e_lost + band)
             reps = [] if exp_world is None else [self._rep_offset(g, t, exp_world, t_hat) for g in acc]
             if (one_track and reps and all(r is not None for r in reps) and k in self.acoustic_present
-                    and all(float(np.linalg.norm((g.rel - exp))) <= fr.e_lost for g in acc)
+                    and all(float(np.linalg.norm((g.rel - exp))) <= fr.e_lost + fix_uncertainty(g) for g in acc)
                     and all(float(np.linalg.norm(r[0])) <= fr.e_ok + r[1] for r in reps)):
                 # back near its slot: by its own estimates AND by an identified fix of it within e_lost of where it
                 # should be (a physical, identified sighting: an unidentified echo never brings a neighbour back)

@@ -58,7 +58,7 @@ from typing import Dict, List, Optional
 
 import numpy as np
 
-CRITERIA_VERSION = "v7"   # v7 (2026-11-10): v6, with the collision sensor of a drone after its TOTAL_FAILURE recorded and not a contact (docs/ACCEPTANCE_CRITERIA.md).  v6 (2026-11-09): the requirements and classes of v5; the fault term of the deadline uses the silence
+CRITERIA_VERSION = "v8"   # v8 (2026-11-13): v7 with the P3 contract (referee/p3.py: P3a, P3b, P3c, deadlines, premises) and the classes P3_FAILURE and PREMISE_VIOLATED (robustness_metrics.refine_v8).  v7: v7 (2026-11-10): v6, with the collision sensor of a drone after its TOTAL_FAILURE recorded and not a contact (docs/ACCEPTANCE_CRITERIA.md).  v6 (2026-11-09): the requirements and classes of v5; the fault term of the deadline uses the silence
                           # interval of the total failure model (docs/ACCEPTANCE_CRITERIA.md).  v5 (2026-11-05, the user's decision after the v4 campaign): liveness is eventual - no
                           # time bound on a gate passage enters the class; the run horizon is HORIZON_FACTOR x the
                           # a-priori deadline (which stays the reported "on time" reference); scenarios whose mission

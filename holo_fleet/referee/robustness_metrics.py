@@ -157,6 +157,8 @@ def analyze_run(run_dir: Path, reference: Optional[Dict] = None, cfg=DEFAULT, pr
     out["nav_bound"] = {"samples": nb_n, "exceeded": nb_exc,
                         "min_margin_m": None if nb_min is None else round(nb_min, 3)}
     out.update(premise_monitors(sc, cfg, names, faults, t, P, states, m))
+    from holo_fleet.referee import p3 as p3_contract
+    out["p3"] = p3_contract.evaluate(sc, cfg, names, faults, t, P, states, modes, m)
 
     # ------------------------------------------------------------------ P1
     p1 = met["P1_separation"]
@@ -396,6 +398,8 @@ def analyze_run(run_dir: Path, reference: Optional[Dict] = None, cfg=DEFAULT, pr
                                   "failsafe_sensor_fault_at_end": [names[k] for k in fs_end],
                                   "failsafe_explains_missed": caused}
     out["failed_requirements"] = [k for k, v in out["requirements"].items() if not v]
+    out["class_v7"] = cls
+    out["class"] = refine_v8(cls, out)
     out["cause_tags"] = cause_tags(out, fm, fs_sensor, term, states, healthy, m, dt, met)
     return out
 
@@ -447,7 +451,7 @@ def replay_terminal(sc, cfg, names, t, P, states, modes, profile, logged: Option
     faults = getattr(sc.sim, "faults", ()) or ()
     ref = Referee(names, sc.template.offsets() if sc.template is not None else None, sc.path, sc.judged_gates, cfg,
                   sc.formation_enabled, clock=sc.plans[0].clock if sc.formation_enabled else None, faults=faults)
-    v3 = bool(logged) and logged.get("criteria") in ("v3", CRITERIA_VERSION)   # same deadline and monitor
+    v3 = bool(logged) and logged.get("criteria") in ("v3", "v7", CRITERIA_VERSION)   # same deadline and monitor
     dl = float(logged["deadline_s"]) if v3 else horizon_v5(sc, cfg, profile)
     mon = TerminalMonitor(sc, cfg, names, dl)
     z = np.zeros((n, 3))
@@ -493,6 +497,33 @@ def _applies(req: str, mon) -> bool:
     return True
 
 
+def refine_v8(cls: str, out: Dict) -> str:
+    """Criteria v8: the P3 contract (referee/p3.py) and the premise monitors refine PASS and INCOMPLETE.
+    PASS             online SUCCESS and every part of P3 MET or not applicable;
+    P3_FAILURE       the gate passed, a part of P3 NOT_MET with its premises held (a genuine liveness failure of the formation);
+    PREMISE_VIOLATED every failed part of P3, and a failed gate, explained by a premise measured on ground truth (P3: W, N, A, O;
+                     gate: premise V, the gate-frame navigation premise not induced by the drone's own map fit);
+    INCOMPLETE       the gate or the progress not reached with the premises held (a genuine liveness failure of the passage)."""
+    if cls not in ("PASS", "INCOMPLETE"):
+        return cls
+    q = out.get("p3") or {}
+    parts = [v.get("verdict") for v in (q.get("P3a") or {}).values()] + [(q.get(x) or {}).get("verdict") for x in ("P3b", "P3c")]
+    parts = [v for v in parts if v not in (None, "NA", "MET")]
+    failed = set(out.get("failed_requirements") or [])
+    gate_failed = "gate" in failed
+    gate_premise = bool((out.get("premise_v") or {}).get("live_declared_dead")) or (
+        bool((out.get("gate_nav") or {}).get("committed_beyond")) and not (out.get("gate_nav") or {}).get("self_induced"))
+    if cls == "PASS" and not parts:
+        return "PASS"
+    if gate_failed:
+        return "PREMISE_VIOLATED" if gate_premise and all(v == "PREMISE_VIOLATED" for v in parts) else "INCOMPLETE"
+    if parts and all(v == "PREMISE_VIOLATED" for v in parts):
+        return "PREMISE_VIOLATED"
+    if parts or failed & {"P3 recovered", "P3-deg re-formed", "P3-deg vacancy", "no false vacancy", "not waiting"}:
+        return "P3_FAILURE"                  # the gate passed and the formation not re-established as the contract requires
+    return cls
+
+
 def premise_monitors(sc, cfg, names, faults, t, P, states, m) -> Dict:
     """Per-run checks of the premises on ground truth: premise V (no live drone held dead by a receiver), the gate-frame navigation
     premise while committed (|error| <= nav_err_m), and the scope (every permanent failure outside the exclusion zone of every gate
@@ -502,7 +533,7 @@ def premise_monitors(sc, cfg, names, faults, t, P, states, m) -> Dict:
     onset = {f["drone"]: float(f["t_on"]) for f in faults if f.get("t_off") is None}
     gates = {g.gate_id: g for g in sc.judged_gates}
     n = len(names)
-    pv, nav_n, nav_max = [], 0, 0.0
+    pv, nav_n, nav_max, nav_self = [], 0, 0.0, None
     for k in range(n):
         for i in range(m):
             r = states[k][i]
@@ -518,7 +549,13 @@ def premise_monitors(sc, cfg, names, faults, t, P, states, m) -> Dict:
                 e = g.vec_to_gate_frame(np.asarray(r["nav_p"], float) - P[i, k])
                 d = float(math.hypot(e[0], e[1]))
                 nav_max = max(nav_max, d)
-                nav_n += int(d > cfg.gate.nav_err_m)
+                if d > cfg.gate.nav_err_m:
+                    nav_n += 1
+                    if nav_self is None:     # the first excess: after an own map-fit correction within 30 s, it is the controller's
+                        a1 = float(((r.get("nav_aid") or {}).get("applied_m")) or 0.0)
+                        j0 = int(np.searchsorted(t, t[i] - 30.0))
+                        a0 = float(((states[k][j0].get("nav_aid") or {}).get("applied_m")) or 0.0)
+                        nav_self = a1 - a0 > 1e-6
     w_h, w_dn = current_bound(sc.sim.current)
     inside, pending = [], []
     for nm, ton in onset.items():
@@ -529,7 +566,7 @@ def premise_monitors(sc, cfg, names, faults, t, P, states, m) -> Dict:
         if i0 < m and nm in names and any(failure_excluded(g, P[i0, names.index(nm)], w_h, w_dn, cfg) for g in gates.values()):
             inside.append(nm)
     return {"premise_v": {"live_declared_dead": len(pv), "first": pv[:3]},
-            "gate_nav": {"committed_beyond": nav_n, "max_committed_error_m": round(nav_max, 3)},
+            "gate_nav": {"committed_beyond": nav_n, "max_committed_error_m": round(nav_max, 3), "self_induced": bool(nav_self)},
             "scope": {"declared_current": [w_h, w_dn], "failures_inside_zone": inside, "pending_onset": pending}}
 
 
