@@ -94,3 +94,53 @@ Frozen commit, engine hash recorded, held-out seeds, every run counted.
 - M2: the monitor added.
 
 Then yes, with criteria 1-6.
+
+
+## Re-check at 1aa207a
+
+What I did: I read the diff, and I re-ran the committed referee on val1 (36 runs), med11 `rise_high` s1101-s1104, med12 MEDIUM_HT `lost_drone_mutex` and med13 MEDIUM_HB4 `lost_drone_mutex`. I also ran `test_scope`, `test_p3_contract` and `test_status_payload` (43 passed). All of it was read-only, at below-normal priority, with scripts in the scratchpad.
+
+**B1: RESOLVED.** [M]
+- `dead()` reads `last_accepted` and tests "never heard" as `j not in heard`. A drone heard but never located holds the gate.
+- The test now drives the tracker for 75 s, so the pruning happens.
+- Margins:
+  - (a) the vertical margin is the vertical extent of the region samples. That is exact here, because the extremes of the box are grid vertices;
+  - (b) the motion runs to `heard[j]`;
+  - (c) the bound at decision time is a valid upper bound, because `NavBound` never decreases.
+- The payload ball is used only with `rep_ok` (H6, declared).
+- val1 [M]: 29 PASS and 7 INCOMPLETE reproduced; 0 live declared dead; 0 scope violations.
+  - `st_lost_left_cross` and `st_lost_right_tail` pass with **no** dead declaration: they do not need rule D.
+  - `st_lost_after_exit` is never declared dead; the gate holds and P1 and P2 hold. This is a closed-loop hold near the gate, and it is declared.
+- Note [D], liveness only, after the campaign: the payload branch adds the receiver's own bound. `rep.p` is in the map frame and `g` is the plan gate, so this 2.4-4.9 m is not needed. It is the likely reason for the `st_lost_after_exit` hold.
+- No number for the onboard margin is stated; `ONBOARD_MARGIN_M` = 1.5 m is still only a budget.
+
+**M1: RESOLVED.** [M]
+- Under validation profiles, N and gate-frame navigation are tags. s1103 is INCOMPLETE again, and so is val1 `st_lost_middle` s1400.
+- PREMISE_VIOLATED stays for the profiles declared beyond the envelope: HB4 s1310 and s1311, and MEDIUM_HT s1211 (fairness gap 39.6 s against 35 s).
+- s1211 is also tagged `WRONG_VALIDATED_FIT`. Its gate failure is the vehicle's localization, so it must be reported under that class.
+- Not done: N relative to the fleet mean. It matters only beyond the envelope.
+
+**M2: RESOLVED.** [M]
+- The monitor uses a 0.3 m error increase across a validated correction, stricter than the 0.5 m I asked for.
+- It fires on s1103 and s1211, and is 0 in val1.
+- v8 reports it rather than requiring 0. That is acceptable: under validation profiles such a run already fails.
+
+**Rule D log: RESOLVED in code.**
+- The fields are logged per step and the unit test asserts them.
+- It has never run in the simulator, because val1 predates f97d4a9. The campaign is its first use.
+- Minor: the `g is None` release is not logged.
+
+**Criteria v8 and declared limits: acceptable.**
+- Thresholds: A is 65, 65 and 63 of 66; B is 58 of 60; C is 81 of 90. These match or tighten mine.
+- Item 7 says "the two below" but lists three probes; the count of 90 runs is right.
+- Add |e_l| at s = −3 to the E report.
+- The deviations are acceptable:
+  - No in-zone probe (the owner's scope decision). The hold rests on S4, S4b, the 75 s test and the `st_lost_after_exit` hold. The sonar-only P1 layers still guard a wrong release.
+  - No n = 2 committed failure. It is covered by F2s2 and classed NOT_ADMISSIBLE.
+  - Compass bias 3 and 4 deg and MEDIUM_HT: 10 runs each, as asked.
+
+**Freeze: yes.** Conditions:
+- (1) The frozen tag carries committed `formal/results`. At 1aa207a, 8 result files are modified and `fleet.json` is untracked.
+- (2) Runs in E that are PREMISE_VIOLATED with `WRONG_VALIDATED_FIT` are reported under the localization class.
+- (3) The wording of item 7 is fixed before the first run.
+- No code change before the campaign.
