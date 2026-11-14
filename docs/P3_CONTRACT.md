@@ -1,6 +1,6 @@
 # P3, the formation contract (criteria v8)
 
-Status: candidate definition of 2026-11-13, to be frozen after the round 9 reviews and before the final campaign. Implementation: `holo_fleet/referee/p3.py` (offline, ground truth and logs; never fed to a controller), classes in `holo_fleet/referee/robustness_metrics.py` (`refine_v8`), tests in `tests/test_p3_contract.py`.
+Status: frozen at tag `b2-freeze-v11` (2026-11-13), after the round 9 reviews and before the final campaign. Implementation: `holo_fleet/referee/p3.py` (offline, ground truth and logs; never fed to a controller), classes in `holo_fleet/referee/robustness_metrics.py` (`refine_v8`), tests in `tests/test_p3_contract.py`.
 
 P3 is a conditional liveness property. It is required only under the premises below, each monitored per run on ground truth; it is split in three parts, each with a deadline. Tolerance and hold are unchanged: formation error at most E_TOL = 1 m, held for T_HOLD = 4 / k_slot = 8.9 s (the 2 % settling time of the first-order slot loop).
 
@@ -62,4 +62,8 @@ A controller deadlock is never classed as an external infeasibility: PREMISE_VIO
 - P3_FAILURE: `integrated_short` s1100, s1201 (late: the formation re-forms to 0.94 m after the last crossing, diverges to 2.9 m after drone_2 waits for a neighbour it does not confirm (FORMATION_WAIT_REJOIN, reduced progress) and falls behind, and re-forms about 30 s after the deadline; the same wait as the next case, to be re-checked after the fix); `st_lost_middle` s2000 (two survivors 7 m apart waited for each other: rule A-P did not count a neighbour present within e_lost, because of the error of its fix; fixed in cb2f5a7); three runs of the compass-bias sensitivity (the same mutual wait).
 - INCOMPLETE: `st_lost_at_queue`, `st_lost_committed` (the hull floating above the queue blocks the sonar-only precedence; a failure of the passage, not of P3).
 - med13 (cb2f5a7, after the fix of rule A-P, judged by v8): MEDIUM-ALL 31 of 31 and LOW-ALL 17 of 17 PASS, among them `integrated_short` 4 of 4 and `st_lost_middle` 3 of 3; compass bias 4 deg 3 of 6 PASS (one P3_FAILURE, one PREMISE_VIOLATED, one INCOMPLETE).
+
+## Final campaign (b2-freeze-v11, 448 runs, `results/final/FINAL_CAMPAIGN_ANALYSIS.md`)
+
+P3a 724 MET, 5 LATE, 17 PREMISE_VIOLATED, 2 NOT_MET, 68 not applicable; P3b 374 MET, 2 LATE, 2 NOT_MET, 33 not applicable; P3c 145 MET, 3 NOT_MET (all three without a beacon: false vacancies). P3_LATE in 7 runs (`formation_gust` 2, `st_lost_right_tail` 2, a boundary probe 3), no P3_FAILURE with the beacon. Slack of P3b to its deadline in the met windows: minimum 2.5 s, median 19.7 s.
 
