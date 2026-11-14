@@ -468,3 +468,258 @@ Holodeck processes on the machine: 0; free RAM GB: 61.3; free F: GB: 577
 ## val1 closed (3f1a626): 29 PASS, 7 INCOMPLETE of 36; no safety failure, no live drone declared dead
 
 `lost_drone_mutex` family 10 of 10 (CLEAN and LOW 4 of 4); the failures under 0.2 m/s current (`st_lost_left_cross`, `st_lost_right_tail`) 4 of 4, `st_gate_pair_lost` 2 of 2, the survey failures 6 of 6. `st_lost_after_exit` 0 of 2 (3 of 3 before the fix): the survivors never declare the hull dead, its last fix with the onboard margin being inside the zone, and the gate stays closed: the safe stop of the fixed rule D, a declared limit. `st_lost_at_queue`, `st_lost_committed` 0 of 4 (the floating hull, declared). `st_lost_middle` s1400 INCOMPLETE: the localization at the gate (relocalization holds, gate-frame navigation beyond 1 m), the open class.
+
+## Final campaign started (tag b2-freeze-v11, 945fc74): 448 runs of criteria v8 into results/robustness/raw_v11_final, four lanes, below-normal priority
+
+### 2026-11-13 18:08 raw_v11_final @ 945fc74
+```
+PASS 60
+lanes done: 0
+tracebacks in lane logs: 0
+Holodeck processes on the machine: 4; free RAM GB: 55.5; free F: GB: 577
+```
+
+### 2026-11-13 19:09 raw_v11_final @ 945fc74
+```
+PASS 122
+lanes done: 0
+tracebacks in lane logs: 0
+Holodeck processes on the machine: 4; free RAM GB: 55.7; free F: GB: 576
+```
+
+### 2026-11-13 20:09 raw_v11_final @ 945fc74
+```
+PASS 179
+lanes done: 0
+tracebacks in lane logs: 0
+Holodeck processes on the machine: 4; free RAM GB: 55.3; free F: GB: 576
+```
+
+### 2026-11-13 21:09 raw_v11_final @ 945fc74
+```
+PASS 219
+INCOMPLETE 1
+20:55:09 B2_MEDIUM MEDIUM-ALL             lost_drone_mutex                 s5102 INCOMPLETE       P1 2.95 fail ['progress', 'gate'] wall 1427.1s exit 0
+lanes done: 0
+tracebacks in lane logs: 0
+Holodeck processes on the machine: 4; free RAM GB: 55.4; free F: GB: 576
+```
+
+### 2026-11-13 22:10 raw_v11_final @ 945fc74
+```
+PASS 259
+INCOMPLETE 1
+20:55:09 B2_MEDIUM MEDIUM-ALL             lost_drone_mutex                 s5102 INCOMPLETE       P1 2.95 fail ['progress', 'gate'] wall 1427.1s exit 0
+lanes done: 0
+tracebacks in lane logs: 0
+Holodeck processes on the machine: 4; free RAM GB: 55.2; free F: GB: 576
+```
+
+### 2026-11-13 23:10 raw_v11_final @ 945fc74
+```
+PASS 303
+INCOMPLETE 2
+20:55:09 B2_MEDIUM MEDIUM-ALL             lost_drone_mutex                 s5102 INCOMPLETE       P1 2.95 fail ['progress', 'gate'] wall 1427.1s exit 0
+22:18:54 B2_MEDIUM MEDIUM-ALL             lost_drone_mutex_rise_high       s5108 INCOMPLETE       P1 2.85 fail ['progress', 'gate', 'P3-deg re-formed'] wall 1629.7s exit 
+lanes done: 0
+tracebacks in lane logs: 0
+Holodeck processes on the machine: 4; free RAM GB: 55.4; free F: GB: 576
+```
+
+### 2026-11-14 00:11 raw_v11_final @ 945fc74
+```
+PREMISE_VIOLATED 4
+PASS 339
+INCOMPLETE 2
+20:55:09 B2_MEDIUM MEDIUM-ALL             lost_drone_mutex                 s5102 INCOMPLETE       P1 2.95 fail ['progress', 'gate'] wall 1427.1s exit 0
+22:18:54 B2_MEDIUM MEDIUM-ALL             lost_drone_mutex_rise_high       s5108 INCOMPLETE       P1 2.85 fail ['progress', 'gate', 'P3-deg re-formed'] wall 1629.7s exit 
+23:58:58 B2_MEDIUM MEDIUM-ALL             st_bd_head_040                   s5200 PREMISE_VIOLATED P1 3.162 fail [] wall 827.0s exit 0
+23:59:28 B2_MEDIUM MEDIUM-ALL             st_bd_head_040                   s5201 PREMISE_VIOLATED P1 3.428 fail [] wall 829.9s exit 0
+00:01:03 B2_MEDIUM MEDIUM-ALL             st_bd_head_040                   s5203 PREMISE_VIOLATED P1 3.198 fail [] wall 780.1s exit 0
+00:01:04 B2_MEDIUM MEDIUM-ALL             st_bd_head_040                   s5202 PREMISE_VIOLATED P1 3.153 fail [] wall 827.2s exit 0
+lanes done: 0
+tracebacks in lane logs: 0
+Holodeck processes on the machine: 4; free RAM GB: 55.2; free F: GB: 576
+```
+
+### 2026-11-14 01:11 raw_v11_final @ 945fc74
+```
+PREMISE_VIOLATED 7
+PASS 352
+INCOMPLETE 6
+20:55:09 B2_MEDIUM MEDIUM-ALL             lost_drone_mutex                 s5102 INCOMPLETE       P1 2.95 fail ['progress', 'gate'] wall 1427.1s exit 0
+22:18:54 B2_MEDIUM MEDIUM-ALL             lost_drone_mutex_rise_high       s5108 INCOMPLETE       P1 2.85 fail ['progress', 'gate', 'P3-deg re-formed'] wall 1629.7s exit 
+23:58:58 B2_MEDIUM MEDIUM-ALL             st_bd_head_040                   s5200 PREMISE_VIOLATED P1 3.162 fail [] wall 827.0s exit 0
+23:59:28 B2_MEDIUM MEDIUM-ALL             st_bd_head_040                   s5201 PREMISE_VIOLATED P1 3.428 fail [] wall 829.9s exit 0
+00:01:03 B2_MEDIUM MEDIUM-ALL             st_bd_head_040                   s5203 PREMISE_VIOLATED P1 3.198 fail [] wall 780.1s exit 0
+00:01:04 B2_MEDIUM MEDIUM-ALL             st_bd_head_040                   s5202 PREMISE_VIOLATED P1 3.153 fail [] wall 827.2s exit 0
+00:12:06 B2_MEDIUM MEDIUM-ALL             st_bd_head_040                   s5204 PREMISE_VIOLATED P1 3.152 fail [] wall 773.3s exit 0
+00:28:56 B2_MEDIUM MEDIUM-ALL             st_bd_oblique_040                s5201 PREMISE_VIOLATED P1 2.833 fail [] wall 657.7s exit 0
+00:29:03 B2_MEDIUM MEDIUM-ALL             st_bd_oblique_040                s5200 PREMISE_VIOLATED P1 3.126 fail [] wall 679.9s exit 0
+01:02:52 B2_MEDIUM MEDIUM-ALL             st_lost_at_queue                 s5200 INCOMPLETE       P1 3.234 fail ['progress', 'gate', 'P3-deg re-formed'] wall 1450.3s exit
+01:03:21 B2_MEDIUM MEDIUM-ALL             st_lost_at_queue                 s5201 INCOMPLETE       P1 3.262 fail ['progress', 'gate', 'P3-deg re-formed'] wall 1391.1s exit
+01:05:37 B2_MEDIUM MEDIUM-ALL             st_lost_at_queue                 s5202 INCOMPLETE       P1 3.358 fail ['progress', 'gate', 'P3-deg re-formed'] wall 1515.0s exit
+01:05:48 B2_MEDIUM MEDIUM-ALL             st_lost_at_queue                 s5203 INCOMPLETE       P1 3.204 fail ['progress', 'gate', 'P3-deg re-formed'] wall 1419.5s exit
+lanes done: 0
+tracebacks in lane logs: 0
+Holodeck processes on the machine: 4; free RAM GB: 55.1; free F: GB: 576
+```
+
+### 2026-11-14 02:11 raw_v11_final @ 945fc74
+```
+PREMISE_VIOLATED 7
+PASS 359
+INCOMPLETE 14
+20:55:09 B2_MEDIUM MEDIUM-ALL             lost_drone_mutex                 s5102 INCOMPLETE       P1 2.95 fail ['progress', 'gate'] wall 1427.1s exit 0
+22:18:54 B2_MEDIUM MEDIUM-ALL             lost_drone_mutex_rise_high       s5108 INCOMPLETE       P1 2.85 fail ['progress', 'gate', 'P3-deg re-formed'] wall 1629.7s exit 
+23:58:58 B2_MEDIUM MEDIUM-ALL             st_bd_head_040                   s5200 PREMISE_VIOLATED P1 3.162 fail [] wall 827.0s exit 0
+23:59:28 B2_MEDIUM MEDIUM-ALL             st_bd_head_040                   s5201 PREMISE_VIOLATED P1 3.428 fail [] wall 829.9s exit 0
+00:01:03 B2_MEDIUM MEDIUM-ALL             st_bd_head_040                   s5203 PREMISE_VIOLATED P1 3.198 fail [] wall 780.1s exit 0
+00:01:04 B2_MEDIUM MEDIUM-ALL             st_bd_head_040                   s5202 PREMISE_VIOLATED P1 3.153 fail [] wall 827.2s exit 0
+00:12:06 B2_MEDIUM MEDIUM-ALL             st_bd_head_040                   s5204 PREMISE_VIOLATED P1 3.152 fail [] wall 773.3s exit 0
+00:28:56 B2_MEDIUM MEDIUM-ALL             st_bd_oblique_040                s5201 PREMISE_VIOLATED P1 2.833 fail [] wall 657.7s exit 0
+00:29:03 B2_MEDIUM MEDIUM-ALL             st_bd_oblique_040                s5200 PREMISE_VIOLATED P1 3.126 fail [] wall 679.9s exit 0
+01:02:52 B2_MEDIUM MEDIUM-ALL             st_lost_at_queue                 s5200 INCOMPLETE       P1 3.234 fail ['progress', 'gate', 'P3-deg re-formed'] wall 1450.3s exit
+01:03:21 B2_MEDIUM MEDIUM-ALL             st_lost_at_queue                 s5201 INCOMPLETE       P1 3.262 fail ['progress', 'gate', 'P3-deg re-formed'] wall 1391.1s exit
+01:05:37 B2_MEDIUM MEDIUM-ALL             st_lost_at_queue                 s5202 INCOMPLETE       P1 3.358 fail ['progress', 'gate', 'P3-deg re-formed'] wall 1515.0s exit
+01:05:48 B2_MEDIUM MEDIUM-ALL             st_lost_at_queue                 s5203 INCOMPLETE       P1 3.204 fail ['progress', 'gate', 'P3-deg re-formed'] wall 1419.5s exit
+01:27:54 B2_MEDIUM MEDIUM-ALL             st_lost_committed                s5200 INCOMPLETE       P1 3.307 fail ['progress', 'gate', 'P3-deg re-formed'] wall 1455.5s exit
+01:28:49 B2_MEDIUM MEDIUM-ALL             st_lost_at_queue                 s5204 INCOMPLETE       P1 3.174 fail ['progress', 'gate', 'P3-deg re-formed'] wall 1539.3s exit
+01:29:37 B2_MEDIUM MEDIUM-ALL             st_lost_committed                s5201 INCOMPLETE       P1 3.595 fail ['progress', 'gate', 'P3-deg re-formed'] wall 1421.9s exit
+01:30:24 B2_MEDIUM MEDIUM-ALL             st_lost_committed                s5202 INCOMPLETE       P1 3.253 fail ['progress', 'gate', 'P3-deg re-formed'] wall 1439.1s exit
+01:52:06 B2_MEDIUM MEDIUM-ALL             st_lost_committed                s5203 INCOMPLETE       P1 3.116 fail ['progress', 'gate', 'P3-deg re-formed'] wall 1434.6s exit
+01:53:09 B2_MEDIUM MEDIUM-ALL             st_lost_after_exit               s5200 INCOMPLETE       P1 3.161 fail ['progress', 'gate', 'P3-deg re-formed'] wall 1393.3s exit
+01:54:57 B2_MEDIUM MEDIUM-ALL             st_lost_committed                s5204 INCOMPLETE       P1 3.31 fail ['progress', 'gate', 'P3-deg re-formed'] wall 1547.2s exit 
+01:58:00 B2_MEDIUM MEDIUM-ALL             st_lost_after_exit               s5202 INCOMPLETE       P1 3.131 fail ['progress', 'gate', 'P3-deg re-formed'] wall 1331.4s exit
+lanes done: 0
+tracebacks in lane logs: 0
+Holodeck processes on the machine: 4; free RAM GB: 55.2; free F: GB: 576
+```
+
+### 2026-11-14 03:12 raw_v11_final @ 945fc74
+```
+PREMISE_VIOLATED 7
+PASS 359
+INCOMPLETE 15
+20:55:09 B2_MEDIUM MEDIUM-ALL             lost_drone_mutex                 s5102 INCOMPLETE       P1 2.95 fail ['progress', 'gate'] wall 1427.1s exit 0
+22:18:54 B2_MEDIUM MEDIUM-ALL             lost_drone_mutex_rise_high       s5108 INCOMPLETE       P1 2.85 fail ['progress', 'gate', 'P3-deg re-formed'] wall 1629.7s exit 
+23:58:58 B2_MEDIUM MEDIUM-ALL             st_bd_head_040                   s5200 PREMISE_VIOLATED P1 3.162 fail [] wall 827.0s exit 0
+23:59:28 B2_MEDIUM MEDIUM-ALL             st_bd_head_040                   s5201 PREMISE_VIOLATED P1 3.428 fail [] wall 829.9s exit 0
+00:01:03 B2_MEDIUM MEDIUM-ALL             st_bd_head_040                   s5203 PREMISE_VIOLATED P1 3.198 fail [] wall 780.1s exit 0
+00:01:04 B2_MEDIUM MEDIUM-ALL             st_bd_head_040                   s5202 PREMISE_VIOLATED P1 3.153 fail [] wall 827.2s exit 0
+00:12:06 B2_MEDIUM MEDIUM-ALL             st_bd_head_040                   s5204 PREMISE_VIOLATED P1 3.152 fail [] wall 773.3s exit 0
+00:28:56 B2_MEDIUM MEDIUM-ALL             st_bd_oblique_040                s5201 PREMISE_VIOLATED P1 2.833 fail [] wall 657.7s exit 0
+00:29:03 B2_MEDIUM MEDIUM-ALL             st_bd_oblique_040                s5200 PREMISE_VIOLATED P1 3.126 fail [] wall 679.9s exit 0
+01:02:52 B2_MEDIUM MEDIUM-ALL             st_lost_at_queue                 s5200 INCOMPLETE       P1 3.234 fail ['progress', 'gate', 'P3-deg re-formed'] wall 1450.3s exit
+01:03:21 B2_MEDIUM MEDIUM-ALL             st_lost_at_queue                 s5201 INCOMPLETE       P1 3.262 fail ['progress', 'gate', 'P3-deg re-formed'] wall 1391.1s exit
+01:05:37 B2_MEDIUM MEDIUM-ALL             st_lost_at_queue                 s5202 INCOMPLETE       P1 3.358 fail ['progress', 'gate', 'P3-deg re-formed'] wall 1515.0s exit
+01:05:48 B2_MEDIUM MEDIUM-ALL             st_lost_at_queue                 s5203 INCOMPLETE       P1 3.204 fail ['progress', 'gate', 'P3-deg re-formed'] wall 1419.5s exit
+01:27:54 B2_MEDIUM MEDIUM-ALL             st_lost_committed                s5200 INCOMPLETE       P1 3.307 fail ['progress', 'gate', 'P3-deg re-formed'] wall 1455.5s exit
+01:28:49 B2_MEDIUM MEDIUM-ALL             st_lost_at_queue                 s5204 INCOMPLETE       P1 3.174 fail ['progress', 'gate', 'P3-deg re-formed'] wall 1539.3s exit
+01:29:37 B2_MEDIUM MEDIUM-ALL             st_lost_committed                s5201 INCOMPLETE       P1 3.595 fail ['progress', 'gate', 'P3-deg re-formed'] wall 1421.9s exit
+01:30:24 B2_MEDIUM MEDIUM-ALL             st_lost_committed                s5202 INCOMPLETE       P1 3.253 fail ['progress', 'gate', 'P3-deg re-formed'] wall 1439.1s exit
+01:52:06 B2_MEDIUM MEDIUM-ALL             st_lost_committed                s5203 INCOMPLETE       P1 3.116 fail ['progress', 'gate', 'P3-deg re-formed'] wall 1434.6s exit
+01:53:09 B2_MEDIUM MEDIUM-ALL             st_lost_after_exit               s5200 INCOMPLETE       P1 3.161 fail ['progress', 'gate', 'P3-deg re-formed'] wall 1393.3s exit
+01:54:57 B2_MEDIUM MEDIUM-ALL             st_lost_committed                s5204 INCOMPLETE       P1 3.31 fail ['progress', 'gate', 'P3-deg re-formed'] wall 1547.2s exit 
+01:58:00 B2_MEDIUM MEDIUM-ALL             st_lost_after_exit               s5202 INCOMPLETE       P1 3.131 fail ['progress', 'gate', 'P3-deg re-formed'] wall 1331.4s exit
+02:16:07 B2_MEDIUM MEDIUM-ALL             st_lost_after_exit               s5204 INCOMPLETE       P1 2.949 fail ['progress', 'gate', 'P3-deg re-formed'] wall 1361.1s exit
+lanes done: 0
+tracebacks in lane logs: 0
+Holodeck processes on the machine: 4; free RAM GB: 55.2; free F: GB: 576
+```
+
+### 2026-11-14 04:12 raw_v11_final @ 945fc74
+```
+PREMISE_VIOLATED 7
+PASS 359
+INCOMPLETE 15
+20:55:09 B2_MEDIUM MEDIUM-ALL             lost_drone_mutex                 s5102 INCOMPLETE       P1 2.95 fail ['progress', 'gate'] wall 1427.1s exit 0
+22:18:54 B2_MEDIUM MEDIUM-ALL             lost_drone_mutex_rise_high       s5108 INCOMPLETE       P1 2.85 fail ['progress', 'gate', 'P3-deg re-formed'] wall 1629.7s exit 
+23:58:58 B2_MEDIUM MEDIUM-ALL             st_bd_head_040                   s5200 PREMISE_VIOLATED P1 3.162 fail [] wall 827.0s exit 0
+23:59:28 B2_MEDIUM MEDIUM-ALL             st_bd_head_040                   s5201 PREMISE_VIOLATED P1 3.428 fail [] wall 829.9s exit 0
+00:01:03 B2_MEDIUM MEDIUM-ALL             st_bd_head_040                   s5203 PREMISE_VIOLATED P1 3.198 fail [] wall 780.1s exit 0
+00:01:04 B2_MEDIUM MEDIUM-ALL             st_bd_head_040                   s5202 PREMISE_VIOLATED P1 3.153 fail [] wall 827.2s exit 0
+00:12:06 B2_MEDIUM MEDIUM-ALL             st_bd_head_040                   s5204 PREMISE_VIOLATED P1 3.152 fail [] wall 773.3s exit 0
+00:28:56 B2_MEDIUM MEDIUM-ALL             st_bd_oblique_040                s5201 PREMISE_VIOLATED P1 2.833 fail [] wall 657.7s exit 0
+00:29:03 B2_MEDIUM MEDIUM-ALL             st_bd_oblique_040                s5200 PREMISE_VIOLATED P1 3.126 fail [] wall 679.9s exit 0
+01:02:52 B2_MEDIUM MEDIUM-ALL             st_lost_at_queue                 s5200 INCOMPLETE       P1 3.234 fail ['progress', 'gate', 'P3-deg re-formed'] wall 1450.3s exit
+01:03:21 B2_MEDIUM MEDIUM-ALL             st_lost_at_queue                 s5201 INCOMPLETE       P1 3.262 fail ['progress', 'gate', 'P3-deg re-formed'] wall 1391.1s exit
+01:05:37 B2_MEDIUM MEDIUM-ALL             st_lost_at_queue                 s5202 INCOMPLETE       P1 3.358 fail ['progress', 'gate', 'P3-deg re-formed'] wall 1515.0s exit
+01:05:48 B2_MEDIUM MEDIUM-ALL             st_lost_at_queue                 s5203 INCOMPLETE       P1 3.204 fail ['progress', 'gate', 'P3-deg re-formed'] wall 1419.5s exit
+01:27:54 B2_MEDIUM MEDIUM-ALL             st_lost_committed                s5200 INCOMPLETE       P1 3.307 fail ['progress', 'gate', 'P3-deg re-formed'] wall 1455.5s exit
+01:28:49 B2_MEDIUM MEDIUM-ALL             st_lost_at_queue                 s5204 INCOMPLETE       P1 3.174 fail ['progress', 'gate', 'P3-deg re-formed'] wall 1539.3s exit
+01:29:37 B2_MEDIUM MEDIUM-ALL             st_lost_committed                s5201 INCOMPLETE       P1 3.595 fail ['progress', 'gate', 'P3-deg re-formed'] wall 1421.9s exit
+01:30:24 B2_MEDIUM MEDIUM-ALL             st_lost_committed                s5202 INCOMPLETE       P1 3.253 fail ['progress', 'gate', 'P3-deg re-formed'] wall 1439.1s exit
+01:52:06 B2_MEDIUM MEDIUM-ALL             st_lost_committed                s5203 INCOMPLETE       P1 3.116 fail ['progress', 'gate', 'P3-deg re-formed'] wall 1434.6s exit
+01:53:09 B2_MEDIUM MEDIUM-ALL             st_lost_after_exit               s5200 INCOMPLETE       P1 3.161 fail ['progress', 'gate', 'P3-deg re-formed'] wall 1393.3s exit
+01:54:57 B2_MEDIUM MEDIUM-ALL             st_lost_committed                s5204 INCOMPLETE       P1 3.31 fail ['progress', 'gate', 'P3-deg re-formed'] wall 1547.2s exit 
+01:58:00 B2_MEDIUM MEDIUM-ALL             st_lost_after_exit               s5202 INCOMPLETE       P1 3.131 fail ['progress', 'gate', 'P3-deg re-formed'] wall 1331.4s exit
+02:16:07 B2_MEDIUM MEDIUM-ALL             st_lost_after_exit               s5204 INCOMPLETE       P1 2.949 fail ['progress', 'gate', 'P3-deg re-formed'] wall 1361.1s exit
+lanes done: 0
+tracebacks in lane logs: 0
+Holodeck processes on the machine: 4; free RAM GB: 55.2; free F: GB: 576
+```
+
+### 2026-11-14 05:12 raw_v11_final @ 945fc74
+```
+PREMISE_VIOLATED 7
+PASS 361
+INCOMPLETE 15
+20:55:09 B2_MEDIUM MEDIUM-ALL             lost_drone_mutex                 s5102 INCOMPLETE       P1 2.95 fail ['progress', 'gate'] wall 1427.1s exit 0
+22:18:54 B2_MEDIUM MEDIUM-ALL             lost_drone_mutex_rise_high       s5108 INCOMPLETE       P1 2.85 fail ['progress', 'gate', 'P3-deg re-formed'] wall 1629.7s exit 
+23:58:58 B2_MEDIUM MEDIUM-ALL             st_bd_head_040                   s5200 PREMISE_VIOLATED P1 3.162 fail [] wall 827.0s exit 0
+23:59:28 B2_MEDIUM MEDIUM-ALL             st_bd_head_040                   s5201 PREMISE_VIOLATED P1 3.428 fail [] wall 829.9s exit 0
+00:01:03 B2_MEDIUM MEDIUM-ALL             st_bd_head_040                   s5203 PREMISE_VIOLATED P1 3.198 fail [] wall 780.1s exit 0
+00:01:04 B2_MEDIUM MEDIUM-ALL             st_bd_head_040                   s5202 PREMISE_VIOLATED P1 3.153 fail [] wall 827.2s exit 0
+00:12:06 B2_MEDIUM MEDIUM-ALL             st_bd_head_040                   s5204 PREMISE_VIOLATED P1 3.152 fail [] wall 773.3s exit 0
+00:28:56 B2_MEDIUM MEDIUM-ALL             st_bd_oblique_040                s5201 PREMISE_VIOLATED P1 2.833 fail [] wall 657.7s exit 0
+00:29:03 B2_MEDIUM MEDIUM-ALL             st_bd_oblique_040                s5200 PREMISE_VIOLATED P1 3.126 fail [] wall 679.9s exit 0
+01:02:52 B2_MEDIUM MEDIUM-ALL             st_lost_at_queue                 s5200 INCOMPLETE       P1 3.234 fail ['progress', 'gate', 'P3-deg re-formed'] wall 1450.3s exit
+01:03:21 B2_MEDIUM MEDIUM-ALL             st_lost_at_queue                 s5201 INCOMPLETE       P1 3.262 fail ['progress', 'gate', 'P3-deg re-formed'] wall 1391.1s exit
+01:05:37 B2_MEDIUM MEDIUM-ALL             st_lost_at_queue                 s5202 INCOMPLETE       P1 3.358 fail ['progress', 'gate', 'P3-deg re-formed'] wall 1515.0s exit
+01:05:48 B2_MEDIUM MEDIUM-ALL             st_lost_at_queue                 s5203 INCOMPLETE       P1 3.204 fail ['progress', 'gate', 'P3-deg re-formed'] wall 1419.5s exit
+01:27:54 B2_MEDIUM MEDIUM-ALL             st_lost_committed                s5200 INCOMPLETE       P1 3.307 fail ['progress', 'gate', 'P3-deg re-formed'] wall 1455.5s exit
+01:28:49 B2_MEDIUM MEDIUM-ALL             st_lost_at_queue                 s5204 INCOMPLETE       P1 3.174 fail ['progress', 'gate', 'P3-deg re-formed'] wall 1539.3s exit
+01:29:37 B2_MEDIUM MEDIUM-ALL             st_lost_committed                s5201 INCOMPLETE       P1 3.595 fail ['progress', 'gate', 'P3-deg re-formed'] wall 1421.9s exit
+01:30:24 B2_MEDIUM MEDIUM-ALL             st_lost_committed                s5202 INCOMPLETE       P1 3.253 fail ['progress', 'gate', 'P3-deg re-formed'] wall 1439.1s exit
+01:52:06 B2_MEDIUM MEDIUM-ALL             st_lost_committed                s5203 INCOMPLETE       P1 3.116 fail ['progress', 'gate', 'P3-deg re-formed'] wall 1434.6s exit
+01:53:09 B2_MEDIUM MEDIUM-ALL             st_lost_after_exit               s5200 INCOMPLETE       P1 3.161 fail ['progress', 'gate', 'P3-deg re-formed'] wall 1393.3s exit
+01:54:57 B2_MEDIUM MEDIUM-ALL             st_lost_committed                s5204 INCOMPLETE       P1 3.31 fail ['progress', 'gate', 'P3-deg re-formed'] wall 1547.2s exit 
+01:58:00 B2_MEDIUM MEDIUM-ALL             st_lost_after_exit               s5202 INCOMPLETE       P1 3.131 fail ['progress', 'gate', 'P3-deg re-formed'] wall 1331.4s exit
+02:16:07 B2_MEDIUM MEDIUM-ALL             st_lost_after_exit               s5204 INCOMPLETE       P1 2.949 fail ['progress', 'gate', 'P3-deg re-formed'] wall 1361.1s exit
+lanes done: 0
+tracebacks in lane logs: 0
+Holodeck processes on the machine: 4; free RAM GB: 55; free F: GB: 576
+```
+
+### 2026-11-14 05:27 raw_v11_final @ 945fc74 (lanes ended or 40 h limit)
+```
+PREMISE_VIOLATED 7
+PASS 369
+INCOMPLETE 15
+20:55:09 B2_MEDIUM MEDIUM-ALL             lost_drone_mutex                 s5102 INCOMPLETE       P1 2.95 fail ['progress', 'gate'] wall 1427.1s exit 0
+22:18:54 B2_MEDIUM MEDIUM-ALL             lost_drone_mutex_rise_high       s5108 INCOMPLETE       P1 2.85 fail ['progress', 'gate', 'P3-deg re-formed'] wall 1629.7s exit 
+23:58:58 B2_MEDIUM MEDIUM-ALL             st_bd_head_040                   s5200 PREMISE_VIOLATED P1 3.162 fail [] wall 827.0s exit 0
+23:59:28 B2_MEDIUM MEDIUM-ALL             st_bd_head_040                   s5201 PREMISE_VIOLATED P1 3.428 fail [] wall 829.9s exit 0
+00:01:03 B2_MEDIUM MEDIUM-ALL             st_bd_head_040                   s5203 PREMISE_VIOLATED P1 3.198 fail [] wall 780.1s exit 0
+00:01:04 B2_MEDIUM MEDIUM-ALL             st_bd_head_040                   s5202 PREMISE_VIOLATED P1 3.153 fail [] wall 827.2s exit 0
+00:12:06 B2_MEDIUM MEDIUM-ALL             st_bd_head_040                   s5204 PREMISE_VIOLATED P1 3.152 fail [] wall 773.3s exit 0
+00:28:56 B2_MEDIUM MEDIUM-ALL             st_bd_oblique_040                s5201 PREMISE_VIOLATED P1 2.833 fail [] wall 657.7s exit 0
+00:29:03 B2_MEDIUM MEDIUM-ALL             st_bd_oblique_040                s5200 PREMISE_VIOLATED P1 3.126 fail [] wall 679.9s exit 0
+01:02:52 B2_MEDIUM MEDIUM-ALL             st_lost_at_queue                 s5200 INCOMPLETE       P1 3.234 fail ['progress', 'gate', 'P3-deg re-formed'] wall 1450.3s exit
+01:03:21 B2_MEDIUM MEDIUM-ALL             st_lost_at_queue                 s5201 INCOMPLETE       P1 3.262 fail ['progress', 'gate', 'P3-deg re-formed'] wall 1391.1s exit
+01:05:37 B2_MEDIUM MEDIUM-ALL             st_lost_at_queue                 s5202 INCOMPLETE       P1 3.358 fail ['progress', 'gate', 'P3-deg re-formed'] wall 1515.0s exit
+01:05:48 B2_MEDIUM MEDIUM-ALL             st_lost_at_queue                 s5203 INCOMPLETE       P1 3.204 fail ['progress', 'gate', 'P3-deg re-formed'] wall 1419.5s exit
+01:27:54 B2_MEDIUM MEDIUM-ALL             st_lost_committed                s5200 INCOMPLETE       P1 3.307 fail ['progress', 'gate', 'P3-deg re-formed'] wall 1455.5s exit
+01:28:49 B2_MEDIUM MEDIUM-ALL             st_lost_at_queue                 s5204 INCOMPLETE       P1 3.174 fail ['progress', 'gate', 'P3-deg re-formed'] wall 1539.3s exit
+01:29:37 B2_MEDIUM MEDIUM-ALL             st_lost_committed                s5201 INCOMPLETE       P1 3.595 fail ['progress', 'gate', 'P3-deg re-formed'] wall 1421.9s exit
+01:30:24 B2_MEDIUM MEDIUM-ALL             st_lost_committed                s5202 INCOMPLETE       P1 3.253 fail ['progress', 'gate', 'P3-deg re-formed'] wall 1439.1s exit
+01:52:06 B2_MEDIUM MEDIUM-ALL             st_lost_committed                s5203 INCOMPLETE       P1 3.116 fail ['progress', 'gate', 'P3-deg re-formed'] wall 1434.6s exit
+01:53:09 B2_MEDIUM MEDIUM-ALL             st_lost_after_exit               s5200 INCOMPLETE       P1 3.161 fail ['progress', 'gate', 'P3-deg re-formed'] wall 1393.3s exit
+01:54:57 B2_MEDIUM MEDIUM-ALL             st_lost_committed                s5204 INCOMPLETE       P1 3.31 fail ['progress', 'gate', 'P3-deg re-formed'] wall 1547.2s exit 
+01:58:00 B2_MEDIUM MEDIUM-ALL             st_lost_after_exit               s5202 INCOMPLETE       P1 3.131 fail ['progress', 'gate', 'P3-deg re-formed'] wall 1331.4s exit
+02:16:07 B2_MEDIUM MEDIUM-ALL             st_lost_after_exit               s5204 INCOMPLETE       P1 2.949 fail ['progress', 'gate', 'P3-deg re-formed'] wall 1361.1s exit
+lanes done: 4
+tracebacks in lane logs: 0
+Holodeck processes on the machine: 0; free RAM GB: 62; free F: GB: 576
+```
