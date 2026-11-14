@@ -66,6 +66,7 @@ class Referee:
         self.p1_violations: List[Dict] = []
         self.contacts: List[Dict] = []
         self.collision_edges: List[Dict] = []
+        self.dead_contacts: List[Dict] = []      # the sensor of a drone after its TOTAL_FAILURE: recorded, not a contact (update)
         self._coll_prev = np.zeros(self.n, dtype=bool)
         self.p2_violations: List[Dict] = []
         self.entry_order: Dict[str, List[str]] = {g.gate_id: [] for g in self.gates}
@@ -188,7 +189,7 @@ class Referee:
     def update(self, truth, modes: Sequence[str], disturbance_active: bool = False) -> Dict:
         t, P = truth.t, truth.positions
         sep = self.cfg.sep
-        row = {"t": round(t, 3)}
+        row = {"t": round(t, 6)}            # as the online monitor sees it: a hold timer replayed on rounded times can fall short
         for (i, j) in self.pairs:
             d = float(np.linalg.norm(P[i] - P[j]))
             row[f"d_{i}_{j}"] = round(d, 4)
@@ -211,7 +212,9 @@ class Referee:
             row["d_intruder"] = round(float(min(np.linalg.norm(P[k] - q) for k in range(self.n) for q in intr)), 4)
         col = np.asarray(truth.collision, dtype=bool)
         for k in np.flatnonzero(col & ~self._coll_prev):
-            self.collision_edges.append({"t": t, "drone": self.names[int(k)]})
+            # the body of a dead drone touching the structure is the failure model (it rises against what is above it), not an action of the
+            # fleet: recorded, and no contact (criteria v7).  A live drone that touches it has its own edge, and P1 judges every pair by distance.
+            (self.dead_contacts if modes[int(k)] == "DEAD" else self.collision_edges).append({"t": t, "drone": self.names[int(k)]})
         self._coll_prev = col.copy()
         for g in self.gates:
             inside = {self.names[k] for k in range(self.n) if self.cr_inside(g, P[k])}
@@ -308,6 +311,7 @@ class Referee:
                                                for (i, j), d in self.min_d.items()},
                               "violations": len(self.p1_violations), "first_violation": self.p1_violations[:1],
                               "physical_contacts": len(self.contacts), "collision_sensor_edges": self.collision_edges,
+                              "dead_drone_contacts": self.dead_contacts,
                               "holds": not self.p1_violations,
                               "intruder": None if self.intruder_min_t is None else {
                                   "note": "scripted vehicle outside the fleet (no controller); not part of P1 among drones",

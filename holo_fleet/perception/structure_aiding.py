@@ -52,20 +52,35 @@ stopped by the echo it cannot explain.  Nothing is assumed about the identity of
 on several sectors matching the bars within FIT_RMS_M, uniquely and consistently over CONSIST_N captures, and the queue
 points, beside the opening, never pass the robust clearance below.
 
-Identity from the B2 payload (H6).  The C5 restriction rests on one premise: an echo matched to a bar may be the
-hull of another fleet drone.  When EVERY other drone of the plan is accounted for by a fresh, consistent payload
-(its reported position and error ball, perception/acoustic.py) and no echo of any observed sector could come from a
-hull inside any of those balls (grown by the own navigation bound, since the echo is placed with the own estimate),
-the premise is excluded and a fit that places the hull beside the opening may be APPLIED (the drone learns it is in
-front of a bar and corrects towards the opening).  It still never VALIDATES the localization: ``valid`` needs a later
-fit with the hull inside the opening.  The balls are small point-estimate bounds, not the wide range-bearing
-regions that covered the bars (the withdrawn variant); a drone that is not accounted for leaves C5 in force.  Only
-fleet drones and the mapped gate are assumed in the gate area (a non-fleet object there is outside this premise and
-stays an obstacle for the separation layer).
+Identity from the B2 beacon (v11).  The C5 restriction rests on one premise: an echo matched to a bar may be the hull of
+another fleet drone.  When every other drone of the plan is located by a fresh identified acoustic fix (or is dead or
+has reported passing this gate) and no echo matched to a bar lies in a sector cone and range that the region of any
+of those fixes can reach, the premise is excluded and a fit that places the hull beside the opening may be APPLIED (the
+drone learns it is in front of a bar and corrects towards the opening); v10 needed the payload error balls, which grow
+with the navigation bound and never excluded anything in MEDIUM.  The test uses the matched echoes only, in the
+own frame (the measurement, not any navigation estimate).  It still never VALIDATES the localization: ``valid`` needs a
+later fit with the hull inside the opening.  Only fleet drones and the mapped gate are assumed in the gate area (a non-fleet
+object there is outside this premise and stays an obstacle for the separation layer).
+
+On the axis of the gate only the FRONT sector sees the frame until about 2.2 m, so an along-axis error leaves the first bar echo
+unexplained, the separation layer stops the drone at the band, and the side sectors never see the bars: a deadlock of the perception (RC7,
+MEDIUM-ALL lost_drone_mutex s920).  With the same identity premise (every other drone excluded as the source of that echo) a single FRONT echo may
+correct the ALONG-AXIS estimate only, uniquely and consistently over CONSIST_N captures, by at most MAX_CORR_M in total until a validated fit.  It
+never moves the lateral estimate and never validates the localization.  Identification is by elimination only: any single echo within the correction range is adopted, and is then
+labelled STRUCTURE by the classifier.  A hull not accounted for by the premise (a drone silent for t_silent_gate_s) can therefore be taken for a bar.  It relies on the wide FRONT sonar: a
+25 deg beam would not see the bars from the axis at this range.
 
 The correction changes the drone's OWN position estimate only: the collision-avoidance distance bound uses the raw echo
 ranges in the body frame and does not depend on it, and the structure test keeps its tolerance (structure_tol_m is not
 widened), so a vehicle in front of a bar stays an obstacle (tests/test_structure_aiding.py).
+
+A correction accepted without a validated fit (the identity rule, the along-axis correction) is a hypothesis.  Near the gate the sectors see the bars at the edge of their cones and a fit mirrored
+about the axis can explain the echoes about as well as the true pose (RC12, MEDIUM-ALL lost_drone_mutex s995: two such fits moved the estimate 2.2 m the wrong way, beyond the reach MAX_CORR_M of any later
+fit).  So the step of a correction under the identity rule is capped (IDENTITY_STEP_M): one wrong step stays within reach of a later fit; a right correction arrives in steps.  ``unconfirmed`` is the sum of these
+corrections since the start of the current commitment or the last validated fit, whichever is later (a measured crossing also ends it; those made before the commitment include real drift corrected during the
+wait at the queue).  When a hold at the gate ends with no valid localization the sum is sealed (``seal_unconfirmed``) and undone after the give-up edge (``take_sealed``; DroneController._drain_flow_events,
+Perception.undo_unconfirmed_corrections); what is corrected between the two stays (med7 s981: a right fit between the timeout and the edge would have been removed), and a validated fit or a measured crossing
+drops the seal.  This is a recovery heuristic: a hold without validation does not refute a correction.  The bound grows by the step.
 """
 
 from __future__ import annotations
@@ -87,9 +102,11 @@ GAIN_MIN = 0.05          # the best offset must lower the total squared residual
 AMBIGUITY = 0.005        # [m^2] candidates this close to the best total cost must lie within UNIQUE_M of it
 UNIQUE_M = 0.4           # ranges near the gate plane change little with the offset: bounded, not zero ambiguity
 MAX_CORR_M = 1.2
+IDENTITY_STEP_M = 0.5    # largest step of a correction under the identity rule (module docstring)
 CONSIST_M = 0.15
 CONSIST_N = 4
-GAIN = 1.0               # the offset confirmed in CONSIST_N updates is applied in full (a partial step can stop at an ambiguous pose)
+AXIAL_AMBIGUITY_M = 0.04   # a single range: candidates within this of the best residual
+GAIN = 1.0               # the offset confirmed in CONSIST_N updates is applied in full (a partial step can stop at an ambiguous pose), but for the cap IDENTITY_STEP_M of a fit under the identity rule
 COARSE_M, FINE_M = 0.3, 0.05
 POINT_STRIDE = 3        # bar sample points used (every 3rd of the classifier's, ~3 cm apart)
 HULL_LAT_M = float(HULL_HALF[1] + HULL_HALF[0] * np.sin(np.radians(5.0)))   # lateral half-extent, yaw within 5 deg
@@ -110,15 +127,22 @@ def acquisition_distance(cfg, gate=None, pts=None) -> float:
 
 
 class StructureAiding:
-    def __init__(self, clf, cfg, gates=()):
+    def __init__(self, clf, cfg, gates=(), acq_min: float = 0.0):
         self.clf = clf
         self.cfg = cfg
         self.gates = list(gates)                 # GateSpecs: the free opening of the robust clearance
-        self.acq = {g.gate_id: acquisition_distance(cfg, g) for g in self.gates}
+        # the aiding also runs out to the queue line (``acq_min``): off-axis queue points see the frame in two sectors, and
+        # with every echo identified as a bar (the identity rule below) a fit there may be applied; v10 stopped at 4.2 m
+        self.acq = {g.gate_id: max(acquisition_distance(cfg, g), acq_min) for g in self.gates}
         self.loc_t = -1e9                        # last confirmation of the gate localization
         self.loc_u: Optional[float] = None       # its uncertainty [m]
         self.recent: Deque[np.ndarray] = deque(maxlen=CONSIST_N)
+        self.recent_ax: Deque[float] = deque(maxlen=CONSIST_N)
+        self.axial_total = 0.0                   # along-axis correction applied since the last validated fit: bounded
+        self._ax_touched = False
         self.applied_m = 0.0                     # total applied correction (for the log)
+        self.unconfirmed = np.zeros(2)           # sum of the corrections since the last validated fit (module docstring)
+        self.sealed: Optional[np.ndarray] = None # that sum when a hold ended with no valid localization: to be undone after the give-up edge
         self.last: Optional[Dict] = None
         self.pts = np.asarray(clf.struct_pts)[::POINT_STRIDE]
         self.acq_pts = acquisition_distance(cfg, pts=self.pts) if len(self.pts) else 0.0
@@ -215,35 +239,104 @@ class StructureAiding:
             return None
         return float(g.inner_width / 2.0 - (abs(l_g) + HULL_LAT_M + u))
 
+    def start_commitment(self) -> None:
+        """Only the corrections of the current commitment can be undone (module docstring)."""
+        self.unconfirmed = np.zeros(2)
+
+    def forget_unconfirmed(self) -> None:
+        """A validated fit or a measured crossing: nothing before it is left to undo."""
+        self.unconfirmed = np.zeros(2)
+        self.sealed = None
+
+    def seal_unconfirmed(self) -> None:
+        """A hold ended with no valid localization: what is undone after the give-up edge is the sum at this moment."""
+        self.sealed = self.unconfirmed.copy()
+
+    def take_sealed(self) -> Optional[np.ndarray]:
+        """The correction that undoes the sealed sum (None: there is none to undo); the sums are forgotten."""
+        if self.sealed is None:
+            return None
+        c = -self.sealed
+        self.forget_unconfirmed()
+        self.axial_total = 0.0
+        self.recent.clear()
+        self.recent_ax.clear()
+        return None if float(np.linalg.norm(c)) == 0.0 else np.array([c[0], c[1], 0.0])
+
     def valid(self, t: float) -> bool:
         """Gate localization confirmed within LOC_TTL_S (robust clearance included)."""
         return t - self.loc_t <= LOC_TTL_S
 
-    def echoes_not_drones(self, p: np.ndarray, R_wb: np.ndarray, obs: Dict, others, b_own: float) -> bool:
-        """No echo of any observed sector can be the hull of a drone inside one of the payload balls ``others``
-        [(centre, radius)] (mission frame), the echo placed from the own estimate p within ``b_own``."""
-        env, a = self.cfg.env, self.cfg.acoustic
-        half0 = math.radians(self.cfg.perc.sonar.half_angle_deg + a.heading_err_deg + a.tilt_err_deg)  # own attitude
-        for s, ranges in obs.items():
+    def echoes_not_drones(self, p: np.ndarray, R_wb: np.ndarray, matched: Dict, others) -> bool:
+        """None of the echoes matched to a bar can be the hull of a fleet drone: ``others`` = [(samples (n, 3), growth)]
+        where each other drone can be (own frame, from its fresh acoustic fix: the navigation of nobody enters); an echo
+        whose sector cone and range reach none of them is no drone (module docstring)."""
+        env = self.cfg.env
+        half0 = math.radians(self.cfg.perc.sonar.half_angle_deg)
+        for s, r_e in matched.items():
             m = p + R_wb @ MOUNTS[s]
-            a = R_wb @ AXES[s]
-            a = a / np.linalg.norm(a)
-            for c, rad in others:
-                d = np.asarray(c, float) - m
-                dist = max(float(np.linalg.norm(d)), 1e-6)
-                ang = math.acos(max(-1.0, min(1.0, float(d @ a) / dist)))
-                grow = R_OUT + float(rad) + b_own
-                for r_e in ranges:
-                    lo, hi = max(float(r_e) - env.eps_range_far, 0.0), float(r_e) + env.eps_range_near
-                    half = half0 + math.atan2(NEAR_FIELD_WIDEN_M, max(lo, 1e-3))
-                    if lo - grow <= dist <= hi + grow and ang <= half + math.asin(min(1.0, grow / dist)):
-                        return False
+            u = R_wb @ AXES[s]
+            u = u / np.linalg.norm(u)
+            lo, hi = max(float(r_e) - env.eps_range_far, 0.0), float(r_e) + env.eps_range_near
+            half = half0 + math.atan2(NEAR_FIELD_WIDEN_M, max(lo, 1e-3))
+            for pts, rho in others:
+                grow = R_OUT + float(rho)
+                d = np.asarray(pts, float) - m
+                dist = np.maximum(np.linalg.norm(d, axis=1), 1e-6)
+                ang = np.arccos(np.clip((d @ u) / dist, -1.0, 1.0))
+                if np.any((dist >= lo - grow) & (dist <= hi + grow) & (ang <= half + np.arcsin(np.clip(grow / dist, 0.0, 1.0)))):
+                    return False
         return True
 
+    def _axial(self, p: np.ndarray, R_wb: np.ndarray, obs: Dict, g, others) -> Optional[np.ndarray]:
+        """Along-axis correction from a single FRONT echo identified as a bar (module docstring), or None."""
+        self._ax_touched = True
+        edges = obs.get("FRONT")
+        if edges is None or not edges.size or others is None:
+            self.recent_ax.clear()
+            return None
+        axis = np.asarray(g.axis, float)
+        axis = axis / np.linalg.norm(axis)
+        ds = np.arange(-MAX_CORR_M, MAX_CORR_M + 1e-9, FINE_M)
+        pr = self._pred(p[None, :] + ds[:, None] * axis, R_wb, "FRONT")
+        res = np.min(np.abs(edges[None, :] - np.nan_to_num(pr)[:, None]), axis=1)
+        res = np.where(np.isnan(pr), np.inf, res)
+        k = int(np.argmin(res))
+        near = ds[res <= res[k] + AXIAL_AMBIGUITY_M]
+        echo = float(edges[int(np.argmin(np.abs(edges - pr[k])))]) if np.isfinite(res[k]) else None
+        if (echo is None or res[k] > FIT_RMS_M * 1.5 or float(near.max() - near.min()) > UNIQUE_M or abs(float(ds[k])) <= CONSIST_M
+                or not self.echoes_not_drones(p, R_wb, {"FRONT": echo}, others)):
+            self.recent_ax.clear()
+            return None
+        self.recent_ax.append(float(ds[k]))
+        if len(self.recent_ax) < CONSIST_N:
+            return None
+        a = np.asarray(self.recent_ax)
+        if float(a.max() - a.min()) > 2.0 * CONSIST_M:
+            return None
+        self.recent_ax.clear()
+        if abs(self.axial_total + float(a.mean())) > MAX_CORR_M:   # no more than one correction's worth until a validated fit
+            return None
+        self.axial_total += float(a.mean())
+        self.applied_m += abs(float(a.mean()))
+        self.last["axial"] = round(float(a.mean()), 3)
+        corr = GAIN * float(a.mean()) * np.array([axis[0], axis[1], 0.0])
+        self.unconfirmed += corr[:2]
+        return corr
+
     def update(self, p: np.ndarray, R_wb: np.ndarray, profiles: Dict, ages: Dict, tau: float,
-               t: float = 0.0, others=None, b_own: Optional[float] = None) -> Optional[np.ndarray]:
-        """Horizontal correction to add to the position estimate now (None: nothing accepted).  ``others``: the
-        payload balls of EVERY other drone of the plan, or None when one is not accounted for (module docstring)."""
+               t: float = 0.0, others=None) -> Optional[np.ndarray]:
+        """The map fit (``_update``); the along-axis confirmation count survives only consecutive captures that reached it."""
+        self._ax_touched = False
+        out = self._update(p, R_wb, profiles, ages, tau, t, others)
+        if not self._ax_touched:
+            self.recent_ax.clear()
+        return out
+
+    def _update(self, p: np.ndarray, R_wb: np.ndarray, profiles: Dict, ages: Dict, tau: float,
+                t: float = 0.0, others=None) -> Optional[np.ndarray]:
+        """Horizontal correction to add to the position estimate now (None: nothing accepted).  ``others``: where every
+        other drone of the plan can be (Perception._other_regions), or None when one is not accounted for."""
         self.last = None
         pts = self.pts
         if len(pts) == 0:
@@ -282,16 +375,25 @@ class StructureAiding:
         fit_ok = (matched_k >= MIN_MATCHED and rms_k <= FIT_RMS_M and spread <= UNIQUE_M
                   and (margin is not None or not self.gates))
         safe = margin is None or margin >= 0.0          # the hull + uncertainty inside the free opening
-        identified = (not safe and fit_ok and others is not None and b_own is not None
-                      and self.echoes_not_drones(p, R_wb, obs, others, b_own))   # at the UNcorrected pose:
-        # the premise under test is that the fit may be wrong, so the echoes are placed from the own estimate within
-        # its own bound, not from the fitted position
+        matched_echoes = {}                        # sector -> the echo matched to a bar by this fit
+        cand = (p + np.array([d[0], d[1], 0.0]))[None, :]
+        for s, edges in obs.items():
+            pr = self._pred(cand, R_wb, s)[0]
+            if edges.size and not np.isnan(pr):
+                i = int(np.argmin(np.abs(edges - pr)))
+                if abs(float(edges[i]) - float(pr)) <= FIT_RMS_M * 1.5:
+                    matched_echoes[s] = float(edges[i])
+        identified = (not safe and fit_ok and others is not None
+                      and self.echoes_not_drones(p, R_wb, matched_echoes, others))
         self.last["identified"] = bool(identified)
+        self.last["others"] = None if others is None else len(others)    # None: some other drone not accounted for (log only)
         if not fit_ok or not (safe or identified):       # beside the opening: only with every echo identified as a bar
             self.recent.clear()
-            return None
+            return self._axial(p, R_wb, obs, g, others) if (self.gates and matched_k < MIN_MATCHED) else None
         if safe and float(np.linalg.norm(d)) <= CONSIST_M:   # the current estimate is confirmed (consistency band)
             self.loc_t, self.loc_u = t, u
+            self.axial_total = 0.0
+            self.forget_unconfirmed()
         if not (np.isfinite(c0[0]) and c0[0] - cost_k >= GAIN_MIN):
             self.recent.clear()
             return None
@@ -302,8 +404,16 @@ class StructureAiding:
         if np.max(np.linalg.norm(Rr - Rr.mean(axis=0), axis=1)) > CONSIST_M:
             return None
         corr = GAIN * Rr.mean(axis=0)
+        if safe and float(np.linalg.norm(corr)) > self.cfg.gate.nav_err_m:
+            safe = False                            # a fit that says the error exceeds the premise of P2 does not validate (round 8, s1103)
+        if not safe and float(np.linalg.norm(corr)) > IDENTITY_STEP_M:
+            corr = corr * IDENTITY_STEP_M / float(np.linalg.norm(corr))
         self.recent.clear()
         self.applied_m += float(np.linalg.norm(corr))
         if safe:
             self.loc_t, self.loc_u = t, u           # the corrected estimate is the confirmed one
+            self.axial_total = 0.0
+            self.forget_unconfirmed()
+        else:
+            self.unconfirmed += corr
         return np.array([corr[0], corr[1], 0.0])

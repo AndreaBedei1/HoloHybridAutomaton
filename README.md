@@ -6,9 +6,10 @@ identity beacon.
 HoloFleet-HA simulates fleets of BlueROV2 drones in HoloOcean. Every drone runs its own copy of the same
 local hybrid automaton. There is no leader and no message with content: each drone uses its own sonars and onboard
 navigation, a mission plan shared before the dive (path, formation clock, formation template, gate map) and, in the
-operational architecture B2, the one-way identity pings every drone broadcasts on a TDMA schedule (no payload, no
-reply; the receiver measures range and direction itself). B2 is therefore one-way acoustic communication, not
-communication-free; with a silent channel it falls back to the sonar-only logic. With this, the fleet keeps a formation, keeps its separation, avoids collisions, crosses
+operational architecture B2, the one-way packets every drone broadcasts on a TDMA schedule (64 bits: its position,
+error bound and gate phase, CRC-16; no request, reply or command; the receiver measures range and direction itself). B2 is
+therefore one-way acoustic communication, not communication-free; the beacon never enters separation, collision avoidance or the
+gate precedence. With this, the fleet keeps a formation, keeps its separation, avoids collisions, crosses
 a narrow gate one drone at a time, recovers its formation after a disturbance and copes with lost drones.
 
 ## 1. How it works
@@ -133,9 +134,13 @@ python scripts/run_demo.py --scenario lost_drone_rejoin --profile MEDIUM --seed 
 
 | scenario | purpose |
 |---|---|
-| `lost_drone_rejoin` | Temporary thruster failure: the others slow down, the drone rejoins from behind. |
+| `lost_drone_rejoin` | A jet beyond the authority displaces a drone: the others slow down, the drone rejoins from behind. |
 | `lost_drone_timeout` | Permanent failure: after a timeout the others continue in a degraded formation. |
 | `lost_drone_mutex` | A drone is lost before the gate; the leftmost drone still present goes first. |
+
+**Stress batch** (`STRESS_BATCH` in `holo_fleet/sim/scenarios.py`, outside the acceptance matrix): currents of several
+strengths and directions, time-varying water, other fleet configurations, failures away from the gate, boundary probes beyond
+the envelope and probes of the declared limits.
 
 **Perception bench**
 
@@ -180,8 +185,9 @@ The project includes Z3 checks of:
 python formal/check_properties.py
 ```
 
-Current status (2026-11-06, freeze b2-freeze-v7): all 224 checks give their expected verdict (the verdicts are in the summary). The proofs are on abstractions of the drones
-and their sensing, not on HoloOcean's physics. Details: [`formal/results/SUMMARY.md`](formal/results/SUMMARY.md).
+Current status (freeze b2-freeze-v11): all 284 checks give their expected verdict, including the composition of the fleet's
+automata at the gate (`formal/check_fleet.py`) and the exclusion zone of permanent failures. The proofs are on abstractions of the
+drones and their sensing, not on HoloOcean's physics; their premises are listed in `docs/GUARANTEES.md`. Details: [`formal/results/SUMMARY.md`](formal/results/SUMMARY.md).
 
 ## 8. Tests
 
@@ -190,7 +196,7 @@ python -m pytest -q -m "not slow and not holoocean"   # fast tests
 python -m pytest -q                                   # all tests, including the Z3 suites and HoloOcean
 ```
 
-On the current branch: 264 fast tests and 267 tests in total pass.
+At the final version: 571 tests pass and 1 is skipped (45 files, `python scripts/run_tests.py <out dir>`, which also runs the formal suite).
 
 ## 9. Project structure
 
@@ -232,8 +238,12 @@ See [`docs/HOLOOCEAN_OCTREE_PATCH.md`](docs/HOLOOCEAN_OCTREE_PATCH.md) for the p
 
 | topic | document |
 |---|---|
-| Detailed results | [`REPORT.md`](REPORT.md) |
-| Design history and fixes | [`DESIGN_ITERATIONS.md`](DESIGN_ITERATIONS.md) |
+| Final report | [`REPORT.md`](REPORT.md) |
+| Claims, evidence, premises | [`docs/GUARANTEES.md`](docs/GUARANTEES.md) |
+| Formation contract P3 | [`docs/P3_CONTRACT.md`](docs/P3_CONTRACT.md) |
+| Acceptance criteria (v8 and history) | [`docs/ACCEPTANCE_CRITERIA.md`](docs/ACCEPTANCE_CRITERIA.md) |
+| Final campaign | [`results/final/FINAL_CAMPAIGN_ANALYSIS.md`](results/final/FINAL_CAMPAIGN_ANALYSIS.md), [`results/final/runs.csv`](results/final/runs.csv) |
+| Development record and reviews | [`analysis/MEDIUM_CAMPAIGN_LOG.md`](analysis/MEDIUM_CAMPAIGN_LOG.md), `analysis/review_round*_*.md` |
 | Formal verification | [`formal/results/SUMMARY.md`](formal/results/SUMMARY.md) |
 | Current demo results | [`results/reference/SUMMARY.md`](results/reference/SUMMARY.md) |
 | HoloOcean sonar patch | [`docs/HOLOOCEAN_OCTREE_PATCH.md`](docs/HOLOOCEAN_OCTREE_PATCH.md) |

@@ -1,3 +1,71 @@
+# v8 (2026-11-13): the final campaign of the B2 candidate. Pre-registered before its first run
+
+Written after the development batches med11-med13, st1, st2, reg2, val1 and the round 9 reviews, and committed with the frozen code (tag `b2-freeze-v11`) before any run of this campaign. The scope (holo_fleet/scope.py), rule D and the P3 contract were decided during development, after the runs that motivated them (2026-11-12, 2026-11-13); they are not pre-registered decisions of the project, only of this campaign.
+
+**Criteria.** Criteria v8: the requirements of v7, the P3 contract of `docs/P3_CONTRACT.md` (P3a, P3b, P3c, deadlines, premises) and the classes PASS, P3_LATE, P3_FAILURE, PREMISE_VIOLATED, INCOMPLETE, SAFETY_FAILURE, UNSAFE_ACTION, INVALID, REPLAY_MISMATCH, SUT_ERROR (`robustness_metrics.refine_v8`). Under the validation profiles (CLEAN, LOW, MEDIUM sensors with the nominal channel) the navigation premises are tags: they never turn a failure into PREMISE_VIOLATED. A run is complete when its class is PASS or P3_LATE; P3_LATE is reported apart.
+
+**Matrix** (`scripts/final_campaign.py`, 448 runs, seeds 5000-5404 used by nothing before):
+- A, standard set: the 17 scenarios under B2_CLEAN / CLEAN, B2_LOW / LOW-ALL, B2_MEDIUM / MEDIUM-ALL; the 5 gate scenarios x 6 seeds, the 12 others x 3 (66 per profile, 198);
+- B, the lost-drone family under MEDIUM: `lost_drone_mutex` x 40, its rise variants x 10 each (60);
+- C, the stress batch under MEDIUM, 26 scenarios x 5 seeds (130);
+- D, beacon ablation under MEDIUM sensors: B0 (no beacon) and B2NP_MEDIUM (the beacon without the payload) on 5 gate scenarios x 3 seeds (30);
+- E, sensitivity beyond the validation profiles: compass bias 3 and 4 deg (MEDIUM_HB3, MEDIUM_HB4) on `gate_single` and `lost_drone_mutex` x 5 seeds each, and the long-tail channel MEDIUM_HT on the same two x 5 (30).
+
+**Acceptance, decided before the runs.**
+1. Formal: the whole suite as expected at the frozen commit (`formal/results`, committed, z3 5.1.0), including S4 on real receptions, its mutation S4b, F2 with premise H and the declared limits F2s2, F2s3, F2s4.
+2. Safety, all 448 runs: no SAFETY_FAILURE, UNSAFE_ACTION, SUT_ERROR or REPLAY_MISMATCH; P1 (>= 1 m, every live pair) and P2 (at most one drone centre in the CR). The one-sided 95 % Clopper-Pearson upper bound of the per-run rate is reported. A violation is investigated at once; the campaign is not stopped and no code is changed.
+3. INVALID: rerun only for a shown infrastructure cause; a permanent failure found inside the exclusion zone is INVALID and reported.
+4. Monitors, reported per run and per premise: premise V (a live drone declared dead: 0 required in the validation profiles, else the P2 claim of that profile is withdrawn), the longest live silence (p50, p99, max), the fairness gap (35 s), the H6 navigation bound, the gate-frame navigation premise, wrong validated fits, every rule D decision (`gate.rule_d`). A PREMISE_VIOLATED run is never counted as evidence for the property it concerns.
+5. A, complete runs: CLEAN at least 65 of 66, LOW-ALL at least 65 of 66, MEDIUM-ALL at least 63 of 66.
+6. B: at least 58 of 60 complete (at most 2 failures; 0 failures gives a 5 % bound).
+7. C: P1 and P2 in every run. Complete runs required of the scenarios inside the envelope (18 scenarios x 5 = 90 runs: the 10 `st_gate_*`, the 4 `st_lost_*` other than the three probes below, `st_gate_pair_lost`, the 2 `st_p1_*`, `st_formation_six_oblique`): at least 81 of 90. The five `st_bd_*` beyond the envelope: P1 and P2 only, the outcome reported. Declared-limit probes, predicted INCOMPLETE and judged on P1 and P2 only: `st_lost_at_queue`, `st_lost_committed` (the floating hull blocks the sonar-only precedence) and `st_lost_after_exit` (the hull of a drone failed 3.3 m past the frame is last known, with the onboard margin, inside the exclusion zone: a safe stop by rule D, val1 0 of 2).
+8. D and E: safety as item 2; the outcomes are reported against the B2 runs of the same scenarios, with no threshold.
+9. P3: the verdicts of P3a, P3b, P3c per run, the recovery time against the deadline (Kaplan-Meier, censored at the end of the run), P3_LATE and P3_FAILURE by mechanism.
+10. Every non-complete run is assigned to a declared class of failure: the floating hull at the queue; the localization at the gate (lateral error, compass bias, wrong fit); the safe stop of rule D inside the onboard margin; two drones or the last survivor after a failure while committed; or a new mechanism, reported as such.
+Reporting rules (round 9 re-checks): every PREMISE_VIOLATED run is reported with its premise, drone and time window, and one tagged WRONG_VALIDATED_FIT is reported under the localization class; a P3_FAILURE whose run ends before the certified ranking bound is reported as censored; the sensitivity report gives the lateral error at s = -3 m against the compass bias.
+If item 1 or 2 fails, the candidate is not accepted. If an item from 5 to 7 fails, the result is reported as it is, with its mechanism; the criteria are not changed after the first run.
+
+**Deviations from the reviewers' lists, stated.** The round 9 reviewers asked for a failure inside the exclusion zone as a safe-stop probe and for a two-drone failure while committed. Neither is run: the first is excluded from every campaign by the scope decision of the owner of the project, and the second is outside the admissible failures; both behaviours are covered by S4, S4b, F2s2 and the unit tests through the tracker. Premise C (a commitment learnt within the bound of S2) has no monitor.
+
+# v7 (2026-11-10): v6 with the definition of a contact stated for a dead drone. Pre-registered before the final campaign of the candidate
+
+**Change from v6.** A contact is counted for a drone under control only. The collision sensor of a drone after its `TOTAL_FAILURE` is recorded (`dead_drone_contacts` in the referee metrics) and neither ends the run nor
+fails it: the hull has no actuation and the failure model makes it rise against whatever is above it (`results/calibration/buoyant_ascent.json`), so the event is not an action of the fleet. P1, P2, every pair distance and the
+collision sensor of every live drone are unchanged, so a live drone that touches a dead one still fails the run. The change affects no earlier result of the candidate: of the 240 run directories of batches med3 to med6, retried attempts not counted, only 5 have a
+contact (one of them, med5 s941, was INVALID for an unrelated defect of the runner), and each is the hull of a dead drone in a stress scenario. Without it those stress runs stop at the contact and cannot show what the other drones then do.
+
+# v6 (2026-11-09): total failure model, payload v2. Pre-registered before the final campaign of the candidate
+
+Baseline, immutable: tag `b2-freeze-v10`, MEDIUM-ALL 56/66 PASS outside `gate_stalled_occupant`, CLEAN and LOW-ALL 66/66.
+
+**Changes from v5.** The classes and requirements are unchanged. One term moves: the fault term of the deadline uses the silence interval
+(`max(t_rejoin, t_silent_s)`), because the drones now wait for it. Referee times are logged at 1 microsecond (a replayed hold timer on 1 ms times could
+fall short of the online one); no tolerance enters a criterion.
+
+**Scenario changes, disclosed.** Permanent faults are `TOTAL_FAILURE` (propulsion, electronics and beacon stop together, the drone rises). `lost_drone_rejoin` and
+`lost_drone_rejoin_front` displace a healthy drone with a temporary jet instead of a temporary thruster loss. The comparison with v10 of these two scenarios, and of the
+failure scenarios, is not like for like. Partial failures are outside this phase.
+
+**Campaign.** The matrix of v10: cells B2_CLEAN / CLEAN, B2_LOW / LOW-ALL, B2_MEDIUM / MEDIUM-ALL; 12 non-gate scenarios x 3 seeds, 6 gate scenarios x 6 seeds; 72 runs
+per cell, 216 runs. Held-out seeds 1000-1005, used by nothing before the freeze. Code and criteria frozen by a tag before the first run. The failures are not determined by the seed
+(the engine's noise is unseeded), so the evaluation is statistical.
+
+**Acceptance, per campaign, decided before the runs.**
+
+1. Safety, every run of the 216: no SAFETY_FAILURE and no UNSAFE_ACTION.
+2. No SUT_ERROR and no REPLAY_MISMATCH. An INVALID run is rerun only if an infrastructure cause is shown.
+3. CLEAN and LOW-ALL: 66/66 PASS outside `gate_stalled_occupant` (no regression from v10).
+4. MEDIUM-ALL: at least 63/66 PASS outside `gate_stalled_occupant`: the smallest count with a one-sided Fisher exact test against 56/66 below 0.05 (p = 0.038).
+   The test and the Wilson interval are reported whatever the outcome.
+5. `gate_stalled_occupant`: judged on safety as in v5; survivors never enter while a claim stands.
+
+**Reported beside the acceptance, whatever the outcome.** The MEDIUM-ALL result on the scenarios unchanged from v10 (`lost_drone_rejoin`, `lost_drone_rejoin_front` and the failure scenarios removed: v10 is 46/51 there; only 51/51 would reach p < 0.05, so this subset is descriptive).
+
+**Stress set, pre-registered (v7: `gate_pinned_occupant` now exercises only the claim path: the branch where a survivor never heard the occupant is expected to be empty, P about 6e-4 from six emissions).** `gate_pinned_occupant`, `lost_drone_mutex_carried`, `lost_drone_front_rise_low`, the four rise-speed variants, and `MEDIUM_HT` on `lost_drone_mutex`, `lost_drone_timeout`, `gate_single`, `formation_square`, `integrated_short`, `lost_drone_rejoin`: seeds 1100-1102, 39 runs, on the frozen code. Metric: no SAFETY_FAILURE and no UNSAFE_ACTION; the rest is reported, including, for `gate_pinned_occupant`, the runs where a survivor never heard the failed drone. Not part of the acceptance above.
+
+If an item fails the candidate is not accepted and is not merged; a further change needs fresh seeds. The stress scenarios (`gate_pinned_occupant`, `lost_drone_mutex_carried`, the rise-speed variants, the channel
+`MEDIUM_HT`) are sensitivities: they are reported and are not part of the acceptance.
+
 # v10 (2026-11-06): numerical fix, same plan as v9, fresh seeds 800-805
 
 The v9 campaign (tag `b2-freeze-v9`, seeds 700-705) was stopped at CLEAN 47 PASS + 1 SUT_ERROR (formation_six s701):

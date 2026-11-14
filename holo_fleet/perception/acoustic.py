@@ -112,6 +112,14 @@ class Fix:
         return float(np.max(np.linalg.norm(self.pts - self.p, axis=1))) + self.slack
 
 
+@dataclass(frozen=True)
+class GateStatus:
+    """Latest gate phase a drone reported about itself (payload v2, perception/payload.py)."""
+    t_tx: float                      # emission instant of the packet that carried it
+    gate_idx: int                    # gate it refers to (mod 4)
+    phase: int                       # GP_NONE / GP_COMMITTED / GP_ADMITTED / GP_PASSED
+
+
 @dataclass
 class PoseHistory:
     keep_s: float = 3.0
@@ -150,6 +158,9 @@ class AcousticTracker:
         self.fixes: Dict[int, List[Fix]] = {}             # slot -> fixes (accepted and rejected), oldest first
         self.track_id: Dict[int, int] = {}
         self.last_accepted: Dict[int, Fix] = {}          # slot -> latest accepted fix, never forgotten
+        self.heard: Dict[int, float] = {}                # slot -> arrival time of its latest reception of any kind
+        self.t_start: Optional[float] = None             # first update: a drone of the plan never heard is silent since then
+        self.status: Dict[int, GateStatus] = {}          # slot -> latest gate status it reported (payload v2)
         self.pose = PoseHistory()
         self.stats = {"received": 0, "stale": 0, "no_pose": 0, "implausible_depth": 0, "accepted": 0, "rejected": 0,
                       "track_restarts": 0}
@@ -161,6 +172,8 @@ class AcousticTracker:
     def update(self, t: float, rx, p_now: np.ndarray, yaw_now: float, bound_now: Optional[float] = None) -> List[Fix]:
         """Store the own pose (and own navigation bound) of this step and turn the receptions of this frame into
         fixes."""
+        if self.t_start is None:
+            self.t_start = t
         self.pose.push(t, p_now, yaw_now, bound_now)
         new = []
         if not self.enabled:
@@ -172,6 +185,7 @@ class AcousticTracker:
             if slot is None:
                 continue
             self.stats["received"] += 1
+            self.heard[slot] = max(self.heard.get(slot, -1e9), t_arr)     # alive: whatever becomes of this reception
             if t - t_arr > a.latency_max_s + 1e-9:
                 self.stats["stale"] += 1
                 continue
@@ -201,21 +215,27 @@ class AcousticTracker:
         return new
 
     def _attach(self, f: Fix, packet) -> None:
-        """Decode the payload and keep it only if it is consistent with the measurement (module docstring)."""
-        from holo_fleet.perception.payload import decode
+        """Decode the payload: the gate status of the sender is kept when the packet is intact and of this frame (even if
+        the fix itself is rejected: a reflected arrival carries the same packet); the position payload is kept only if
+        the fix is accepted and consistent with the measurement (module docstring)."""
+        from holo_fleet.perception.payload import decode, frame_index
 
         rep = decode(packet) if packet is not None else None
         if rep is None:
             f.rep_reason = "missing"
             return
-        if not f.accepted:
-            f.rep_reason = "rejected_fix"
-            return
-        from holo_fleet.perception.payload import frame_index
-
         if rep.frame != frame_index(f.t_tx, self.cfg.beacon.period_s):
             f.rep_reason = "frame"                       # not this frame's packet: misassociated or stale
             self.stats["payload_frame"] = self.stats.get("payload_frame", 0) + 1
+            return
+        old = self.status.get(f.slot)
+        if old is None or f.t_tx >= old.t_tx:
+            self.status[f.slot] = GateStatus(t_tx=f.t_tx, gate_idx=rep.gate_idx, phase=rep.phase)
+        if not rep.valid_position:
+            f.rep_reason = "invalid_bound"
+            return
+        if not f.accepted:
+            f.rep_reason = "rejected_fix"
             return
         b_own = self.pose.bound_at(f.t)
         if b_own is None or not math.isfinite(b_own):          # own integrity lost: no cross-check, no payload
@@ -265,7 +285,34 @@ class AcousticTracker:
             prev.reason = f.reason = "restart"
             self.stats["track_restarts"] += 1
 
+    def shift(self, corr: np.ndarray) -> None:
+        """A correction of the own position estimate moves the frame the stored fixes and poses are expressed in with it (a
+        map fit, a measured gate crossing): they are kept in the frame of the estimate."""
+        done = set()
+        for lst in list(self.fixes.values()) + [list(self.last_accepted.values())]:
+            for f in lst:
+                if id(f) not in done:
+                    done.add(id(f))
+                    f.p = f.p + corr
+                    f.pts = f.pts + corr
+        self.pose.buf = deque((t, p + corr, y, b) for t, p, y, b in self.pose.buf)
+
+    def deaf(self, t: float) -> bool:
+        """Nobody at all has been heard for the silence interval (a deaf receiver, a silent channel): the absence of every
+        other drone is no evidence about any of them."""
+        return bool(self.heard) and all(t - h >= self.cfg.form.t_silent_s for h in self.heard.values())
+
     # ------------------------------------------------------------------ queries
+    def silent(self, slot: int, t: float, after: Optional[float] = None) -> bool:
+        """Not heard for the declared silence interval (``after``, default t_silent_s): a dead drone, or lost pings that
+        cannot be told from one.  A receiver that hears nobody at all (a deaf receiver or a silent channel) declares
+        no one silent: the absence of every other drone is no evidence about any of them.  A drone of the plan never heard is
+        silent since the receiver started (a failure before its first reception)."""
+        lim = self.cfg.form.t_silent_s if after is None else after
+        if t - self.heard.get(slot, t if self.t_start is None else self.t_start) < lim:
+            return False
+        return any(t - h < lim for k, h in self.heard.items() if k != slot)     # someone else is heard: the receiver works
+
     def all_fixes(self, slot: int, t0: float = -1e9, t1: float = 1e9) -> List[Fix]:
         return [f for f in self.fixes.get(slot, []) if t0 <= f.t <= t1]
 

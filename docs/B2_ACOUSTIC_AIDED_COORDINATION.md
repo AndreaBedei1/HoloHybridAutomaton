@@ -1,5 +1,7 @@
 # Variant B2: acoustic-aided coordination (one-way range-bearing beacon)
 
+*Sections 1 to 7 describe the validated v10. What the MEDIUM robustness phase changes is in section 8.*
+
 B0 is the communication-free baseline: the same decentralised hybrid automaton on every drone, driven by the shared
 mission plan and local sensing (six single-beam sonars, DVL, IMU, compass, depth).  B2 keeps that automaton, its
 guards and thresholds unchanged (apart from the explicit give-up edge of a gate entry, ha/spec.py pass_abort) and
@@ -205,3 +207,13 @@ phase and before any B2 run with degraded sensors or channel (429 runs):
 
 Phases before it, in the same raw root and reused by it: `b2_gate` (five gate scenarios, CLEAN, B0 and B2_CLEAN)
 and `b2_formation` (formation scenarios, CLEAN and MEDIUM-ALL, B0 and B2).
+
+## 8. MEDIUM robustness phase (branch `feature/b2-medium-robustness`)
+
+Candidate on top of v10, which stays the immutable baseline. Rationale and root causes RC1 to RC12: `analysis/2026-11-09_MEDIUM_ROBUSTNESS_DESIGN.md`. Evidence and limits, row by row: `GUARANTEES.md`. Criteria: `ACCEPTANCE_CRITERIA.md` (v7).
+
+* **Failure model.** A failed drone stops propulsion, electronics and beacon together, and rises (positively buoyant, nominal 0.10 m/s, credible 0.05-0.13 m/s). The thruster-only failure of section 5 is no longer an experimental condition.
+* **Payload v2.** 64 bits, 8 more than section 2b: gate index (2), passage phase (2: none, committed, admitted, passed), reserved (4), CRC-16. Still strictly one-way and periodic; the phase is a report of the sender's own state and never enters the precedence decision, which stays with the sonar.
+* **Vacancy.** A neighbour expected in the formation and silent for 45 s has its slot declared vacant. A receiver that hears nobody learns nothing from silence and falls back to the B0 timer.
+* **Silence and the gate.** A silence shorter than 70 s (`t_silent_gate_s`) excludes nobody from a gate decision and releases no claim. A drone not heard for 70 s by a receiver that hears the others is dead and is excluded from every gate decision (`AcousticExit.dead`); a receiver that hears nobody declares no one dead. This rests on the operating scope (`holo_fleet/scope.py`, formal S12): no permanent failure inside the exclusion zone of a gate, from where a passive hull could reach the CR or the frame before it has risen above them. The scope was set during development (2026-11-12), after runs in which a drone dead 15 m before the gate held it for the rest of the mission (s960, s1068, s1071: the drone that had passed waited in the FRONT corridor of the next one, and the dead drone stayed a possible occupant); failures inside the zone are outside the scope and are not run. It replaces the drift-reach hold of a silent drone (RC9, `adrift`), which was special handling of failures at the gate.
+* **Control and localization.** Integral action on the heading (RC10); a committed drone carried past the middle of the CR goes on to the exit (RC11); corrections of the estimate with no validated fit are undone when a hold ends with no valid localization (RC12).

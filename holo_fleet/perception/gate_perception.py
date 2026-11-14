@@ -69,6 +69,7 @@ class GateObs:
     exit_witness: Optional[Dict] = None                      # {sector, range} of this capture's exit witness
     loc_ok: bool = False                                     # gate localization confirmed (structure_aiding.valid)
     entry_ok: bool = True                                    # stage 2: no hull seen or heard in the CR (update)
+    dead: List[int] = field(default_factory=list)            # drones this receiver holds dead (AcousticExit.dead; log only)
 
 
 class GatePerception:
@@ -80,6 +81,11 @@ class GatePerception:
             from holo_fleet.perception.acoustic_gate import AcousticExit
 
             self.acoustic_exit = AcousticExit(cfg, acoustic, [k for k in range(len(plan.slots)) if k != plan.slot_index])
+            G = cfg.gate
+            # the shortest time from the queue point to the CR at the speed bound, with the queue tolerance and the declared
+            # gate-frame navigation error: a GP_NONE report fresher than that cannot be followed by an unseen entry
+            t_min = (abs(plan.queue_s) - (G.cr_half_len + R_OUT) - G.queue_tol - G.nav_err_m) / self.acoustic_exit.v_bound
+            self.acoustic_exit.status_fresh_s = max(0.0, min(cfg.acoustic.status_fresh_s, t_min - cfg.acoustic.latency_max_s))
         self.exit_kind = {"SONAR": 0, "ACOUSTIC": 0}           # what moved the latch to EXITING (counts)
         self.idx = 0                                          # index of the current gate in plan.gates
         self.prio_since: Optional[float] = None
@@ -156,9 +162,26 @@ class GatePerception:
             (set(tg.pattern) & set(pp)) and abs(tg.r_min - pr) <= 0.5 for pp, pr in self.prev_targets)]
         self.prev_targets = [(tuple(tg.pattern), tg.r_min) for tg in targets]
         targets = persistent
+        ae = self.acoustic_exit
+        if ae is not None:
+            ae.gate_idx, ae.g = self.idx % 4, g
+        # the band in which a FRONT-only echo makes no queue relation (below) feeds the latch: an echo is never without effect
+        r_band = r_near - G.nav_err_m
+        corridor = [tg for tg in targets if "FRONT" in tg.pattern
+                    and (r_near <= tg.r_min <= r_far or (set(tg.pattern) == {"FRONT"} and r_band <= tg.r_min < r_near))]
+        # B2: an echo that no fleet drone can have produced (every other drone positively elsewhere) is no occupant;
+        # under MEDIUM sonar noise such phantom echoes refreshed the latch every few seconds and blocked the queue
+        self.phantom = bool(corridor and ae is not None and ae.no_fleet_drone(t, g, p, yaw, [tg.r_min for tg in corridor]))
         # ---------------------------------------------------------------- queue relations (sector patterns)
         rels = []
         for tg in targets:
+            # A FRONT-only echo in the corridor band (widened by the declared gate-frame navigation error) is the occupancy
+            # latch's business (occ_busy is a guard of the commit), not a queue precedence: drones abreast at their queue
+            # points see each other only in LEFT / RIGHT (mutex_rule), and a merged target (FRONT plus another sector)
+            # keeps its relation.  With the navigation error at the queue the frame's bar echo is unexplained and fell
+            # in this band for ever (the v10 queue deadlock).
+            if set(tg.pattern) == {"FRONT"} and r_band <= tg.r_min <= r_far:
+                continue
             if "FRONT" in tg.pattern:
                 if tg.r_min > r_far:
                     continue                  # certainly beyond the CR: a drone that has passed
@@ -180,11 +203,6 @@ class GatePerception:
         o.decision = o.raw_decision
         o.has_prio = self.prio_since is not None and (t - self.prio_since) >= G.t_clear
         # ---------------------------------------------------------------- occupancy belief
-        corridor = [tg for tg in targets if "FRONT" in tg.pattern and r_near <= tg.r_min <= r_far]
-        # B2: an echo that no fleet drone can have produced (every other drone positively elsewhere) is no occupant;
-        # under MEDIUM sonar noise such phantom echoes refreshed the latch every few seconds and blocked the queue
-        self.phantom = bool(corridor and self.acoustic_exit is not None
-                            and self.acoustic_exit.no_fleet_drone(t, g, p, yaw, [tg.r_min for tg in corridor]))
         if self.phantom:
             # the echo is no occupant: the latch, the W3 background bookkeeping of the exit witness and the stage-2
             # quiet test all treat this capture as corridor-empty (sound while every other drone is excluded);
@@ -192,7 +210,10 @@ class GatePerception:
             self.phantoms += 1
             self.phantom_events.append({"t": round(t, 2), "fixes": dict(self.acoustic_exit.last_phantom)})
             corridor = []
-        heard = self.acoustic_exit is not None and self.acoustic_exit.heard_inside(t, g)
+        claims = self.acoustic_exit.claims(t) if self.acoustic_exit is not None else set()   # payload v2: positive occupancy
+        heard = self.acoustic_exit is not None and (self.acoustic_exit.heard_inside(t, g) or bool(claims))
+        if claims:
+            self.acoustic_exit.heard_by |= claims
         # an occupant last known possibly inside and not heard since (shadowed by the bars, a lost ping) is unknown,
         # not gone: no exit witness, no release and no admission while it is (v6 campaign: a MEDIUM clutter echo
         # beyond the exit released the latch over a stalled occupant whose pings were shadowed)
@@ -247,9 +268,10 @@ class GatePerception:
         # stage 2, entry admission (control/flows.py, at the hold point before the CR): from the own pose now, no
         # persistent unexplained FRONT echo compatible with a hull in the CR over the last ENTRY_QUIET_CAPTURES sonar
         # captures, and (B2) no drone heard possibly inside under the declared region. From the hold point only part of the CR
-        # is observable apart from the bars (formal/check_stage2.py, M4h): elsewhere hull and bar echoes share
-        # ranges and a silent occupant is not seen (a stated limit; the latch argument covers it)
+        # is observable apart from the bars (formal/check_stage2.py, M4h): elsewhere hull and bar echoes share ranges and a silent occupant is not seen.
+        # The check does not read the latch: a drone committed before another arrives is held here by the corridor test and ``heard`` (claims, heard inside)
         quiet = t - self.last_corridor_t > ENTRY_QUIET_CAPTURES / self.cfg.perc.sonar.hz
         # an occupant merely unheard (no fresh fix after a fix that placed it possibly inside) also holds the entry
         o.entry_ok = bool(quiet and not heard and not known_inside)
+        o.dead = sorted(j for j in self.acoustic_exit.others if self.acoustic_exit.dead(j, t)) if self.acoustic_exit is not None else []
         return o

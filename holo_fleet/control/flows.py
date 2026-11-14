@@ -69,6 +69,7 @@ class Flows:
         self.hold_pos: Optional[np.ndarray] = None
         self.offset = np.zeros(3)             # give-way offset of the mission target (world) [m]
         self.cr_cleared = False               # gate localization valid at the hold point: may enter the CR
+        self.past_centre = False              # carried past the middle of the CR while committed: it goes on to the exit
         self.reloc_hold = False               # holding before the CR for the gate localization (logged)
         self.hold_since: Optional[float] = None   # relocalization hold before the CR started at
         self.hold_timeout = False             # the stage-2 hold exceeded t_occ_max + t_clear (logged once)
@@ -151,6 +152,11 @@ class Flows:
             self.sigma = float(np.clip(self.sigma, -fr.progress_max, fr.progress_max))
             self.lam += dt * (fr.k_lateral * obs.form.lateral_corr - 0.02 * self.lam)
             self.lam = float(np.clip(self.lam, -fr.progress_max, fr.progress_max))
+        elif obs.form.lateral_far is not None and float(np.linalg.norm(self.offset)) < 1e-3:   # (a running give-way is intentional)
+            # away from the slot the ranges say nothing, the identified fixes still measure how far the own lane is from where
+            # the neighbours are (Perception.lateral_far): the reference moves with them, along-track stays with the own clock
+            self.lam += dt * (fr.k_lateral * obs.form.lateral_far - 0.02 * self.lam)
+            self.lam = float(np.clip(self.lam, -fr.progress_max, fr.progress_max))
         _slot, R_form, s_ref = self._slot(obs)
         t_hat, n_hat = R_form[:, 0], R_form[:, 1]
         self.lat_offset = self.lam * np.array([n_hat[0], n_hat[1], 0.0])
@@ -164,6 +170,12 @@ class Flows:
         entry = self.rejoin_entry(obs, R_form, s_ref) if recovering else None
         if not recovering:
             self.rejoin_phase = ""
+        # the DROP_BACK exists because the fleet is moving: a drone off its lane lets it pass.  With the reference not moving
+        # (a planned hold, the end of the path) nothing will pass, and the phase would keep the drone off its slot for good
+        # (v10: the slot error constant until the deadline; a reversal made a limit cycle): the drone goes straight to its slot
+        # and the separation layer keeps it clear of the others
+        if entry is not None and self.rejoin_phase == "DROP_BACK" and v_clock <= 1e-6:
+            entry, self.rejoin_phase = None, ""
         if entry is None:
             v = t_hat * v_clock + fr.k_slot * err
             corr = fr.k_sonar * obs.form.lateral_corr * n_hat
@@ -190,7 +202,10 @@ class Flows:
         me = self.plan.my_slot
         t_hat, n_hat = R_form[:, 0], R_form[:, 1]
         p_lane, _d, _n = self.plan.path.frame_at(s_ref + me.along)
-        lane_err = float((obs.p[:2] - p_lane[:2]) @ n_hat[:2]) - me.lateral
+        # the own lane, as corrected by the consensus and displaced by a running give-way: sending a drone back from a give-way
+        # to the lane it left puts it head-on again (p1_two_lines s921: a standoff until the deadline)
+        lane = me.lateral + self.lam + float(self.offset[:2] @ n_hat[:2])
+        lane_err = float((obs.p[:2] - p_lane[:2]) @ n_hat[:2]) - lane
         blk = self._lane_blocked()
         if abs(lane_err) <= fr.rejoin_lane_tol_m:
             if blk is None:
@@ -222,14 +237,14 @@ class Flows:
             along = me.along if self.at_level else min(me.along, max(a, blk[0] - fr.pass_dz_m))
             p_e, _d, n_e = self.plan.path.frame_at(s_ref + along)
             self.rejoin_phase = "PASS"
-            return np.array([p_e[0] + me.lateral * n_e[0], p_e[1] + me.lateral * n_e[1], z_pass])
+            return np.array([p_e[0] + lane * n_e[0], p_e[1] + lane * n_e[1], z_pass])
         self.passing = False
         rear = min(sl.along for sl in self.plan.slots) - fr.rejoin_back_m
         if blk is not None:                                      # a blocked lane is joined on the pass level, at
             rear = min(rear, blk[0] - fr.pass_dz_m)              # least pass_dz_m behind the rear slot (review)
         p_r, _d, n_r = self.plan.path.frame_at(s_ref + rear)
         dz = me.dz if blk is None else blk[1]
-        entry = np.array([p_r[0] + me.lateral * n_r[0], p_r[1] + me.lateral * n_r[1], self.plan.path.depth_z + dz])
+        entry = np.array([p_r[0] + lane * n_r[0], p_r[1] + lane * n_r[1], self.plan.path.depth_z + dz + float(self.offset[2])])
         behind = float((entry - obs.p) @ t_hat) >= -0.5          # at (or behind) the rear entry point
         self.rejoin_phase = "TO_LANE" if behind else "DROP_BACK"
         return entry
@@ -305,8 +320,8 @@ class Flows:
             # Stage 2 is the admission at the hold point before the CR: a valid gate localization (the hull plus the
             # uncertainty of a map fit inside the free opening: perception/structure_aiding.py) AND no hull seen or
             # heard in the CR from there (GateObs.entry_ok).  Short of it the committed drone holds on its path before
-            # the CR and every RELOC_PERIOD_S backs off by RELOC_BACK_M and returns (a new viewing geometry); queued
-            # drones see it in FRONT, nearer than the CR, and wait (WAIT relation).  A hold longer than t_occ_max +
+            # the CR and every RELOC_PERIOD_S backs off by RELOC_BACK_M and returns (a new viewing geometry); a queued
+            # drone sees it in FRONT: a merged target makes a WAIT, a FRONT-only echo holds the latch BUSY.  A hold longer than t_occ_max +
             # t_clear (the slowest release the protocol admits) is logged once as ENTRY_HOLD_TIMEOUT: the evaluation
             # judges it a gate-liveness violation; the drone is never forced into the CR.  It then requests the
             # automaton's give-up edge (ha/spec.py, pass_abort: committed is cleared, MUTEX_APPROACH, back to the
@@ -319,7 +334,13 @@ class Flows:
             # navigation error (the hull's circumscribed ball R_OUT included)
             s_abort = -(G.cr_half_len + float(R_OUT) + G.nav_err_m)
             self.abort_request = False
-            if not self.cr_cleared and (c[0] > s_hold or self.hold_timeout):
+            # carried into the far part of the CR or beyond (by the avoidance layer or the water; the threshold is inside the CR whatever the declared navigation error) the
+            # exit is the way out: a hold would send the drone back through the CR.  Released if the estimate falls back before the CR: a spike decides nothing.
+            was = self.past_centre
+            self.past_centre = bool(go.s > G.nav_err_m - G.cr_half_len or (was and go.s > -G.cr_half_len))
+            if self.past_centre and not was:
+                self.events.append({"t": obs.t, "type": "PAST_CENTRE", "s": round(float(go.s), 2)})
+            if not self.cr_cleared and not self.past_centre and (c[0] > s_hold or self.hold_timeout):
                 self.hold_since = obs.t if self.hold_since is None else self.hold_since
                 if obs.t - self.hold_since > G.t_occ_max + G.t_clear and not self.hold_timeout:
                     self.hold_timeout = True
@@ -338,7 +359,7 @@ class Flows:
             tgt = g.from_gate_frame(c)
             vmax = G.v_pass
         else:  # MUTEX_APPROACH / MUTEX_YIELD: go to / hold the own queue point
-            self.cr_cleared, self.hold_since, self.entry_state, self.hold_timeout = False, None, "", False
+            self.cr_cleared, self.hold_since, self.entry_state, self.hold_timeout, self.past_centre = False, None, "", False, False
             self.abort_request = False
             tgt = g.from_gate_frame([go.queue_s, go.queue_l, go.queue_dz])
             vmax = G.v_approach
@@ -400,6 +421,26 @@ class Flows:
 
     def clear_failsafe(self) -> None:
         self.hold_pos = None
+
+    # ------------------------------------------------------------------ keep-out of the critical region (no commit: no entry)
+    def keepout_filter(self, obs: LocalObservation, v: np.ndarray) -> np.ndarray:
+        """Mission velocity of a drone that is not committed to the gate: no along-axis component towards the CR from the
+        keep-out plane (the CR, the hull's circumscribed ball, the declared gate-frame navigation error) on.  Mission modes
+        only: the output of the avoidance is not edited, and what a drone inside the box reports does not rest on this filter
+        (passage.report_phase)."""
+        go, G = obs.gate, self.cfg.gate
+        if go.gate_id is None or go.passed or go.s <= -(G.cr_half_len + float(R_OUT) + G.nav_err_m) - 1e-6:
+            return v
+        reach = G.cr_half_width + float(R_OUT) + G.nav_err_m
+        if abs(go.l) > reach or abs(go.dz) > G.cr_half_height + float(R_OUT) + G.nav_err_m or go.s > G.cr_half_len:
+            return v
+        g = self.plan.gates[min(obs.gate_index, len(self.plan.gates) - 1)]
+        v = np.asarray(v, dtype=float).copy()
+        a = np.asarray(g.axis, float)
+        va = float(v @ a)
+        if va > 0.0:
+            v -= va * a
+        return v
 
     # ------------------------------------------------------------------ mapped structures (all modes)
     def structure_filter(self, obs: LocalObservation, v: np.ndarray) -> np.ndarray:

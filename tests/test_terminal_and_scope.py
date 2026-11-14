@@ -53,7 +53,7 @@ def test_deadline_terms_come_from_the_plan_the_protocol_and_the_profile():
     assert terms["formation"] == pytest.approx(F.t_rejoin + criteria.t_hold_s(DEFAULT), abs=0.1)
     assert terms["failsafe"] > 0.0 and criteria.deadline_terms(sc, DEFAULT, "CLEAN")["failsafe"] == 0.0
     lost = criteria.deadline_terms(SCENARIOS["lost_drone_timeout"](DEFAULT), DEFAULT, "CLEAN")
-    assert lost["faults"] == pytest.approx(F.t_rejoin * (1.0 - F.v_wait / F.v_nominal), abs=0.1)
+    assert lost["faults"] == pytest.approx(max(F.t_rejoin, F.t_silent_s) * (1.0 - F.v_wait / F.v_nominal), abs=0.1)
     p1 = criteria.deadline_terms(SCENARIOS["p1_head_on"](DEFAULT), DEFAULT, "CLEAN")
     assert p1["gate"] == 0.0 and p1["formation"] == 0.0 and p1["avoidance"] > 0.0   # single drones: give-way detour
     assert criteria.profile_family("LOW-ALL") == "LOW" and criteria.profile_family(None) == "CLEAN"
@@ -116,6 +116,30 @@ def test_a_drone_that_goes_over_the_frame_has_not_passed_the_gate():
         P[0] = g.from_gate_frame([s, 0.0, dz])
         mon.update(1.0, P, Ref(n), rec)
     assert mon.passed[0] is None and "drone_0" in mon.bypassed
+
+
+def _truth(t, P, col):
+    z = np.zeros((2, 3))
+    return SimpleNamespace(t=t, positions=np.asarray(P, float), collision=np.asarray(col, bool), current_drift=z, velocities=z, intruders=None, rotations=None)
+
+
+def test_the_hull_of_a_dead_drone_against_the_structure_is_recorded_and_is_no_contact():
+    r = Referee(["drone_0", "drone_1"], None, None, [], DEFAULT, False)
+    r.update(_truth(20.0, [[0, 0, 0], [9, 0, 0]], [True, False]), ["DEAD", "MUTEX_YIELD"])
+    assert not r.collision_edges and r.dead_contacts == [{"t": 20.0, "drone": "drone_0"}] and not r.contacts
+
+
+def test_a_live_drone_that_touches_a_dead_one_is_a_contact():
+    r = Referee(["drone_0", "drone_1"], None, None, [], DEFAULT, False)
+    d = 0.5 * DEFAULT.sep.d_collision
+    r.update(_truth(20.0, [[0, 0, 0], [d, 0, 0]], [True, True]), ["DEAD", "MUTEX_PASS"])
+    assert [e["drone"] for e in r.collision_edges] == ["drone_1"] and r.contacts
+
+
+def test_a_live_drone_against_the_structure_is_a_contact():
+    r = Referee(["drone_0", "drone_1"], None, None, [], DEFAULT, False)
+    r.update(_truth(20.0, [[0, 0, 0], [9, 0, 0]], [True, False]), ["MUTEX_PASS", "MUTEX_YIELD"])
+    assert [e["drone"] for e in r.collision_edges] == ["drone_0"] and not r.dead_contacts
 
 
 def test_a_safety_violation_ends_the_run_as_failure():
@@ -184,18 +208,6 @@ def test_online_and_offline_monitors_share_t_nom():
     assert TerminalMonitor(sc, DEFAULT, sc.sim.names, 300.0).t_nom == criteria.nominal_end_s(sc)
     src = inspect.getsource(runner.run)
     assert "t_nom = nominal_end_s(sc)" in src             # the same planned end as the offline replay
-
-
-def test_an_infeasible_mission_is_judged_on_safety_over_the_whole_horizon():
-    mon, tg, n = _monitor("gate_stalled_occupant", deadline=200.0)
-    far = tg + 50.0                                         # nobody reaches anything: the gate is blocked
-    assert mon.update(199.0, far, Ref(n), [{"mode": "MUTEX_YIELD"}] * n) is None      # no early SUCCESS
-    assert mon.update(200.0, far, Ref(n), [{"mode": "MUTEX_YIELD"}] * n) == "SUCCESS"
-    assert mon.summary()["missing"] == []
-    mon2, tg2, n2 = _monitor("gate_stalled_occupant", deadline=200.0)
-    r = Ref(n2)
-    r.p2_violations.append({"t": 50.0})
-    assert mon2.update(50.0, tg2, r, [{}] * n2) == "FAILURE"                          # safety still judged
 
 
 def test_the_horizon_is_three_times_the_a_priori_deadline():

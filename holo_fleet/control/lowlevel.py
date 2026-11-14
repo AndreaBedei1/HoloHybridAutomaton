@@ -26,6 +26,8 @@ class LowLevelController:
         self.i_xy = np.zeros(2)
         self.i_z = 0.0
         self.k_iz = 0.3
+        self.i_psi = 0.0
+        self.k_ipsi = 0.0067                       # integral time 30 s: a queued drone keeps its heading tolerance through a wait of minutes (RC10)
         self.saturated = False                     # last horizontal command hit the authority limit
         self.yaw = 0.0
 
@@ -55,7 +57,10 @@ class LowLevelController:
             self.i_z = float(np.clip(self.i_z + ez * dt, -0.6, 0.6))     # rejects a vertical current
         heave = float(np.clip(heave, -0.35, 0.35))
         self.yaw = nav.yaw
-        yaw = float(np.clip(self.k_psi * wrap(yaw_d - nav.yaw) - self.k_r * nav.yaw_rate, -0.12, 0.12))
+        e_psi = wrap(yaw_d - nav.yaw)
+        if abs(e_psi) < math.radians(20.0):        # a slew is the proportional term's business
+            self.i_psi = float(np.clip(self.i_psi + e_psi * dt, -8.0, 8.0))
+        yaw = float(np.clip(self.k_psi * e_psi + self.k_ipsi * self.i_psi - self.k_r * nav.yaw_rate, -0.12, 0.12))
         return {"surge": float(u[0]), "sway": float(u[1]), "heave": heave, "yaw": yaw}
 
     def current_estimate(self) -> np.ndarray:

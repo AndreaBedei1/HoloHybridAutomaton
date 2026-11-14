@@ -22,7 +22,7 @@ class SeparationThresholds:
 
     d_nominal > d_warning_exit > d_warning > d_ca_exit > d_ca > d_safe > d_collision.
     The values of d_warning and d_ca are the smallest ones for which formal/check_separation.py
-    proves G(d >= d_safe) on the pairwise model, plus a margin (see REPORT.md).
+    proves G(d >= d_safe) on the pairwise model, plus a margin (see docs/GUARANTEES.md).
     """
 
     d_nominal: float = 3.5           # smallest inter-slot distance of every formation template
@@ -217,6 +217,11 @@ class FormationRule:
     # times grows at v_nominal - v_wait = 0.10 m/s, so a detection spread of 7 s (lost-drone runs) stays below
     # e_ok after the ramp (0.10 * (7 - T_ramp / 2) = 0.45 m); slower than that would trade formation keeping
     # for catch-up.  Never 0: the fleet keeps surveying and keeps steerage.
+    # silence of a drone: not heard for this long = dead (TOTAL_FAILURE: nothing is emitted any more), whatever the
+    # observer's own state.  Calibrated on the simulated channel, no analytic bound: on expected-neighbour links the longest
+    # silence of the 72 v10 MEDIUM-ALL runs was 29.3 s by a reviewer's proxy (31 s over all pairs, on far pairs of formation_six, where vacancy is not used).  Silence never clears a possibly occupied
+    # gate (perception/acoustic_gate.py)
+    t_silent_s: float = 45.0
     v_wait: float = 0.20
     a_wait: float = 0.02              # [m/s^2]: 0.30 -> 0.20 m/s in 5 s, far below the braking capability (a_brake)
     t_rejoin_margin: float = 5.0      # [s] on top of the catch-up time: ramp-in (~0.8 s), confirmation (<= 1 s) and
@@ -347,12 +352,17 @@ class AcousticConfig:
     tie_window_s: float = 3.0            # fixes this close to the last corridor sighting account for a drone
     fresh_s: float = 2.5                 # a fix this recent counts for the neighbours (formation)
     depth_tol_m: float = 1.5             # a fix this far outside the operating depth band is a reflection
-    # deployment assumption (the owner's decision, reviewed 2026-11-06): a drone that fails completely (no power, no
-    # beacon) is net positively buoyant and rises; a SILENT drone last known in the CR is gone after
-    # max(t_occ_max + t_clear, T_rise), T_rise = 2.5 m (centre from the CR floor out of its top, fix slack included)
-    # / 0.05 m/s (a conservative passive ascent: about 3x below the ~0.15 m/s estimated for +0.2 kgf).  A drone that
-    # still pings is never released this way.  Not reproduced by the simulator (near-neutral vehicle).
-    silent_gone_s: float = 50.0
+    # a drone silent this long leaves the identity premise of the map fit (Perception._other_regions), where an echo can only move the own
+    # estimate, by at most MAX_CORR_M per correction (their sum is not bounded until a validated fit: RC12).  It is never excluded from a gate decision: silence alone proves nothing.  Calibrated on the simulated channel, no analytic bound.
+    # a drone not heard this long by a receiver that hears the others is dead: it leaves the identity premise of the map fit and every gate decision
+    # (AcousticExit.dead; the premise: the channel never silences a live drone so long, longest silence of a live sender observed 31 s; the scope:
+    # holo_fleet/scope.py)
+    t_silent_gate_s: float = 70.0
+    # a gate phase NOT_ENGAGED excludes its sender as an occupant while fresher than this: not above the time a queued
+    # drone needs to reach a position where the corridor echo of a real entry would stop being visible (formal/check_status.py,
+    # M3-status BMC: 2.5 s holds, 4.5 s does not), and per plan not above the time from the queue point to the CR at the
+    # speed bound with the queue tolerance and the declared navigation error (GatePerception.__init__)
+    status_fresh_s: float = 2.5
     # onboard bound of the own dead-reckoning error (perception/nav.py, NavBound), sent in the payload (H6).  Every
     # term is the declared envelope of a sensor, never the profile of a run:
     nav_b0_m: float = 0.30               # [REQ] launch survey of the shared mission frame (horizontal)
@@ -367,6 +377,48 @@ class AcousticConfig:
 
 
 @dataclass(frozen=True)
+class FailureModel:
+    """Simulator side only (never read onboard): the failure model of a drone, the deployment's (the owner's decision).
+
+    A broken drone is completely broken: propulsion, electronics and acoustic transmission stop together, and, being
+    ballasted positively buoyant (a deployment requirement of the vehicle, ~ +0.2 kg net), it rises.  The engine's
+    BlueROV2 is exactly neutral, so the ascent is applied as a vertical current command on that drone only, added to the
+    current drift vector (holo_env.truth; the terminal speed is calibrated by calibration/probe_buoyant_ascent.py).
+    ``v_rise_mps``: steady ascent of net buoyancy F against the vertical drag: sqrt(2 F / (rho C_d A)) for F = 1.96 N
+    and C_d A of the BlueROV2 Heavy plan area (0.458 x 0.576 m x 1.1) gives about 0.12 m/s; with an identified heave damping of
+    the vehicle (linear 33 N s/m, quadratic 190 N s^2/m^2, reviewer round 2) it is 0.047 m/s, 0.102 m/s with the quadratic term
+    alone.  Credible range 0.05 - 0.13 m/s; the nominal 0.10 m/s is in its upper part and is an assumption: the +0.2 kg is not
+    measured; the sensitivity runs use the ends of the range (*_rise_low, *_rise_high).  ``surface_z_m``: the centre stops rising
+    here (just awash).  It is an emulation: the engine's drag acts on the whole relative velocity."""
+
+    v_rise_mps: float = 0.10
+    surface_z_m: float = -0.25
+
+
+@dataclass(frozen=True)
+class ScopeConfig:
+    """The operating scope of the permanent-failure model (holo_fleet/scope.py), known onboard: what a broken drone can do at
+    most, and the current declared for the mission.  ``v_rise_min_mps`` below the model value of FailureModel (0.047 m/s with the
+    identified heave damping): a hull that does not rise (a leak) is outside the model.  ``coast_h_m``: measured in the simulator,
+    at most 0.39 m at 0.39 m/s through the water and at most 1.22 s times the speed at the failure (39 failure runs), about 0.9 m
+    at 0.75 m/s; not validated on a vehicle.  ``coast_v_m``: the vertical speed is at most 0.25 m/s.  ``rise_lag_s``: the heave
+    time constant is about 0.35 s (mass over linear damping).  ``drift_factor``: a hull drifted up to 4 % faster than the effective
+    drift in the runs.  ``t_lost_s``: a drone fails within this time of its last reception heard (one TDMA period): the margin
+    of its last fix.  ``w_h_max_mps``, ``w_down_max_mps``: the current declared for the mission (the runner declares the bound of
+    the scenario's field)."""
+
+    v_rise_min_mps: float = 0.045
+    coast_h_m: float = 1.0
+    coast_v_m: float = 0.3
+    rise_lag_s: float = 2.0
+    drift_factor: float = 1.1
+    surface_z_m: float = -0.25
+    t_lost_s: float = 1.0
+    w_h_max_mps: float = 0.0
+    w_down_max_mps: float = 0.0
+
+
+@dataclass(frozen=True)
 class FleetConfig:
     sep: SeparationThresholds = field(default_factory=SeparationThresholds)
     env: Envelope = field(default_factory=Envelope)
@@ -377,6 +429,8 @@ class FleetConfig:
     ref: RefereeConfig = field(default_factory=RefereeConfig)
     beacon: BeaconConfig = field(default_factory=BeaconConfig)   # B2 one-way acoustic beacon (OFF in B0)
     acoustic: AcousticConfig = field(default_factory=AcousticConfig)   # B2 onboard envelope (used only when beacon.enabled)
+    failure: FailureModel = field(default_factory=FailureModel)        # simulator side: what a broken drone does
+    scope: ScopeConfig = field(default_factory=ScopeConfig)            # onboard: the operating scope of the failure model
     comms_enabled: bool = False       # inter-agent communication is OFF by default
     traffic_rule: bool = True         # head-on give-way rule (liveness aid); off only to exercise the safety layer alone
 

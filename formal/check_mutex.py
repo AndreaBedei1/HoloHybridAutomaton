@@ -78,6 +78,7 @@ from common import CheckResult, Report, check  # noqa: E402
 
 import itertools
 
+from holo_fleet.perception.sonar_geometry import far_field_pattern
 from holo_fleet.config import DEFAULT, FleetConfig
 from holo_fleet.control.flows import pass_path_points
 from holo_fleet.ha import mutex_rule
@@ -336,8 +337,24 @@ def geometry(cfg: FleetConfig, n: int, queue_line=None) -> dict:
         unmask_s = float(after.min()) if after.size else None
         beyond_s = float(ss[np.argmax((rng_A > hi_corr) & (ss > 0))]) if ((rng_A > hi_corr) & (ss > 0)).any() else None
         corr_from = float(ss[np.argmax(corr)]) if corr.any() else None
+        # the band of a FRONT-only echo (GatePerception.update): no relation, latch input.  A on the axis is FRONT-only for every
+        # heading within the tolerance from fo[0] to fo[1]; elsewhere the model keeps the WAIT of a merged target, the less
+        # restrictive of the two (the WAIT has no memory)
+        band = rng_A >= lo_corr - G.nav_err_m
+        band_from = float(ss[np.argmax(band)]) if band.any() else None
+        tol = math.radians(G.heading_tol_deg)
+        fo_s = []
+        for s_a in ss[::10]:
+            d = np.array([s_a - son[0], -l])
+            if d[0] < 0.5:
+                continue
+            u = d / np.linalg.norm(d)
+            if all(set(far_field_pattern(np.array([math.cos(h) * u[0] + math.sin(h) * u[1], -math.sin(h) * u[0] + math.cos(h) * u[1], 0.0]))) == {"FRONT"}
+                   for h in (-tol, 0.0, tol)):
+                fo_s.append(float(s_a))
         rows.append({"queue_l": l, "corridor": (round(lo_corr, 2), round(hi_corr, 2)), "mask": (round(m_lo, 2), round(m_hi, 2)),
-                     "exposure_m": round(exposure, 2), "corridor_from_s": corr_from, "mask_from_s": first_mask,
+                     "exposure_m": round(exposure, 2), "corridor_from_s": corr_from, "band_from_s": band_from,
+                     "front_only_s": (min(fo_s), max(fo_s)) if fo_s else None, "mask_from_s": first_mask,
                      "visible_again_s": unmask_s, "beyond_s": beyond_s})
     out["views"] = rows
     out["min_exposure_s"] = round(min(r["exposure_m"] for r in rows) / G.v_pass, 2)
@@ -444,7 +461,8 @@ def exit_observability(cfg: FleetConfig, n: int = 0, step: float = 0.1, slots=No
 
 
 # ---------------------------------------------------------------------------------------------- M3 timed latch model
-def latch_bmc(cfg: FleetConfig, geo: dict, steps: int = 420, latch: bool = True, v_lo: float = V_LO, view=None):
+def latch_bmc(cfg: FleetConfig, geo: dict, steps: int = 420, latch: bool = True, v_lo: float = V_LO, view=None,
+              band_latch: bool = True, hold: bool = False):
     """A crosses on the axis; B (queue view ``view``) decides with the deployed belief logic (incl. t_occ_max)."""
     G = cfg.gate
     dt = 0.1
@@ -456,6 +474,10 @@ def latch_bmc(cfg: FleetConfig, geo: dict, steps: int = 420, latch: bool = True,
     m_lo_s = view["mask_from_s"] if view["mask_from_s"] is not None else 99.0
     m_hi_s = view["visible_again_s"] if view["visible_again_s"] is not None else 99.0
     b_s = view["beyond_s"] if view["beyond_s"] is not None else 99.0
+    band_lo = view["band_from_s"] if view.get("band_from_s") is not None else 99.0
+    fo_lo, fo_hi = view["front_only_s"] if view.get("front_only_s") else (99.0, -99.0)
+    no_rel = lambda x: z3.And(x >= band_lo, x <= b_s, x >= fo_lo, x <= fo_hi)                  # FRONT-only echo: no relation
+    in_band = lambda x: z3.And(x >= band_lo, x < s_corr_lo, x >= fo_lo, x <= fo_hi)            # ... nearer than the corridor
     reach = int(math.floor((abs(geo["queue_s"]) - G.cr_half_len) / v_hi / dt))       # B cannot reach the CR faster
     sA = [z3.Real(f"sA_{k}") for k in range(steps + 1)]
     seen = [z3.Bool(f"seen_{k}") for k in range(steps + 1)]          # A visible to B in FRONT (unmasked)
@@ -468,11 +490,14 @@ def latch_bmc(cfg: FleetConfig, geo: dict, steps: int = 420, latch: bool = True,
     commit = [z3.Bool(f"commit_{k}") for k in range(steps + 1)]
     cons = [sA[0] == geo["queue_s"], z3.Not(busy[0]), quiet[0] == tc, prio[0] == 0, z3.Not(commit[0]), since[0] == 0]
     for k in range(steps):
-        cons.append(z3.And(sA[k + 1] - sA[k] >= v_lo * dt, sA[k + 1] - sA[k] <= v_hi * dt))
+        floor = z3.If(sA[k] >= -G.cr_half_len, v_lo, 0.0) if hold else v_lo     # hold: A may stop anywhere before the CR
+        cons.append(z3.And(sA[k + 1] - sA[k] >= floor * dt, sA[k + 1] - sA[k] <= v_hi * dt))
     for k in range(steps + 1):
         vis = z3.Or(sA[k] < m_lo_s, sA[k] > m_hi_s)
         cons.append(seen[k] == vis)
         in_corr_range = z3.And(sA[k] >= s_corr_lo, sA[k] <= b_s)
+        if band_latch:
+            in_corr_range = z3.Or(in_corr_range, in_band(sA[k]))
         conf = z3.And(seen[k], in_corr_range) if k == 0 else z3.And(seen[k], seen[k - 1], in_corr_range)
         cons.append(corr[k] == conf)
         cons.append(beyond[k] == z3.And(seen[k], sA[k] > b_s))
@@ -484,8 +509,8 @@ def latch_bmc(cfg: FleetConfig, geo: dict, steps: int = 420, latch: bool = True,
             nb = corr[k + 1]                                          # mutation: no memory of an unseen drone
         cons.append(busy[k + 1] == nb)
         cons.append(quiet[k + 1] == z3.If(z3.Or(corr[k + 1], busy[k + 1]), 0, quiet[k] + 1))
-        # B's relation: WAIT while A is seen in FRONT within the CR far range (corridor or nearer)
-        wait = z3.And(seen[k + 1], sA[k + 1] <= b_s)
+        # B's relation: WAIT while A is seen in FRONT within the CR far range, except a FRONT-only echo in the band (the code's predicate)
+        wait = z3.And(seen[k + 1], sA[k + 1] <= b_s, z3.Not(no_rel(sA[k + 1])))
         cons.append(prio[k + 1] == z3.If(wait, 0, prio[k] + 1))
         free = z3.And(z3.Not(busy[k + 1]), quiet[k + 1] >= tc)
         cons.append(commit[k + 1] == z3.Or(commit[k], z3.And(prio[k + 1] >= tc, free)))
@@ -687,12 +712,24 @@ def run(cfg: FleetConfig = DEFAULT, verbose: bool = True) -> Report:
                           "latch + persistence + exit + t_clear + t_occ_max -> not(A in CR and B in CR)", ENC, cons,
                           note=f"masked s in {info['mask_s']}, beyond s > {info['beyond_s']}, B needs >= {info['reach_steps']} "
                                f"steps to the CR, A crosses at >= {V_LO} m/s"), verbose)
+            cons, info = latch_bmc(cfg, geos[n], view=view, hold=True)
+            rep.add(check(f"M3h occupancy latch, n={n}, observer at l={view['queue_l']:+.2f}: the crossing drone may stop anywhere before the CR, 42 s bound: never both in the CR",
+                          "as M3, the speed floor applying only inside the CR", ENC, cons, timeout_ms=900000, note=f"band from s {view['band_from_s']}, FRONT-only s {view['front_only_s']}"), verbose)
     # the queue closest to the gate (n = 2): the shortest way to the CR, where the masked interval matters most
     worst = max(geos[2]["views"], key=lambda v: v["queue_l"])
     cons, _ = latch_bmc(cfg, geos[2], latch=False, view=worst)
     rep.add(check("M3m mutation: belief without latch (FREE when nothing is seen) must violate P2",
                   "expect counterexample", ENC, cons, expect="sat",
                   note=f"n=2, observer at l={worst['queue_l']:+.2f}"), verbose)
+    centre = min(geos[3]["views"], key=lambda v: abs(v["queue_l"]))
+    cons, _ = latch_bmc(cfg, geos[3], view=centre, band_latch=False, hold=True)
+    rep.add(check("M3b mutation: a FRONT-only echo nearer than the corridor makes neither a relation nor a latch input (round 2, F1): must violate P2",
+                  "expect counterexample", ENC, cons, expect="sat", note="n=3, centre queue point"), verbose)
+    side3 = max(geos[3]["views"], key=lambda v: v["queue_l"])
+    cons, _ = latch_bmc(cfg, geos[3], view=side3, hold=True, steps=480)
+    rep.add(check("M3hs scope: beyond the 42 s bound a drone stopped behind the bars before the CR is released by the t_occ_max fallback",
+                  "expect counterexample: the stop before the CR is bounded by the give-up of the code (26 s), not modelled; B2 claims cover it when heard", ENC, cons, expect="sat", timeout_ms=900000,
+                  note="n=3, side queue point, 48 s BMC"), verbose)
     # M3f the scope of the t_occ_max fallback: the latch release after t_occ_max without corridor echoes assumes that a
     # healthy occupant crosses (speed >= V_LO).  An occupant stopped inside the CR by a fault, masked by the bars, is
     # released by it: P2 does not cover faults inside the CR (B2: heard_inside blocks the fallback while it pings).

@@ -59,7 +59,7 @@ values: no source gives their probability), before the final campaign; they only
 from __future__ import annotations
 
 import math
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, replace
 from typing import Dict, List, Optional, Tuple
 
 import numpy as np
@@ -89,6 +89,9 @@ class AcousticChannel:
     los_outlier: float = 0.0             # clear path: per-reception probability that a multipath episode starts
     los_outlier_pings: float = 5.0       # ... its mean length in receptions (geometric)
     payload_loss: float = 0.02           # H6: the ping is detected but its data packet is not decoded (STRESS)
+    link_on_mean_s: float = 0.0          # sensitivity only: per-link ON periods (exponential, this mean; 0: off) ...
+    link_off_min_s: float = 6.0          # ... and OFF periods, Pareto with this minimum ...
+    link_off_alpha: float = 1.2          # ... and this shape: P(OFF > 40 s) = 0.10
 
     def as_dict(self) -> Dict:
         return asdict(self)
@@ -103,8 +106,10 @@ MEDIUM = AcousticChannel(name="MEDIUM", sigma_range_m=0.15, sound_speed_err=0.01
                          sigma_az_deg=2.5, sigma_el_deg=2.5, dropout=0.20, dropout_far=0.50, outage_every_s=40.0,
                          outage_len_s=4.0, nlos_rx=0.35, latency_s=0.25, shadow_loss=0.70, shadow_dir_deg=1.5,
                          doa_bias_deg=3.0, los_outlier=0.03, payload_loss=0.15)
+# not calibrated at these ranges: long-tailed, per-link OFF periods as reported for lake links at much longer range (review round 2)
+MEDIUM_HT = replace(MEDIUM, name="MEDIUM_HT", link_on_mean_s=120.0)
 BLACKOUT = AcousticChannel(name="BLACKOUT", blackout=True)
-CHANNELS: Dict[str, AcousticChannel] = {c.name: c for c in (CLEAN, LOW, MEDIUM, BLACKOUT)}
+CHANNELS: Dict[str, AcousticChannel] = {c.name: c for c in (CLEAN, LOW, MEDIUM, MEDIUM_HT, BLACKOUT)}
 
 
 def channel(name: str) -> AcousticChannel:
@@ -132,6 +137,19 @@ class ChannelModel:
             while t < duration_s:
                 self.outages.append((t, t + ch.outage_len_s))
                 t += float(self.rng.exponential(ch.outage_every_s)) + ch.outage_len_s
+        self.link_off: Dict[Tuple[int, int], List[Tuple[float, float]]] = {}
+        if ch.link_on_mean_s > 0:                                         # its own generator: the other draws are unchanged
+            lr = np.random.default_rng([int(seed), 5111])
+            for a in range(n):
+                for b in range(n):
+                    if a != b:
+                        t, iv = 0.0, []
+                        while t < duration_s:
+                            t += float(lr.exponential(ch.link_on_mean_s))
+                            d = ch.link_off_min_s * float(1.0 + lr.pareto(ch.link_off_alpha))
+                            iv.append((t, t + d))
+                            t += d
+                        self.link_off[(a, b)] = iv
         # array calibration residual of every receiver: b(az) = A (sin(az + p1) + sin(2 az + p2)) / 2 per axis
         self.bias_phase = self.rng.uniform(0.0, 2.0 * math.pi, size=(n, 4))
         self.episode: Dict[Tuple[int, int], Tuple[int, float]] = {}      # link -> (receptions left, range excess)
@@ -158,8 +176,9 @@ class ChannelModel:
         self.episode[key] = (left - 1, extra)
         return extra
 
-    def in_outage(self, t: float) -> bool:
-        return any(a <= t < b for a, b in self.outages)
+    def in_outage(self, t: float, sender: int = -1, receiver: int = -1) -> bool:
+        return (any(a <= t < b for a, b in self.outages)
+                or any(a <= t < b for a, b in self.link_off.get((sender, receiver), ())))
 
     def measure(self, t: float, sender: int, receiver: int, buf: np.ndarray) -> Optional[Tuple[float, float, float, bool]]:
         """Engine buffer [az, el, d, depth] (or -1s: direct path blocked / out of range) -> (range, az, el, nlos)."""
@@ -167,7 +186,7 @@ class ChannelModel:
         if ch.blackout:
             self.stats["lost_blackout"] += 1
             return None
-        if self.in_outage(t):
+        if self.in_outage(t, sender, receiver):
             self.stats["lost_outage"] += 1
             return None
         blocked = bool(np.all(buf == -1.0))
@@ -194,7 +213,7 @@ class ChannelModel:
     def shadowed(self, t: float, sender: int, receiver: int, geom: Tuple[float, float, float]):
         """Direct path shadowed by a drone hull or a gate bar (H4): lost, or the diffracted direct arrival."""
         ch, rng = self.ch, self.rng
-        if ch.blackout or self.in_outage(t) or rng.random() < ch.shadow_loss:
+        if ch.blackout or self.in_outage(t, sender, receiver) or rng.random() < ch.shadow_loss:
             return None
         az, el, d = geom
         p_drop = ch.dropout + (ch.dropout_far - ch.dropout) * min(1.0, d / self.max_range)
@@ -214,7 +233,7 @@ class ChannelModel:
     def reflected(self, t: float, sender: int, receiver: int, geom: Tuple[float, float, float]):
         """Blocked direct path with a known (truth) geometry: a reflected arrival, or None (lost)."""
         ch, rng = self.ch, self.rng
-        if ch.blackout or self.in_outage(t) or rng.random() >= ch.nlos_rx:
+        if ch.blackout or self.in_outage(t, sender, receiver) or rng.random() >= ch.nlos_rx:
             return None
         az, el, d = geom
         lo, hi = ch.reflect_extra_m

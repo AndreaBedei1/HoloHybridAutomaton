@@ -10,14 +10,13 @@ EXPECTED = {"p1_head_on": 2, "p1_vertical_escape": 4, "p1_two_lines": 6, "p1_clo
             "formation_triangle": 3, "formation_square": 4, "formation_six": 6, "formation_recovery_head_current": 4,
             "formation_gust": 4, "gate_single": 3, "integrated_short": 3, "lost_drone_rejoin": 4,
             "lost_drone_rejoin_front": 4,
-            "lost_drone_timeout": 4, "mutex_deadlock_resolution": 3, "line_parallel_mutex": 3, "lost_drone_mutex": 3,
-            "gate_stalled_occupant": 3}
-GATE_SCENARIOS = ("gate_single", "integrated_short", "mutex_deadlock_resolution", "line_parallel_mutex", "lost_drone_mutex",
-                  "gate_stalled_occupant")
+            "lost_drone_timeout": 4, "mutex_deadlock_resolution": 3, "line_parallel_mutex": 3, "lost_drone_mutex": 3}
+GATE_SCENARIOS = ("gate_single", "integrated_short", "mutex_deadlock_resolution", "line_parallel_mutex", "lost_drone_mutex")
 
 
 def test_catalogue_is_small_and_short():
-    assert set(SCENARIOS) == set(EXPECTED)
+    from holo_fleet.sim.scenarios import STRESS_BATCH, STRESS_SCENARIOS
+    assert set(SCENARIOS) - set(STRESS_SCENARIOS) - set(STRESS_BATCH) == set(EXPECTED)  # the acceptance matrix
     for name, n in EXPECTED.items():
         sc = SCENARIOS[name](DEFAULT)
         assert len(sc.plans) == n == len(sc.sim.names), name
@@ -49,37 +48,33 @@ def test_gate_scenarios_use_only_arena_gate_g06():
 
 
 def test_lost_drone_scenarios_inject_one_simulator_fault_on_a_rear_drone():
-    for name, permanent in (("lost_drone_rejoin", False), ("lost_drone_timeout", True), ("lost_drone_mutex", True)):
+    """The failure model of the deployment: a broken drone is completely broken and rises (TOTAL_FAILURE); a temporary
+    event is a jet that displaces a healthy drone, no failure of the drone at all."""
+    for name in ("lost_drone_timeout", "lost_drone_mutex"):
         sc = SCENARIOS[name](DEFAULT)
-        assert len(sc.sim.faults) == 1
-        f = sc.sim.faults[0]
+        (f,) = sc.sim.faults
         k = int(f["drone"].split("_")[1])
-        assert f["type"] == "THRUSTER_FAILURE" and (f["t_off"] is None) == permanent
+        assert f["type"] == "TOTAL_FAILURE" and f["t_off"] is None
         assert sc.template.slots[k].along == min(sl.along for sl in sc.template.slots)     # nobody runs into it
         if name == "lost_drone_mutex":                       # the left drone of the line: the leftmost present goes
             assert sc.template.name == "line3" and k == 0
         assert sc.disturbance_active(f["t_on"] + 0.1)
-    # v9: the rejoin of a FRONT slot (temporary fault; the drone of the rear slot on its lane is in the way)
+    from holo_fleet.sim.scenarios import JET_DISPLACE_DRIFT
+
+    for name in ("lost_drone_rejoin", "lost_drone_rejoin_front"):         # temporary: a healthy drone, displaced
+        sc = SCENARIOS[name](DEFAULT)
+        assert not sc.sim.faults
+        jets = [c for c in sc.sim.current.components if c.kind == "jet"]
+        assert len(jets) == 1 and tuple(jets[0].drift) == JET_DISPLACE_DRIFT and sc.disturbance_active(jets[0].t_on + 0.1)
+    # v9: the rejoin of a FRONT slot (the drone of the rear slot on its lane is in the way)
     sc = SCENARIOS["lost_drone_rejoin_front"](DEFAULT)
-    (f,) = sc.sim.faults
-    k = int(f["drone"].split("_")[1])
+    k = 0
     me = sc.template.slots[k]
-    assert f["type"] == "THRUSTER_FAILURE" and f["t_off"] is not None and sc.disturbance_active(f["t_on"] + 0.1)
     assert any(sl.along < me.along and abs(sl.lateral - me.lateral) < 1e-9 for sl in sc.template.slots)
-    for name in set(EXPECTED) - {"lost_drone_rejoin", "lost_drone_rejoin_front", "lost_drone_timeout", "lost_drone_mutex",
-                                 "gate_stalled_occupant"}:
+    for name in set(EXPECTED) - {"lost_drone_timeout", "lost_drone_mutex"}:
         assert not SCENARIOS[name](DEFAULT).sim.faults, name
-
-
-def test_stalled_occupant_is_gate_single_with_a_ground_truth_mid_cr_trigger():
-    from holo_fleet.runner import TRIGGER_PENDING
-
-    sc, ref = SCENARIOS["gate_stalled_occupant"](DEFAULT), SCENARIOS["gate_single"](DEFAULT)
-    (f,) = sc.sim.faults
-    assert f["drone"] == "drone_0" and f["t_off"] is None and f["t_on"] >= TRIGGER_PENDING and f["trigger"] == "mid_cr:G06"
-    assert [p.queue_lateral for p in sc.plans] == [p.queue_lateral for p in ref.plans]
-    assert [g.gate_id for g in sc.judged_gates] == ["G06"]
-    assert sc.sim.current.describe() == []          # no current: the stalled drone stays in the CR
+    for name, sc_f in SCENARIOS.items():                       # no thruster-only failure anywhere in the matrix
+        assert not any(f["type"] == "THRUSTER_FAILURE" for f in sc_f(DEFAULT).sim.faults), name
 
 
 def test_currents_inside_the_envelope_except_declared_disturbances():
@@ -154,30 +149,68 @@ def test_gate_passages_stay_inside_the_validated_queue_domain():
             check_gate_domain(sc.plans[0].slots, DEFAULT.gate)
 
 
-def test_mid_cr_trigger_fires_only_in_the_second_half_of_the_critical_region():
-    from types import SimpleNamespace
-
-    from holo_fleet.runner import _triggered
-
-    sc = SCENARIOS["gate_stalled_occupant"](DEFAULT)
-    (f,) = sc.sim.faults
-    g = sc.judged_gates[0]
-    names = sc.sim.names
-    left = np.array([-g.axis[1], g.axis[0], 0.0])
-
-    def at(s, l=0.0):
-        P = np.zeros((len(names), 3))
-        P[0] = g.center + s * np.asarray(g.axis, float) + l * left
-        return SimpleNamespace(positions=P)
-    assert not _triggered(f, sc, names, at(-0.3)) and _triggered(f, sc, names, at(0.3))
-    assert not _triggered(f, sc, names, at(0.3, 1.5)) and not _triggered(f, sc, names, at(1.2))
-
-
-def test_b2_final_matrix_is_the_preregistered_smaller_variant():
+def test_the_final_matrix_is_the_preregistered_one():
     import sys
     sys.path.insert(0, str(__import__("pathlib").Path(__file__).resolve().parents[1] / "scripts"))
-    import run_sensor_robustness_campaign as c
+    import final_campaign as fc
 
-    runs = c.b2_final_matrix()
-    assert len(runs) == 216 == len(set(runs)) and len(c.B2_CELLS) == 3
-    assert {r[3] for r in runs} == set(range(800, 806))                       # fresh held-out seeds (v10)
+    runs = fc.matrix()
+    assert len(runs) == 448 == len(set(runs)) and {r[3] for r in runs} <= set(range(5000, 5405))
+
+
+def test_the_stress_scenarios_build_and_keep_the_failure_model():
+    from holo_fleet.config import DEFAULT
+    from holo_fleet.sim.scenarios import SCENARIOS
+
+    for name in ("lost_drone_front_rise_low", "lost_drone_mutex_rise_low", "lost_drone_mutex_rise_high"):
+        sc = SCENARIOS[name](DEFAULT)
+        assert sc.name == name and any(f["type"] == "TOTAL_FAILURE" and f["t_off"] is None for f in sc.sim.faults)
+    assert SCENARIOS["lost_drone_mutex_rise_low"](DEFAULT).cfg_patch["failure"].v_rise_mps == 0.06
+
+
+def test_every_drone_starts_knowing_where_it_is():
+    """The navigation starts at the plan's launch position: a scenario that moves a spawn moves it too, or the drone reports a place it is not at."""
+    import numpy as np
+    from holo_fleet.config import DEFAULT
+    from holo_fleet.sim.scenarios import SCENARIOS
+
+    for name, make in SCENARIOS.items():
+        sc = make(DEFAULT)
+        for plan, spawn in zip(sc.plans, sc.sim.spawn_positions):
+            assert np.allclose(plan.launch_position, spawn), name
+
+
+def test_the_front_failure_has_a_follower_on_its_lane():
+    from holo_fleet.config import DEFAULT
+    from holo_fleet.sim.scenarios import SCENARIOS
+
+    sc = SCENARIOS["lost_drone_front_rise_low"](DEFAULT)
+    failed = int(sc.sim.faults[0]["drone"].split("_")[1])
+    slots = sc.template.slots
+    assert any(k != failed and slots[k].lateral == slots[failed].lateral and slots[k].along < slots[failed].along for k in range(len(slots)))
+
+
+def test_the_heavy_tailed_channel_is_per_link_and_the_others_are_unchanged():
+    from holo_fleet.sim.acoustic_channel import ChannelModel, channel
+
+    ht = ChannelModel(channel("MEDIUM_HT"), 3, 7, 30.0, duration_s=2000.0)
+    assert ht.link_off[(0, 1)] != ht.link_off[(1, 0)]
+    a, b = ChannelModel(channel("MEDIUM"), 3, 7, 30.0, duration_s=2000.0), ChannelModel(channel("MEDIUM_HT"), 3, 7, 30.0, duration_s=2000.0)
+    assert a.outages == b.outages and not a.link_off
+
+
+def test_a_failure_at_a_position_fires_on_ground_truth_only_there():
+    from types import SimpleNamespace
+
+    from holo_fleet.runner import AT_PENDING, _reached
+
+    sc = SCENARIOS["st_lost_committed"](DEFAULT)
+    (f,) = sc.sim.faults
+    assert f["t_on"] >= AT_PENDING and f["at"]["gate"] == sc.judged_gates[0].gate_id
+    g = sc.judged_gates[0]
+
+    def at(s):
+        P = np.zeros((len(sc.sim.names), 3))
+        P[0] = g.from_gate_frame([s, 0.0, 0.0])
+        return SimpleNamespace(positions=P)
+    assert not _reached(f, sc, sc.sim.names, at(f["at"]["s_min"] - 0.1)) and _reached(f, sc, sc.sim.names, at(f["at"]["s_min"] + 0.1))

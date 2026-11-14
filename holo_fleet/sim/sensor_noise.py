@@ -106,7 +106,11 @@ HIGH = NoiseProfile(
     sonar_dropout=0.12, sonar_blackout_every_s=20.0, sonar_blackout_len_s=0.5, sonar_range_jitter_m=0.07,
     sonar_fade_prob=0.10, dvl_dropout=0.08, dvl_outage_every_s=30.0, dvl_outage_len_s=1.0, latency_s=0.12)
 
-PROFILES: Dict[str, NoiseProfile] = {p.name: p for p in (CLEAN, LOW, MEDIUM, HIGH)}
+# Sensitivity of the open class of the gate localization (round 8): MEDIUM with twice its compass bias.  Not a validation level.
+MEDIUM_HB3 = replace(MEDIUM, name="MEDIUM_HB3", heading_bias_deg=3.0)
+MEDIUM_HB4 = replace(MEDIUM, name="MEDIUM_HB4", heading_bias_deg=4.0)
+
+PROFILES: Dict[str, NoiseProfile] = {p.name: p for p in (CLEAN, LOW, MEDIUM, HIGH, MEDIUM_HB3, MEDIUM_HB4)}
 VALIDATION_LEVELS = ("CLEAN", "LOW", "MEDIUM")          # the realistic operating domain
 SCOPES = ("ONE", "SUBSET", "ALL")                         # which drones receive the degraded profile
 

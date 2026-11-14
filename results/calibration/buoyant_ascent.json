@@ -1,0 +1,245 @@
+{
+ "target_v_rise_mps": 0.1,
+ "surface_z_m": -0.25,
+ "free": [
+  {
+   "v_target": 0.05,
+   "z0": -7.3,
+   "z_end": -5.587,
+   "v_terminal_mean": 0.04,
+   "ratio": 0.8
+  },
+  {
+   "v_target": 0.1,
+   "z0": -7.3,
+   "z_end": -3.218,
+   "v_terminal_mean": 0.095,
+   "ratio": 0.95
+  },
+  {
+   "v_target": 0.15,
+   "z0": -7.3,
+   "z_end": -1.09,
+   "v_terminal_mean": 0.144,
+   "ratio": 0.96
+  },
+  {
+   "v_target": 0.2,
+   "z0": -7.3,
+   "z_end": -0.171,
+   "v_terminal_mean": 0.188,
+   "ratio": 0.94
+  }
+ ],
+ "gate": [
+  {
+   "s0": -0.6,
+   "l0": 0.0,
+   "yaw_extra_deg": 0.0,
+   "dz0": 0.0,
+   "dz_end": 3.608,
+   "t_leaves_cr_top_s": 12.5,
+   "pinned_in_cr": false,
+   "s_end": -0.6,
+   "contact_steps": 0
+  },
+  {
+   "s0": -0.45,
+   "l0": 0.0,
+   "yaw_extra_deg": 0.0,
+   "dz0": 0.0,
+   "dz_end": 3.608,
+   "t_leaves_cr_top_s": 12.5,
+   "pinned_in_cr": false,
+   "s_end": -0.45,
+   "contact_steps": 0
+  },
+  {
+   "s0": -0.38,
+   "l0": 0.0,
+   "yaw_extra_deg": 0.0,
+   "dz0": 0.0,
+   "dz_end": 3.608,
+   "t_leaves_cr_top_s": 12.5,
+   "pinned_in_cr": false,
+   "s_end": -0.38,
+   "contact_steps": 0
+  },
+  {
+   "s0": -0.3,
+   "l0": 0.0,
+   "yaw_extra_deg": 0.0,
+   "dz0": 0.0,
+   "dz_end": 3.608,
+   "t_leaves_cr_top_s": 12.5,
+   "pinned_in_cr": false,
+   "s_end": -0.3,
+   "contact_steps": 0
+  },
+  {
+   "s0": -0.2,
+   "l0": 0.0,
+   "yaw_extra_deg": 0.0,
+   "dz0": 0.0,
+   "dz_end": 0.871,
+   "t_leaves_cr_top_s": null,
+   "pinned_in_cr": true,
+   "s_end": -0.207,
+   "contact_steps": 290
+  },
+  {
+   "s0": 0.0,
+   "l0": 0.0,
+   "yaw_extra_deg": 0.0,
+   "dz0": 0.0,
+   "dz_end": 0.868,
+   "t_leaves_cr_top_s": null,
+   "pinned_in_cr": true,
+   "s_end": 0.0,
+   "contact_steps": 290
+  },
+  {
+   "s0": 0.2,
+   "l0": 0.0,
+   "yaw_extra_deg": 0.0,
+   "dz0": 0.0,
+   "dz_end": 0.871,
+   "t_leaves_cr_top_s": null,
+   "pinned_in_cr": true,
+   "s_end": 0.206,
+   "contact_steps": 290
+  },
+  {
+   "s0": 0.3,
+   "l0": 0.0,
+   "yaw_extra_deg": 0.0,
+   "dz0": 0.0,
+   "dz_end": 3.534,
+   "t_leaves_cr_top_s": 13.2,
+   "pinned_in_cr": false,
+   "s_end": 0.346,
+   "contact_steps": 5
+  },
+  {
+   "s0": 0.38,
+   "l0": 0.0,
+   "yaw_extra_deg": 0.0,
+   "dz0": 0.0,
+   "dz_end": 3.608,
+   "t_leaves_cr_top_s": 12.5,
+   "pinned_in_cr": false,
+   "s_end": 0.38,
+   "contact_steps": 0
+  },
+  {
+   "s0": 0.45,
+   "l0": 0.0,
+   "yaw_extra_deg": 0.0,
+   "dz0": 0.0,
+   "dz_end": 3.608,
+   "t_leaves_cr_top_s": 12.5,
+   "pinned_in_cr": false,
+   "s_end": 0.45,
+   "contact_steps": 0
+  },
+  {
+   "s0": 0.6,
+   "l0": 0.0,
+   "yaw_extra_deg": 0.0,
+   "dz0": 0.0,
+   "dz_end": 3.608,
+   "t_leaves_cr_top_s": 12.5,
+   "pinned_in_cr": false,
+   "s_end": 0.6,
+   "contact_steps": 0
+  },
+  {
+   "s0": 0.0,
+   "l0": 0.7,
+   "yaw_extra_deg": 0.0,
+   "dz0": -0.013,
+   "dz_end": 0.868,
+   "t_leaves_cr_top_s": null,
+   "pinned_in_cr": true,
+   "s_end": -0.065,
+   "contact_steps": 286
+  },
+  {
+   "s0": 0.5,
+   "l0": 0.7,
+   "yaw_extra_deg": 0.0,
+   "dz0": 0.0,
+   "dz_end": 3.608,
+   "t_leaves_cr_top_s": 12.5,
+   "pinned_in_cr": false,
+   "s_end": 0.5,
+   "contact_steps": 0
+  },
+  {
+   "s0": 0.0,
+   "l0": 0.0,
+   "yaw_extra_deg": 45.0,
+   "dz0": 0.0,
+   "dz_end": 0.868,
+   "t_leaves_cr_top_s": null,
+   "pinned_in_cr": true,
+   "s_end": 0.0,
+   "contact_steps": 290
+  },
+  {
+   "s0": 0.0,
+   "l0": 0.0,
+   "yaw_extra_deg": 90.0,
+   "dz0": 0.0,
+   "dz_end": 0.868,
+   "t_leaves_cr_top_s": null,
+   "pinned_in_cr": true,
+   "s_end": 0.0,
+   "contact_steps": 290
+  },
+  {
+   "s0": 0.45,
+   "l0": 0.0,
+   "yaw_extra_deg": 45.0,
+   "dz0": 0.0,
+   "dz_end": 3.608,
+   "t_leaves_cr_top_s": 12.5,
+   "pinned_in_cr": false,
+   "s_end": 0.45,
+   "contact_steps": 0
+  },
+  {
+   "s0": 0.45,
+   "l0": 0.0,
+   "yaw_extra_deg": 90.0,
+   "dz0": 0.0,
+   "dz_end": 3.608,
+   "t_leaves_cr_top_s": 12.5,
+   "pinned_in_cr": false,
+   "s_end": 0.45,
+   "contact_steps": 0
+  }
+ ],
+ "current": [
+  {
+   "drift_x": 0.05,
+   "v_terminal_mean": 0.099,
+   "dx_end": 1.43
+  },
+  {
+   "drift_x": 0.15,
+   "v_terminal_mean": 0.094,
+   "dx_end": 4.14
+  },
+  {
+   "drift_x": 0.3,
+   "v_terminal_mean": 0.096,
+   "dx_end": 8.49
+  }
+ ],
+ "checks": {
+  "terminal_speed_within_15pct_of_target": false,
+  "a_drone_under_the_bar_stays_pinned_in_the_cr": true,
+  "ascent_independent_of_current_within_15pct": true
+ }
+}

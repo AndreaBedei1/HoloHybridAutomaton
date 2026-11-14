@@ -113,6 +113,28 @@
       "note": "{'samples': 3000, 'occupant_excluded': 0}"
     },
     {
+      "prop": "B2-PEg phantom-echo soundness of the fix geometry alone (no status in any packet): an occupant is never excluded",
+      "formula": "randomized: no_fleet_drone -> false, status removed",
+      "encoding": "perception/acoustic.py + perception/acoustic_gate.py",
+      "expect": "holds",
+      "verdict": "holds",
+      "passed": true,
+      "seconds": 0.0,
+      "counterexample": null,
+      "note": "{'samples': 3000, 'occupant_excluded': 0}"
+    },
+    {
+      "prop": "B2-PEm mutation: without the keep-out claim a drone carried into the CR uncommitted reports not engaged and is excluded",
+      "formula": "expect counterexample",
+      "encoding": "perception/acoustic.py + perception/acoustic_gate.py",
+      "expect": "violated",
+      "verdict": "violated",
+      "passed": true,
+      "seconds": 0.0,
+      "counterexample": null,
+      "note": "{'samples': 3000, 'occupant_excluded': 2391}"
+    },
+    {
       "prop": "B2-S acoustic fixes never reach separation, collision avoidance, precedence or the sonar witness; acoustic exit evaluation requires the FRONT corridor empty (H6: the payload balls reach the map fit only as its identity premise, through Perception, never as a position input)",
       "formula": "AST: no acoustic name in the safety / precedence modules; guarded call",
       "encoding": "perception/acoustic.py + perception/acoustic_gate.py",

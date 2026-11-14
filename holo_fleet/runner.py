@@ -21,6 +21,7 @@ import numpy as np
 from holo_fleet.config import DEFAULT, FleetConfig
 from holo_fleet.control.controller import DroneController
 from holo_fleet.referee.referee import Referee
+from holo_fleet.scope import current_bound
 from holo_fleet.referee.sensor_audit import SensorAudit
 from holo_fleet.sim.holo_env import HoloFleetSim
 from holo_fleet.sim.scenarios import SCENARIOS, Scenario
@@ -50,19 +51,25 @@ def _error_status(exc: BaseException, t: float) -> Dict:
             "traceback": "".join(traceback.format_exception(type(exc), exc, exc.__traceback__))}
 
 
-TRIGGER_PENDING = 1e9      # t_on of a fault whose onset is a ground-truth condition (resolved and logged when met)
+def dead_record(t: float) -> Dict:
+    """Log record of a completely failed drone (no controller runs any more; the fields the offline tools read)."""
+    return {"t": round(float(t), 3), "mode": "DEAD", "committed": False, "nav_p": None, "nav_yaw_deg": 0.0, "nav_bound": None,
+            "v_cmd": [0.0, 0.0, 0.0], "v_mis": [0.0, 0.0, 0.0], "giveway": "", "offset": [0.0, 0.0, 0.0], "d_min": None,
+            "sense_ok": False, "env_ok": False, "envelope": {}, "sectors": {}, "targets": [], "escape": None,
+            "current_est": [0.0, 0.0, 0.0], "gate": {}, "form": {}, "nav_aid": None, "transition": None,
+            "determinism_violations": 0, "obs_consistent": True, "observation_violations": 0, "saturated": False}
 
 
-def _triggered(f, sc, names, truth, cfg=DEFAULT) -> bool:
-    """Simulator-side fault trigger on ground truth: ``mid_cr:<gate>`` - the drone's centre is in the second half of
-    the critical region (0 <= s <= cr_half_len, inside its width and height): it stops there for good."""
-    kind, _, gid = str(f["trigger"]).partition(":")
-    g = next((x for x in sc.judged_gates if x.gate_id == gid), None)
-    if kind != "mid_cr" or g is None:
+AT_PENDING = 1e9          # t_on of a fault whose onset is a position on ground truth (resolved and logged when reached)
+
+
+def _reached(f, sc, names, truth) -> bool:
+    """Simulator-side onset on ground truth: ``at`` = {"gate": id, "s_min": s} - the drone's centre has reached s (gate frame)."""
+    at = f["at"]
+    g = next((x for x in sc.judged_gates if x.gate_id == at["gate"]), None)
+    if g is None:
         return False
-    G = cfg.gate
-    s, l, dz = (float(v) for v in g.to_gate_frame(np.asarray(truth.positions[names.index(f["drone"])], float)))
-    return 0.0 <= s <= G.cr_half_len and abs(l) <= G.cr_half_width and abs(dz) <= G.cr_half_height
+    return float(g.to_gate_frame(np.asarray(truth.positions[names.index(f["drone"])], float))[0]) >= float(at["s_min"])
 
 
 def beacon_identities(plans, names, plan) -> dict:
@@ -83,6 +90,8 @@ def run(name: str, out_root: Path, headless: bool = True, run_id: Optional[str] 
     sc: Scenario = SCENARIOS[name](cfg)
     if sc.cfg_patch:
         cfg = dataclasses.replace(cfg, **sc.cfg_patch)
+    w_h, w_dn = current_bound(sc.sim.current)              # the current declared for the mission: its bound (holo_fleet/scope.py)
+    cfg = dataclasses.replace(cfg, scope=dataclasses.replace(cfg.scope, w_h_max_mps=w_h, w_down_max_mps=w_dn))
     if seed is not None:
         sc.sim.seed = int(seed)
     sc.sim.noise = noise
@@ -169,14 +178,13 @@ def run(name: str, out_root: Path, headless: bool = True, run_id: Optional[str] 
         for step in range(n_steps):
             step_events = []
             for i, f in enumerate(getattr(sc.sim, "faults", ())):         # ground truth, never seen by a controller
-                if f.get("trigger") and f["t_on"] >= TRIGGER_PENDING and truth_prev is not None:
-                    if _triggered(f, sc, sim.names, truth_prev, cfg):      # e.g. "mid_cr:G06": stalled occupant
-                        f["t_on"] = round(sim.t, 2)
-                        if ref.permanent is not None:
-                            ref.permanent[sim.names.index(f["drone"])] = f["t_on"]
-                        tmp = out / "run_config.json.tmp"        # atomic: the resolved onset replaces the file
-                        tmp.write_text(json.dumps(cfg_dump, indent=1, default=_jsonable), encoding="utf-8")
-                        tmp.replace(out / "run_config.json")
+                if f.get("at") and f["t_on"] >= AT_PENDING and truth_prev is not None and _reached(f, sc, sim.names, truth_prev):
+                    f["t_on"] = round(sim.t, 2)
+                    if ref.permanent is not None:
+                        ref.permanent[sim.names.index(f["drone"])] = f["t_on"]
+                    tmp = out / "run_config.json.tmp"        # atomic: the resolved onset replaces the file
+                    tmp.write_text(json.dumps(cfg_dump, indent=1, default=_jsonable), encoding="utf-8")
+                    tmp.replace(out / "run_config.json")
                 on = f["t_on"] <= sim.t and (f.get("t_off") is None or sim.t < f["t_off"])
                 if on != fault_on[i]:
                     fault_on[i] = on
@@ -189,6 +197,10 @@ def run(name: str, out_root: Path, headless: bool = True, run_id: Optional[str] 
             cmds = {}
             c0 = time.perf_counter()
             for nm, c in ctrls.items():
+                if sc.sim.dead(nm, sim.t):
+                    cmds[nm] = np.zeros(8)                 # completely broken: its controller no longer runs
+                    c.last_record = dead_record(sim.t)
+                    continue
                 cmds[nm] = c.step(frames[nm], DT)
             ctrl_ms.append(1000.0 * (time.perf_counter() - c0))
             if truth_prev is not None:               # referee side: frames vs the truth at the frame time
@@ -196,7 +208,7 @@ def run(name: str, out_root: Path, headless: bool = True, run_id: Optional[str] 
             sim.step(cmds, DT)
             truth = sim.truth()
             truth_prev = truth
-            modes = [ctrls[nm].ha.mode.value for nm in sim.names]
+            modes = ["DEAD" if sc.sim.dead(nm, sim.t) else ctrls[nm].ha.mode.value for nm in sim.names]
             row = ref.update(truth, modes, sc.disturbance_active(sim.t))
             for nm, c in ctrls.items():
                 rec = dict(c.last_record)
@@ -279,8 +291,8 @@ def run(name: str, out_root: Path, headless: bool = True, run_id: Optional[str] 
                           "static identity only (one-way ping; receiver-side OWTT range + array bearing)",
                       "acoustic_exit_witnesses": sum(c.perception.gp.exit_kind["ACOUSTIC"] for c in ctrls.values()),
                       "sonar_exit_witnesses": sum(c.perception.gp.exit_kind["SONAR"] for c in ctrls.values()),
-                      "acoustic_tracker": ({k: sum(c.perception.acoustic.stats[k] for c in ctrls.values())
-                                            for k in next(iter(ctrls.values())).perception.acoustic.stats}
+                      "acoustic_tracker": ({k: sum(c.perception.acoustic.stats.get(k, 0) for c in ctrls.values())
+                                            for k in sorted({x for c in ctrls.values() for x in c.perception.acoustic.stats})}
                                            if cfg.beacon.enabled else None),
                       "ground_truth_used_by_controllers": any(c.uses_ground_truth for c in ctrls.values()),
                       "static_rank_uses": rank_uses, "occupancy_timeouts": occ_timeouts,

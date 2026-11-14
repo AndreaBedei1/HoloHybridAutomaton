@@ -144,7 +144,7 @@ def test_slot_reference_and_feed_forward_follow_the_own_formation_time():
     _n, _R2, s_flow = fl._slot(SimpleNamespace(t=t))
     assert s_ref == pytest.approx(s_flow) == pytest.approx(plan.clock.s(t - 4.0))
     obs = SimpleNamespace(t=t, p=slot.copy(), slot_pos=slot, targets=[], R_wb=np.eye(3), yaw=0.0,
-                          form=SimpleNamespace(along_corr=0.0, lateral_corr=0.0))
+                          form=SimpleNamespace(along_corr=0.0, lateral_corr=0.0, lateral_far=None))
     v, _ = fl.formation(obs, DT)
     assert v[0] == pytest.approx(FR.v_wait, abs=1e-6)          # on the slot: moves at the reduced speed
 
@@ -369,7 +369,7 @@ def _flow_obs(p, t, plan):
     slot = np.array([plan.path.frame_at(plan.clock.s(t) + plan.my_slot.along)[0][0],
                      plan.my_slot.lateral, plan.path.depth_z + plan.my_slot.dz])
     return SimpleNamespace(t=t, p=np.asarray(p, float), slot_pos=slot, targets=[], R_wb=np.eye(3), yaw=0.0,
-                           form=SimpleNamespace(along_corr=0.0, lateral_corr=0.0))
+                           form=SimpleNamespace(along_corr=0.0, lateral_corr=0.0, lateral_far=None))
 
 
 def test_rejoin_from_behind_never_cuts_across_the_fleet():

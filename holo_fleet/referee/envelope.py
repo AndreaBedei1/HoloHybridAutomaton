@@ -36,7 +36,7 @@ from holo_fleet.control.current_envelope import Persistence, check_current
 from holo_fleet.control.lowlevel import AUTHORITY
 from holo_fleet.sim.currents import CurrentComponent, CurrentField
 
-AVOIDANCE = ("SEPARATION_WARNING", "COLLISION_AVOIDANCE")
+AVOIDANCE = ("SEPARATION_WARNING", "COLLISION_AVOIDANCE", "DEAD")     # a dead drone requests nothing
 DT = 0.1
 
 
