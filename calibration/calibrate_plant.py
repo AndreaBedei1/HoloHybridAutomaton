@@ -89,7 +89,7 @@ def main() -> int:
                 if t < T_CRUISE:
                     auth = "nominal"
                 env.set_ocean_currents(n, [0.0, 0.0, 0.0])
-            else:  # reverse_escape
+            else:
                 v_d = np.array([0.45, 0.0, 0.0]) if t < T_CRUISE else np.array([-DEFAULT.env.v_escape, 0.0, 0.0])
                 auth = "nominal" if t < T_CRUISE else "escape"
                 env.set_ocean_currents(n, [0.0, 0.0, 0.0])

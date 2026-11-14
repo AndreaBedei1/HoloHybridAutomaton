@@ -119,7 +119,7 @@ class Bench:
 def g06_view(d=3.0):
     g = {x.gate_id: x for x in load_arena_gates(HORSESHOE_TRACK)}["G06"]
     left = np.array([-g.axis[1], g.axis[0], 0.0])
-    side_l = max(abs(g.to_gate_frame(b.center)[1]) for b in g.bars)     # side-bar centre line
+    side_l = max(abs(g.to_gate_frame(b.center)[1]) for b in g.bars)
     sonar = g.center - d * g.axis + side_l * left
     yaw = math.degrees(math.atan2(g.axis[1], g.axis[0]))
     return sonar - SONAR_X * g.axis, (0, 0, yaw)
@@ -140,29 +140,24 @@ def main() -> int:
     chk = res["checks"]
     b = Bench()
     b.settle(40)
-    # clean starting point: the private cache may hold cells of an earlier scene
     res["costs"]["initial_rebuild"] = b.rebuild(None)
 
     P_BOX1 = BASE + np.array([0.0, 6.0, 0.0])
-    BOX1 = P_BOX1 + np.array([SONAR_X + 3.0 + 0.25, 0.0, 0.0])           # face 3.0 m from the sonar
+    BOX1 = P_BOX1 + np.array([SONAR_X + 3.0 + 0.25, 0.0, 0.0])
     P_BOX2 = BASE + np.array([0.0, 12.0, 0.0])
-    BOX2 = P_BOX2 + np.array([SONAR_X + 4.0 + 0.25, 0.0, 0.0])           # face 4.0 m
+    BOX2 = P_BOX2 + np.array([SONAR_X + 4.0 + 0.25, 0.0, 0.0])
     P_AGENT = BASE + np.array([0.0, -6.0, 0.0])
     P_LATE = BASE + np.array([0.0, -12.0, 0.0])
     gate_loc, gate_rot = g06_view(3.0)
 
-    # pre-existing BlueROV2 (agents always have their own octree)
     p = b.look(P_AGENT, label='agent initial', target=P_AGENT + np.array([SONAR_X + 4.0, 0, 0]))
     chk["agent_visible_initially"] = echo_near(p, 4.0 - 0.229)
 
-    # B: runtime scene change after the sonar exists
     b.env.spawn_prop("box", location=[float(v) for v in BOX1], rotation=[0, 0, 0], scale=0.5, sim_physics=False, material="steel")
     make_spawner(b.env).spawn_gate_bars([bar for vg in visual_gates(HORSESHOE_TRACK, ["G06"]) for bar in vg.bars])
     b.settle(6)
-    # C: invisible before the rebuild
     chk["C_box_invisible_before_rebuild"] = not echo_near(b.look(P_BOX1, label='box1 before rebuild'), 3.0, tol=0.5)
     chk["C_gate_invisible_before_rebuild"] = first_return(b.look(gate_loc, gate_rot, label='gate before rebuild')) is None
-    # D/E: full rebuild
     res["costs"]["full_rebuild"] = b.rebuild(None)
     chk["E_box_visible_after_full_rebuild"] = echo_near(b.look(P_BOX1, label='box1 after full rebuild'), 3.0)
     gp = b.look(gate_loc, gate_rot, label='gate after full rebuild')
@@ -170,7 +165,6 @@ def main() -> int:
     chk["E_agent_still_visible"] = echo_near(b.look(P_AGENT, label='agent after rebuild', target=P_AGENT + np.array([SONAR_X + 4.0, 0, 0])), 4.0 - 0.229)
     b.poses["target"] = (FAR, [0, 0, 0])
 
-    # region rebuild: second box, only the cells around it are recomputed
     b.env.spawn_prop("box", location=[float(v) for v in BOX2], rotation=[0, 0, 0], scale=0.5, sim_physics=False, material="steel")
     b.settle(6)
     chk["box2_invisible_before_region_rebuild"] = not echo_near(b.look(P_BOX2, label='box2 before region rebuild'), 4.0, tol=0.5)
@@ -178,7 +172,6 @@ def main() -> int:
     chk["box2_visible_after_region_rebuild"] = echo_near(b.look(P_BOX2, label='box2 after region rebuild'), 4.0)
     chk["box1_still_visible_after_region_rebuild"] = echo_near(b.look(P_BOX1, label='box1 after region rebuild'), 3.0)
 
-    # BlueROV2 spawned at runtime
     late_loc = P_LATE + np.array([SONAR_X + 5.0, 0.0, 0.0])
     b.env.add_agent(AgentDefinition("late", "BlueROV2", sensors=[], starting_loc=[float(v) for v in late_loc],
                                     starting_rot=[0, 0, 180]))
@@ -188,7 +181,6 @@ def main() -> int:
     res["costs"]["agent_rebuild"] = b.rebuild(None)
     chk["late_agent_visible_after_rebuild"] = echo_near(b.look(P_LATE, label='late agent after rebuild'), 5.0 - 0.229)
 
-    # F/G/H: scene change by reset (props removed) -> ghosts until rebuilt
     b.env.reset()
     b.poses.pop("late", None)
     b.settle(40)
@@ -199,7 +191,6 @@ def main() -> int:
     chk["H_no_ghost_box_after_rebuild"] = not echo_near(b.look(P_BOX1, label='box1 place after reset+rebuild'), 3.0, tol=0.5)
     chk["H_no_ghost_gate_after_rebuild"] = first_return(b.look(gate_loc, gate_rot, label='gate place after reset+rebuild')) is None
     chk["H_no_ghost_box2_after_rebuild"] = not echo_near(b.look(P_BOX2, label='box2 place after reset+rebuild'), 4.0, tol=0.5)
-    # changed object: a box at a new place (2 m farther than box1)
     BOX3 = BOX1 + np.array([2.0, 0.0, 0.0])
     b.env.spawn_prop("box", location=[float(v) for v in BOX3], rotation=[0, 0, 0], scale=0.5, sim_physics=False, material="steel")
     b.settle(6)
@@ -216,7 +207,7 @@ def main() -> int:
     res["costs"]["tick_ms_max"] = round(float(tm.max()), 1)
     res["looks"] = b.looks
     res["all_passed"] = all(chk.values())
-    out = Path(sys.argv[sys.argv.index("--out") + 1]) if "--out" in sys.argv else OUT_JSON   # tests: a temporary file
+    out = Path(sys.argv[sys.argv.index("--out") + 1]) if "--out" in sys.argv else OUT_JSON
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(json.dumps(res, indent=1, default=str), encoding="utf-8")
     print(json.dumps(res, indent=1, default=str))

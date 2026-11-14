@@ -83,18 +83,16 @@ def run(cfg=DEFAULT, verbose=True) -> Report:
     edges = build_edges(cfg)
     o = Obs()
     legal = o.legal(cfg)
-    # ---------------------------------------------------------------- O1, O2: the invariants themselves
     rep.add(check("O1 the observation invariants are jointly satisfiable", "exists obs: N1 & I1 & I2 & I3 & I4",
                   ENC, [legal], expect="sat"), verbose)
     for inv in OI.INVARIANTS:
         short = inv.name.split()[0]
         if short == "N0":
-            continue                   # type check: trivially true for typed symbols (tested at runtime)
+            continue
         rep.add(check(f"O2 {inv.name}: excludes observations admitted by the other invariants",
                       f"exists obs: others & !({inv.formula})", ENC,
                       [o.legal(cfg, drop=[short]), z3.Not(inv.pred(o, Z3L, cfg))], expect="sat",
                       note=f"excludes: {inv.excludes}"), verbose)
-    # ---------------------------------------------------------------- O3 non-vacuity, O4 exactly one edge
     for src in MODES:
         gs = [(e, e.guard(o, Z3L)) for e in edges[src]]
         rep.add(all_sat(f"O3 non-vacuity [{src.value}]: every edge enabled on some consistent observation",
@@ -104,7 +102,6 @@ def run(cfg=DEFAULT, verbose=True) -> Report:
         gs = [g for _, g in [(e, e.guard(o, Z3L)) for e in edges[src]]]
         rep.add(check(f"O4 consistent observation -> exactly one edge [{src.value}]",
                       "invariants -> exactly one outgoing guard enabled", ENC, [legal, not_exactly_one(gs)]), verbose)
-    # ---------------------------------------------------------------- O5 runtime monitor
     m = Monitored(o, legal)
     bad = []
     for src in MODES:
@@ -114,10 +111,8 @@ def run(cfg=DEFAULT, verbose=True) -> Report:
     rep.add(check("O5 monitor: any observation -> exactly one edge; inconsistent -> only the fault edge to FAILSAFE",
                   "sense_ok' = sense_ok & consistent: exactly one guard, and !consistent -> target FAILSAFE", ENC,
                   [z3.Or(*bad)]), verbose)
-    # ---------------------------------------------------------------- Q1 queued drones stay in the gate protocol
     rep.add(check("Q1 calm, not committed, at the queue point -> commit or yield (every mode)",
                   "at_queue -> enabled edge in {commit, yield}", ENC, queue_violation(cfg, edges, o, legal)), verbose)
-    # ---------------------------------------------------------------- mutations
     rep.add(check("Om1 mutation: without I2 a queued drone takes a formation edge (Q1 must fail)",
                   "expect counterexample", ENC, queue_violation(cfg, edges, o, o.legal(cfg, drop=["I2"])), expect="sat"),
             verbose)

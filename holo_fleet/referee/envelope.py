@@ -36,7 +36,7 @@ from holo_fleet.control.current_envelope import Persistence, check_current
 from holo_fleet.control.lowlevel import AUTHORITY
 from holo_fleet.sim.currents import CurrentComponent, CurrentField
 
-AVOIDANCE = ("SEPARATION_WARNING", "COLLISION_AVOIDANCE", "DEAD")     # a dead drone requests nothing
+AVOIDANCE = ("SEPARATION_WARNING", "COLLISION_AVOIDANCE", "DEAD")
 DT = 0.1
 
 
@@ -51,8 +51,6 @@ def evaluate_run(run: Path, cfg: FleetConfig = DEFAULT) -> Dict:
     rows = list(csv.DictReader(open(run / "referee_timeseries.csv", encoding="utf-8")))
     field = CurrentField([CurrentComponent(**c) for c in rc.get("current", [])])
     tol = cfg.plant.cmd_model_tolerance
-    # a drone with an injected actuator fault (simulator side) declares a violation because its thrusters do
-    # not respond, not because of the current: those declarations do not count for the current envelope
     faulty = {f["drone"] for f in rc.get("faults", []) or []}
     declared = [json.loads(line).get("drone") for line in open(run / "events.jsonl", encoding="utf-8")
                 if '"ENVELOPE_VIOLATION"' in line]
@@ -81,7 +79,7 @@ def evaluate_run(run: Path, cfg: FleetConfig = DEFAULT) -> Dict:
             if judged:
                 c = check_current(w, r["v_cmd"], cfg, heading=math.radians(r["nav_yaw_deg"]), authority=_authority(r["mode"]))
                 ratio = c.required_cmd / c.authority
-                if ratio > mx["ratio"]:          # the binding step: components where the requirement peaks
+                if ratio > mx["ratio"]:
                     mx["ratio"] = ratio
                     worst = {"t": round(r["t"], 1), "head": c.head, "lateral": c.lateral,
                              "requested_speed": float(np.linalg.norm(np.asarray(r["v_cmd"], float)[:2]))}

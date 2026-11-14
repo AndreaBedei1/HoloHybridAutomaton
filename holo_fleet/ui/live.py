@@ -20,7 +20,6 @@ from holo_fleet.perception.sonar_geometry import AXES
 from holo_fleet.ui.fleet_camera import FleetCamera
 from holo_fleet.ui.fleet_view import FleetView
 
-# viewport colours (RGB 0-255) of the echo classes; the escape arrow is magenta
 VP_CLS = {"STRUCTURE": [150, 150, 150], "SEABED": [140, 109, 70], "DYNAMIC": [230, 40, 40], "UNKNOWN": [250, 178, 25]}
 VP_ESCAPE = [230, 60, 230]
 
@@ -49,10 +48,10 @@ def _arrow_cursor(title: str) -> None:
         main = u.FindWindowW("Main HighGUI class", title)
         if not main:
             return
-        arrow = u.LoadCursorW(None, 32512)                             # IDC_ARROW
+        arrow = u.LoadCursorW(None, 32512)
         for h in (main, u.FindWindowExW(main, None, "HighGUI class", None)):
             if h:
-                u.SetClassLongPtrW(h, -12, arrow)                      # GCLP_HCURSOR
+                u.SetClassLongPtrW(h, -12, arrow)
     except Exception:  # noqa: BLE001 - cosmetic only
         pass
 
@@ -70,9 +69,6 @@ class DemoUI:
         self._window_created = False
         self._camera = FleetCamera(scenario.path)
         self._last_camera_t = None
-        # The window is created with the first frame (_ensure_window), not here: created before HoloOcean
-        # starts, nothing would pump its messages for the whole engine start and Windows would mark it
-        # "not responding".
 
     def __call__(self, sim, scenario, ctrls, referee, truth, t, out, save_frame, events=()) -> None:
         recs = [ctrls[nm].last_record for nm in self.names]
@@ -154,7 +150,7 @@ class DemoUI:
         G = sim.cfg.gate
         for g in scenario.judged_gates:
             sim.draw_box(g.center, [G.cr_half_len, G.cr_half_width, G.cr_half_height], [60, 130, 230], 4.0, 0.12)
-        if self._last_camera_t is None or t - self._last_camera_t >= 0.2:     # fleet camera (fleet_camera.py)
+        if self._last_camera_t is None or t - self._last_camera_t >= 0.2:
             dt = 0.0 if self._last_camera_t is None else t - self._last_camera_t
             location, rotation = self._camera.update(truth.positions, dt, [g.center for g in scenario.judged_gates],
                                                      truth.intruders)

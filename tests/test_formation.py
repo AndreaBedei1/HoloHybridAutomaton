@@ -16,9 +16,9 @@ I3 = np.eye(3)
 def test_templates(name, n):
     tm = TEMPLATES[name]
     assert tm.n == n
-    assert tm.min_spacing() >= DEFAULT.sep.d_warning_exit + 0.8          # neighbours never in the warning band
+    assert tm.min_spacing() >= DEFAULT.sep.d_warning_exit + 0.8
     lat = np.array([s.lateral for s in tm.slots])
-    assert tm.coverage_gap(lat) == 0.0                                  # nominal swaths are contiguous
+    assert tm.coverage_gap(lat) == 0.0
 
 
 def _plan(name, k):
@@ -33,7 +33,7 @@ def _tg(pattern, r):
 
 
 def test_square_neighbours_seen_and_residuals_near_zero():
-    plan = _plan("square", 0)                     # front-left: right neighbour 3.5 m, rear neighbour 3.5 m
+    plan = _plan("square", 0)
     healthy = {s: True for s in ("FRONT", "REAR", "LEFT", "RIGHT", "UP", "DOWN")}
     targets = [_tg({"RIGHT"}, 3.5 - 0.24 - 0.30), _tg({"REAR"}, 3.5 - 0.24 - 0.24), _tg({"REAR", "RIGHT"}, 4.95 - 0.5)]
     o = check_formation(plan, DEFAULT, np.zeros(3), I3, I3, targets, healthy)
@@ -42,7 +42,7 @@ def test_square_neighbours_seen_and_residuals_near_zero():
 
 
 def test_one_target_is_never_two_neighbours():
-    plan = _plan("triangle", 2)                   # the leading centre drone: neighbours REAR+LEFT and REAR+RIGHT
+    plan = _plan("triangle", 2)
     healthy = {s: True for s in ("FRONT", "REAR", "LEFT", "RIGHT", "UP", "DOWN")}
     o = check_formation(plan, DEFAULT, np.zeros(3), I3, I3, [_tg({"LEFT", "REAR"}, 4.1)], healthy)
     assert sum(c.seen for c in o.checks) == 1 and not o.neighbors_ok
@@ -63,8 +63,6 @@ def test_formation_clock_jump_and_hold():
 
 
 def test_merged_target_confirms_both_neighbours():
-    # square, front-left drone: the right and the rear neighbour echo at similar ranges in adjacent
-    # sectors and are merged into one REAR+RIGHT target; each of its sectors confirms one neighbour
     plan = _plan("square", 0)
     healthy = {s: True for s in ("FRONT", "REAR", "LEFT", "RIGHT", "UP", "DOWN")}
     merged = Target(pattern=frozenset({"REAR", "RIGHT"}), r_min=2.87, d_lower=2.87, age=0.0, closing_rate=0.0,
@@ -80,7 +78,7 @@ def test_intermittent_far_neighbour_is_remembered_and_far_ones_not_required():
     seen = {}
     full = [_tg({"LEFT"}, 2.92), _tg({"RIGHT"}, 2.92), _tg({"LEFT"}, 6.42), _tg({"RIGHT"}, 6.42)]
     assert check_formation(plan, DEFAULT, np.zeros(3), I3, I3, full, healthy, 0.0, seen).neighbors_ok
-    gap = [_tg({"LEFT"}, 2.92), _tg({"RIGHT"}, 2.92), _tg({"RIGHT"}, 6.42)]          # the 7 m LEFT echo drops once
+    gap = [_tg({"LEFT"}, 2.92), _tg({"RIGHT"}, 2.92), _tg({"RIGHT"}, 6.42)]
     assert check_formation(plan, DEFAULT, np.zeros(3), I3, I3, gap, healthy, 0.5, seen).neighbors_ok
     assert not check_formation(plan, DEFAULT, np.zeros(3), I3, I3, gap, healthy, 2.0, seen).neighbors_ok
 
@@ -91,7 +89,7 @@ def test_neighbour_inside_a_structure_window_is_not_required():
     plan = _plan("line6", 2)
     healthy = {s: True for s in ("FRONT", "REAR", "LEFT", "RIGHT", "UP", "DOWN")}
     readings = {s: SectorReading(s, age=0.0, healthy=True) for s in healthy}
-    readings["LEFT"].structure_window = (6.2, 7.0)                 # mapped bars at the far left neighbour's range
+    readings["LEFT"].structure_window = (6.2, 7.0)
     near = [_tg({"LEFT"}, 2.92), _tg({"RIGHT"}, 2.92), _tg({"RIGHT"}, 6.42)]
     assert check_formation(plan, DEFAULT, np.zeros(3), I3, I3, near, healthy, 0.0, {}, readings).neighbors_ok
     assert not check_formation(plan, DEFAULT, np.zeros(3), I3, I3, near, healthy, 0.0, {}, None).neighbors_ok

@@ -12,7 +12,6 @@ sys.path.insert(0, str(ARENA_ROOT))
 
 
 def thrusters(surge, sway, heave, yaw, limit=12.0):
-    # identical to marine_race_arena BaseRaceAdapter.command_to_bluerov2_thrusters
     c = lambda v: max(-1.0, min(1.0, v))
     surge, sway, heave, yaw = c(surge), c(sway), c(heave), c(yaw)
     vertical = [heave] * 4
@@ -64,7 +63,6 @@ def main():
     env.__exit__(None, None, None)
     Path(__file__).with_name("out").mkdir(exist_ok=True)
     (Path(__file__).with_name("out") / "motion.json").write_text(json.dumps(log))
-    # summary at end of each phase
     last = {}
     for row in log:
         last[row["phase"] + "@" + str(int(row["t"] // 1))] = row

@@ -18,10 +18,6 @@ from holo_fleet.sim import acoustic_channel as ac
 
 B2 = dataclasses.replace(DEFAULT, beacon=BeaconConfig(mode="ACOUSTIC_RB"))
 DEFAULT_ACOUSTIC_FRESH = DEFAULT.acoustic.fresh_s
-# The decision logic of the acoustic exit (A1-A3) does not depend on the width of the envelope; it is exercised with
-# an envelope without the clear-path multipath extension, under which the evidence is reachable on these short paths.
-# The deployed envelope also covers that excess, and then the evidence is not available in the gate geometry (formal
-# B2-M4g): test_a_multipath_episode_never_gives_an_exit_from_inside_the_cr checks that it stays sound.
 B2_LOGIC = dataclasses.replace(B2, acoustic=dataclasses.replace(B2.acoustic, los_excess_max_m=0.0))
 G = B2.gate
 G06 = load_arena_gates(HORSESHOE_TRACK, ["G06"])[0]
@@ -64,7 +60,6 @@ class Bench:
         return self.step(rx=[(slot, self.t + 0.1 - 0.05, r + err[0], az + math.radians(err[1]), el + math.radians(err[2]))])
 
 
-# ---------------------------------------------------------------------------------------------- channel model
 def test_channel_levels_are_ordered_and_blackout_delivers_nothing():
     lv = [ac.CLEAN, ac.LOW, ac.MEDIUM]
     for f in ("sigma_range_m", "sigma_az_deg", "dropout", "nlos_rx", "latency_s"):
@@ -81,7 +76,7 @@ def test_clear_path_errors_stay_inside_the_onboard_envelope():
     br, ba, be = box_bounds(10.0, B2)
     out, episodes, prev = 0, 0, None
     for i in range(4000):
-        x = m.measure(200.0, 1, 2, np.array([0.3, -0.1, 10.0, -4.0]))               # outside the outages
+        x = m.measure(200.0, 1, 2, np.array([0.3, -0.1, 10.0, -4.0]))
         if x is None:
             continue
         r, az, el, nlos = x
@@ -90,7 +85,7 @@ def test_clear_path_errors_stay_inside_the_onboard_envelope():
             episodes += 1
         prev = nlos
     assert out == 0
-    assert 20 < episodes < 200                         # 3 % per reception, ~5 receptions each, over ~3200 receptions
+    assert 20 < episodes < 200
 
 
 def test_blocked_path_is_lost_or_a_longer_reflection():
@@ -114,7 +109,6 @@ def test_tdma_slots_are_tick_aligned_and_disjoint():
     assert len(all_t) == len(set(all_t)) and all(len(v) == 3 for v in ticks.values())
 
 
-# ---------------------------------------------------------------------------------------------- fixes
 def test_region_covers_every_error_inside_the_envelope():
     rng = np.random.default_rng(0)
     for _ in range(300):
@@ -133,7 +127,7 @@ def test_noisy_fixes_are_accepted_and_an_outlier_jump_is_rejected_but_kept():
     for k in range(5):
         b.ping(1, tgt, err=(0.1 * (-1) ** k, 1.0, -1.0))
         b.step(0.9)
-    f = b.ping(1, tgt, err=(4.0, 25.0, 0.0))[0]                    # a reflected arrival: 4 m longer, 25 deg off
+    f = b.ping(1, tgt, err=(4.0, 25.0, 0.0))[0]
     assert not f.accepted and f.reason == "kinematic"
     assert len([x for x in b.tr.all_fixes(1) if x.accepted]) == 5 and len(b.tr.all_fixes(1)) == 6
 
@@ -142,9 +136,9 @@ def test_stale_and_implausible_receptions_are_not_used():
     b = Bench()
     r, az, el = measure(b.p, YAW, gate_world(QS, LATS[1]))
     b.step(0.5)
-    assert b.step(rx=[(1, b.t - 0.6, r, az, el)]) == []              # delivered 0.6 s after its arrival
+    assert b.step(rx=[(1, b.t - 0.6, r, az, el)]) == []
     assert b.tr.stats["stale"] == 1
-    up = gate_world(QS, LATS[1], dz=+4.3 + 2.0)                        # mirror image above the surface
+    up = gate_world(QS, LATS[1], dz=+4.3 + 2.0)
     f = b.ping(1, up)[0]
     assert not f.accepted and f.reason == "depth"
 
@@ -160,7 +154,7 @@ def test_two_consistent_rejected_fixes_restart_a_track_with_a_new_id():
     b = Bench()
     b.ping(1, gate_world(QS, LATS[1]))
     b.step(3.5)
-    far = gate_world(QS - 12.0, LATS[1])                               # the drone really is elsewhere now (re-heard)
+    far = gate_world(QS - 12.0, LATS[1])
     f1 = b.ping(1, far)[0]
     assert not f1.accepted
     b.step(0.9)
@@ -168,7 +162,6 @@ def test_two_consistent_rejected_fixes_restart_a_track_with_a_new_id():
     assert f2.accepted and f2.reason == "restart" and f2.track == 1 and b.tr.stats["track_restarts"] == 1
 
 
-# ---------------------------------------------------------------------------------------------- gate (P2)
 def exit_bench(lat=LATS[0], n=N, cfg=B2_LOGIC):
     b = Bench(lat, n, cfg)
     ae = AcousticExit(cfg, b.tr, list(range(1, n)))
@@ -203,13 +196,13 @@ def test_a_drone_heard_inside_the_cr_blocks_the_timeout_fallback():
     occupancy, so the t_occ_max fallback must not release (gate_perception); queued drones heard at their queue points,
     a drone heard well beyond the exit, or no fixes at all, do not block it."""
     b, ae = exit_bench()
-    b.ping(1, gate_world(0.0, 0.0))                                    # inside the CR
-    assert not ae.heard_inside(b.t, G06)                               # one fix is no evidence (an outlier)
+    b.ping(1, gate_world(0.0, 0.0))
+    assert not ae.heard_inside(b.t, G06)
     b.step(1.0)
     b.ping(1, gate_world(0.0, 0.0))
-    assert ae.heard_inside(b.t, G06)                                   # two on one track, the latest recent
+    assert ae.heard_inside(b.t, G06)
     b.step(B2.acoustic.fresh_s + 0.1)
-    assert not ae.heard_inside(b.t, G06)                               # the latest fix is no longer fresh
+    assert not ae.heard_inside(b.t, G06)
     b, ae = exit_bench()
     queued_others(b, k_occ=-1)
     for _ in range(2):
@@ -236,7 +229,7 @@ def test_a_near_exit_drone_is_ambiguous_until_its_full_region_clears_the_cr():
     A sufficiently far exit is clear even under the deployed envelope."""
     b, ae = exit_bench(cfg=B2)
     for _ in range(3):
-        b.ping(1, gate_world(6.5, 0.0))                                # beyond the rally point (rally_s 6 m)
+        b.ping(1, gate_world(6.5, 0.0))
         b.step(1.0)
     f = b.tr.latest(1, b.t, 5.0)
     assert ae._cr_possible(gate_points(G06, f.pts), f.slack + ae.v_bound * (b.t - f.t))
@@ -266,7 +259,7 @@ def test_every_other_drone_excluded_and_outside_releases_a_phantom_corridor_echo
     corridor(b, ae, gate_world(0.0, 0.0))
     for _ in range(6):
         b.step(1.0)
-        queued_others(b, k_occ=1)                                      # drone 1 never heard: a possible occupant
+        queued_others(b, k_occ=1)
         assert ae.evaluate(b.t, G06) is None
 
 
@@ -324,14 +317,14 @@ def test_a_single_fix_beyond_is_not_enough():
     queued_others(b, 1)
     b.ping(1, gate_world(-0.5, 0.0))
     b.step(0.8)
-    b.ping(1, gate_world(6.0, 0.0))                       # a jump: rejected anyway; then nothing more
+    b.ping(1, gate_world(6.0, 0.0))
     queued_others(b, 1)
     assert ae.evaluate(b.t, G06) is None
 
 
 def test_fixes_that_leave_the_cr_reachable_do_not_release():
     b, ae = exit_bench()
-    w = _pass(b, ae, s_end=1.6)                            # still close to the exit face: region reaches the CR
+    w = _pass(b, ae, s_end=1.6)
     assert w is None and 1 in ae.last["not_outside"]
 
 
@@ -339,7 +332,7 @@ def test_stale_exit_fixes_lose_their_evidence():
     b, ae = exit_bench()
     assert _pass(b, ae) is not None
     for _ in range(30):
-        b.step(0.5)                                      # 15 s without receptions: the regions grow back over the CR
+        b.step(0.5)
     assert ae.evaluate(b.t, G06) is None
 
 
@@ -348,7 +341,7 @@ def test_a_silent_drone_that_could_be_in_the_cr_blocks_the_release():
     corridor(b, ae, gate_world(-0.6, 0.0))
     for s in np.linspace(-0.6, 9.0, 12):
         b.ping(1, gate_world(float(s), 0.0))
-        b.ping(2, gate_world(QS, LATS[2]))               # drone 3 never heard
+        b.ping(2, gate_world(QS, LATS[2]))
         b.step(0.7)
     assert ae.evaluate(b.t, G06) is None and 3 in ae.last["possible"]
 
@@ -356,10 +349,10 @@ def test_a_silent_drone_that_could_be_in_the_cr_blocks_the_release():
 def test_a_contradictory_fix_inside_the_cr_blocks_the_release():
     b, ae = exit_bench()
     assert _pass(b, ae) is not None
-    b.ping(1, gate_world(0.0, 0.0))                        # inconsistent with the track (a jump back): rejected ...
+    b.ping(1, gate_world(0.0, 0.0))
     assert not b.tr.all_fixes(1)[-1].accepted
     queued_others(b, 1)
-    assert ae.evaluate(b.t, G06) is None                  # ... but it could place drone 1 in the CR
+    assert ae.evaluate(b.t, G06) is None
 
 
 def test_a_second_possible_occupant_near_the_cr_blocks_the_release():
@@ -367,7 +360,7 @@ def test_a_second_possible_occupant_near_the_cr_blocks_the_release():
     corridor(b, ae, gate_world(-0.6, 0.0))
     for s in np.linspace(-0.6, 9.0, 12):
         b.ping(1, gate_world(float(s), 0.0))
-        b.ping(2, gate_world(-1.2, 0.0))                 # drone 2 at the hold point, right at the CR
+        b.ping(2, gate_world(-1.2, 0.0))
         b.ping(3, gate_world(QS, LATS[3]))
         b.step(0.7)
     assert ae.evaluate(b.t, G06) is None and 2 in ae.last["not_outside"]
@@ -407,16 +400,16 @@ def test_gate_latch_ignores_acoustics_while_the_corridor_is_occupied():
     for _ in range(3):
         gp.update(b.t, b.p, YAW, [tg(r_occ)], {})
         b.step()
-    for s in np.linspace(-0.6, 0.4, 4):                    # the occupant crosses the CR, seen in the corridor
+    for s in np.linspace(-0.6, 0.4, 4):
         b.ping(1, gate_world(float(s), 0.0))
         queued_others(b, 1)
         o = gp.update(b.t, b.p, YAW, [tg(r_occ)], {})
         b.step(0.7)
         assert o.occ_state == "BUSY"
-    for s in np.linspace(1.0, 10.0, 10):                   # corridor empty (masked / gone), the occupant moves on
+    for s in np.linspace(1.0, 10.0, 10):
         b.ping(1, gate_world(float(s), 0.0))
         queued_others(b, 1)
-        echo = [tg(r_occ)] if s > 9.0 else []              # an echo in the corridor again: back to BUSY
+        echo = [tg(r_occ)] if s > 9.0 else []
         o = gp.update(b.t, b.p, YAW, echo, {})
         b.step(0.7)
         if o.occ_state != "BUSY":
@@ -437,7 +430,6 @@ def test_gate_points_matches_the_gate_frame():
     assert np.allclose(gate_points(G06, q), np.array([G06.to_gate_frame(x) for x in q]))
 
 
-# ---------------------------------------------------------------------------------------------- formation (P3)
 from holo_fleet.control.controller import DroneController                         # noqa: E402
 from holo_fleet.perception.formation_perception import NEIGHBOUR_MEMORY_S, expected_relative   # noqa: E402
 from holo_fleet.perception.frame import SensorFrame                               # noqa: E402
@@ -452,7 +444,7 @@ def _frame(t, rx=()):
     data = {"DVLSensor": np.zeros(7), "Compass": np.array([1.0, 0.0, 0.0]), "DepthSensor": np.array([-5.0]),
             "IMUSensor": np.zeros((4, 3))}
     for s in SECTORS:
-        data[sonar_sensor_name(s)] = np.zeros(RANGES.size)          # the sonar sees nobody
+        data[sonar_sensor_name(s)] = np.zeros(RANGES.size)
     stamp = {k: t for k in data}
     data["AcousticRx"] = tuple(rx)
     return SensorFrame(t, data, stamp)
@@ -491,11 +483,10 @@ def test_heard_where_expected_a_sonar_occluded_neighbour_is_not_missing():
     _c, b0, _ = _run_form(DEFAULT, _every(1.0))
     _c, b2, _ = _run_form(B2, _every(1.0))
     assert set(b0) == {1, 2, 3} and all(v == pytest.approx(NEIGHBOUR_MEMORY_S + DT) for v in b0.values())
-    assert b2 == {}                                                    # rule A-P: present by its fixes
+    assert b2 == {}
 
 
 def test_one_lost_ping_does_not_make_a_heard_neighbour_missing():
-    # pings every 1 s, the one of t = 3 s lost: the latest fix stays fresh (fresh_s) and near its slot
     lossy = lambda t: (1, 2, 3) if abs(t - round(t)) < 1e-6 and round(t) != 3 else ()
     _c, b2, _ = _run_form(B2, lossy)
     assert b2 == {}
@@ -509,22 +500,17 @@ def test_presence_never_confirms_a_missing_neighbour_back():
     late = lambda t: (1, 2, 3) if t >= 3.0 and abs(t - round(t)) < 1e-6 else ()
     c, first, _ = _run_form(B2, late)
     assert set(first) == {1, 2, 3}
-    assert all(c.perception.missing_state[k] for k in (1, 2, 3))        # only a sonar confirmation brings it back
+    assert all(c.perception.missing_state[k] for k in (1, 2, 3))
 
 
 def test_a_neighbour_heard_far_from_its_slot_is_declared_missing_on_the_second_fix():
-    off = {2: np.array([-8.0, 0.0, 0.0])}                              # 8 m behind its slot, the others in place: the
-    # envelope allows a range up to los_excess_max_m too long, so along the line of sight only beyond ~5.5 m is the
-    # whole region farther than e_lost + A_DISPLACED_MARGIN from the slot
+    off = {2: np.array([-8.0, 0.0, 0.0])}
     c, first, recs = _run_form(B2, _every(1.0), offset=off)
-    assert set(first) == {2} and first[2] <= 2.0 + 1e-9               # fixes at 1.0 and 2.0 s
+    assert set(first) == {2} and first[2] <= 2.0 + 1e-9
     assert 2 in recs[-1]["form"]["acoustic_displaced"]
 
 
 def test_a_neighbour_heard_ahead_on_its_lane_vetoes_a_new_missing_episode():
-    # 8 m AHEAD of the slot the own clock places it at, pinging at the deployed 1 s period: the own formation time is
-    # the one behind; slowing for the neighbour would widen the gap (the positive feedback of diverging formation
-    # times).  The latest fresh fix decides (as A-P), so no missing episode starts; no lag, not displaced
     off = {2: np.array([8.0, 0.0, 0.0])}
     c, first, recs = _run_form(B2, _every(B2.beacon.period_s), offset=off)
     assert 2 not in first and 2 in c.perception.acoustic_ahead
@@ -533,8 +519,6 @@ def test_a_neighbour_heard_ahead_on_its_lane_vetoes_a_new_missing_episode():
 
 
 def test_heard_ahead_never_clears_an_existing_missing_episode():
-    # silent until 3 s (the episode starts when the sonar memory runs out), then heard ahead: the episode is kept, so
-    # a failed drone carried ahead by the current is still declared vacant
     off = {2: np.array([8.0, 0.0, 0.0])}
     late = lambda t: (1, 2, 3) if t >= 3.0 and abs(t - round(t)) < 1e-6 else ()
     c, first, _recs = _run_form(B2, late, offset=off)
@@ -545,18 +529,18 @@ def test_the_ahead_veto_expires_after_t_rejoin():
     off = {2: np.array([8.0, 0.0, 0.0])}
     steps = int((B2.form.t_rejoin + 5.0) / DT)
     c, first, _recs = _run_form(B2, _every(B2.beacon.period_s), offset=off, steps=steps)
-    assert first.get(2) is not None and first[2] > B2.form.t_rejoin       # the veto held t_rejoin, then lapsed
+    assert first.get(2) is not None and first[2] > B2.form.t_rejoin
 
 
 def test_a_neighbour_certainly_behind_slows_the_own_formation_time():
     off = {2: np.array([-8.0, 0.0, 0.0])}
     c, _first, _recs = _run_form(B2, _every(1.0), offset=off, steps=40)
     lag = c.perception.acoustic_lag.get(2)
-    assert lag is not None and 0.0 < lag < 8.0                         # the lag beyond the white-noise band
+    assert lag is not None and 0.0 < lag < 8.0
     assert c.flows.ftime.sync == pytest.approx(min(DEFAULT.form.k_progress * lag,
                                              DEFAULT.form.v_nominal - DEFAULT.form.v_wait), abs=1e-6)
     c0, _f, _r = _run_form(DEFAULT, _every(1.0), offset=off, steps=40)
-    assert c0.perception.acoustic_lag == {} and c0.flows.ftime.sync == 0.0   # silent channel: no re-synchronisation
+    assert c0.perception.acoustic_lag == {} and c0.flows.ftime.sync == 0.0
 
 
 def test_resynchronisation_stays_between_the_reduced_and_the_planned_speed():
@@ -566,21 +550,21 @@ def test_resynchronisation_stays_between_the_reduced_and_the_planned_speed():
     ft = FormationTime(FormationClock(0.0, fr.v_nominal, 0.0), DEFAULT)
     for i in range(600):
         ft.update(0.1 * i, 0.1, incomplete=False, behind=5.0)
-    assert ft.rate == pytest.approx(fr.v_wait / fr.v_nominal, abs=1e-6)    # saturated at the reduced progress
+    assert ft.rate == pytest.approx(fr.v_wait / fr.v_nominal, abs=1e-6)
     for i in range(600, 1200):
         ft.update(0.1 * i, 0.1, incomplete=False, behind=None)
-    assert ft.rate == pytest.approx(1.0) and ft.sync == 0.0                # never faster than planned
+    assert ft.rate == pytest.approx(1.0) and ft.sync == 0.0
     ft.update(120.0, 0.1, incomplete=False, mutex=True, behind=5.0)
-    assert ft.sync == 0.0                                                  # the gate flow keeps its own timing
+    assert ft.sync == 0.0
 
 
 def test_the_along_track_offset_of_a_neighbour_feeds_the_progress_consensus():
-    off = {k: np.array([0.6, 0.0, 0.0]) for k in (1, 2, 3)}            # everyone 0.6 m ahead of me
+    off = {k: np.array([0.6, 0.0, 0.0]) for k in (1, 2, 3)}
     c, _first, recs = _run_form(B2, _every(1.0), offset=off, steps=30)
     assert recs[-1]["form"]["acoustic_corr"] == [1, 2, 3]
-    assert c.flows.sigma > 0.0                                         # my reference moves ahead
+    assert c.flows.sigma > 0.0
     c0, _f, _r = _run_form(DEFAULT, _every(1.0), offset=off, steps=30)
-    assert c0.flows.sigma == 0.0                                       # B0: nothing seen, nothing corrected
+    assert c0.flows.sigma == 0.0
 
 
 def _square_rear():
@@ -599,21 +583,21 @@ def _square_rear():
 
 def test_an_identified_neighbour_far_from_its_slot_is_not_seen_at_it():
     plan, rear, healthy, echo, check_formation = _square_rear()
-    far = np.array([-8.5, 0.0, 0.0])                                   # 5 m behind its slot, heard there
+    far = np.array([-8.5, 0.0, 0.0])
     b0 = check_formation(plan, DEFAULT, np.zeros(3), np.eye(3), np.eye(3), [echo(8.5)], healthy)
     b2 = check_formation(plan, B2, np.zeros(3), np.eye(3), np.eye(3), [echo(8.5)], healthy, acoustic={rear: far})
     c0, c2 = (next(c for c in o.checks if c.slot == rear) for o in (b0, b2))
-    assert not c0.seen and not c2.seen                                 # outside the range gate of its slot: not there
-    assert b2.form_err == pytest.approx(b0.form_err)                   # no formation residual from a displaced drone
+    assert not c0.seen and not c2.seen
+    assert b2.form_err == pytest.approx(b0.form_err)
 
 
 def test_the_fix_picks_the_identified_echo_inside_the_slot_gate():
     plan, rear, healthy, echo, check_formation = _square_rear()
-    near = np.array([-4.3, 0.0, 0.0])                                  # 0.8 m behind its slot, heard there
+    near = np.array([-4.3, 0.0, 0.0])
     o = check_formation(plan, B2, np.zeros(3), np.eye(3), np.eye(3), [echo(3.5), echo(4.3)], healthy,
                         acoustic={rear: near})
     c = next(c for c in o.checks if c.slot == rear)
-    assert c.seen and c.measured_d == pytest.approx(4.3, abs=0.1)      # the identified drone, not the nearer echo
+    assert c.seen and c.measured_d == pytest.approx(4.3, abs=0.1)
 
 
 def test_blocked_geometry_uses_the_map_bars_and_hulls():
@@ -622,11 +606,11 @@ def test_blocked_geometry_uses_the_map_bars_and_hulls():
 
     tr = BeaconTransport(["a", "b", "c"], B2.beacon, seed=0)
     bars = list(G06.bars)
-    a, b = gate_world(-3.0, 1.1), gate_world(3.0, 1.1)            # a ray through the left side bar
+    a, b = gate_world(-3.0, 1.1), gate_world(3.0, 1.1)
     tr.scene = lambda: (np.array([a, b, gate_world(-8.0, 6.0)]), np.zeros(3), bars)
     geom, shadow = tr._blocked_geometry(0, 1)
     assert shadow and geom[2] == pytest.approx(float(np.linalg.norm(a - b)))
-    tr.scene = lambda: (np.array([a, b, (a + b) / 2.0]), np.zeros(3), [])   # a hull halfway
+    tr.scene = lambda: (np.array([a, b, (a + b) / 2.0]), np.zeros(3), [])
     assert tr._blocked_geometry(0, 1)[1]
     tr.scene = lambda: (np.array([a, b, gate_world(-8.0, 6.0)]), np.zeros(3), [])
     assert not tr._blocked_geometry(0, 1)[1]

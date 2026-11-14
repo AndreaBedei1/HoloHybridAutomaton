@@ -40,11 +40,10 @@ def test_the_bound_field_is_rounded_up_and_never_saturates_to_a_smaller_value():
 def test_corrupted_or_unrepresentable_packets_are_not_used():
     pkt = bytearray(pl.encode(1, [1., 2., -3.], 0.5))
     pkt[3] ^= 0x10
-    assert pl.decode(bytes(pkt)) is None                       # CRC
-    # an unusable position is still a packet: the gate phase in it remains the sender's statement about itself
-    for rep in (pl.decode(pl.encode(1, [1., 2., -3.], float("inf"))),      # integrity monitor fired
-                pl.decode(pl.encode(1, [150., 2., -3.], 0.5)),            # outside the representable frame
-                pl.decode(pl.encode(1, [1., 2., -3.], 99.0))):            # bound beyond the field
+    assert pl.decode(bytes(pkt)) is None
+    for rep in (pl.decode(pl.encode(1, [1., 2., -3.], float("inf"))),
+                pl.decode(pl.encode(1, [150., 2., -3.], 0.5)),
+                pl.decode(pl.encode(1, [1., 2., -3.], 99.0))):
         assert rep is not None and not rep.valid_position
 
 
@@ -62,7 +61,7 @@ def test_payload_fits_the_tdma_slot_for_six_drones_and_is_refused_when_it_cannot
 
     cfg = BeaconConfig(mode="ACOUSTIC_RB")
     BeaconTransport([f"d{k}" for k in range(6)], cfg, 0)
-    with pytest.raises(ValueError):                            # 8 drones: 100 ms slots < 137 ms needed
+    with pytest.raises(ValueError):
         BeaconTransport([f"d{k}" for k in range(8)], cfg, 0)
 
 
@@ -71,7 +70,7 @@ def test_nav_bound_grows_with_distance_noise_and_outage_and_never_shrinks():
     s = NavState(p=np.zeros(3), yaw=0.0)
     s.v_world = np.array([0.3, 0.0, 0.0])
     prev = nb.value
-    for i in range(1, 201):                                    # 20 s, DVL fresh
+    for i in range(1, 201):
         s.t_dvl, s.t_depth = i * 0.1, i * 0.1
         nb.update(i * 0.1, 0.1, s)
         assert nb.value >= prev
@@ -79,14 +78,14 @@ def test_nav_bound_grows_with_distance_noise_and_outage_and_never_shrinks():
     lin = B2.acoustic.nav_b0_m + nb.k_lin * 6.0 + nb.const
     assert nb.horizontal == pytest.approx(lin + nb.k_rw * math.sqrt(200 * 0.01))
     before = nb.horizontal
-    for i in range(201, 211):                                  # 1 s DVL outage, model-aided: no new sample
+    for i in range(201, 211):
         nb.update(i * 0.1, 0.1, s, model=True)
     q = float(np.interp(nb.out_len, nb.q_len, nb.q_max))
-    assert nb.outage == pytest.approx(q) and 0.3 < q < 0.5    # the calibrated max for that length
+    assert nb.outage == pytest.approx(q) and 0.3 < q < 0.5
     nb2 = NavBound(B2)
     s2 = NavState(p=np.zeros(3), yaw=0.0)
     s2.v_world, s2.t_dvl, s2.t_depth = np.array([0.3, 0.0, 0.0]), 20.0, 20.0
-    for i in range(201, 211):                                  # the same outage without the model: worst case
+    for i in range(201, 211):
         nb2.update(i * 0.1, 0.1, s2, model=False)
     assert nb2.outage > nb.outage
     nb.corrected(np.array([0.3, 0.4, 0.0]))
@@ -118,7 +117,7 @@ def test_held_dvl_samples_count_as_an_outage_through_the_frame_stamps():
     dvl = np.array([0.3, 0.0, 0.0])
     for i in range(1, 31):
         t = i * 0.1
-        stamp_dvl = t if t <= 1.0 else 1.0                     # DVL silent after 1 s, value held in the frame
+        stamp_dvl = t if t <= 1.0 else 1.0
         fr = SensorFrame(t=t, data={"DVLSensor": dvl, "Compass": np.array([1.0, 0.0, 0.0]), "DepthSensor": [-5.0]},
                          stamp={"DVLSensor": stamp_dvl, "Compass": t, "DepthSensor": t})
         per.nav.update(t, 0.1, fr.data.get("Compass"), fr.data.get("DVLSensor"), fr.data.get("DepthSensor"), None,
@@ -144,7 +143,7 @@ def _hear(tracker, p, r, rep_p, bound, times=(1., 2.)):
         t_arr = t - .25
         frame = pl.frame_index(t_arr - r / B2.beacon.sound_speed, B2.beacon.period_s)
         tracker.update(t, [(1, t_arr, r, 0., 0., pl.encode(frame, rep_p, bound))], p, 0., 0.5)
-        tracker.status.clear()                                   # these tests exercise the geometry of the fixes alone
+        tracker.status.clear()
 
 
 def test_payload_separates_the_indistinguishable_multipath_histories():
@@ -152,12 +151,12 @@ def test_payload_separates_the_indistinguishable_multipath_histories():
     measurement alone must veto both; the independent onboard estimate of the sender separates them."""
     p = np.array([-4.6, 0., -5.])
     tracker, gp = _observer(p)
-    _hear(tracker, p, 8.4, [3.8, 0., -5.], 1.0)                # outside, reports where it is
+    _hear(tracker, p, 8.4, [3.8, 0., -5.], 1.0)
     f = tracker.latest(1, 2., 5.)
     assert f.rep_ok
     assert not gp.acoustic_exit.heard_inside(2., GATE)
     tracker2, gp2 = _observer(p)
-    _hear(tracker2, p, 8.4, [0.8, 0., -5.], 1.0)               # inside, reports where it is
+    _hear(tracker2, p, 8.4, [0.8, 0., -5.], 1.0)
     assert tracker2.latest(1, 2., 5.).rep_ok
     assert gp2.acoustic_exit.heard_inside(2., GATE)
 
@@ -165,7 +164,7 @@ def test_payload_separates_the_indistinguishable_multipath_histories():
 def test_payload_inconsistent_with_the_measurement_is_rejected_and_the_veto_kept():
     p = np.array([-4.6, 0., -5.])
     tracker, gp = _observer(p)
-    _hear(tracker, p, 5.4, [20.0, 0., -5.], 0.5)               # claims 20 m away, measured 5.4 m: inconsistent
+    _hear(tracker, p, 5.4, [20.0, 0., -5.], 0.5)
     f = tracker.latest(1, 2., 5.)
     assert not f.rep_ok and f.rep_reason == "inconsistent"
     assert gp.acoustic_exit.heard_inside(2., GATE)
@@ -174,7 +173,7 @@ def test_payload_inconsistent_with_the_measurement_is_rejected_and_the_veto_kept
 def test_a_large_bound_gives_no_clearance():
     p = np.array([-4.6, 0., -5.])
     tracker, gp = _observer(p)
-    _hear(tracker, p, 8.4, [3.8, 0., -5.], 4.0)                # the ball reaches the CR
+    _hear(tracker, p, 8.4, [3.8, 0., -5.], 4.0)
     assert gp.acoustic_exit.heard_inside(2., GATE)
 
 
@@ -182,7 +181,7 @@ def test_unknown_occupant_never_times_out_to_free():
     """A drone last heard possibly inside, then silent: the t_occ_max fallback does not release the CR."""
     p = np.array([-4.6, 0., -5.])
     tracker, gp = _observer(p)
-    _hear(tracker, p, 4.6, [0.0, 0., -5.], 0.5)                # inside the CR
+    _hear(tracker, p, 4.6, [0.0, 0., -5.], 0.5)
     gp.occ_state, gp.last_corridor_t, gp.busy_since = "BUSY", 2., 2.
     for t in (5., 15., 2. + B2.gate.t_occ_max + 5.):
         assert gp.update(t, p, 0., [], {}).occ_state == "BUSY"
@@ -200,20 +199,20 @@ def test_a_packet_of_another_frame_is_not_used():
 def test_the_veto_needs_two_cleared_fixes_to_drop():
     p = np.array([-4.6, 0., -5.])
     tracker, gp = _observer(p)
-    _hear(tracker, p, 8.4, [0.8, 0., -5.], 0.5)                # reports inside (measurement ambiguous): on
+    _hear(tracker, p, 8.4, [0.8, 0., -5.], 0.5)
     assert gp.acoustic_exit.heard_inside(2., GATE)
-    _hear(tracker, p, 8.4, [3.8, 0., -5.], 0.5, times=(3.,))   # one cleared fix: still on
+    _hear(tracker, p, 8.4, [3.8, 0., -5.], 0.5, times=(3.,))
     assert gp.acoustic_exit.heard_inside(3., GATE)
-    _hear(tracker, p, 8.4, [3.8, 0., -5.], 0.5, times=(4.,))   # two cleared fixes: off
+    _hear(tracker, p, 8.4, [3.8, 0., -5.], 0.5, times=(4.,))
     assert not gp.acoustic_exit.heard_inside(4., GATE)
 
 
 def test_stage_two_entry_is_held_while_an_occupant_is_merely_unheard():
     p = np.array([-4.6, 0., -5.])
     tracker, gp = _observer(p)
-    _hear(tracker, p, 4.6, [0.0, 0., -5.], 0.5)                # inside
+    _hear(tracker, p, 4.6, [0.0, 0., -5.], 0.5)
     assert not gp.update(2., p, 0., [], {}).entry_ok
-    o = gp.update(2. + B2.acoustic.fresh_s + 1.0, p, 0., [], {})   # silent (an outage longer than fresh_s)
+    o = gp.update(2. + B2.acoustic.fresh_s + 1.0, p, 0., [], {})
     assert not gp.acoustic_exit.heard_inside(2. + B2.acoustic.fresh_s + 1.0, GATE) and not o.entry_ok
 
 
@@ -222,17 +221,17 @@ def test_a_corridor_echo_no_fleet_drone_can_have_produced_does_not_set_the_latch
 
     p = np.array([-4.6, 0., -5.])
     tracker, gp = _observer(p)
-    gp.acoustic_exit.others = [1]                              # one other drone in this plan
+    gp.acoustic_exit.others = [1]
     echo = Target(frozenset({"FRONT"}), 4.0, 4.0, 0., 0., "DYNAMIC")
-    _hear(tracker, p, 20.0, [-4.6, 20.0, -5.], 0.5)            # heard 20 m to the side: cannot be the echo
+    _hear(tracker, p, 20.0, [-4.6, 20.0, -5.], 0.5)
     o = gp.update(2.1, p, 0., [echo], {})
     assert gp.phantom and o.occ_state == "FREE"
     tracker2, gp2 = _observer(p)
     gp2.acoustic_exit.others = [1]
-    _hear(tracker2, p, 4.6, [0.0, 0., -5.], 0.5)               # heard in the CR: the echo may be it
+    _hear(tracker2, p, 4.6, [0.0, 0., -5.], 0.5)
     o2 = gp2.update(2.1, p, 0., [echo], {})
     assert not gp2.phantom and o2.occ_state == "BUSY"
-    tracker3, gp3 = _observer(p)                               # nobody heard: nothing excluded, the sonar rules
+    tracker3, gp3 = _observer(p)
     gp3.acoustic_exit.others = [1]
     assert gp3.update(2.1, p, 0., [echo], {}).occ_state == "BUSY"
 
@@ -242,6 +241,6 @@ def test_silence_never_clears_a_drone_last_known_possibly_inside():
     occupant for ever (silence alone is no proof that the gate is physically clear)."""
     p = np.array([-4.6, 0., -5.])
     tracker, gp = _observer(p)
-    _hear(tracker, p, 4.6, [0.0, 0., -5.], 0.5)                # last heard in the CR, then silent
+    _hear(tracker, p, 4.6, [0.0, 0., -5.], 0.5)
     for t in (2. + 60., 2. + 3600.):
         assert gp.acoustic_exit.last_known_inside(t, GATE)

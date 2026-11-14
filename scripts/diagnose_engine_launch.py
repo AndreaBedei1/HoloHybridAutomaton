@@ -56,7 +56,7 @@ def child(out, argv):
     out.mkdir(parents=True, exist_ok=True)
     fault = open(out / "faulthandler.log", "a", encoding="utf-8")
     faulthandler.enable(file=fault, all_threads=True)
-    faulthandler.dump_traceback_later(30, repeat=True, file=fault)  # diagnostic wall time, never a mission timeout
+    faulthandler.dump_traceback_later(30, repeat=True, file=fault)
     me = psutil.Process()
     write(out / "worker.json", {"self": snapshot(me), "parents": [snapshot(p) for p in me.parents()]})
     atexit.register(lambda: write(out / "atexit.json", {"time": time.time()}))
@@ -73,7 +73,6 @@ def child(out, argv):
 
     original_popen = subprocess.Popen
     engines = []
-    # UE 5.3.2 Control.cpp falls back to a high port if 1985 is occupied. Do not replace an existing owner.
     reservation = reserve_trace_port()
     write(out / "trace_reservation.json", {"acquired": reservation is not None})
 
@@ -110,13 +109,13 @@ def child(out, argv):
                             if 1985 in ports:
                                 pr = owned_engine(record)
                                 if pr is not None:
-                                    pr.kill()  # our exact parent/UUID/creation time only
+                                    pr.kill()
                                 info["isolation_failure"] = True
                             elif ports and reservation is not None:
                                 reservation.close()
                                 reservation = None
                     except psutil.Error as exc:
-                        info["inspection_error"] = str(exc)  # a race must not stop monitoring later attempts
+                        info["inspection_error"] = str(exc)
                     rows.append(info)
                 log.write(json.dumps({"time": time.time(), "engines": rows}) + "\n")
 
@@ -162,7 +161,6 @@ def main():
                 kwargs["startupinfo"] = si
         return original_popen(command, **kwargs)
 
-    # The production orchestrator supplies the shared, identity-checked cleanup and priority boundaries.
     mod.subprocess = SimpleNamespace(**{**vars(subprocess), "Popen": launch})
     sys.argv = [str(ROOT / "scripts/run_sensor_robustness_campaign.py"), *argv]
     return mod.main()

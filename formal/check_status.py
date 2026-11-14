@@ -145,7 +145,7 @@ def m3_status_model(cfg, geo, view, t_status, v_hi, e0, steps=320, hold=False, b
         C.append(since[k + 1] == z3.If(corr[k + 1], 0, since[k] + 1))
         C.append(busy[k + 1] == z3.If(corr[k + 1], True, z3.If(z3.And(busy[k], z3.Or(beyond[k + 1], since[k + 1] > t_occ)), False, busy[k])))
         C.append(quiet[k + 1] == z3.If(z3.Or(corr[k + 1], busy[k + 1]), 0, quiet[k] + 1))
-        wait = z3.And(seen[k + 1], sA[k + 1] <= b_s, z3.Not(no_rel(sA[k + 1])))    # the code's predicate
+        wait = z3.And(seen[k + 1], sA[k + 1] <= b_s, z3.Not(no_rel(sA[k + 1])))
         C.append(prio[k + 1] == z3.If(wait, 0, prio[k] + 1))
         C.append(commit[k + 1] == z3.Or(commit[k], z3.And(prio[k + 1] >= tc, z3.Not(busy[k + 1]), quiet[k + 1] >= tc)))
     viol = []
@@ -166,8 +166,8 @@ def evidence_order(cfg: FleetConfig, g, n_cases: int = 300, mutate: bool = False
         ae.gate_idx, ae.g = 0, (None if mutate else g)
         q = g.from_gate_frame([rng.uniform(-0.5, 0.5), rng.uniform(-0.5, 0.5), 0.0])
         q2 = q + rng.uniform(-0.1, 0.1, 3)
-        _rx(tr, p, yaw, 1.0, 1, q, cfg, pl.GP_NONE)               # status: not engaged, and a fix near the CR
-        tr.status[1] = dataclasses.replace(tr.status[1], t_tx=0.2)    # the status of a ping older than the fix below
+        _rx(tr, p, yaw, 1.0, 1, q, cfg, pl.GP_NONE)
+        tr.status[1] = dataclasses.replace(tr.status[1], t_tx=0.2)
         d = q2 - p
         c, s = math.cos(yaw), math.sin(yaw)
         b = np.array([c * d[0] + s * d[1], -s * d[0] + c * d[1], d[2]])
@@ -186,16 +186,15 @@ def silence_never_clears(cfg: FleetConfig, g, n_cases: int = 300, seed: int = 17
         tr, gp, p, yaw = _observer(g, 3, cfg)
         ae = gp.acoustic_exit
         phase = int(rng.choice([pl.GP_COMMITTED, pl.GP_ADMITTED]))
-        case = int(rng.integers(4))         # 0 live and silent, 1 dead far from the gate, 2 a receiver that hears nobody, 3 dead in the zone
+        case = int(rng.integers(4))
         q = g.from_gate_frame([rng.uniform(-25.0, -14.0) if case == 1 else rng.uniform(-3.0, 3.0), 0.0, 0.0])
         _rx(tr, p, yaw, 1.0, 1, q, cfg, phase)
         ae.g = g
         t = 1.0 + float(rng.uniform(0.0, lim - 0.01) if case == 0 else rng.uniform(lim + 0.01, 86400.0))
         far = g.from_gate_frame([-20.0, 5.0, 0.0])
-        # real receptions of the other drone (they run the tracker's pruning of old fixes, round 9 B1): late, or only early (deaf)
         _rx(tr, p, yaw, (t - 0.5) if case != 2 else 1.5, 2, far, cfg, pl.GP_NONE)
         tr.update(t, [], p, yaw, 0.5)
-        if mutate_b1:                                   # the round 8 code: the zone read from the pruned fix list
+        if mutate_b1:
             def old_dead(j, tt, ae=ae, tr=tr):
                 if not tr.silent(j, tt, cfg.acoustic.t_silent_gate_s):
                     return False
@@ -270,7 +269,7 @@ def passage_soundness(cfg: FleetConfig, g, n_cases: int = 2000, seed: int = 19) 
             if blocked and s + ds >= s_block:
                 ds = 0.0
             s += ds
-            v_meas = (ds / dt) * scale if rng.random() > 0.1 else None   # 10 % of the steps have no DVL sample
+            v_meas = (ds / dt) * scale if rng.random() > 0.1 else None
             p_nav = g.from_gate_frame([s + e_fit + (s - s0_true) * (scale - 1.0), 0.0, 0.0])
             near = abs(s) <= 0.3
             w = g.inner_width
@@ -302,7 +301,7 @@ def sender_rule(cfg: FleetConfig, n_cases: int = 20000, seed: int = 23, margin_c
         e = q + u / max(float(np.linalg.norm(u)), 1e-9) * cfg.gate.nav_err_m
         outside += int(not inside_keepout(float(e[0]), float(e[1]), float(e[2]), G))
     wrong = sum(int(report_phase(v, False, c, True) not in (pl.GP_COMMITTED, pl.GP_ADMITTED)) for v in (False, True) for c in (False, True))
-    g = _gate()                                                 # the report as the controller makes it: back in the box of a gate it has passed
+    g = _gate()
     v = PassageVerifier(cfg)
     v.idx, v.gate, v.admitted, v.verified = 0, g, True, True
     wrong += int(gate_report(v, GateObs(gate_id=None), g.from_gate_frame([0.0, 0.0, 0.0]), False, 1, cfg.gate) != (0, pl.GP_COMMITTED))
@@ -381,9 +380,9 @@ def exclusion_zone(cfg: FleetConfig, coast: bool = True, lag: bool = True) -> di
     lag_z = L if lag else z3.RealVal(0)
     t_star = z3.If(h0 + S.coast_v_m + vmin * lag_z > 0, (h0 + S.coast_v_m + vmin * lag_z) / (vmin - Wd), z3.RealVal(0))
     reach = (S.coast_h_m if coast else 0.0) + z3.RealVal(repr(S.drift_factor)) * W * t_star
-    sv.add(d0 > reach)                                                       # outside the zone
+    sv.add(d0 > reach)
     depth = h0 + cv + wd * t - v * z3.If(t > L, t - L, z3.RealVal(0))
-    sv.add(d0 - c - w * t <= 0, depth > 0)                                   # inside O at t: reached horizontally, still below the top
+    sv.add(d0 - c - w * t <= 0, depth > 0)
     r = sv.check()
     return {"result": str(r), "model": str(sv.model()) if r == z3.sat else None}
 
@@ -403,7 +402,7 @@ def run(cfg: FleetConfig = B2, verbose: bool = True) -> Report:
         geo = cm.geometry(cfg, n)
         for view in geo["views"]:
             if view["queue_l"] < -1e-6 and any(abs(w["queue_l"] + view["queue_l"]) < 1e-6 for w in geo["views"]):
-                continue                                          # mirror image of a view already checked
+                continue
             if view["corridor_from_s"] is None or view["mask_from_s"] is None or view["visible_again_s"] is None or view["beyond_s"] is None:
                 continue
             ts = min(cfg.acoustic.status_fresh_s, (abs(geo["queue_s"]) - cfg.gate.cr_half_len - R_OUT - cfg.gate.queue_tol - cfg.gate.nav_err_m) / v_hi - cfg.acoustic.latency_max_s)

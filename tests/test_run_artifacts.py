@@ -42,7 +42,7 @@ def test_selection_logic_on_a_synthetic_interrupted_run(tmp_path):
     (run / "run_status.json").write_text(json.dumps({"status": "INCOMPLETE", "reason": "interrupted by the user"}))
     assert _status(run) == "INCOMPLETE"
     (run / "run_status.json").unlink()
-    assert _status(run) == "INCOMPLETE"                      # no status file: never treated as complete
+    assert _status(run) == "INCOMPLETE"
 
 
 @pytest.mark.parametrize("run", complete_runs(), ids=lambda p: p.name if p else "none")
@@ -67,13 +67,12 @@ def test_referee_verdicts(run):
     assert r["inter_agent_messages"] == 0 and r["comms_enabled"] is False
     assert r["ground_truth_used_by_controllers"] is False
     assert all(v == 0 for v in r["determinism_violations"].values())
-    # no false alarm of the observation consistency check on any final run (the field must exist)
     assert r["observation_consistency_violations"] and all(v == 0 for v in r["observation_consistency_violations"].values())
     assert not any('"OBSERVATION_INCONSISTENT"' in line for line in open(run / "events.jsonl", encoding="utf-8"))
     p1 = m["P1_separation"]
     assert p1["holds"] and p1["physical_contacts"] == 0 and not p1["collision_sensor_edges"]
     cfg = json.loads((run / "run_config.json").read_text(encoding="utf-8"))
-    dead = {f["drone"] for f in cfg.get("faults", []) if f.get("t_off") is None}       # permanent injected faults
+    dead = {f["drone"] for f in cfg.get("faults", []) if f.get("t_off") is None}
     if m["P2_mutual_exclusion"]["gates"]:
         p2 = m["P2_mutual_exclusion"]
         assert p2["holds"] and max(p2["max_occupancy"].values()) == 1
@@ -81,9 +80,6 @@ def test_referee_verdicts(run):
                                                                    if f"drone_{k}" not in dead)
     p3 = m["P3_formation_recovery"]
     if p3["enabled"] and not dead and not p3["all_recovered_within_run"]:
-        # P3 is a liveness property without time bound: a finite run cannot falsify it.  An episode still open at
-        # the end is accepted only while the formation is visibly converging (error at the end below half its peak
-        # in the episode, and lower than 5 s before); it is reported as "not recovered within the run"
         rows = list(csv.DictReader(open(run / "referee_timeseries.csv", encoding="utf-8")))
         t_lost = p3["episodes"][-1]["t_lost"]
         err = [(float(r["t"]), float(r["form_err"])) for r in rows if float(r["t"]) >= t_lost]
@@ -91,7 +87,7 @@ def test_referee_verdicts(run):
         before = [e for t, e in err if t <= err[-1][0] - 5.0][-1]
         assert end < 0.5 * peak and end < before, (p3["episodes"], peak, end, before)
     deg = m["P3_degraded"]
-    if deg["exercised"]:                          # a drone never came back: the remaining ones re-formed
+    if deg["exercised"]:
         assert deg["holds"] and sorted(deg["absent_at_end"]) == sorted(dead)
 
 
@@ -111,7 +107,7 @@ def test_vertical_escape_has_an_up_or_down_component():
     summ = json.loads((run / "onboard_summary.json").read_text(encoding="utf-8"))
     dirs = [d for v in summ.values() for d in v["escape_directions"]]
     assert any("UP" in d or "DOWN" in d for d in dirs)
-    assert max(v["depth_span_m"] for v in summ.values()) > 0.8               # a real vertical manoeuvre
+    assert max(v["depth_span_m"] for v in summ.values()) > 0.8
     m = json.loads((run / "referee_metrics.json").read_text(encoding="utf-8"))
     assert not m["P1_separation"]["intruder"]["below_d_safe"]
 
@@ -124,9 +120,9 @@ def test_formation_scenarios(name, n):
     assert cfg["n_drones"] == n and m["envelope"]["inside_envelope"]
     assert m["P3_formation_recovery"]["final_form_err"] < DEFAULT_E_OK
     summ = json.loads((run / "onboard_summary.json").read_text(encoding="utf-8"))
-    for v in summ.values():                       # the drones themselves declare the formation recovered
+    for v in summ.values():
         assert v["time_in_mode_s"].get("FORMATION_FOLLOW", 0.0) > 0.5 * cfg["duration_s"]
-        assert "DEGRADED_FORMATION" not in v["time_in_mode_s"]       # nobody is ever declared missing for good
+        assert "DEGRADED_FORMATION" not in v["time_in_mode_s"]
 
 
 DEFAULT_E_OK = 0.5
@@ -167,7 +163,7 @@ def test_lost_drone_rejoins_and_nobody_declares_it_vacant():
     assert not [e for e in ev if e["type"] == "SLOT_DECLARED_VACANT"]
     waits = {e["drone"] for e in ev if e.get("decision") == "NEIGHBOUR_MISSING"}
     back = {e["drone"] for e in ev if e.get("decision") == "NEIGHBOUR_REJOINED"}
-    assert waits and waits <= back                                   # every drone that waited saw it come back
+    assert waits and waits <= back
     cfg = json.loads((run / "run_config.json").read_text(encoding="utf-8"))
     faulty = int(cfg["faults"][0]["drone"].split("_")[1])
     modes = [r["mode"] for r in _states(run, faulty)]
@@ -198,7 +194,7 @@ def test_lost_drone_timeout_gives_a_stable_degraded_formation():
 def test_close_encounter_reaches_the_warning_band_without_breaking_p1():
     run = _run("p1_close_encounter")
     e = json.loads((run / "experiment_summary.json").read_text(encoding="utf-8"))["p1"]
-    for v in e["drones"].values():               # both drones' conservative distance went below d_warning
+    for v in e["drones"].values():
         assert v["SW_entries"] >= 1 and v["min_onboard_conservative_distance_m"] < e["thresholds_m"]["d_warning"]
     assert e["min_true_pair_distance_m"] >= e["thresholds_m"]["d_safe"] and e["collisions"] == 0 and e["messages"] == 0
 
@@ -224,12 +220,10 @@ def test_envelope_verdict_and_vehicles(run):
     m = json.loads((run / "referee_metrics.json").read_text(encoding="utf-8"))
     e = m["envelope"]
     assert e["verdict"] in ("INSIDE", "LIMIT", "OUTSIDE") and e["inside_envelope"] == (e["verdict"] != "OUTSIDE")
-    # a drone with an injected thruster fault declares a violation it cannot attribute to the current
     if m["run"]["self_declared_envelope_violations"] - e.get("self_declared_by_faulty_drones", 0):
         assert e["verdict"] == "OUTSIDE"
 
 
-# ----------------------------------------------------------------------------------------------
 def _reduced_progress(run, k):
     """(v_ref of the drone's formation reference while it waits, v_ref after its last formation-keeping change)."""
     st = _states(run, k)
@@ -251,11 +245,11 @@ def test_waiting_drones_slow_the_formation_down_and_resume_the_survey_speed():
             if k == faulty:
                 continue
             wait, st = _reduced_progress(run, k)
-            assert wait and min(wait) == pytest.approx(fr.v_wait, abs=0.01), (name, k)   # slowed, not stopped
+            assert wait and min(wait) == pytest.approx(fr.v_wait, abs=0.01), (name, k)
             assert st[-1]["form"]["v_ref"] == pytest.approx(fr.v_nominal, abs=0.01), (name, k)
         fleet = json.loads((run / "experiment_summary.json").read_text(encoding="utf-8"))["lost"]["fleet"]
-        assert 0.5 * fr.v_wait < fleet["true_speed_in_wait_m_s"] < fleet["true_speed_before_m_s"] - 0.03   # true speed
-        assert fleet["present_formation_error_max_m"] < fr.e_ok                    # the formation was preserved
+        assert 0.5 * fr.v_wait < fleet["true_speed_in_wait_m_s"] < fleet["true_speed_before_m_s"] - 0.03
+        assert fleet["present_formation_error_max_m"] < fr.e_ok
 
 
 def test_every_mode_change_is_logged_with_its_cause():
@@ -264,7 +258,7 @@ def test_every_mode_change_is_logged_with_its_cause():
         cfg = json.loads((run / "run_config.json").read_text(encoding="utf-8"))
         ev = [e for e in _decisions(run) if e.get("type") == "transition"]
         for k in range(cfg["n_drones"]):
-            modes = ["FORMATION_FOLLOW"] + [r["mode"] for r in _states(run, k)]       # the automaton starts in FOLLOW
+            modes = ["FORMATION_FOLLOW"] + [r["mode"] for r in _states(run, k)]
             changes = [(a, b) for a, b in zip(modes, modes[1:]) if a != b]
             mine = [e for e in ev if e["drone"] == f"drone_{k}"]
             assert [(e["from"], e["to"]) for e in mine] == changes, (name, k)

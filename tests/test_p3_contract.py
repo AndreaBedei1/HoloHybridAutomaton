@@ -16,8 +16,8 @@ def test_tolerance_hold_and_closing_speed_are_the_declared_ones():
 def test_recovery_needs_the_whole_hold_inside_the_band_and_starting_before_the_deadline():
     t = np.arange(0.0, 40.0, 0.1)
     ok = (t >= 10.0) & (t < 15.0) | (t >= 20.0)
-    assert p3._held(t, ok, 0, 30.0, 8.9) == 20.0                  # the 5 s visit does not count
-    assert p3._held(t, ok, 0, 19.0, 8.9) is None                  # the recovery starts after the last admissible start
+    assert p3._held(t, ok, 0, 30.0, 8.9) == 20.0
+    assert p3._held(t, ok, 0, 19.0, 8.9) is None
     assert abs(p3._longest(t, ~ok, 0, len(t) - 1) - 9.9) < 0.11
 
 
@@ -29,12 +29,12 @@ def _out(cls_failed=(), a=None, b=None, c=None, gate_nav=0, self_induced=False, 
 
 def test_the_classes_of_criteria_v8():
     assert refine_v8("PASS", _out(a="MET", b="MET")) == "PASS"
-    assert refine_v8("PASS", _out(b="NOT_MET")) == "P3_FAILURE"                       # late: a genuine failure of the formation
+    assert refine_v8("PASS", _out(b="NOT_MET")) == "P3_FAILURE"
     assert refine_v8("PASS", _out(a="PREMISE_VIOLATED", b="MET")) == "PREMISE_VIOLATED"
-    assert refine_v8("INCOMPLETE", _out(("not waiting",), b="MET")) == "P3_FAILURE"    # a wait never resolved after the gate
-    assert refine_v8("INCOMPLETE", _out(("gate", "progress"))) == "INCOMPLETE"         # the passage, premises held
+    assert refine_v8("INCOMPLETE", _out(("not waiting",), b="MET")) == "P3_FAILURE"
+    assert refine_v8("INCOMPLETE", _out(("gate", "progress"))) == "INCOMPLETE"
     assert refine_v8("INCOMPLETE", _out(("gate",), gate_nav=5)) == "PREMISE_VIOLATED"
-    assert refine_v8("INCOMPLETE", _out(("gate",), gate_nav=5, self_induced=True)) == "INCOMPLETE"   # the drone's own map fit
+    assert refine_v8("INCOMPLETE", _out(("gate",), gate_nav=5, self_induced=True)) == "INCOMPLETE"
     assert refine_v8("SAFETY_FAILURE", _out(b="MET")) == "SAFETY_FAILURE"
 
 

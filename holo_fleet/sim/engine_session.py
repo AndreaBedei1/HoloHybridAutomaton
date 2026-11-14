@@ -34,7 +34,7 @@ def _acquire_waiting():
     a worker started while the slots are held by another run of ours waits instead of failing INVALID."""
     import time
 
-    wait = float(os.environ.get("HOLO_FLEET_SLOT_WAIT_S", "0"))    # the orchestrator sets it for its workers
+    wait = float(os.environ.get("HOLO_FLEET_SLOT_WAIT_S", "0"))
     t0 = time.monotonic()
     while True:
         try:
@@ -92,11 +92,11 @@ def make(*, clear_cache=False, **kwargs):
                             try:
                                 children = [p.cmdline() for p in psutil.Process().children()]
                                 if all(cmd and "--HolodeckUUID=" + uuid not in cmd for cmd in children):
-                                    lease.update(engine=None)  # a rejected creation with no child is not an orphan
+                                    lease.update(engine=None)
                             except psutil.Error:
-                                pass  # an uncertain handoff stays reserved
+                                pass
                             raise
-                        self._world_process = proc  # keep the native handle even if metadata recording fails
+                        self._world_process = proc
                         lease.update(engine={"pid": proc.pid, "ppid": os.getpid(), "uuid": uuid})
                         record = {"pid": proc.pid, "ppid": os.getpid(),
                                   "created": psutil.Process(proc.pid).create_time(), "uuid": uuid}
@@ -139,7 +139,7 @@ def make(*, clear_cache=False, **kwargs):
             proc = owned_engine(record) if record else None
             if proc is not None:
                 proc.kill()
-                proc.wait(10)  # same cleanup allowance as the installed client's __on_exit__
+                proc.wait(10)
             lease.release()
             raise
         finally:

@@ -32,11 +32,11 @@ def demo(tmp_path, monkeypatch):
         calls.setdefault("args", []).append({"beacon": cfg.beacon.mode, "noise": None if noise is None else noise.name,
                                              "seed": seed})
         out = Path(out_root) / (run_id or name)
-        (out / "frames").mkdir(parents=True, exist_ok=True)          # as the runner does
+        (out / "frames").mkdir(parents=True, exist_ok=True)
         (out / "run_status.json").write_text(json.dumps({"status": state["status"]}), encoding="utf-8")
         (out / "events.jsonl").write_text("{}\n", encoding="utf-8")
         (out / "referee_metrics.json").write_text("{}", encoding="utf-8")
-        if math.isfinite(frame_every_s):                              # frames only when asked for
+        if math.isfinite(frame_every_s):
             (out / "fleet_view").mkdir()
             (out / "fleet_view" / "fleet_00001.jpg").write_bytes(b"jpg")
             (out / "frames" / "chase_00001.jpg").write_bytes(b"jpg")
@@ -61,8 +61,8 @@ def _files(path: Path):
 
 def test_default_demo_keeps_nothing(demo):
     assert demo.main(["--scenario", "formation_triangle"]) == 0
-    assert _files(demo.OUT) == []                                   # nothing under results/reference
-    assert _files(demo.tmp) == []                                   # the staging folder is gone
+    assert _files(demo.OUT) == []
+    assert _files(demo.tmp) == []
     assert demo.calls["run"] == [math.inf] and demo.calls["gif"] == []
 
 
@@ -78,7 +78,7 @@ def test_save_refuses_to_replace_an_existing_result(demo):
     dest.mkdir(parents=True)
     (dest / "run_status.json").write_text('{"status": "COMPLETE", "canonical": true}', encoding="utf-8")
     assert demo.main(["--scenario", "formation_triangle", "--save"]) == 2
-    assert demo.calls["run"] == []                                  # refused before starting anything
+    assert demo.calls["run"] == []
     assert json.loads((dest / "run_status.json").read_text(encoding="utf-8"))["canonical"] is True
 
 
@@ -128,7 +128,7 @@ def test_an_incomplete_run_is_never_saved(demo):
     (dest / "run_status.json").write_text('{"status": "COMPLETE"}', encoding="utf-8")
     demo.state["status"] = "INCOMPLETE"
     assert demo.main(["--scenario", "formation_triangle", "--save", "--overwrite"]) == 1
-    assert _files(dest) == ["run_status.json"]                      # the canonical result is untouched
+    assert _files(dest) == ["run_status.json"]
     assert _files(demo.tmp) == []
 
 

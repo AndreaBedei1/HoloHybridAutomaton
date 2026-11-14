@@ -45,8 +45,8 @@ class TransitionRecord:
     edge: str
     decision: Optional[str]
     enabled_edges: List[str] = field(default_factory=list)
-    reason: str = ""                  # cause of a mode change (spec.transition_reason), empty for a self-loop
-    label: str = ""                   # readable guard of the edge taken (spec Edge.label)
+    reason: str = ""
+    label: str = ""
 
 
 class LocalHybridAutomaton:
@@ -64,8 +64,6 @@ class LocalHybridAutomaton:
         obs.committed = self.committed
         enabled: List[Edge] = [e for e in self.edges[self.mode] if e.guard(obs, PY_LOGIC)]
         if len(enabled) != 1:
-            # Never expected (proved UNSAT in formal/check_determinism.py); fall back to
-            # the conservative mode so the vehicle remains safe, and record it.
             self.determinism_violations += 1
             chosen = Edge("nondeterminism_fallback", lambda o, L: True, Mode.FAILSAFE_HOLD_OR_RETREAT,
                           reason="nondeterminism_fallback")

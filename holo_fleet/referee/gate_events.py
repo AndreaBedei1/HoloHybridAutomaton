@@ -47,7 +47,7 @@ import numpy as np
 
 
 def _q(gs: Dict) -> bool:
-    return gs.get("at_queue") in (True, "True", "true")     # logged as a bool or a string (v2 bug: "False" truthy)
+    return gs.get("at_queue") in (True, "True", "true")
 
 
 def _intervals(mask: np.ndarray, t: np.ndarray) -> List[tuple]:
@@ -80,7 +80,6 @@ def gate_events(t: np.ndarray, gf: np.ndarray, states: Sequence[Sequence[Dict]],
         return g if g.get("id") == gate_id else {}
 
     committed = np.array([[bool(states[k][i].get("committed")) and bool(gs(k, i)) for k in range(n)] for i in range(m)])
-    # truth at the decision instant: row i - 1 for the record of step i
     in_dec = np.vstack([inside[:1], inside[:-1]]) if m else inside
     other_in = np.array([[in_dec[i, :].sum() - int(in_dec[i, k]) > 0 for k in range(n)] for i in range(m)])
     e1 = {"queued_s": 0.0, "false_free_s": 0.0, "false_busy_s": 0.0}
@@ -107,7 +106,7 @@ def gate_events(t: np.ndarray, gf: np.ndarray, states: Sequence[Sequence[Dict]],
             if i and committed[i, k] and not committed[i - 1, k]:
                 e3 += int(other_in[i, k])
             entry = g.get("entry")
-            if "entry" in g:                           # the software logs stage 2 (N6: even if never reached)
+            if "entry" in g:
                 stage2_logged = True
             if entry is not None:
                 if entry == "ADMIT" and prev_entry != "ADMIT":
@@ -116,11 +115,10 @@ def gate_events(t: np.ndarray, gf: np.ndarray, states: Sequence[Sequence[Dict]],
                     e7 += int(other_in[i, k])
             prev_entry = entry
     if not stage2_logged:
-        e4 = e3                     # no second check: the commit is the entry decision
+        e4 = e3
     occ_n = inside.sum(axis=1)
-    # E8: passages THROUGH the CR cross-section, bypasses, waits, entry gaps, dwell
     passed, bypass, wait, dwell, entries = {}, [], {}, [], []
-    gone = {}                                   # liveness participation ends here: passed, or beyond after a bypass
+    gone = {}
     for k in healthy:
         before = np.flatnonzero(gf[:, k, 0] < -G.cr_half_len)
         if before.size:
@@ -141,7 +139,6 @@ def gate_events(t: np.ndarray, gf: np.ndarray, states: Sequence[Sequence[Dict]],
             dwell.append(b - a)
     entries.sort()
     gaps = [b2[0] - a1[1] for a1, b2 in zip(entries, entries[1:]) if b2[2] != a1[2]]
-    # bounded-response checks (healthy drones only)
     T_release = G.t_occ_max + G.t_clear
     hc = committed[:, healthy].any(axis=1) if healthy else np.zeros(m, bool)
     not_passed = np.array([[k not in gone or t[i] < gone[k] for k in healthy] for i in range(m)]) if healthy \
@@ -160,10 +157,9 @@ def gate_events(t: np.ndarray, gf: np.ndarray, states: Sequence[Sequence[Dict]],
         budget[k] = L / G.v_pass + T_release
         iv = _intervals(committed[:, k], t)
         if iv:
-            # one obligation per gate: from the first commit to the passage, through give-ups and re-commits
             a = iv[0][0]
-            end = passed[k] if k in passed and passed[k] >= a else float(t[-1])   # never passed: owed to the end
-            if end - a > budget[k]:                     # slow passages count too, not only the ones that never end
+            end = passed[k] if k in passed and passed[k] >= a else float(t[-1])
+            if end - a > budget[k]:
                 committed_viol.append((k, a, end))
     w = list(wait.values())
     return {"E1": {**{key: round(v, 1) for key, v in e1.items()},

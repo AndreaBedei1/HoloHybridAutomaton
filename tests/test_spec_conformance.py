@@ -27,8 +27,6 @@ def _random_obs(rng):
 
 
 def test_exactly_one_edge_enabled_runtime():
-    # every Boolean combination, consistent with the observation invariants or not: the guards partition
-    # the observation space by themselves (formal O4/O5); the invariants are not needed for determinism
     rng = random.Random(1)
     ha = LocalHybridAutomaton()
     n_consistent = 0
@@ -39,7 +37,7 @@ def test_exactly_one_edge_enabled_runtime():
         ha.committed = o.committed
         ha.step(o, 0.0, 0.1)
     assert ha.determinism_violations == 0
-    assert 0 < n_consistent < 5000                  # both kinds were exercised
+    assert 0 < n_consistent < 5000
 
 
 def test_python_and_z3_evaluations_agree():

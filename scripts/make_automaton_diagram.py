@@ -34,7 +34,6 @@ from holo_fleet.ha.guard_text import pretty, thresholds, UNITS  # noqa: E402
 from holo_fleet.ha.spec import IN_FORMATION, MODES, PRIORITY_ORDER, SELF_RECOVERED, Mode, build_edges  # noqa: E402
 
 OUT = ROOT / "figures" / "automaton"
-# the state colours of the fleet view and of the v2 figures (holo_fleet/ui/fleet_view.py)
 COLOR = {Mode.FORMATION_FOLLOW: "#2f9e5b", Mode.FORMATION_WAIT_REJOIN: "#e0a21c", Mode.DEGRADED_FORMATION: "#8a63c9",
          Mode.FORMATION_RECOVERY: "#ef7d32", Mode.MUTEX_APPROACH: "#7fb2e5", Mode.MUTEX_YIELD: "#3d85c6",
          Mode.MUTEX_PASS: "#1c4e9c", Mode.SEPARATION_WARNING: "#e8577a", Mode.COLLISION_AVOIDANCE: "#c62828",
@@ -45,7 +44,6 @@ GLOBAL_EDGES = ("fault", "collision_risk", "separation_warning", "pass_abort", "
                 "yield", "approach")
 KEEPING_EDGES = ("formation_lost", "neighbour_missing", "slot_vacant", "follow")
 RECOVERED_EDGES = ("formation_recovered", "recovered_wait_rejoin", "recovered_degraded", "recover")
-# priority levels of the brief (PRIORITY_ORDER grouped): FAILSAFE > COLLISION > WARNING > MUTEX > RECOVERY > keeping
 LEVELS = [("FAILSAFE", (Mode.FAILSAFE_HOLD_OR_RETREAT,)), ("COLLISION AVOIDANCE", (Mode.COLLISION_AVOIDANCE,)),
           ("SEPARATION WARNING", (Mode.SEPARATION_WARNING,)),
           ("MUTEX", (Mode.MUTEX_PASS, Mode.MUTEX_YIELD, Mode.MUTEX_APPROACH)),
@@ -53,7 +51,6 @@ LEVELS = [("FAILSAFE", (Mode.FAILSAFE_HOLD_OR_RETREAT,)), ("COLLISION AVOIDANCE"
           ("FORMATION KEEPING", (Mode.FORMATION_WAIT_REJOIN, Mode.DEGRADED_FORMATION, Mode.FORMATION_FOLLOW))]
 
 
-# ---------------------------------------------------------------------------------------------- model
 def guard(label: str, cfg: FleetConfig = DEFAULT, values: bool = False) -> str:
     """Readable guard of a spec label; the own-slot-recovered conjunction is named ``self_recovered``."""
     txt = pretty(label, cfg, values=values)
@@ -107,7 +104,6 @@ def coverage(model: Dict) -> Tuple[List, List]:
     return sorted(spec - drawn, key=str), sorted(drawn - spec, key=str)
 
 
-# ---------------------------------------------------------------------------------------------- drawing helpers
 SHORT = {m: m.value for m in Mode}
 NICK = {Mode.FORMATION_FOLLOW: "FOLLOW", Mode.FORMATION_WAIT_REJOIN: "WAIT_REJOIN",
         Mode.DEGRADED_FORMATION: "DEGRADED", Mode.FORMATION_RECOVERY: "RECOVERY", Mode.MUTEX_APPROACH: "APPROACH",
@@ -128,7 +124,7 @@ def _box(ax, xy, w, h, mode, title, sub="", fs=11, sub_fs=8.5, loop=True):
             fontweight="bold", zorder=4)
     if sub:
         ax.text(x, y - 0.32 * h, sub, ha="center", va="center", color="white", fontsize=sub_fs, zorder=4)
-    if loop:                                            # compact self-loop: otherwise remain
+    if loop:
         ax.text(x + w / 2 - 0.35, y + h / 2 - 0.25, "↻", ha="right", va="top", color="white", fontsize=fs,
                 zorder=4)
 
@@ -168,7 +164,6 @@ def _rl(model, t, cfg):
     return guard(next(r for r in model["recovered"] if r["target"] == t)["label"], cfg)
 
 
-# ---------------------------------------------------------------------------------------------- full version
 def render_full(model: Dict, cfg: FleetConfig, path: Path) -> None:
     _style()
     fig = plt.figure(figsize=(20, 12.6))
@@ -183,7 +178,6 @@ def render_full(model: Dict, cfg: FleetConfig, path: Path) -> None:
                        "order, self-loops included).  Every guard is the edge's readable label, proved equal to the "
                        "executed guard under the priority order (formal/check_determinism.py, L1).",
             fontsize=9.5, color=INK2, va="center")
-    # ------------------------------------------------------------------ left: priority rows (every mode)
     ax.add_patch(FancyBboxPatch((1.0, 2.0), 40.5, 55.6, boxstyle="round,pad=0.0,rounding_size=1.0", fc="white",
                                 ec="#dedcd4", lw=1.0, zorder=0))
     ax.text(2.2, 56.2, "From every mode: guards evaluated top-down, the first that holds wins",
@@ -238,7 +232,6 @@ def render_full(model: Dict, cfg: FleetConfig, path: Path) -> None:
                  "self_recovered = " + pretty(SELF_RECOVERED, cfg)):
         ax.text(2.6, y, line, fontsize=8.6, color=INK2, va="center")
         y -= 1.25
-    # ------------------------------------------------------------------ right: the state graph
     bands = {"FAILSAFE": (51.7, 56.6), "COLLISION AVOIDANCE": (45.9, 50.9), "SEPARATION WARNING": (40.1, 45.1),
              "MUTEX": (26.0, 39.3), "FORMATION RECOVERY": (17.6, 25.2), "FORMATION KEEPING": (0.6, 16.8)}
     for k, (name, _modes) in enumerate(LEVELS):
@@ -265,7 +258,6 @@ def render_full(model: Dict, cfg: FleetConfig, path: Path) -> None:
         _box(ax, p, W, H, m, SHORT[m], subs[m], fs=9.0, sub_fs=7.8)
     L, R = (lambda m: pos[m][0] - W / 2), (lambda m: pos[m][0] + W / 2)
     T, B = (lambda m: pos[m][1] + H / 2), (lambda m: pos[m][1] - H / 2)
-    # rows 1-3 and 8: from every mode (bus)
     bx = 45.0
     ax.plot([bx, bx], [pos[Mode.MUTEX_APPROACH][1], 55.6], color="#b9b7ae", lw=2.4, zorder=1, solid_capstyle="round")
     _label(ax, (bx + 0.2, 56.6), "from every mode", fs=8.4, color=INK2, ha="left", bg=False)
@@ -278,7 +270,6 @@ def render_full(model: Dict, cfg: FleetConfig, path: Path) -> None:
     _arrow(ax, (bx, pos[ap][1]), (L(ap), pos[ap][1]), color="#8e8c84")
     _label(ax, (bx + 0.3, B(ap) - 0.75), "row 8: " + guard(rows["approach"]["label"], cfg), fs=8.0, ha="left",
            bg=False, color=INK2)
-    # hysteresis self-loops and the hazards clearing
     ca, sw = Mode.COLLISION_AVOIDANCE, Mode.SEPARATION_WARNING
     for m, edge in ((Mode.FAILSAFE_HOLD_OR_RETREAT, "fault"), (ca, "collision_risk"), (sw, "separation_warning")):
         lab = rows[edge]["variants"].get(m, rows[edge]["label"])
@@ -290,7 +281,6 @@ def render_full(model: Dict, cfg: FleetConfig, path: Path) -> None:
     ax.text(80.0, 46.9, "leaving FAILSAFE / AVOID / WARNING:\nwhen the hazard clears, the lower rows\ndecide again "
                         "(4-8 in the mutex zone, else\nFORMATION_RECOVERY until the own slot\nis recovered, then the "
                         "formation level)", fontsize=7.8, color=MUTED, va="center", ha="left")
-    # mutex chain: rows 4-8 as they apply between the mutex modes
     _arrow(ax, (R(ap), pos[ap][1] + 0.6), (L(yi), pos[yi][1] + 0.6))
     _label(ax, ((R(ap) + L(yi)) / 2, T(ap) + 0.85), guard(rows["yield"]["label"], cfg).replace("mutex_zone ∧ ", ""),
            fs=7.8)
@@ -311,10 +301,9 @@ def render_full(model: Dict, cfg: FleetConfig, path: Path) -> None:
     _label(ax, (82.0, 25.3), guard(rows["pass_done"]["label"], cfg) + "\n[committed := false]", fs=7.8, ha="left")
     _label(ax, (L(rc) - 0.4, T(rc) + 0.75), "↻ " + _rl(model, rc, cfg), fs=7.6, color=INK2, bg=False,
            ha="right")
-    # formation level: recovery <-> keeping (nested orthogonal connectors, no crossing)
     wa, fo, de = Mode.FORMATION_WAIT_REJOIN, Mode.FORMATION_FOLLOW, Mode.DEGRADED_FORMATION
     cr = COLOR[rc]
-    yo, yi_ = pos[rc][1] + 0.6, pos[rc][1] - 0.6               # outer / inner horizontal of the L connectors
+    yo, yi_ = pos[rc][1] + 0.6, pos[rc][1] - 0.6
     _path(ax, [(L(rc), yo), (pos[wa][0] - 1.2, yo), (pos[wa][0] - 1.2, T(wa))], color=COLOR[wa])
     _label(ax, (59.6, yo + 0.75), _rl(model, wa, cfg), fs=7.8)
     _path(ax, [(pos[wa][0] + 1.2, T(wa)), (pos[wa][0] + 1.2, yi_), (L(rc), yi_)], color=cr)
@@ -328,7 +317,6 @@ def render_full(model: Dict, cfg: FleetConfig, path: Path) -> None:
     _label(ax, (pos[fo][0] + 1.9, ym), _rl(model, fo, cfg), fs=7.8, ha="left")
     _arrow(ax, (pos[fo][0] - 1.2, T(fo)), (pos[rc][0] - 1.2, B(rc)), color=cr)
     _label(ax, (pos[fo][0] - 1.9, ym), _kl(model, fo, rc, cfg) + "\n(own_slot_lost)", fs=7.8, ha="right")
-    # among the formation-keeping modes
     _arrow(ax, (L(fo), pos[fo][1] + 0.6), (R(wa), pos[wa][1] + 0.6), color=COLOR[wa])
     _label(ax, ((L(fo) + R(wa)) / 2, T(fo) + 1.0), _kl(model, fo, wa, cfg) + "\n(neighbor_missing)", fs=7.8)
     _arrow(ax, (R(wa), pos[wa][1] - 0.6), (L(fo), pos[fo][1] - 0.6), color=COLOR[fo])
@@ -350,7 +338,6 @@ def render_full(model: Dict, cfg: FleetConfig, path: Path) -> None:
     plt.close(fig)
 
 
-# ---------------------------------------------------------------------------------------------- presentation
 def render_presentation(model: Dict, cfg: FleetConfig, path: Path) -> None:
     _style()
     fig = plt.figure(figsize=(16, 9))
@@ -363,7 +350,6 @@ def render_presentation(model: Dict, cfg: FleetConfig, path: Path) -> None:
     ax.text(3.0, 53.4, "What each drone decides, on its own", fontsize=24, fontweight="bold", color=INK, va="center")
     ax.text(3.0, 50.6, "One automaton per drone, 10 states, no communication.  Higher rows win: a hazard always "
                        "overrides the mission.", fontsize=13, color=INK2, va="center")
-    # priority axis
     ax.add_patch(FancyArrowPatch((6.0, 4.5), (6.0, 45.5), arrowstyle="-|>", mutation_scale=22, color="#b9b7ae", lw=3))
     ax.text(4.2, 25.0, "priority", rotation=90, fontsize=13, color=MUTED, va="center", ha="center")
     W, H = 15.0, 4.4
@@ -382,7 +368,6 @@ def render_presentation(model: Dict, cfg: FleetConfig, path: Path) -> None:
         _box(ax, p, W, H, m, NICK[m], subs[m], fs=15, sub_fs=11, loop=False)
     L, R = (lambda m: pos[m][0] - W / 2), (lambda m: pos[m][0] + W / 2)
     T, B = (lambda m: pos[m][1] + H / 2), (lambda m: pos[m][1] - H / 2)
-    # hazards: from any state (a bar above the row)
     ax.plot([12.5, 69.5], [46.4, 46.4], color="#b9b7ae", lw=3, solid_capstyle="round", zorder=1)
     ax.text(70.5, 46.4, "from ANY state", fontsize=12.5, color=INK2, fontweight="bold", va="center")
     for m, txt in ((Mode.FAILSAFE_HOLD_OR_RETREAT, "sensor or envelope fault"),
@@ -391,7 +376,6 @@ def render_presentation(model: Dict, cfg: FleetConfig, path: Path) -> None:
         _arrow(ax, (pos[m][0], 46.4), (pos[m][0], T(m)), lw=1.8)
         _label(ax, (pos[m][0] + 0.8, 44.6), txt, fs=11.5, ha="left", bg=False)
     _label(ax, (41.0, 34.4), "↓  hazard cleared: back to the mission level", fs=11.5, color=INK2, bg=False)
-    # mutex
     ap, yi, pa, rc = Mode.MUTEX_APPROACH, Mode.MUTEX_YIELD, Mode.MUTEX_PASS, Mode.FORMATION_RECOVERY
     _arrow(ax, (R(ap), pos[ap][1]), (L(yi), pos[yi][1]), lw=1.8)
     _label(ax, ((R(ap) + L(yi)) / 2, T(ap) + 1.6), "no priority\nor occupied", fs=11)
@@ -403,7 +387,6 @@ def render_presentation(model: Dict, cfg: FleetConfig, path: Path) -> None:
     _arrow(ax, (pos[wa][0], T(wa)), (pos[ap][0], B(ap)), lw=1.8)
     _label(ax, (pos[wa][0] + 0.8, 18.6), "mutex zone ahead\n(from every\nformation state)", fs=11, ha="left",
            bg=False)
-    # formation
     _arrow(ax, (pos[fo][0] - 1.5, T(fo)), (pos[rc][0] - 1.5, B(rc)), lw=1.8, color=COLOR[rc])
     _label(ax, (pos[fo][0] - 2.3, 14.4), "own slot lost\n(error > " + f"{th['e_lost']:g} m)", fs=11, ha="right",
            bg=False)

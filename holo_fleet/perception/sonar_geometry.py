@@ -37,7 +37,6 @@ AXES: Dict[str, np.ndarray] = {
     "UP": np.array([0.0, 0.0, 1.0]), "DOWN": np.array([0.0, 0.0, -1.0]),
 }
 MIRROR = {"FRONT": "REAR", "REAR": "FRONT", "LEFT": "RIGHT", "RIGHT": "LEFT", "UP": "DOWN", "DOWN": "UP"}
-# BlueROV2 (heavy) hull box half extents [m] around the agent origin; sensors sit 1 cm outside.
 HULL_HALF = np.array([0.229, 0.288, 0.127])
 MOUNTS: Dict[str, np.ndarray] = {
     "FRONT": np.array([0.24, 0.0, 0.0]), "REAR": np.array([-0.24, 0.0, 0.0]),
@@ -48,11 +47,11 @@ ROTATIONS: Dict[str, List[float]] = {
     "FRONT": [0.0, 0.0, 0.0], "REAR": [0.0, 0.0, 180.0], "LEFT": [0.0, 0.0, 90.0],
     "RIGHT": [0.0, 0.0, -90.0], "UP": [0.0, -90.0, 0.0], "DOWN": [0.0, 90.0, 0.0],
 }
-R_IN = float(HULL_HALF.min())                 # inscribed ball of a BlueROV2 hull
-R_OUT = float(np.linalg.norm(HULL_HALF))      # circumscribed ball
-RHO_MIN = 1.0                                 # regions are built for centre distances >= this (= d_safe)
-OCTREE_LEAF_M = 0.06                          # sonar octree leaf (= sim.holoocean_setup.OCTREE_MIN): cone-edge resolution
-NEAR_FIELD_WIDEN_M = 0.25                     # near-field beam widening (see sonar_processing)
+R_IN = float(HULL_HALF.min())
+R_OUT = float(np.linalg.norm(HULL_HALF))
+RHO_MIN = 1.0
+OCTREE_LEAF_M = 0.06
+NEAR_FIELD_WIDEN_M = 0.25
 
 
 @dataclass(frozen=True)
@@ -62,12 +61,12 @@ class SonarModel:
     opening_deg: float = 120.0
     range_min: float = 0.3
     range_max: float = 12.0
-    bins: int = 234                     # 5 cm bins
+    bins: int = 234
     hz: float = 10.0
-    add_sigma: float = 0.05             # Rayleigh, on intensity
-    mult_sigma: float = 0.10            # normal, on intensity
-    range_sigma: float = 0.05           # exponential, per octree leaf [m]
-    threshold: float = 0.30             # detection threshold: Rayleigh tail 1.5e-8 per bin; 100 % detection (Phase 1)
+    add_sigma: float = 0.05
+    mult_sigma: float = 0.10
+    range_sigma: float = 0.05
+    threshold: float = 0.30
 
     @property
     def half_angle_deg(self) -> float:
@@ -126,9 +125,6 @@ def pattern_of_point(p_body: np.ndarray, radius: float = R_IN, model: SonarModel
 
 
 REGION_RADII = (RHO_MIN, 1.1, 1.25, 1.4, 1.6, 1.8, 2.0, 2.3, 2.6, 3.0, 3.5, 4.2, 5.0, 6.5, 8.0, 12.0)
-# A sampled region misses true directions by at most the covering radius of the 12000-point lattice
-# (0.023 rad, measured) plus the boundary shift between two consecutive grid radii (<= 0.02 rad):
-# -e.u is 1-Lipschitz in u, so every guarantee read from the tables is certified after subtracting this.
 SAMPLING_ERR = 0.045
 
 
@@ -141,7 +137,6 @@ def _region_table_by_radius(n_dirs: int = 12000, model: SonarModel = DEFAULT_SON
         pts = rho * dirs
         maybe = {s: ball_touches_cone(pts, s, R_OUT, model) for s in SECTORS}
         must = {s: ball_touches_cone(pts, s, R_IN, model) for s in SECTORS}
-        # every pattern P with must <= P <= maybe is possible for these directions
         for i in range(len(dirs)):
             m_set = [s for s in SECTORS if must[s][i]]
             o_set = [s for s in SECTORS if maybe[s][i] and not must[s][i]]

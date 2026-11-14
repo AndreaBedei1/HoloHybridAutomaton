@@ -12,7 +12,7 @@ class SensorFrame:
 
     t: float
     data: Dict[str, Any]
-    stamp: Dict[str, float]             # onboard time of the last update of each sensor
+    stamp: Dict[str, float]
 
     def fresh(self, name: str, max_age: float) -> bool:
         return name in self.data and (self.t - self.stamp.get(name, -1e9)) <= max_age + 1e-9

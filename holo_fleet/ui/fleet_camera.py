@@ -28,15 +28,15 @@ from typing import Optional, Sequence, Tuple
 
 import numpy as np
 
-HFOV_DEG = 90.0              # conservative horizontal field of view of the 1280 x 720 viewport
+HFOV_DEG = 90.0
 MIN_DISTANCE_M = 6.0
-MAX_DISTANCE_M = 11.0        # beyond ~10-12 m the fog hides a drone
-MARGIN_M = 1.5               # around the framed points
-ELEVATION_DEG = 20.0         # camera above the framed centre, looking down
+MAX_DISTANCE_M = 11.0
+MARGIN_M = 1.5
+ELEVATION_DEG = 20.0
 SURFACE_CLEARANCE_M = 1.5
-KEEP_RADIUS_M = 12.0         # drones / vehicles farther than this from the fleet median are not framed
-GATE_IN_M, GATE_OUT_M = 12.0, 15.0   # the gate joins the frame below GATE_IN_M, leaves above GATE_OUT_M
-TAU_S = 2.0                  # smoothing time constant of centre, distance and heading
+KEEP_RADIUS_M = 12.0
+GATE_IN_M, GATE_OUT_M = 12.0, 15.0
+TAU_S = 2.0
 
 
 def viewport_rotation(look) -> np.ndarray:
@@ -62,7 +62,7 @@ def framing(positions, heading: float, gate=None, intruders=None) -> Tuple[np.nd
     lat = np.array([-h[1], h[0]])
     rel = pts[:, :2] - centre[:2]
     half_width = float(np.max(np.abs(rel @ lat))) + MARGIN_M
-    behind = max(0.0, float(np.max(-(rel @ h))))         # framed points closer to the camera than the centre
+    behind = max(0.0, float(np.max(-(rel @ h))))
     distance = half_width / math.tan(math.radians(HFOV_DEG / 2.0)) + behind
     return centre, float(np.clip(distance, MIN_DISTANCE_M, MAX_DISTANCE_M))
 

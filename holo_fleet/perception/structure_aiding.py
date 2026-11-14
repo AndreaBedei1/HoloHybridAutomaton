@@ -95,22 +95,22 @@ import numpy as np
 from holo_fleet.perception.sonar_geometry import AXES, HULL_HALF, MOUNTS, NEAR_FIELD_WIDEN_M, R_OUT, SECTORS
 from holo_fleet.perception.sonar_processing import segment
 
-ASSOC_GATE_M = 0.9       # cap of the residual of one sector (predicted bar not seen / matched to a far echo)
-FIT_RMS_M = 0.10         # the matched echoes are explained after the correction
-MIN_MATCHED = 2         # sectors matched to the bars (a single echo never moves the estimate)
-GAIN_MIN = 0.05          # the best offset must lower the total squared residual by at least this [m^2]
-AMBIGUITY = 0.005        # [m^2] candidates this close to the best total cost must lie within UNIQUE_M of it
-UNIQUE_M = 0.4           # ranges near the gate plane change little with the offset: bounded, not zero ambiguity
+ASSOC_GATE_M = 0.9
+FIT_RMS_M = 0.10
+MIN_MATCHED = 2
+GAIN_MIN = 0.05
+AMBIGUITY = 0.005
+UNIQUE_M = 0.4
 MAX_CORR_M = 1.2
-IDENTITY_STEP_M = 0.5    # largest step of a correction under the identity rule (module docstring)
+IDENTITY_STEP_M = 0.5
 CONSIST_M = 0.15
 CONSIST_N = 4
-AXIAL_AMBIGUITY_M = 0.04   # a single range: candidates within this of the best residual
-GAIN = 1.0               # the offset confirmed in CONSIST_N updates is applied in full (a partial step can stop at an ambiguous pose), but for the cap IDENTITY_STEP_M of a fit under the identity rule
+AXIAL_AMBIGUITY_M = 0.04
+GAIN = 1.0
 COARSE_M, FINE_M = 0.3, 0.05
-POINT_STRIDE = 3        # bar sample points used (every 3rd of the classifier's, ~3 cm apart)
-HULL_LAT_M = float(HULL_HALF[1] + HULL_HALF[0] * np.sin(np.radians(5.0)))   # lateral half-extent, yaw within 5 deg
-LOC_TTL_S = 1.0          # a confirmation of the gate localization is valid this long
+POINT_STRIDE = 3
+HULL_LAT_M = float(HULL_HALF[1] + HULL_HALF[0] * np.sin(np.radians(5.0)))
+LOC_TTL_S = 1.0
 
 
 def acquisition_distance(cfg, gate=None, pts=None) -> float:
@@ -120,7 +120,7 @@ def acquisition_distance(cfg, gate=None, pts=None) -> float:
     if gate is not None:
         corners = [gate.to_gate_frame(b.center + b.axes @ (np.array(sg) * b.half)) for b in gate.bars
                    for sg in itertools.product((-1.0, 1.0), repeat=3)]
-        outer = max(max(abs(float(c[1])), abs(float(c[2]))) for c in corners)   # lateral / vertical half-extent
+        outer = max(max(abs(float(c[1])), abs(float(c[2]))) for c in corners)
     else:
         outer = float(np.max(np.linalg.norm(pts - pts.mean(axis=0), axis=1)))
     return min(cfg.perc.sonar.range_max, math.tan(math.radians(cfg.perc.sonar.half_angle_deg)) * (outer + MAX_CORR_M))
@@ -130,19 +130,17 @@ class StructureAiding:
     def __init__(self, clf, cfg, gates=(), acq_min: float = 0.0):
         self.clf = clf
         self.cfg = cfg
-        self.gates = list(gates)                 # GateSpecs: the free opening of the robust clearance
-        # the aiding also runs out to the queue line (``acq_min``): off-axis queue points see the frame in two sectors, and
-        # with every echo identified as a bar (the identity rule below) a fit there may be applied; v10 stopped at 4.2 m
+        self.gates = list(gates)
         self.acq = {g.gate_id: max(acquisition_distance(cfg, g), acq_min) for g in self.gates}
-        self.loc_t = -1e9                        # last confirmation of the gate localization
-        self.loc_u: Optional[float] = None       # its uncertainty [m]
+        self.loc_t = -1e9
+        self.loc_u: Optional[float] = None
         self.recent: Deque[np.ndarray] = deque(maxlen=CONSIST_N)
         self.recent_ax: Deque[float] = deque(maxlen=CONSIST_N)
-        self.axial_total = 0.0                   # along-axis correction applied since the last validated fit: bounded
+        self.axial_total = 0.0
         self._ax_touched = False
-        self.applied_m = 0.0                     # total applied correction (for the log)
-        self.unconfirmed = np.zeros(2)           # sum of the corrections since the last validated fit (module docstring)
-        self.sealed: Optional[np.ndarray] = None # that sum when a hold ended with no valid localization: to be undone after the give-up edge
+        self.applied_m = 0.0
+        self.unconfirmed = np.zeros(2)
+        self.sealed: Optional[np.ndarray] = None
         self.last: Optional[Dict] = None
         self.pts = np.asarray(clf.struct_pts)[::POINT_STRIDE]
         self.acq_pts = acquisition_distance(cfg, pts=self.pts) if len(self.pts) else 0.0
@@ -158,9 +156,7 @@ class StructureAiding:
         bar that is not seen in 0-2 % of the samples; the widened cone gives 0.03-0.05 m and 10-17 %."""
         a, _M = self.clf._sector_frame(s, R_wb)
         m = self.clf.model
-        q = C + R_wb @ MOUNTS[s]                                    # sonar position of every candidate
-        # exact pre-filter: seen from any candidate within ``rad`` of their centre q0, a point's direction differs from
-        # the one seen from q0 by at most asin(rad / |x - q0|); points outside the cone grown by that are never in it
+        q = C + R_wb @ MOUNTS[s]
         q0 = q.mean(axis=0)
         rad = float(np.max(np.linalg.norm(q - q0, axis=1)))
         d0 = self.pts - q0
@@ -172,7 +168,7 @@ class StructureAiding:
         if len(P) == 0:
             return np.full(len(C), np.nan)
         r = np.sqrt(np.maximum(pp[None, :] - 2.0 * (q @ P.T) + np.einsum("ij,ij->i", q, q)[:, None], 0.0))
-        along = (P @ a)[None, :] - (q @ a)[:, None]                 # (point - sonar) . axis, without the K x N x 3 array
+        along = (P @ a)[None, :] - (q @ a)[:, None]
         cone = along >= np.cos(np.radians(m.half_angle_deg)) * r
         out = np.where(cone & (r >= m.range_min) & (r <= m.range_max), r, np.inf).min(axis=1)
         return np.where(np.isfinite(out), out, np.nan)
@@ -215,7 +211,7 @@ class StructureAiding:
         f = np.arange(-COARSE_M, COARSE_M + 1e-9, FINE_M)
         D = D_coarse[int(np.argmin(cost_c))] + np.array([[x, y, 0.0] for x in f for y in f])
         D = D[np.linalg.norm(D[:, :2], axis=1) <= MAX_CORR_M]
-        if len(D) == 0:                           # the coarse best lies beyond the bound: nothing to accept
+        if len(D) == 0:
             return None
         cost, rms, matched = self._score(p + D, R_wb, obs, must)
         if not np.isfinite(cost).any():
@@ -315,7 +311,7 @@ class StructureAiding:
         if float(a.max() - a.min()) > 2.0 * CONSIST_M:
             return None
         self.recent_ax.clear()
-        if abs(self.axial_total + float(a.mean())) > MAX_CORR_M:   # no more than one correction's worth until a validated fit
+        if abs(self.axial_total + float(a.mean())) > MAX_CORR_M:
             return None
         self.axial_total += float(a.mean())
         self.applied_m += abs(float(a.mean()))
@@ -344,8 +340,8 @@ class StructureAiding:
             return None
         if self.gates:
             g, (s_g, _l, _dz) = self._gate_frame(p)
-            outside = s_g < -self.acq[g.gate_id] or s_g > -self.cfg.gate.cr_half_len   # from the CR on: passes as validated
-        else:                                    # bar points without a gate map: the same distance from the bars
+            outside = s_g < -self.acq[g.gate_id] or s_g > -self.cfg.gate.cr_half_len
+        else:
             outside = float(np.min(np.linalg.norm(pts[:, :2] - p[:2], axis=1))) > self.acq_pts
         if outside:
             self.recent.clear()
@@ -366,16 +362,15 @@ class StructureAiding:
             return None
         d, cost_k, rms_k, matched_k, spread = fit
         c0, _r0, _m0 = self._score(p[None, :], R_wb, obs, must)
-        u = spread + rms_k                          # uncertainty of the fitted position
+        u = spread + rms_k
         margin = self.clearance(p + np.array([d[0], d[1], 0.0]), u)
         self.last = {"matched": matched_k, "offset": np.round(d, 3).tolist(), "rms": round(rms_k, 3),
                      "cost": round(cost_k, 4), "cost_current": round(float(c0[0]), 4), "u": round(u, 3),
                      "clearance": None if margin is None else round(margin, 3)}
-        # with a gate map: only before the critical region, where the localization is needed
         fit_ok = (matched_k >= MIN_MATCHED and rms_k <= FIT_RMS_M and spread <= UNIQUE_M
                   and (margin is not None or not self.gates))
-        safe = margin is None or margin >= 0.0          # the hull + uncertainty inside the free opening
-        matched_echoes = {}                        # sector -> the echo matched to a bar by this fit
+        safe = margin is None or margin >= 0.0
+        matched_echoes = {}
         cand = (p + np.array([d[0], d[1], 0.0]))[None, :]
         for s, edges in obs.items():
             pr = self._pred(cand, R_wb, s)[0]
@@ -386,11 +381,11 @@ class StructureAiding:
         identified = (not safe and fit_ok and others is not None
                       and self.echoes_not_drones(p, R_wb, matched_echoes, others))
         self.last["identified"] = bool(identified)
-        self.last["others"] = None if others is None else len(others)    # None: some other drone not accounted for (log only)
-        if not fit_ok or not (safe or identified):       # beside the opening: only with every echo identified as a bar
+        self.last["others"] = None if others is None else len(others)
+        if not fit_ok or not (safe or identified):
             self.recent.clear()
             return self._axial(p, R_wb, obs, g, others) if (self.gates and matched_k < MIN_MATCHED) else None
-        if safe and float(np.linalg.norm(d)) <= CONSIST_M:   # the current estimate is confirmed (consistency band)
+        if safe and float(np.linalg.norm(d)) <= CONSIST_M:
             self.loc_t, self.loc_u = t, u
             self.axial_total = 0.0
             self.forget_unconfirmed()
@@ -405,13 +400,13 @@ class StructureAiding:
             return None
         corr = GAIN * Rr.mean(axis=0)
         if safe and float(np.linalg.norm(corr)) > self.cfg.gate.nav_err_m:
-            safe = False                            # a fit that says the error exceeds the premise of P2 does not validate (round 8, s1103)
+            safe = False
         if not safe and float(np.linalg.norm(corr)) > IDENTITY_STEP_M:
             corr = corr * IDENTITY_STEP_M / float(np.linalg.norm(corr))
         self.recent.clear()
         self.applied_m += float(np.linalg.norm(corr))
         if safe:
-            self.loc_t, self.loc_u = t, u           # the corrected estimate is the confirmed one
+            self.loc_t, self.loc_u = t, u
             self.axial_total = 0.0
             self.forget_unconfirmed()
         else:

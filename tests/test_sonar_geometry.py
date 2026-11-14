@@ -18,7 +18,6 @@ def test_six_identical_singlebeam_sonars_and_nothing_else():
     assert {c["Hz"] for c in son} == {10}
     types = {c["sensor_type"] for c in onboard_sensor_configs(DEFAULT)}
     assert not types & {"RangeFinderSensor", "ImagingSonar", "ProfilingSonar", "SidescanSonar"}
-    # only position / orientation differ
     assert len({tuple(c["location"]) for c in son}) == 6 and len({tuple(c["rotation"]) for c in son}) == 6
 
 
@@ -48,7 +47,7 @@ def test_axes_are_seen_only_by_their_own_sector():
 def test_region_table_patterns():
     R = sg.regions()
     assert all(len(P) <= 3 for P in R)
-    assert frozenset({"FRONT", "REAR"}) not in R          # opposite cones never see the same hull
+    assert frozenset({"FRONT", "REAR"}) not in R
     for P, dirs in R.items():
         assert np.allclose(np.linalg.norm(dirs, axis=1), 1.0)
 

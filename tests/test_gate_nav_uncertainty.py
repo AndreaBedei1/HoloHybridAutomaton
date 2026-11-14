@@ -38,21 +38,21 @@ def _bar(x=4.0):
     return BarBox(center=np.array([x, 0.0, 0.0]), axes=I3, half=np.array([0.09, 0.09, 0.75]))
 
 
-BAR_ECHO = (3.65, 3.8)          # the near face of a bar 4.0 m ahead, seen by the front sonar
+BAR_ECHO = (3.65, 3.8)
 
 
 def test_bar_is_structure_with_an_accurate_pose():
     clf = EchoClassifier(gate_bars=[_bar()])
     assert _front(clf, [BAR_ECHO], [0.0, 0.0, 0.0]) == [STRUCTURE]
     clf = EchoClassifier(gate_bars=[_bar()])
-    assert _front(clf, [BAR_ECHO], [-0.2, 0.0, 0.0]) == [STRUCTURE]      # pose error inside the tolerance
+    assert _front(clf, [BAR_ECHO], [-0.2, 0.0, 0.0]) == [STRUCTURE]
 
 
 def test_bar_beyond_the_pose_tolerance_stays_an_obstacle():
     """The drone believes it is 0.5 m further back: the bar is predicted 0.5 m further away than its echo."""
     clf = EchoClassifier(gate_bars=[_bar()])
     _front(clf, [BAR_ECHO], [-0.5, 0.0, 0.0])
-    assert _front(clf, [BAR_ECHO], [-0.5, 0.0, 0.0]) == [DYNAMIC]          # confirmed obstacle, never hidden
+    assert _front(clf, [BAR_ECHO], [-0.5, 0.0, 0.0]) == [DYNAMIC]
 
 
 def test_vehicle_in_front_of_a_mapped_bar_stays_an_obstacle():

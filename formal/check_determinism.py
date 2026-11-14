@@ -59,41 +59,34 @@ def run(cfg=DEFAULT, verbose=True) -> Report:
         o = Obs()
         legal = o.legal(cfg)
         gs = guards_of(edges[src], o)
-        # D1 pairwise disjointness
         r = check(f"D1 determinism [{src.value}]",
                   "forall legal obs: at most one outgoing guard enabled", ENC,
                   [legal, z3.Or(*[z3.And(g1, g2) for (_, g1), (_, g2) in itertools.combinations(gs, 2)])])
-        if not r.passed:      # name the overlapping edges to make the counterexample actionable
+        if not r.passed:
             r.note = "overlapping: " + ", ".join(
                 f"{e1.name}&{e2.name}" for (e1, g1), (e2, g2) in itertools.combinations(gs, 2)
                 if check("", "", ENC, [legal, g1, g2]).verdict != "unsat")
         rep.add(r, verbose)
-        # D2 completeness
         rep.add(check(f"D2 completeness [{src.value}]", "forall legal obs: some guard enabled", ENC,
                       [legal, z3.Not(z3.Or(*[g for _, g in gs]))]), verbose)
-        # H1 fault => FAILSAFE
         bad = [g for e, g in gs if e.target != Mode.FAILSAFE_HOLD_OR_RETREAT]
         rep.add(check(f"H1 fault=>FAILSAFE [{src.value}]", "fault -> target = FAILSAFE", ENC,
                       [legal, P.fault(o, Z3L), z3.Or(*bad)]), verbose)
-        # H2 collision risk => CA (from every mode, including MUTEX_PASS)
         bad = [g for e, g in gs if e.target != Mode.COLLISION_AVOIDANCE]
         rep.add(check(f"H2 d<d_ca=>COLLISION_AVOIDANCE [{src.value}]",
                       "!fault & d_min < d_ca -> target = COLLISION_AVOIDANCE", ENC,
                       [legal, z3.Not(P.fault(o, Z3L)), o.d_min < cfg.sep.d_ca, z3.Or(*bad)]), verbose)
-        # H3 warning band => SW
         bad = [g for e, g in gs if e.target != Mode.SEPARATION_WARNING]
         rep.add(check(f"H3 warning band=>SEPARATION_WARNING [{src.value}]",
                       "!fault & d_ca_exit <= d_min < d_warning -> target = SEPARATION_WARNING", ENC,
                       [legal, z3.Not(P.fault(o, Z3L)), o.d_min >= cfg.sep.d_ca_exit, o.d_min < cfg.sep.d_warning,
                        z3.Or(*bad)]), verbose)
-        # G1 entering MUTEX_PASS uncommitted requires the mutual-exclusion entry condition
         into_gp = [g for e, g in gs if e.target == Mode.MUTEX_PASS]
         if into_gp:
             rep.add(check(f"G1 MUTEX_PASS entry condition [{src.value}]",
                           "!committed & guard(->MUTEX_PASS) -> at_queue & !occ_busy & has_prio", ENC,
                           [legal, z3.Not(o.committed), z3.Or(*into_gp),
                            z3.Not(z3.And(o.at_queue, z3.Not(o.occ_busy), o.has_prio))]), verbose)
-        # G2 committed never goes back to approach/yield
         back = [g for e, g in gs if e.target in (Mode.MUTEX_APPROACH, Mode.MUTEX_YIELD)]
         if back:
             rep.add(check(f"G2 no PASS->YIELD fallback without give-up [{src.value}]",
@@ -105,18 +98,15 @@ def run(cfg=DEFAULT, verbose=True) -> Report:
                 rep.add(check(f"G2c a give-up clears the commitment [{src.value}]",
                               "committed & edge to {MUTEX_APPROACH, MUTEX_YIELD} enabled -> it sets committed := false",
                               ENC, [legal, o.committed, z3.Or(*keep)]), verbose)
-        # G3 no commit decision under a separation hazard
         commits = [g for e, g in gs if e.set_committed is True]
         if commits:
             rep.add(check(f"G3 no commit under hazard [{src.value}]",
                           "commit edge enabled -> d_min >= d_warning (or >= d_warning_exit from SW)", ENC,
                           [legal, z3.Or(*commits), o.d_min < cfg.sep.d_warning]), verbose)
-        # L1 the readable guards of the diagram and of the transition log are exact under the priority order
         rep.add(check(f"L1 readable guards exact [{src.value}]",
                       "forall legal obs, edge k: no earlier edge enabled -> (label_k <-> guard_k)", ENC,
                       [legal, label_mismatch(gs, o, cfg)]), verbose)
 
-    # ------------------------------------------------------------- mutation tests
     def mutated(drop_prio: bool = False, drop_ca_priority: bool = False, abort_keeps_commit: bool = False):
         ed = build_edges(cfg)
         out = {}
@@ -128,11 +118,9 @@ def run(cfg=DEFAULT, verbose=True) -> Report:
                                                                         o.at_queue, L.Not(o.occ_busy)),
                                     e.target, e.set_committed, e.decision))
                 elif drop_ca_priority and e.name == "pass_continue" and src == Mode.MUTEX_PASS:
-                    # broken design: "once committed, keep passing whatever happens"
                     new.append(Edge(e.name, lambda o, L: L.And(L.Not(P.fault(o, L)), o.committed, L.Not(o.passed)),
                                     e.target, e.set_committed, e.decision))
                 elif abort_keeps_commit and e.name == "pass_abort":
-                    # broken design: the withdrawn flow-only retreat (back to the queue, still committed)
                     new.append(Edge(e.name, e.guard, e.target, None, e.decision))
                 else:
                     new.append(e)

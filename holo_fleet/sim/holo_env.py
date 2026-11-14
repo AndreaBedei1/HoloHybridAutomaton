@@ -31,21 +31,21 @@ from holo_fleet.sim.sensor_noise import heading_biases, plan_windows
 LOG = logging.getLogger(__name__)
 
 TICKS_PER_SEC = 30
-IMU_OFFSET = np.array([0.11, 0.0, -0.065])     # PoseSensor (IMUSocket) relative to the agent origin, body frame
+IMU_OFFSET = np.array([0.11, 0.0, -0.065])
 
 
 @dataclass
 class Truth:
     t: float
-    positions: np.ndarray                 # (n,3) agent origins (hull centres)
-    rotations: np.ndarray                 # (n,3,3) body->world
-    yaw_deg: np.ndarray                   # (n,)
-    velocities: np.ndarray                # (n,3)
-    collision: np.ndarray                 # (n,) bool, CollisionSensor
-    released: np.ndarray                  # (n,) bool
-    current_drift: np.ndarray             # (n,3) effective drift applied at each drone
-    current_cmd: np.ndarray               # (n,3) HoloOcean command actually sent
-    intruders: Optional[np.ndarray] = None  # (m,3) scripted non-fleet vehicles (referee only)
+    positions: np.ndarray
+    rotations: np.ndarray
+    yaw_deg: np.ndarray
+    velocities: np.ndarray
+    collision: np.ndarray
+    released: np.ndarray
+    current_drift: np.ndarray
+    current_cmd: np.ndarray
+    intruders: Optional[np.ndarray] = None
 
 
 def agent_origin_from_pose(pose: np.ndarray) -> np.ndarray:
@@ -79,7 +79,6 @@ class HoloFleetSim:
         self.tick_wall_ms: List[float] = []
         self.sonar_captures = 0
         self.watchdog = None
-        # sensor degradation (sim/sensor_noise.py): its own generator, so the stress stream above is unchanged
         self.noise = getattr(spec, "noise", None)
         self.nrng = np.random.default_rng([int(spec.seed), 7919])
         nd = getattr(spec, "noise_drones", None)
@@ -89,7 +88,7 @@ class HoloFleetSim:
                              else np.zeros(len(self.names)))
         self.heading_bias = np.array([b if k in self.noisy_idx else 0.0 for k, b in enumerate(self.heading_bias)])
         self.noise_windows: Dict[str, Dict[str, List[tuple]]] = {}
-        self.delayed: Dict[str, List[tuple]] = {n: [] for n in self.names}      # (t_due, key, value, t_capture)
+        self.delayed: Dict[str, List[tuple]] = {n: [] for n in self.names}
         self.noise_stats = {"sonar_dropped": 0, "sonar_blackout": 0, "sonar_faded": 0, "sonar_shifted": 0,
                             "dvl_dropped": 0, "dvl_outage": 0}
         self.beacon = None
@@ -115,7 +114,6 @@ class HoloFleetSim:
             Y.append(math.atan2(pose[1, 0], pose[0, 0]))
         return np.array(P), np.array(Y), getattr(self, "scene_bars", [])
 
-    # ------------------------------------------------------------------ setup
     def _agent_cfg(self, k: int) -> Dict[str, Any]:
         name = self.names[k]
         sensors = onboard_sensor_configs(self.cfg, view_region=self.view_region,
@@ -157,7 +155,7 @@ class HoloFleetSim:
 
     def start(self) -> None:
         self.setup_report["holoocean"] = hs.use_patched_holoocean()
-        hs.wait_for_engine_semaphores()           # the client no longer loses the engine's start-up race
+        hs.wait_for_engine_semaphores()
 
         from holo_fleet.sim.engine_watchdog import EngineWatchdog
 
@@ -204,7 +202,6 @@ class HoloFleetSim:
             spawner = make_spawner(self.env)
             spawner.spawn_gate_bars(bars)
             self.setup_report["gate_spawn"] = getattr(spawner.report, "__dict__", {})
-        # the same bars as the map's oriented boxes (centre, axes, half extents: arena_bridge, one geometry)
         self.scene_bars = ([b for g in load_arena_gates(HORSESHOE_TRACK, list(self.spec.gate_ids)) for b in g.bars]
                            if self.spec.gate_ids else [])
         for prop in getattr(self.spec, "props", ()) or ():
@@ -213,7 +210,7 @@ class HoloFleetSim:
                                 sim_physics=False, material=prop.get("material", "steel"))
         self._settle(4)
         if hs.client_supports_rebuild() and self.setup_report["holoocean"].get("patched"):
-            wait = self.env.rebuild_sonar_octree()        # octree <- the scene that is really there
+            wait = self.env.rebuild_sonar_octree()
             self._settle(wait + 3)
             self.setup_report["octree"] = {"mode": "patched_rebuild", "ticks": wait + 3}
         else:  # pragma: no cover - unpatched engine: documented fallback only
@@ -308,11 +305,10 @@ class HoloFleetSim:
                 return None
         return val
 
-    # ------------------------------------------------------------------ stepping
     def _tick(self, record: bool = True) -> None:
         for name, (loc, rot) in self.pins.items():
             self.env.agents[name].set_physics_state(list(loc), list(rot), [0, 0, 0], [0, 0, 0])
-        for d in self.intruders:                     # scripted kinematic motion, no reaction to anything
+        for d in self.intruders:
             loc = self.intruder_position(d, self.t)
             vel = (self.intruder_position(d, self.t + 0.1) - loc) / 0.1
             self.env.agents[d["name"]].set_physics_state([float(v) for v in loc], [0.0, 0.0, float(d.get("yaw_deg", 0.0))],
@@ -330,15 +326,13 @@ class HoloFleetSim:
             for key, val in data.items():
                 if key in SONAR_NAMES:
                     self.sonar_captures += 1
-                    # simulator-side degradation, identical for the six sonars: a dropped capture is
-                    # simply not delivered (its age grows); a blackout drops every sonar of the drone
                     if self._blackout(n, tick_t) or (st.beam_dropout > 0 and self.rng.random() < st.beam_dropout):
                         continue
                 if record and n in self.noisy and n in self.delayed and is_onboard(key):
                     val = self._degrade(n, key, val, tick_t)
                     if val is None:
                         continue
-                    if self.noise.latency_s > 0:              # delivered late, stamped with its capture time
+                    if self.noise.latency_s > 0:
                         self.delayed[n].append((tick_t + self.noise.latency_s, key, val, tick_t))
                         continue
                 self.latest[n][key] = val
@@ -379,8 +373,6 @@ class HoloFleetSim:
         cmd = np.array([self.spec.current.command_at(P[k], self.t) for k in range(n)])
         for k, name in enumerate(self.names):
             if self.spec.dead(name, self.t) and P[k, 2] < self.cfg.failure.surface_z_m:
-                # positively buoyant: the ascent of a completely failed drone, added to the drift vector (the engine's
-                # current force depends on the norm of the command, so a sum of commands would couple the two)
                 w = drift[k] + np.array([0.0, 0.0, self.cfg.failure.v_rise_mps])
                 from holo_fleet.sim.currents import drift_to_command
 
@@ -397,14 +389,14 @@ class HoloFleetSim:
         out = {}
         for name in self.names:
             if self.spec.dead(name, self.t):
-                self.beacon_inbox[name] = []      # nothing is received: its electronics are off
+                self.beacon_inbox[name] = []
                 out[name] = SensorFrame(t=self.t, data={}, stamp={})
                 continue
             data = {k: v for k, v in self.latest[name].items() if is_onboard(k)}
             stamp = {k: v for k, v in self.stamp[name].items() if is_onboard(k)}
-            if self.beacon is not None:                # receptions since the previous frame (identities only)
+            if self.beacon is not None:
                 rx = self.beacon_inbox[name]
-                data["AcousticRx"] = tuple(rx)          # (identity, t_arrival, range, azimuth, elevation)
+                data["AcousticRx"] = tuple(rx)
                 stamp["AcousticRx"] = max((x[1] for x in rx), default=-1e9)
                 self.beacon_inbox[name] = []
             out[name] = SensorFrame(t=self.t, data=data, stamp=stamp)
@@ -423,7 +415,7 @@ class HoloFleetSim:
                                                [0.0, 0.0, float(self.spec.spawn_yaw_deg[k])])
                 self.env.act(name, np.zeros(8))
             elif self.spec.fault_active(name, self.t):
-                self.env.act(name, np.zeros(8))          # injected failure: commands are not executed
+                self.env.act(name, np.zeros(8))
             else:
                 self.env.act(name, np.zeros(8) if cmd is None else np.asarray(cmd, dtype=float))
         for name in self.intruder_names:

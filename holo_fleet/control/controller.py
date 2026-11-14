@@ -80,7 +80,7 @@ class EnvelopeMonitor:
         self.delivering = self.gain is None or self.gain >= self.gain_min
         bad = check is not None and (saturated or not check.ok)
         hold = None
-        if not self.persist.ok and not bad and self.window:      # in violation: clearing needs delivered motion
+        if not self.persist.ok and not bad and self.window:
             if rms < self.v_probe_min:
                 hold = "pause"
             elif not self.delivering:
@@ -98,7 +98,7 @@ class EnvelopeMonitor:
         was_ok = self.persist.ok
         ok = self.persist.update(bad, dt, hold=hold)
         if ok and not was_ok:
-            self.reason = ""                            # cleared: the record of ENVELOPE_OK carries no stale reason
+            self.reason = ""
         return ok
 
     def record(self) -> Dict[str, Any]:
@@ -128,31 +128,27 @@ class DroneController:
         self.ha = LocalHybridAutomaton(cfg)
         self.was_committed = False
         self.flows = Flows(plan, cfg)
-        self.passage = PassageVerifier(cfg)        # what the drone reports about its gate passage (payload v2)
+        self.passage = PassageVerifier(cfg)
         self.ll = LowLevelController(cfg)
         self.envmon = EnvelopeMonitor()
-        self.observation_violations = 0            # control steps with an inconsistent abstract observation
+        self.observation_violations = 0
         self.obs_consistent = True
         self.events: List[Dict[str, Any]] = []
         self.last_obs: Optional[LocalObservation] = None
         self.last_record: Dict[str, Any] = {}
-        self.v_requested = np.zeros(3)             # velocity requested from the low level at the previous step
-        self.last_transition: Optional[Dict[str, Any]] = None     # last mode change (transition log)
+        self.v_requested = np.zeros(3)
+        self.last_transition: Optional[Dict[str, Any]] = None
 
     def step(self, frame: SensorFrame, dt: float) -> np.ndarray:
         t = frame.t
-        ftime = self.flows.ftime                               # own formation time (reduced progress)
+        ftime = self.flows.ftime
         obs = self.perception.update(frame, dt, sigma=self.flows.sigma, env_ok=self.envmon.ok,
                                      offset=self.flows.offset + self.flows.lat_offset, in_formation=self.ha.mode in IN_FORMATION,
                                      t_form=ftime.now(t),
                                      v_req=self.v_requested if (self.envmon.ok and not self.ll.saturated) else None)
-        for e in self.perception.events:                       # SLOT_DECLARED_VACANT / SLOT_REOCCUPIED
+        for e in self.perception.events:
             self.events.append({**e, "mode": self.ha.mode.value})
         self.perception.events.clear()
-        # observation consistency check (ha/observation_invariants.py) between perception and automaton:
-        # an observation the perception cannot produce reveals a defect; it is logged and handed to the
-        # automaton as a sensing fault, i.e. the existing fault edge -> FAILSAFE_HOLD_OR_RETREAT
-        # the stage-2 give-up request of the previous control step (flows.gate), only while committed (I5)
         obs.ab.committed = self.ha.committed
         obs.ab.entry_abort = bool(self.flows.abort_request and self.ha.committed and obs.ab.mutex_zone
                                   and not obs.ab.passed)
@@ -167,7 +163,7 @@ class DroneController:
         prev = self.ha.mode
         rec = self.ha.step(obs.ab, t, dt)
         mode = self.ha.mode
-        if rec.target != rec.source:                           # transition log: every mode change, with its cause
+        if rec.target != rec.source:
             self.last_transition = {"t": round(t, 2), "from": rec.source, "to": rec.target, "edge": rec.edge,
                                     "reason": rec.reason, "guard": rec.label}
             self.events.append({"type": "transition", **self.last_transition})
@@ -180,7 +176,6 @@ class DroneController:
             self.perception.gp.advance()
         if prev == Mode.FAILSAFE_HOLD_OR_RETREAT and mode != prev:
             self.flows.clear_failsafe()
-        # ---------------------------------------------------------------- mission velocity of the calm mode
         gate_flow = obs.gate.in_zone or self.ha.committed
         if gate_flow:
             gmode = mode.value if mode in (Mode.MUTEX_APPROACH, Mode.MUTEX_YIELD, Mode.MUTEX_PASS) else (
@@ -190,7 +185,7 @@ class DroneController:
             v_mis, yaw_d = self.flows.formation(obs, dt, recovering=(mode == Mode.FORMATION_RECOVERY),
                                                 traffic=(mode != Mode.FAILSAFE_HOLD_OR_RETREAT))
         if not self.ha.committed:
-            v_mis = self.flows.keepout_filter(obs, v_mis)   # the mission of a drone not committed never heads for the CR
+            v_mis = self.flows.keepout_filter(obs, v_mis)
         authority = "nominal"
         if mode not in AVOIDANCE:
             self.flows.last_choice = None
@@ -210,16 +205,14 @@ class DroneController:
         from holo_fleet.perception.nav import NavBound
         dvl_fresh = t - self.perception.nav.state.t_dvl <= NavBound.DVL_STALE_S
         cmd = self.ll.command(self.perception.nav.state, v, yaw_d, authority, dt, dvl_fresh=dvl_fresh)
-        # envelope: can the low level deliver the requested velocity against the (estimated) current?
         judged = mode not in AVOIDANCE
         check = check_onboard(self.ll.current_estimate(), v, self.cfg, AUTHORITY[authority]) if judged else None
         was_ok = self.envmon.ok
-        # during a DVL outage the navigation velocity is the model's: not evidence of delivery (no circularity)
         ok = self.envmon.update(self.ll.saturated, check, dt, v_nav=obs.v_world if dvl_fresh else None,
                                 v_req=self.v_requested)
         self.v_requested = np.asarray(v, dtype=float).copy()
         self._update_gate_report(t, dt, obs)
-        for e in self.perception.gp.phantom_events:            # B2: corridor echoes no fleet drone produced
+        for e in self.perception.gp.phantom_events:
             self.events.append({"t": e["t"], "type": "PHANTOM_ECHO", "excluding_fixes": e["fixes"]})
         self.perception.gp.phantom_events.clear()
         self._drain_flow_events(t, mode)
@@ -227,9 +220,6 @@ class DroneController:
             self.events.append({"t": t, "type": "ENVELOPE_VIOLATION", **self.envmon.record()})
         elif ok and not was_ok:
             self.events.append({"t": t, "type": "ENVELOPE_OK", **self.envmon.record()})
-        # own formation time for the next step: reduced progress while an expected neighbour is missing; a drone that
-        # started an episode out of formation keeping and is still away from its slot (it is the one missed) keeps
-        # it until it is back near its slot
         incomplete = not obs.form.neighbors_ok or (mode not in IN_FORMATION and ftime.episode_t > 0.0
                                                    and obs.form.slot_err_norm > self.cfg.form.e_ok)
         ftime.update(t, dt, incomplete=incomplete, mutex=gate_flow, front_residual=obs.form.front_residual,
@@ -296,13 +286,11 @@ class DroneController:
         _s_est, l_est, _dz_est = (float(v) for v in gate.to_gate_frame(np.asarray(p_est, float)))
         axis = np.asarray(gate.axis, float)
         left = np.array([-axis[1], axis[0], 0.0])
-        # the LATERAL position only: the along-axis place of the crossing is known to +-0.4 m at best and a jump of s moves
-        # the estimate past the post the drone is beside (its echo is then unexplained: gate_single s902 in the first batch)
         if abs(l_meas - l_est) > 1.2:
             return
         corr = (l_meas - l_est) * left
         self.perception.apply_position_correction(corr)
-        self.perception.aiding.forget_unconfirmed()             # a direct measurement of the position in the opening: nothing before it is left to undo
+        self.perception.aiding.forget_unconfirmed()
         self.events.append({"t": t, "type": "GATE_CROSSING_MEASURED", "gate": self.passage.idx, "l": round(l_meas, 3),
                             "dz": None if dz is None else round(dz, 3), "correction": np.round(corr, 3).tolist()})
 
@@ -327,7 +315,7 @@ class DroneController:
         or a request.  It stays on the gate of an unfinished passage until that passage is verified."""
         p, gp = self.passage, self.perception.gp
         if p.idx != gp.idx and not p.in_progress and (not p.verified or self.ha.committed):
-            p.next_gate(gp.idx)      # a verified passage keeps being reported until the drone engages the next gate
+            p.next_gate(gp.idx)
         gate = self.plan.gates[p.idx] if p.idx < len(self.plan.gates) else None
         if self.flows.cr_cleared and self.ha.committed and gate is not None and not p.admitted:
             p.admit(p.idx, gate, obs.p)

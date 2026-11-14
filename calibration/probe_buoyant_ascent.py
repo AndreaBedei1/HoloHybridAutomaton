@@ -53,7 +53,7 @@ def run_case(name, pos, yaw, cfg, seconds, gate_ids=(), current=None):
             tr = sim.truth()
             R = tr.rotations[0]
             up = np.array([0.0, 0.0, 1.0])
-            tilt = float(np.degrees(np.arccos(np.clip(float(np.max(np.abs(R @ up))), -1.0, 1.0))))   # angle of the hull z axis to the vertical
+            tilt = float(np.degrees(np.arccos(np.clip(float(np.max(np.abs(R @ up))), -1.0, 1.0))))
             rows.append([round(sim.t, 2), *[round(float(x), 3) for x in tr.positions[0]],
                          round(float(tr.velocities[0][2]), 3), round(tilt, 1), int(tr.collision[0])])
     finally:
@@ -81,7 +81,7 @@ def main() -> int:
     yaw0 = float(np.degrees(np.arctan2(g.axis[1], g.axis[0])))
     out = {"target_v_rise_mps": DEFAULT.failure.v_rise_mps, "surface_z_m": DEFAULT.failure.surface_z_m, "free": [], "gate": [],
            "current": [], "checks": {}}
-    p0 = g.from_gate_frame([-12.0, 8.0, -3.0]).tolist()    # open water, away from the gate
+    p0 = g.from_gate_frame([-12.0, 8.0, -3.0]).tolist()
     for v in ([0.05, 0.10, 0.15, 0.20] if not args.quick else [0.10]):
         cfg = dataclasses.replace(DEFAULT, failure=dataclasses.replace(DEFAULT.failure, v_rise_mps=v))
         rows = run_case(f"ascent_{v}", p0, yaw0, cfg, 45.0)
@@ -89,7 +89,6 @@ def main() -> int:
         vt = terminal_speed(rows, 15.0, 35.0)
         out["free"].append({"v_target": v, "z0": round(float(a[0, 3]), 3), "z_end": round(float(a[-1, 3]), 3),
                             "v_terminal_mean": round(vt, 3), "ratio": round(vt / v, 3)})
-    # failure inside the opening: along-track grid around the bar edge, lateral offsets near the posts, and hull yaw
     cases = [(s, 0.0, 0.0) for s in (-0.6, -0.45, -0.38, -0.3, -0.2, 0.0, 0.2, 0.3, 0.38, 0.45, 0.6)]
     cases += [(0.0, 0.7, 0.0), (0.5, 0.7, 0.0), (0.0, 0.0, 45.0), (0.0, 0.0, 90.0), (0.45, 0.0, 45.0), (0.45, 0.0, 90.0)]
     if args.quick:

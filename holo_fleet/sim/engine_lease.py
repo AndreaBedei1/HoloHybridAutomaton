@@ -28,7 +28,7 @@ def startup_lock(directory=None):
             except OSError as exc:
                 if exc.errno not in (errno.EACCES, errno.EAGAIN, errno.EDEADLK):
                     raise
-                time.sleep(0.1)  # scheduling only; no mission or engine-start timeout is changed
+                time.sleep(0.1)
         try:
             yield
         finally:
@@ -48,7 +48,7 @@ def worker_engines(pid, created):
                     and all(k in engine for k in ("pid", "ppid", "created", "uuid"))):
                 records.append(engine)
         except (OSError, ValueError):
-            pass  # a concurrent metadata write is not ownership evidence; retry on the next watch tick
+            pass
     return records
 
 
@@ -58,7 +58,7 @@ def same_process(record):
     except psutil.NoSuchProcess:
         return False
     except (psutil.AccessDenied, KeyError):
-        return True  # uncertainty is not permission to reuse a slot
+        return True
 
 
 def owned_engine(record):
@@ -134,7 +134,6 @@ class EngineLease:
         self._persist(self.record)
 
     def _persist(self, record):
-        # Atomic replacement retains the previous identity if the worker dies during a write.
         with tempfile.NamedTemporaryFile(mode="w", encoding="utf-8", dir=self.directory,
                                          prefix=f"slot{self.slot}-", suffix=".tmp", delete=False) as file:
             temporary = Path(file.name)
@@ -149,7 +148,6 @@ class EngineLease:
     def release(self):
         if self.file is None:
             return
-        # Preserve a live engine's identity even if its owner exits abnormally.
         if not self.record.get("engine") or not same_process(self.record["engine"]):
             self._persist({})
         self._lock(self.file, False)

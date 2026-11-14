@@ -24,8 +24,8 @@ from holo_fleet.config import DEFAULT, FleetConfig
 from holo_fleet.perception.sonar_geometry import AXES, HULL_HALF, MOUNTS, R_IN, R_OUT, SECTORS, ball_touches_cone, sonar_sensor_name
 from holo_fleet.perception.sonar_processing import OBSTACLE_CLASSES, UNCONFIRMED
 
-R_EXPECT = 5.0          # completeness region of A1 (results/reference/ASSUMPTIONS.md)
-MATCH_TOL = 0.6         # an echo within this of a hull's near-surface range is that hull's echo
+R_EXPECT = 5.0
+MATCH_TOL = 0.6
 BORESIGHT_DEG = 45.0
 
 
@@ -66,7 +66,7 @@ class SensorAudit:
         self.nav_err: List[List[float]] = [[] for _ in range(n)]
         self.nav_yaw_err: List[float] = []
         self._yaw_prev = None
-        self._stamp = [dict() for _ in range(n)]      # last stamp seen per stream: a new sample = a new stamp
+        self._stamp = [dict() for _ in range(n)]
 
     def _new(self, k: int, fr, key: str) -> bool:
         st = fr.stamp.get(key)
@@ -77,8 +77,6 @@ class SensorAudit:
 
     def update(self, truth, frames: Dict, ctrls: Dict) -> None:
         tau = self.cfg.env.tau_max
-        # attitude from the true yaw only (roll/pitch stay within a few degrees): PoseSensor's rotation matrix is not in
-        # the body x-fwd / y-left / z-up convention of the sonar mounts (validate_assumptions_v2 does the same)
         P = truth.positions
         yr = np.radians(np.asarray(truth.yaw_deg, float))
         R = np.array([[[math.cos(a), -math.sin(a), 0.0], [math.sin(a), math.cos(a), 0.0], [0.0, 0.0, 1.0]] for a in yr])
@@ -93,13 +91,12 @@ class SensorAudit:
         for k, name in enumerate(self.names):
             fr = frames[name]
             if not fr.data:
-                continue                               # a completely failed drone has no sensors any more
+                continue
             c = ctrls.get(name)
             obs = None if c is None else c.last_obs
-            # ---- sonar freshness
             ages = [fr.age(sonar_sensor_name(s)) if sonar_sensor_name(s) in fr.data else 1e9 for s in SECTORS]
             stale = max(ages) > tau + 1e-9
-            if fr.t >= 0.5:                            # start-up: no capture yet
+            if fr.t >= 0.5:
                 self.max_age = max(self.max_age, min(max(ages), 99.0))
             if stale:
                 self.stale_steps[k] += 1
@@ -107,7 +104,6 @@ class SensorAudit:
                 self.longest_stale[k] = max(self.longest_stale[k], self.stale_run[k])
             else:
                 self.stale_run[k] = 0.0
-            # ---- sonar detections (controller perception output vs truth)
             if obs is not None:
                 for s in SECTORS:
                     rd = obs.readings.get(s)
@@ -144,7 +140,6 @@ class SensorAudit:
                             self.missed += 1
                 self.nav_err[k].append(float(np.linalg.norm(obs.p - P[k])))
                 self.nav_yaw_err.append(float(_wrap_deg(math.degrees(obs.yaw) - truth.yaw_deg[k])))
-            # ---- DVL / compass / depth / gyro
             dv = fr.data.get("DVLSensor")
             if dv is not None and self._new(k, fr, "DVLSensor"):
                 v_true = R[k].T @ np.asarray(truth.velocities[k], float)

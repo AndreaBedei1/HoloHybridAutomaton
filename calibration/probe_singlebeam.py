@@ -42,16 +42,16 @@ from holo_fleet.sim.holoocean_setup import octree_cache_dir
 OUT = ROOT / "calibration" / "out" / "sonar_probe"
 TPS = 30
 SONAR_HZ = 10
-OCTREE_MIN, OCTREE_MAX = 0.06, 5.0           # project-specific cache folder (min6_max768), never shared
-SONAR_X = 0.24                                # sonar origin: bow of the hull, on the body x axis [m]
-OPEN_WATER = np.array([0.0, -40.0, -5.0])     # >= 25 m from every arena bar
-BOX_POS = np.array([-5.0, 30.0, -4.3])        # >= 14 m from every arena bar
+OCTREE_MIN, OCTREE_MAX = 0.06, 5.0
+SONAR_X = 0.24
+OPEN_WATER = np.array([0.0, -40.0, -5.0])
+BOX_POS = np.array([-5.0, 30.0, -4.3])
 BOX_SIZE = 0.5
 FAR_AWAY = [0.0, -200.0, -5.0]
 
 
 def sonar_config(opening: float, noise: bool, view: bool = False) -> dict:
-    cfg = {"OpeningAngle": opening, "RangeMin": 0.3, "RangeMax": 12.0, "RangeBins": 234,   # 5 cm bins
+    cfg = {"OpeningAngle": opening, "RangeMin": 0.3, "RangeMax": 12.0, "RangeBins": 234,
            "AddSigma": 0.0, "MultSigma": 0.0, "RangeSigma": 0.0, "ShowWarning": False,
            "InitOctreeRange": 50, "ViewRegion": view, "ViewOctree": -10}
     if noise:
@@ -113,7 +113,6 @@ class Bench:
         self.events.append(rec)
         print(json.dumps(rec), flush=True)
 
-    # --------------------------------------------------------------- scene / sensors
     def spawn_props(self, gates: bool = True, box: bool = True):
         if gates:
             spawner = make_spawner(self.env)
@@ -126,7 +125,7 @@ class Bench:
     def add_sonar(self, noise: bool, view: bool = True):
         from holoocean.sensors import SensorDefinition
 
-        self.env._has_sonar = True            # no engine-handshake timeout while the octree is being built
+        self.env._has_sonar = True
         sd = SensorDefinition("observer", "BlueROV2", "Sonar", "SinglebeamSonar", socket="", location=[SONAR_X, 0, 0],
                               rotation=[0, 0, 0], config=sonar_config(self.opening, noise, view),
                               tick_every=TPS // SONAR_HZ)
@@ -147,7 +146,6 @@ class Bench:
         self.env.agents["observer"].remove_sensors(self.sonar_def)
         self.tick()
 
-    # --------------------------------------------------------------------- ticking
     def tick(self):
         for name, (loc, rot) in (("observer", self.obs_pose), ("target", self.tgt_pose)):
             self.env.agents[name].set_physics_state(loc, rot, [0, 0, 0], [0, 0, 0])
@@ -218,7 +216,6 @@ class Bench:
         (self.dir / "events.json").write_text(json.dumps(self.events, indent=1), encoding="utf-8")
 
 
-# ---------------------------------------------------------------------------------------- experiments
 def gate_g06():
     return {g.gate_id: g for g in load_arena_gates(HORSESHOE_TRACK)}["G06"]
 
@@ -227,14 +224,14 @@ def face_gate_poses(g, d: float, lateral: float = 0.0, dz: float = 0.0):
     """Observer on the approach side of gate g, d metres before the gate plane, looking along the axis."""
     left = np.array([-g.axis[1], g.axis[0], 0.0])
     sonar = g.center - d * g.axis + lateral * left + np.array([0, 0, dz])
-    loc = sonar - SONAR_X * g.axis                  # the hull origin sits behind the sonar
+    loc = sonar - SONAR_X * g.axis
     yaw = math.degrees(math.atan2(g.axis[1], g.axis[0]))
     return loc, (0.0, 0.0, yaw)
 
 
 def exp_gate(b: Bench, distances=(1.5, 2.0, 3.0, 4.0, 6.0, 8.0)):
     g = gate_g06()
-    side = max(abs(g.to_gate_frame(b.center)[1]) for b in g.bars)        # bar centre line
+    side = max(abs(g.to_gate_frame(b.center)[1]) for b in g.bars)
     for aim, lat, dz in (("left_pillar", side, 0.0), ("centre", 0.0, 0.0), ("top_bar", 0.0, side)):
         for d in distances:
             loc, rpy = face_gate_poses(g, d, lat, dz)
@@ -276,7 +273,7 @@ def exp_noise(b: Bench):
     for d in (1.0, 2.0, 4.0, 8.0):
         b.place(obs, (0, 0, 0), obs + np.array([SONAR_X + d, 0, 0]), (0, 0, 180.0))
         b.record("noise", {"d_centre_from_sonar": d}, captures=40)
-    b.place(obs, (0, 0, 0))                          # empty water: false alarms
+    b.place(obs, (0, 0, 0))
     b.record("noise_empty", {}, captures=60)
 
 
@@ -289,7 +286,7 @@ def exp_surface(b: Bench):
         b.place(loc, (0, 0, 0), loc + np.array([SONAR_X + 4.0, 0, 0]), (0, 0, 180))
         b.record("surface_horizontal_target", {"depth": depth, "d": 4.0}, captures=4,
                  screenshot="surface_target" if depth == 0.6 else "")
-    for pitch in (-90.0, 90.0):                      # find which sign points the bow up
+    for pitch in (-90.0, 90.0):
         for depth in (2.0, 4.0, 8.0):
             b.place([base[0], base[1], -depth], (0, pitch, 0))
             b.record("vertical_look", {"pitch": pitch, "depth": depth}, captures=4)
@@ -323,12 +320,11 @@ def cache_size_mb() -> float:
     return round(sum(p.stat().st_size for p in octree_cache_dir().rglob("*") if p.is_file()) / 1e6, 1)
 
 
-# --------------------------------------------------------------------------------------------- sessions
 def session_k1(opening: float):
     b = Bench("k1", opening, sonar_in_scenario=True, clear_cache=True)
     g = gate_g06()
     b.place(*face_gate_poses(g, 3.0))
-    for _ in range(40):                              # octree built inside reset(); let the init cells finish
+    for _ in range(40):
         b.tick()
     b.spawn_props()
     for _ in range(10):
@@ -353,7 +349,7 @@ def session_k2(opening: float, short: bool = False):
     b.add_sonar(noise=False)
     b.log("cache_after_attach", size_mb=cache_size_mb())
     if short:
-        for _ in range(150):                         # let the octree finish before timing
+        for _ in range(150):
             b.tick()
         b.timing("one_sonar_facing_gate_warm", ticks=150)
         b.place(OPEN_WATER, (0, 0, 0))

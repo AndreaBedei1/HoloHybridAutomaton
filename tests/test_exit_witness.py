@@ -105,7 +105,7 @@ def test_absence_of_echoes_never_releases_the_latch():
     o, t = run(gp, [[]] * int((G.t_occ_max - 0.5) / 0.1), t0=t)
     assert o.occ_state == "BUSY" and o.occ_timeouts == 0
     o, t = run(gp, [[]] * 10, t0=t)
-    assert o.occ_state == "FREE" and o.occ_timeouts == 1                     # only the conservative fallback
+    assert o.occ_state == "FREE" and o.occ_timeouts == 1
 
 
 def test_an_echo_that_a_hull_in_the_cr_can_produce_is_no_witness():
@@ -119,7 +119,7 @@ def test_an_echo_that_a_hull_in_the_cr_can_produce_is_no_witness():
 def test_witness_needs_the_corridor_empty():
     gp = perception()
     _, t = run(gp, [[tg({"FRONT"}, 4.6)]] * 3)
-    o, t = run(gp, [[tg({"FRONT"}, 4.8), tg({"LEFT"}, 9.0)]] * 30, t0=t)   # occupant still in the corridor
+    o, t = run(gp, [[tg({"FRONT"}, 4.8), tg({"LEFT"}, 9.0)]] * 30, t0=t)
     assert o.occ_state == "BUSY"
 
 
@@ -162,17 +162,17 @@ def test_a_contact_outside_the_cr_seen_with_the_occupant_is_background_whatever_
     """W3 is recorded for every echo outside the CR while the occupant is in the corridor, before any reach test."""
     gp = perception()
     _, t = run(gp, [[tg({"FRONT"}, 4.6), tg({"FRONT"}, 7.4, ranges={"FRONT": 7.4})]] * 3)
-    o, t = run(gp, [[tg({"FRONT"}, 7.4, ranges={"FRONT": 7.4})]] * 40, t0=t)   # still there, occupant masked
+    o, t = run(gp, [[tg({"FRONT"}, 7.4, ranges={"FRONT": 7.4})]] * 40, t0=t)
     assert o.occ_state == "BUSY"
 
 
 def test_a_drone_already_beyond_is_not_taken_for_the_occupant():
     gp = perception()
-    _, t = run(gp, [[tg({"FRONT"}, 4.6), tg({"FRONT"}, 9.5, ranges={"FRONT": 9.5})]] * 5)   # A beyond, O in
+    _, t = run(gp, [[tg({"FRONT"}, 4.6), tg({"FRONT"}, 9.5, ranges={"FRONT": 9.5})]] * 5)
     seq = [[tg({"FRONT"}, 9.5 + 0.03 * k, ranges={"FRONT": 9.5 + 0.03 * k})] for k in range(40)]
-    o, t = run(gp, seq, t0=t)                                                # O masked, A followed
+    o, t = run(gp, seq, t0=t)
     assert o.occ_state == "BUSY"
-    o, t = run(gp, [[tg({"FRONT"}, 7.0, ranges={"FRONT": 7.0})]] * 3, t0=t)   # a new echo: O
+    o, t = run(gp, [[tg({"FRONT"}, 7.0, ranges={"FRONT": 7.0})]] * 3, t0=t)
     assert o.occ_state == "EXITING"
 
 
@@ -180,7 +180,7 @@ def test_a_far_echo_right_after_the_corridor_is_not_reachable():
     gp = perception()
     _, t = run(gp, [[tg({"FRONT"}, 4.6)]] * 3)
     o, t = run(gp, [[tg({"FRONT"}, 11.5, ranges={"FRONT": 11.5})]] * 2, t0=t)
-    assert o.occ_state == "BUSY"                                             # 11.5 m: > 3 m beyond the CR in 0.2 s
+    assert o.occ_state == "BUSY"
 
 
 def test_speed_bound():

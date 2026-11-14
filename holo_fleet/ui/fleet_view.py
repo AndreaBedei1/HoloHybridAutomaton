@@ -34,10 +34,10 @@ from PIL import Image, ImageDraw, ImageFont
 from holo_fleet.ha.spec import SELF_RECOVERED
 
 W, H = 1600, 900
-MAP = (24, 64, 1030, 690)            # x0, y0, x1, y1 of the map card
+MAP = (24, 64, 1030, 690)
 PANEL_X = 1048
-TL = (24, 688, 1030, 884)           # timeline card
-AUT = (1048, 688, 1576, 884)        # automaton card (selected drone)
+TL = (24, 688, 1030, 884)
+AUT = (1048, 688, 1576, 884)
 
 
 def _rgb(h: str):
@@ -68,7 +68,6 @@ STATE_COLOR = {"FOLLOW": _rgb("#2f9e5b"), "WAIT": _rgb("#e0a21c"), "DEGRADED": _
                "PASS": _rgb("#1c4e9c"), "WARNING": _rgb("#e8577a"), "AVOID": _rgb("#c62828"),
                "FAILSAFE": _rgb("#4b4a46")}
 LEGEND = ["FOLLOW", "WAIT", "DEGRADED", "RECOVERY", "APPROACH", "YIELD", "PASS", "WARNING", "AVOID", "FAILSAFE"]
-# the ten states on the priority layout of the automaton diagram (figures/automaton): hazards, mutex, recovery, keeping
 AUT_LAYOUT = [("FAILSAFE", 0, 0), ("AVOID", 1, 0), ("WARNING", 2, 0), ("APPROACH", 0, 1), ("YIELD", 1, 1),
               ("PASS", 2, 1), ("RECOVERY", 1, 2), ("WAIT", 0, 3), ("FOLLOW", 1, 3), ("DEGRADED", 2, 3)]
 KEEPING = ("FORMATION_FOLLOW", "FORMATION_WAIT_REJOIN", "DEGRADED_FORMATION")
@@ -114,7 +113,6 @@ def _guard_text(label: str) -> str:
     return label.replace(f"({SELF_RECOVERED})", "self_recovered").replace(SELF_RECOVERED, "self_recovered")
 
 
-# ---------------------------------------------------------------------------------------------- events
 def describe(e: Dict, slot_name: Dict[int, str]) -> Optional[str]:
     """One readable sentence for a logged event (None: not shown)."""
     d = dname(e["drone"]) if e.get("drone") else ""
@@ -160,7 +158,7 @@ class FleetView:
         self.n = len(self.names)
         for k in (selected, getattr(scenario, "automaton_drone", None), getattr(scenario.sim, "camera_drone", None), 0):
             if k is not None and 0 <= k < self.n:
-                self.sel = int(k)                           # drone of the automaton panel
+                self.sel = int(k)
                 break
         self.plans = list(scenario.plans)
         self.slot_name = {p.slot_index: p.drone_id for p in self.plans} if scenario.template is not None else {}
@@ -179,11 +177,10 @@ class FleetView:
         self.no_leader_since: Optional[float] = None
         self.entered: List[str] = []
         self.inside_prev: set = set()
-        self.marks: List = []                               # (t, text) on the timeline
-        self._ever_missing: set = set()                     # drones missed by a neighbour at some time (rejoining)
+        self.marks: List = []
+        self._ever_missing: set = set()
         G = cfg.gate
         self.G = G
-        # view frame: along / lateral of the scenario path
         wp = scenario.path.waypoints
         self.o = np.asarray(wp[0], float)
         ex = np.asarray(wp[-1], float) - self.o
@@ -227,7 +224,6 @@ class FleetView:
                 return k
         return None
 
-    # ------------------------------------------------------------------ geometry
     def uv(self, p) -> np.ndarray:
         q = np.asarray(p, float)[:2] - self.o
         return np.array([q @ self.ex, q @ self.ey])
@@ -257,7 +253,7 @@ class FleetView:
         cu, cv = (lo + hi) / 2.0
         self.cx, self.cy = (x0 + x1) / 2.0, (top + bottom) / 2.0
         self.cu, self.cv = cu, cv
-        self.side_y = y1 - 78                                # depth axis centre of the side view
+        self.side_y = y1 - 78
         self.zscale = min(self.scale, 46.0 / 3.6)
 
     def px(self, p) -> tuple:
@@ -269,7 +265,6 @@ class FleetView:
         return (int(round(self.cx + (u - self.cu) * self.scale)),
                 int(round(self.side_y - (float(p[2]) - self.depth0) * self.zscale)))
 
-    # ------------------------------------------------------------------ state
     def step(self, t: float, recs: Sequence[Dict], positions, referee_live: Dict, events: Sequence[Dict] = (),
              yaws=None) -> None:
         self.t = t
@@ -307,7 +302,6 @@ class FleetView:
                 if nm not in self.entered:
                     self.entered.append(nm)
             self.inside_prev = inside
-        # queue progress: some queued drone may go, or nobody can (deadlock risk)
         miss, vac = self.beliefs()
         self._ever_missing |= miss | vac
         for k, r in enumerate(self.recs):
@@ -321,7 +315,6 @@ class FleetView:
         else:
             self.no_leader_since = None
 
-    # ------------------------------------------------------------------ fleet beliefs
     def beliefs(self):
         """missing[k] / vacant[k]: drone k is missing / declared vacant for at least one neighbour that is itself
         keeping the formation (the beliefs of a drone that is lost, avoiding or in FAILSAFE are not its
@@ -355,14 +348,13 @@ class FleetView:
             return "holding (failsafe)"
         return "ok"
 
-    # ------------------------------------------------------------------ rendering
     def render(self) -> np.ndarray:
         img = np.full((H, W, 3), BG[::-1], np.uint8)
         self._cards_cv(img)
         x0, y0, x1, y1 = MAP
         layer = img.copy()
         self._map_cv(layer)
-        img[y0 + 1:y1, x0 + 1:x1] = layer[y0 + 1:y1, x0 + 1:x1]          # the map stays inside its card
+        img[y0 + 1:y1, x0 + 1:x1] = layer[y0 + 1:y1, x0 + 1:x1]
         self._timeline_cv(img)
         pil = Image.fromarray(img[:, :, ::-1])
         mp = Image.new("RGBA", (x1 - x0 - 2, y1 - y0 - 2), (0, 0, 0, 0))
@@ -396,18 +388,15 @@ class FleetView:
         w = dr.textlength(tt, font=F["h"])
         dr.text((W - 24 - w, 16), tt, font=F["h"], fill=INK)
 
-    # ---------------------------------------------------------------- map
     def _map_cv(self, img):
         x0, y0, x1, y1 = MAP
         sub = img[y0 + 1:y1, x0 + 1:x1]
-        # grid every 5 m
         u0 = self.cu - (self.cx - x0) / self.scale
         u1 = self.cu + (x1 - self.cx) / self.scale
         for u in np.arange(math.floor(u0 / 5.0) * 5.0, u1, 5.0):
             X = int(round(self.cx + (u - self.cu) * self.scale))
             if x0 + 2 < X < x1 - 2:
                 cv2.line(img, (X, y0 + 34), (X, y1 - (140 if self.vertical else 26)), _bgr(GRID), 1)
-        # mutex zone: approach band, CR, gate bars, queue points
         G = self.G
         for g in self.sc.judged_gates:
             q_s = self.plans[0].queue_s
@@ -426,12 +415,11 @@ class FleetView:
             if self.vertical:
                 for b in g.bars:
                     if abs(g.to_gate_frame(b.center)[2]) < 1e-6:
-                        continue                    # side bars: seen end-on in the vertical view
+                        continue
                     corners = np.array([b.center + b.axes @ (b.half * np.array([sx, sy, sz]))
                                         for sx in (-1, 1) for sy in (-1, 1) for sz in (-1, 1)])
                     a, c = zip(*[self.pz(q) for q in corners])
                     cv2.rectangle(img, (min(a), min(c)), (max(a), max(c)), _bgr(GATE), -1)
-        # common path (dashed)
         wp = self.sc.path.waypoints
         a, b = np.asarray(wp[0], float), np.asarray(wp[-1], float)
         L = float(np.linalg.norm(b - a))
@@ -441,9 +429,6 @@ class FleetView:
         if self.vertical:
             yz = self.side_y
             cv2.line(img, (x0 + 14, yz + int(self.zscale * 0)), (x1 - 14, yz), _bgr(GRID), 1)
-        # planned slots: shared plan at the fleet's formation time (median delay of the drones keeping their slot,
-        # control/formation_time.py: the formation runs behind the plan after a reduced-progress episode); vacant
-        # slots marked
         _missing, vacant = self.beliefs()
         taus = [float((r.get("form") or {}).get("tau", 0.0)) for r in self.recs if r.get("mode") in KEEPING]
         tau = float(np.median(taus)) if taus else 0.0
@@ -460,15 +445,13 @@ class FleetView:
                 self._ring(img, c, 11, col, dashed=k_dr in vacant)
                 if self.vertical:
                     self._ring(img, self.pz(p3), 9, col, dashed=k_dr in vacant)
-            break                                               # one shared plan
-        # trails
+            break
         for k in range(self.n):
             pts = [self.px(p) for _t, p in self.trails[k]] + [self.px(self.P[k])]
             for i in range(1, len(pts)):
                 f = i / len(pts)
                 c = tuple(int(BG[j] + (TRAIL[j] - BG[j]) * (0.25 + 0.75 * f)) for j in range(3))
                 cv2.line(img, pts[i - 1], pts[i], _bgr(c), 2, cv2.LINE_AA)
-        # drones
         missing, vacant = self.beliefs()
         r_px = max(7, int(round(0.38 * self.scale)))
         for k in range(self.n):
@@ -489,7 +472,6 @@ class FleetView:
                     d = r_px - 2
                     cv2.line(img, (c[0] - d, c[1] - d), (c[0] + d, c[1] + d), (255, 255, 255), 2, cv2.LINE_AA)
                     cv2.line(img, (c[0] - d, c[1] + d), (c[0] + d, c[1] - d), (255, 255, 255), 2, cv2.LINE_AA)
-        # intruder (scripted, not part of the fleet)
         row = (self.ref or {}).get("row") or {}
         for m in range(3):
             if f"ix{m}" in row:
@@ -498,7 +480,6 @@ class FleetView:
                 cv2.drawMarker(img, c, _bgr(BAD_C), cv2.MARKER_DIAMOND, 18, 2, cv2.LINE_AA)
                 if self.vertical:
                     cv2.drawMarker(img, self.pz(q), _bgr(BAD_C), cv2.MARKER_DIAMOND, 14, 2, cv2.LINE_AA)
-        # scale bar 5 m
         L5 = int(round(5.0 * self.scale))
         bx, by = x0 + 20, y1 - 16
         cv2.line(img, (bx, by), (bx + L5, by), _bgr(INK2), 2, cv2.LINE_AA)
@@ -517,7 +498,7 @@ class FleetView:
         """Map labels, drawn on a transparent layer the size of the map card (clipped); ``off`` = its origin."""
         x0, y0, x1, y1 = MAP
 
-        class _D:                                           # global coordinates -> layer coordinates
+        class _D:
             def __init__(self, d):
                 self.d = d
 
@@ -535,7 +516,6 @@ class FleetView:
         dr.text((x0 + 22, y1 - 36), "5 m", font=F["xs"], fill=INK2)
         if self.vertical:
             dr.text((x0 + 14, y1 - 140), "side view (along-track vs depth)", font=F["s"], fill=MUTED)
-        # queue points numbered in precedence order (left first, then top first), grouped when stacked
         G = self.G
         for g in self.sc.judged_gates:
             groups: Dict = {}
@@ -559,7 +539,6 @@ class FleetView:
             dr.text((gc[0] - 30, gc[1] - 62), f"gate {g.gate_id}", font=F["sb"], fill=INK2)
             dr.text((gc[0] - 40, gc[1] + 34), "critical region", font=F["xs"], fill=_rgb("#5b7fae"))
             _ = G
-        # drone labels
         missing, vacant = self.beliefs()
         for k in range(self.n):
             c = self.px(self.P[k])
@@ -574,7 +553,6 @@ class FleetView:
                 cz = self.pz(self.P[k])
                 dr.text((cz[0] + 10, cz[1] - 18), txt, font=F["tag"], fill=INK2)
 
-    # ---------------------------------------------------------------- panel
     def _chip(self, dr, x, y, text, col):
         w = dr.textlength(text, font=F["chip"]) + 16
         dr.rounded_rectangle((x, y, x + w, y + 20), radius=10, fill=col)
@@ -587,7 +565,6 @@ class FleetView:
         recs = self.recs
         missing, vacant = self.beliefs()
         modes = [rr.get("mode", "") for rr in recs]
-        # ---- fleet card
         dr.text((x, 76), "Fleet status", font=F["h"], fill=INK)
         y = 104
         sep = cfg_sep = self.cfg.sep
@@ -649,7 +626,6 @@ class FleetView:
         active = [k for k in range(self.n) if modes[k] != "FAILSAFE_HOLD_OR_RETREAT" and k not in vacant]
         dr.text((x, y + 4), f"{self.n} drones  ·  {len(active)} active  ·  {len(missing)} missing  ·  "
                             f"{len(vacant)} assumed failed", font=F["bb"], fill=INK)
-        # ---- drones card
         dr.text((x, 334), "Drones", font=F["h"], fill=INK)
         y = 360
         rowh = min(26, int(122 / max(1, self.n)))
@@ -670,7 +646,6 @@ class FleetView:
                                                                                   "COLLISION_AVOIDANCE")):
                 dr.text((x + 330, y + 1), f"nearest {dmin:.1f} m", font=F["b"], fill=WARN_C)
             y += rowh
-        # ---- events card
         dr.text((x, 516), "Events", font=F["h"], fill=INK)
         y = 542
         for te, txt in list(self.events)[-6:][::-1]:
@@ -684,7 +659,6 @@ class FleetView:
         nx = self._chip(dr, x + 160, y, chip, col)
         dr.text((nx, y + 2), detail[:52] + ("..." if len(detail) > 52 else ""), font=F["s"], fill=INK2)
 
-    # ---------------------------------------------------------------- timeline
     def _tl_geom(self):
         x0, y0, x1, y1 = TL
         lx0, lx1 = x0 + 64, x1 - 16
@@ -729,7 +703,6 @@ class FleetView:
             dr.text((lx1 - 330, y1 - 18), "| red: fault injected / slot declared vacant   green: fault cleared",
                     font=F["xs"], fill=MUTED)
 
-    # ---------------------------------------------------------------- automaton panel (selected drone)
     def _automaton(self, dr):
         x0, y0, x1, y1 = AUT
         k = self.sel
@@ -739,7 +712,6 @@ class FleetView:
         dr.text((x0 + 14, y0 + 8), f"Automaton · {dname(self.names[k])}", font=F["h"], fill=INK)
         dr.text((x0 + 210, y0 + 10), "onboard state, last transition, cause",
                 font=F["s"], fill=MUTED)
-        # the ten states on the priority layout; current filled, previous outlined, arrow previous -> current
         cw, ch, gx, gy = 70, 18, 76, 25
         ox, oy = x0 + 14, y0 + 38
         centre = {}
@@ -762,7 +734,7 @@ class FleetView:
             (ax, ay), (bx, by) = centre[prev], centre[cur]
             cell = {st: (c, r) for st, c, r in AUT_LAYOUT}
             (c0, r0), (c1, r1) = cell[prev], cell[cur]
-            if r0 == r1:                                       # same row: route below the row (never across a chip)
+            if r0 == r1:
                 yb = ay + ch / 2 + 5
                 dr.line([(ax, ay + ch / 2), (ax, yb), (bx, yb), (bx, by + ch / 2 + 6)], fill=INK, width=2)
                 dr.polygon([(bx, by + ch / 2), (bx - 4, by + ch / 2 + 7), (bx + 4, by + ch / 2 + 7)], fill=INK)
@@ -773,7 +745,6 @@ class FleetView:
                 dr.line((sx, sy, ex, ey), fill=INK, width=2)
                 dr.polygon([(ex + ux * 7, ey + uy * 7), (ex - uy * 4, ey + ux * 4), (ex + uy * 4, ey - ux * 4)],
                            fill=INK)
-        # text: state, last transition, cause and guard, formation progress
         tx = x0 + 262
         segs = self.timeline[k] if k < len(self.timeline) else []
         since = segs[-1][0] if segs else 0.0

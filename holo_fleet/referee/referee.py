@@ -66,7 +66,7 @@ class Referee:
         self.p1_violations: List[Dict] = []
         self.contacts: List[Dict] = []
         self.collision_edges: List[Dict] = []
-        self.dead_contacts: List[Dict] = []      # the sensor of a drone after its TOTAL_FAILURE: recorded, not a contact (update)
+        self.dead_contacts: List[Dict] = []
         self._coll_prev = np.zeros(self.n, dtype=bool)
         self.p2_violations: List[Dict] = []
         self.entry_order: Dict[str, List[str]] = {g.gate_id: [] for g in self.gates}
@@ -79,12 +79,11 @@ class Referee:
         self.max_drift = 0.0
         self.max_vertical_drift = 0.0
         self.max_speed = 0.0
-        self.max_rel_tilt = 0.0                    # largest angle between the z axes of two hulls [deg]
+        self.max_rel_tilt = 0.0
         self.rows: List[Dict] = []
-        self.intruder_min_d = 1e9                  # fleet drone <-> scripted non-fleet vehicle
+        self.intruder_min_d = 1e9
         self.intruder_min_t: Optional[float] = None
         self.intruder_contacts: List[Dict] = []
-        # P3-deg: absent drones and the formation of the present ones
         self.clock = clock
         self.t_rejoin = cfg.form.t_rejoin
         self._off_time = np.zeros(self.n)
@@ -94,12 +93,10 @@ class Referee:
         self._lost_p = False
         self._ok_since_p: Optional[float] = None
         self._t_prev: Optional[float] = None
-        # v3: permanently faulted drone index -> fault onset (None: the v2 deviation heuristic)
         self.permanent: Optional[Dict[int, float]] = None if faults is None else {
             self.names.index(f["drone"]): float(f["t_on"]) for f in faults
             if f.get("t_off") is None and f["drone"] in self.names}
 
-    # ------------------------------------------------------------------ formation error
     def formation_error(self, P: np.ndarray) -> float:
         """Max deviation of a drone from the template after the best translation (formation frame)."""
         if self.tmpl is None:
@@ -146,7 +143,7 @@ class Referee:
                     self.absent[k] = t
                     self.absence_log.append({"drone": self.names[k], "event": "absent", "t": round(t, 2),
                                              "deviation_m": round(float(dev[k]), 2), "source": "scripted fault"})
-        for k in (range(self.n) if self.permanent is None else ()):          # v2: the deviation heuristic
+        for k in (range(self.n) if self.permanent is None else ()):
             if k in self.absent:
                 if dev[k] <= rc.e_ok:
                     self.absence_log.append({"drone": self.names[k], "event": "back", "t": round(t, 2)})
@@ -170,7 +167,7 @@ class Referee:
             self.episodes_present.append(Episode(t_lost=t))
             self._ok_since_p = None
         elif self._lost_p:
-            if e_p <= rc.e_ok:                     # inclusive: the requirement is error <= E_TOL_M
+            if e_p <= rc.e_ok:
                 self._ok_since_p = t if self._ok_since_p is None else self._ok_since_p
                 if t - self._ok_since_p >= rc.t_ok_hold:
                     ep = self.episodes_present[-1]
@@ -185,11 +182,10 @@ class Referee:
         s, l, dz = g.to_gate_frame(p)
         return abs(s) <= G.cr_half_len and abs(l) <= G.cr_half_width and abs(dz) <= G.cr_half_height
 
-    # ------------------------------------------------------------------ update
     def update(self, truth, modes: Sequence[str], disturbance_active: bool = False) -> Dict:
         t, P = truth.t, truth.positions
         sep = self.cfg.sep
-        row = {"t": round(t, 6)}            # as the online monitor sees it: a hold timer replayed on rounded times can fall short
+        row = {"t": round(t, 6)}
         for (i, j) in self.pairs:
             d = float(np.linalg.norm(P[i] - P[j]))
             row[f"d_{i}_{j}"] = round(d, 4)
@@ -212,8 +208,6 @@ class Referee:
             row["d_intruder"] = round(float(min(np.linalg.norm(P[k] - q) for k in range(self.n) for q in intr)), 4)
         col = np.asarray(truth.collision, dtype=bool)
         for k in np.flatnonzero(col & ~self._coll_prev):
-            # the body of a dead drone touching the structure is the failure model (it rises against what is above it), not an action of the
-            # fleet: recorded, and no contact (criteria v7).  A live drone that touches it has its own edge, and P1 judges every pair by distance.
             (self.dead_contacts if modes[int(k)] == "DEAD" else self.collision_edges).append({"t": t, "drone": self.names[int(k)]})
         self._coll_prev = col.copy()
         for g in self.gates:
@@ -238,7 +232,7 @@ class Referee:
                 self.episodes.append(Episode(t_lost=t, modes_at_loss=",".join(sorted(set(modes)))))
                 self._ok_since = None
             elif self._lost:
-                if e <= rc.e_ok:                   # inclusive: the requirement is error <= E_TOL_M
+                if e <= rc.e_ok:
                     self._ok_since = t if self._ok_since is None else self._ok_since
                     if t - self._ok_since >= rc.t_ok_hold:
                         ep = self.episodes[-1]
@@ -253,8 +247,8 @@ class Referee:
         self.max_drift = max(self.max_drift, float(np.max(np.linalg.norm(drift[:, :2], axis=1))))
         self.max_vertical_drift = max(self.max_vertical_drift, float(np.max(np.abs(drift[:, 2]))))
         self.max_speed = max(self.max_speed, float(np.max(np.linalg.norm(truth.velocities, axis=1))))
-        rot = getattr(truth, "rotations", None)                    # hull-tilt assumption of perception/distance_bound.py
-        Rz = np.zeros((0, 3)) if rot is None else np.asarray(rot, float)[:, :, 2]   # body z axes in the world frame
+        rot = getattr(truth, "rotations", None)
+        Rz = np.zeros((0, 3)) if rot is None else np.asarray(rot, float)[:, :, 2]
         if len(Rz) > 1:
             c = np.clip(Rz @ Rz.T, -1.0, 1.0)
             self.max_rel_tilt = max(self.max_rel_tilt, float(np.degrees(np.arccos(c.min()))))
@@ -278,7 +272,6 @@ class Referee:
                 "formation_present": None if not self.formation_enabled else (
                     "LOST" if self._lost_p and self._ok_since_p is None else "RECOVERING" if self._lost_p else "OK")}
 
-    # ------------------------------------------------------------------ verdicts
     def _degraded_metrics(self) -> Dict:
         ever = [e for e in self.absence_log if e["event"] == "absent"]
         eps = [{"t_lost": round(e.t_lost, 2), "t_recovered": None if e.t_recovered is None else round(e.t_recovered, 2),
@@ -330,8 +323,6 @@ class Referee:
                                       "all_recovered_within_run": not self._lost,
                                       "final_form_err": self.rows[-1].get("form_err") if self.rows else None},
             "P3_degraded": self._degraded_metrics(),
-            # raw current statistics; the envelope verdict (control-feasibility of the requested velocities)
-            # needs the controllers' logs and is added by referee/envelope.evaluate_run at the end of a run
             "envelope": {"max_horizontal_drift": round(self.max_drift, 3),
                          "max_vertical_drift": round(self.max_vertical_drift, 3)},
             "kinematics": {"max_true_speed_m_s": round(self.max_speed, 3),

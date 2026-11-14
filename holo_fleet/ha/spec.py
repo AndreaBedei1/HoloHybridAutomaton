@@ -42,32 +42,26 @@ class Mode(str, Enum):
     MUTEX_PASS = "MUTEX_PASS"
     FORMATION_RECOVERY = "FORMATION_RECOVERY"
     FAILSAFE_HOLD_OR_RETREAT = "FAILSAFE_HOLD_OR_RETREAT"
-    # formation keeping with an incomplete formation (same flow and priority level as FORMATION_FOLLOW):
-    FORMATION_WAIT_REJOIN = "FORMATION_WAIT_REJOIN"    # own slot ok, an expected neighbour missing: keep the
-                                                       # slot, follow the shared clock, wait (bounded) for it
-    DEGRADED_FORMATION = "DEGRADED_FORMATION"          # a slot declared vacant after the timeout: keep the own
-                                                       # original slot, the vacant slot stays empty
+    FORMATION_WAIT_REJOIN = "FORMATION_WAIT_REJOIN"
+    DEGRADED_FORMATION = "DEGRADED_FORMATION"
 
 
 MODES: List[Mode] = list(Mode)
-# modes in which the drone holds its own slot of the formation (the missing-neighbour timers run only here)
 IN_FORMATION = (Mode.FORMATION_FOLLOW, Mode.FORMATION_WAIT_REJOIN, Mode.DEGRADED_FORMATION)
 
-# Abstract observation variables consumed by the guards.  Reals and Booleans are
-# declared separately so the Z3 encoding can create correctly-typed symbols.
 REAL_VARS = ("d_min", "form_err", "t_ok")
 BOOL_VARS = (
-    "sense_ok",      # every safety-relevant sensor stream is fresh
-    "env_ok",        # vehicle believes it is inside the operational envelope
-    "mutex_zone",     # next gate exists and own estimate is inside its approach zone
-    "at_queue",      # own gate-frame along position is inside the commit window
-    "occ_busy",      # some other drone is perceived inside the occupied zone
-    "has_prio",      # robust priority over every perceived queued drone
-    "passed",        # own estimate is beyond the occupied zone of the current gate
-    "neighbors_ok",  # every expected neighbour not declared vacant perceived recently
-    "degraded",      # latched: some expected neighbour was missing for t_rejoin, its slot is declared vacant
-    "committed",     # latched: this drone committed to the current gate
-    "entry_abort",   # committed, never admitted into the CR, stage-2 hold beyond the slowest release (flows.gate)
+    "sense_ok",
+    "env_ok",
+    "mutex_zone",
+    "at_queue",
+    "occ_busy",
+    "has_prio",
+    "passed",
+    "neighbors_ok",
+    "degraded",
+    "committed",
+    "entry_abort",
 )
 
 
@@ -105,13 +99,9 @@ class Edge:
     name: str
     guard: Guard
     target: Mode
-    # reset of the latched discrete variable: None = keep, True/False = set
     set_committed: Optional[bool] = None
-    # semantic label written to the event log (PASS / YIELD / WAIT / RETRY / ...)
     decision: Optional[str] = None
-    # readable guard, exact under the priority order (see the module docstring)
     label: str = ""
-    # short cause of the mode change, written to the transition log (refined by transition_reason)
     reason: str = ""
 
 
@@ -121,7 +111,6 @@ class Predicates:
     def __init__(self, cfg: FleetConfig = DEFAULT):
         self.cfg = cfg
 
-    # --- hazards -----------------------------------------------------------
     def fault(self, o, L):
         return L.Or(L.Not(o.sense_ok), L.Not(o.env_ok))
 
@@ -150,14 +139,9 @@ class Predicates:
         """No fault and no separation hazard: mission-level logic may act."""
         return L.And(L.Not(self.fault(o, L)), L.Not(self.ca_cond(o, L, src)), L.Not(self.sw_cond(o, L, src)))
 
-    # --- gate protocol -----------------------------------------------------
     def can_go(self, o, L):
         return L.And(o.at_queue, L.Not(o.occ_busy), o.has_prio)
 
-    # --- formation ---------------------------------------------------------
-    # A drone separates what it can fix from what it cannot: its OWN slot error (navigation + sonar
-    # residuals of the neighbours it sees) drives FORMATION_RECOVERY; a MISSING neighbour is not its own
-    # error and drives FORMATION_WAIT_REJOIN, then DEGRADED_FORMATION once the slot is declared vacant.
     def self_lost(self, o, L):
         return o.form_err > self.cfg.form.e_lost
 
@@ -173,7 +157,6 @@ class Predicates:
 
 HAZARD_MODES = (Mode.FAILSAFE_HOLD_OR_RETREAT, Mode.COLLISION_AVOIDANCE, Mode.SEPARATION_WARNING)
 MUTEX_MODES = (Mode.MUTEX_APPROACH, Mode.MUTEX_YIELD, Mode.MUTEX_PASS)
-# leaving a hazard mode for a lower one is caused by the hazard clearing
 CLEARED = {Mode.FAILSAFE_HOLD_OR_RETREAT: "fault_cleared", Mode.COLLISION_AVOIDANCE: "collision_risk_cleared",
            Mode.SEPARATION_WARNING: "separation_clear"}
 SELF_RECOVERED = "form_err < e_ok and t_ok >= t_ok_hold"
@@ -197,28 +180,20 @@ def build_edges(cfg: FleetConfig = DEFAULT) -> Dict[Mode, List[Edge]]:
                 return CLEARED[s]
             return own
 
-        # 1. failsafe has the highest priority
         out.append(Edge("fault", lambda o, L: P.fault(o, L), Mode.FAILSAFE_HOLD_OR_RETREAT,
                         label="not sense_ok or not env_ok", reason=why(Mode.FAILSAFE_HOLD_OR_RETREAT, "fault")))
-        # 2. collision avoidance
         out.append(Edge("collision_risk", lambda o, L, s=src: P.ca_cond(o, L, s), Mode.COLLISION_AVOIDANCE,
                         label="d_min < d_ca_exit" if src == Mode.COLLISION_AVOIDANCE else "d_min < d_ca",
                         reason=why(Mode.COLLISION_AVOIDANCE, "collision_risk")))
-        # 3. separation warning
         out.append(Edge("separation_warning", lambda o, L, s=src: P.sw_cond(o, L, s), Mode.SEPARATION_WARNING,
                         label={Mode.COLLISION_AVOIDANCE: "d_ca_exit <= d_min < d_warning",
                                Mode.SEPARATION_WARNING: "d_ca <= d_min < d_warning_exit"}.get(
                                    src, "d_ca <= d_min < d_warning"),
                         reason=why(Mode.SEPARATION_WARNING, "separation_warning")))
 
-        # 4. mission-level logic, only when calm
         def calm(o, L, s=src):
             return P.calm(o, L, s)
 
-        # 4a. a committed drone that was never admitted into the CR and has held before it longer than the slowest
-        #     release the protocol admits gives the passage up: it clears its commitment and returns to its queue
-        #     point, where the stage-1 rule (priority, latch FREE, t_clear) decides again.  It is outside the CR by
-        #     construction (the stage-2 hold point lies before it and the drone was never admitted past it).
         out.append(Edge(
             "pass_abort",
             lambda o, L, c=calm: L.And(c(o, L), o.committed, L.Not(o.passed), o.entry_abort),
@@ -227,7 +202,6 @@ def build_edges(cfg: FleetConfig = DEFAULT) -> Dict[Mode, List[Edge]]:
             decision="ABORT_PASS",
             label="committed and not passed and entry_abort", reason=why(Mode.MUTEX_APPROACH, "entry_given_up"),
         ))
-        # 4b. a committed drone keeps passing until it is beyond the occupied zone
         out.append(Edge(
             "pass_continue",
             lambda o, L, c=calm: L.And(c(o, L), o.committed, L.Not(o.passed), L.Not(o.entry_abort)),
@@ -243,7 +217,6 @@ def build_edges(cfg: FleetConfig = DEFAULT) -> Dict[Mode, List[Edge]]:
             decision="EXITED",
             label="committed and passed", reason=why(Mode.FORMATION_RECOVERY, "mutex_exit_passed"),
         ))
-        # 4b. gate approach / yield / commit (not yet committed, inside approach zone)
         out.append(Edge(
             "commit",
             lambda o, L, c=calm: L.And(c(o, L), L.Not(o.committed), o.mutex_zone, P.can_go(o, L)),
@@ -269,14 +242,10 @@ def build_edges(cfg: FleetConfig = DEFAULT) -> Dict[Mode, List[Edge]]:
             label="mutex_zone and not at_queue",
             reason=why(Mode.MUTEX_APPROACH, "queue_point_left" if src == Mode.MUTEX_YIELD else "mutex_zone_entered"),
         ))
-        # 4c. no gate in view: formation keeping.  From a formation-keeping mode the own slot error
-        #     decides first (lost -> RECOVERY), then the neighbour knowledge (missing -> WAIT_REJOIN,
-        #     vacant slot -> DEGRADED, else FOLLOW); from any other mode the drone first recovers its
-        #     own slot (RECOVERY until self_recovered), then joins the mode selected the same way.
         def base(o, L, c=calm):
             return L.And(c(o, L), L.Not(o.committed), L.Not(o.mutex_zone))
 
-        left = "mutex_zone_left" if src in MUTEX_MODES else ""    # out of the zone without committing
+        left = "mutex_zone_left" if src in MUTEX_MODES else ""
         if src in IN_FORMATION:
             out.append(Edge(
                 "formation_lost",
@@ -333,10 +302,6 @@ def transition_reason(edge: Edge, o) -> str:
 
 EDGES = build_edges()
 
-# Priority hierarchy (documentation + checked in formal/check_determinism.py):
-# FAILSAFE > COLLISION_AVOIDANCE > SEPARATION_WARNING > MUTEX (pass, yield, approach) > FORMATION_RECOVERY
-# > formation keeping (FORMATION_WAIT_REJOIN, DEGRADED_FORMATION, FORMATION_FOLLOW: one level, the same flow;
-# the three modes differ only in what the drone knows about its neighbours).
 PRIORITY_ORDER = [
     Mode.FAILSAFE_HOLD_OR_RETREAT,
     Mode.COLLISION_AVOIDANCE,

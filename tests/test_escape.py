@@ -58,7 +58,7 @@ def test_hysteresis_keeps_a_valid_previous_direction():
 
 def test_head_on_pair_does_not_escape_the_same_way():
     a, b = EscapePlanner(), EscapePlanner()
-    ea = a.escape_velocity([(F({"FRONT"}), ENV.v_open)], [], 0.0, ENV.v_escape).direction        # heading east
-    eb = b.escape_velocity([(F({"FRONT"}), ENV.v_open)], [], np.pi, ENV.v_escape).direction      # heading west
-    rot = np.diag([-1.0, -1.0, 1.0])                                                              # B's body -> world
+    ea = a.escape_velocity([(F({"FRONT"}), ENV.v_open)], [], 0.0, ENV.v_escape).direction
+    eb = b.escape_velocity([(F({"FRONT"}), ENV.v_open)], [], np.pi, ENV.v_escape).direction
+    rot = np.diag([-1.0, -1.0, 1.0])
     assert float(ea @ (rot @ eb)) < 0.5

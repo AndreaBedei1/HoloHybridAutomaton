@@ -39,7 +39,6 @@ def test_an_along_axis_correction_without_a_validated_fit_can_be_undone():
 
 
 def test_a_correction_under_the_identity_rule_can_be_undone_also_when_it_went_the_wrong_way():
-    # no noise at all: beside the bar the fit lands on the far side of it, the estimate moves away from the truth
     clf, aid = _aid()
     R, p_true, p_est = _R(), _world(-1.6, 1.8), _world(-1.6, 1.4)
     p, applied = p_est.copy(), np.zeros(3)
@@ -49,13 +48,13 @@ def test_a_correction_under_the_identity_rule_can_be_undone_also_when_it_went_th
             p, applied = p + c, applied + c
     assert np.linalg.norm(applied) > 0.3 and aid.loc_t < 0.0 and aid.last["identified"]
     assert np.allclose(aid.unconfirmed, applied[:2])
-    assert abs(GATE.to_gate_frame(p)[1] - 1.8) > abs(GATE.to_gate_frame(p_est)[1] - 1.8)          # it did go the wrong way
+    assert abs(GATE.to_gate_frame(p)[1] - 1.8) > abs(GATE.to_gate_frame(p_est)[1] - 1.8)
     aid.seal_unconfirmed()
     assert np.allclose(p + aid.take_sealed(), p_est, atol=1e-9)
 
 
 def _validated(aid, clf, offset):
-    R, p_true = _R(), _world(-1.6, 0.05)                    # in the opening, the side sectors see the bars
+    R, p_true = _R(), _world(-1.6, 0.05)
     est = p_true + np.array([0.0, offset, 0.0])
     applied = False
     for k in range(12):
@@ -93,7 +92,7 @@ def test_the_undo_waits_for_the_give_up_edge_and_then_moves_the_estimate_and_the
     ctl = _controller()
     shifted = []
     ctl.perception.acoustic.shift = shifted.append
-    ctl.perception.nav_bound.aid = 5.0                      # a bound the step fits in: its growth is measurable
+    ctl.perception.nav_bound.aid = 5.0
     ctl.perception.aiding.unconfirmed = np.array([0.25, -2.2])
     p0 = ctl.perception.nav.state.p.copy()
     b0 = ctl.perception.nav_bound.horizontal
@@ -101,8 +100,8 @@ def test_the_undo_waits_for_the_give_up_edge_and_then_moves_the_estimate_and_the
     ctl.was_committed = True
     _timeout(ctl)
     ctl._drain_flow_events(100.0, Mode.MUTEX_PASS)
-    assert np.allclose(ctl.perception.nav.state.p, p0) and not shifted and ctl.perception.aiding.sealed is not None      # still committed: nothing moves
-    ctl.perception.aiding.unconfirmed += np.array([0.3, 0.3])               # a correction after the end of the hold is not undone
+    assert np.allclose(ctl.perception.nav.state.p, p0) and not shifted and ctl.perception.aiding.sealed is not None
+    ctl.perception.aiding.unconfirmed += np.array([0.3, 0.3])
     ctl._drain_flow_events(100.1, Mode.MUTEX_PASS)
     assert np.allclose(ctl.perception.nav.state.p, p0)
     ctl.ha.committed = False
@@ -156,11 +155,11 @@ def test_a_measured_crossing_ends_what_there_was_to_undo():
 
 def test_only_the_corrections_of_the_current_commitment_can_be_undone():
     ctl = _controller()
-    ctl.perception.aiding.unconfirmed = np.array([0.4, 0.4])                # real drift corrected at the queue
+    ctl.perception.aiding.unconfirmed = np.array([0.4, 0.4])
     ctl.ha.committed = True
     ctl._drain_flow_events(10.0, Mode.MUTEX_PASS)
     assert np.allclose(ctl.perception.aiding.unconfirmed, 0.0)
-    ctl.perception.aiding.unconfirmed = np.array([0.0, -0.5])               # within the commitment
+    ctl.perception.aiding.unconfirmed = np.array([0.0, -0.5])
     ctl._drain_flow_events(10.1, Mode.MUTEX_PASS)
     assert np.allclose(ctl.perception.aiding.unconfirmed, [0.0, -0.5])
 

@@ -31,12 +31,11 @@ def _metrics(raw, run, **kw):
 def test_invalid_runs_are_retried_and_complete_runs_kept(camp, tmp_path):
     runs = [("B0", "CLEAN", "gate_single", s) for s in range(5)]
     _metrics(tmp_path, runs[0], **{"class": "PASS"})
-    _metrics(tmp_path, runs[1], **{"class": "LIVENESS_FAILURE"})            # a scientific failure: kept
-    _metrics(tmp_path, runs[2], **{"class": "INVALID", "invalid_reason": "started"})   # infrastructure: retried
+    _metrics(tmp_path, runs[1], **{"class": "LIVENESS_FAILURE"})
+    _metrics(tmp_path, runs[2], **{"class": "INVALID", "invalid_reason": "started"})
     d = tmp_path.joinpath("B0", "CLEAN", "gate_single", "s3")
     d.mkdir(parents=True)
-    (d / "run_metrics.json").write_text("{ truncated", encoding="utf-8")      # unreadable: retried
-    # runs[4]: never started
+    (d / "run_metrics.json").write_text("{ truncated", encoding="utf-8")
     assert camp.pending(tmp_path, runs) == [runs[2], runs[3], runs[4]]
 
 
@@ -50,7 +49,6 @@ def test_only_the_engine_of_our_worker_is_terminated(camp, monkeypatch):
     monkeypatch.setattr("psutil.Process", process)
     monkeypatch.setattr(camp, "worker_engines", lambda *a: [])
     records = [{"pid": pid, "ppid": 500, "created": 1.0, "uuid": "ours"} for pid in parents]
-    # Existing engine 13, foreign parent 12, recycled PID 14 and foreign UUID 15 must be untouched.
     assert camp.reap(500, before={13: 500}, records=records) == [11]
     assert killed == [11]
 
@@ -93,7 +91,7 @@ def test_priority_is_lowered_only_for_our_worker_and_its_engine(camp, monkeypatc
     assert sorted(touched) == [21, 700]
     touched.clear()
     camp.lower_children(700, worker_created=2.0, records=[])
-    assert touched == []  # a recycled worker PID is not ours
+    assert touched == []
 
 
 def test_code_version_names_the_commit_and_the_dirty_files(camp):

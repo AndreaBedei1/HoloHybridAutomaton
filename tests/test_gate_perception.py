@@ -43,9 +43,8 @@ def test_free_without_echoes_and_priority_after_t_clear():
 def test_corridor_echo_latches_busy_and_masking_keeps_it():
     gp = perception()
     o, t = run(gp, [[tg({"FRONT"}, 4.6)]] * 3)
-    # the FRONT-only corridor echo is the latch's business (occ_busy guards the commit), it makes no precedence relation
     assert o.occ_state == "BUSY" and o.decision == "PRIORITY"
-    o, t = run(gp, [[]] * 60, t0=t)                          # 6 s masked by the gate bars
+    o, t = run(gp, [[]] * 60, t0=t)
     assert o.occ_state == "BUSY" and o.occ_busy
 
 
@@ -53,7 +52,7 @@ def test_exit_seen_then_free_after_t_clear():
     gp = perception()
     _, t = run(gp, [[tg({"FRONT"}, 4.6)]] * 3)
     _, t = run(gp, [[]] * 20, t0=t)
-    o, t = run(gp, [[tg({"FRONT"}, 7.5)]] * 3, t0=t)         # beyond the CR
+    o, t = run(gp, [[tg({"FRONT"}, 7.5)]] * 3, t0=t)
     assert o.occ_state == "EXITING"
     o, t = run(gp, [[tg({"FRONT"}, 8.0)]] * int(G.t_clear / 0.1 + 2), t0=t)
     assert o.occ_state == "FREE"
@@ -69,7 +68,7 @@ def test_single_capture_echo_does_not_latch():
 def test_queued_neighbour_never_counts_as_occupancy():
     gp = perception(lateral=0.0)
     o, _ = run(gp, [[tg({"RIGHT"}, 2.9), tg({"LEFT"}, 2.9)]] * 20)
-    assert o.occ_state == "FREE" and o.decision == "WAIT"     # LEFT neighbour goes first
+    assert o.occ_state == "FREE" and o.decision == "WAIT"
     gp = perception(lateral=3.5)
     o, _ = run(gp, [[tg({"RIGHT"}, 2.9)]] * 20, p=np.array([QS, 3.5, 0.0]))
     assert o.occ_state == "FREE" and o.has_prio
@@ -77,7 +76,7 @@ def test_queued_neighbour_never_counts_as_occupancy():
 
 def test_drone_between_queue_and_cr_is_a_wait_not_an_occupancy():
     gp = perception()
-    o, _ = run(gp, [[tg({"FRONT"}, 2.0)]] * 5)                # nearer than the CR
+    o, _ = run(gp, [[tg({"FRONT"}, 2.0)]] * 5)
     assert o.decision == "WAIT" and o.occ_state == "FREE"
 
 

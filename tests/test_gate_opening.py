@@ -29,7 +29,7 @@ def _opening(g):
 def test_the_map_has_the_widened_opening_and_four_bars():
     g = load_arena_gates(HORSESHOE_TRACK, ["G06"])[0]
     assert (g.inner_width, g.inner_height) == GATE_INNER_SIZE_M["G06"] == (2.0, 2.0)
-    assert len(g.bars) == 4                                     # no lead-in posts or other landmarks
+    assert len(g.bars) == 4
     w, h = _opening(g)
     assert np.allclose(w, 2.0, atol=1e-9) and np.allclose(h, 2.0, atol=1e-9)
 
@@ -72,7 +72,7 @@ def test_queue_and_formal_geometry_use_the_mapped_bars():
     assert np.allclose(P.min(axis=0), [-depth / 2.0, -1.0 - t, -1.0 - t], atol=1e-9)
     assert np.allclose(P, gate_frame_points(g))
     inside = (np.abs(P[:, 1]) < 1.0 - 1e-9) & (np.abs(P[:, 2]) < 1.0 - 1e-9)
-    assert not inside.any()                                     # no bar surface inside the free opening
+    assert not inside.any()
 
 
 def test_the_track_geometry_is_still_available():
@@ -85,7 +85,7 @@ def test_the_track_geometry_is_still_available():
 
 def test_the_opening_ends_at_the_critical_region_and_widens_the_hull_margin():
     g = load_arena_gates(HORSESHOE_TRACK, ["G06"])[0]
-    assert g.inner_width / 2.0 <= DEFAULT.gate.cr_half_width + 1e-9    # a drone in the opening is in the CR
+    assert g.inner_width / 2.0 <= DEFAULT.gate.cr_half_width + 1e-9
     assert g.inner_height / 2.0 <= DEFAULT.gate.cr_half_height + 1e-9
-    assert g.inner_width / 2.0 - HULL_LAT_M > 0.58                     # MEDIUM lateral DR error at the gate
+    assert g.inner_width / 2.0 - HULL_LAT_M > 0.58
     assert 1.5 / 2.0 - HULL_LAT_M < 0.45

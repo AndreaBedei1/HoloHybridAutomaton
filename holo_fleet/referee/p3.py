@@ -42,10 +42,10 @@ import numpy as np
 
 from holo_fleet.referee.criteria import E_TOL_M, expects, t_hold_s
 
-V_CLOSE = lambda cfg: cfg.form.v_slot_max - cfg.form.v_nominal      # [PROT] slowest closing speed (module docstring)
+V_CLOSE = lambda cfg: cfg.form.v_slot_max - cfg.form.v_nominal
 PREEMPT = ("SEPARATION_WARNING", "COLLISION_AVOIDANCE", "FAILSAFE_HOLD_OR_RETREAT")
-GAP_S = 2.0            # a premise may fail for at most this long in a row
-SELF_S = 30.0          # a navigation excess within this time of an own map-fit correction is self-induced
+GAP_S = 2.0
+SELF_S = 30.0
 
 
 def _frame_dev(sc, P_i: np.ndarray, idx: List[int], k: Optional[int] = None) -> float:
@@ -56,7 +56,7 @@ def _frame_dev(sc, P_i: np.ndarray, idx: List[int], k: Optional[int] = None) -> 
     _p, tan, nrm = sc.path.frame_at(s_c)
     X = np.stack([P_i[:, :2] @ tan, P_i[:, :2] @ nrm, P_i[:, 2]], axis=1)
     D = X - tm
-    off = D[idx].mean(axis=0)                       # the translation of referee.formation_error (mean)
+    off = D[idx].mean(axis=0)
     dev = np.linalg.norm(D - off, axis=1)
     return float(dev[k]) if k is not None else float(dev[idx].max())
 
@@ -116,7 +116,6 @@ def evaluate(sc, cfg, names, faults, t, P, states, modes, m, validation: bool = 
             d = base + ext(k, start, start + d)
         return start + d
 
-    # ------------------------------------------------------------------ premises on ground truth
     nav_err = np.array([[np.inf if states[k][i].get("nav_p") is None else
                          float(np.hypot(*(np.asarray(states[k][i]["nav_p"], float)[:2] - P[i, k, :2]))) for k in range(n)]
                         for i in range(m)])
@@ -124,7 +123,7 @@ def evaluate(sc, cfg, names, faults, t, P, states, modes, m, validation: bool = 
     w_bad = np.zeros((m, n), bool)
     for i in range(0, m):
         for k in healthy:
-            v = states[k][i].get("v_mis") or states[k][i].get("v_cmd")    # the velocity the mission asks, not the controller's choice
+            v = states[k][i].get("v_mis") or states[k][i].get("v_cmd")
             if v is None:
                 continue
             w = sc.sim.current.drift_at(P[i, k], t[i]) if hasattr(sc.sim.current, "drift_at") else np.zeros(3)
@@ -160,7 +159,7 @@ def evaluate(sc, cfg, names, faults, t, P, states, modes, m, validation: bool = 
                 others = [j for j in range(n) if j != k]
                 live_sil = [s for j, s in zip(others, sil) if j in healthy]
                 deaf = not any(s < cfg.form.t_silent_s for s in sil)
-                if deaf or any(s >= cfg.form.t_silent_s for s in live_sil):   # deaf, or a live sender silent for t_silent_s
+                if deaf or any(s >= cfg.form.t_silent_s for s in live_sil):
                     out.append("A")
                     break
         return out
@@ -168,7 +167,6 @@ def evaluate(sc, cfg, names, faults, t, P, states, modes, m, validation: bool = 
     def verdict(met, prem):
         if met:
             return "MET"
-        # under the validation profiles (CLEAN, LOW, MEDIUM, nominal channel) the navigation is part of what is validated: N is a tag
         ext_p = [p for p in prem if p != "N_self" and not (validation and p == "N")]
         return "PREMISE_VIOLATED" if ext_p else "NOT_MET"
 
@@ -180,7 +178,6 @@ def evaluate(sc, cfg, names, faults, t, P, states, modes, m, validation: bool = 
     n_ok = (len(lost) <= max(n - 2, 0)) if n >= 3 else (len(lost) <= 1 and not committed_fail)
     out = {"applies": True, "tol_m": E_TOL_M, "hold_s": round(hold, 2), "admissible": bool(scope_ok and n_ok)}
 
-    # ------------------------------------------------------------------ crossings and P3a
     tx = {}
     if gates:
         g = gates[0]
@@ -219,7 +216,6 @@ def evaluate(sc, cfg, names, faults, t, P, states, modes, m, validation: bool = 
                              "censored": tr is None and t[-1] < dl}
     out["P3a"] = p3a
 
-    # ------------------------------------------------------------------ P3c vacancy, then P3b
     vac = {}
     for j in lost:
         tf = onset[names[j]]
@@ -231,8 +227,6 @@ def evaluate(sc, cfg, names, faults, t, P, states, modes, m, validation: bool = 
             dl = tf + cfg.form.t_silent_s + 2.0
             others_live = [h for h in healthy if h != k]
             if not others_live:
-                # a receiver that hears nobody (the last survivor) learns nothing from silence: the B0 timer t_rejoin, frozen in the
-                # mutex modes (perception.track_missing), bounds the vacancy
                 dt = float(np.median(np.diff(t)))
                 i0 = int(np.searchsorted(t, tf))
                 run, frozen = 0.0, 0.0

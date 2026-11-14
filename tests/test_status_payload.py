@@ -52,7 +52,6 @@ def test_a_fresh_not_engaged_report_excludes_a_drone_the_position_would_not():
     _rx(tr, P, 1.0, 1, [-5.4, -3.5, -5.], bound=9.0, phase=pl.GP_NONE)
     assert ae.status_excluded(1, 1.0 + 1.0)
     assert not ae.status_excluded(1, 1.0 + ae.status_fresh_s + 0.5)
-    # the freshness follows the plan's queue geometry: the time from the queue point to the CR at the speed bound
     G = B2.gate
     from holo_fleet.perception.sonar_geometry import R_OUT
     expect = (abs(gp.plan.queue_s) - G.cr_half_len - R_OUT - G.queue_tol - G.nav_err_m) / ae.v_bound - B2.acoustic.latency_max_s
@@ -102,15 +101,15 @@ def test_a_drone_never_heard_is_dead_once_silent_since_the_receiver_started():
     """A failure before the first reception: the drone is in the plan, so its silence runs from the start of the receiver."""
     tr, gp = _observer(P, others=(1, 2))
     ae = gp.acoustic_exit
-    _rx(tr, P, 1.0, 1, [-5.4, -3.5, -5.], phase=pl.GP_NONE)        # the receiver starts at t = 1 s; drone 2 is never heard
+    _rx(tr, P, 1.0, 1, [-5.4, -3.5, -5.], phase=pl.GP_NONE)
     t = 1.0 + B2.acoustic.t_silent_gate_s - 1.0
     tr.heard[1] = t - 1.0
     assert not ae.dead(2, t)
     t = 1.0 + B2.acoustic.t_silent_gate_s + 1.0
     tr.heard[1] = t - 1.0
     assert ae.dead(2, t) and ae.status_excluded(2, t)
-    assert ae.silence(t) == [1.0, round(t - 1.0, 1)]                # the log of premise V
-    tr.heard[1] = 1.0                                               # hearing nobody, it declares no one dead
+    assert ae.silence(t) == [1.0, round(t - 1.0, 1)]
+    tr.heard[1] = 1.0
     assert not ae.dead(2, t)
 
 
@@ -118,7 +117,7 @@ def test_a_drone_silent_after_not_engaged_is_excluded_only_once_dead():
     tr, gp = _observer(P, others=(1, 2))
     ae = gp.acoustic_exit
     _rx(tr, P, 1.0, 1, [-5.4, -3.5, -5.], phase=pl.GP_NONE)
-    t = 1.0 + B2.form.t_silent_s + 1.0                          # vacant in the formation, not dead for the gate
+    t = 1.0 + B2.form.t_silent_s + 1.0
     tr.heard[2] = t - 1.0
     assert not ae.status_excluded(1, t) and ae.claims(t) == set()
     t = 1.0 + B2.acoustic.t_silent_gate_s + 1.0
@@ -129,7 +128,7 @@ def test_a_drone_silent_after_not_engaged_is_excluded_only_once_dead():
 def test_a_deaf_receiver_declares_no_one_silent():
     tr, gp = _observer(P, others=(1, 2))
     tr.heard[1], tr.heard[2] = 0.0, 0.0
-    assert not tr.silent(1, 200.0)                               # nobody is heard: no evidence about anyone
+    assert not tr.silent(1, 200.0)
     tr.heard[2] = 199.0
     assert tr.silent(1, 200.0)
 
@@ -150,7 +149,6 @@ def test_a_silent_drone_never_heard_of_keeps_the_sonar_rules():
 def test_the_gate_phase_is_kept_from_a_rejected_fix_but_not_the_position():
     tr, gp = _observer(P)
     _rx(tr, P, 1.0, 1, [-3.0, -3.5, -5.], phase=pl.GP_NONE)
-    # a reflected arrival, far off: rejected by the kinematic gate, the packet is intact
     d = np.array([-3.0 + 20.0, -3.5, -5.]) - P
     r = float(np.linalg.norm(d))
     t_arr = 2.0
@@ -165,10 +163,10 @@ def test_a_corridor_echo_is_no_drone_when_every_other_drone_reports_not_engaged(
     tr, gp = _observer(P, others=(1, 2))
     gp.update(0.5, P, 0., [], {})
     for k, q in ((1, [-5.4, 3.5, -5.]), (2, [-5.4, -3.5, -5.])):
-        _rx(tr, P, 1.0, k, q, bound=9.0, phase=pl.GP_NONE)           # positions unusable: the status alone excludes them
+        _rx(tr, P, 1.0, k, q, bound=9.0, phase=pl.GP_NONE)
     echo = Target(frozenset({"FRONT"}), 4.4, 4.4, 0., 0., "UNKNOWN")
     gp.update(1.1, P, 0., [echo], {})
-    o = gp.update(1.2, P, 0., [echo], {})                            # persistent over two captures
+    o = gp.update(1.2, P, 0., [echo], {})
     assert gp.phantom and o.occ_state == "FREE" and "WAIT" not in [r["relation"] for r in o.relations]
 
 
@@ -180,7 +178,7 @@ def test_a_front_only_corridor_echo_makes_no_relation_a_merged_one_does():
     r = r_near + 0.2
     front = Target(frozenset({"FRONT"}), r, r, 0., 0., "UNKNOWN")
     merged = Target(frozenset({"FRONT", "LEFT"}), r, r, 0., 0., "UNKNOWN")
-    assert gp.update(1.0, P, 0., [front], {}).relations == [] or True      # first capture: not yet persistent
+    assert gp.update(1.0, P, 0., [front], {}).relations == [] or True
     o = gp.update(1.1, P, 0., [front], {})
     assert not [x for x in o.relations if x["relation"] == "WAIT"]
     o2 = gp.update(1.2, P, 0., [merged], {})
@@ -191,10 +189,9 @@ def test_a_front_only_corridor_echo_makes_no_relation_a_merged_one_does():
 def test_an_older_status_does_not_override_a_later_fix_in_the_cr():
     tr, gp = _observer(P, others=(1,))
     ae = gp.acoustic_exit
-    gp.update(0.5, P, 0., [], {})                             # the receiver knows its gate geometry
-    _rx(tr, P, 1.0, 1, [-0.5, 0.0, -5.], phase=pl.GP_NONE)      # not engaged, near the CR by its fix
+    gp.update(0.5, P, 0., [], {})
+    _rx(tr, P, 1.0, 1, [-0.5, 0.0, -5.], phase=pl.GP_NONE)
     assert ae.status_excluded(1, 1.1)
-    # a later accepted fix places it in the CR (the packet of that ping was lost, the ping arrived)
     d = np.array([-0.2, 0.0, -5.0]) - P
     r = float(np.linalg.norm(d))
     tr.update(2.2, [(1, 2.15, r, math.atan2(d[1], d[0]), 0.0, None)], P, 0., 0.5)
@@ -246,17 +243,16 @@ def test_vacancy_is_by_silence_whatever_the_observers_mode():
     per.acoustic.set_identities({0: 0, 1: 1, 2: 2, 3: 3})
     for k in (1, 2):
         per.acoustic.heard[k] = 0.0
-    per.acoustic.heard[3] = 1000.0                         # drone 3 keeps being heard: the receiver works
+    per.acoustic.heard[3] = 1000.0
     o = FormationObs()
     o.checks = [NeighbourCheck(slot=k, expected_d=3.5, expected_pattern="") for k in (1, 2, 3)]
     o.required = [1, 2, 3]
     t = B2.form.t_silent_s - 1.0
-    per.track_missing(t, 0.1, o, in_formation=False)      # the observer is NOT holding its slot
+    per.track_missing(t, 0.1, o, in_formation=False)
     assert not per.vacant
     t = B2.form.t_silent_s + 0.5
     per.track_missing(t, 0.1, o, in_formation=False)
     assert set(per.vacant) == {1, 2}
-    # drone 2 is heard again: alive, its slot is required again
     per.acoustic.heard[2] = t + 1.0
     per.track_missing(t + 1.0, 0.1, o, in_formation=False)
     assert set(per.vacant) == {1}
@@ -268,7 +264,7 @@ def test_a_silent_channel_keeps_the_baseline_vacancy_timer_and_declares_no_one_d
     per = Perception(_plan(), B2)
     per.acoustic.set_identities({0: 0, 1: 1, 2: 2, 3: 3})
     for k in (1, 2, 3):
-        per.acoustic.heard[k] = 0.0                            # the channel falls silent: nobody heard any more
+        per.acoustic.heard[k] = 0.0
     o = FormationObs()
     o.checks = [NeighbourCheck(slot=1, expected_d=3.5, expected_pattern="")]
     o.required, o.missing = [1], [1]
@@ -277,7 +273,7 @@ def test_a_silent_channel_keeps_the_baseline_vacancy_timer_and_declares_no_one_d
     while t < 100.0 + B2.form.t_rejoin + 2.0:
         per.track_missing(t, 0.1, o, in_formation=True)
         t += 0.1
-    assert set(per.vacant) == {1}                              # the baseline displacement timer, not the silence rule
+    assert set(per.vacant) == {1}
 
 
 def test_a_drone_that_keeps_transmitting_is_never_vacant():
@@ -314,8 +310,7 @@ def test_passage_is_verified_by_the_crossing_signature_then_the_odometry():
 
     v = PassageVerifier(B2)
     v.admit(0, GATE, np.array([-1.2, 0., -5.]))
-    # inside the opening (true |s| small): the two posts at ranges summing to the opening
-    w = 2.0 - 2 * 0.288                                        # inner width minus the sonar mounts (lateral half-width)
+    w = 2.0 - 2 * 0.288
     def sec(q, t):
         if abs(q[0]) <= 0.35:
             return {"LEFT": [w / 2 - 0.2], "RIGHT": [w / 2 + 0.2], "UP": [0.6], "DOWN": [1.0]}
@@ -337,7 +332,7 @@ def test_passage_is_verified_by_the_rear_frame_echo_if_the_signature_is_missed()
 def test_passage_by_odometry_alone_only_after_the_timeout():
     v3 = PassageVerifier(B2)
     v3.admit(0, GATE, np.array([-1.2, 0., -5.]))
-    _pass(v3, lambda q, t: {}, t_end=9.0)                      # just reaching exit_s: no sonar evidence yet
+    _pass(v3, lambda q, t: {}, t_end=9.0)
     assert not v3.verified
     v4 = PassageVerifier(B2)
     v4.admit(0, GATE, np.array([-1.2, 0., -5.]))
@@ -369,9 +364,9 @@ def test_a_recovering_drone_goes_straight_to_its_slot_when_the_reference_stands_
                        clock=FormationClock(0.0, 0.3, 0.0, s_end=20.0))
     fl = Flows(plan, D)
 
-    class O:                                                          # the observation the formation flow reads
+    class O:
         t = 500.0
-        p = np.array([19.0, 6.0, -8.5])                                # off its lane and on the pass level, past the plan end
+        p = np.array([19.0, 6.0, -8.5])
         R_wb = np.eye(3)
         yaw = 0.0
         slot_pos = np.array([21.75, 1.75, -5.0])
@@ -379,7 +374,7 @@ def test_a_recovering_drone_goes_straight_to_its_slot_when_the_reference_stands_
         targets = []
         unhealthy = []
     v, _ = fl.formation(O, 0.1, recovering=True)
-    assert fl.rejoin_phase == "" and v[2] > 0.0 and v[1] < 0.0     # straight to the slot: up and across, no rejoin phases
+    assert fl.rejoin_phase == "" and v[2] > 0.0 and v[1] < 0.0
 
 
 def _far_setup(lateral_error=0.9, behind=2.5, k=2):
@@ -421,7 +416,7 @@ def test_the_far_residual_is_off_near_the_slot_and_ignores_a_neighbour_off_its_o
     per.acoustic_residuals(5.05, near, np.eye(3), p)
     assert near.lateral_far is None
     per2, p, d, se, o2, e_me = _far_setup()
-    _rx_meas(per2, p, 5.0, 2, d[2] + se + e_me, p + se + d[2] + np.array([-4.0, 0.0, 0.0]))     # by its own estimate, 4 m off
+    _rx_meas(per2, p, 5.0, 2, d[2] + se + e_me, p + se + d[2] + np.array([-4.0, 0.0, 0.0]))
     per2.acoustic_residuals(5.05, o2, np.eye(3), p)
     assert o2.lateral_far is None
 
@@ -447,12 +442,10 @@ def test_a_drone_behind_its_slot_shifts_its_lane_with_the_far_residual_and_stays
     for _ in range(10):
         fl.formation(O, 0.1, recovering=True)
     assert -0.09 < fl.lam < -0.05
-    # near the slot only the ordinary consensus acts
     fl2 = Flows(plan, D)
     O.slot_pos = O.p + np.array([0.3, 0.0, 0.0])
     fl2.formation(O, 0.1, recovering=True)
     assert fl2.lam == 0.0
-    # the lane follows the correction: on the corrected lane the drone is not sent around the formation
     fl3 = Flows(plan, D)
     fl3.lam = -1.5
     O.p = np.array([3.0, me.lateral - 1.5, -5.0 + me.dz])
@@ -470,7 +463,7 @@ def test_a_drone_inside_the_keepout_box_never_reports_not_engaged():
     assert report_phase(False, False, False, True) == pl.GP_COMMITTED
     assert report_phase(False, False, False, False) == pl.GP_NONE
     assert report_phase(False, True, False, True) == pl.GP_ADMITTED
-    assert report_phase(True, False, False, True) == pl.GP_COMMITTED      # back in the box after a passage, or at the next gate
+    assert report_phase(True, False, False, True) == pl.GP_COMMITTED
     assert report_phase(True, False, False, False) == pl.GP_PASSED and report_phase(True, False, True, False) == pl.GP_PASSED
 
 
@@ -513,7 +506,7 @@ def test_a_recovering_drone_on_a_giveway_is_not_sent_back_to_its_lane():
     plan = _plan()
     fl = Flows(plan, D)
     me = plan.slots[0]
-    fl.offset = np.array([0.0, -2.5, 0.0])                       # a give-way to the right is running
+    fl.offset = np.array([0.0, -2.5, 0.0])
 
     class O:
         t = 20.0

@@ -16,8 +16,8 @@ from holo_fleet.perception.sonar_processing import EchoClassifier
 CFG = DEFAULT; G, ENV, PC = CFG.gate, CFG.env, CFG.perc
 GATE = load_arena_gates(HORSESHOE_TRACK, ["G06"])[0]
 Z_GATE = float(GATE.center[2])
-R_EFF = cm.R_DETECT_M - 1.0          # exit witness with 1 m range margin
-MIN_WINDOW_S = 1.0                   # ... for at least 10 captures at v_pass
+R_EFF = cm.R_DETECT_M - 1.0
+MIN_WINDOW_S = 1.0
 FUZZ = 5.0
 
 
@@ -31,13 +31,13 @@ def columns_layout(counts, c, top=None):
         for r in range(m):
             dz = ((m - 1) / 2.0 - r) * G.stack_spacing if top is None or m == 1 else top - r * G.stack_spacing
             pts.append((round(l, 3), round(dz, 3)))
-    return pts                                                         # precedence order: left first, top first
+    return pts
 
 
 def queue_s_of(pts):
     lats = tuple(sorted({l for l, _ in pts}, reverse=True))
     q = G.queue_s(len(lats), max(abs(dz) for _, dz in pts), lats=lats)
-    if len(lats) < len(pts):                  # as deployed (mission._queue_line): a stacked queue needs every pair
+    if len(lats) < len(pts):
         while structure_masked_pairs(pts, q, G, PC) and q > -20.0:
             q = round(q - 0.1, 6)
     return q
@@ -187,8 +187,6 @@ def task(args):
     n, name, pts = args
     from holo_fleet.formations import TEMPLATES
     from holo_fleet.mission import Slot
-    # lanes of the drone at every queue point: the slot laterals of every template of n drones (and an abreast
-    # line of n at 3.5 m), slots assigned to queue points in precedence order (left first, front first, top first)
     temps = [list(t.slots) for t in TEMPLATES.values() if len(t.slots) == n] + [[Slot(0.0, ((n - 1) / 2.0 - r) * 3.5, 0.0) for r in range(n)]]
     lanes_of = [set() for _ in pts]
     for sl in temps:

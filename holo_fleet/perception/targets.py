@@ -38,22 +38,22 @@ ADJACENT = {s: frozenset(x for x in SECTORS if x != s and x != MIRROR[s]) for s 
 class SectorTrack:
     r: float
     t: float
-    rate: float = 0.0                 # d r / d t (negative = closing)
+    rate: float = 0.0
     cls: str = DYNAMIC
 
 
 @dataclass
 class Target:
     pattern: FrozenSet[str]
-    r_min: float                      # nearest echo range among its sectors [m]
-    d_lower: float                    # conservative centre-distance lower bound (incl. staleness) [m]
+    r_min: float
+    d_lower: float
     age: float
-    closing_rate: float               # >= 0 when closing [m/s]
-    cls: str                          # DYNAMIC if any member is confirmed, else UNKNOWN
+    closing_rate: float
+    cls: str
     ranges: Dict[str, float] = field(default_factory=dict)
-    expected_neighbour: bool = False  # matched to a formation neighbour expected by the template
-    possible_neighbour: bool = False  # in an expected neighbour's sectors within 3 m of its expected distance
-    ages: Dict[str, float] = field(default_factory=dict)  # member ages, including held echoes (capture identity)
+    expected_neighbour: bool = False
+    possible_neighbour: bool = False
+    ages: Dict[str, float] = field(default_factory=dict)
 
 
 class EchoHold:
@@ -61,7 +61,7 @@ class EchoHold:
 
     def __init__(self, hold_s: float):
         self.hold_s = float(hold_s)
-        self.last: Dict[str, Tuple[float, str, float]] = {}       # sector -> (range, class, capture time)
+        self.last: Dict[str, Tuple[float, str, float]] = {}
 
     def update(self, t: float, readings: Dict[str, SectorReading]) -> Dict[str, Tuple[float, str, float]]:
         """Held echoes to add to this step's echoes: sector -> (range, class, age), only where no capture since the
@@ -117,7 +117,7 @@ def build_targets(t: float, readings: Dict[str, SectorReading], tracks: Dict[str
                   held: Optional[Dict[str, Tuple[float, str, float]]] = None) -> List[Target]:
     """Associate obstacle echoes of adjacent sectors at similar ranges into targets (``held``: EchoHold echoes)."""
     env = cfg.env
-    echoes = []                       # (sector, range, cls, age)
+    echoes = []
     for s in SECTORS:
         rd = readings.get(s)
         if rd is None:
@@ -125,13 +125,11 @@ def build_targets(t: float, readings: Dict[str, SectorReading], tracks: Dict[str
         for e in rd.echoes:
             if e.cls in OBSTACLE_CLASSES:
                 echoes.append((s, e.r0, e.cls, rd.age))
-        # seabed clutter: beyond blind_from a vehicle cannot be excluded -> conservative UNKNOWN
         if rd.blind_from is not None and rd.healthy and rd.blind_from <= blind_relevant_m:
             echoes.append((s, rd.blind_from, "UNKNOWN", rd.age))
-        if held and s in held:                         # a recent nearer echo this capture missed
+        if held and s in held:
             echoes.append((s, held[s][0], held[s][1], held[s][2]))
     echoes.sort(key=lambda x: x[1])
-    # nearest obstacle echo and reading age per sector: the input of the association-free distance bound
     nearest: Dict[str, float] = {}
     ages: Dict[str, float] = {}
     for s, r, _c, age in echoes:

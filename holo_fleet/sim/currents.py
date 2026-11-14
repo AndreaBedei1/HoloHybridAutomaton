@@ -24,7 +24,6 @@ def drift_to_command(drift: float, table=DEFAULT.plant.current_cmd_to_drift) -> 
     drifts = [d for _, d in table]
     if drift <= drifts[-1]:
         return float(np.interp(drift, drifts, cmds))
-    # beyond the table: drift ~ cmd^1.6 power law fitted on the last two points
     (c1, d1), (c2, d2) = table[-2], table[-1]
     k = math.log(d2 / d1) / math.log(c2 / c1)
     return float(c2 * (drift / d2) ** (1.0 / k))
@@ -32,8 +31,8 @@ def drift_to_command(drift: float, table=DEFAULT.plant.current_cmd_to_drift) -> 
 
 @dataclass
 class CurrentComponent:
-    kind: str                                  # uniform | jet | sinusoid | gusts
-    drift: Sequence[float] = (0.0, 0.0, 0.0)   # effective drift vector [m/s]
+    kind: str
+    drift: Sequence[float] = (0.0, 0.0, 0.0)
     center: Sequence[float] = (0.0, 0.0)
     radius: float = 0.0
     t_on: float = -1e9
@@ -41,7 +40,7 @@ class CurrentComponent:
     amplitude: Sequence[float] = (0.0, 0.0, 0.0)
     period: float = 30.0
     seed: int = 0
-    ramp: float = 0.0                          # smooth on/off ramp duration [s] (time-windowed gusts)
+    ramp: float = 0.0
     _gust_cache: dict = field(default_factory=dict)
 
     def _window(self, t: float) -> float:
@@ -66,7 +65,6 @@ class CurrentComponent:
         if self.kind == "sinusoid":
             return d + np.asarray(self.amplitude, dtype=float) * math.sin(2 * math.pi * t / self.period)
         if self.kind == "gusts":
-            # piecewise-constant random gusts, 6 s cells, seeded
             cell = int(t // 6.0)
             if cell not in self._gust_cache:
                 rng = np.random.default_rng(self.seed * 1000 + cell)

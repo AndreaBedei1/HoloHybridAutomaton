@@ -16,7 +16,7 @@ from holo_fleet.control.lowlevel import AUTHORITY
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "formal"))
-SURVEY = (DEFAULT.form.v_nominal, 0.0, 0.0)          # 0.30 m/s along +x
+SURVEY = (DEFAULT.form.v_nominal, 0.0, 0.0)
 
 
 def test_lateral_current_admitted():
@@ -32,9 +32,9 @@ def test_head_current_admitted_up_to_the_authority():
 
 def test_head_current_too_strong():
     c = check_current((-0.45, 0.0, 0.0), SURVEY)
-    assert not c.feasible and not c.ok and c.in_range            # inside the old 0.6 m/s bound, yet infeasible
+    assert not c.feasible and not c.ok and c.in_range
     assert c.required_cmd > AUTH_NOMINAL and "head" in c.reason
-    assert not check_current((-0.60, 0.0, 0.0), SURVEY).ok          # formation_recovery_head_current
+    assert not check_current((-0.60, 0.0, 0.0), SURVEY).ok
 
 
 def test_vertical_current():
@@ -44,11 +44,11 @@ def test_vertical_current():
 
 
 def test_diagonal_currents_depend_on_the_direction():
-    following = check_current((0.42, 0.42, 0.0), SURVEY)          # |w| = 0.59, with the motion and across
-    against = check_current((-0.42, 0.42, 0.0), SURVEY)           # |w| = 0.59, against the motion and across
+    following = check_current((0.42, 0.42, 0.0), SURVEY)
+    against = check_current((-0.42, 0.42, 0.0), SURVEY)
     assert following.ok and not against.ok
-    assert following.magnitude == pytest.approx(against.magnitude)  # same |w|: the scalar bound could not tell
-    assert not check_current((0.50, 0.40, 0.0), SURVEY).ok         # |w| = 0.64: beyond the exercised range
+    assert following.magnitude == pytest.approx(against.magnitude)
+    assert not check_current((0.50, 0.40, 0.0), SURVEY).ok
 
 
 def test_mission_speed_changes_the_margin():
@@ -58,7 +58,6 @@ def test_mission_speed_changes_the_margin():
     assert lateral_limit(0.50) < lateral_limit(0.30) <= DEFAULT.env.current_validated_max
     w = (-0.30, 0.0, 0.0)
     assert check_current(w, (0.30, 0.0, 0.0)).ok and not check_current(w, (0.50, 0.0, 0.0)).ok
-    # hover / queue hold: the whole current is lateral and only the range limits it
     assert check_current((0.0, -0.60, 0.0), (0.0, 0.0, 0.0)).ok
 
 
@@ -76,7 +75,6 @@ def test_limits_agree_with_the_calibration():
 
 
 def test_onboard_check_is_the_steady_command_of_the_loop():
-    # the estimate is in the controller's linear model: steady command = |v_d - w_est| / surge_speed_per_cmd
     c = check_onboard((-0.55, 0.0, 0.0), SURVEY, DEFAULT, AUTHORITY["nominal"])
     assert c.required_cmd == pytest.approx((0.30 + 0.55) / DEFAULT.plant.surge_speed_per_cmd)
     assert c.authority == AUTHORITY["nominal"] == AUTH_NOMINAL and c.ok
@@ -87,7 +85,7 @@ def test_monitor_declares_and_logs_an_infeasible_request():
     mon = EnvelopeMonitor()
     bad = check_onboard((-0.80, 0.0, 0.0), SURVEY, DEFAULT, AUTH_NOMINAL)
     states = [mon.update(False, bad, 0.1) for _ in range(45)]
-    assert states[38] and not states[-1]                          # declared after 4 s, not before
+    assert states[38] and not states[-1]
     rec = mon.record()
     assert rec["status"] == "ENVELOPE_VIOLATION" and "not control-feasible" in rec["reason"]
     for key in ("current_est", "v_desired", "head", "lateral", "vertical", "through_water", "required_cmd", "authority"):
@@ -96,7 +94,7 @@ def test_monitor_declares_and_logs_an_infeasible_request():
     for _ in range(41):
         mon.update(False, good, 0.1)
     assert mon.ok and mon.record()["status"] == "ENVELOPE_OK"
-    assert mon.update(True, None, 0.1)                            # avoidance manoeuvres are not judged
+    assert mon.update(True, None, 0.1)
 
 
 def test_formal_model_uses_the_same_parameters():

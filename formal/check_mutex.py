@@ -89,8 +89,8 @@ from holo_fleet.perception.sonar_geometry import AXES, MOUNTS, R_IN, R_OUT, cent
 ENC = "holo_fleet/ha/mutex_rule.py (shared relation) + formal/check_mutex.py"
 AXIS = {"F": 0.0, "L": 90.0, "B": 180.0, "R": -90.0}
 HALF = 60.0
-HOLD_ERR = DEFAULT.gate.hold_err_m   # measured position-holding error of a queued drone (results/reference/ASSUMPTIONS.md)
-V_LO = 0.12           # a committed drone crosses the masked part of the CR within t_occ_max (2.7 m / 25 s)
+HOLD_ERR = DEFAULT.gate.hold_err_m
+V_LO = 0.12
 
 
 class _Z:
@@ -135,7 +135,6 @@ def _wait_only_front(F, B, L, R, U, D, Lg):
             mutex_rule.RANK: Lg.And(Lg.Not(Lg.Or(F, B, L, R)), Lg.Or(U, D)), "NONE": Lg.Not(Lg.Or(F, B, L, R, U, D))}
 
 
-# ---------------------------------------------------------------------------------------------- M2 subsets
 def occupancies(n: int, max_gap: int = 2):
     """Non-empty sets of occupied queue points (indices, left first) with consecutive indices at most
     ``max_gap`` apart, i.e. at most max_gap - 1 vacant points between two occupied ones."""
@@ -156,11 +155,11 @@ def abreast_relations(G, n: int, fuzz: float):
             gap = abs(lats[i] - lats[j])
             dev = math.degrees(math.atan2(2 * G.queue_tol, gap - 2 * G.queue_tol)) + G.heading_tol_deg
             beta = z3.Real(f"b_{n}_{i}_{j}")
-            nominal = -90.0 if lats[j] < lats[i] else 90.0      # j on my right / left
+            nominal = -90.0 if lats[j] < lats[i] else 90.0
             cons += [beta >= nominal - dev, beta <= nominal + dev]
             fl, c = _membership(beta, fuzz, f"q{n}_{i}_{j}_")
             cons += c
-            echo = gap + 2 * G.queue_tol - 0.30 - 0.29          # farthest echo of that neighbour
+            echo = gap + 2 * G.queue_tol - 0.30 - 0.29
             rel[(i, j)] = (mutex_rule.relation(fl["F"], fl["B"], fl["L"], fl["R"], z3.BoolVal(False),
                                                z3.BoolVal(False), _Z) if echo <= G.queue_bracket_m else None)
     return cons, rel
@@ -174,9 +173,8 @@ def leader_violation(rel, S):
     return z3.Not(z3.And(prio[first], *[z3.Not(prio[k]) for k in S if k != first]))
 
 
-# ---------------------------------------------------------------------------------------------- M2v stacked queue
 STACK_2X2 = (Slot(0.0, 1.75, 1.75), Slot(0.0, 1.75, -1.75), Slot(0.0, -1.75, 1.75), Slot(0.0, -1.75, -1.75))
-STACK_PAIR = (Slot(0.0, 1.75, 1.75), Slot(0.0, 1.75, -1.75), Slot(0.0, -1.75, 0.0))     # formations "stack_pair"
+STACK_PAIR = (Slot(0.0, 1.75, 1.75), Slot(0.0, 1.75, -1.75), Slot(0.0, -1.75, 0.0))
 
 
 def _cone_flags(rel: np.ndarray, yaw_deg: float, fuzz: float):
@@ -239,7 +237,7 @@ def stacked_queue(cfg: FleetConfig, fuzz: float, relation=mutex_rule.relation, o
             leaders = []
             for i in S:
                 rel_i = [next(iter(rels[(i, j)])) for j in S if j != i]
-                if old_decide:     # v2: RANK resolved against unknown ranks (their_ranks = [-1] * count)
+                if old_decide:
                     d = mutex_rule.decide(rel_i, order[i], their_ranks=[-1] * sum(x == mutex_rule.RANK for x in rel_i))
                 else:
                     d = mutex_rule.decide(rel_i, order[i], their_ranks=[order[j] for j in S if j != i])
@@ -250,8 +248,6 @@ def stacked_queue(cfg: FleetConfig, fuzz: float, relation=mutex_rule.relation, o
             ok &= leaders == [first]
     out["ok"] = bool(ok)
     out["deadlocks"] = sum(1 for o in out["occupancies"] if not o["leaders"])
-    # M4s geometry of the stacked queue: CR inside the FRONT cone of every queue point (3-D angle), and the
-    # pass path of every drone keeps merge_clearance from the queue points of the drones after it in the order
     worst = 0.0
     for p in pts:
         son = p + np.array([float(MOUNTS["FRONT"][0]), 0.0, 0.0])
@@ -272,7 +268,6 @@ def stacked_queue(cfg: FleetConfig, fuzz: float, relation=mutex_rule.relation, o
     return out
 
 
-# ---------------------------------------------------------------------------------------------- M4 geometry
 def queue_points(G, n, perc=DEFAULT.perc):
     """Deployed abreast queue of n drones: the queue line of the shared plan (mission.queue_line: the bounds
     of GateRule.queue_s, moved back until no in-scope neighbour is hidden by the gate frame, M4f)."""
@@ -286,7 +281,6 @@ def geometry(cfg: FleetConfig, n: int, queue_line=None) -> dict:
     if queue_line is not None:
         q_s = queue_line
     out = {"n": n, "queue_s": round(q_s, 3)}
-    # (a) CR inside the FRONT cone of every queue point: worst bearing of a CR corner, + heading tolerance
     worst = 0.0
     for l in lats:
         sx = q_s + float(MOUNTS["FRONT"][0])
@@ -295,7 +289,6 @@ def geometry(cfg: FleetConfig, n: int, queue_line=None) -> dict:
                 cs, cl = a * G.cr_half_len, b * G.cr_half_width
                 worst = max(worst, abs(math.degrees(math.atan2(cl - l, cs - sx))))
     out["cr_bearing_max_deg"] = round(worst + G.heading_tol_deg, 2)
-    # (b) merge clearance of the committed drone from the next (right) queue point
     a = math.radians(G.merge_angle_deg)
     clear = 9.0
     for k in range(n - 1):
@@ -308,11 +301,9 @@ def geometry(cfg: FleetConfig, n: int, queue_line=None) -> dict:
             for t in np.linspace(0.0, 1.0, 201):
                 clear = min(clear, math.hypot(s0 + t * (s1 - s0) - q_s, l0 + t * (l1 - l0) - ln))
     out["merge_clearance_min"] = round(clear, 3)
-    # (c) queued neighbours outside the warning band: conservative distance of a LEFT/RIGHT echo
     r_echo = G.queue_spacing - 2 * HOLD_ERR - float(MOUNTS["LEFT"][1]) - 0.29 - env.eps_range_near
     out["queue_neighbour_d_lower"] = round(centre_distance_lower(r_echo, "LEFT", env.eps_range_far, perc.sonar,
                                                                  centre_in_cone=True), 3)
-    # (d)/(e) a drone crossing on the axis seen by each queue point: corridor, masking, beyond (along-axis s of A)
     rows = []
     for l in lats:
         son = np.array([q_s + float(MOUNTS["FRONT"][0]), l, 0.0])
@@ -321,13 +312,12 @@ def geometry(cfg: FleetConfig, n: int, queue_line=None) -> dict:
         near = float(np.linalg.norm(q - np.clip(q, -half, half)))
         far = max(float(np.linalg.norm(q - half * np.array([x, y, z]))) for x in (-1, 1) for y in (-1, 1) for z in (-1, 1))
         lo_corr, hi_corr = near - R_OUT - env.eps_range_far, far + env.eps_range_near
-        # gate bars seen from this sonar: the judged gate's mapped bars (arena geometry, gate frame)
         bar_pts = gate_frame_points()
         rb = [float(np.linalg.norm(p - son)) for p in bar_pts if
               math.degrees(math.acos(np.clip((p - son)[0] / np.linalg.norm(p - son), -1, 1))) <= HALF + 3.0]
         m_lo, m_hi = min(rb) - perc.structure_tol_m, max(rb) + perc.structure_tol_far_m
         ss = np.linspace(-6.0, 6.0, 2401)
-        rng_A = np.array([math.hypot(s - son[0], l) for s in ss]) - 0.29         # near surface of A (hull abeam extent)
+        rng_A = np.array([math.hypot(s - son[0], l) for s in ss]) - 0.29
         corr = (rng_A >= lo_corr) & (rng_A <= hi_corr)
         masked = (rng_A >= m_lo) & (rng_A <= m_hi)
         seen_corr = corr & ~masked & (ss < 0.8)
@@ -337,9 +327,6 @@ def geometry(cfg: FleetConfig, n: int, queue_line=None) -> dict:
         unmask_s = float(after.min()) if after.size else None
         beyond_s = float(ss[np.argmax((rng_A > hi_corr) & (ss > 0))]) if ((rng_A > hi_corr) & (ss > 0)).any() else None
         corr_from = float(ss[np.argmax(corr)]) if corr.any() else None
-        # the band of a FRONT-only echo (GatePerception.update): no relation, latch input.  A on the axis is FRONT-only for every
-        # heading within the tolerance from fo[0] to fo[1]; elsewhere the model keeps the WAIT of a merged target, the less
-        # restrictive of the two (the WAIT has no memory)
         band = rng_A >= lo_corr - G.nav_err_m
         band_from = float(ss[np.argmax(band)]) if band.any() else None
         tol = math.radians(G.heading_tol_deg)
@@ -364,10 +351,6 @@ def geometry(cfg: FleetConfig, n: int, queue_line=None) -> dict:
     return out
 
 
-# ------------------------------------------------------------------------------------- M4g exit observability
-# Range within which the sonar of a queued drone detects a hull that has left the CR when the line of sight is
-# clear: >= 29 % of the captures up to 10 m, 19 % at 10-11 m, 7 % at 11-12 m (CLEAN gate runs, observers at a lateral
-# queue point, results/calibration/gate/exit_detection.json).
 R_DETECT_M = 10.0
 
 
@@ -460,7 +443,6 @@ def exit_observability(cfg: FleetConfig, n: int = 0, step: float = 0.1, slots=No
     return rows
 
 
-# ---------------------------------------------------------------------------------------------- M3 timed latch model
 def latch_bmc(cfg: FleetConfig, geo: dict, steps: int = 420, latch: bool = True, v_lo: float = V_LO, view=None,
               band_latch: bool = True, hold: bool = False):
     """A crosses on the axis; B (queue view ``view``) decides with the deployed belief logic (incl. t_occ_max)."""
@@ -476,21 +458,21 @@ def latch_bmc(cfg: FleetConfig, geo: dict, steps: int = 420, latch: bool = True,
     b_s = view["beyond_s"] if view["beyond_s"] is not None else 99.0
     band_lo = view["band_from_s"] if view.get("band_from_s") is not None else 99.0
     fo_lo, fo_hi = view["front_only_s"] if view.get("front_only_s") else (99.0, -99.0)
-    no_rel = lambda x: z3.And(x >= band_lo, x <= b_s, x >= fo_lo, x <= fo_hi)                  # FRONT-only echo: no relation
-    in_band = lambda x: z3.And(x >= band_lo, x < s_corr_lo, x >= fo_lo, x <= fo_hi)            # ... nearer than the corridor
-    reach = int(math.floor((abs(geo["queue_s"]) - G.cr_half_len) / v_hi / dt))       # B cannot reach the CR faster
+    no_rel = lambda x: z3.And(x >= band_lo, x <= b_s, x >= fo_lo, x <= fo_hi)
+    in_band = lambda x: z3.And(x >= band_lo, x < s_corr_lo, x >= fo_lo, x <= fo_hi)
+    reach = int(math.floor((abs(geo["queue_s"]) - G.cr_half_len) / v_hi / dt))
     sA = [z3.Real(f"sA_{k}") for k in range(steps + 1)]
-    seen = [z3.Bool(f"seen_{k}") for k in range(steps + 1)]          # A visible to B in FRONT (unmasked)
-    corr = [z3.Bool(f"corr_{k}") for k in range(steps + 1)]          # confirmed corridor echo
+    seen = [z3.Bool(f"seen_{k}") for k in range(steps + 1)]
+    corr = [z3.Bool(f"corr_{k}") for k in range(steps + 1)]
     beyond = [z3.Bool(f"beyond_{k}") for k in range(steps + 1)]
     busy = [z3.Bool(f"busy_{k}") for k in range(steps + 1)]
-    since = [z3.Int(f"since_{k}") for k in range(steps + 1)]          # steps since the last corridor echo
-    quiet = [z3.Int(f"quiet_{k}") for k in range(steps + 1)]          # steps since last corridor echo after an exit
-    prio = [z3.Int(f"prio_{k}") for k in range(steps + 1)]            # steps of continuous PRIORITY
+    since = [z3.Int(f"since_{k}") for k in range(steps + 1)]
+    quiet = [z3.Int(f"quiet_{k}") for k in range(steps + 1)]
+    prio = [z3.Int(f"prio_{k}") for k in range(steps + 1)]
     commit = [z3.Bool(f"commit_{k}") for k in range(steps + 1)]
     cons = [sA[0] == geo["queue_s"], z3.Not(busy[0]), quiet[0] == tc, prio[0] == 0, z3.Not(commit[0]), since[0] == 0]
     for k in range(steps):
-        floor = z3.If(sA[k] >= -G.cr_half_len, v_lo, 0.0) if hold else v_lo     # hold: A may stop anywhere before the CR
+        floor = z3.If(sA[k] >= -G.cr_half_len, v_lo, 0.0) if hold else v_lo
         cons.append(z3.And(sA[k + 1] - sA[k] >= floor * dt, sA[k + 1] - sA[k] <= v_hi * dt))
     for k in range(steps + 1):
         vis = z3.Or(sA[k] < m_lo_s, sA[k] > m_hi_s)
@@ -506,15 +488,13 @@ def latch_bmc(cfg: FleetConfig, geo: dict, steps: int = 420, latch: bool = True,
         if latch:
             nb = z3.If(corr[k + 1], True, z3.If(z3.And(busy[k], z3.Or(beyond[k + 1], since[k + 1] > t_occ)), False, busy[k]))
         else:
-            nb = corr[k + 1]                                          # mutation: no memory of an unseen drone
+            nb = corr[k + 1]
         cons.append(busy[k + 1] == nb)
         cons.append(quiet[k + 1] == z3.If(z3.Or(corr[k + 1], busy[k + 1]), 0, quiet[k] + 1))
-        # B's relation: WAIT while A is seen in FRONT within the CR far range, except a FRONT-only echo in the band (the code's predicate)
         wait = z3.And(seen[k + 1], sA[k + 1] <= b_s, z3.Not(no_rel(sA[k + 1])))
         cons.append(prio[k + 1] == z3.If(wait, 0, prio[k] + 1))
         free = z3.And(z3.Not(busy[k + 1]), quiet[k + 1] >= tc)
         cons.append(commit[k + 1] == z3.Or(commit[k], z3.And(prio[k + 1] >= tc, free)))
-    # violation: B committed at step c, reaches the CR not before c + reach, while A is still in the CR
     viol = []
     for c in range(steps + 1):
         for k in range(c + reach, steps + 1):
@@ -524,13 +504,11 @@ def latch_bmc(cfg: FleetConfig, geo: dict, steps: int = 420, latch: bool = True,
     return cons, {"view": view["queue_l"], "mask_s": (m_lo_s, m_hi_s), "beyond_s": b_s, "reach_steps": reach}
 
 
-# ---------------------------------------------------------------------------------------------- run
 def run(cfg: FleetConfig = DEFAULT, verbose: bool = True) -> Report:
     rep = Report("mutex")
     G = cfg.gate
     dmax = 2 * G.heading_tol_deg
     fuzz = (30.0 - dmax) / 2.0
-    # M1
     fi, fj, cons = pair_constraints(dmax, fuzz)
     rep.add(check(f"M1 never both PRIORITY (|delta| <= {dmax:.0f} deg, fuzz {fuzz:.0f} deg)",
                   "|delta| + 2 fuzz <= 30 -> not(PRIORITY_i and PRIORITY_j)", ENC,
@@ -542,7 +520,6 @@ def run(cfg: FleetConfig = DEFAULT, verbose: bool = True) -> Report:
     rep.add(check("M1m2 mutation: yield only to FRONT (LEFT ignored) must allow double PRIORITY",
                   "expect counterexample", ENC,
                   cons + [priority(fi, _wait_only_front), priority(fj, _wait_only_front)], expect="sat"), verbose)
-    # M2 progress / no deadlock of the abreast queue, every occupancy in scope
     for n in range(2, 7):
         q_s, _lats = queue_points(G, n, cfg.perc)
         cons, rel = abreast_relations(G, n, fuzz)
@@ -559,7 +536,6 @@ def run(cfg: FleetConfig = DEFAULT, verbose: bool = True) -> Report:
                   "expect SAT: outside the scope of M2, the occupancy latch (M3) is the only protection", ENC,
                   cons + [leader_violation(rel, (0, 3))], expect="sat",
                   note="gap 10.5 m > queue bracket 7.5 m: the two drones do not count each other"), verbose)
-    # M2v stacked queue (numeric, 3-D cones) and the v2 rule as a mutation (deadlock)
     sp = stacked_queue(cfg, fuzz, slots=STACK_PAIR)
     st = stacked_queue(cfg, fuzz)
     st["ok"] = st["ok"] and sp["ok"]
@@ -593,7 +569,6 @@ def run(cfg: FleetConfig = DEFAULT, verbose: bool = True) -> Report:
                         verdict="violated" if not st_close["ok"] else "holds", passed=not st_close["ok"],
                         note=f"ambiguous pairs {st_close['ambiguous_pairs']}: left-bottom / right-top seen in UP/DOWN only "
                              f"at the tolerance limits"), verbose)
-    # M4 geometry (numeric) for n = 2..6
     geos = {n: geometry(cfg, n) for n in range(2, 7)}
     ok_a = all(g["cr_bearing_max_deg"] + 5.0 <= 60.0 for g in geos.values())
     rep.add(CheckResult("M4a CR inside the FRONT cone of every queue point (n = 2..6)",
@@ -623,7 +598,6 @@ def run(cfg: FleetConfig = DEFAULT, verbose: bool = True) -> Report:
                         "corridor_from < mask_from and visible_again <= cr_half_len + 2 m", "perception", "holds",
                         verdict="holds" if ok_e else "violated", passed=ok_e,
                         note=f"masked span <= {span:.2f} m along the axis"), verbose)
-    # M4f no queue neighbour a decision needs is hidden by the gate frame (structure window of the classifier)
     rows, ok_f, scope = [], True, []
     for n in range(2, 7):
         q_s, lats = queue_points(G, n, cfg.perc)
@@ -648,10 +622,6 @@ def run(cfg: FleetConfig = DEFAULT, verbose: bool = True) -> Report:
                         note="; ".join(rows) + (". Scope of M2 (hidden, excluded): " + "; ".join(scope) if scope else "")),
             verbose)
     rep.scope_hidden = scope
-    # M4g after leaving the CR, the passing drone is seen by a sonar of every queued drone as an exit witness.  Checked
-    # on a family of queue layouts (abreast 2..6, the stacks); the planner accepts a layout only within
-    # GateRule.queue_lateral_max (mission.check_gate_domain), and every accepted layout must have the witness: the
-    # validated domain.  Refused layouts are reported as the boundary of that domain, not as obligations.
     from holo_fleet.formations import TEMPLATES
     from holo_fleet.mission import check_gate_domain
 
@@ -702,11 +672,10 @@ def run(cfg: FleetConfig = DEFAULT, verbose: bool = True) -> Report:
                         verdict="violated" if bad["cr_bearing_max_deg"] + 5.0 > 60.0 else "holds",
                         passed=bad["cr_bearing_max_deg"] + 5.0 > 60.0,
                         note=f"{bad['cr_bearing_max_deg']} deg + fuzz > 60"), verbose)
-    # M3 timed latch model: every queue point as the observer B
     for n in (2, 3, 4):
         for view in geos[n]["views"]:
             if view["queue_l"] < -1e-6 and any(abs(v["queue_l"] + view["queue_l"]) < 1e-6 for v in geos[n]["views"]):
-                continue                                              # mirror image of a view already checked
+                continue
             cons, info = latch_bmc(cfg, geos[n], view=view)
             rep.add(check(f"M3 occupancy latch, n={n}, observer at l={view['queue_l']:+.2f}: never both in the CR (42 s BMC)",
                           "latch + persistence + exit + t_clear + t_occ_max -> not(A in CR and B in CR)", ENC, cons,
@@ -715,7 +684,6 @@ def run(cfg: FleetConfig = DEFAULT, verbose: bool = True) -> Report:
             cons, info = latch_bmc(cfg, geos[n], view=view, hold=True)
             rep.add(check(f"M3h occupancy latch, n={n}, observer at l={view['queue_l']:+.2f}: the crossing drone may stop anywhere before the CR, 42 s bound: never both in the CR",
                           "as M3, the speed floor applying only inside the CR", ENC, cons, timeout_ms=900000, note=f"band from s {view['band_from_s']}, FRONT-only s {view['front_only_s']}"), verbose)
-    # the queue closest to the gate (n = 2): the shortest way to the CR, where the masked interval matters most
     worst = max(geos[2]["views"], key=lambda v: v["queue_l"])
     cons, _ = latch_bmc(cfg, geos[2], latch=False, view=worst)
     rep.add(check("M3m mutation: belief without latch (FREE when nothing is seen) must violate P2",
@@ -730,9 +698,6 @@ def run(cfg: FleetConfig = DEFAULT, verbose: bool = True) -> Report:
     rep.add(check("M3hs scope: beyond the 42 s bound a drone stopped behind the bars before the CR is released by the t_occ_max fallback",
                   "expect counterexample: the stop before the CR is bounded by the give-up of the code (26 s), not modelled; B2 claims cover it when heard", ENC, cons, expect="sat", timeout_ms=900000,
                   note="n=3, side queue point, 48 s BMC"), verbose)
-    # M3f the scope of the t_occ_max fallback: the latch release after t_occ_max without corridor echoes assumes that a
-    # healthy occupant crosses (speed >= V_LO).  An occupant stopped inside the CR by a fault, masked by the bars, is
-    # released by it: P2 does not cover faults inside the CR (B2: heard_inside blocks the fallback while it pings).
     cons, info = latch_bmc(cfg, geos[2], view=worst, v_lo=0.0, steps=700)
     rep.add(check("M3f scope: an occupant that stops inside the CR (fault) is released by the t_occ_max fallback",
                   "expect counterexample: crossing speed >= V_LO is an assumption of M3", ENC, cons, expect="sat",

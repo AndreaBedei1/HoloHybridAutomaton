@@ -55,12 +55,11 @@ def main() -> int:
                    material="steel")
     ids = {n: k for k, n in enumerate(names)}
     log = []
-    # (tick, kind, args)
     plan = [(40, "ac", ("a0", "all", "OWAY")), (80, "ac", ("a0", "all", "OWAYU")),
-            (120, "ac2", (("a0", "OWAY"), ("a5", "OWAY"))),            # simultaneous transmissions
+            (120, "ac2", (("a0", "OWAY"), ("a5", "OWAY"))),
             (160, "ac", ("a5", "all", "OWAY")), (200, "ac", ("a0", "a5", "OWAY")),
             (240, "op", ("a0", "all")), (280, "op", ("side", "all")), (320, "ac", ("hid", "all", "OWAY")),
-            (360, "ac", ("a0", "all", "OWAY")), (361, "ac", ("a0", "all", "OWAY"))]   # re-send while transmitting
+            (360, "ac", ("a0", "all", "OWAY")), (361, "ac", ("a0", "all", "OWAY"))]
     t0 = time.time()
     try:
         for tick in range(420):

@@ -12,10 +12,10 @@ from holo_fleet.sim.currents import CurrentField
 
 @dataclass(frozen=True)
 class StressSpec:
-    beam_dropout: float = 0.0          # per-capture dropout probability of every sonar
-    blackout_every_s: float = 0.0      # mean period of whole-drone sonar blackouts
+    beam_dropout: float = 0.0
+    blackout_every_s: float = 0.0
     blackout_len_s: float = 0.0
-    nav_init_err_m: float = 0.0        # initial dead-reckoning error
+    nav_init_err_m: float = 0.0
 
 
 @dataclass
@@ -35,19 +35,10 @@ class SimSpec:
     env_box: Optional[Tuple[Sequence[float], Sequence[float]]] = None
     chase_offset: Tuple[float, float, float] = (-5.5, 0.0, 1.6)
     side_offset: Tuple[float, float, float] = (1.0, 8.5, 1.2)
-    # scripted vehicles that are NOT part of the fleet (no controller, no reaction): each dict has
-    # name, start [x,y,z], velocity [vx,vy,vz], yaw_deg, t_start.  Seen by the sonars like any hull.
     intruders: Tuple[Dict[str, Any], ...] = ()
-    # injected faults (simulator side, never visible to a controller): each dict has drone, type, t_on and t_off (None:
-    # permanent).  "TOTAL_FAILURE": the drone is completely broken (the deployment failure model, FailureModel in
-    # config.py): propulsion, electronics and transmission stop together, it runs no controller any more and,
-    # positively buoyant, rises.  "THRUSTER_FAILURE": the 8 thruster commands are zeroed and everything else keeps
-    # working (the v10 baseline's model only; no scenario of the current matrix uses it)
     faults: Tuple[Dict[str, Any], ...] = ()
-    # sensor degradation (sim.sensor_noise.NoiseProfile): HoloOcean noise parameters + seeded wrapper effects on
-    # the onboard streams; None = the deployed sensors (the baseline)
     noise: Optional[Any] = None
-    noise_drones: Optional[Any] = None   # indices of the drones that receive ``noise`` (None: all of them)
+    noise_drones: Optional[Any] = None
 
     def fault_active(self, name: str, t: float) -> bool:
         return any(f["drone"] == name and f["t_on"] <= t and (f.get("t_off") is None or t < f["t_off"])

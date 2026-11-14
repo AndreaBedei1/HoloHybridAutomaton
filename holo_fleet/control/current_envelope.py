@@ -77,17 +77,17 @@ def components(w: Sequence[float], v_desired: Sequence[float]):
 
 @dataclass(frozen=True)
 class CurrentCheck:
-    current: tuple                 # w [m/s] (true, or the onboard estimate in model units)
-    desired: tuple                 # requested velocity v_d [m/s]
+    current: tuple
+    desired: tuple
     head: float
     lateral: float
     vertical: float
-    magnitude: float               # |w_h|
-    through_water: float           # |v_d,h - w_h| [m/s]
-    required_cmd: float            # steady horizontal command needed (normalised)
-    authority: float               # AUTHORITY of the mode (normalised)
-    feasible: bool                 # required_cmd <= authority
-    in_range: bool                 # |w_h| <= current_validated_max and |w_z| <= current_vertical_max
+    magnitude: float
+    through_water: float
+    required_cmd: float
+    authority: float
+    feasible: bool
+    in_range: bool
     ok: bool
     reason: str
 

@@ -36,7 +36,7 @@ def test_controller_packages_do_not_import_simulator_referee_or_ui(path):
 
 @pytest.mark.parametrize("path", list(_py_files()), ids=lambda p: str(p.relative_to(ROOT)))
 def test_controller_code_never_names_ground_truth(path):
-    if path.name == "sensor_suite.py":      # holds the PRIVILEGED list used for stripping
+    if path.name == "sensor_suite.py":
         return
     text = path.read_text(encoding="utf-8")
     for key in GROUND_TRUTH_KEYS:
@@ -76,5 +76,5 @@ def test_scripted_intruder_is_invisible_to_the_controllers_except_through_their_
     sc = SCENARIOS["p1_vertical_escape"](DEFAULT)
     sim = HoloFleetSim(sc.sim)
     assert sim.intruder_names and set(sim.intruder_names).isdisjoint(sim.names)
-    assert set(sim.frames()) == set(sim.names)              # no frame, no plan, no controller for it
+    assert set(sim.frames()) == set(sim.names)
     assert len(sc.plans) == len(sim.names)

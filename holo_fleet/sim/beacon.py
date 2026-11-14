@@ -36,7 +36,7 @@ from typing import Dict, List, Sequence, Tuple
 import numpy as np
 
 SENSOR_NAME = "Beacon"
-PING_S = 0.04                 # identity chirp duration, upper end of the 20-40 ms of H1 (also the packet preamble)
+PING_S = 0.04
 
 
 class BeaconTransport:
@@ -46,30 +46,30 @@ class BeaconTransport:
         self.names = list(names)
         self.cfg = cfg
         self.tps = ticks_per_sec
-        self.period_ticks = max(1, int(round(cfg.period_s * ticks_per_sec)))      # TDMA slots aligned to ticks
+        self.period_ticks = max(1, int(round(cfg.period_s * ticks_per_sec)))
         self.slot_ticks = max(1, self.period_ticks // max(1, len(self.names)))
         self.channel = ChannelModel(channel(cfg.channel), len(self.names), seed, cfg.max_range_m)
         self.last_clear: Dict[Tuple[str, int], Tuple[float, Tuple[float, float, float]]] = {}
-        self.rb_log: List[Tuple] = []           # (t_tx, receiver, sender, r_true, r_meas, az_err, el_err, nlos)
-        self.scene = None                 # callable -> (positions (n,3), yaws (n,), gate bars), simulator truth
-        self.pending: Dict[str, List[Tuple[str, float]]] = defaultdict(list)   # receiver -> [(sender, t_tx)]
-        self.due: List[Tuple[float, str, int, float]] = []                     # (t_rx, receiver, sender id, t_tx)
+        self.rb_log: List[Tuple] = []
+        self.scene = None
+        self.pending: Dict[str, List[Tuple[str, float]]] = defaultdict(list)
+        self.due: List[Tuple[float, str, int, float]] = []
         self.tx_log: List[Tuple[float, str]] = []
         self.stats = {"transmissions": 0, "receptions": 0, "lost_collision": 0, "lost_channel": 0,
                       "lost_dropout": 0, "latency_s": []}
-        self.last_rx: Dict[Tuple[str, int], float] = {}                          # (receiver, sender id) -> t_rx
+        self.last_rx: Dict[Tuple[str, int], float] = {}
         self.longest_gap = 0.0
         self.t_now = 0.0
-        self.payload_source = None        # callable (k, t_emit) -> (p_est, bound) from drone k's ONBOARD perception
-        self.payload_rng = np.random.default_rng([int(seed), 5102])     # separate stream: pings unchanged
+        self.payload_source = None
+        self.payload_rng = np.random.default_rng([int(seed), 5102])
         self.payload_stats = {"sent": 0, "lost": 0, "delivered": 0}
-        self.is_dead = None               # callable (name, t) -> bool: a drone with a TOTAL_FAILURE emits nothing
+        self.is_dead = None
         if cfg.payload:
             from holo_fleet.perception.payload import air_time_s
 
             slot_s = self.slot_ticks / ticks_per_sec
             need = air_time_s(cfg.payload_bitrate_bps) + PING_S + cfg.max_range_m / cfg.sound_speed
-            if need > slot_s + 1e-9:          # H6: the packet, the chirp and the propagation spread fit the slot
+            if need > slot_s + 1e-9:
                 raise ValueError(f"B2 payload does not fit the TDMA slot: {need:.3f} s > {slot_s:.3f} s "
                                  f"({len(self.names)} drones, period {cfg.period_s} s)")
 
@@ -88,7 +88,7 @@ class BeaconTransport:
             if (tick - k * self.slot_ticks) % self.period_ticks != 0:
                 continue
             if self.is_dead is not None and self.is_dead(n, t):
-                continue                          # completely broken: no ping, no packet, and it hears nothing either
+                continue
             self.stats["transmissions"] += 1
             self.tx_log.append((round(t, 4), n))
             packet = self._packet(k, t, tick)
@@ -107,14 +107,14 @@ class BeaconTransport:
         src = self.payload_source(k, t)
         if src is None:
             return None
-        p_est, bound, gate_idx, phase = src    # the sender's own bound already covers the age of its estimate at t
+        p_est, bound, gate_idx, phase = src
         self.payload_stats["sent"] += 1
         return encode(tick // self.period_ticks, p_est, bound, gate_idx, phase)
 
     def after_tick(self, env, t: float) -> None:
         """Resolve the engine results of this tick into receptions (or losses)."""
         self.t_now = t
-        win = 2.0 / self.tps + 1e-6                       # a result appears in the tick of the ping or the next one
+        win = 2.0 / self.tps + 1e-6
         for r in self.names:
             pend = self.pending.get(r)
             if not pend:
@@ -122,12 +122,12 @@ class BeaconTransport:
             buf = np.asarray(env.agents[r].sensors[SENSOR_NAME]._sensor_data_buffer, dtype=float).ravel()
             event = not np.all(np.isnan(buf))
             expired = [p for p in pend if t - p[1] > win]
-            for _p in expired:                             # no result at all (counted as a channel loss)
+            for _p in expired:
                 self.stats["lost_channel"] += 1
             pend = [p for p in pend if t - p[1] <= win]
             if event and pend:
                 live = [p for p in pend if t - p[1] <= win]
-                if len(live) > 1:                          # results of two pings can share this buffer: all lost
+                if len(live) > 1:
                     self.stats["lost_collision"] += len(live)
                     pend = []
                 else:
@@ -144,9 +144,9 @@ class BeaconTransport:
         geom = None
         if m is None and np.all(buf == -1.0):
             geom, shadow = self._blocked_geometry(k_s, k_r)
-            if geom is not None and shadow:                     # a hull or a bar on the ray: diffracted direct path
+            if geom is not None and shadow:
                 m = ch.shadowed(t_tx, k_s, k_r, geom)
-            elif geom is not None:                              # anything else: a reflected arrival, or nothing
+            elif geom is not None:
                 m = ch.reflected(t_tx, k_s, k_r, geom)
         elif not np.all(buf == -1.0):
             geom = (float(buf[0]), float(buf[1]), float(buf[2]))
@@ -159,9 +159,8 @@ class BeaconTransport:
             return
         rng_m, az_m, el_m, nlos = m
         t_arr = t_tx + geom[2] / self.cfg.sound_speed
-        # a data packet has far less processing gain than the chirp and suffers more from a shadowed or multipath arrival
         if packet is not None and self.payload_rng.random() < min(1.0, ch.ch.payload_loss * (3.0 if nlos else 1.0)):
-            packet = None                                       # the ping was detected, its data packet was not decoded
+            packet = None
             self.payload_stats["lost"] += 1
         elif packet is not None:
             self.payload_stats["delivered"] += 1
@@ -224,7 +223,6 @@ class BeaconTransport:
         lat = self.stats["latency_s"]
         tx, n = self.stats["transmissions"], len(self.names)
         expected = tx * max(0, n - 1)
-        # longest interval without a reception over all (receiver, sender) pairs, mission start and end included
         open_gaps = [self.t_now - self.last_rx.get((r, k), 0.0) for r in self.names for k in range(n)
                      if self.names[k] != r]
         return {"mode": self.cfg.mode, "period_s": self.cfg.period_s,

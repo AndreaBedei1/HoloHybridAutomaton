@@ -44,7 +44,7 @@ from typing import Any, Callable, Dict, Iterable, List
 from holo_fleet.config import DEFAULT, FleetConfig
 from holo_fleet.ha.spec import BOOL_VARS, REAL_VARS, _PyLogic
 
-D_NONE = 1e9            # d_min when no obstacle target is perceived (perception.py)
+D_NONE = 1e9
 
 
 class _PyInvLogic(_PyLogic):
@@ -69,11 +69,11 @@ def _implies(L, a, b):
 @dataclass(frozen=True)
 class Invariant:
     name: str
-    formula: str            # readable form
+    formula: str
     meaning: str
-    why: str                # why the deployed perception guarantees it (code reference)
-    excludes: str           # states of the 13 variables it rules out
-    pred: Callable[[Any, Any, FleetConfig], Any]      # pred(o, L, cfg), L = PY_INV or the Z3 backend
+    why: str
+    excludes: str
+    pred: Callable[[Any, Any, FleetConfig], Any]
 
 
 def _well_formed(o, L, cfg):
@@ -147,7 +147,7 @@ INVARIANTS: List[Invariant] = [
         lambda o, L, cfg: _implies(L, o.entry_abort, L.And(o.committed, o.mutex_zone, L.Not(o.passed)))),
 ]
 
-BY_NAME: Dict[str, Invariant] = {inv.name.split()[0]: inv for inv in INVARIANTS}     # "N0", "I1", ...
+BY_NAME: Dict[str, Invariant] = {inv.name.split()[0]: inv for inv in INVARIANTS}
 
 
 def legal(o, L, cfg: FleetConfig = DEFAULT, drop: Iterable[str] = (), extra: Iterable[Any] = ()) -> Any:
@@ -162,7 +162,7 @@ def violated(o, cfg: FleetConfig = DEFAULT) -> List[str]:
     for inv in INVARIANTS:
         try:
             ok = bool(inv.pred(o, PY_INV, cfg))
-        except TypeError:                     # e.g. a None real compared with a threshold
+        except TypeError:
             ok = False
         if not ok:
             bad.append(inv.name.split()[0])

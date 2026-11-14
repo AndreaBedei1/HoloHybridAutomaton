@@ -19,21 +19,7 @@ import numpy as np
 
 DEFAULT_ARENA_ROOT = Path.home() / "Desktop" / "HoloDroneCompetition"
 HORSESHOE_TRACK = "marine_race_arena/tracks/marine_race_horseshoe_bay.json"
-# Inner opening (width, height) [m] of the gates the scenarios spawn, overriding the track (1.5 x 1.5 m).  G06 is
-# 2.0 x 2.0 m: the free lateral margin of the hull centre grows from 0.44 to 0.69 m, above the 0.30-0.58 m lateral
-# dead-reckoning error measured at the gate under MEDIUM (raw_gate_check), the vertical one from 0.62 to 0.87 m, and
-# the opening still ends at the edges of the critical region (cr_half_width = cr_half_height = 1.0 m), so the mutex
-# geometry is unchanged.  The perception map and the spawned bars are built from the same overridden config.
 GATE_INNER_SIZE_M = {"G06": (2.0, 2.0)}
-# Bar section (thickness across the bar, depth along the passage axis) [m] of the gates the scenarios spawn,
-# overriding the track (0.18 x 0.22 m).  The arena factory places every bar outside the inner opening (centre at
-# inner/2 + thickness/2), so a thicker bar grows outwards and the free opening stays GATE_INNER_SIZE_M.
-# G06: 0.25 x 0.30 m, chosen offline (calibration/analyze_gate_bar_section.py, results/calibration/gate/bar_section_analysis.json)
-# among 0.18x0.22 ... 0.50x0.60.  Closed-loop localization before the critical region (s -2.0..-1.2, 0.3-0.5 m
-# lateral error, MEDIUM-like noise) is confirmed in 46 % of the poses instead of 35 %, with no unsafe confirmation and
-# no wrong correction; the larger sections add little (47-49 %) while the structure window of the classifier hides a
-# drone crossing the gate longer: formal M4e (visible again within cr_half_len + 2 m) holds up to 0.30 x 0.40 (2.74 m
-# of 2.80) and fails from 0.35 x 0.45; at 0.25 x 0.30 it is 2.65 m.
 GATE_BAR_SECTION_M = {"G06": (0.25, 0.30)}
 
 

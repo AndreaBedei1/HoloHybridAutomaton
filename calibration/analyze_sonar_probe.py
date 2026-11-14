@@ -23,7 +23,7 @@ from sonar_probe_lib import (BIN_W, RANGES, first_return, group, hull_near_dista
 OUT_RAW = ROOT / "calibration" / "out" / "sonar_probe"
 FIG = ROOT / "figures" / "calibration" / "sonar_probe"
 RES = ROOT / "results" / "calibration" / "sonar_probe"
-THR_CLEAN = 1e-3          # noise-free output: any echo
+THR_CLEAN = 1e-3
 INK = {"primary": "#1f2328", "secondary": "#59636e", "muted": "#8c959f", "grid": "#e6e8eb"}
 SERIES = ["#2a78d6", "#eb6834", "#1baf7a", "#4a3aa7", "#e87ba4", "#008300"]
 STATUS = {"critical": "#d1242f", "warning": "#bf8700"}
@@ -85,7 +85,6 @@ def main() -> int:
     summary["events"] = events
     k2 = sess.get("k2", [])
 
-    # ---------------------------------------------------------------- visibility matrix (k1 / k2 / k3)
     vis = {}
     for s, rows in sess.items():
         if s not in ("k1", "k2", "k3"):
@@ -98,7 +97,6 @@ def main() -> int:
                 vis.setdefault(label, {})[s] = round(float(det), 2)
     summary["visibility"] = vis
 
-    # ---------------------------------------------------------------- range accuracy (noise-free)
     tables = {
         "drone_head_on": range_table([r for r in k2 if r["case"].get("aspect") == "head_on"], "drone",
                                      lambda r: hull_near_distance(r["obs_pose"], r["tgt_pose"]),
@@ -143,7 +141,6 @@ def main() -> int:
         fig.savefig(FIG / "range_true_vs_sonar.png", dpi=140)
         plt.close(fig)
 
-    # ---------------------------------------------------------------- field of view
     fov = {}
     panels = [("k2", 3.0, 120.0), ("k2", 6.0, 120.0), ("k2_oa30", 4.0, 30.0)]
     panels = [(s_, R, oa) for s_, R, oa in panels if s_ in sess]
@@ -178,7 +175,6 @@ def main() -> int:
         plt.close(fig)
     summary["fov"] = fov
 
-    # ---------------------------------------------------------------- timing
     timing = {}
     for s_, evs in events.items():
         for e in evs:
@@ -186,7 +182,6 @@ def main() -> int:
                 timing[f"{s_}:{e['label']}"] = {k: e[k] for k in ("mean_tick_ms", "p95_tick_ms", "real_time_factor")}
     summary["timing"] = timing
 
-    # ---------------------------------------------------------------- echogram of the distance sweep
     if k2:
         rs = [r for r in k2 if r["exp"] == "drone" and r["case"]["aspect"] == "head_on"]
         S = np.array([r["sonar"] for r in rs]).T
@@ -204,7 +199,6 @@ def main() -> int:
         fig.savefig(FIG / "echogram_drone_sweep.png", dpi=140)
         plt.close(fig)
 
-    # ---------------------------------------------------------------- k1 / k2 / k3 same-pose comparison
     def pick(rows, exp, **case):
         for r in rows:
             if r["exp"] == exp and all(r["case"].get(k) == v for k, v in case.items()):
@@ -238,7 +232,6 @@ def main() -> int:
         fig.savefig(FIG / "octree_props_k1_k2_k3.png", dpi=140)
         plt.close(fig)
 
-    # ---------------------------------------------------------------- noise, dropout, false alarms
     noise = {}
     nrows = [r for r in k2 if r["exp"] in ("noise", "noise_empty")]
     if nrows:
@@ -261,7 +254,6 @@ def main() -> int:
                                "err_p95": float(np.percentile(err, 95)) if ok else None}
             det_by_d[str(d)] = {"truth": truth, "by_threshold": per}
         noise["detection"] = det_by_d
-        # chosen threshold: smallest with zero false alarms in empty water
         ok_thr = [t for t, f in zip(thrs, fa) if f == 0.0]
         noise["threshold_zero_false_alarm"] = float(min(ok_thr)) if ok_thr else None
         fig, (ax, ax2) = plt.subplots(1, 2, figsize=(10, 3.3))
@@ -296,7 +288,6 @@ def main() -> int:
         plt.close(fig)
     summary["noise"] = noise
 
-    # ---------------------------------------------------------------- surface / seabed
     env_cases = {}
     for exp in ("surface_horizontal", "surface_horizontal_target", "vertical_look", "seabed_vertical",
                 "seabed_horizontal", "seabed_horizontal_target"):
@@ -310,7 +301,6 @@ def main() -> int:
                 "depth_gt": round(float(-rs[0]["obs_pose"][2, 3]), 2)}
     summary["surface_seabed"] = env_cases
 
-    # ---------------------------------------------------------------- screenshots
     shots = [("k2", "gate_left_pillar_3m", "k2: G06 left pillar at 3 m (cone drawn in green)"),
              ("k2", "drone_head_on_3m", "k2: BlueROV2 head-on at 3 m"),
              ("k2", "box_3m", "k2: runtime box at 3 m"),

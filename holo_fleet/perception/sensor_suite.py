@@ -22,10 +22,6 @@ from holo_fleet.config import DEFAULT, FleetConfig
 from holo_fleet.perception.sonar_geometry import MOUNTS, ROTATIONS, SECTORS, sonar_sensor_name
 
 SONAR_NAMES = tuple(sonar_sensor_name(s) for s in SECTORS)
-# Keys a controller is allowed to receive.  Everything else (PoseSensor, VelocitySensor,
-# CollisionSensor, visualisation cameras, ...) is stripped by the simulator wrapper.
-# "AcousticRx": variant B2 only, the receiver-side measurements of the one-way identity pings (identity, arrival
-# time, range, azimuth, elevation; sim/beacon.py through the channel model); absent in the baseline B0.
 ONBOARD_NAMES = ("DepthSensor", "IMUSensor", "DVLSensor", "Compass") + SONAR_NAMES + ("AcousticRx",)
 PRIVILEGED_NAMES = ("PoseSensor", "VelocitySensor", "CollisionSensor", "ChaseCamera", "SideCamera", "TopCamera")
 
@@ -46,7 +42,6 @@ class SensorDoc:
     role: str
 
 
-# noise parameters of the deployed (CLEAN) suite; sim.sensor_noise.CLEAN must equal them (tests)
 DEPLOYED_NOISE = {"imu_accel_sigma": 0.01, "imu_gyro_sigma": 0.005, "imu_accel_bias_sigma": 0.0,
                   "imu_gyro_bias_sigma": 0.0, "mag_sigma": 0.005, "depth_sigma": 0.02, "dvl_vel_sigma": 0.01,
                   "dvl_range_sigma": 0.02}

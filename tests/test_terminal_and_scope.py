@@ -48,14 +48,14 @@ def test_deadline_terms_come_from_the_plan_the_protocol_and_the_profile():
     serial = sum((abs(p.queue_lateral) + G.exit_s - p.queue_s) / G.v_pass + G.t_occ_max + G.t_clear for p in sc.plans)
     dwell = sum(d for _s, d in sc.plans[0].clock.holds)
     assert terms["T_nom"] == pytest.approx(criteria._clock_end(sc.plans[0].clock, sc.plans[0].s_end), abs=0.1)
-    assert terms["T_nom"] > sc.duration_s                          # the planned end, not the simulation duration
-    assert terms["gate"] == pytest.approx(max(0.0, serial - dwell), abs=0.1)     # only the excess over the dwell
+    assert terms["T_nom"] > sc.duration_s
+    assert terms["gate"] == pytest.approx(max(0.0, serial - dwell), abs=0.1)
     assert terms["formation"] == pytest.approx(F.t_rejoin + criteria.t_hold_s(DEFAULT), abs=0.1)
     assert terms["failsafe"] > 0.0 and criteria.deadline_terms(sc, DEFAULT, "CLEAN")["failsafe"] == 0.0
     lost = criteria.deadline_terms(SCENARIOS["lost_drone_timeout"](DEFAULT), DEFAULT, "CLEAN")
     assert lost["faults"] == pytest.approx(max(F.t_rejoin, F.t_silent_s) * (1.0 - F.v_wait / F.v_nominal), abs=0.1)
     p1 = criteria.deadline_terms(SCENARIOS["p1_head_on"](DEFAULT), DEFAULT, "CLEAN")
-    assert p1["gate"] == 0.0 and p1["formation"] == 0.0 and p1["avoidance"] > 0.0   # single drones: give-way detour
+    assert p1["gate"] == 0.0 and p1["formation"] == 0.0 and p1["avoidance"] > 0.0
     assert criteria.profile_family("LOW-ALL") == "LOW" and criteria.profile_family(None) == "CLEAN"
 
 
@@ -64,9 +64,8 @@ def test_constants_match_their_declared_sources():
 
     from holo_fleet.control.flows import Flows
     assert inspect.signature(Flows.traffic_offset).parameters["offset_max"].default == criteria.GIVEWAY_OFFSET_M
-    assert DEFAULT.ref.t_ok_hold == pytest.approx(criteria.t_hold_s(DEFAULT), abs=0.05)      # 4 / k_slot
+    assert DEFAULT.ref.t_ok_hold == pytest.approx(criteria.t_hold_s(DEFAULT), abs=0.05)
     assert criteria.progress_tol_m(DEFAULT) == pytest.approx(3.0)
-    # the FAILSAFE allowance grows with the horizon at the 99 % Poisson quantile of the profile's outages
     assert criteria.failsafe_allowance_s("MEDIUM-ALL", 300.0) > criteria.failsafe_allowance_s("MEDIUM-ALL", 100.0)
     assert criteria._poisson_quantile(10.0, 0.99) == 18
 
@@ -75,9 +74,9 @@ def test_success_only_after_the_nominal_end_and_with_every_outcome():
     mon, tg, n = _monitor()
     rec = [{"mode": "FORMATION_FOLLOW"}] * n
     r = Ref(n)
-    assert mon.update(10.0, tg, r, rec) is None                  # every outcome reached, but before T_nom
+    assert mon.update(10.0, tg, r, rec) is None
     r.formation = "RECOVERING"
-    assert mon.update(mon.t_nom + 1.0, tg, r, rec) is None        # formation not recovered yet
+    assert mon.update(mon.t_nom + 1.0, tg, r, rec) is None
     r.formation = "OK"
     assert mon.update(mon.t_nom + 2.0, tg, r, rec) == "SUCCESS"
     assert mon.summary()["t_end"] == mon.t_nom + 2.0 and mon.summary()["criteria"] == criteria.CRITERIA_VERSION
@@ -101,7 +100,7 @@ def test_a_false_vacancy_blocks_success():
 def test_progress_is_judged_now_not_latched():
     mon, tg, n = _monitor()
     rec = [{"mode": "FORMATION_FOLLOW"}] * n
-    assert mon.update(1.0, tg, Ref(n), rec) is None                # reached early
+    assert mon.update(1.0, tg, Ref(n), rec) is None
     assert mon.update(mon.t_nom + 1.0, tg + 10.0, Ref(n), rec) is None and "progress" in mon.last_missing
 
 
@@ -112,7 +111,7 @@ def test_a_drone_that_goes_over_the_frame_has_not_passed_the_gate():
     n = len(sc.sim.names)
     rec = [{"mode": "FORMATION_FOLLOW"}] * n
     P = np.array(criteria.plan_targets(sc))
-    for s, dz in ((-3.0, 0.0), (0.0, G.cr_half_height + 1.0), (G.exit_s + 1.0, 0.0)):   # drone 0 above the CR
+    for s, dz in ((-3.0, 0.0), (0.0, G.cr_half_height + 1.0), (G.exit_s + 1.0, 0.0)):
         P[0] = g.from_gate_frame([s, 0.0, dz])
         mon.update(1.0, P, Ref(n), rec)
     assert mon.passed[0] is None and "drone_0" in mon.bypassed
@@ -165,7 +164,7 @@ def test_permanent_loss_requires_the_healthy_formation_and_the_vacancy():
     assert mon.update(mon.t_nom + 1.0, tg, Ref(n), rec) is None and "P3-deg vacancy" in mon.last_missing
     rec = [{"mode": "DEGRADED_FORMATION", "form": {"vacant": [2]}}] * n
     assert mon.update(mon.t_nom + 2.0, tg, Ref(n), rec) == "SUCCESS"
-    assert all(mon.must_vacate[k] == {2} for k in mon.healthy)     # every survivor expects slot 2 (square)
+    assert all(mon.must_vacate[k] == {2} for k in mon.healthy)
 
 
 def test_v3_referee_declares_only_the_scripted_permanent_fault_absent():
@@ -178,7 +177,7 @@ def test_v3_referee_declares_only_the_scripted_permanent_fault_absent():
         ref.update(SimpleNamespace(t=t, positions=P, collision=np.zeros(len(P), bool), current_drift=z, velocities=z,
                                    intruders=None, rotations=None), ["FORMATION_FOLLOW"] * len(P))
     assert sorted(ref.absent) == [2] and ref.absence_log[0]["t"] == 8.0
-    assert DEFAULT.ref.e_lost == DEFAULT.ref.e_ok == criteria.E_TOL_M      # one tolerance band (no vacuous band)
+    assert DEFAULT.ref.e_lost == DEFAULT.ref.e_ok == criteria.E_TOL_M
 
 
 @pytest.fixture(scope="module")
@@ -196,8 +195,8 @@ def test_degraded_drones_are_deterministic_and_nested(camp):
         n = len(SCENARIOS[sc](DEFAULT).sim.names)
         assert al == list(range(n)) and len(sub) == (n + 1) // 2 and len(sub) < n
         lost = {f["drone"] for f in SCENARIOS[sc](DEFAULT).sim.faults if f.get("t_off") is None}
-        assert f"drone_{one[0]}" not in lost                        # ONE is always a healthy drone
-        assert camp.scope_drones(sc, "ONE") == one                    # same choice every time
+        assert f"drone_{one[0]}" not in lost
+        assert camp.scope_drones(sc, "ONE") == one
 
 
 def test_online_and_offline_monitors_share_t_nom():
@@ -207,7 +206,7 @@ def test_online_and_offline_monitors_share_t_nom():
     sc = SCENARIOS["gate_single"](DEFAULT)
     assert TerminalMonitor(sc, DEFAULT, sc.sim.names, 300.0).t_nom == criteria.nominal_end_s(sc)
     src = inspect.getsource(runner.run)
-    assert "t_nom = nominal_end_s(sc)" in src             # the same planned end as the offline replay
+    assert "t_nom = nominal_end_s(sc)" in src
 
 
 def test_the_horizon_is_three_times_the_a_priori_deadline():

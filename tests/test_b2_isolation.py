@@ -27,7 +27,7 @@ def _frame(t, rx=(), echo=None):
             "IMUSensor": np.zeros((4, 3))}
     for s in SECTORS:
         data[sonar_sensor_name(s)] = np.zeros(RANGES.size)
-    if echo is not None:                                 # a compact unexplained echo ahead: a vehicle
+    if echo is not None:
         data[sonar_sensor_name("FRONT")][(RANGES >= echo[0]) & (RANGES <= echo[1])] = 0.9
     stamp = {k: t for k in data}
     if rx:
@@ -43,7 +43,6 @@ def _run(cfg, loud, scenario, steps=70):
     records = []
     for i in range(steps):
         t = round(DT * i, 3)
-        # every neighbour heard 4 m to the left at every step (loud) or never (mute)
         rx = [(k, t - 0.01, 4.0, np.pi / 2, 0.0) for k in range(len(plan.slots)) if k != plan.slot_index] if loud else ()
         echo = (1.8, 2.0) if 2.0 <= t <= 4.0 else None
         c.step(_frame(t, rx, echo), DT)
@@ -54,7 +53,7 @@ def _run(cfg, loud, scenario, steps=70):
 @pytest.mark.parametrize("scenario", ["gate_single", "lost_drone_rejoin"])
 def test_acoustic_receptions_cannot_override_the_safety_layer(scenario):
     loud, mute = _run(B2, True, scenario), _run(B2, False, scenario)
-    assert any(r["mode"] in SAFETY_MODES for r in mute)          # the echo does trigger the safety layer
+    assert any(r["mode"] in SAFETY_MODES for r in mute)
     for a, b in zip(loud, mute):
         for key in ("d_min", "sense_ok", "env_ok", "targets", "escape"):
             assert a[key] == b[key], (a["t"], key)
@@ -62,22 +61,19 @@ def test_acoustic_receptions_cannot_override_the_safety_layer(scenario):
             assert a["mode"] == b["mode"], a["t"]
 
 
-# modules allowed to mention the beacon / acoustic receptions: simulator side, configuration, run bookkeeping, and the
-# perception modules whose B2 rules are documented (perception.py, acoustic*.py, formation / gate perception)
 ALLOWED = {"config.py", "runner.py", "sim/beacon.py", "sim/holo_env.py", "sim/acoustic_channel.py",
            "perception/acoustic.py", "perception/acoustic_gate.py", "perception/perception.py",
            "perception/formation_perception.py", "perception/gate_perception.py", "perception/sensor_suite.py",
-           "perception/payload.py", "perception/nav.py",       # H6 payload: packet format, own navigation bound
-           "perception/structure_aiding.py",    # H6: payload balls as the identity premise of a fit (no acoustic fix read)
+           "perception/payload.py", "perception/nav.py",
+           "perception/structure_aiding.py",
            "control/controller.py", "referee/robustness_metrics.py", "referee/referee.py",
-           "referee/p3.py"}                    # offline: the premise A of the P3 contract reads the logged silence
+           "referee/p3.py"}
 
 
 def test_only_perception_modules_read_the_beacon():
     used = {p.relative_to(PKG).as_posix() for p in PKG.rglob("*.py")
             if any(w in p.read_text(encoding="utf-8") for w in ("AcousticRx", "acoustic", "beacon"))}
     assert used <= ALLOWED, used - ALLOWED
-    # the automaton, the guards, the flows and the sonar safety chain never touch it
     for rel in ("ha/spec.py", "ha/automaton.py", "control/flows.py", "control/escape.py", "perception/targets.py",
                 "perception/sonar_geometry.py", "perception/sonar_processing.py"):
         assert rel not in used
@@ -96,5 +92,4 @@ def test_transport_reports_the_longest_absence():
     tr.due = [(1.0, "b", 0, 0.999, m), (2.0, "a", 1, 1.999, m), (4.0, "b", 0, 3.999, m)]
     tr.deliver(5.0)
     tr.t_now = 6.0
-    # b hears a at 1 and 4 (gaps 1, 3, then 2 to the end); a hears b at 2 (gap 2, then 4 to the end)
     assert tr.summary()["longest_absence_s"] == 4.0

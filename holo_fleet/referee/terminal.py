@@ -44,8 +44,8 @@ class TerminalMonitor:
         self.healthy = [k for k, n in enumerate(self.names) if n not in self.permanent]
         self.targets = plan_targets(scenario, self.t_nom)
         self.tol = progress_tol_m(cfg)
-        self.reached: Dict[int, Optional[float]] = {k: None for k in self.healthy}      # first time (report only)
-        self.near: Dict[int, bool] = {k: False for k in self.healthy}                   # within tol now
+        self.reached: Dict[int, Optional[float]] = {k: None for k in self.healthy}
+        self.near: Dict[int, bool] = {k: False for k in self.healthy}
         self.gate = scenario.judged_gates[0] if scenario.judged_gates else None
         self.before = {k: False for k in self.healthy}
         self.crossed = {k: False for k in self.healthy}
@@ -53,7 +53,6 @@ class TerminalMonitor:
         self.bypassed: List[str] = []
         lost_idx = [k for k, n in enumerate(self.names) if n in self.permanent]
         self.lost_slots = {pl.slot_index for pl in scenario.plans if pl.drone_id in self.permanent}
-        # the drones that must declare a lost slot vacant: those that expect its drone as a neighbour
         self.must_vacate = {k: {scenario.plans[j].slot_index for j in lost_idx if expects(scenario, cfg, k, j)}
                             for k in self.healthy}
         self.slot_drone = {pl.slot_index: self.names.index(pl.drone_id) for pl in scenario.plans}
@@ -97,7 +96,7 @@ class TerminalMonitor:
                     if self.crossed[k]:
                         self.passed[k] = t
                     elif self.names[k] not in self.bypassed:
-                        self.bypassed.append(self.names[k])          # around or over the frame: not a passage
+                        self.bypassed.append(self.names[k])
         miss = self.missing(referee, records, P)
         for r in REQUIREMENTS:
             if r in miss:
@@ -136,7 +135,7 @@ class TerminalMonitor:
                     if not self.must_vacate[k] <= vac:
                         out.append("P3-deg vacancy")
                         break
-            for k in self.healthy:                          # ground truth: only a permanently faulted drone is lost
+            for k in self.healthy:
                 vac = set(((records[k] or {}).get("form") or {}).get("vacant") or [])
                 if any(self.slot_drone.get(sl) in self.healthy for sl in vac):
                     out.append("no false vacancy")

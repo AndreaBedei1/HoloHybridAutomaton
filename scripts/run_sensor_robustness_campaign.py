@@ -38,7 +38,7 @@ sys.path.insert(0, str(ROOT))
 
 from holo_fleet.sim.engine_lease import owned_engine, worker_engines
 
-RAW = ROOT / "results" / "robustness" / "raw_final"        # the one authoritative output location
+RAW = ROOT / "results" / "robustness" / "raw_final"
 DEMOS = ROOT / "results" / "reference"
 SEEDS = (0, 1, 2)
 ALL_SCENARIOS = ("p1_head_on", "p1_vertical_escape", "p1_two_lines", "p1_close_encounter", "formation_triangle",
@@ -128,7 +128,6 @@ def final_matrix(seeds, only=None) -> list:
 
 FINAL_SCENARIOS = ALL_SCENARIOS
 
-# the gate scenarios of the standard set (the final campaign of criteria v8 is defined in scripts/final_campaign.py)
 B2_GATE_SCENARIOS = ("gate_single", "integrated_short", "mutex_deadlock_resolution", "line_parallel_mutex",
                      "lost_drone_mutex")
 
@@ -175,17 +174,16 @@ def worker(args) -> int:
               "(the baseline needs the octree patch, docs/HOLOOCEAN_OCTREE_PATCH.md)", file=sys.stderr)
         return 4
     cfg = DEFAULT
-    if args.protocol.startswith("B2_"):            # range-bearing beacon, channel level after the underscore
+    if args.protocol.startswith("B2_"):
         cfg = dataclasses.replace(DEFAULT, beacon=BeaconConfig(mode="ACOUSTIC_RB", channel=args.protocol[3:]))
-    elif args.protocol.startswith("B2NP_"):        # ablation: the same beacon without the H6 payload
+    elif args.protocol.startswith("B2NP_"):
         cfg = dataclasses.replace(DEFAULT, beacon=BeaconConfig(mode="ACOUSTIC_RB", channel=args.protocol[5:],
                                                                payload=False))
     d = Path(args.run_dir)
     prof, _, scope = args.profile.partition("-")
-    # criteria v3 (referee/criteria.py): a-priori requirements, deadline from the plan and the protocol bounds
     terminal = {"profile": args.profile} if args.terminal else None
     factor = float(os.environ.get("HOLO_FLEET_HORIZON_FACTOR", "1"))
-    if terminal is not None and factor != 1.0:          # exploratory: a multiple of the v5 horizon, never for results
+    if terminal is not None and factor != 1.0:
         from holo_fleet.referee.criteria import horizon_v5
         from holo_fleet.sim.scenarios import SCENARIOS
 
@@ -200,7 +198,7 @@ def holodeck_pids():
     import psutil
 
     out = {}
-    for p in psutil.process_iter(["name"]):        # the name first: ppid of every process is slow on Windows
+    for p in psutil.process_iter(["name"]):
         if str(p.info.get("name") or "").lower() == "holodeck.exe":
             try:
                 out[p.pid] = p.ppid()
@@ -332,8 +330,6 @@ def watch(proc, d: Path, dur: float, args, seen: dict):
         if size != last_size:
             last_size, last_change, cpu_at_change = size, time.time(), cpu
         reason = None
-        # a worker starved by other (higher-priority) jobs makes no progress without being stuck: it is stalled only
-        # if it (and its engine) got at least a minute of CPU since the last log growth; the time cap counts CPU too
         if time.time() - t0 > cap and cpu > 0.25 * cap:
             reason = "timeout"
         elif time.time() - last_change > 60.0 * args.stall_min and cpu - cpu_at_change > 60.0:
@@ -484,19 +480,15 @@ def main() -> int:
     ap.add_argument("--protocols", nargs="*", help="--phase targeted: protocols (e.g. B0 B2_CLEAN)")
     ap.add_argument("--dry-run", action="store_true")
     ap.add_argument("--max-runs", type=int, default=0)
-    # parallel campaign: N orchestrators on disjoint slices of the same pending list, one engine each (HoloOcean's
-    # client / engine channel is shared memory + semaphores scoped by a per-instance UUID: instances cannot cross)
     ap.add_argument("--shard", type=int, default=0)
     ap.add_argument("--nshards", type=int, default=1)
     ap.add_argument("--cpus", default="", help="logical cores for this orchestrator and its children, e.g. 0-19")
     ap.add_argument("--retries", type=int, default=1)
-    # shared-machine courtesy (other heavy jobs have priority): see be_nice / wait_for_room / watch
     ap.add_argument("--min-free-ram-gb", type=float, default=8.0)
     ap.add_argument("--critical-ram-gb", type=float, default=4.0)
     ap.add_argument("--cooldown-s", type=float, default=5.0)
     ap.add_argument("--timeout-factor", type=float, default=20.0)
     ap.add_argument("--stall-min", type=float, default=20.0)
-    # worker mode
     ap.add_argument("--worker", action="store_true")
     ap.add_argument("--scenario")
     ap.add_argument("--profile")
@@ -521,8 +513,6 @@ def main() -> int:
     todo = pending(raw, runs, "")
     print(f"phase {args.phase}: {len(runs)} runs, {len(runs) - len(todo)} done, {len(todo)} to do", flush=True)
     if args.nshards > 1:
-        # slice the PLAN, not what is still pending: orchestrators started at different times then still own disjoint
-        # runs (slicing the pending list made two shards run the same run into the same directory)
         mine = set(runs[args.shard::args.nshards])
         todo = [r for r in todo if r in mine]
         print(f"shard {args.shard}/{args.nshards}: {len(todo)} runs", flush=True)
@@ -555,7 +545,6 @@ def main() -> int:
             say(f"{time.strftime('%H:%M:%S')} {protocol} {prof} {sc} s{seed}: claimed by another orchestrator, skipped")
             continue
         if not pending(raw, [(protocol, prof, sc, seed)], version["sha"]):
-            # completed by another orchestrator since this one listed its runs: never run (and archive) it again
             lock.unlink(missing_ok=True)
             say(f"{time.strftime('%H:%M:%S')} {protocol} {prof} {sc} s{seed}: already done by another orchestrator, skipped")
             continue
@@ -604,16 +593,16 @@ def main() -> int:
                 res.setdefault("invalid_reason", code)
             if res["class"] != "INVALID":
                 break
-        d.mkdir(parents=True, exist_ok=True)              # a worker that refused to start leaves no run dir
+        d.mkdir(parents=True, exist_ok=True)
         (d / "run_metrics.json").write_text(json.dumps(res, indent=1, default=str), encoding="utf-8")
         wl_path = d.parent / f"{d.name}_worker.log"
         if wl_path.exists():
             try:
                 shutil.move(str(wl_path), str(d / "worker.log"))
-            except OSError:                               # still held by a dying process: copy it, leave the original
+            except OSError:
                 shutil.copy(str(wl_path), str(d / "worker.log"))
         try:
-            lock.unlink()                                 # the run is finished (its run_metrics.json is written)
+            lock.unlink()
         except OSError:
             pass
         done += 1

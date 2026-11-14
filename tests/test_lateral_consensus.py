@@ -53,7 +53,7 @@ def _fly(cfg, bias, t_end=120.0):
 def test_a_lateral_drift_is_removed_relative_to_the_neighbours():
     for bias in (1.0, -1.2, 0.5):
         fl, dev = _fly(DEFAULT, bias)
-        assert abs(dev) < FR.e_ok * 0.5, (bias, dev)               # well inside the recovery tolerance
+        assert abs(dev) < FR.e_ok * 0.5, (bias, dev)
         assert abs(fl.lam) <= FR.progress_max
 
 
@@ -66,11 +66,11 @@ def test_without_the_lateral_consensus_the_drift_stays_beyond_the_tolerance():
 def test_the_lateral_consensus_runs_only_near_the_own_slot_and_is_bounded():
     plan = _plan()
     fl = Flows(plan, DEFAULT)
-    far = _obs(_slot(plan, 20.0) + [-3.0, 0.0, 0.0], 20.0, plan, fl, 0.9)       # 3 m behind its slot
+    far = _obs(_slot(plan, 20.0) + [-3.0, 0.0, 0.0], 20.0, plan, fl, 0.9)
     for _ in range(50):
         fl.formation(far, DT, recovering=True)
     assert fl.lam == 0.0 and not fl.lat_offset.any()
-    for _ in range(3000):                                                          # near: integrates, capped
+    for _ in range(3000):
         fl.formation(_obs(_slot(plan, 20.0), 20.0, plan, fl, 0.9), DT)
     assert 0.0 < fl.lam <= FR.progress_max
-    assert fl.lat_offset[1] > 0.0 and abs(fl.lat_offset[0]) < 1e-9 and fl.lat_offset[2] == 0.0   # left normal
+    assert fl.lat_offset[1] > 0.0 and abs(fl.lat_offset[0]) < 1e-9 and fl.lat_offset[2] == 0.0

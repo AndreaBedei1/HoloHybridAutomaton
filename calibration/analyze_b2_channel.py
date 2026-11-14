@@ -76,7 +76,7 @@ def _trial_block(args):
         out["trials"] += 1
         for k in range(6):
             t_tx = float(k)
-            c = np.clip(c + vel * 1.0, -half, half)               # stays in the CR
+            c = np.clip(c + vel * 1.0, -half, half)
             w = g.from_gate_frame(c)
             d = w - p
             cy, sy = math.cos(yaw), math.sin(yaw)

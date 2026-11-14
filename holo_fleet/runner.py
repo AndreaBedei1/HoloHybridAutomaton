@@ -60,7 +60,7 @@ def dead_record(t: float) -> Dict:
             "determinism_violations": 0, "obs_consistent": True, "observation_violations": 0, "saturated": False}
 
 
-AT_PENDING = 1e9          # t_on of a fault whose onset is a position on ground truth (resolved and logged when reached)
+AT_PENDING = 1e9
 
 
 def _reached(f, sc, names, truth) -> bool:
@@ -90,7 +90,7 @@ def run(name: str, out_root: Path, headless: bool = True, run_id: Optional[str] 
     sc: Scenario = SCENARIOS[name](cfg)
     if sc.cfg_patch:
         cfg = dataclasses.replace(cfg, **sc.cfg_patch)
-    w_h, w_dn = current_bound(sc.sim.current)              # the current declared for the mission: its bound (holo_fleet/scope.py)
+    w_h, w_dn = current_bound(sc.sim.current)
     cfg = dataclasses.replace(cfg, scope=dataclasses.replace(cfg.scope, w_h_max_mps=w_h, w_down_max_mps=w_dn))
     if seed is not None:
         sc.sim.seed = int(seed)
@@ -101,9 +101,9 @@ def run(name: str, out_root: Path, headless: bool = True, run_id: Optional[str] 
         from holo_fleet.referee.criteria import CRITERIA_VERSION, horizon_v5, nominal_end_s
         from holo_fleet.referee.terminal import TerminalMonitor
 
-        t_nom = nominal_end_s(sc)                   # the planned end: the same T_nom as the offline replay
+        t_nom = nominal_end_s(sc)
         duration = float(terminal.get("deadline_s") or horizon_v5(sc, cfg, terminal.get("profile")))
-        sc.sim.duration_s = duration                # noise windows, stress and logs cover the whole horizon
+        sc.sim.duration_s = duration
     run_id = run_id or name
     out = Path(out_root) / run_id
     out.mkdir(parents=True, exist_ok=True)
@@ -123,12 +123,12 @@ def run(name: str, out_root: Path, headless: bool = True, run_id: Optional[str] 
         finally:
             sim.close()
         raise
-    try:                              # the drones' own construction: an error here is the system under test's
+    try:
         ctrls = {p.drone_id: DroneController(p, cfg) for p in sc.plans}
-        if cfg.beacon.enabled:        # pre-mission knowledge: the static beacon identity of every slot's drone
+        if cfg.beacon.enabled:
             for p in sc.plans:
                 ctrls[p.drone_id].perception.acoustic.set_identities(beacon_identities(sc.plans, sim.names, p))
-            if getattr(sim, "beacon", None) is not None:   # H6 payload: each drone's ONBOARD estimate and bound
+            if getattr(sim, "beacon", None) is not None:
                 sim.beacon.payload_source = lambda k, t: ctrls[sim.names[k]].perception.payload(t)
     except Exception as exc:  # noqa: BLE001 - recorded, then propagated
         (out / "run_status.json").write_text(json.dumps(_error_status(exc, 0.0)), encoding="utf-8")
@@ -177,12 +177,12 @@ def run(name: str, out_root: Path, headless: bool = True, run_id: Optional[str] 
     try:
         for step in range(n_steps):
             step_events = []
-            for i, f in enumerate(getattr(sc.sim, "faults", ())):         # ground truth, never seen by a controller
+            for i, f in enumerate(getattr(sc.sim, "faults", ())):
                 if f.get("at") and f["t_on"] >= AT_PENDING and truth_prev is not None and _reached(f, sc, sim.names, truth_prev):
                     f["t_on"] = round(sim.t, 2)
                     if ref.permanent is not None:
                         ref.permanent[sim.names.index(f["drone"])] = f["t_on"]
-                    tmp = out / "run_config.json.tmp"        # atomic: the resolved onset replaces the file
+                    tmp = out / "run_config.json.tmp"
                     tmp.write_text(json.dumps(cfg_dump, indent=1, default=_jsonable), encoding="utf-8")
                     tmp.replace(out / "run_config.json")
                 on = f["t_on"] <= sim.t and (f.get("t_off") is None or sim.t < f["t_off"])
@@ -198,12 +198,12 @@ def run(name: str, out_root: Path, headless: bool = True, run_id: Optional[str] 
             c0 = time.perf_counter()
             for nm, c in ctrls.items():
                 if sc.sim.dead(nm, sim.t):
-                    cmds[nm] = np.zeros(8)                 # completely broken: its controller no longer runs
+                    cmds[nm] = np.zeros(8)
                     c.last_record = dead_record(sim.t)
                     continue
                 cmds[nm] = c.step(frames[nm], DT)
             ctrl_ms.append(1000.0 * (time.perf_counter() - c0))
-            if truth_prev is not None:               # referee side: frames vs the truth at the frame time
+            if truth_prev is not None:
                 audit.update(truth_prev, frames, ctrls)
             sim.step(cmds, DT)
             truth = sim.truth()
@@ -247,8 +247,6 @@ def run(name: str, out_root: Path, headless: bool = True, run_id: Optional[str] 
         status = {"status": "INCOMPLETE", "reason": "interrupted by the user", "t": sim.t}
     except Exception as exc:  # noqa: BLE001 - classified, recorded and not hidden as an infrastructure failure
         status = _error_status(exc, sim.t)
-        # recorded before the exception propagates: an error of the drones' own code is a failure of the system
-        # under test (robustness_metrics: SUT_ERROR), not an infrastructure problem to retry
         (out / "run_status.json").write_text(json.dumps(status), encoding="utf-8")
         raise
     finally:
@@ -285,7 +283,6 @@ def run(name: str, out_root: Path, headless: bool = True, run_id: Optional[str] 
     beacon = None if getattr(sim, "beacon", None) is None else sim.beacon.summary()
     metrics["run"] = {**status, "scenario": name, "sim_time_s": round(sim.t, 2), "determinism_violations": det,
                       "observation_consistency_violations": obs_inc,
-                      # B0: no message at all; B2: every one-way identity ping counts (no payload, no reply)
                       "comms_enabled": cfg.comms_enabled, "inter_agent_messages": 0 if beacon is None else beacon["transmissions"],
                       "message_content": "none" if beacon is None else
                           "static identity only (one-way ping; receiver-side OWTT range + array bearing)",

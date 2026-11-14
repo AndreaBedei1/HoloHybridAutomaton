@@ -20,10 +20,10 @@ def wrap(a: float) -> float:
 
 @dataclass
 class NavState:
-    p: np.ndarray                       # estimated position (map frame), z from depth sensor
-    yaw: float                          # estimated heading [rad]
-    yaw_rate: float = 0.0               # [rad/s], CCW positive
-    v_body: np.ndarray = field(default_factory=lambda: np.zeros(3))   # DVL, x fwd y left z up
+    p: np.ndarray
+    yaw: float
+    yaw_rate: float = 0.0
+    v_body: np.ndarray = field(default_factory=lambda: np.zeros(3))
     v_world: np.ndarray = field(default_factory=lambda: np.zeros(3))
     t_dvl: float = -1e9
     t_depth: float = -1e9
@@ -58,8 +58,6 @@ class DeadReckoning:
         c, sn = math.cos(s.yaw), math.sin(s.yaw)
         v_dvl = np.array([c * s.v_body[0] - sn * s.v_body[1], sn * s.v_body[0] + c * s.v_body[1], s.v_body[2]])
         if v_req is not None and t - s.t_dvl > stale_s:
-            # DVL outage: model-aided dead reckoning - the velocity follows the controller's own request through the
-            # calibrated first-order lag of the low level, from the last measured velocity (standard practice)
             vr = np.asarray(v_req, dtype=float)
             s.v_world = s.v_world + (np.array([vr[0], vr[1], s.v_world[2]]) - s.v_world) * min(1.0, dt / model_tau)
         else:
@@ -78,7 +76,6 @@ class DeadReckoning:
         return np.array([[c, -sn, 0.0], [sn, c, 0.0], [0.0, 0.0, 1.0]])
 
 
-
 def _model_table():
     """Outage length [s] -> MAX integrated position error [m] of the commanded-velocity model, measured on logged runs
     (analysis/scripts/cmd_velocity_model.py --table, results/calibration/dr_model_calibration.json)."""
@@ -90,15 +87,14 @@ def _model_table():
     lens = [0.0] + [float(x) for x in d["lengths_s"]]
     qmax = [0.0] + [float(d["position_error_m"][str(x)]["max"]) for x in d["lengths_s"]]
     for i in range(1, len(qmax)):
-        qmax[i] = max(qmax[i], qmax[i - 1])                 # monotone in the outage length
+        qmax[i] = max(qmax[i], qmax[i - 1])
     return np.array(lens), np.array(qmax)
 
 
-RAYLEIGH_3SIGMA = math.sqrt(-2.0 * math.log(1.0 - 0.9973))   # 3.44: 99.73 % of a 2-D isotropic normal error
-DVL_LEVER_M = 0.25            # [ASSUMPTION] bound of the DVL offset from the vehicle centre (omega x r not compensated)
-SENSOR_LATENCY_S = 0.05       # [PROF] MEDIUM sensor latency (sim/sensor_noise.py)
-A_MAX_MPS2 = 1.5              # [CAL] largest speed change rate: reversal from +0.45 to -0.30 m/s in 0.5 s
-                              # (results/calibration/plant_calibration.json, "reversal")
+RAYLEIGH_3SIGMA = math.sqrt(-2.0 * math.log(1.0 - 0.9973))
+DVL_LEVER_M = 0.25
+SENSOR_LATENCY_S = 0.05
+A_MAX_MPS2 = 1.5
 A_MAX_NOTE = ("the reversal average; for an outage shorter than 0.5 s a higher peak rate could exceed it, which the "
               "cap |v_held| + v_bound does not cover: a stated limit")
 
@@ -136,9 +132,6 @@ class NavBound:
     exceeds the declared 3 deg -, a DVL that reports wrong velocities) violates it; every run logs the bound
     against the true error (the evaluation's nav-bound coverage)."""
 
-    # [PROT] a sample is "held" (outage) when older than one 10 Hz DVL period (0.1 s) + the declared sensor latency
-    # (0.05 s, MEDIUM).  In the simulator an ordinary sample is at most 0.133 s old at a control instant, so every
-    # dropped sample counts (a 0.25 s threshold, tried on 2026-11-05 on a wrong diagnosis, ignored isolated dropouts)
     DVL_STALE_S = 0.15
 
     def __init__(self, cfg):
@@ -148,23 +141,21 @@ class NavBound:
         self.k_rw = RAYLEIGH_3SIGMA * a.dvl_sigma_body_mps
         self.depth_err = a.nav_depth_err_m
         self.v_bound = max(env.v_escape, env.v_max_nominal, cfg.gate.v_pass) + env.w_drift_max
-        # zero-order hold of a sample plus its latency: an effective delay of at most one period + latency, at the
-        # speed bound, both ways
         self.const = 2.0 * DVL_LEVER_M + 2.0 * (0.1 + SENSOR_LATENCY_S) * self.v_bound
         self.ref = a.nav_b0_m
         self.lin = self.var = self.outage = self.aid = 0.0
-        self.q_len, self.q_max = _model_table()   # calibrated max model error vs outage length (JSON, results/)
-        self.out_cur = 0.0                   # error of the current outage
-        self.out_len = 0.0                   # its length beyond the nominal hold
-        self.out_worst = 0.0                 # its worst-case part (no model, or beyond the calibrated length)
-        self.out_model = True                # the model was used throughout the current outage
-        self.cluster = 0.0                   # outages within CLUSTER_S of each other: summed linearly
-        self.clusters_sq = 0.0               # finished clusters: root-sum-square (independent)
+        self.q_len, self.q_max = _model_table()
+        self.out_cur = 0.0
+        self.out_len = 0.0
+        self.out_worst = 0.0
+        self.out_model = True
+        self.cluster = 0.0
+        self.clusters_sq = 0.0
         self.last_end = -1e9
         self.z = self.depth_err
         self.invalid = False
 
-    CLUSTER_S = 10.0                         # outages closer than this may share a manoeuvre: summed linearly
+    CLUSTER_S = 10.0
 
     def update(self, t: float, dt: float, s: NavState, model: bool = False) -> None:
         """``model``: the dead reckoning followed the calibrated commanded-velocity model at this step."""
@@ -173,20 +164,20 @@ class NavBound:
         tau = t - s.t_dvl
         if tau <= self.DVL_STALE_S:
             self.var += dt * dt
-            if self.out_len > 0.0:              # an outage ended: it joins its cluster
+            if self.out_len > 0.0:
                 self.cluster += self.out_cur
                 self.out_cur = self.out_len = self.out_worst = 0.0
                 self.out_model = True
                 self.last_end = t
-        else:  # outage, beyond the nominal hold (covered by the hold + latency constant)
+        else:
             if self.out_len == 0.0 and t - self.last_end > self.CLUSTER_S:
-                self.clusters_sq += self.cluster ** 2       # the previous cluster is closed: independent of this one
+                self.clusters_sq += self.cluster ** 2
                 self.cluster = 0.0
             self.out_len += dt
             self.out_model = self.out_model and model
             worst = min(A_MAX_MPS2 * (tau - self.DVL_STALE_S), v_h + self.v_bound) * dt
             if not self.out_model or self.out_len > self.q_len[-1]:
-                self.out_worst += worst                     # no model, or beyond the calibrated length: worst case
+                self.out_worst += worst
             cal = float(np.interp(min(self.out_len, self.q_len[-1]), self.q_len, self.q_max)) if self.out_model else 0.0
             self.out_cur = cal + self.out_worst
         self.outage = math.sqrt(self.clusters_sq + (self.cluster + self.out_cur) ** 2)
@@ -195,7 +186,7 @@ class NavBound:
     def corrected(self, corr) -> None:
         c = float(np.linalg.norm(np.asarray(corr, dtype=float)[:2]))
         if c > self.horizontal:
-            self.invalid = True                 # the estimate was farther off than its bound: integrity lost
+            self.invalid = True
         self.aid += c
 
     @property

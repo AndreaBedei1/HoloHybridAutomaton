@@ -43,13 +43,10 @@ def _bound(ranges, age=0.0):
 
 
 def test_pure_lateral_neighbour_gets_the_tight_bound():
-    # a neighbour 3.5 m abeam: echo ~2.9 m in LEFT only -> centre certified inside the cone
     assert _bound({"LEFT": 2.9}) > DEFAULT.sep.d_warning_exit
 
 
 def test_square_formation_corner_stays_outside_the_warning_band():
-    # left and rear neighbours of a square drone at 3.5 m: echoes 2.92 m (LEFT) and 3.07 m (REAR) merged into one
-    # LEFT+REAR target; with a 10 Hz reading the bound must clear the warning exit (the nominal formation is calm)
     assert _bound({"LEFT": 2.92, "REAR": 3.07}, age=0.1) > DEFAULT.sep.d_warning_exit
     assert _bound({"FRONT": 2.92, "LEFT": 3.07}, age=0.1) > DEFAULT.sep.d_warning_exit
 
@@ -72,7 +69,7 @@ def test_lattice_covering_radius_is_below_the_declared_one():
     tree = cKDTree(sg.fibonacci_sphere(db.N_DIRS))
     fine = sg.fibonacci_sphere(2_000_000)
     d, _ = tree.query(fine)
-    assert float((2.0 * np.arcsin(d / 2.0)).max()) + 0.0018 <= db.COVER_RAD   # + the fine lattice's covering radius
+    assert float((2.0 * np.arcsin(d / 2.0)).max()) + 0.0018 <= db.COVER_RAD
 
 
 def test_inscribed_cylinders_lie_inside_the_hull_for_any_heading_and_the_declared_tilt():
@@ -81,7 +78,7 @@ def test_inscribed_cylinders_lie_inside_the_hull_for_any_heading_and_the_declare
                     for z in np.linspace(-hc, hc, 5) for t in np.linspace(0.0, 2.0 * math.pi, 37)])
     for _ in range(500):
         R = check_separation._level_rot(rng, db.MAX_REL_TILT_DEG)
-        local = pts @ R                                # points expressed in the hull frame
+        local = pts @ R
         assert np.all(np.abs(local) <= sg.HULL_HALF + 1e-9)
 
 

@@ -68,30 +68,30 @@ import numpy as np
 @dataclass(frozen=True)
 class AcousticChannel:
     name: str = "CLEAN"
-    blackout: bool = False               # nothing is ever received
-    sigma_range_m: float = 0.05          # detection jitter (white, per reception)
-    sound_speed_err: float = 0.003       # std of the relative sound-speed error (one scale factor per run)
-    clock_offset_m: float = 0.01         # std of a drone's clock offset, as a range [m] (0.01 m = 7 us)
-    sigma_az_deg: float = 1.0            # direction of arrival, white
+    blackout: bool = False
+    sigma_range_m: float = 0.05
+    sound_speed_err: float = 0.003
+    clock_offset_m: float = 0.01
+    sigma_az_deg: float = 1.0
     sigma_el_deg: float = 1.0
-    dropout: float = 0.02                # per reception, at short range
-    dropout_far: float = 0.10            # ... growing linearly to this at max_range_m
-    outage_every_s: float = 0.0          # mean period of burst outages (0: none)
+    dropout: float = 0.02
+    dropout_far: float = 0.10
+    outage_every_s: float = 0.0
     outage_len_s: float = 0.0
-    nlos_rx: float = 0.10                # blocked direct path: probability that a reflected path is detected
-    reflect_extra_m: Tuple[float, float] = (0.3, 3.0)    # its extra path length (uniform)
-    reflect_dir_deg: float = 25.0        # its direction error (normal, per axis)
-    shadow_loss: float = 0.30            # direct path shadowed by a hull or a bar: probability that the ping is lost
-    shadow_extra_m: float = 0.10         # ... otherwise the diffracted arrival is up to this longer (uniform)
-    shadow_dir_deg: float = 0.5          # ... with this much more direction noise (normal, per axis)
-    latency_s: float = 0.10              # processing delay (delivery after the arrival)
-    doa_bias_deg: float = 0.5            # calibration residual of the array: smooth direction-dependent bias amplitude
-    los_outlier: float = 0.0             # clear path: per-reception probability that a multipath episode starts
-    los_outlier_pings: float = 5.0       # ... its mean length in receptions (geometric)
-    payload_loss: float = 0.02           # H6: the ping is detected but its data packet is not decoded (STRESS)
-    link_on_mean_s: float = 0.0          # sensitivity only: per-link ON periods (exponential, this mean; 0: off) ...
-    link_off_min_s: float = 6.0          # ... and OFF periods, Pareto with this minimum ...
-    link_off_alpha: float = 1.2          # ... and this shape: P(OFF > 40 s) = 0.10
+    nlos_rx: float = 0.10
+    reflect_extra_m: Tuple[float, float] = (0.3, 3.0)
+    reflect_dir_deg: float = 25.0
+    shadow_loss: float = 0.30
+    shadow_extra_m: float = 0.10
+    shadow_dir_deg: float = 0.5
+    latency_s: float = 0.10
+    doa_bias_deg: float = 0.5
+    los_outlier: float = 0.0
+    los_outlier_pings: float = 5.0
+    payload_loss: float = 0.02
+    link_on_mean_s: float = 0.0
+    link_off_min_s: float = 6.0
+    link_off_alpha: float = 1.2
 
     def as_dict(self) -> Dict:
         return asdict(self)
@@ -106,7 +106,6 @@ MEDIUM = AcousticChannel(name="MEDIUM", sigma_range_m=0.15, sound_speed_err=0.01
                          sigma_az_deg=2.5, sigma_el_deg=2.5, dropout=0.20, dropout_far=0.50, outage_every_s=40.0,
                          outage_len_s=4.0, nlos_rx=0.35, latency_s=0.25, shadow_loss=0.70, shadow_dir_deg=1.5,
                          doa_bias_deg=3.0, los_outlier=0.03, payload_loss=0.15)
-# not calibrated at these ranges: long-tailed, per-link OFF periods as reported for lake links at much longer range (review round 2)
 MEDIUM_HT = replace(MEDIUM, name="MEDIUM_HT", link_on_mean_s=120.0)
 BLACKOUT = AcousticChannel(name="BLACKOUT", blackout=True)
 CHANNELS: Dict[str, AcousticChannel] = {c.name: c for c in (CLEAN, LOW, MEDIUM, MEDIUM_HT, BLACKOUT)}
@@ -130,7 +129,7 @@ class ChannelModel:
         self.max_range = float(max_range_m)
         self.rng = np.random.default_rng([int(seed), 5101])
         self.scale = 1.0 + float(self.rng.normal(0.0, ch.sound_speed_err))
-        self.offset = self.rng.normal(0.0, ch.clock_offset_m, size=n)          # per drone [m]
+        self.offset = self.rng.normal(0.0, ch.clock_offset_m, size=n)
         self.outages: List[Tuple[float, float]] = []
         if ch.outage_every_s > 0 and ch.outage_len_s > 0:
             t = float(self.rng.uniform(4.0, max(4.0, ch.outage_every_s)))
@@ -138,7 +137,7 @@ class ChannelModel:
                 self.outages.append((t, t + ch.outage_len_s))
                 t += float(self.rng.exponential(ch.outage_every_s)) + ch.outage_len_s
         self.link_off: Dict[Tuple[int, int], List[Tuple[float, float]]] = {}
-        if ch.link_on_mean_s > 0:                                         # its own generator: the other draws are unchanged
+        if ch.link_on_mean_s > 0:
             lr = np.random.default_rng([int(seed), 5111])
             for a in range(n):
                 for b in range(n):
@@ -150,9 +149,8 @@ class ChannelModel:
                             iv.append((t, t + d))
                             t += d
                         self.link_off[(a, b)] = iv
-        # array calibration residual of every receiver: b(az) = A (sin(az + p1) + sin(2 az + p2)) / 2 per axis
         self.bias_phase = self.rng.uniform(0.0, 2.0 * math.pi, size=(n, 4))
-        self.episode: Dict[Tuple[int, int], Tuple[int, float]] = {}      # link -> (receptions left, range excess)
+        self.episode: Dict[Tuple[int, int], Tuple[int, float]] = {}
         self.stats = {"lost_blackout": 0, "lost_outage": 0, "lost_dropout": 0, "lost_blocked": 0, "nlos_delivered": 0,
                       "los_outlier_delivered": 0}
 
@@ -191,8 +189,6 @@ class ChannelModel:
             return None
         blocked = bool(np.all(buf == -1.0))
         if blocked:
-            # the engine gives no geometry for a blocked path; a reflected arrival needs the direct geometry, which
-            # the transport passes as the last clear one (see BeaconTransport) - here only whether one is detected
             self.stats["lost_blocked"] += 1
             return None
         az, el, d = float(buf[0]), float(buf[1]), float(buf[2])
@@ -239,8 +235,8 @@ class ChannelModel:
         lo, hi = ch.reflect_extra_m
         r = (d + float(rng.uniform(lo, hi))) * self.scale + (self.offset[sender] - self.offset[receiver]) \
             + float(rng.normal(0.0, ch.sigma_range_m))
-        az_m = az + math.radians(float(rng.normal(0.0, 0.2 * ch.reflect_dir_deg)))     # boundary bounces err mainly
-        el_m = el + math.radians(float(rng.normal(0.0, ch.reflect_dir_deg)))           # in elevation
+        az_m = az + math.radians(float(rng.normal(0.0, 0.2 * ch.reflect_dir_deg)))
+        el_m = el + math.radians(float(rng.normal(0.0, ch.reflect_dir_deg)))
         self.stats["lost_blocked"] -= 1
         self.stats["nlos_delivered"] += 1
         return r, az_m, el_m, True

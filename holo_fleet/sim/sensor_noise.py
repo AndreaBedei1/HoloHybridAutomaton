@@ -34,30 +34,28 @@ import numpy as np
 @dataclass(frozen=True)
 class NoiseProfile:
     name: str = "CLEAN"
-    # --- HoloOcean-native (engine) -------------------------------------------------------------- deployed values
-    sonar_add_sigma: float = 0.05        # Rayleigh scale of the additive intensity noise (threshold 0.30)
+    sonar_add_sigma: float = 0.05
     sonar_mult_sigma: float = 0.10
-    sonar_range_sigma: float = 0.05      # exponential, per octree leaf [m]
-    dvl_vel_sigma: float = 0.01          # per beam [m/s]; body x/y std ~ 1.9x (probe)
-    dvl_range_sigma: float = 0.02        # per beam [m]
+    sonar_range_sigma: float = 0.05
+    dvl_vel_sigma: float = 0.01
+    dvl_range_sigma: float = 0.02
     imu_accel_sigma: float = 0.01
-    imu_gyro_sigma: float = 0.005        # [rad/s]
-    imu_accel_bias_sigma: float = 0.0    # random-walk step [m/s^2]
-    imu_gyro_bias_sigma: float = 0.0     # random-walk step [rad/s]
-    mag_sigma: float = 0.005             # per axis of a unit field: heading std ~ 57 x sigma deg (probe)
-    heading_bias_deg: float = 0.0        # constant per-drone compass bias, sign drawn from the seed
-    depth_sigma: float = 0.02            # [m]
-    # --- wrapper (seeded) ------------------------------------------------------------------------------------
-    sonar_dropout: float = 0.0           # per capture, per sonar
-    sonar_blackout_every_s: float = 0.0  # mean period of whole-drone sonar blackouts (0: none)
+    imu_gyro_sigma: float = 0.005
+    imu_accel_bias_sigma: float = 0.0
+    imu_gyro_bias_sigma: float = 0.0
+    mag_sigma: float = 0.005
+    heading_bias_deg: float = 0.0
+    depth_sigma: float = 0.02
+    sonar_dropout: float = 0.0
+    sonar_blackout_every_s: float = 0.0
     sonar_blackout_len_s: float = 0.0
-    sonar_range_jitter_m: float = 0.0    # per capture whole-profile shift, normal, quantised to 5 cm bins
-    sonar_fade_prob: float = 0.0         # per capture: the profile is attenuated (missed detection)
-    sonar_fade_gain: float = 0.2         # peak echo ~0.9-1.2 (probe) x 0.2 < threshold 0.30
-    dvl_dropout: float = 0.0             # per DVL sample
-    dvl_outage_every_s: float = 0.0      # mean period of DVL outages (bottom-lock loss)
+    sonar_range_jitter_m: float = 0.0
+    sonar_fade_prob: float = 0.0
+    sonar_fade_gain: float = 0.2
+    dvl_dropout: float = 0.0
+    dvl_outage_every_s: float = 0.0
     dvl_outage_len_s: float = 0.0
-    latency_s: float = 0.0               # every onboard stream delivered this late (stamped with its capture time)
+    latency_s: float = 0.0
 
     @property
     def wrapper_active(self) -> bool:
@@ -70,14 +68,6 @@ class NoiseProfile:
 
 CLEAN = NoiseProfile()
 
-# Validation levels of the campaign.  The provenance of every value (datasheet, paper, or stress assumption) is in
-# docs/SENSOR_DEGRADATION_REFERENCES.md and docs/PARAMETER_PROVENANCE.md.  CLEAN (the
-# deployed suite) is already at or above the datasheet white noise of the IMU (ICM-20602, A6), the depth sensor
-# (Bar30, A10) and the DVL (Nortek single ping ~0.8 cm/s, A2), so those channels stay at CLEAN in LOW and grow
-# only moderately in MEDIUM; the degradations that matter are heading (calibration, A8/A9), DVL bottom-lock loss
-# (A1/A3/A4), sonar range resolution and spurious / missed echoes (A11/A12/A16).  Sonar dropout and blackouts,
-# DVL outages and latency have no measured statistics for this hardware: they are conservative operational
-# perturbations, not measured sensor accuracy.
 LOW = NoiseProfile(
     name="LOW",
     sonar_add_sigma=0.06, sonar_mult_sigma=0.15, sonar_range_sigma=0.05,
@@ -96,7 +86,6 @@ MEDIUM = NoiseProfile(
     sonar_dropout=0.01, sonar_blackout_every_s=60.0, sonar_blackout_len_s=0.15, sonar_range_jitter_m=0.03,
     sonar_fade_prob=0.03, dvl_dropout=0.03, dvl_outage_every_s=60.0, dvl_outage_len_s=1.0, latency_s=0.05)
 
-# Stress level beyond the declared operating domain (out-of-envelope checks only, not a validation level).
 HIGH = NoiseProfile(
     name="HIGH",
     sonar_add_sigma=0.09, sonar_mult_sigma=0.40, sonar_range_sigma=0.20,
@@ -106,15 +95,13 @@ HIGH = NoiseProfile(
     sonar_dropout=0.12, sonar_blackout_every_s=20.0, sonar_blackout_len_s=0.5, sonar_range_jitter_m=0.07,
     sonar_fade_prob=0.10, dvl_dropout=0.08, dvl_outage_every_s=30.0, dvl_outage_len_s=1.0, latency_s=0.12)
 
-# Sensitivity of the open class of the gate localization (round 8): MEDIUM with twice its compass bias.  Not a validation level.
 MEDIUM_HB3 = replace(MEDIUM, name="MEDIUM_HB3", heading_bias_deg=3.0)
 MEDIUM_HB4 = replace(MEDIUM, name="MEDIUM_HB4", heading_bias_deg=4.0)
 
 PROFILES: Dict[str, NoiseProfile] = {p.name: p for p in (CLEAN, LOW, MEDIUM, HIGH, MEDIUM_HB3, MEDIUM_HB4)}
-VALIDATION_LEVELS = ("CLEAN", "LOW", "MEDIUM")          # the realistic operating domain
-SCOPES = ("ONE", "SUBSET", "ALL")                         # which drones receive the degraded profile
+VALIDATION_LEVELS = ("CLEAN", "LOW", "MEDIUM")
+SCOPES = ("ONE", "SUBSET", "ALL")
 
-# Isolation: CLEAN plus ONE phenomenon at its HIGH level (the combined case is the HIGH profile itself).
 FACTORS: Dict[str, Tuple[str, ...]] = {
     "sonar_intensity": ("sonar_add_sigma", "sonar_mult_sigma", "sonar_range_sigma"),
     "sonar_range": ("sonar_range_jitter_m",),

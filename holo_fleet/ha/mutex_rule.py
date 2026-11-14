@@ -51,12 +51,12 @@ def relation(F, B, L, R, U, D, Lg):
     (``NONE`` = not seen by any sector).  ``Lg`` is a logic backend with And/Or/Not.
     """
     horiz = Lg.Or(F, B, L, R)
-    wait_h = Lg.Or(F, L)                                      # ahead or on the left
-    up_only = Lg.And(Lg.Not(horiz), U, Lg.Not(D))            # stacked above me
-    down_only = Lg.And(Lg.Not(horiz), D, Lg.Not(U))          # stacked below me
+    wait_h = Lg.Or(F, L)
+    up_only = Lg.And(Lg.Not(horiz), U, Lg.Not(D))
+    down_only = Lg.And(Lg.Not(horiz), D, Lg.Not(U))
     wait = Lg.Or(wait_h, up_only)
     priority = Lg.Or(Lg.And(Lg.Not(wait_h), Lg.Or(B, R)), down_only)
-    rank = Lg.And(Lg.Not(horiz), U, D)                        # ambiguous: above and below at once
+    rank = Lg.And(Lg.Not(horiz), U, D)
     none = Lg.And(Lg.Not(horiz), Lg.Not(U), Lg.Not(D))
     return {WAIT: wait, PRIORITY: priority, RANK: rank, "NONE": none}
 
@@ -75,7 +75,7 @@ class _Py:
         return not bool(a)
 
 
-PY_RULE_LOGIC = _Py          # Python backend of ``relation`` (numeric checks in formal/check_mutex.py)
+PY_RULE_LOGIC = _Py
 
 
 def classify_pattern(pattern: Iterable[str]) -> str:

@@ -16,7 +16,7 @@ GATE_SCENARIOS = ("gate_single", "integrated_short", "mutex_deadlock_resolution"
 
 def test_catalogue_is_small_and_short():
     from holo_fleet.sim.scenarios import STRESS_BATCH, STRESS_SCENARIOS
-    assert set(SCENARIOS) - set(STRESS_SCENARIOS) - set(STRESS_BATCH) == set(EXPECTED)  # the acceptance matrix
+    assert set(SCENARIOS) - set(STRESS_SCENARIOS) - set(STRESS_BATCH) == set(EXPECTED)
     for name, n in EXPECTED.items():
         sc = SCENARIOS[name](DEFAULT)
         assert len(sc.plans) == n == len(sc.sim.names), name
@@ -38,10 +38,9 @@ def test_gate_scenarios_use_only_arena_gate_g06():
         qa = queue_assignment(sc.template.slots, G)
         assert [(p.queue_lateral, p.queue_dz) for p in sc.plans] == qa
         assert sorted(p.static_rank for p in sc.plans) == list(range(len(sc.plans)))
-    # abreast templates keep the v2 abreast queue; the stacked pair queues one drone above the other
     sc = SCENARIOS["gate_single"](DEFAULT)
     assert sorted(p.queue_lateral for p in sc.plans) == sorted(G.queue_laterals(3))
-    assert {p.queue_s for p in sc.plans} == {G.queue_s(3)}                 # abreast: the v2 queue line
+    assert {p.queue_s for p in sc.plans} == {G.queue_s(3)}
     sc = SCENARIOS["mutex_deadlock_resolution"](DEFAULT)
     assert [(p.queue_lateral, p.queue_dz) for p in sc.plans] == [(2.5, 1.75), (2.5, -1.75), (-2.5, 0.0)]
     assert [p.static_rank for p in sc.plans] == [0, 1, 2]
@@ -55,25 +54,24 @@ def test_lost_drone_scenarios_inject_one_simulator_fault_on_a_rear_drone():
         (f,) = sc.sim.faults
         k = int(f["drone"].split("_")[1])
         assert f["type"] == "TOTAL_FAILURE" and f["t_off"] is None
-        assert sc.template.slots[k].along == min(sl.along for sl in sc.template.slots)     # nobody runs into it
-        if name == "lost_drone_mutex":                       # the left drone of the line: the leftmost present goes
+        assert sc.template.slots[k].along == min(sl.along for sl in sc.template.slots)
+        if name == "lost_drone_mutex":
             assert sc.template.name == "line3" and k == 0
         assert sc.disturbance_active(f["t_on"] + 0.1)
     from holo_fleet.sim.scenarios import JET_DISPLACE_DRIFT
 
-    for name in ("lost_drone_rejoin", "lost_drone_rejoin_front"):         # temporary: a healthy drone, displaced
+    for name in ("lost_drone_rejoin", "lost_drone_rejoin_front"):
         sc = SCENARIOS[name](DEFAULT)
         assert not sc.sim.faults
         jets = [c for c in sc.sim.current.components if c.kind == "jet"]
         assert len(jets) == 1 and tuple(jets[0].drift) == JET_DISPLACE_DRIFT and sc.disturbance_active(jets[0].t_on + 0.1)
-    # v9: the rejoin of a FRONT slot (the drone of the rear slot on its lane is in the way)
     sc = SCENARIOS["lost_drone_rejoin_front"](DEFAULT)
     k = 0
     me = sc.template.slots[k]
     assert any(sl.along < me.along and abs(sl.lateral - me.lateral) < 1e-9 for sl in sc.template.slots)
     for name in set(EXPECTED) - {"lost_drone_timeout", "lost_drone_mutex"}:
         assert not SCENARIOS[name](DEFAULT).sim.faults, name
-    for name, sc_f in SCENARIOS.items():                       # no thruster-only failure anywhere in the matrix
+    for name, sc_f in SCENARIOS.items():
         assert not any(f["type"] == "THRUSTER_FAILURE" for f in sc_f(DEFAULT).sim.faults), name
 
 
@@ -105,10 +103,10 @@ def test_close_encounter_is_a_simultaneous_right_angle_crossing():
     sc = SCENARIOS["p1_close_encounter"](DEFAULT)
     (a0, b0), (a1, b1) = [(p.path.waypoints[0], p.path.waypoints[-1]) for p in sc.plans]
     d0, d1 = (b0 - a0) / np.linalg.norm(b0 - a0), (b1 - a1) / np.linalg.norm(b1 - a1)
-    assert abs(float(d0 @ d1)) < 1e-9                                  # perpendicular legs
+    assert abs(float(d0 @ d1)) < 1e-9
     cross = np.array([0.0, -31.0])
-    assert np.isclose(np.linalg.norm(cross - a0), np.linalg.norm(cross - a1))     # same lead: same arrival
-    assert all(p.clock.v == DEFAULT.form.v_nominal for p in sc.plans)  # survey speed on both clocks
+    assert np.isclose(np.linalg.norm(cross - a0), np.linalg.norm(cross - a1))
+    assert all(p.clock.v == DEFAULT.form.v_nominal for p in sc.plans)
     assert not sc.sim.current.components and not getattr(sc.sim, "intruders", ())
 
 

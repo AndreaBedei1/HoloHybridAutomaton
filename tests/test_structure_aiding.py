@@ -72,7 +72,7 @@ def test_lateral_drift_at_the_gate_is_corrected():
     aid = StructureAiding(clf, DEFAULT)
     R = _R()
     p_true = _world(-0.9, -0.5)
-    p_est = _world(-0.9, 0.0)                         # believes it is centred: 0.5 m lateral error
+    p_est = _world(-0.9, 0.0)
     p = _run(aid, clf, p_true, p_est, R)
     assert np.linalg.norm(p[:2] - p_true[:2]) < 0.15, (p - p_true)
     assert aid.applied_m <= MAX_CORR_M
@@ -86,14 +86,14 @@ def test_the_lateral_drift_is_removed_during_the_approach_before_the_bars():
     R = _R()
     for e0 in (-0.55, -0.35, 0.45):
         aid = StructureAiding(clf, DEFAULT)
-        e = e0                                              # true lateral position - estimated (estimate held at 0)
-        for s_gate in np.arange(-2.2, -0.3, 0.03):         # 0.3 m/s at 10 Hz
+        e = e0
+        for s_gate in np.arange(-2.2, -0.3, 0.03):
             p_est = _world(s_gate, 0.0)
             corr = aid.update(p_est, R, _profiles(clf, _world(s_gate, e), R), {s: 0.0 for s in sg.SECTORS}, 0.25)
             if corr is not None:
                 c_l = float(corr @ np.array([-R[1, 0], R[0, 0], 0.0]))
                 assert abs(e - c_l) <= abs(e) + 0.05, (e0, s_gate, e, c_l)
-                e -= c_l                                    # the drone re-centres its corrected estimate
+                e -= c_l
         assert abs(e) < 0.15, (e0, e, aid.last)
 
 
@@ -143,7 +143,7 @@ def test_after_the_correction_a_vehicle_in_front_of_a_bar_stays_an_obstacle():
     R = _R()
     p_true = _world(-2.0, -0.4)
     p = _run(aid, clf, p_true, _world(-2.0, 0.0), R)
-    profs = _profiles(clf, p_true, R, extra={"FRONT": 0.6})       # a hull 0.6 m ahead, well before the bars
+    profs = _profiles(clf, p_true, R, extra={"FRONT": 0.6})
     clf2 = EchoClassifier(gate_bars=BARS, cfg=DEFAULT)
     for _ in range(2):
         out = clf2.classify(profs, {s: 0.0 for s in sg.SECTORS}, p, R, None)
@@ -157,8 +157,8 @@ def test_an_offset_beyond_the_bound_is_ignored_without_error():
     R = _R()
     p_true = _world(-1.0, -0.5)
     for est in (_world(-1.0, 1.9), _world(1.5, 1.5), _world(-3.5, 1.6)):
-        p = _run(aid, clf, p_true, est, R, n=4)                                   # must not raise
-        assert np.linalg.norm(p[:2] - est[:2]) <= MAX_CORR_M + 1e-9               # and never moves beyond the bound
+        p = _run(aid, clf, p_true, est, R, n=4)
+        assert np.linalg.norm(p[:2] - est[:2]) <= MAX_CORR_M + 1e-9
 
 
 def test_one_sector_is_not_enough_to_move_the_estimate():
@@ -222,7 +222,7 @@ def test_a_centred_drone_has_a_valid_gate_localization():
     for k in range(6):
         aid.update(p, R, _profiles(clf, p, R), {s: 0.0 for s in sg.SECTORS}, 0.25, t=0.1 * k)
     assert aid.valid(0.5), aid.last
-    assert not aid.valid(0.5 + 1.2)                    # a confirmation expires
+    assert not aid.valid(0.5 + 1.2)
 
 
 def test_an_equally_good_far_position_makes_the_fit_ambiguous():
@@ -249,7 +249,6 @@ def test_an_equally_good_far_position_makes_the_fit_ambiguous():
         assert not aid.valid(0.1 * k), aid.last
 
 
-# ---------------------------------------------------------------------------------------------- acquisition region (C5)
 def test_the_acquisition_region_is_derived_and_covers_the_warning_band_of_the_bars():
     """The fit can be accepted from tan(half angle) * (outer half-extent + MAX_CORR_M) before the gate plane (module
     docstring), which must include the band in which an unexplained bar echo holds the drone (d_warning_exit from the
@@ -265,7 +264,7 @@ def test_the_acquisition_region_is_derived_and_covers_the_warning_band_of_the_ba
 def test_a_longitudinal_error_is_corrected():
     clf = EchoClassifier(gate_bars=BARS, cfg=DEFAULT)
     R = _R()
-    p_true, p_est = _world(-2.0, -0.5), _world(-2.4, -0.5)        # 0.4 m along the axis, plus a lateral offset
+    p_true, p_est = _world(-2.0, -0.5), _world(-2.4, -0.5)
     aid = StructureAiding(clf, DEFAULT, gates=GATES)
     p = _run(aid, clf, p_true, p_est, R, n=12)
     assert np.linalg.norm(p[:2] - p_true[:2]) < 0.15, (p - p_true, aid.last)
@@ -316,7 +315,7 @@ def test_without_identity_a_single_front_echo_never_moves_the_estimate():
 def test_an_echo_another_drone_could_have_made_never_moves_the_estimate():
     clf, aid = _axial_setup()
     p_est = _world(-3.3, 0.0)
-    near_bar = np.array([_world(-0.2, 0.3)])                      # a drone located in the sonar's cone at the echo range
+    near_bar = np.array([_world(-0.2, 0.3)])
     p = _axial_run(aid, clf, _world(-2.7, 0.0), p_est, _R(), others=[(near_bar, 0.5)])
     assert np.allclose(p, p_est)
 

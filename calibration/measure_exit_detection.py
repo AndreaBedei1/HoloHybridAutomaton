@@ -9,7 +9,7 @@ from holo_fleet.arena_bridge import HORSESHOE_TRACK, load_arena_gates
 from holo_fleet.config import DEFAULT
 from holo_fleet.sim.scenarios import SCENARIOS
 from holo_fleet.perception import sonar_geometry as sg
-LATERAL = "--lateral" in sys.argv     # only observers at a lateral queue point (|l| >= 2 m)
+LATERAL = "--lateral" in sys.argv
 GATE_SC = ("gate_single", "integrated_short", "line_parallel_mutex", "lost_drone_mutex", "mutex_deadlock_resolution")
 def hits(a, b, box):
     A = box.axes.T @ (a - box.center); B = box.axes.T @ (b - box.center); d = B - A; t0, t1 = 0.0, 1.0
@@ -30,22 +30,22 @@ def one(args):
     for i in ids:
         for l in gzip.open(f"{run}/drone_{i}_state.jsonl.gz", "rt"):
             r = json.loads(l)
-            if round(r["t"] * 10) % 3: continue                        # every 0.3 s
+            if round(r["t"] * 10) % 3: continue
             tr = truth.get(round(r["t"], 1))
             if tr is None or tr.get("absent", "") not in ("", "[]", "0"): pass
             if tr is None: continue
             P = {k: np.array([float(tr[f"x{k}"]), float(tr[f"y{k}"]), float(tr[f"z{k}"])]) for k in ids}
             fi = g.to_gate_frame(P[i])
-            if fi[0] > -DEFAULT.gate.cr_half_len or (LATERAL and abs(fi[1]) < 2.0): continue   # observer before the CR
+            if fi[0] > -DEFAULT.gate.cr_half_len or (LATERAL and abs(fi[1]) < 2.0): continue
             yaw = math.radians(r["nav_yaw_deg"]); R = np.array([[math.cos(yaw), -math.sin(yaw), 0], [math.sin(yaw), math.cos(yaw), 0], [0, 0, 1.0]])
             for j in ids:
                 if j == i: continue
                 sj = g.to_gate_frame(P[j])
-                if not (DEFAULT.gate.cr_half_len < sj[0] < 12.0): continue       # target has left the CR
+                if not (DEFAULT.gate.cr_half_len < sj[0] < 12.0): continue
                 for sec in sg.SECTORS:
                     son = P[i] + R @ sg.MOUNTS[sec]; d = P[j] - son; L = float(np.linalg.norm(d))
                     ang = math.degrees(math.acos(np.clip(d @ (R @ sg.AXES[sec]) / L, -1, 1)))
-                    if ang > 60.0 or L > 12.5: continue                   # target centre in the nominal cone
+                    if ang > 60.0 or L > 12.5: continue
                     rt = L - 0.25
                     left = np.array([-g.axis[1], g.axis[0], 0.0])
                     samples = [P[j] + dl * left + np.array([0, 0, dz]) for dl in (-0.29, 0.0, 0.29) for dz in (-0.12, 0.0, 0.12)]

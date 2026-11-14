@@ -47,10 +47,10 @@ import numpy as np
 from holo_fleet.config import DEFAULT, FleetConfig
 from holo_fleet.perception.exit_witness import speed_bound
 
-_N = 7                 # samples per axis of the error box
-REINIT_S = 3.0         # a track with no accepted fix for this long may be restarted by consistent rejected fixes
-_KEEP_S = 30.0         # fixes older than this are forgotten
-RANGE_SLACK_M = 0.15   # range-continuity slack: the diffracted excess of a shadowed path (sim H4) and quantisation
+_N = 7
+REINIT_S = 3.0
+_KEEP_S = 30.0
+RANGE_SLACK_M = 0.15
 
 
 def _rot(yaw: float) -> np.ndarray:
@@ -70,7 +70,7 @@ def box_bounds(r: float, cfg: FleetConfig = DEFAULT) -> Tuple[float, float, floa
 def region_samples(r: float, az: float, el: float, cfg: FleetConfig = DEFAULT) -> Tuple[np.ndarray, float]:
     """Samples of the error box of a measurement (body frame, relative) and the slack that covers the box."""
     br, ba, be = box_bounds(r, cfg)
-    rr = np.linspace(max(r - br - cfg.acoustic.los_excess_max_m, 0.0), r + br, _N)    # one-sided multipath excess
+    rr = np.linspace(max(r - br - cfg.acoustic.los_excess_max_m, 0.0), r + br, _N)
     aa = np.linspace(az - ba, az + ba, _N)
     ee = np.linspace(el - be, el + be, _N)
     R, A, E = np.meshgrid(rr, aa, ee, indexing="ij")
@@ -83,20 +83,20 @@ def region_samples(r: float, az: float, el: float, cfg: FleetConfig = DEFAULT) -
 @dataclass
 class Fix:
     slot: int
-    t: float                         # arrival time (onboard clock)
+    t: float
     r: float
     az: float
     el: float
-    p: np.ndarray                    # nominal position (map frame, own pose at t)
-    pts: np.ndarray                  # error-region samples (map frame)
+    p: np.ndarray
+    pts: np.ndarray
     slack: float
-    rel: np.ndarray                  # nominal relative position, map-frame axes (own heading at t)
+    rel: np.ndarray
     accepted: bool = True
     track: int = 0
     reason: str = ""
-    rep: Optional[object] = None     # decoded payload (perception/payload.Payload), consistent with the measurement
-    t_tx: float = 0.0                # emission instant (arrival minus the travel time at the measured range)
-    rep_reason: str = ""             # "", "ok", "missing", "inconsistent", "no_own_bound"
+    rep: Optional[object] = None
+    t_tx: float = 0.0
+    rep_reason: str = ""
 
     @property
     def rep_ok(self) -> bool:
@@ -115,9 +115,9 @@ class Fix:
 @dataclass(frozen=True)
 class GateStatus:
     """Latest gate phase a drone reported about itself (payload v2, perception/payload.py)."""
-    t_tx: float                      # emission instant of the packet that carried it
-    gate_idx: int                    # gate it refers to (mod 4)
-    phase: int                       # GP_NONE / GP_COMMITTED / GP_ADMITTED / GP_PASSED
+    t_tx: float
+    gate_idx: int
+    phase: int
 
 
 @dataclass
@@ -155,12 +155,12 @@ class AcousticTracker:
         self.enabled = cfg.beacon.enabled
         self.v_bound = speed_bound(cfg)
         self.slot_of: Dict[int, int] = {}
-        self.fixes: Dict[int, List[Fix]] = {}             # slot -> fixes (accepted and rejected), oldest first
+        self.fixes: Dict[int, List[Fix]] = {}
         self.track_id: Dict[int, int] = {}
-        self.last_accepted: Dict[int, Fix] = {}          # slot -> latest accepted fix, never forgotten
-        self.heard: Dict[int, float] = {}                # slot -> arrival time of its latest reception of any kind
-        self.t_start: Optional[float] = None             # first update: a drone of the plan never heard is silent since then
-        self.status: Dict[int, GateStatus] = {}          # slot -> latest gate status it reported (payload v2)
+        self.last_accepted: Dict[int, Fix] = {}
+        self.heard: Dict[int, float] = {}
+        self.t_start: Optional[float] = None
+        self.status: Dict[int, GateStatus] = {}
         self.pose = PoseHistory()
         self.stats = {"received": 0, "stale": 0, "no_pose": 0, "implausible_depth": 0, "accepted": 0, "rejected": 0,
                       "track_restarts": 0}
@@ -168,7 +168,6 @@ class AcousticTracker:
     def set_identities(self, ids: Dict[int, int]) -> None:
         self.slot_of = {int(k): int(v) for k, v in ids.items()}
 
-    # ------------------------------------------------------------------ ingestion
     def update(self, t: float, rx, p_now: np.ndarray, yaw_now: float, bound_now: Optional[float] = None) -> List[Fix]:
         """Store the own pose (and own navigation bound) of this step and turn the receptions of this frame into
         fixes."""
@@ -185,7 +184,7 @@ class AcousticTracker:
             if slot is None:
                 continue
             self.stats["received"] += 1
-            self.heard[slot] = max(self.heard.get(slot, -1e9), t_arr)     # alive: whatever becomes of this reception
+            self.heard[slot] = max(self.heard.get(slot, -1e9), t_arr)
             if t - t_arr > a.latency_max_s + 1e-9:
                 self.stats["stale"] += 1
                 continue
@@ -225,7 +224,7 @@ class AcousticTracker:
             f.rep_reason = "missing"
             return
         if rep.frame != frame_index(f.t_tx, self.cfg.beacon.period_s):
-            f.rep_reason = "frame"                       # not this frame's packet: misassociated or stale
+            f.rep_reason = "frame"
             self.stats["payload_frame"] = self.stats.get("payload_frame", 0) + 1
             return
         old = self.status.get(f.slot)
@@ -238,7 +237,7 @@ class AcousticTracker:
             f.rep_reason = "rejected_fix"
             return
         b_own = self.pose.bound_at(f.t)
-        if b_own is None or not math.isfinite(b_own):          # own integrity lost: no cross-check, no payload
+        if b_own is None or not math.isfinite(b_own):
             f.rep_reason = "no_own_bound"
             return
         reach = rep.bound + self.v_bound * max(f.t - f.t_tx, 0.0) + b_own + self.v_bound * 0.11 + f.slack
@@ -260,9 +259,6 @@ class AcousticTracker:
                        + (r * math.radians(a.sigma_el_deg)) ** 2)
         if float(np.linalg.norm(f.p - g.p)) > self.v_bound * dt + a.k_sigma * math.sqrt(2.0) * sw + a.track_gate_m:
             return False
-        # range continuity: the sharpest test against a reflected arrival, whose range is always LONGER than the
-        # direct path's (H4).  The range changes by at most the sender's motion plus the own displacement (from the
-        # pose history) plus the white range noise of two fixes
         own = float(np.linalg.norm((f.p - f.rel) - (g.p - g.rel)))
         return abs(f.r - g.r) <= self.v_bound * dt + own + a.k_sigma * math.sqrt(2.0) * a.sigma_range_m + RANGE_SLACK_M
 
@@ -278,7 +274,7 @@ class AcousticTracker:
         self.stats["rejected"] += 1
         prev = next((g for g in reversed(lst) if not g.accepted and g.reason == "kinematic"), None)
         if prev is not None and f.t - last.t >= REINIT_S and self.consistent(f, prev):
-            tid += 1                                      # a new track: nothing of the old one carries over
+            tid += 1
             self.track_id[f.slot] = tid
             prev.track, f.track = tid, tid
             prev.accepted = f.accepted = True
@@ -302,7 +298,6 @@ class AcousticTracker:
         other drone is no evidence about any of them."""
         return bool(self.heard) and all(t - h >= self.cfg.form.t_silent_s for h in self.heard.values())
 
-    # ------------------------------------------------------------------ queries
     def silent(self, slot: int, t: float, after: Optional[float] = None) -> bool:
         """Not heard for the declared silence interval (``after``, default t_silent_s): a dead drone, or lost pings that
         cannot be told from one.  A receiver that hears nobody at all (a deaf receiver or a silent channel) declares
@@ -311,7 +306,7 @@ class AcousticTracker:
         lim = self.cfg.form.t_silent_s if after is None else after
         if t - self.heard.get(slot, t if self.t_start is None else self.t_start) < lim:
             return False
-        return any(t - h < lim for k, h in self.heard.items() if k != slot)     # someone else is heard: the receiver works
+        return any(t - h < lim for k, h in self.heard.items() if k != slot)
 
     def all_fixes(self, slot: int, t0: float = -1e9, t1: float = 1e9) -> List[Fix]:
         return [f for f in self.fixes.get(slot, []) if t0 <= f.t <= t1]

@@ -126,23 +126,23 @@ def test_runner_closes_ui_when_run_raises(tmp_path, monkeypatch):
 def test_viewport_rotation_uses_the_measured_holoocean_convention():
     """move_viewport's rotation is the look direction with the sign inverted (measured on the engine):
     [0, 0, 10] looks straight down, [30, 0, 0] along -x, [0, 30, 0] along -y."""
-    np.testing.assert_allclose(viewport_rotation([1.0, 0.0, 0.0]), [-1.0, 0.0, 0.0])    # along +x
-    np.testing.assert_allclose(viewport_rotation([0.0, 0.0, -5.0]), [0.0, 0.0, 1.0])    # straight down
-    np.testing.assert_allclose(viewport_rotation([0.0, 2.0, 0.0]), [0.0, -1.0, 0.0])    # along +y
+    np.testing.assert_allclose(viewport_rotation([1.0, 0.0, 0.0]), [-1.0, 0.0, 0.0])
+    np.testing.assert_allclose(viewport_rotation([0.0, 0.0, -5.0]), [0.0, 0.0, 1.0])
+    np.testing.assert_allclose(viewport_rotation([0.0, 2.0, 0.0]), [0.0, -1.0, 0.0])
 
 
 def test_camera_looks_at_the_fleet_from_behind_below_the_surface():
     line6 = [[x, y, -5.0] for x, y in zip([0.0] * 6, [-8.75, -5.25, -1.75, 1.75, 5.25, 8.75])]
     centre, dist = framing(line6, heading=0.0)
     loc, rot = camera_pose(centre, dist, heading=0.0)
-    assert loc[0] < centre[0] and abs(loc[1] - centre[1]) < 1e-6                  # behind, on the axis
-    assert loc[2] <= -fc.SURFACE_CLEARANCE_M and loc[2] > centre[2]               # above the fleet, below the surface
-    look = -rot                                                                    # measured convention
-    assert look[0] > 0 and abs(look[1]) < 1e-9 and look[2] < 0                     # ahead (+x), tilted down
-    np.testing.assert_allclose(look, (centre - loc) / np.linalg.norm(centre - loc))  # at the framed centre
+    assert loc[0] < centre[0] and abs(loc[1] - centre[1]) < 1e-6
+    assert loc[2] <= -fc.SURFACE_CLEARANCE_M and loc[2] > centre[2]
+    look = -rot
+    assert look[0] > 0 and abs(look[1]) < 1e-9 and look[2] < 0
+    np.testing.assert_allclose(look, (centre - loc) / np.linalg.norm(centre - loc))
     half = np.max(np.abs(np.asarray(line6)[:, 1] - centre[1])) + fc.MARGIN_M
-    assert dist >= half / np.tan(np.radians(fc.HFOV_DEG / 2.0)) - 1e-9             # the whole line is in view
-    assert fc.MIN_DISTANCE_M <= dist <= fc.MAX_DISTANCE_M                          # never lost in the fog
+    assert dist >= half / np.tan(np.radians(fc.HFOV_DEG / 2.0)) - 1e-9
+    assert fc.MIN_DISTANCE_M <= dist <= fc.MAX_DISTANCE_M
 
 
 def test_camera_does_not_follow_drone_0_and_ignores_a_drone_lost_far_away():
@@ -154,27 +154,27 @@ def test_camera_does_not_follow_drone_0_and_ignores_a_drone_lost_far_away():
     lost = fleet.copy()
     lost[3] = [-30.0, 25.0, -5.0]
     c = framing(lost, 0.0)
-    assert np.linalg.norm(c[0] - framing(fleet[:3], 0.0)[0]) < 1e-9               # framed without it
+    assert np.linalg.norm(c[0] - framing(fleet[:3], 0.0)[0]) < 1e-9
 
 
 def test_camera_includes_a_near_gate_and_moves_smoothly():
     fleet = np.array([[0, 0, -5], [0, 3.5, -5], [0, -3.5, -5]], float)
     cam = FleetCamera()
-    loc0, rot0 = cam.update(fleet, 0.0, gates=[[40.0, 0.0, -5.0]])                 # gate far: not framed
+    loc0, rot0 = cam.update(fleet, 0.0, gates=[[40.0, 0.0, -5.0]])
     assert not cam.with_gate
     near = fleet + [30.0, 0.0, 0.0]
     cam.update(near, 0.2, gates=[[40.0, 0.0, -5.0]])
-    assert cam.with_gate                                                           # gate within 12 m: framed
+    assert cam.with_gate
     steps = []
     prev = cam.update(near, 0.2, gates=[[40.0, 0.0, -5.0]])[0]
     for _ in range(30):
         loc = cam.update(near, 0.2, gates=[[40.0, 0.0, -5.0]])[0]
         steps.append(float(np.linalg.norm(loc - prev)))
         prev = loc
-    assert max(steps) < 3.0 and steps[-1] < steps[0]                               # converges, no teleport
-    cam.update(near + [23.5, 0.0, 0.0], 0.2, gates=[[40.0, 0.0, -5.0]])            # 13.5 m past it: kept
+    assert max(steps) < 3.0 and steps[-1] < steps[0]
+    cam.update(near + [23.5, 0.0, 0.0], 0.2, gates=[[40.0, 0.0, -5.0]])
     assert cam.with_gate
-    cam.update(near + [26.0, 0.0, 0.0], 0.2, gates=[[40.0, 0.0, -5.0]])            # 16 m: released
+    cam.update(near + [26.0, 0.0, 0.0], 0.2, gates=[[40.0, 0.0, -5.0]])
     assert not cam.with_gate
 
 
@@ -196,7 +196,7 @@ def test_client_waits_for_the_engine_semaphores_instead_of_failing(monkeypatch):
 
     monkeypatch.setattr(holooceanclient.HoloOceanClient, "__windows_init__", flaky, raising=True)
     hs.wait_for_engine_semaphores(timeout_s=5.0)
-    hs.wait_for_engine_semaphores(timeout_s=5.0)                                   # idempotent
+    hs.wait_for_engine_semaphores(timeout_s=5.0)
     assert holooceanclient.HoloOceanClient.__windows_init__(object()) == "connected" and calls["n"] == 3
 
     def denied(self):

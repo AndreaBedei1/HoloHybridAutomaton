@@ -11,7 +11,7 @@ from holo_fleet.perception import payload as pl
 from holo_fleet.scope import current_bound, failure_excluded, obstruction_half
 from holo_fleet.sim.scenarios import SCENARIOS
 
-ONBOARD_MARGIN_M = 1.5          # what a receiver adds to a last fix (fix region, own bound, one TDMA period of motion): kept as budget
+ONBOARD_MARGIN_M = 1.5
 
 
 def _gate():
@@ -22,7 +22,7 @@ def test_the_critical_region_and_the_space_beside_the_frame_are_excluded():
     g = _gate()
     h = obstruction_half(g)
     assert failure_excluded(g, g.from_gate_frame([0.0, 0.0, 0.0]), 0.0)
-    assert failure_excluded(g, g.from_gate_frame([-(h[0] + 0.9), 0.0, 0.0]), 0.0)          # within the coast
+    assert failure_excluded(g, g.from_gate_frame([-(h[0] + 0.9), 0.0, 0.0]), 0.0)
     assert not failure_excluded(g, g.from_gate_frame([-(h[0] + 1.1), 0.0, 0.0]), 0.0)
     assert failure_excluded(g, g.from_gate_frame([-(h[0] + 1.1), 0.0, 0.0]), 0.0, margin=0.2)
 
@@ -67,7 +67,7 @@ def test_every_launch_and_every_failure_point_is_outside_the_zone_with_the_onboa
                     p = p0 + min(v * float(f["t_on"]), float(np.linalg.norm(u))) * u / max(float(np.linalg.norm(u)), 1e-9)
                 assert not failure_excluded(g, p, w_h, w_dn, margin=ONBOARD_MARGIN_M), name
                 n += 1
-    assert n >= 9                                         # the lost_drone_mutex family, the stress batch, the failures near the gate
+    assert n >= 9
 
 
 def _receiver(w_h=0.0):
@@ -87,10 +87,10 @@ def test_rule_d_releases_a_silent_claim_only_outside_the_zone():
         tr, ae, _rx, P = _receiver(w_h)
         _rx(tr, P, 1.0, 1, q, phase=pl.GP_ADMITTED)
         t = 1.0 + D.acoustic.t_silent_gate_s + 5.0
-        for tt in np.arange(2.0, t, 1.0):                   # the other drone heard every second: the tracker prunes old fixes
+        for tt in np.arange(2.0, t, 1.0):
             _rx(tr, P, float(tt), 2, [-20.0, 6.0, -5.], phase=pl.GP_NONE)
         assert ae.dead(1, t) == released and (ae.claims(t) == set()) == released, (q, w_h)
-        assert ae.rule_d[1]["released"] == released and ae.rule_d[1]["fix_age_s"] > 70.0     # the decision is logged
+        assert ae.rule_d[1]["released"] == released and ae.rule_d[1]["fix_age_s"] > 70.0
 
 
 def test_the_declared_current_is_the_bound_of_the_field():

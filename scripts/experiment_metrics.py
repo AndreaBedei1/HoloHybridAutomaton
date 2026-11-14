@@ -26,7 +26,7 @@ from holo_fleet.config import DEFAULT  # noqa: E402
 from holo_fleet.referee.envelope import evaluate_run  # noqa: E402
 from holo_fleet.sim.currents import CurrentComponent, CurrentField  # noqa: E402
 
-T_START = 0.3          # first two sonar captures (an echo needs 2 of 3 to be confirmed)
+T_START = 0.3
 AVOID = ("SEPARATION_WARNING", "COLLISION_AVOIDANCE")
 
 

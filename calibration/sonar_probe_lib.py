@@ -12,10 +12,7 @@ RANGE_MIN, RANGE_MAX, BINS = 0.3, 12.0, 234
 BIN_W = (RANGE_MAX - RANGE_MIN) / BINS
 RANGES = RANGE_MIN + (np.arange(BINS) + 0.5) * BIN_W
 SONAR_X = 0.24
-# PoseSensor sits at the BlueROV2 IMUSocket, measured offset from the agent origin in the body frame
 IMU_OFFSET = np.array([0.11, 0.0, -0.065])
-# BlueROV2 (heavy frame, 457 x 575 x 254 mm) as a box centred on the agent origin: near-face truth.
-# The probe's own echoes give 0.225 m ahead and 0.275 m abeam, i.e. consistent within one 5 cm bin.
 HULL_HALF = np.array([0.229, 0.288, 0.127])
 
 

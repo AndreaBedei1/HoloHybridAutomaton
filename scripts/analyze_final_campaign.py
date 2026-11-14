@@ -61,7 +61,6 @@ def main(raw: Path) -> None:
     L = [f"# Final campaign, criteria v8 ({raw.as_posix()})", "", f"Runs planned {len(plan)}, found {len(runs)}, missing {len(missing)} {missing[:5]}", ""]
     cls_all = Counter(m["class"] for m in runs.values())
     L.append(f"Classes, all runs: {dict(cls_all)}")
-    # ------------------------------------------------------------------ item 2, safety
     bad = [k for k, m in runs.items() if m["class"] in SAFETY]
     p1 = [k for k, m in runs.items() if not (m.get("P1") or {}).get("holds", True)]
     p2 = [k for k, m in runs.items() if not (m.get("P2") or {}).get("holds", True)]
@@ -71,10 +70,8 @@ def main(raw: Path) -> None:
           f"- one-sided 95 % Clopper-Pearson upper bound of the per-run rate of a safety failure: {cp_upper(len(bad) + len(set(p1) | set(p2)), n):.4f}",
           f"- smallest true separation over the campaign: {min((m.get('P1') or {}).get('min_true_separation_m', 99) for m in runs.values()):.3f} m",
           f"- dead-hull contacts recorded (criteria v7, not contacts of the fleet): {sum((m.get('P1') or {}).get('dead_hull_contacts', 0) for m in runs.values())}"]
-    # ------------------------------------------------------------------ item 3, INVALID
     inv = [(k, runs[k].get("invalid_reason")) for k in runs if runs[k]["class"] == "INVALID"]
     L += ["", "## Item 3, INVALID", f"- {len(inv)} {inv[:5]}"]
-    # ------------------------------------------------------------------ item 4, monitors
     pv = [k for k, m in runs.items() if (m.get("premise_v") or {}).get("live_declared_dead")]
     val = [k for k, m in runs.items() if m.get("validation_profile")]
     pv_val = [k for k in pv if k in val]
@@ -88,8 +85,6 @@ def main(raw: Path) -> None:
           f"- wrong validated fits: {len(wv)} runs ({sum(runs[k]['wrong_validated_fits'] for k in wv)} fits): {[k[1:] for k in wv][:12]}",
           f"- gate-frame navigation premise exceeded while committed: {len(gn)} runs; H6 navigation bound exceeded: {len(nb)} runs",
           f"- fairness gap above 35 s: {len(fair)} runs {[k[:3] for k in fair][:8]}; gap p50 {fg[len(fg)//2]:.1f} s, max {fg[-1]:.1f} s"]
-    # rule D decisions are in the state records (gate.rule_d): counted by scripts on request, summarised in the report
-    # ------------------------------------------------------------------ item 5, block A
     L += ["", "## Item 5, standard set (block A)"]
     thr = {"CLEAN": 65, "LOW-ALL": 65, "MEDIUM-ALL": 63}
     for prof in ("CLEAN", "LOW-ALL", "MEDIUM-ALL"):
@@ -100,7 +95,6 @@ def main(raw: Path) -> None:
         for k in ks:
             if runs[k]["class"] not in ("PASS",):
                 L.append(f"  - {k[2]} s{k[3]}: {runs[k]['class']} {runs[k].get('failed_requirements')} {runs[k].get('cause_tags')}")
-    # ------------------------------------------------------------------ item 6, block B
     ks = [k for k in runs if block(k) == "B"]
     c = Counter(runs[k]["class"] for k in ks)
     comp = sum(c[x] for x in COMPLETE)
@@ -110,7 +104,6 @@ def main(raw: Path) -> None:
     for k in ks:
         if runs[k]["class"] != "PASS":
             L.append(f"  - {k[2]} s{k[3]}: {runs[k]['class']} {runs[k].get('failed_requirements')} {runs[k].get('cause_tags')}")
-    # ------------------------------------------------------------------ item 7, block C
     ks = [k for k in runs if block(k) == "C"]
     inside = [k for k in ks if not k[2].startswith("st_bd_") and k[2] not in PROBES]
     comp = sum(runs[k]["class"] in COMPLETE for k in inside)
@@ -123,7 +116,6 @@ def main(raw: Path) -> None:
     for sc in STRESS_BATCH:
         tag = "beyond the envelope" if sc.startswith("st_bd_") else ("declared-limit probe" if sc in PROBES else "inside")
         L.append(f"  - {sc} ({tag}): {dict(per[sc])}")
-    # ------------------------------------------------------------------ item 8, blocks D and E
     L += ["", "## Item 8, ablation (block D) against B2 (block A, MEDIUM)"]
     for sc in ABLATION_SCENARIOS:
         row = []
@@ -138,7 +130,6 @@ def main(raw: Path) -> None:
         for sc in ("gate_single", "lost_drone_mutex"):
             ks = [k for k in runs if block(k) == "E" and k[0] == proto and k[1] == prof and k[2] == sc]
             L.append(f"- {proto} {prof} {sc}: {dict(Counter(runs[k]['class'] for k in ks))}")
-    # ------------------------------------------------------------------ item 9, P3
     L += ["", "## Item 9, P3 verdicts"]
     for part in ("P3a", "P3b", "P3c"):
         cnt = Counter()
@@ -157,7 +148,6 @@ def main(raw: Path) -> None:
     slack.sort()
     if slack:
         L.append(f"- P3b slack to the deadline (s), MET runs: n {len(slack)}, min {slack[0]:.1f}, p10 {slack[len(slack)//10]:.1f}, median {slack[len(slack)//2]:.1f}")
-    # ------------------------------------------------------------------ item 10, every non-complete run
     L += ["", "## Item 10, every run not PASS"]
     for k in sorted(runs):
         m = runs[k]

@@ -35,7 +35,6 @@ def heard_pair(tracker, p, r):
 
 def test_deployed_multipath_envelope_protects_an_inside_occupant():
     p, tracker, gp = observer([-1.179, 0., -5.])
-    # True observer -2.179, occupant +0.8: range 2.979 plus the declared +3 m excess.
     heard_pair(tracker, p, 5.979)
     assert all(f.accepted for f in tracker.all_fixes(1))
     assert not gp.acoustic_exit.clear_of_cr(GATE, tracker.latest(1, 2., 5.), 2.)
@@ -50,7 +49,7 @@ def test_positive_occupancy_keeps_every_latch_state_busy(initial):
     sonar_time = gp.last_corridor_t
     o = gp.update(2., p, 0., [], {})
     assert o.occ_state == "BUSY" and o.occ_busy and not o.entry_ok
-    assert gp.last_corridor_t == sonar_time  # acoustic evidence must not change the sonar witness's clock
+    assert gp.last_corridor_t == sonar_time
 
 
 def test_positive_occupancy_vetoes_a_sonar_witness_and_discards_its_confirmation():
@@ -61,15 +60,12 @@ def test_positive_occupancy_vetoes_a_sonar_witness_and_discards_its_confirmation
     for t in (2., 2.1, 2.2):
         o = gp.update(t, p, 0., [echo], {})
         assert o.occ_state == "BUSY" and o.exit_witness is None
-    # Once the receptions expire the drone is unknown, not gone (last known possibly inside): a sonar witness never
-    # releases the latch over it (v6: a clutter echo released the latch over a stalled, shadowed occupant)
     for t in (5., 5.1, 5.2, 5.3):
         o = gp.update(t, p, 0., [echo], {})
         assert o.occ_state == "BUSY" and o.exit_witness is None
 
 
 def test_acoustic_only_episode_never_times_out_without_positive_clearance():
-    # an occupant heard inside and then silent is unknown, not gone: no timeout release (positive evidence only)
     p, tracker, gp = observer()
     heard_pair(tracker, p, -p[0])
     assert gp.update(2., p, 0., [], {}).occ_state == "BUSY"
@@ -82,7 +78,6 @@ def test_acoustic_only_episode_releases_on_positive_clearance_of_every_other_dro
     p, tracker, gp = observer()
     heard_pair(tracker, p, -p[0])
     assert gp.update(2., p, 0., [], {}).occ_state == "BUSY"
-    # 7.5 m outward motion in 15 s; all three outside confirmations follow the acoustic episode.
     for t in (17., 18., 19.):
         tracker.update(t, [(1, t, -p[0] + 7.5, 0., 0.), (2, t, 30., 0., 0.)], p, 0.)
         o = gp.update(t, p, 0., [], {})
@@ -92,18 +87,15 @@ def test_acoustic_only_episode_releases_on_positive_clearance_of_every_other_dro
 
 
 def test_acoustic_only_episode_needs_clearance_of_every_drone_heard_possibly_inside():
-    # an acoustic-only episode started from FREE: a drone that was never heard inside would have crossed the FRONT
-    # corridor visibly to enter (the sonar latch premise) and started a sonar episode; every drone HEARD possibly
-    # inside during the episode must be positively cleared (A2)
     p, tracker, gp = observer()
     for t in (1., 2.):
         tracker.update(t, [(1, t - .25, -p[0], 0., 0.), (2, t - .2, -p[0], 0., 0.)], p, 0.)
     assert gp.update(2., p, 0., [], {}).occ_state == "BUSY"
     assert gp.suspects == {1, 2}
-    for t in (17., 18., 19.):                       # only drone 1 is heard outside
+    for t in (17., 18., 19.):
         tracker.update(t, [(1, t, -p[0] + 7.5, 0., 0.)], p, 0.)
         assert gp.update(t, p, 0., [], {}).occ_state == "BUSY"
-    for t in (20., 21., 22.):                       # drone 2 too: released
+    for t in (20., 21., 22.):
         tracker.update(t, [(1, t, -p[0] + 7.5, 0., 0.), (2, t - .1, -p[0] + 7.5, 0., 0.)], p, 0.)
         o = gp.update(t, p, 0., [], {})
     assert o.occ_state == "EXITING" and o.exit_witness["rule"] == "A2"

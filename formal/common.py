@@ -36,8 +36,6 @@ class Z3Logic(Logic):
     def Not(self, a):
         return z3.Not(a)
 
-    # observation invariant N0 (holo_fleet/ha/observation_invariants.py): Z3 Real and Bool symbols are
-    # finite and Boolean by construction, so the runtime type checks are trivially true here
     def finite(self, x):
         return z3.BoolVal(True)
 
@@ -86,7 +84,7 @@ class CheckResult:
     prop: str
     formula: str
     encoding: str
-    expect: str                 # "unsat" (property holds) or "sat" (counterexample expected, e.g. mutation)
+    expect: str
     verdict: str = ""
     passed: bool = False
     seconds: float = 0.0
@@ -157,7 +155,7 @@ class Report:
         self.results: List[CheckResult] = []
 
     def add(self, r: CheckResult, verbose: bool = True) -> CheckResult:
-        r.passed = bool(r.passed)                    # numpy booleans from numeric lemmas -> plain JSON booleans
+        r.passed = bool(r.passed)
         self.results.append(r)
         if verbose:
             flag = "PASS" if r.passed else "FAIL"

@@ -40,7 +40,6 @@ DEPTH = -5.0
 SPACING = 25.0
 D_FRONT, D_REAR = 3.0, 6.0
 
-# one setting per probe: sonar (add, mult, range) + nav sensors.  Index 0 = the deployed CLEAN suite.
 SETTINGS = [
     {"label": "clean", "sonar": (0.05, 0.10, 0.05), "dvl_vel": 0.01, "dvl_rng": 0.02, "gyro": 0.005, "accel": 0.01,
      "gyro_bias": 0.0, "accel_bias": 0.0, "mag": 0.005, "depth": 0.02},
@@ -65,7 +64,6 @@ SETTINGS = [
 ]
 
 
-# exact distance from each sonar to the target's near face (hulls aligned, pinned): centre distance - mount - half length
 FACE = {"front": D_FRONT - MOUNTS["FRONT"][0] - HULL_HALF[0], "rear": D_REAR + MOUNTS["REAR"][0] - HULL_HALF[0]}
 
 
@@ -146,7 +144,7 @@ def main() -> int:
                         rg = DEFAULT_SONAR.ranges()
                         f = FACE[slot]
                         r[slot + "_peak"].append(float(prof[(rg > f - 0.3) & (rg < f + 0.6)].max()))
-                        if slot == "front":            # open water between 0.5 and 2.0 m: pure noise intensities
+                        if slot == "front":
                             rg = DEFAULT_SONAR.ranges()
                             r["noise_int"].extend(prof[(rg > 0.5) & (rg < 2.0)].tolist())
                 if "DVLSensor" in d:

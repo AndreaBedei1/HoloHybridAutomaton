@@ -64,9 +64,7 @@ def test_t_rejoin_is_derived_from_the_catch_up_of_the_waiting_formation():
     assert FR.catch_up == pytest.approx(FR.v_recovery_max - FR.v_wait)
     assert FR.t_rejoin == pytest.approx(min(FR.t_rejoin_max, FR.neighbour_range_m / FR.catch_up + FR.t_rejoin_margin))
     assert FR.t_rejoin == pytest.approx(30.0)
-    # the gap a rejoining drone can close before the timeout is the sensing range
     assert FR.catch_up * (FR.t_rejoin - FR.t_rejoin_margin) == pytest.approx(FR.neighbour_range_m)
-    # it follows the configured speeds, within the cap
     slower = dataclasses.replace(FR, v_wait=0.25)
     assert slower.t_rejoin == pytest.approx(7.5 / 0.25 + 5.0) and slower.t_rejoin > FR.t_rejoin
     assert dataclasses.replace(FR, v_wait=0.45).t_rejoin == FR.t_rejoin_max
@@ -98,20 +96,20 @@ def test_reduced_progress_slows_the_formation_reference_with_a_ramp_and_restores
     ft = FormationTime(clock, DEFAULT)
     t, sp = _ftime_run(ft, 0.0, 5.0, False)
     assert ft.tau == 0.0 and sp[-1] == pytest.approx(FR.v_nominal)
-    t, sp = _ftime_run(ft, t, t + 15.0, True)                 # a neighbour missing: reduced progress
+    t, sp = _ftime_run(ft, t, t + 15.0, True)
     assert ft.reduced and sp[-1] == pytest.approx(FR.v_wait)
     steps = np.abs(np.diff([FR.v_nominal] + sp))
-    assert steps.max() <= FR.a_wait * DT + 1e-9               # ramp, no step
+    assert steps.max() <= FR.a_wait * DT + 1e-9
     t_ramp = (FR.v_nominal - FR.v_wait) / FR.a_wait
     assert ft.tau == pytest.approx((1.0 - FR.v_wait / FR.v_nominal) * (15.0 - t_ramp / 2.0), abs=0.15)
     s_before = clock.s(ft.now(t))
-    t, sp = _ftime_run(ft, t, t + 10.0, False)                # back: nominal speed again, gradually
+    t, sp = _ftime_run(ft, t, t + 10.0, False)
     assert not ft.reduced and sp[-1] == pytest.approx(FR.v_nominal)
     assert np.abs(np.diff(sp)).max() <= FR.a_wait * DT + 1e-9
     tau = ft.tau
     t, sp = _ftime_run(ft, t, t + 10.0, False)
-    assert ft.tau == pytest.approx(tau)                       # the delay is kept: no sprint to recover the plan
-    assert clock.s(ft.now(t)) > s_before                      # never stopped
+    assert ft.tau == pytest.approx(tau)
+    assert clock.s(ft.now(t)) > s_before
 
 
 def test_reduced_progress_lasts_at_most_t_rejoin_and_not_in_the_mutex_zone_or_a_hold():
@@ -119,16 +117,16 @@ def test_reduced_progress_lasts_at_most_t_rejoin_and_not_in_the_mutex_zone_or_a_
     ft = FormationTime(clock, DEFAULT)
     t, sp = _ftime_run(ft, 0.0, FR.t_rejoin - 1.0, True)
     assert ft.reduced
-    t, sp = _ftime_run(ft, t, t + 20.0, True)                 # never comes back: budget exhausted
+    t, sp = _ftime_run(ft, t, t + 20.0, True)
     assert not ft.reduced and sp[-1] == pytest.approx(FR.v_nominal)
     ft = FormationTime(clock, DEFAULT)
-    t, sp = _ftime_run(ft, 0.0, 20.0, True, mutex=True)       # gate flow: nominal rate, episode frozen
+    t, sp = _ftime_run(ft, 0.0, 20.0, True, mutex=True)
     assert not ft.reduced and ft.tau == 0.0 and ft.episode_t == 0.0
     hold = FormationClock(0.0, FR.v_nominal, 0.0, holds=((3.0, 100.0),), s_end=1e4)
     ft = FormationTime(hold, DEFAULT)
     t, sp = _ftime_run(ft, 0.0, 10.0, False)
     tau = ft.tau
-    t, sp = _ftime_run(ft, t, t + 30.0, True)                 # planned hold: nothing to slow down
+    t, sp = _ftime_run(ft, t, t + 30.0, True)
     assert ft.tau == tau and ft.episode_t == 0.0
 
 
@@ -146,7 +144,7 @@ def test_slot_reference_and_feed_forward_follow_the_own_formation_time():
     obs = SimpleNamespace(t=t, p=slot.copy(), slot_pos=slot, targets=[], R_wb=np.eye(3), yaw=0.0,
                           form=SimpleNamespace(along_corr=0.0, lateral_corr=0.0, lateral_far=None))
     v, _ = fl.formation(obs, DT)
-    assert v[0] == pytest.approx(FR.v_wait, abs=1e-6)          # on the slot: moves at the reduced speed
+    assert v[0] == pytest.approx(FR.v_wait, abs=1e-6)
 
 
 def test_reduced_progress_is_a_private_state_of_each_drone():
@@ -182,7 +180,7 @@ def _lane_run(ft, t0, t1, incomplete, residual, keeping=True):
 def test_same_lane_pairs_depend_only_on_the_template():
     from holo_fleet.perception.formation_perception import same_lane_ahead
 
-    assert [same_lane_ahead(_plan(k)) for k in range(4)] == [[], [], [0], [1]]     # square: rear drones
+    assert [same_lane_ahead(_plan(k)) for k in range(4)] == [[], [], [0], [1]]
     assert same_lane_ahead(_plan(1, template="pair_column")) == [0]
     for tm in ("triangle", "line3", "stack_pair", "line6"):
         n = len(TEMPLATES[tm].slots)
@@ -197,29 +195,29 @@ def test_a_drone_follows_the_slowdown_of_the_drone_ahead_without_noticing_anythi
     ft = FormationTime(clock, DEFAULT)
     t, sp = _lane_run(ft, 0.0, 3.0, False, 0.0)
     assert not ft.reduced and sp[-1] == pytest.approx(FR.v_nominal)
-    t, sp = _lane_run(ft, t, t + 1.0, False, -0.05)           # calm-flight residual: nothing happens
+    t, sp = _lane_run(ft, t, t + 1.0, False, -0.05)
     assert not ft.reduced
     t, sp = _lane_run(ft, t, t + 3.0, False, -FR.follow_on_m - 0.01)
     assert ft.following and ft.reduced and sp[-1] == pytest.approx(FR.v_wait)
     assert np.abs(np.diff(sp)).max() <= FR.a_follow * DT + 1e-9
-    t, sp = _lane_run(ft, t, t + 5.0, False, 0.0)             # spacing restored, the drone ahead still slow: hold
+    t, sp = _lane_run(ft, t, t + 5.0, False, 0.0)
     assert ft.reduced and sp[-1] == pytest.approx(FR.v_wait)
-    t, sp = _lane_run(ft, t, t + 4.0, False, FR.follow_on_m + 0.01)     # it pulls away: resume
+    t, sp = _lane_run(ft, t, t + 4.0, False, FR.follow_on_m + 0.01)
     assert not ft.reduced and sp[-1] == pytest.approx(FR.v_nominal)
 
 
 def test_in_a_lane_the_slowdown_ends_front_to_back_and_a_late_noticer_does_not_fall_behind():
     clock = FormationClock(0.0, FR.v_nominal, 0.0, s_end=1e4)
     ft = FormationTime(clock, DEFAULT)
-    t, sp = _lane_run(ft, 0.0, 10.0, True, 0.0)               # both slowed: same spacing
+    t, sp = _lane_run(ft, 0.0, 10.0, True, 0.0)
     assert ft.reduced
-    t, sp = _lane_run(ft, t, t + 5.0, False, 0.0)             # its own reason ended before the drone ahead's
-    assert ft.reduced                                         # keeps slowing: it would close on it otherwise
+    t, sp = _lane_run(ft, t, t + 5.0, False, 0.0)
+    assert ft.reduced
     ft2 = FormationTime(clock, DEFAULT)
-    t, sp = _lane_run(ft2, 0.0, 10.0, True, FR.follow_on_m + 0.02)     # notices late, the drone ahead runs on
+    t, sp = _lane_run(ft2, 0.0, 10.0, True, FR.follow_on_m + 0.02)
     assert not ft2.reduced and ft2.tau == pytest.approx(0.0)
-    ft3 = FormationTime(clock, DEFAULT)                       # out of its slot (rejoining from behind): the
-    t, sp = _lane_run(ft3, 0.0, 10.0, True, 1.0, keeping=False)        # residual is its own lag, not a resume
+    ft3 = FormationTime(clock, DEFAULT)
+    t, sp = _lane_run(ft3, 0.0, 10.0, True, 1.0, keeping=False)
     assert ft3.reduced and sp[-1] == pytest.approx(FR.v_wait)
 
 
@@ -229,12 +227,12 @@ def test_progress_consensus_runs_only_near_the_own_slot():
     the consensus is what re-aligns the references of the drones."""
     plan = _plan(2)
     fl = Flows(plan, DEFAULT)
-    far = _flow_obs([plan.clock.s(20.0) - 1.75 - 3.0, 1.75, -5.0], 20.0, plan)      # 3 m behind its slot
+    far = _flow_obs([plan.clock.s(20.0) - 1.75 - 3.0, 1.75, -5.0], 20.0, plan)
     far.form.along_corr = 0.9
     for _ in range(50):
         fl.formation(far, DT, recovering=True)
     assert fl.sigma == 0.0
-    near = _flow_obs([plan.clock.s(20.0) - 1.75 - 0.3, 1.75, -5.0], 20.0, plan)     # 0.3 m behind, recovering
+    near = _flow_obs([plan.clock.s(20.0) - 1.75 - 0.3, 1.75, -5.0], 20.0, plan)
     near.form.along_corr = 0.9
     for _ in range(50):
         fl.formation(near, DT, recovering=True)
@@ -245,13 +243,13 @@ def test_missing_neighbour_is_declared_vacant_after_t_rejoin_and_reincluded():
     p = Perception(_plan(0), DEFAULT)
     o, t = _run(p, 0.0, 5.0, {1, 2, 3})
     assert o.neighbors_ok and not p.vacant
-    o, t = _run(p, t, t + FR.t_rejoin, {1, 3})               # slot 2 disappears
+    o, t = _run(p, t, t + FR.t_rejoin, {1, 3})
     assert not o.neighbors_ok and not p.vacant and 0.0 < p.missing_t[2] < FR.t_rejoin
     o, t = _run(p, t, t + 3.0, {1, 3})
-    assert 2 in p.vacant and o.neighbors_ok                  # vacant: no longer required
+    assert 2 in p.vacant and o.neighbors_ok
     ev = [e for e in p.events if e["type"] == "SLOT_DECLARED_VACANT"]
     assert len(ev) == 1 and ev[0]["slot"] == 2 and FR.t_rejoin + 0.5 <= ev[0]["t"] - 5.0 <= FR.t_rejoin + 1.6
-    o, t = _run(p, t, t + 0.5, {1, 2, 3})                    # seen again, not yet for t_reinclude
+    o, t = _run(p, t, t + 0.5, {1, 2, 3})
     assert 2 in p.vacant
     o, t = _run(p, t, t + 1.3, {1, 2, 3})
     assert not p.vacant and o.neighbors_ok
@@ -266,31 +264,31 @@ def test_isolated_spurious_association_does_not_end_the_wait():
     o, t = _run(p, t, t + 3.0, {1, 3})
     assert not o.neighbors_ok
     tau = p.missing_t[2]
-    for _ in range(10):                                      # one spurious association every 1.5 s
+    for _ in range(10):
         o, t = _run(p, t, t + 0.1, {1, 2, 3})
         assert not o.neighbors_ok
         o, t = _run(p, t, t + 1.4, {1, 3})
     assert p.missing_t[2] > tau + 14.0
-    o = _form(p, t, {1, 2, 3})                               # an echo of another neighbour at the edge of the gate
+    o = _form(p, t, {1, 2, 3})
     o.checks[1].residual = -1.1
     for _ in range(10):
         p.track_missing(t, DT, o, True)
         t = round(t + DT, 6)
     assert not o.neighbors_ok
-    o, t = _run(p, t, t + 0.4, {1, 2, 3})                    # the drone is really back: confirmed
+    o, t = _run(p, t, t + 0.4, {1, 2, 3})
     assert o.neighbors_ok and p.missing_t[2] == 0.0
 
 
 def test_timers_frozen_outside_formation_keeping_and_during_planned_holds():
     p = Perception(_plan(0), DEFAULT)
     _run(p, 0.0, 2.0, {1, 2, 3})
-    _run(p, 2.0, 60.0, {1, 3}, in_formation=False)          # e.g. the drone itself recovering or in a gate mode
+    _run(p, 2.0, 60.0, {1, 3}, in_formation=False)
     assert not p.vacant and p.missing_t.get(2, 0.0) == 0.0
-    hold = FormationClock(0.0, 0.3, 0.0, holds=((3.0, 100.0),), s_end=70.0)   # reference holds from t = 10 s
+    hold = FormationClock(0.0, 0.3, 0.0, holds=((3.0, 100.0),), s_end=70.0)
     p = Perception(_plan(0, clock=hold), DEFAULT)
     _run(p, 0.0, 2.0, {1, 2, 3})
     _run(p, 2.0, 80.0, {1, 3})
-    assert not p.vacant and p.missing_t[2] == pytest.approx(10.0 - 3.0, abs=0.3)   # counted only while moving
+    assert not p.vacant and p.missing_t[2] == pytest.approx(10.0 - 3.0, abs=0.3)
 
 
 def _obs(**kw):
@@ -306,7 +304,7 @@ def test_a_stacked_pair_seen_from_the_side_is_confirmed_as_a_group():
     one association confirms both; otherwise one of them would be missing for ever and declared vacant."""
     from holo_fleet.perception.formation_perception import check_formation
 
-    slots = [Slot(0.0, 1.75, 1.75), Slot(0.0, 1.75, -1.75), Slot(0.0, -1.75, 0.0)]       # formations "stack_pair"
+    slots = [Slot(0.0, 1.75, 1.75), Slot(0.0, 1.75, -1.75), Slot(0.0, -1.75, 0.0)]
     plan = MissionPlan(drone_id="drone_2", slot_index=2, slots=slots, path=Path(np.array([[0.0, 0.0], [80.0, 0.0]]), -5.0),
                        gates=[], structures=[], launch_position=np.zeros(3), launch_yaw_deg=0.0, static_rank=2, s_end=70.0)
     healthy = {s: True for s in ("FRONT", "REAR", "LEFT", "RIGHT", "UP", "DOWN")}
@@ -316,23 +314,23 @@ def test_a_stacked_pair_seen_from_the_side_is_confirmed_as_a_group():
     o = check_formation(plan, DEFAULT, np.zeros(3), np.eye(3), np.eye(3), [tg], healthy, 0.0, {})
     assert o.neighbors_ok and all(c.seen for c in o.checks) and len(o.checks) == 2
     o = check_formation(plan, DEFAULT, np.zeros(3), np.eye(3), np.eye(3), [], healthy, 5.0, {})
-    assert not o.neighbors_ok and sorted(o.missing) == [0, 1]      # nothing seen: both missing
+    assert not o.neighbors_ok and sorted(o.missing) == [0, 1]
 
 
 def test_formation_keeping_modes():
     ha = LocalHybridAutomaton()
     ha.step(_obs(neighbors_ok=False), 0.0, DT)
-    assert ha.mode == Mode.FORMATION_WAIT_REJOIN             # own slot ok, a neighbour missing: wait, not recover
+    assert ha.mode == Mode.FORMATION_WAIT_REJOIN
     ha.step(_obs(neighbors_ok=True, degraded=True), 0.1, DT)
-    assert ha.mode == Mode.DEGRADED_FORMATION                # slot declared vacant
+    assert ha.mode == Mode.DEGRADED_FORMATION
     ha.step(_obs(neighbors_ok=True, degraded=False), 0.2, DT)
-    assert ha.mode == Mode.FORMATION_FOLLOW                  # the drone came back: formation restored
+    assert ha.mode == Mode.FORMATION_FOLLOW
     ha.step(_obs(form_err=1.5, t_ok=0.0, neighbors_ok=False), 0.3, DT)
-    assert ha.mode == Mode.FORMATION_RECOVERY                # own slot lost: recovery first
+    assert ha.mode == Mode.FORMATION_RECOVERY
     ha.step(_obs(form_err=0.3, t_ok=1.0, neighbors_ok=False), 0.4, DT)
-    assert ha.mode == Mode.FORMATION_RECOVERY                # not yet recovered for t_ok_hold
+    assert ha.mode == Mode.FORMATION_RECOVERY
     ha.step(_obs(form_err=0.3, t_ok=2.5, neighbors_ok=False), 0.5, DT)
-    assert ha.mode == Mode.FORMATION_WAIT_REJOIN             # own slot recovered, the neighbour still missing
+    assert ha.mode == Mode.FORMATION_WAIT_REJOIN
     assert ha.determinism_violations == 0
 
 
@@ -361,7 +359,7 @@ def test_every_mode_change_logs_the_cause_from_the_guard_that_fired():
     for i, (o, mode, reason) in enumerate(seq):
         rec = ha.step(o, 0.1 * i, DT)
         assert (ha.mode, rec.reason) == (mode, reason), i
-        assert rec.label                                      # every edge has a readable guard
+        assert rec.label
     assert ha.determinism_violations == 0
 
 
@@ -373,23 +371,20 @@ def _flow_obs(p, t, plan):
 
 
 def test_rejoin_from_behind_never_cuts_across_the_fleet():
-    plan = _plan(2)                                          # rear-left slot: along -1.75, lateral +1.75
+    plan = _plan(2)
     fl = Flows(plan, DEFAULT)
     t = 20.0
     s_ref = plan.clock.s(t)
-    # level with the fleet but 2.5 m off its lane (on the right): drop back, no lateral motion
     o = _flow_obs([s_ref - 1.75, 1.75 - 2.5, -5.0], t, plan)
     v, _ = fl.formation(o, DT, recovering=True)
     assert fl.rejoin_phase == "DROP_BACK" and abs(v[1]) < 1e-9 and 0.0 <= v[0] <= 0.3 + 1e-9
-    # behind the rear of the formation: move to the own lane (behind the rear-most slot)
     o = _flow_obs([s_ref - 7.0, 1.75 - 2.5, -5.0], t, plan)
     v, _ = fl.formation(o, DT, recovering=True)
     assert fl.rejoin_phase == "TO_LANE" and v[1] > 0.0
-    # on its lane, behind its slot: straight up the lane to the slot
     o = _flow_obs([s_ref - 6.0, 1.75 - 0.3, -5.0], t, plan)
     v, _ = fl.formation(o, DT, recovering=True)
     assert fl.rejoin_phase == "" and v[0] > 0.3
-    v, _ = fl.formation(o, DT, recovering=False)             # not recovering: plain slot tracking
+    v, _ = fl.formation(o, DT, recovering=False)
     assert fl.rejoin_phase == ""
 
 
@@ -398,60 +393,48 @@ def test_rejoin_to_a_slot_with_a_drone_behind_it_on_its_lane_passes_below_it():
     reached from behind along the lane: the drone of the rear slot is in the way (v8 campaign, p1_vertical_escape
     LOW s502: the tee centre drone held 2.9 m behind the rear drone for 250 s).  The rejoining drone passes on a
     level pass_dz below (above if the depth band has no room), descending first, and rises only past it."""
-    plan = _plan(0)                                          # front-left slot (1.75, 1.75); rear-left (-1.75, 1.75)
+    plan = _plan(0)
     fl = Flows(plan, DEFAULT)
     t = 20.0
     s_ref = plan.clock.s(t)
     z_pass = -5.0 - DEFAULT.form.pass_dz_m
-    # on its lane, 2.9 m behind the rear-left slot, at the slot depth: descend first, never closer to it
     o = _flow_obs([s_ref - 1.75 - 2.9, 1.75, -5.0], t, plan)
     v, _ = fl.formation(o, DT, recovering=True)
     assert fl.rejoin_phase == "PASS" and v[2] < 0.0 and v[0] <= plan.clock.v + 1e-9
-    # at the pass level, behind the rear slot: advance along the lane, staying at that level
     o = _flow_obs([s_ref - 1.75 - 2.9, 1.75, z_pass], t, plan)
     v, _ = fl.formation(o, DT, recovering=True)
     assert fl.rejoin_phase == "PASS" and v[0] > 0.3 and abs(v[2]) < 0.05
-    # below the rear slot (3.5 m under it): keep passing at the pass level
     o = _flow_obs([s_ref - 1.75, 1.75, z_pass], t, plan)
     v, _ = fl.formation(o, DT, recovering=True)
     assert fl.rejoin_phase == "PASS" and abs(v[2]) < 0.05
-    # past it, near the own slot: plain slot tracking, rising
     o = _flow_obs([s_ref + 1.6, 1.75, z_pass], t, plan)
     v, _ = fl.formation(o, DT, recovering=True)
     assert fl.rejoin_phase == "" and v[2] > 0.0
-    # a slip back while rising (here 0.6 m, behind the rise point) never sends it back down or back
     o = _flow_obs([s_ref + 1.0, 1.75, z_pass + 1.0], t, plan)
     v, _ = fl.formation(o, DT, recovering=True)
     assert fl.rejoin_phase == "" and v[0] > 0.0 and v[2] > 0.0
-    # independent review: a drone already AHEAD of the rear slot, on the slot level, behind its own slot (the
-    # normal recovery after a warning or a gate) tracks its slot as before: no PASS, never reversed into the rear one
     for lag in (0.6, 1.0, 2.0, 3.0):
         f = Flows(_plan(0), DEFAULT)
         o = _flow_obs([s_ref + 1.75 - lag, 1.75, -5.0], t, plan)
         v, _ = f.formation(o, DT, recovering=True)
         assert f.rejoin_phase == "" and v[0] > 0.0 and abs(v[2]) < 1e-6, lag
-    # off its blocked lane, far behind: joins the lane on the pass level, pass_dz_m behind the rear slot
     f = Flows(_plan(0), DEFAULT)
     o = _flow_obs([s_ref - 12.0, 1.75 - 2.5, -5.0], t, plan)
     f.formation(o, DT, recovering=True)
     e = f.rejoin_entry(o, *f._slot(o)[1:])
     assert f.rejoin_phase == "TO_LANE" and abs(e[2] - z_pass) < 1e-9 and e[0] <= s_ref - 1.75 - DEFAULT.form.pass_dz_m + 1e-9
-    # a gate episode or FAILSAFE ends a PASS latch
     f.passing = True
     f.formation(o, DT, recovering=True, traffic=False)
     assert not f.passing
-    # descending behind the rear slot, the along command never reverses (the fleet stopped at the plan end)
     stop = dataclasses.replace(_plan(0), clock=FormationClock(0.0, 0.3, 0.0, s_end=1.0))
     f = Flows(stop, DEFAULT)
     o = _flow_obs([1.0 - 1.75 - 2.9, 1.75, -5.0], t, stop)
     v, _ = f.formation(o, DT, recovering=True)
     assert f.rejoin_phase == "PASS" and v[0] >= -1e-9 and v[2] < 0.0
-    # the rear drone (nothing behind its slot) rejoins along its lane as before
     fl2 = Flows(_plan(2), DEFAULT)
     o = _flow_obs([s_ref - 6.0, 1.75, -5.0], t, _plan(2))
     fl2.formation(o, DT, recovering=True)
     assert fl2.rejoin_phase == ""
-    # no room below the path depth: pass above
     deep = dataclasses.replace(_plan(0), path=Path(np.array([[0.0, 0.0], [80.0, 0.0]]), -7.0))
     fl3 = Flows(deep, DEFAULT)
     o = _flow_obs([s_ref - 1.75 - 2.9, 1.75, -7.0], t, deep)
@@ -466,11 +449,11 @@ def test_failsafe_cancels_a_give_way():
     tg = Target(pattern=frozenset({"FRONT"}), r_min=5.0, d_lower=5.0, age=0.0, closing_rate=1.4, cls="DYNAMIC")
     obs = SimpleNamespace(t=0.0, p=np.zeros(3), R_wb=np.eye(3), yaw=0.0, targets=[tg])
     fl.traffic_offset(obs, DT)
-    assert fl.giveway == "RIGHT"                             # active: the rule reacts
+    assert fl.giveway == "RIGHT"
     fl2 = Flows(_plan(2), DEFAULT)
     fl2.traffic_offset(obs, DT, active=False)
-    assert fl2.giveway == "" and np.linalg.norm(fl2.offset) < 1e-9     # holding: no decision
-    for k in range(80):                                      # a running give-way is cancelled and decays to zero
+    assert fl2.giveway == "" and np.linalg.norm(fl2.offset) < 1e-9
+    for k in range(80):
         obs.t = 0.1 * (k + 1)
         fl.traffic_offset(obs, DT, active=False)
     assert fl.giveway == "" and np.linalg.norm(fl.offset) < 1e-6
@@ -480,17 +463,17 @@ def test_envelope_violation_clears_only_when_the_vehicle_delivers():
     m = EnvelopeMonitor()
     ok = check_onboard(np.zeros(3), np.array([0.1, 0.0, 0.0]), DEFAULT, 0.5)
     zero = np.zeros(3)
-    for _ in range(50):                                      # thrusters dead while following: saturated
+    for _ in range(50):
         m.update(True, ok, DT, v_nav=zero, v_req=np.array([0.3, 0.0, 0.0]))
     assert not m.ok
-    for _ in range(100):                                     # FAILSAFE hold, nothing requested: undecidable, paused
+    for _ in range(100):
         m.update(False, ok, DT, v_nav=zero, v_req=zero)
     assert not m.ok
     probe = [np.array([0.0, 0.0, 0.15 * np.sin(2 * np.pi * k * DT / 8.0)]) for k in range(400)]
-    for k in range(100):                                     # heave probe requested, the vehicle does not move
+    for k in range(100):
         m.update(False, ok, DT, v_nav=zero + 0.01 * np.sin(k), v_req=probe[k])
     assert not m.ok and "not delivered" in m.reason
-    for k in range(100, 200):                                # thrusters back: the probe is followed with a lag
+    for k in range(100, 200):
         m.update(False, ok, DT, v_nav=0.8 * probe[k - 6], v_req=probe[k])
     assert m.ok and m.reason == ""
 
@@ -505,7 +488,7 @@ def test_referee_declares_a_drone_absent_and_judges_the_degraded_formation():
         t = i * DT
         s = clock.s(t)
         P = np.array([[s + sl.along, sl.lateral, -5.0 + sl.dz] for sl in tm.slots])
-        if t >= 5.0:                                         # drone 2 stops for good at t = 5 s
+        if t >= 5.0:
             stop = P[2].copy() if stop is None else stop
             P[2] = stop
         truth = SimpleNamespace(t=t, positions=P, collision=np.zeros(4, bool), current_drift=np.zeros((4, 3)),
@@ -516,7 +499,7 @@ def test_referee_declares_a_drone_absent_and_judges_the_degraded_formation():
     assert deg["exercised"] and deg["absent_at_end"] == ["drone_2"] and deg["holds"]
     t_abs = deg["absence_log"][0]["t"]
     assert 5.0 + FR.t_rejoin < t_abs < 5.0 + FR.t_rejoin + 6.0
-    assert not m["P3_formation_recovery"]["all_recovered_within_run"]      # the nominal P3 is not claimed
+    assert not m["P3_formation_recovery"]["all_recovered_within_run"]
     assert deg["final_form_err_present"] < 0.1
 
 
@@ -528,12 +511,12 @@ def test_no_give_way_while_catching_up_with_the_own_fleet():
     t = 20.0
     tg = Target(pattern=frozenset({"FRONT"}), r_min=6.0, d_lower=6.0, age=0.0, closing_rate=0.6, cls="DYNAMIC")
     fl = Flows(plan, DEFAULT)
-    o = _flow_obs([plan.clock.s(t) - 1.75 - 3.0, 1.75, -5.0], t, plan)           # 3 m behind its slot, on its lane
+    o = _flow_obs([plan.clock.s(t) - 1.75 - 3.0, 1.75, -5.0], t, plan)
     o.targets = [tg]
     fl.formation(o, DT, recovering=True)
     assert fl.giveway == "" and np.linalg.norm(fl.offset) < 1e-9
     fl2 = Flows(plan, DEFAULT)
-    o2 = _flow_obs([plan.clock.s(t) - 1.75, 1.75, -5.0], t, plan)                 # on its slot: a real head-on
+    o2 = _flow_obs([plan.clock.s(t) - 1.75, 1.75, -5.0], t, plan)
     o2.targets = [tg]
     fl2.formation(o2, DT)
     assert fl2.giveway == "RIGHT"

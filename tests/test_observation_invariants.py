@@ -25,12 +25,12 @@ from common import Obs, Z3L  # noqa: E402
 
 
 def test_valid_observations_pass():
-    assert violated(AbstractObservation()) == []                          # cruising, nothing in view
+    assert violated(AbstractObservation()) == []
     queued = AbstractObservation(mutex_zone=True, at_queue=True, has_prio=True, occ_busy=True)
-    assert consistent(queued)                                              # priority + busy CR: separate beliefs
+    assert consistent(queued)
     recovered = AbstractObservation(form_err=0.2, t_ok=3.0, neighbors_ok=True)
     assert consistent(recovered)
-    latched = AbstractObservation(occ_busy=True, committed=True)           # latches may outlive the zone
+    latched = AbstractObservation(occ_busy=True, committed=True)
     assert consistent(latched)
 
 
@@ -41,18 +41,16 @@ def test_at_queue_outside_the_approach_zone_is_inconsistent():
 def test_incoherent_gate_states():
     assert violated(AbstractObservation(passed=True, mutex_zone=True)) == ["I3"]
     assert violated(AbstractObservation(has_prio=True, at_queue=False)) == ["I1"]
-    # passed and still queued: the queue point is in the zone (I2), a passed gate is not (I3)
     assert set(violated(AbstractObservation(passed=True, at_queue=True, mutex_zone=False))) == {"I2"}
     assert set(violated(AbstractObservation(passed=True, at_queue=True, mutex_zone=True))) == {"I3"}
 
 
 def test_stale_t_ok_and_malformed_numbers():
     assert violated(AbstractObservation(t_ok=1.0, form_err=DEFAULT.form.e_ok)) == ["I4"]
-    # a missing neighbour is not an error of the drone itself: its own 'ok' counter keeps running
     assert consistent(AbstractObservation(t_ok=1.0, neighbors_ok=False))
     assert consistent(AbstractObservation(t_ok=1.0, neighbors_ok=True, degraded=True))
     assert violated(AbstractObservation(form_err=-0.1)) == ["N1"]
-    assert "N0" in violated(AbstractObservation(d_min=float("nan")))     # NaN would disable both hazard guards
+    assert "N0" in violated(AbstractObservation(d_min=float("nan")))
     assert "N0" in violated(AbstractObservation(t_ok=math.inf))
     assert "N0" in violated(AbstractObservation(mutex_zone=None))
 
@@ -105,19 +103,19 @@ def test_inconsistent_observation_goes_to_failsafe_and_is_logged():
     c.step(_frame(0.0), 0.1)
     real_update = c.perception.update
 
-    def corrupted(*a, **k):                     # a perception defect: priority without the queue point
+    def corrupted(*a, **k):
         obs = real_update(*a, **k)
         obs.ab.has_prio, obs.ab.at_queue = True, False
         return obs
 
     c.perception.update = corrupted
     c.step(_frame(0.1), 0.1)
-    assert c.ha.mode == Mode.FAILSAFE_HOLD_OR_RETREAT                     # existing fault edge, no new mode
+    assert c.ha.mode == Mode.FAILSAFE_HOLD_OR_RETREAT
     ev = [e for e in c.events if e["type"] == "OBSERVATION_INCONSISTENT"]
     assert len(ev) == 1 and ev[0]["violated"] == ["I1"] and ev[0]["t"] == pytest.approx(0.1)
     assert ev[0]["observation"]["has_prio"] is True and ev[0]["observation"]["at_queue"] is False
     assert c.observation_violations == 1 and c.last_record["obs_consistent"] is False
-    c.perception.update = real_update                                     # defect gone: back to normal
+    c.perception.update = real_update
     for k in range(2, 8):
         c.step(_frame(0.1 * k), 0.1)
     assert c.ha.mode != Mode.FAILSAFE_HOLD_OR_RETREAT and c.observation_violations == 1
@@ -136,7 +134,7 @@ def test_gate_perception_keeps_the_queue_point_inside_the_approach_zone(n):
     for q_l in G.queue_laterals(n):
         plan.queue_lateral, plan.queue_s = q_l, G.queue_s(n)
         gp = GatePerception(plan, DEFAULT)
-        for ds in (-0.3, 0.0, 0.3, 8.0):                    # around the queue point, and beyond the exit
+        for ds in (-0.3, 0.0, 0.3, 8.0):
             for dl in (-0.3, 0.0, 0.3):
                 p = g.center + (plan.queue_s + ds) * g.axis + (q_l + dl) * left
                 o = gp.update(0.0, p, yaw, [], {})
@@ -144,4 +142,4 @@ def test_gate_perception_keeps_the_queue_point_inside_the_approach_zone(n):
                 if o.at_queue:
                     assert o.in_zone, (n, q_l, ds, dl)
                 assert not (o.passed and o.in_zone)
-    assert n_queued == 9 * n                                # every queue point and its tolerance box
+    assert n_queued == 9 * n

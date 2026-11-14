@@ -28,10 +28,8 @@ from pathlib import Path
 from typing import Iterable, Optional, Sequence
 
 DEFAULT_PATCHED_ROOT = Path(r"F:\Andrea\holoocean_patched_root")
-OCTREE_MIN = 0.06            # leaf size [m] (below the thinnest gate bar, arena_bridge.GATE_BAR_SECTION_M)
-OCTREE_MAX = 5.0             # mid-level size [m] -> engine folder "min6_max768"
-# One environment box for every arena-area scenario: it bounds the octree root (fast to rebuild)
-# and contains the Horseshoe Bay arena and the open-water test areas around it.
+OCTREE_MIN = 0.06
+OCTREE_MAX = 5.0
 ENV_MIN = [-64.0, -64.0, -32.0]
 ENV_MAX = [64.0, 64.0, 8.0]
 
@@ -72,7 +70,7 @@ def wait_for_engine_semaphores(timeout_s: float = 10.0) -> None:
     from holoocean import holooceanclient
 
     cls = holooceanclient.HoloOceanClient
-    init = cls.__windows_init__                      # trailing "__": not name-mangled
+    init = cls.__windows_init__
     if getattr(init, "_waits_for_semaphores", False):
         return
 
@@ -82,7 +80,7 @@ def wait_for_engine_semaphores(timeout_s: float = 10.0) -> None:
             try:
                 return init(self)
             except pywintypes.error as exc:
-                if exc.winerror != 2 or time.monotonic() >= deadline:     # 2: semaphore not created yet
+                if exc.winerror != 2 or time.monotonic() >= deadline:
                     raise
                 time.sleep(0.05)
 

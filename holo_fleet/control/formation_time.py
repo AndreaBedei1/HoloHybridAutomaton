@@ -76,13 +76,13 @@ class FormationTime:
     def __init__(self, clock, cfg: FleetConfig = DEFAULT):
         self.clock = clock
         self.cfg = cfg
-        self.tau = 0.0                 # delay of the own formation reference behind the plan [s]
-        self.rate = 1.0                # d t_f / d t
-        self.episode_t = 0.0           # moving formation time of the current incomplete episode [s]
-        self.following = False         # the drone ahead on the same lane is closer than planned (hysteresis)
-        self.ahead_away = False        # ... farther than planned: it is not slowing (hysteresis)
-        self.reduced = False           # reduced progress requested at the last update
-        self.sync = 0.0                # speed reduction of the re-synchronisation at the last update [m/s]
+        self.tau = 0.0
+        self.rate = 1.0
+        self.episode_t = 0.0
+        self.following = False
+        self.ahead_away = False
+        self.reduced = False
+        self.sync = 0.0
 
     def now(self, t: float) -> float:
         """Own formation time at mission time t."""
@@ -120,20 +120,15 @@ class FormationTime:
         self.ahead_away = r is not None and (r >= fr.follow_on_m or (self.ahead_away and r > fr.follow_off_m))
         if mutex:
             reduced = False
-        elif r is not None and keeping:                       # same lane: keep the spacing to the drone ahead
+        elif r is not None and keeping:
             reduced = self.following or (not self.ahead_away and (own or self.reduced))
         else:
             reduced = own or self.following
         self.reduced = reduced
-        # re-synchronisation: a neighbour certainly behind the slot the own clock places it at means the own clock runs
-        # ahead of its; slow down in proportion to the lag (the along-track consensus gain k_progress), never below
-        # the reduced progress v_wait and never faster than planned - the drone behind keeps the planned speed, so
-        # the formation times converge towards the latest one (first-order progress consensus, as in coordinated
-        # path following, here from sensed rather than communicated progress)
         self.sync = 0.0 if (mutex or behind is None or not moving or not keeping) else min(
-            fr.k_progress * behind, max(0.0, v_plan - fr.v_wait))   # only while keeping its slot (fix-age bias)
+            fr.k_progress * behind, max(0.0, v_plan - fr.v_wait))
         if not moving:
-            self.rate = 1.0                                   # planned hold: nothing to slow down
+            self.rate = 1.0
         else:
             target = min(1.0, fr.v_wait / v_plan) if self.reduced else 1.0
             target = min(target, (v_plan - self.sync) / v_plan)

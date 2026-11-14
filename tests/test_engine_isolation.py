@@ -54,4 +54,4 @@ def test_run_metadata_records_the_sockets_of_our_engine_only(monkeypatch):
     sim = SimpleNamespace(env=SimpleNamespace(_world_process=SimpleNamespace(pid=4242), _uuid="u-1"))
     ident = HoloFleetSim._engine_identity(sim)
     assert ident == {"ipc_uuid": "u-1", "pid": 4242, "listen_ports": [52311]}
-    assert asked == [4242]                        # only our engine's process is inspected
+    assert asked == [4242]

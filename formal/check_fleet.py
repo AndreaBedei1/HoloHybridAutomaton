@@ -70,8 +70,6 @@ def timers(cfg: FleetConfig = DEFAULT, dt: float = 5.0) -> dict:
     up = lambda s: int(math.ceil(s / dt - 1e-9))
     S = cfg.scope
     h_top = float(obstruction_half(SCENARIOS["lost_drone_mutex"](cfg).judged_gates[0], cfg)[2])
-    # T_RISE: a hull at the depth of the gate leaves the corridor of the queue (the height of the obstruction volume) after its
-    # downward coast and the rise lag; FAIR: the longest stretch with no instant at which every link is fresh, 26 s in st1, rounded up
     return {"DT": dt, "T_DEAD": up(cfg.acoustic.t_silent_gate_s), "T_VAC": up(cfg.form.t_silent_s),
             "T_HOLD": up(cfg.gate.t_occ_max + cfg.gate.t_clear),
             "T_RISE": up(S.rise_lag_s + (h_top + S.coast_v_m) / S.v_rise_min_mps), "T_APP": 4, "FAIR": up(35.0)}
@@ -106,8 +104,6 @@ class Fleet:
         for t in range(depth + 1):
             for i in range(n):
                 S.add(m[t][i] >= A, m[t][i] <= F, ct[t][i] >= 0, age[t][i] >= 0)
-        # a receiver accounts for another drone: a live one when its fix is fresh (free, fair below), a dead one by rule D
-        # rule D needs a receiver that hears another drone (acoustic.py silent: a receiver that hears nobody declares no one dead)
         hears = lambda t, i, k: z3.Or([z3.Not(dead(t, l)) for l in range(n) if l not in (i, k)] or [z3.BoolVal(False)])
         if rule_d:
             known = lambda t, i, k: z3.If(dead(t, k), z3.And(age[t][k] >= T["T_DEAD"], hears(t, i, k)), acc[t][i][k])
@@ -117,10 +113,8 @@ class Fleet:
         if fair:
             for t in range(0, depth + 2 - T["FAIR"]):
                 S.add(z3.Or([allfresh(s) for s in range(t, min(t + T["FAIR"], depth + 1))]))
-        # the latch of each receiver, on the current state (the delay is covered by S2)
         for t in range(depth + 1):
             for i in range(n):
-                # a drone that failed committed keeps its claim until it is known dead (rule D), and its hull is in the corridor
                 occ = z3.Or([z3.Or(z3.And(z3.Not(dead(t, k)), z3.Or(m[t][k] == X, m[t][k] == C) if latch_claims else m[t][k] == X),
                                    z3.And(dead(t, k), loc[t][k] == C, z3.Not(known(t, i, k))))
                              for k in range(n) if k != i] or [z3.BoolVal(False)])
@@ -135,8 +129,6 @@ class Fleet:
                 mi, mn, c, cn = m[t][i], m[t + 1][i], ct[t][i], ct[t + 1][i]
                 others = [k for k in range(n) if k != i]
                 live_x = z3.Or([z3.And(m[t][k] == X) for k in others] or [z3.BoolVal(False)])
-                # premise H: a dead hull stops counting as a queued drone for the sonar precedence once it has risen (T_RISE);
-                # hull_clears=False is the floating hull of med12 (st_lost_at_queue, st_lost_committed), which never stops
                 seen = (lambda tt, kk: age[tt][kk] < T["T_RISE"]) if hull_clears else (lambda tt, kk: z3.BoolVal(True))
                 prio = z3.And([z3.Not(z3.Or(m[t][k] == Q, z3.And(dead(t, k), z3.Or(loc[t][k] == Q, loc[t][k] == C), seen(t, k))))
                                for k in range(i)] or [z3.BoolVal(True)])
@@ -195,7 +187,7 @@ def _run(fl: Fleet, prop) -> list:
     return list(fl.S.assertions()) + [prop]
 
 
-K_FREE = {2: 26, 3: 40, 4: 52}      # smallest even bound found (the check K - 2 shows it is tight)
+K_FREE = {2: 26, 3: 40, 4: 52}
 PREMISES = {2: dict(max_fail=1, fail_in_c=False), 3: dict(max_fail=1), 4: dict(max_fail=2)}
 
 

@@ -92,7 +92,6 @@ def coverage(cfg: FleetConfig, n_samples: int = 4000, seed: int = 0) -> float:
         r, az, el = rng.uniform(0.5, 30.0), rng.uniform(-math.pi, math.pi), rng.uniform(-1.0, 1.0)
         br, ba, be = box_bounds(r, cfg)
         pts, slack = region_samples(r, az, el, cfg)
-        # a true range up to br longer, or up to br + the multipath excess shorter, than the measured one
         tr = max(r + rng.uniform(-br - cfg.acoustic.los_excess_max_m, br), 0.0)
         ta, te = az + rng.uniform(-ba, ba), el + rng.uniform(-be, be)
         truth = tr * np.array([math.cos(te) * math.cos(ta), math.cos(te) * math.sin(ta), math.sin(te)])
@@ -126,7 +125,7 @@ def decision_soundness(cfg: FleetConfig, g) -> dict:
                         out["cases"] += 1
                         sl = ae.s_lower(g, f, 0.0)
                         out["worst_s_lower_margin"] = max(out["worst_s_lower_margin"], sl - s_exit)
-                        out["exit_passed"] += int(sl > s_exit)              # progress only (A3), reported
+                        out["exit_passed"] += int(sl > s_exit)
                         out["outside_passed"] += int(ae.clear_of_cr(g, f, 0.0))
                         out["range_clear_passed"] += int(ae.clear_by_range(g, f, 0.0))
                         out["excluded"] += int(not ae._could_be_occupant(g, f, 0.0))
@@ -183,12 +182,9 @@ def exit_observability(cfg: FleetConfig, g, n: int, ds: float = 0.05) -> list:
                 k = max(1, int(np.linalg.norm(v - u) / ds))
                 pts += [u + (v - u) * i / k for i in range(k)]
             pts.append(path[-1])
-            # time along the path at v_pass, from the exit face of the CR
             dist = np.concatenate([[0.0], np.cumsum(np.linalg.norm(np.diff(np.array(pts), axis=0), axis=1))])
             i_out = next(i for i, x in enumerate(pts) if x[0] > G.cr_half_len)
             tt = (dist - dist[i_out]) / G.v_pass
-            # accounting of the other queued drones at t_lc (the passer at the exit face): clear line of sight and
-            # region excluded (the corridor echo of the passer there, the CR)
             ae = AcousticExit(cfg, tr, [1])
             c_lc = g.from_gate_frame(pts[i_out])
             ae.note_corridor(0.0, g, p, yaw, [float(np.linalg.norm(c_lc - p)) - R_OUT])
@@ -201,7 +197,6 @@ def exit_observability(cfg: FleetConfig, g, n: int, ds: float = 0.05) -> list:
                 excl = all(not ae._could_be_occupant(g, _fix(p, yaw, *m, cfg), 0.0) for m in _corners(r, az, el, cfg))
                 accountable &= excl
                 others_clear &= all(ae.clear_of_cr(g, _fix(p, yaw, *m, cfg), 0.0) for m in _corners(r, az, el, cfg))
-            # the earliest exit evidence over every ping phase (worst phase reported)
             worst_t, worst_s, shadowed = -1e9, None, 0
             for phase in np.linspace(0.0, period, 5, endpoint=False):
                 ok_count, t_ok, sh = 0, None, []
@@ -251,14 +246,14 @@ def payload_soundness(cfg: FleetConfig, g, n: int = 20000, seed: int = 3, radius
     bad = beyond_bad = 0
     s_exit = half[0] + R_OUT
     for i in range(n):
-        q = rng.uniform(-half, half)                              # true centre in the CR (gate frame)
+        q = rng.uniform(-half, half)
         if i % 3 == 0:
             ax = rng.integers(3)
-            q[ax] = half[ax] * rng.choice([-1.0, 1.0])            # on the boundary
+            q[ax] = half[ax] * rng.choice([-1.0, 1.0])
         true = g.center + q[0] * g.axis + q[1] * np.array([-g.axis[1], g.axis[0], 0.0]) + np.array([0, 0, q[2]])
         h, z = rng.uniform(0.0, 4.0), rng.uniform(0.0, 2.0)
         ang = rng.uniform(0, 2 * math.pi)
-        rh = h if i % 2 == 0 else h * math.sqrt(rng.uniform())   # boundary of the cylinder half of the time
+        rh = h if i % 2 == 0 else h * math.sqrt(rng.uniform())
         e = np.array([rh * math.cos(ang), rh * math.sin(ang), z * rng.choice([-1.0, 1.0]) * (1.0 if i % 2 == 0 else rng.uniform())])
         rep = pl.decode(pl.encode(0, true + e, radius(h, z)))
         if rep is None:
@@ -338,15 +333,12 @@ def structural() -> list:
         tree = ast.parse(f.read_text(encoding="utf-8"))
         for node in ast.walk(tree):
             name = node.attr if isinstance(node, ast.Attribute) else node.id if isinstance(node, ast.Name) else None
-            # reading a DECLARED constant of the configuration (cfg.acoustic.<field>, e.g. the own gate-frame
-            # navigation error or the attitude error bound) is not acoustic data
             if (name == "acoustic" and isinstance(node, ast.Attribute)
                     and ((isinstance(node.value, ast.Attribute) and node.value.attr == "cfg")
                          or (isinstance(node.value, ast.Name) and node.value.id == "cfg"))):
                 continue
             if name in ("acoustic", "AcousticTracker", "AcousticExit", "acoustic_exit", "AcousticRx"):
                 bad.append(f"{rel}:{getattr(node, 'lineno', '?')}")
-    # the latch calls the acoustic exit only with the corridor empty and the latch BUSY
     gp = (pkg / "perception/gate_perception.py").read_text(encoding="utf-8")
     guarded = "if witness is None and not corridor and self.occ_state == \"BUSY\" and self.acoustic_exit is not None:" in gp
     if not guarded:
@@ -389,14 +381,11 @@ def run(cfg: FleetConfig = B2, verbose: bool = True) -> Report:
                 f"observer {r['observer_l']:+.2f}/passer {r['passer_lane']:+.2f}"
                 f" ({'no evidence' if r['t_exit_s'] is None else 'late'}{'' if r['accountable'] else ', queue not accountable'})"
                 for r in blind)
-        try:                                     # inside the validated gate domain (formal M4g, mission.check_gate_domain)
+        try:
             check_gate_domain(abreast_slots(n), cfg.gate)
             inside = True
         except ValueError:
             inside = False
-        # availability, not safety (B2-A1..A3 above): where it fails the latch is the sonar one, B0's.  With the
-        # envelope that covers the clear-path multipath excess and the array bias (provenance audit, before the final
-        # campaign) the evidence is not available in the validated domain: no acoustic exit is claimed there.
         head = (f"B2-M4g availability (reported), n={n}: every queued drone gets an acoustic exit evidence of every "
                 "passing drone (bars' and queued hulls' occlusion, worst envelope error, worst ping phase) and can "
                 "account for the other queued drones") if inside else             f"B2-M4g domain boundary, n={n}: refused by the planner (queue points beyond queue_lateral_max), reported"

@@ -58,17 +58,11 @@ from typing import Dict, List, Optional
 
 import numpy as np
 
-CRITERIA_VERSION = "v8"   # v8 (2026-11-13): v7 with the P3 contract (referee/p3.py: P3a, P3b, P3c, deadlines, premises) and the classes P3_FAILURE and PREMISE_VIOLATED (robustness_metrics.refine_v8).  v7: v7 (2026-11-10): v6, with the collision sensor of a drone after its TOTAL_FAILURE recorded and not a contact (docs/ACCEPTANCE_CRITERIA.md).  v6 (2026-11-09): the requirements and classes of v5; the fault term of the deadline uses the silence
-                          # interval of the total failure model (docs/ACCEPTANCE_CRITERIA.md).  v5 (2026-11-05, the user's decision after the v4 campaign): liveness is eventual - no
-                          # time bound on a gate passage enters the class; the run horizon is HORIZON_FACTOR x the
-                          # a-priori deadline (which stays the reported "on time" reference); scenarios whose mission
-                          # is physically infeasible are judged on safety only.
-# previous: "v4"   # v4 (2026-11-04): unsafe-action disjunction E2.to_free | E3 | E4, inclusive tolerance,
-                          # SAFE_DEGRADED with the hold, crossing obligation from the first commit, bypass participation
-E_TOL_M = 1.0              # [REQ] formation tolerance (agreed for v3; the controller keeps e_ok = 0.5 as its margin)
-GIVEWAY_OFFSET_M = 2.5     # [PROT] = control/flows.Flows.traffic_offset(offset_max) (tests keep them equal)
-DETECT_S = 0.35            # [PROT] DVL freshness limit of sense_ok (perception.update): ends a sensor-fault FAILSAFE
-FS_QUANTILE = 0.99         # [LIT] allowance at the 99 % quantile of the outage count (a coverage choice, stated)
+CRITERIA_VERSION = "v8"
+E_TOL_M = 1.0
+GIVEWAY_OFFSET_M = 2.5
+DETECT_S = 0.35
+FS_QUANTILE = 0.99
 
 
 def t_hold_s(cfg) -> float:
@@ -95,7 +89,7 @@ def permanent_faults(sc) -> set:
 
 
 def _clock_end(clock, s_end: float, t_max: float = 3600.0, dt: float = 0.1) -> float:
-    lo, hi = 0.0, t_max                         # s(t) is non-decreasing: bisection on s(t) >= s_end
+    lo, hi = 0.0, t_max
     if clock.s(hi) < s_end - 1e-6:
         return t_max
     while hi - lo > dt / 2:
@@ -176,7 +170,6 @@ def deadline_terms(sc, cfg, profile: Optional[str] = None) -> Dict[str, float]:
         if f["drone"] not in names:
             continue
         if f.get("t_off") is None:
-            # the drones wait until they have declared the silent drone dead (the silence interval, or t_rejoin)
             t_fault += max(F.t_rejoin, cfg.form.t_silent_s) * (1.0 - F.v_wait / F.v_nominal)
         else:
             t_fault += (F.v_nominal + cfg.env.w_drift_max) * (float(f["t_off"]) - float(f["t_on"])) / F.catch_up
@@ -190,7 +183,7 @@ def deadline_v3(sc, cfg, profile: Optional[str] = None) -> float:
     return round(sum(deadline_terms(sc, cfg, profile).values()), 1)
 
 
-HORIZON_FACTOR = 3.0      # [PROT] the exploratory horizon of the plan (H.2): eventual completion is observed up to here
+HORIZON_FACTOR = 3.0
 
 
 def horizon_v5(sc, cfg, profile: Optional[str] = None) -> float:

@@ -27,16 +27,16 @@ import numpy as np
 from holo_fleet.config import DEFAULT, FleetConfig
 from holo_fleet.perception.sonar_geometry import SAMPLING_ERR, SECTORS, escape_candidates, far_field_pattern, regions
 
-LATERAL_TIE = 0.06            # weight of the right-hand preference
+LATERAL_TIE = 0.06
 VERTICAL_TIE = 0.05
-HYSTERESIS = 0.10             # a new direction must beat the previous (still valid) one by this score
+HYSTERESIS = 0.10
 
 
 @dataclass
 class EscapeChoice:
     v_body: np.ndarray
     direction: np.ndarray
-    guarantee: float              # worst-case opening per unit speed over all threats
+    guarantee: float
     feasible: bool
     label: str
 
@@ -46,17 +46,15 @@ class EscapePlanner:
         self.cfg = cfg
         self.cands = escape_candidates()
         self.regions = regions(cfg.perc.sonar)
-        # certified guarantees: sampled minimum minus the sampling error of the direction tables
         self.G: Dict[FrozenSet[str], np.ndarray] = {
             P: (-(R @ self.cands.T)).min(axis=0) - SAMPLING_ERR for P, R in self.regions.items()}
         self.labels = [direction_label(e) for e in self.cands]
-        self.last_sw: Optional[int] = None       # hysteresis: previous choices (reset outside avoidance)
+        self.last_sw: Optional[int] = None
         self.last_ca: Optional[int] = None
 
     def reset(self) -> None:
         self.last_sw = self.last_ca = None
 
-    # ------------------------------------------------------------------ guarantees
     def guarantee(self, pattern: Iterable[str], unhealthy: Iterable[str] = ()) -> np.ndarray:
         """Per-candidate worst-case opening (per unit speed) for a target seen with ``pattern``."""
         P = frozenset(pattern)
@@ -73,7 +71,6 @@ class EscapePlanner:
         up_pref = 1.0 if (np.degrees(heading_world) % 360.0) < 180.0 else -1.0
         return LATERAL_TIE * self.cands[:, 1] - VERTICAL_TIE * up_pref * self.cands[:, 2]
 
-    # ------------------------------------------------------------------ SW filter
     def warning_velocity(self, v_des_body: np.ndarray, threats: Sequence[Tuple[FrozenSet[str], float]],
                          unhealthy: Sequence[str], heading_world: float, v_cap: float) -> EscapeChoice:
         """threats: (pattern, required opening speed [m/s]) for every target inside the warning band."""
@@ -94,7 +91,7 @@ class EscapePlanner:
             if best is None or cost[i] < best[0]:
                 best = (cost[i], sp, i)
             if self.last_sw is not None and np.isfinite(cost[self.last_sw]):
-                prev = (cost[self.last_sw] - HYSTERESIS, sp, self.last_sw)     # keep a still-valid previous choice
+                prev = (cost[self.last_sw] - HYSTERESIS, sp, self.last_sw)
                 if best is None or prev[0] <= best[0]:
                     best = prev
         if best is not None:
@@ -102,11 +99,9 @@ class EscapePlanner:
             self.last_sw = i
             gmin = float(g[:, i].min()) if len(threats) else 1.0
             return EscapeChoice(sp * self.cands[i], self.cands[i], gmin, True, self.labels[i])
-        # no candidate opens fast enough: fall back to the best worst-case opening (logged as infeasible)
         ch = self.escape_velocity(threats, unhealthy, heading_world, env.v_max_nominal)
         return EscapeChoice(ch.v_body, ch.direction, ch.guarantee, False, ch.label)
 
-    # ------------------------------------------------------------------ CA escape
     def escape_velocity(self, threats: Sequence[Tuple[FrozenSet[str], float]], unhealthy: Sequence[str],
                         heading_world: float, speed: float, current_body: Optional[np.ndarray] = None,
                         mission_body: Optional[np.ndarray] = None, occupied: Iterable[str] = (),
@@ -119,10 +114,10 @@ class EscapePlanner:
         occ = set(occupied)
         if occ:
             into = np.array([bool(far_field_pattern(e) & occ) for e in self.cands])
-            score = score - 0.25 * into                    # avoid sectors holding other obstacles
+            score = score - 0.25 * into
         if current_body is not None and np.linalg.norm(current_body) > 0.03:
             c = current_body / max(np.linalg.norm(current_body), 1e-9)
-            score = score + 0.08 * (self.cands @ c)       # prefer escaping with the current, not against it
+            score = score + 0.08 * (self.cands @ c)
         if mission_body is not None and np.linalg.norm(mission_body) > 1e-3:
             m = mission_body / np.linalg.norm(mission_body)
             score = score + 0.03 * (self.cands @ m)
@@ -132,7 +127,7 @@ class EscapePlanner:
         i = int(np.argmax(score))
         j = self.last_ca
         if j is not None and worst[j] > 0 and score[j] >= score[i] - HYSTERESIS:
-            i = j                                          # keep a still-opening previous direction (no chattering)
+            i = j
         self.last_ca = i
         return EscapeChoice(speed * self.cands[i], self.cands[i], float(worst[i]), bool(worst[i] > 0), self.labels[i])
 

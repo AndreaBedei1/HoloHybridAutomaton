@@ -39,10 +39,10 @@ import numpy as np
 from holo_fleet.config import DEFAULT, FleetConfig
 from holo_fleet.perception.sonar_geometry import AXES, MOUNTS, NEAR_FIELD_WIDEN_M, R_OUT, SECTORS, fibonacci_sphere
 
-ASSOC_M = 0.5            # range gate of a tracked background echo (per capture, plus v_bound * dt)
-_GRID = 9                # CR samples per axis (W1)
-_DIRS = 900              # sphere directions; those inside a cone sample it (W2)
-CONFIRM_CAPTURES = 3     # [PROT] G.3(b): three distinct consecutive sonar captures, as in M4d
+ASSOC_M = 0.5
+_GRID = 9
+_DIRS = 900
+CONFIRM_CAPTURES = 3
 
 
 def speed_bound(cfg: FleetConfig = DEFAULT) -> float:
@@ -61,12 +61,12 @@ class ExitWitness:
         G = cfg.gate
         self.half = np.array([G.cr_half_len, G.cr_half_width, G.cr_half_height])
         ax = [np.linspace(-h, h, _GRID) for h in self.half]
-        self.cr_pts = np.array(np.meshgrid(*ax, indexing="ij")).reshape(3, -1).T           # gate frame
-        self.slack = float(np.linalg.norm(2.0 * self.half / (_GRID - 1))) / 2.0            # grid half-diagonal
+        self.cr_pts = np.array(np.meshgrid(*ax, indexing="ij")).reshape(3, -1).T
+        self.slack = float(np.linalg.norm(2.0 * self.half / (_GRID - 1))) / 2.0
         self.dirs = fibonacci_sphere(_DIRS)
         self.v_bound = speed_bound(cfg)
-        self.background: Dict[str, List[Tuple[float, float]]] = {s: [] for s in SECTORS}  # sector -> [(r, t)]
-        self.confirmations = {}  # sector -> (capture time, centre-range lo/hi, sonar origin, count)
+        self.background: Dict[str, List[Tuple[float, float]]] = {s: [] for s in SECTORS}
+        self.confirmations = {}
 
     def reset(self) -> None:
         self.background = {s: [] for s in SECTORS}
@@ -75,7 +75,6 @@ class ExitWitness:
     def clear_confirmation(self) -> None:
         self.confirmations.clear()
 
-    # ------------------------------------------------------------------ geometry
     def _cone(self, g, p: np.ndarray, yaw: float, sector: str):
         R = _rot(yaw)
         m = g.to_gate_frame(p + R @ MOUNTS[sector])
@@ -93,11 +92,10 @@ class ExitWitness:
         dc = corners - m
         rc = np.linalg.norm(dc, axis=1)
         if np.all(np.arccos(np.clip((dc @ a) / rc, -1.0, 1.0)) <= nominal):
-            return float(rc.max())         # the whole CR is in the nominal cone: exact (v2 FRONT corridor)
+            return float(rc.max())
         d = self.cr_pts - m
         r = np.linalg.norm(d, axis=1)
         ang = np.arccos(np.clip((d @ a) / np.maximum(r, 1e-9), -1.0, 1.0))
-        # a hull centred at a grid point (or between grid points: slack) reaches R_OUT around it
         grow = R_OUT + self.slack
         reach_ang = np.arcsin(np.clip(grow / np.maximum(r, grow), 0.0, 1.0))
         inside = ang <= np.array([self._half_angle(max(x - grow, 1e-3)) for x in r]) + reach_ang
@@ -121,14 +119,12 @@ class ExitWitness:
         u = self.dirs[np.arccos(np.clip(self.dirs @ a, -1.0, 1.0)) <= self._half_angle(lo)]
         for rho in (lo, 0.5 * (lo + hi), hi):
             x = m + rho * u
-            # the centre is within R_OUT of the echoing surface point x
             beyond = x[:, 0] + R_OUT > self.half[0]
             gap = np.linalg.norm(x - np.clip(x, -self.half, self.half), axis=1) - R_OUT
             if np.any(beyond & (gap <= reach)):
                 return True
         return False
 
-    # ------------------------------------------------------------------ per capture
     def update(self, t: float, g, p: np.ndarray, yaw: float, targets, occupant_seen: bool,
                t_last_corridor: float, healthy: Dict[str, bool]) -> Optional[Dict]:
         """The exit witness of this capture (``{sector, range}``), or None.  ``targets`` are the persistent
@@ -142,9 +138,7 @@ class ExitWitness:
                 if not healthy.get(sec, True):
                     continue
                 if r <= self.r_far(g, p, yaw, sec) + self.cfg.env.eps_range_far:
-                    continue                                                       # W1
-                # W3: echoes outside the CR seen while the occupant was in the corridor are background contacts,
-                # followed per sector; none of them is the occupant
+                    continue
                 bg = self.background[sec]
                 k = next((i for i, (rb, tb) in enumerate(bg) if abs(r - rb) <= ASSOC_M + self.v_bound * (t - tb)), None)
                 if k is not None:
@@ -155,7 +149,7 @@ class ExitWitness:
                     continue
                 if not (self.ahead(g, p, yaw, sec, r)
                         and self.exit_side_reachable(g, p, yaw, sec, r, reach + self.cfg.env.eps_range_near)):
-                    continue                                                       # W2
+                    continue
                 fresh.append((sec, float(r), t - tg.ages.get(sec, tg.age)))
         if occupant_seen or not fresh:
             self.clear_confirmation()
@@ -169,7 +163,7 @@ class ExitWitness:
         for sec, (r, stamp) in candidates.items():
             previous = self.confirmations.get(sec)
             if previous is not None and stamp <= previous[0] + 1e-6:
-                next_tracks[sec] = previous  # a held/cached echo is not another capture
+                next_tracks[sec] = previous
                 continue
             origin, _ = self._cone(g, p, yaw, sec)
             lo, hi = r - self.cfg.env.eps_range_far - R_OUT, r + self.cfg.env.eps_range_near + R_OUT

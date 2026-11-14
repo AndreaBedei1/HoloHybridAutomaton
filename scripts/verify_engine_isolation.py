@@ -55,7 +55,7 @@ def main():
                 assert set(env.agents) == {agent}
                 record.update(label=label, scenario=scenario["name"], agent=agent, sensor=sensor, client_uuid=env._uuid)
                 (args.out / (label + "_ready.json")).write_text(json.dumps(record, indent=1), encoding="utf-8")
-                barrier.wait(timeout=100)  # installed client's engine-loading semaphore allowance
+                barrier.wait(timeout=100)
                 for _ in range(round(DEFAULT.beacon.period_s * TICKS_PER_SEC)):
                     raw = env.tick()
                     frame = raw.get(agent, raw)

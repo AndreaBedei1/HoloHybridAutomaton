@@ -31,7 +31,7 @@ OUT = ROOT / "results" / "calibration" / "sonar_bench"
 FIG = ROOT / "figures" / "calibration" / "sensor"
 RANGES = DEFAULT.perc.sonar.ranges()
 THR = DEFAULT.perc.sonar.threshold
-O = np.array([0.0, -20.0, -8.0])          # deep enough to stage targets 6 m above
+O = np.array([0.0, -20.0, -8.0])
 
 
 def first_echo(profile, lo=0.0, hi=99.0):
@@ -103,8 +103,6 @@ def mode_coverage():
                 if tyaw and not label.startswith("diagonal"):
                     continue
                 p = O + rho * u
-                # set_physics_state sweeps: stage 6 m out along u, detouring around the observer if needed,
-                # then come in radially; check that the target really is where it was put
                 place(sim, tgt, O + 6.0 * u, (0, 0, tyaw))
                 place(sim, tgt, p, (0, 0, tyaw))
                 wait_captures(sim, 3)
@@ -135,7 +133,7 @@ def mode_coverage():
     return {"rows": rows, "summary": summary, "wall_s": round(time.time() - t0, 1), "setup": sim.setup_report}
 
 
-NAV_ERR = np.array([0.10, -0.10, 0.0])     # emulated dead-reckoning error of the observer (bench)
+NAV_ERR = np.array([0.10, -0.10, 0.0])
 
 
 def classify_case(sim, clf, obs, yaw_deg, captures=3):
@@ -150,7 +148,7 @@ def classify_case(sim, clf, obs, yaw_deg, captures=3):
         y = math.radians(yaw_deg)
         Rwb = np.array([[math.cos(y), -math.sin(y), 0.0], [math.sin(y), math.cos(y), 0.0], [0.0, 0.0, 1.0]])
         alt = dvl_altitude(sim.latest[obs].get("DVLSensor"))
-        seabed_z = None if alt is None else float(own[2] - 0.15 - alt)       # DVL head ~0.15 m below the origin
+        seabed_z = None if alt is None else float(own[2] - 0.15 - alt)
         profiles = {s_: sim.latest[obs].get(sg.sonar_sensor_name(s_)) for s_ in sg.SECTORS}
         ages = {s_: sim.t - sim.stamp[obs].get(sg.sonar_sensor_name(s_), -1e9) for s_ in sg.SECTORS}
         out = clf.classify(profiles, ages, own, Rwb, seabed_z)
@@ -170,8 +168,7 @@ def mode_classify():
     cases = []
     g6 = {g.gate_id: g for g in load_arena_gates(HORSESHOE_TRACK)}["G06"]
     gyaw = math.degrees(math.atan2(g6.axis[1], g6.axis[0]))
-    far = [O + np.array([-40.0, -30.0, 0]), O + np.array([-46.0, -30.0, 0])]     # beyond RangeMax of every test pose
-    # ---------------------------------------------------------------- arena session: A, B, D, F
+    far = [O + np.array([-40.0, -30.0, 0]), O + np.array([-46.0, -30.0, 0])]
     spec = bench_spec("bench_classify", [O] + far, gate_ids=("G06",))
     sim = HoloFleetSim(spec)
     sim.start()
@@ -200,8 +197,7 @@ def mode_classify():
     cases.append({"case": "F_two_drones_one_cone", "expect": "FRONT: two DYNAMIC echoes (~1.7 m and ~5.0 m)",
                   "echoes": res, "profiles": prof, **extra})
     sim.close()
-    # ---------------------------------------------------------------- seabed session: C, E
-    SB = np.array([0.0, -40.0, -292.7])                      # ~2 m above the seabed (z ~ -294.7 here)
+    SB = np.array([0.0, -40.0, -292.7])
     box = ([-50.0, -90.0, -310.0], [50.0, 10.0, -260.0])
     spec = bench_spec("bench_seabed", [SB, SB + np.array([0, 25.0, 0])], env_box=box)
     sim = HoloFleetSim(spec)
@@ -239,7 +235,7 @@ def mode_perf():
             sim.start()
             for k, nm in enumerate(sim.names):
                 sim.pin(nm, pos[k], (0, 0, 8.5 if with_gate else 0.0))
-            sim.step({nm: None for nm in sim.names}, 1.0)       # warm-up
+            sim.step({nm: None for nm in sim.names}, 1.0)
             sim.tick_wall_ms.clear()
             c0 = sim.sonar_captures
             t0 = time.time()
@@ -270,7 +266,6 @@ def mode_shot():
             imgs.append(np.asarray(img)[:, :, :3].copy())
     sim.close()
     FIG.mkdir(parents=True, exist_ok=True)
-    # the cone lines are drawn on capture ticks only: keep the frame with the most green pixels
     best = max(imgs, key=lambda im: int(((im[:, :, 1] > 200) & (im[:, :, 0] < 80) & (im[:, :, 2] < 80)).sum()))
     cv2.imwrite(str(FIG / "six_sonar_cones_holoocean.png"), best)
     return {"frames": len(imgs)}

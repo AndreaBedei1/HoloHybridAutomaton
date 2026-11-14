@@ -52,13 +52,13 @@ from holo_fleet.ui.live import DemoUI  # noqa: E402
 
 OUT = ROOT / "results" / "reference"
 STAGE_PREFIX = "holo_fleet_demo_"
-MEDIA_DIRS = ("fleet_view", "frames", "dashboard")       # frame sequences (GIFs: *.gif)
+MEDIA_DIRS = ("fleet_view", "frames", "dashboard")
 
 
 def _alive(pid: int) -> bool:
     try:
         import psutil
-    except ImportError:                                   # cannot tell: keep the folder
+    except ImportError:
         return True
     return psutil.pid_exists(pid)
 
@@ -69,7 +69,7 @@ def _clean_orphan_stages() -> None:
     for d in Path(tempfile.gettempdir()).glob(STAGE_PREFIX + "*"):
         try:
             orphan = not _alive(int((d / "owner.pid").read_text(encoding="utf-8")))
-        except (OSError, ValueError):                     # no pid yet: only when clearly stale
+        except (OSError, ValueError):
             orphan = time.time() - d.stat().st_mtime > 3600.0
         if orphan:
             shutil.rmtree(d, ignore_errors=True)
@@ -120,7 +120,7 @@ def _run_scenario(a, stage: Path) -> str:
     sc = SCENARIOS[a.scenario](cfg)
     ui = DemoUI(sc, cfg, sc.sim.names, show=not a.no_window, draw_viewport=not a.headless, selected=a.select)
     m = run(a.scenario, stage, headless=a.headless, run_id=a.scenario, duration=a.duration, ui=ui,
-            frame_every_s=0.5 if a.media else math.inf, cfg=cfg, noise=noise, seed=a.seed)   # no frame without --media
+            frame_every_s=0.5 if a.media else math.inf, cfg=cfg, noise=noise, seed=a.seed)
     print_summary(a.scenario, m)
     if a.media:
         gif = make_gif((stage / a.scenario / "fleet_view").glob("fleet_*.jpg"), stage / a.scenario / f"{a.scenario}.gif",

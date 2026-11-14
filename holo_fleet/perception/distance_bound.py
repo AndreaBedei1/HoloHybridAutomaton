@@ -54,11 +54,11 @@ from holo_fleet.perception.sonar_geometry import (AXES, DEFAULT_SONAR, HULL_HALF
                                                   RHO_MIN, SECTORS, SonarModel, centre_distance_lower,
                                                   fibonacci_sphere)
 
-N_DIRS = 48000                                    # lattice of centre directions
-COVER_RAD = 0.0145                                # its covering radius [rad]: 0.0139 measured (tests/test_distance_bound.py)
+N_DIRS = 48000
+COVER_RAD = 0.0145
 RADII = tuple(float(x) for x in np.unique(np.round(np.append(RHO_MIN * 1.02 ** np.arange(126), 12.0), 4))
-              if x <= 12.0)                        # tabulated centre distances [m], 2 % apart
-MAX_REL_TILT_DEG = 10.0      # assumption: |tilt| of another hull relative to the observer's body frame (roll / pitch)
+              if x <= 12.0)
+MAX_REL_TILT_DEG = 10.0
 
 
 def _hull_cylinders(phi_deg: float = MAX_REL_TILT_DEG):
@@ -67,8 +67,8 @@ def _hull_cylinders(phi_deg: float = MAX_REL_TILT_DEG):
     a, h = float(min(HULL_HALF[0], HULL_HALF[1])), float(HULL_HALF[2])
     sp, cp = math.sin(math.radians(phi_deg)), math.cos(math.radians(phi_deg))
     disk = (min(a, h / sp if sp > 0 else a), 0.0)
-    r = 0.875 * a                                       # thinner cylinder: radius 7/8 of the disk ...
-    hc = min((h - r * sp) / cp, (a - r) / sp if sp > 0 else h)   # ... the tallest half-height that stays inside
+    r = 0.875 * a
+    hc = min((h - r * sp) / cp, (a - r) / sp if sp > 0 else h)
     return disk, (r, max(hc, 0.0))
 
 
@@ -98,7 +98,7 @@ def _touch_bits(pts: np.ndarray, radius: float, half_offset: float, model: Sonar
         hit = (ang <= model.half_angle_deg + half_offset * _leaf_deg(near) + widen) & \
               (r - radius <= model.range_max) & (r + radius >= model.range_min)
         if rim:
-            w = pts[:, None, :] + RIM[None, :, :] - MOUNTS[s]              # disk points, (N, rim, 3)
+            w = pts[:, None, :] + RIM[None, :, :] - MOUNTS[s]
             rw = np.linalg.norm(w, axis=2)
             aw = np.degrees(np.arccos(np.clip((w @ AXES[s]) / np.maximum(rw, 1e-9), -1.0, 1.0)))
             inside = (aw <= model.half_angle_deg + half_offset * _leaf_deg(np.maximum(rw, model.range_min))) & \
@@ -125,13 +125,13 @@ def _lattice(model: SonarModel = DEFAULT_SONAR):
         return dirs, z["must"], z["maybe"]
     except (OSError, ValueError, KeyError):
         pass
-    must = np.array([_touch_bits(rho * dirs, R_IN, -1.0, model, rim=True) for rho in RADII], np.uint8)  # hull reaches
-    maybe = np.array([_touch_bits(rho * dirs, R_OUT, +1.0, model) for rho in RADII], np.uint8)  # the detection /
-    try:                                                                                          # maybe-cone
+    must = np.array([_touch_bits(rho * dirs, R_IN, -1.0, model, rim=True) for rho in RADII], np.uint8)
+    maybe = np.array([_touch_bits(rho * dirs, R_OUT, +1.0, model) for rho in RADII], np.uint8)
+    try:
         f.parent.mkdir(parents=True, exist_ok=True)
         tmp = f.with_suffix(f".{os.getpid()}.tmp.npz")
         np.savez_compressed(tmp, must=must, maybe=maybe)
-        os.replace(tmp, f)                          # atomic: concurrent workers never read a partial file
+        os.replace(tmp, f)
     except OSError:
         pass
     return dirs, must, maybe
@@ -172,14 +172,11 @@ def _pattern_tables(pattern: FrozenSet[str], model: SonarModel = DEFAULT_SONAR):
             v = c_pts - MOUNTS[c]
             r = np.linalg.norm(v, axis=1)
             ang = np.degrees(np.arccos(np.clip((v @ AXES[c]) / r, -1.0, 1.0)))
-            # the ray m_c -> centre must lie in the detection cone (60 deg minus one leaf at the nearest range of the
-            # hull along it) with margin g
             lim = model.half_angle_deg - _leaf_deg(np.maximum(r - R_OUT, model.range_min))
-            sl = ang + g - lim                                      # <= 0: certified for this direction
+            sl = ang + g - lim
             cert[c][k] = bool(np.all(sl <= 0.0))
             slack.append(sl)
         cov[k] = bool(np.all(np.min(np.array(slack), axis=0) <= 0.0))
-    # suffix over radii: a property holds "from k" if it holds at every tabulated radius >= RADII[k]
     ex_from = np.logical_or.accumulate(exists[::-1])[::-1]
     cov_from = np.logical_and.accumulate(np.where(exists, cov, True)[::-1])[::-1]
     cert_from = {c: np.logical_and.accumulate(np.where(exists, cert[c], True)[::-1])[::-1] for c in members}
@@ -208,12 +205,12 @@ def touch_set_bound(H: FrozenSet[str], ranges: Mapping[str, float], eps_far: flo
     A = {s: centre_distance_lower(ranges[s], s, eps_far, model, centre_in_cone=True) for s in H}
     b = max(B.values())
     if b < RHO_MIN:
-        return b                                    # near field: no region table, bound B only
-    for _ in range(2):                              # a raised bound selects tighter tables once more
+        return b
+    for _ in range(2):
         ex_from, cov_from, cert_from = _pattern_tables(H, model)
         k = _band(b)
         if not ex_from[k]:
-            return None                             # no object with this touch set at distance >= b
+            return None
         nb = max([b] + [A[c] for c in H if cert_from[c][k]])
         if cov_from[k]:
             nb = max(nb, min(A.values()))
@@ -233,7 +230,7 @@ def touch_set_bounds(ranges: Mapping[str, float], ages: Mapping[str, float], eps
         for H in combinations(E, n):
             H = frozenset(H)
             if any(MIRRORED(a, b) for a, b in combinations(H, 2)):
-                continue                            # opposite cones never share an object beyond the near field
+                continue
             v = touch_set_bound(H, ranges, eps_far, model)
             if v is not None:
                 out[H] = v - v_close * max(ages[s] for s in H)

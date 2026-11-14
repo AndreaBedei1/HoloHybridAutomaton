@@ -102,7 +102,7 @@ def model(cfg: FleetConfig, v_rec=None, k=None):
     F = cfg.form
     V = F.v_recovery_max if v_rec is None else v_rec
     kk = F.k_slot if k is None else k
-    s_rate = F.k_progress * F.range_gate_m + 0.02 * F.progress_max       # |sigma_dot| bound
+    s_rate = F.k_progress * F.range_gate_m + 0.02 * F.progress_max
     return {"V": V, "V_lat": math.sqrt(max(V * V - F.v_nominal ** 2, 0.0)), "k": kk, "v_clock": F.v_nominal,
             "v_ref_min": F.v_wait, "s_rate": s_rate, "w": W_RES, "corr": F.v_corr_max}
 
@@ -199,11 +199,10 @@ def waiting_bmc(cfg: FleetConfig, timeout: bool = True):
             cons += [tau[k + 1] == z3.If(vac[k], tau[k], nxt),
                      vac[k + 1] == z3.Or(vac[k], tau[k + 1] >= z3.RealVal(str(Fraction(repr(fr.t_rejoin)))) - z3.RealVal("1/1000000000"))]
         else:
-            cons += [tau[k + 1] == nxt, vac[k + 1] == vac[k]]       # mutation: no timeout, never vacant
+            cons += [tau[k + 1] == nxt, vac[k + 1] == vac[k]]
         o = Obs(f"_w{k}")
         legal = o.legal(cfg)
         calm = P.calm(o, Z3L, Mode.FORMATION_WAIT_REJOIN)
-        # own slot ok, no gate, calm; the only expected neighbour is the missing one
         cons += [legal, calm, z3.Not(o.mutex_zone), z3.Not(o.committed), z3.Not(P.self_lost(o, Z3L)),
                  o.neighbors_ok == vac[k + 1], o.degraded == vac[k + 1]]
         g = [e.guard(o, Z3L) for e in edges[Mode.FORMATION_WAIT_REJOIN] if e.target == Mode.FORMATION_WAIT_REJOIN]
@@ -220,22 +219,17 @@ def waiting_checks(cfg: FleetConfig) -> list:
                      cons + [waiting[-1]],
                      note="perception.track_missing (timer, latch) + spec guards; frozen steps (planned holds, drone "
                           "not on its slot) do not count, A5; with the B2 gate-delay hold the bound is F6g"))
-    # ranking function, one step: while waiting and not yet vacant, t_rejoin - tau decreases by dt and stays >= 0
     tau, tau1 = z3.Reals("tau tau1")
     T = z3.RealVal(str(Fraction(repr(cfg.form.t_rejoin))))
     out.append(check("F6r ranking: t_rejoin - tau >= 0 and decreases by dt per running step until the slot is vacant",
                      "0 <= tau < t_rejoin & tau' = tau + dt -> (t_rejoin - tau') = (t_rejoin - tau) - dt", ENC,
                      [tau >= 0, tau < T, tau1 == tau + DT, z3.Not(T - tau1 == T - tau - DT)]))
-    # F6g: the B2 gate-delay hold (perception._delayed_at_gate) adds a second, bounded counter.  Per running step either
-    # the hold accrues (h < H) or the timer runs: the sum (H - h) + (t_rejoin - tau) of two non-negative terms drops by
-    # dt every step, so the slot is vacant within t_rejoin + H of running time (H = gate_delay_max, the protocol's
-    # slowest serial passage); the timer also runs after the plan end (the final formation is static)
     h, h1, H = z3.Reals("h h1 H")
     step = z3.Or(z3.And(h < H, h1 == h + DT, tau1 == tau), z3.And(h1 == h, tau1 == tau + DT))
     def rh(x):
-        return z3.If(x < H, H - x, 0)                 # the hold left, truncated (the last increment may overshoot H)
+        return z3.If(x < H, H - x, 0)
     def rt(x):
-        return z3.If(x < T, T - x, 0)                 # the timer left, truncated (vacant once tau >= t_rejoin)
+        return z3.If(x < T, T - x, 0)
     R0, R1 = rh(h) + rt(tau), rh(h1) + rt(tau1)
     out.append(check("F6g bounded waiting with the gate-delay hold: max(H - h, 0) + (t_rejoin - tau) >= 0 strictly "
                      "decreases every running step (by dt on a timer step, by min(dt, H - h) > 0 on a hold step, at "
@@ -264,7 +258,7 @@ def run(cfg: FleetConfig = DEFAULT, verbose: bool = True) -> Report:
     for axis, step, sat_rate in (("along", along_step, p["V"] - p["v_clock"] - p["s_rate"] - p["w"]),
                                  ("lateral", lateral_step, p["V_lat"] - p["corr"] - p["w"])):
         noise = (p["s_rate"] + p["w"]) if axis == "along" else (p["corr"] + p["w"])
-        e_star = noise / p["k"] * 1.05 + 0.005                       # linear-regime ball (with a small margin)
+        e_star = noise / p["k"] * 1.05 + 0.005
         e1 = max((p["V"] if axis == "along" else p["V_lat"]) / p["k"], e_star + 0.05)
         eps_far = best_eps(step, p, e1, E_MAX)
         rep.add(CheckResult(f"F1 {axis}: ranking decrease in the saturated band [{e1:.2f}, {E_MAX}] m",
@@ -281,7 +275,6 @@ def run(cfg: FleetConfig = DEFAULT, verbose: bool = True) -> Report:
         rep.add(check(f"F3 {axis}: the ball |e| <= {e_star:.2f} m is invariant", "|e| <= e* -> |e'| <= e*", ENC,
                       [zabs(e) <= e_star] + dist + [zabs(e_n) > e_star]), verbose)
         rep.results[-1].note = f"e* = {e_star:.3f} m (A4 needs the onboard form_err below e_ok = {cfg.form.e_ok} m)"
-    # ---------------------------------------------------------------- F4 automaton
     edges = build_edges(cfg)
     P = Predicates(cfg)
     o = Obs()
@@ -308,13 +301,10 @@ def run(cfg: FleetConfig = DEFAULT, verbose: bool = True) -> Report:
                       "!self_lost & !neighbors_ok -> target = WAIT_REJOIN", ENC,
                       common + [z3.Not(P.self_lost(o, Z3L)), z3.Not(o.neighbors_ok),
                                 z3.Or(*[g for e, g in gs if e.target != Mode.FORMATION_WAIT_REJOIN])]), verbose)
-    # ---------------------------------------------------------------- F6 bounded waiting (P3-deg)
     for r in waiting_checks(cfg):
         rep.add(r, verbose)
-    # ---------------------------------------------------------------- current envelope (raw current -> authority)
     for r in head_envelope_checks(cfg, p):
         rep.add(r, verbose)
-    # ---------------------------------------------------------------- mutations
     pm = model(cfg, v_rec=cfg.form.v_nominal)
     e1m = max(pm["V"] / pm["k"], 0.5)
     rep.add(check("Fm1 mutation: no catch-up margin (v_recovery = v_clock) must break F1 (along)",

@@ -15,7 +15,7 @@ import numpy as np
 from holo_fleet.config import DEFAULT, FleetConfig
 from holo_fleet.perception.nav import NavState, wrap
 
-AUTHORITY = {"nominal": 0.40, "brake": 0.50, "escape": 0.60}   # max |(surge, sway)| normalised command
+AUTHORITY = {"nominal": 0.40, "brake": 0.50, "escape": 0.60}
 
 
 class LowLevelController:
@@ -27,8 +27,8 @@ class LowLevelController:
         self.i_z = 0.0
         self.k_iz = 0.3
         self.i_psi = 0.0
-        self.k_ipsi = 0.0067                       # integral time 30 s: a queued drone keeps its heading tolerance through a wait of minutes (RC10)
-        self.saturated = False                     # last horizontal command hit the authority limit
+        self.k_ipsi = 0.0067
+        self.saturated = False
         self.yaw = 0.0
 
     def command(self, nav: NavState, v_d: np.ndarray, yaw_d: float, authority: str, dt: float,
@@ -48,17 +48,15 @@ class LowLevelController:
         if n > lim:
             u *= lim / n
         elif dvl_fresh:
-            # conditional integration (anti-windup): integrate only while not saturated;
-            # the integral term is what rejects a steady current measured through the DVL
             self.i_xy = np.clip(self.i_xy + err * dt, -0.75, 0.75)
         ez = float(v_d[2] - float(nav.v_body[2]))
         heave = v_d[2] / pl.heave_speed_per_cmd + self.k_vz * ez + self.k_iz * self.i_z
         if abs(heave) < 0.35:
-            self.i_z = float(np.clip(self.i_z + ez * dt, -0.6, 0.6))     # rejects a vertical current
+            self.i_z = float(np.clip(self.i_z + ez * dt, -0.6, 0.6))
         heave = float(np.clip(heave, -0.35, 0.35))
         self.yaw = nav.yaw
         e_psi = wrap(yaw_d - nav.yaw)
-        if abs(e_psi) < math.radians(20.0):        # a slew is the proportional term's business
+        if abs(e_psi) < math.radians(20.0):
             self.i_psi = float(np.clip(self.i_psi + e_psi * dt, -8.0, 8.0))
         yaw = float(np.clip(self.k_psi * e_psi + self.k_ipsi * self.i_psi - self.k_r * nav.yaw_rate, -0.12, 0.12))
         return {"surge": float(u[0]), "sway": float(u[1]), "heave": heave, "yaw": yaw}

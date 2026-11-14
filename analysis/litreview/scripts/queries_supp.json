@@ -1,8 +1,0 @@
-{
-"T4s": ["narrow passage multi-robot", "intersection management autonomous vehicles survey", "AGV zone control deadlock"],
-"T6s": ["range-only observability underwater"],
-"T8s": ["passive inverted USBL", "low-cost acoustic modem localization micro AUV", "single beacon swarm AUV acoustic"],
-"T9s": ["range-based formation control marine vehicles", "cooperative path following event-triggered communication marine"],
-"T10s": ["formation reconfiguration agent failure", "graceful degradation multi-robot formation"],
-"T11s": ["BlueROV2 multi-vehicle"]
-}

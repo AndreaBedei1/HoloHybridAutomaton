@@ -23,16 +23,16 @@ class BarBox:
     """Oriented box (gate bar) in world/map coordinates."""
 
     center: np.ndarray
-    axes: np.ndarray          # 3x3, columns = local x,y,z axes in world
-    half: np.ndarray          # half dimensions
+    axes: np.ndarray
+    half: np.ndarray
 
 
 @dataclass(frozen=True)
 class GateSpec:
     gate_id: str
-    center: np.ndarray        # world (map) coordinates
-    axis: np.ndarray          # unit passage direction (horizontal)
-    right: np.ndarray         # unit lateral axis (horizontal, left-handed w.r.t. axis: l>0 is LEFT)
+    center: np.ndarray
+    axis: np.ndarray
+    right: np.ndarray
     inner_width: float
     inner_height: float
     bars: Tuple[BarBox, ...] = ()
@@ -55,16 +55,16 @@ class GateSpec:
 
 @dataclass(frozen=True)
 class Slot:
-    along: float              # path-frame along-track offset [m]
-    lateral: float            # path-frame lateral offset, left positive [m]
-    dz: float = 0.0           # depth offset (up positive) [m]
+    along: float
+    lateral: float
+    dz: float = 0.0
 
 
 @dataclass
 class Path:
     """Planar polyline (survey line) with a constant survey depth."""
 
-    waypoints: np.ndarray     # (N,2)
+    waypoints: np.ndarray
     depth_z: float
 
     def __post_init__(self) -> None:
@@ -114,9 +114,9 @@ class FormationClock:
     s0: float
     v: float
     t_start: float = 0.0
-    holds: Tuple[Tuple[float, float], ...] = ()      # (hold_s, dwell_s)
+    holds: Tuple[Tuple[float, float], ...] = ()
     s_end: float = 1e9
-    jumps: Tuple[Tuple[float, float], ...] = ()      # (s_from, s_to), s_to > s_from
+    jumps: Tuple[Tuple[float, float], ...] = ()
 
     def s(self, t: float) -> float:
         tau = max(0.0, t - self.t_start)
@@ -124,15 +124,15 @@ class FormationClock:
         s, t_cur = self.s0, 0.0
         for at, kind, par in events:
             if at < s - 1e-9:
-                continue                                  # behind the reference (skipped by a jump)
+                continue
             t_reach = t_cur + (at - s) / max(self.v, 1e-9)
             if tau <= t_reach:
                 return min(s + self.v * (tau - t_cur), self.s_end)
-            if kind == 1:                                 # hold
+            if kind == 1:
                 if tau <= t_reach + par:
                     return min(at, self.s_end)
                 s, t_cur = at, t_reach + par
-            else:                                         # jump
+            else:
                 s, t_cur = par, t_reach
         return min(s + self.v * (tau - t_cur), self.s_end)
 
@@ -146,19 +146,19 @@ class MissionPlan:
     slot_index: int
     slots: List[Slot]
     path: Path
-    gates: List[GateSpec]             # ordered list of gates this drone must traverse
-    structures: List[GateSpec]        # every mapped structure (for clutter rejection)
-    launch_position: np.ndarray       # surveyed launch position (world/map)
+    gates: List[GateSpec]
+    structures: List[GateSpec]
+    launch_position: np.ndarray
     launch_yaw_deg: float
-    static_rank: int                  # queue precedence order of the plan (queue_order): last-resort tie-break
-    s_end: float                      # along-track arclength at which the survey ends
-    failsafe_layer_dz: float = 0.0    # pre-assigned vertical layer used when blind
+    static_rank: int
+    s_end: float
+    failsafe_layer_dz: float = 0.0
     formation_enabled: bool = True
     mission_name: str = ""
     template_name: str = ""
-    queue_lateral: float = 0.0                # own queue point lateral offset (lateral order of the slots)
-    queue_s: float = -4.6                     # queue line (gate frame), from GateRule.queue_s(n)
-    queue_dz: float = 0.0                     # own queue point vertical offset (stacked slots only)
+    queue_lateral: float = 0.0
+    queue_s: float = -4.6
+    queue_dz: float = 0.0
     clock: Optional["FormationClock"] = None
     extra: dict = field(default_factory=dict)
 

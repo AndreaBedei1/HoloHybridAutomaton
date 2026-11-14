@@ -66,7 +66,6 @@ from holo_fleet.perception import sonar_geometry as sg
 ENC = "formal/check_separation.py"
 
 
-# ---------------------------------------------------------------------------------------------- S0
 def _hull_points(n=12):
     pts = []
     for ax in range(3):
@@ -96,7 +95,7 @@ def _level_rot(rng, tilt_deg):
     ax = rng.uniform(-math.pi, math.pi)
     k = np.array([math.cos(ax), math.sin(ax), 0.0])
     K = np.array([[0.0, -k[2], k[1]], [k[2], 0.0, -k[0]], [-k[1], k[0], 0.0]])
-    tilt = np.eye(3) + math.sin(t) * K + (1.0 - math.cos(t)) * (K @ K)           # Rodrigues
+    tilt = np.eye(3) + math.sin(t) * K + (1.0 - math.cos(t)) * (K @ K)
     cy, sy = math.cos(yaw), math.sin(yaw)
     return tilt @ np.array([[cy, -sy, 0.0], [sy, cy, 0.0], [0.0, 0.0, 1.0]])
 
@@ -130,9 +129,9 @@ def scene_ranges(hulls, rng, cfg: FleetConfig, errors: str = "random", boundary:
 
 def _direction(rng, kind):
     u = rng.normal(size=3)
-    if kind == "corner":                          # near the eight cube corners: no cone contains the centre for sure
+    if kind == "corner":
         u = np.sign(u) / math.sqrt(3.0) + 0.12 * rng.normal(size=3)
-    elif kind == "edge":                          # near the twelve cube edges: two adjacent cones overlap
+    elif kind == "edge":
         ax = rng.choice(3)
         u = np.sign(u)
         u[ax] = 0.0
@@ -191,7 +190,6 @@ def naive_union_bound(ranges, eps_far=0.12):
     return min(sg.centre_distance_lower(r, s, eps_far, centre_in_cone=True) for s, r in ranges.items())
 
 
-# ---------------------------------------------------------------------------------------------- S1
 def params(cfg: FleetConfig):
     env, sep = cfg.env, cfg.sep
     return {"dt": env.dt, "c_max": env.c_max, "a_pair": 2.0 * env.a_brake, "w_rel": env.w_rel_max,
@@ -215,7 +213,7 @@ def trans(p, d, c, dh, i):
 
 
 def meas(d, dh, i):
-    return dh[i] <= d[i]                       # S0: the onboard distance never exceeds the true one
+    return dh[i] <= d[i]
 
 
 def bmc(p, K: int):
@@ -236,11 +234,9 @@ def kinduction_step(p, k: int):
     return cons
 
 
-# ---------------------------------------------------------------------------------------------- run
 def run(cfg: FleetConfig = DEFAULT, verbose: bool = True, n_poses: int = 35000) -> Report:
     rep = Report("separation")
     env, sep = cfg.env, cfg.sep
-    # ---------------------------------------------------------------- S0
     t0 = time.time()
     est = deployed_bound(cfg)
     sets = [("single hull, 1-8 m", dict(kind="single", n_hulls=(1, 1), dist=(1.0, 8.0))),
@@ -285,16 +281,15 @@ def run(cfg: FleetConfig = DEFAULT, verbose: bool = True, n_poses: int = 35000) 
     S2 = bound_scenes(cfg, max(3000, n_poses // 10), lambda r: naive_union_bound(r, cfg.env.eps_range_far), seed=10,
                       kind="corner", n_hulls=(1, 2), dist=(0.6, 3.0), errors="far", boundary="narrow")
     g2 = S2[:, 0] - S2[:, 1]
-    if verbose:                                   # informational: bound A on every echo has no certificate
+    if verbose:
         print(f"       S0 (info) bound A on every echo, worst-case corner scenes: min(d - d_hat) {g2.min():.3f} m, "
               f"{int((g2 < 0).sum())} of {len(S2)} above the true distance (not certified: no touch-set reasoning)")
     S3 = bound_scenes(cfg, max(2000, n_poses // 15), est, seed=11, kind="corner", n_hulls=(1, 1), dist=(1.0, 3.0),
                       tilt_deg=90.0)
     g3 = S3[:, 0] - S3[:, 1]
-    if verbose:                                   # informational: the role of the hull-tilt assumption
+    if verbose:
         print(f"       S0 outside the tilt assumption (any attitude, cube corners): min(d - d_hat) {g3.min():.3f} m, "
               f"{int((g3 < 0).sum())} of {len(S3)} scenes above the true distance")
-    # ---------------------------------------------------------------- S1
     p = params(cfg)
     if verbose:
         print("S1 parameters:", {k: round(v, 4) for k, v in p.items()})
@@ -329,12 +324,6 @@ def run(cfg: FleetConfig = DEFAULT, verbose: bool = True, n_poses: int = 35000) 
     pm = dict(p, d_warning=max(p["d_safe"] + 0.1, hi - 0.25))
     rep.add(check(f"S1m mutation: d_warning={pm['d_warning']:.2f} must violate P1",
                   "expect counterexample (trace of d_i, c_i)", ENC, bmc(pm, K), expect="sat"), verbose)
-    # one-sided reaction (one drone of the pair does not react: a missed detection, a drone in FAILSAFE holding its
-    # own position, a non-cooperative vehicle): only one drone removes the closing component.  With the configured,
-    # conservative a_brake (0.5 m/s^2) the BMC is SAT (reported: P1 is then NOT guaranteed by this model); with the
-    # per-drone deceleration calibrated in closed loop in the simulator (Envelope.a_brake_measured, 0.743 m/s^2 from the
-    # stop time, results/calibration/plant_calibration.json) it is UNSAT.  The one-sided claim therefore rests on
-    # the simulator calibration, not on the configured margin; it is to be re-measured on hardware.
     p1s = dict(p, a_pair=env.a_brake)
     rep.add(check("S1o one-sided reaction at the configured a_brake: reported (not guaranteed)",
                   "Init & T^K -> G d >= d_safe, a_pair = a_brake", ENC, bmc(p1s, K), expect="sat"), verbose)
@@ -352,9 +341,8 @@ def run(cfg: FleetConfig = DEFAULT, verbose: bool = True, n_poses: int = 35000) 
     if verbose:
         print(f"       one-sided at the configured a_brake: smallest verified d_warning = {hi1:.3f} m "
               f"(configured {p['d_warning']})")
-    # ---------------------------------------------------------------- S2 escape tables
     planner = EscapePlanner(cfg)
-    sample_err = sg.SAMPLING_ERR        # the planner's guarantees are already certified (sampled - SAMPLING_ERR)
+    sample_err = sg.SAMPLING_ERR
     worst_a, worst_b, rows = 9.0, 9.0, []
     for P in sorted(sg.regions(cfg.perc.sonar), key=lambda x: (len(x), sorted(x))):
         planner.reset()
@@ -380,7 +368,7 @@ def run(cfg: FleetConfig = DEFAULT, verbose: bool = True, n_poses: int = 35000) 
     for P1, P2 in itertools.combinations_with_replacement(pats, 2):
         planner.reset()
         ch = planner.escape_velocity([(P1, env.v_open), (P2, env.v_open)], [], 0.0, env.v_escape)
-        within90 = float((R[P1] @ R[P2].T).min()) >= 0.0             # every direction pair <= 90 deg apart
+        within90 = float((R[P1] @ R[P2].T).min()) >= 0.0
         if ch.guarantee > 0:
             feasible += 1
         else:
@@ -408,7 +396,6 @@ def run(cfg: FleetConfig = DEFAULT, verbose: bool = True, n_poses: int = 35000) 
                         verdict="violated" if worst_rev < env.g_min else "holds", passed=worst_rev < env.g_min,
                         note=f"worst opening of the fixed reverse escape {worst_rev:.2f}"), verbose)
     rep.tables = {"escape_single_threat": rows}
-    # ---------------------------------------------------------------- S3 triangle lemma
     Pz = [[z3.Real(f"p{i}{a}") for a in "xyz"] for i in range(3)]
     dot = lambda a, b: sum(x * y for x, y in zip(a, b))  # noqa: E731
     sub = lambda a, b: [x - y for x, y in zip(a, b)]  # noqa: E731
@@ -420,7 +407,6 @@ def run(cfg: FleetConfig = DEFAULT, verbose: bool = True, n_poses: int = 35000) 
                   sep_c + [z3.Or(z3.And(obtuse(0, 1, 2), obtuse(1, 0, 2)), z3.And(obtuse(0, 1, 2), obtuse(2, 0, 1)),
                                  z3.And(obtuse(1, 0, 2), obtuse(2, 0, 1)))], timeout_ms=900000,
                   note="nonlinear real arithmetic: about 50 s alone, longer under load"), verbose)
-    # ---------------------------------------------------------------- S4 blackout lemma
     T_b = 0.8
     Kb = int(round((T_b + env.tau_max) / p["dt"])) + 10
     d, c, dh = radial_vars(Kb)

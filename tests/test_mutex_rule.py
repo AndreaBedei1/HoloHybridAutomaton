@@ -29,10 +29,8 @@ def test_table():
     assert classify_pattern({"FRONT", "RIGHT"}) == WAIT and classify_pattern({"LEFT", "REAR"}) == WAIT
     assert classify_pattern({"RIGHT"}) == PRIORITY and classify_pattern({"REAR"}) == PRIORITY
     assert classify_pattern({"REAR", "RIGHT"}) == PRIORITY
-    # vertical stack: the upper drone goes first; a horizontal sector always decides first
     assert classify_pattern({"UP"}) == WAIT and classify_pattern({"DOWN"}) == PRIORITY
     assert classify_pattern({"RIGHT", "UP"}) == PRIORITY and classify_pattern({"LEFT", "DOWN"}) == WAIT
-    # ambiguous (one target above and below at once): the static rank, as the very last tie-break
     assert classify_pattern({"UP", "DOWN"}) == RANK
 
 

@@ -24,9 +24,9 @@ from holo_fleet.config import DEFAULT, FleetConfig
 from holo_fleet.mission import MissionPlan
 from holo_fleet.perception.sonar_geometry import AXES, MOUNTS, SECTORS, far_field_pattern
 
-HULL_MID = 0.24            # typical extent of a BlueROV2 hull towards the observer [m]
-PATTERN_TOL_DEG = 35.0     # a displaced neighbour may appear up to this beyond the expected sectors
-NEIGHBOUR_MEMORY_S = 1.0   # a neighbour matched within this is present (intermittent weak returns)
+HULL_MID = 0.24
+PATTERN_TOL_DEG = 35.0
+NEIGHBOUR_MEMORY_S = 1.0
 
 
 @dataclass
@@ -39,7 +39,7 @@ class NeighbourCheck:
     along_w: float = 0.0
     lateral_w: float = 0.0
     seen: bool = False
-    alias: tuple = ()          # slots a range-only sonar cannot tell apart from this one (confirmed as a group)
+    alias: tuple = ()
 
 
 @dataclass
@@ -47,15 +47,15 @@ class FormationObs:
     slot_err: np.ndarray = field(default_factory=lambda: np.zeros(3))
     slot_err_norm: float = 0.0
     checks: List[NeighbourCheck] = field(default_factory=list)
-    along_corr: float = 0.0           # weighted along-track range residual [m]
+    along_corr: float = 0.0
     lateral_corr: float = 0.0
-    lateral_far: Optional[float] = None   # away from the slot: lateral error of the own reference from the fixes [m]
-    form_err: float = 0.0             # onboard formation-error estimate used by the guards [m]
+    lateral_far: Optional[float] = None
+    form_err: float = 0.0
     neighbors_ok: bool = True
-    missing: List[int] = field(default_factory=list)      # required (expected nearby, observable), not seen recently
-    required: List[int] = field(default_factory=list)     # expected nearby and observable (healthy sectors, unmasked)
-    front_residual: Optional[float] = None                # range residual of the same-lane neighbour ahead (seen now)
-    behind: Optional[float] = None                        # B2: largest certain lag of a non-vacant neighbour [m]
+    missing: List[int] = field(default_factory=list)
+    required: List[int] = field(default_factory=list)
+    front_residual: Optional[float] = None
+    behind: Optional[float] = None
 
 
 def same_lane_ahead(plan: MissionPlan, lane_tol: float = 1.0) -> List[int]:
@@ -150,7 +150,7 @@ def check_formation(plan: MissionPlan, cfg: FleetConfig, slot_err: np.ndarray, R
     for chk, _dw, dist, _u, exp_pat in expected:
         chk.alias = tuple(c2.slot for c2, _d2, dist2, _u2, pat2 in expected
                           if c2 is not chk and set(pat2) == set(exp_pat) and abs(dist2 - dist) < fr.range_gate_m)
-    fixes = {}                                     # B2: slot -> (distance, body direction, sectors) of a fresh fix
+    fixes = {}
     for chk, _dw, _dist, _u, _p in expected:
         v = None if not acoustic else acoustic.get(chk.slot)
         if v is not None and float(np.linalg.norm(v)) > 0.3:
@@ -158,22 +158,22 @@ def check_formation(plan: MissionPlan, cfg: FleetConfig, slot_err: np.ndarray, R
             ua = R_world_body.T @ (np.asarray(v, float) / da)
             fixes[chk.slot] = (da, ua, far_field_pattern(ua))
 
-    def near(look, tg, sec):                       # centre distance of the echo along ``look``, None if incompatible
+    def near(look, tg, sec):
         d_a, u_a, pat_a = look
         if sec not in pat_a or not compatible(tg.pattern, u_a):
             return None
         return estimate_centre_distance(tg.ranges.get(sec, tg.r_min), sec, u_a)
 
-    def heard_there(tg, sec):                      # B2: the fix of some heard neighbour places its drone at this echo
+    def heard_there(tg, sec):
         for f in fixes.values():
             d = near(f, tg, sec)
             if d is not None and abs(d - f[0]) <= fr.range_gate_m:
                 return True
         return False
 
-    cands = []                                     # (priority, |residual|, neighbour index, target index, sector, d_m)
+    cands = []
     for i, (chk, _dw, dist, u_body, exp_pat) in enumerate(expected):
-        look = fixes.get(chk.slot, (dist, u_body, exp_pat))     # where to look: the fix (B2) or the template
+        look = fixes.get(chk.slot, (dist, u_body, exp_pat))
         prio = 2 if chk.slot in vacant else (1 if chk.slot in missing else 0)
         for j, tg in enumerate(targets):
             for sec in tg.pattern:
@@ -182,12 +182,10 @@ def check_formation(plan: MissionPlan, cfg: FleetConfig, slot_err: np.ndarray, R
                     continue
                 if abs(d_m - look[0]) <= 3.0:
                     tg.possible_neighbour = True
-                # B2: near the fix AND, as in B0, within the range gate of the slot (a drone heard far from its
-                # slot is not seen at it: no formation residual from it, the missing / vacancy path as in B0)
                 if abs(d_m - look[0]) > fr.range_gate_m or abs(d_m - dist) > fr.range_gate_m:
                     continue
                 if chk.slot not in fixes and heard_there(tg, sec):
-                    continue                       # the echo of a heard drone is not that of an unheard one
+                    continue
                 cands.append((prio, abs(d_m - look[0]), i, j, sec, d_m))
     used_n, used_ts = set(), set()
     for _p, _r, i, j, sec, d_m in sorted(cands):
@@ -202,9 +200,6 @@ def check_formation(plan: MissionPlan, cfg: FleetConfig, slot_err: np.ndarray, R
         chk.along_w, chk.lateral_w = float(g @ t_hat), float(g @ n_hat)
         errs.append(abs(chk.residual))
         last_seen[chk.slot] = t
-    # neighbours a range-only sonar cannot separate (same expected sector pattern, expected distances within the
-    # range gate: e.g. a stacked pair seen from the side, one echo for both) are observable only as a group: an
-    # association of one member confirms the group
     for chk, d_world, dist, _u, _p in expected:
         if chk.seen:
             continue
@@ -221,15 +216,12 @@ def check_formation(plan: MissionPlan, cfg: FleetConfig, slot_err: np.ndarray, R
         if required:
             o.required.append(chk.slot)
         if required and t - last_seen.get(chk.slot, -1e9) > NEIGHBOUR_MEMORY_S:
-            o.missing.append(chk.slot)                 # expected nearby, healthy sectors, not seen recently
+            o.missing.append(chk.slot)
         o.checks.append(chk)
     seen = [c for c in o.checks if c.seen]
     if seen:
         o.along_corr = float(np.mean([c.residual * c.along_w for c in seen]))
         o.lateral_corr = float(np.mean([c.residual * c.lateral_w for c in seen]))
-    # residual of the neighbour ahead on the same lane relative to the OWN slot: the own along-track tracking error
-    # (an avoidance manoeuvre, a drone still closing on its slot) changes the range the same way and is removed, so
-    # that the drone compares its reference with the drone ahead (control/formation_time.py)
     ahead = same_lane_ahead(plan)
     e_along = float(np.asarray(slot_err, float) @ t_hat)
     front = [c.residual - e_along for c in seen if c.slot in ahead]

@@ -67,7 +67,7 @@ def _profile_panel(img, x, y, w, h, sector, prof, rd):
             u1 = max(u0 + 3, int(px0 + (px1 - px0) * e.r1 / 12.0))
             col = D.CLS_COLOR.get(e.cls, D.INK2)
             cv2.rectangle(img, (u0, py1 - 4), (u1, py0 - 1), col, 2)
-            if e.r0 - last_label >= 1.6 and n_labels < 3:          # no overlapping labels
+            if e.r0 - last_label >= 1.6 and n_labels < 3:
                 D._text(img, f"{D.CLS_SHORT.get(e.cls, e.cls)} {e.r0:.1f}", u0, py1 - 8, 0.42, col)
                 last_label, n_labels = e.r0, n_labels + 1
         if rd.structure_window is not None:
@@ -97,7 +97,6 @@ def _frame(title, caption, t, profiles, readings, truth_lines, top_pts, cam):
                  "brown line: seabed clutter onset", 16, H - 46, 0.4, D.MUTED)
     cv2.rectangle(img, (D.SPLIT + 4, 58), (W - 8, 82), D.REFEREE_HDR, -1)
     D._text(img, "REFEREE / GROUND TRUTH - never given to the observer", D.SPLIT + 12, 76, 0.5, (16, 16, 16))
-    # top view of observer / target / gate, drawn on its own canvas (clipped to the panel)
     mx, my, mw, mh = D.SPLIT + 4, 90, W - D.SPLIT - 12, 330
     pan = np.full((mh, mw, 3), D.PANEL, np.uint8)
     c = top_pts["center"]
@@ -127,7 +126,7 @@ def _frame(title, caption, t, profiles, readings, truth_lines, top_pts, cam):
     img[my:my + mh, mx:mx + mw] = pan
     yy = my + mh + 30
     words, cap_lines, cur = caption.split(), [], ""
-    for w_ in words:                                       # wrap the caption to the panel width
+    for w_ in words:
         if len(cur) + len(w_) + 1 > 62:
             cap_lines.append(cur)
             cur = w_
@@ -188,7 +187,6 @@ def run_classification_demo(out_root: Path, headless: bool = True, show: bool = 
         corners = np.array([b.center + b.axes @ (b.half * np.array([sx, sy, sz])) for sx in (-1, 1) for sy in (-1, 1) for sz in (-1, 1)])
         bars.append(cv2.convexHull((corners[:, :2] * 1000).astype(np.float32)).reshape(-1, 2) / 1000.0)
     t_global = 0.0
-    # ------------------------------------------------------------------------------------------ part 1: gate
     obs_pos = g6.center - 4.5 * g6.axis
     far = obs_pos + 14.0 * left
     spec = bench_spec("demo_classification", [obs_pos, far], yaws=[gyaw, gyaw], gate_ids=("G06",), camera_drone=0)
@@ -235,8 +233,7 @@ def run_classification_demo(out_root: Path, headless: bool = True, show: bool = 
             log.append({"t": round(t_global, 1), "part": "gate", "caption": caption, "true_distance": round(d, 3),
                         "echoes": {s: [(round(e.r0, 2), e.cls) for e in r.echoes] for s, r in rd.items() if r.echoes}})
     sim.close()
-    # ------------------------------------------------------------------------------------------ part 2: seabed
-    SB = np.array([0.0, -40.0, -292.7])                    # about 2 m above the seabed
+    SB = np.array([0.0, -40.0, -292.7])
     box = ([-50.0, -90.0, -310.0], [50.0, 10.0, -260.0])
     spec = bench_spec("demo_seabed", [SB, SB + np.array([25.0, 0, 12.0])], env_box=box, camera_drone=0)
     spec.chase_offset = (-3.5, -2.5, 1.0)
@@ -247,7 +244,7 @@ def run_classification_demo(out_root: Path, headless: bool = True, show: bool = 
     sim.pin(o, SB, (0, 0, 0))
     sim.pin(tg, SB + np.array([25.0, 0, 12.0]), (0, 0, 180))
     sim.step({nm: None for nm in sim.names}, 0.5)
-    for wp in (SB + np.array([7.0, 0.0, 12.0]), SB + np.array([7.0, 0.0, 0.0])):     # descend far away (no sweep)
+    for wp in (SB + np.array([7.0, 0.0, 12.0]), SB + np.array([7.0, 0.0, 0.0])):
         sim.pin(tg, wp, (0, 0, 180))
         sim.step({nm: None for nm in sim.names}, 0.3)
     legs = [("5) near the seabed: the lower part of every cone hits the bottom -> SEABED (DVL altitude + cone)",

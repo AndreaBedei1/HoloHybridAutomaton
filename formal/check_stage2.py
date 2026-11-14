@@ -51,7 +51,7 @@ def observability(cfg: FleetConfig = DEFAULT, n_s: int = 17, n_l: int = 9, n_z: 
     G, pc = cfg.gate, cfg.perc
     g = load_arena_gates(HORSESHOE_TRACK, ["G06"])[0]
     clf = EchoClassifier(gate_bars=list(g.bars), cfg=cfg)
-    s_hold = -(G.cr_half_len + float(HULL_HALF[0]) + 0.15)            # = control/flows.py RELOC_MARGIN_M
+    s_hold = -(G.cr_half_len + float(HULL_HALF[0]) + 0.15)
     yaw = math.atan2(g.axis[1], g.axis[0])
     R = np.array([[math.cos(yaw), -math.sin(yaw), 0.0], [math.sin(yaw), math.cos(yaw), 0.0], [0.0, 0.0, 1.0]])
     half = math.radians(pc.sonar.half_angle_deg)

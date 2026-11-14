@@ -79,9 +79,9 @@ from holo_fleet.mission import MissionPlan
 from holo_fleet.perception.formation_perception import (NEIGHBOUR_MEMORY_S, FormationObs, check_formation,
                                                        expected_relative)
 
-CONFIRM_N = 3              # associations ...
-CONFIRM_WINDOW_S = 1.0     # ... within this window confirm that a missing neighbour is back,
-CONFIRM_GATE = 0.5         # ... each within this fraction of the range gate (near its slot)
+CONFIRM_N = 3
+CONFIRM_WINDOW_S = 1.0
+CONFIRM_GATE = 0.5
 def fix_uncertainty(f) -> float:
     """Horizontal radius of the error region of a fix (samples of the declared range, bearing and pose errors) plus its slack."""
     pts = np.asarray(f.pts, float).reshape(-1, 3)
@@ -89,9 +89,9 @@ def fix_uncertainty(f) -> float:
     return spread + float(f.slack)
 
 
-A_CONFIRM = 2              # B2 rule A-D: consecutive accepted fixes ...
-A_DISPLACED_MARGIN = 1.0   # ... whose region lies beyond e_lost + this from the expected position [m]
-A_CORR_AGE_S = 1.5         # a fix this recent feeds the relative formation residual
+A_CONFIRM = 2
+A_DISPLACED_MARGIN = 1.0
+A_CORR_AGE_S = 1.5
 from holo_fleet.perception.acoustic import AcousticTracker
 from holo_fleet.perception.frame import SensorFrame
 from holo_fleet.perception.gate_perception import GateObs, GatePerception
@@ -105,9 +105,9 @@ from holo_fleet.perception.targets import EchoHold, SectorTracker, Target, build
 @dataclass
 class LocalObservation:
     t: float
-    p: np.ndarray                      # own estimated position (map frame)
+    p: np.ndarray
     yaw: float
-    R_wb: np.ndarray                   # body -> world (estimated attitude)
+    R_wb: np.ndarray
     v_world: np.ndarray
     readings: Dict[str, SectorReading]
     targets: List[Target]
@@ -140,7 +140,7 @@ class AttitudeFilter:
             return
         ax, ay, az = arr[0][:3]
         g = math.sqrt(ax * ax + ay * ay + az * az)
-        if not 8.0 < g < 11.6:                  # accelerating: keep the previous estimate
+        if not 8.0 < g < 11.6:
             return
         roll = math.atan2(ay, az)
         pitch = math.atan2(-ax, math.sqrt(ay * ay + az * az))
@@ -163,39 +163,37 @@ class Perception:
         self.cfg = cfg
         launch = np.asarray(plan.launch_position, dtype=float) + (np.zeros(3) if nav_init_err is None else nav_init_err)
         self.nav = DeadReckoning(launch, plan.launch_yaw_deg)
-        self.nav_bound = NavBound(cfg)             # onboard bound of the own position error (payload, H6)
+        self.nav_bound = NavBound(cfg)
         self.t_nav = None
         self.att = AttitudeFilter()
         self.use_attitude = use_attitude
         bars = [b for g in plan.structures for b in g.bars]
         self.clf = EchoClassifier(gate_bars=bars, cfg=cfg)
-        # map-aided position correction near the gate, out to the queue line
         self.aiding = StructureAiding(self.clf, cfg, gates=plan.structures, acq_min=abs(plan.queue_s) + 0.5)
         self.tracker = SectorTracker(cfg)
-        self.echo_hold = EchoHold(cfg.env.tau_max)     # missed detections become stale readings (targets.py)
-        self.acoustic = AcousticTracker(cfg)           # B2 range-bearing beacon (inactive in B0)
+        self.echo_hold = EchoHold(cfg.env.tau_max)
+        self.acoustic = AcousticTracker(cfg)
         self.gp = GatePerception(plan, cfg, acoustic=self.acoustic)
         self.ok_since: Optional[float] = None
-        self.neighbour_seen: Dict[int, float] = {}     # slot -> last time it was matched by sonar
-        self.sightings: Dict[int, List[float]] = {}     # slot -> association times within CONFIRM_WINDOW_S
-        self.confirmed_since: Dict[int, float] = {}     # slot -> start of the current confirmed presence
-        self.missing_state: Dict[int, bool] = {}        # slot -> MISSING (hysteresis, see the module docstring)
-        self.missing_t: Dict[int, float] = {}          # slot -> missing time (own slot held, clock moving)
-        self.vacant: Dict[int, float] = {}             # slot -> time it was declared vacant (latch)
-        self.events: List[Dict] = []                   # vacancy / re-inclusion events (drained by the controller)
-        self.acoustic_fresh: List[int] = []            # B2: neighbours located by a fresh accepted fix this step
-        self.acoustic_present: List[int] = []          # B2 rule A-P: sightings from fixes this step
-        self.acoustic_displaced: List[int] = []        # B2 rule A-D: neighbours positively away from their slot
-        self.acoustic_corr: List[int] = []             # neighbours whose fix fed the relative residual
-        self.acoustic_lag: Dict[int, float] = {}       # B2: slot -> lag behind its slot beyond the noise band [m]
-        self.acoustic_ahead: List[int] = []            # B2: neighbours heard well ahead on their lane (veto, bounded)
-        self.payload_present: List[int] = []           # H6: A_CONFIRM payloads of one track near the slot (rejoined)
-        self.present_since: Dict[int, float] = {}      # slot -> start of the current payload_present run
+        self.neighbour_seen: Dict[int, float] = {}
+        self.sightings: Dict[int, List[float]] = {}
+        self.confirmed_since: Dict[int, float] = {}
+        self.missing_state: Dict[int, bool] = {}
+        self.missing_t: Dict[int, float] = {}
+        self.vacant: Dict[int, float] = {}
+        self.events: List[Dict] = []
+        self.acoustic_fresh: List[int] = []
+        self.acoustic_present: List[int] = []
+        self.acoustic_displaced: List[int] = []
+        self.acoustic_corr: List[int] = []
+        self.acoustic_lag: Dict[int, float] = {}
+        self.acoustic_ahead: List[int] = []
+        self.payload_present: List[int] = []
+        self.present_since: Dict[int, float] = {}
         self.ahead_since: Dict[int, float] = {}
-        self.tx_gate_idx = 0                           # what this drone reports about itself (payload v2): the gate ...
-        self.tx_phase = 0                              # ... and its phase with it (payload.GP_*), set by the controller
+        self.tx_gate_idx = 0
+        self.tx_phase = 0
 
-    # ------------------------------------------------------------------ formation reference
     def slot_reference(self, t_form: float, sigma: float = 0.0):
         """World position of the own slot and the formation frame (tangent, left normal, up) at the own formation
         time ``t_form`` (= mission time minus the local delay of the reduced progress)."""
@@ -209,7 +207,6 @@ class Perception:
         R_form = np.array([[d0[0], n0[0], 0.0], [d0[1], n0[1], 0.0], [0.0, 0.0, 1.0]])
         return slot, R_form, s_ref
 
-    # ------------------------------------------------------------------ missing neighbours
     def track_missing(self, t: float, dt: float, form: FormationObs, in_formation: bool,
                       t_form: Optional[float] = None) -> None:
         """Missing state (hysteresis), missing timers and the vacancy latch (see the module docstring)."""
@@ -217,8 +214,8 @@ class Perception:
         clock = self.plan.clock
         tf = t if t_form is None else t_form
         ended = clock is not None and clock.s(tf) >= min(self.plan.s_end, clock.s_end) - 1e-6
-        moving = clock is None or clock.moving(tf) or ended      # after the plan end the formation is static
-        for k in self.acoustic_displaced:                  # rule A-D: positively away from its slot
+        moving = clock is None or clock.moving(tf) or ended
+        for k in self.acoustic_displaced:
             if k not in form.missing:
                 form.missing.append(k)
             if k not in form.required:
@@ -230,9 +227,9 @@ class Perception:
             identified = chk.seen and all(m in accounted for m in form.required
                                           if m != k and m not in chk.alias and m not in self.vacant)
             if k in self.acoustic_displaced:
-                sight = []                                 # the fixes contradict a sonar confirmation near the slot
+                sight = []
             elif identified and abs(chk.residual) <= CONFIRM_GATE * fr.range_gate_m:
-                sight.append(t)                            # identified near its slot: counts toward the confirmation
+                sight.append(t)
             self.sightings[k] = sight
             if len(sight) >= CONFIRM_N:
                 self.confirmed_since.setdefault(k, t)
@@ -241,51 +238,38 @@ class Perception:
             confirmed = k in self.confirmed_since
             if k in form.missing:
                 if not (k in self.acoustic_ahead and not self.missing_state.get(k)):
-                    self.missing_state[k] = True           # not seen for NEIGHBOUR_MEMORY_S (heard ahead: no NEW episode)
+                    self.missing_state[k] = True
             elif self.missing_state.get(k) and (confirmed or k in self.payload_present):
-                self.missing_state[k] = False              # back, confirmed
+                self.missing_state[k] = False
             if not self.missing_state.get(k):
                 self.missing_t[k] = 0.0
             if k in self.payload_present:
                 self.present_since.setdefault(k, t)
             else:
                 self.present_since.pop(k, None)
-            # re-inclusion evidence counts only after the vacancy was declared, for at least two ping periods
             hold = max(fr.t_reinclude, 2.0 * self.cfg.beacon.period_s)
             back = (k in self.present_since and k in self.vacant and self.present_since[k] >= self.vacant[k]
                     and t - self.present_since[k] >= hold - 1e-9)
             if k in self.vacant:
-                # re-included after t_reinclude of a sonar confirmation, or of identified fixes within e_lost of the
-                # slot together with the drone's own reported position there (payload_present; never an
-                # unidentified echo).  A healthy drone delayed beyond its vacancy timer rejoins instead of staying
-                # excluded for good
                 if ((not self.acoustic.enabled or self.acoustic.deaf(t))
                         and (back or (confirmed and t - self.confirmed_since[k] >= fr.t_reinclude - 1e-9))):
-                    # (with the beacon working a slot is re-included only when its drone is heard again, below: an echo near
-                    # the slot of a silent drone is not that drone)
                     del self.vacant[k]
                     self.missing_state[k], self.missing_t[k] = False, 0.0
                     self.events.append({"t": t, "type": "SLOT_REOCCUPIED", "slot": k})
             elif ((not self.acoustic.enabled or self.acoustic.deaf(t)) and self.missing_state.get(k) and k in form.required
                   and in_formation and moving):
-                # without a beacon (B0), or hearing nobody at all (a silent channel), silence is unobservable: the displacement
-                # timer of the baseline
                 self.missing_t[k] = self.missing_t.get(k, 0.0) + dt
                 if self.missing_t[k] >= fr.t_rejoin - 1e-9:
                     self.vacant[k] = t
                     self.events.append({"t": t, "type": "SLOT_DECLARED_VACANT", "slot": k,
                                         "missing_s": round(self.missing_t[k], 1)})
         if self.acoustic.enabled and not self.acoustic.deaf(t):
-            # vacancy by silence: a drone not heard for t_silent is dead (nothing is emitted any more), whatever the
-            # observer's own mode or position; displacement alone never makes a slot vacant.  A drone heard again is
-            # alive: its slot is required again (it may still be missing, by the sonar rules, until it is back)
             me = self.plan.slots[self.plan.slot_index]
             for k, sl in enumerate(self.plan.slots):
                 if k == self.plan.slot_index:
                     continue
                 if math.dist((sl.along, sl.lateral, sl.dz), (me.along, me.lateral, me.dz)) > fr.neighbour_range_m:
-                    continue                               # only an expected neighbour's slot matters (far pairs are
-                                                           # often silent: a line of six, 17.5 m apart, shadowed)
+                    continue
                 if self.acoustic.silent(k, t):
                     if k not in self.vacant:
                         self.vacant[k] = t
@@ -298,7 +282,6 @@ class Perception:
         form.missing = [k for k in form.required if self.missing_state.get(k)]
         form.neighbors_ok = not [k for k in form.missing if k not in self.vacant]
 
-    # ------------------------------------------------------------------ B2: identified neighbours
     def _other_regions(self, t: float):
         """Where every other drone of the plan can be, from the identified measurements in the own frame (no navigation
         bound enters): a fresh accepted fix's region [(samples (n, 3), growth m)].  None when one is not accounted for:
@@ -372,57 +355,45 @@ class Perception:
                 continue
             out[k] = f.rel
             self.acoustic_fresh.append(k)
-            exp = d_world + np.asarray(slot_err, float)          # where k should be, relative to me
+            exp = d_world + np.asarray(slot_err, float)
             if float(np.linalg.norm(f.rel - exp)) <= fr.e_lost + fix_uncertainty(f):
                 self.acoustic_present.append(k)
-                self.neighbour_seen[k] = t                       # sighted while the fix is fresh (rule A-P)
+                self.neighbour_seen[k] = t
             acc = [g for g in self.acoustic.all_fixes(k, t - a.fresh_s, t) if g.accepted][-A_CONFIRM:]
             one_track = len(acc) == A_CONFIRM and len({g.track for g in acc}) == 1
-            # along-track offset of k from where the own formation time places its slot.  The white error of one fix
-            # has the standard deviation sigma_w(r) of the declared envelope (band = k_sigma sigma_w); the constant
-            # biases (array calibration, compass, clock) do not average out and leave a bounded residual offset
             band = a.k_sigma * math.hypot(a.sigma_range_m, f.r * math.radians(a.sigma_az_deg))
             off = f.rel - exp
             exp_world = None if p_own is None else np.asarray(p_own, float) + exp
             rep = None if exp_world is None else self._rep_offset(f, t, exp_world, t_hat)
-            if rep is not None:                                  # the neighbour's own estimate (payload)
+            if rep is not None:
                 off, band = rep
             along_now = float(off @ t_hat)
-            # ahead: the latest fresh fix (as A-P, so that it is decided before the sonar memory runs out at the 1 s
-            # ping period), on its lane and ahead by more than e_lost plus the band
             ahead = (float(np.linalg.norm(off - along_now * t_hat)) <= fr.e_lost and along_now > fr.e_lost + band)
             reps = [] if exp_world is None else [self._rep_offset(g, t, exp_world, t_hat) for g in acc]
             if (one_track and reps and all(r is not None for r in reps) and k in self.acoustic_present
                     and all(float(np.linalg.norm((g.rel - exp))) <= fr.e_lost + fix_uncertainty(g) for g in acc)
                     and all(float(np.linalg.norm(r[0])) <= fr.e_ok + r[1] for r in reps)):
-                # back near its slot: by its own estimates AND by an identified fix of it within e_lost of where it
-                # should be (a physical, identified sighting: an unidentified echo never brings a neighbour back)
                 self.payload_present.append(k)
             if one_track and reps and all(r is not None for r in reps):
-                # lag from the payloads: the median along-track offset beyond its band
                 along = float(np.median([float(r[0] @ t_hat) for r in reps]))
                 rb = max(r[1] for r in reps)
                 if along < -rb:
                     self.acoustic_lag[k] = -along - rb
                 if (k not in self.acoustic_ahead and not ahead
                         and all(float(np.linalg.norm(r[0])) > fr.e_lost + A_DISPLACED_MARGIN + r[1] for r in reps)):
-                    self.acoustic_displaced.append(k)            # rule A-D on the neighbour's own estimates
+                    self.acoustic_displaced.append(k)
             elif one_track:
-                # lag: the median of the point estimates of A_CONFIRM fixes of one track beyond the band
                 along = float(np.median([float((g.rel - exp) @ t_hat) for g in acc]))
                 if along < -band:
-                    self.acoustic_lag[k] = -along - band         # beyond the white-noise band: clock re-synchronisation
+                    self.acoustic_lag[k] = -along - band
             if ahead:
-                # heard well AHEAD on its lane: the own formation time is the one behind; this vetoes a NEW missing
-                # episode (slowing for k would widen the gap), for at most t_rejoin - a drone that keeps drifting
-                # ahead (a failed drone carried by the current) is then judged by the ordinary rules
                 self.ahead_since.setdefault(k, t)
                 if t - self.ahead_since[k] <= fr.t_rejoin:
                     self.acoustic_ahead.append(k)
             else:
                 self.ahead_since.pop(k, None)
             if (one_track and k not in self.acoustic_ahead and k not in self.acoustic_displaced
-                    and not (reps and all(r is not None for r in reps))     # every region point farther than that
+                    and not (reps and all(r is not None for r in reps))
                     and all(float(np.min(np.linalg.norm(g.pts - (g.p - g.rel) - exp, axis=1))) - g.slack
                             > fr.e_lost + A_DISPLACED_MARGIN for g in acc)):
                 self.acoustic_displaced.append(k)
@@ -452,7 +423,7 @@ class Perception:
                 continue
             rep = self._rep_offset(f, t, p_own + form.slot_err - own + d_world, t_hat)
             if rep is None or float(np.linalg.norm(rep[0])) > fr.e_lost + rep[1]:
-                continue                                         # not on its slot by its own estimate: no reference
+                continue
             vals.append(float((f.rel - d_world - form.slot_err) @ n_hat))
         if vals:
             form.lateral_far = float(np.median(vals))
@@ -484,7 +455,6 @@ class Perception:
             form.along_corr = float(np.mean(along))
             form.lateral_corr = float(np.mean(lat))
 
-    # ------------------------------------------------------------------ main update
     def update(self, frame: SensorFrame, dt: float, sigma: float = 0.0, env_ok: bool = True,
                offset: Optional[np.ndarray] = None, in_formation: bool = True,
                t_form: Optional[float] = None, v_req: Optional[np.ndarray] = None) -> LocalObservation:
@@ -507,10 +477,10 @@ class Perception:
             ages[s] = frame.age(key) if key in d else 1e9
         self.nav_bound.update(t, dt, nav, model=v_req is not None)
         corr = self.aiding.update(nav.p, R_wb, profiles, ages, env.tau_max, t=t, others=self._other_regions(t))
-        if corr is not None:                      # dead-reckoning drift bounded by the mapped gate (structure_aiding)
+        if corr is not None:
             self.apply_position_correction(corr)
         self.t_nav = t
-        self.acoustic.update(t, d.get("AcousticRx"), nav.p, nav.yaw, self.nav_bound.value)   # B2 fixes
+        self.acoustic.update(t, d.get("AcousticRx"), nav.p, nav.yaw, self.nav_bound.value)
         readings = self.clf.classify(profiles, ages, nav.p, R_wb, seabed_z, tau_healthy=env.tau_max)
         tracks = self.tracker.update(t, readings)
         targets = build_targets(t, readings, tracks, self.cfg, held=self.echo_hold.update(t, readings))
@@ -522,9 +492,9 @@ class Perception:
         gate.loc_ok = self.aiding.valid(t)
         slot, R_form, _s_ref = self.slot_reference(t_form, sigma)
         if offset is not None:
-            slot = slot + offset                  # intentional give-way deviation is not a formation error
+            slot = slot + offset
         healthy = {s: readings[s].healthy for s in SECTORS}
-        if not self.missing_state:                 # first update: the formation is complete by plan (launch)
+        if not self.missing_state:
             for k in range(len(self.plan.slots)):
                 if k != self.plan.slot_index:
                     self.neighbour_seen[k], self.missing_state[k] = t, False
@@ -536,7 +506,7 @@ class Perception:
         self.acoustic_residuals(t, form, R_form, nav.p, offset)
         self.track_missing(t, dt, form, in_formation, t_form)
         lags = [v for k, v in self.acoustic_lag.items() if k not in self.vacant]
-        form.behind = max(lags) if lags else None          # clock re-synchronisation input (formation_time.py)
+        form.behind = max(lags) if lags else None
         fr = self.cfg.form
         if form.form_err < fr.e_ok:
             self.ok_since = t if self.ok_since is None else self.ok_since

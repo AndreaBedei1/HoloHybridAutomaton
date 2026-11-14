@@ -56,7 +56,7 @@ def test_unexplained_compact_echo_needs_two_captures_then_is_dynamic():
 def test_single_capture_noise_never_becomes_an_obstacle():
     clf = EchoClassifier()
     classify(clf, front=[(6.0, 6.1)])
-    out = classify(clf, front=[(2.0, 2.1)])            # a different range: not confirmed either
+    out = classify(clf, front=[(2.0, 2.1)])
     assert all(e.cls == UNCONFIRMED for e in out["FRONT"].echoes)
 
 
@@ -75,8 +75,8 @@ def test_drone_in_front_of_a_mapped_gate():
 
 def test_seabed_from_depth_dvl_altitude_and_cone():
     clf = EchoClassifier()
-    sb = -2.0                                           # 2 m below the sonars
-    onset = 2.0 / np.cos(np.radians(30.0))              # horizontal 120 deg cone grazes the bottom at h / sin(60)
+    sb = -2.0
+    onset = 2.0 / np.cos(np.radians(30.0))
     out = classify(clf, front=[(onset + 0.05, onset + 1.5)], down=[(1.86, 2.1)], seabed_z=sb)
     assert [e.cls for e in out["DOWN"].echoes] == [SEABED]
     assert [e.cls for e in out["FRONT"].echoes] == [SEABED]
@@ -111,13 +111,11 @@ def test_holoocean_bench_cases():
     assert DYNAMIC in front["B_drone_only"]
     assert front["D_gate_plus_drone"][:1] == [DYNAMIC] and STRUCTURE in front["D_gate_plus_drone"]
     assert front["F_two_drones_one_cone"].count(DYNAMIC) == 2
-    # the DOWN beam at normal incidence is too weak to cross the threshold (probe H): the seabed is known from the
-    # DVL altitude, and every echo the horizontal cones get from the bottom is SEABED
     seabed = [e["cls"] for v in cases["C_seabed_only"].values() for e in v]
-    assert seabed and DYNAMIC not in seabed and SEABED in seabed       # bottom echoes never become a vehicle
+    assert seabed and DYNAMIC not in seabed and SEABED in seabed
     assert front["E1_seabed_plus_near_drone"][:1] == [DYNAMIC]
-    assert DYNAMIC not in front["E2_seabed_plus_far_drone"]          # inside the clutter: never declared a clear drone
+    assert DYNAMIC not in front["E2_seabed_plus_far_drone"]
     blind = json.loads(BENCH.read_text())["cases"]
     e2 = [c for c in blind if c["case"] == "E2_seabed_plus_far_drone"][0]
-    if "blind_from" in e2:                                           # bench v2: the clutter is an UNKNOWN pseudo-target
+    if "blind_from" in e2:
         assert e2["blind_from"]["FRONT"] is not None

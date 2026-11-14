@@ -70,9 +70,9 @@ class Scenario:
     judged_gates: List[GateSpec]
     formation_enabled: bool = True
     disturbance_windows: List[Tuple[float, float]] = field(default_factory=list)
-    focus: str = ""                      # what to look at (UI)
-    cfg_patch: Dict = field(default_factory=dict)   # FleetConfig fields overridden for this scenario
-    automaton_drone: Optional[int] = None  # drone of the fleet view's automaton panel (UI; default: the camera drone)
+    focus: str = ""
+    cfg_patch: Dict = field(default_factory=dict)
+    automaton_drone: Optional[int] = None
 
     @property
     def duration_s(self) -> float:
@@ -115,7 +115,6 @@ def _sim(name, plans, spawns, yaws, duration, current=None, gate_ids=(), camera=
                    seed=seed, camera_drone=camera)
 
 
-# ---------------------------------------------------------------------------------------------- P1
 def p1_head_on(cfg: FleetConfig = DEFAULT) -> Scenario:
     single = FormationTemplate("single", (Slot(0.0, 0.0, 0.0),), "one drone")
     plans, spawns, yaws = [], [], []
@@ -147,7 +146,6 @@ def p1_vertical_escape(cfg: FleetConfig = DEFAULT) -> Scenario:
     clock = FormationClock(10.0, 0.25, 1.0, s_end=path.length - 4.0)
     plans, spawns, yaws = _fleet("p1_vertical_escape", tee, path, clock, (), (), cfg, s_start=10.0)
     sim = _sim("p1_vertical_escape", plans, spawns, yaws, 45.0, camera=1)
-    # head-on at 0.40 m/s, 1.2 m below the formation; past the centre drone it dives away (scripted)
     sim.intruders = ({"name": "intruder", "start": [7.0, -30.0, DEPTH - 1.2], "yaw_deg": 180.0,
                       "waypoints": [[0.0, 7.0, -30.0, DEPTH - 1.2], [21.0, -1.4, -30.0, DEPTH - 1.2],
                                     [33.0, -5.0, -30.0, DEPTH - 4.9], [60.0, -12.0, -30.0, DEPTH - 6.0]]},)
@@ -170,7 +168,7 @@ def p1_close_encounter(cfg: FleetConfig = DEFAULT) -> Scenario:
     apart.  Real fleet BlueROV2s only: no scripted vehicle, traffic rule ON, full automaton, no current."""
     single = FormationTemplate("single", (Slot(0.0, 0.0, 0.0),), "one drone")
     plans, spawns, yaws = [], [], []
-    cx, cy, lead = 0.0, -31.0, 7.5                     # crossing point; both legs start 7.5 m before it
+    cx, cy, lead = 0.0, -31.0, 7.5
     legs = (((cx - lead, cy), (cx + 14.0, cy)), ((cx, cy - lead), (cx, cy + 12.0)))
     for k, (a, b) in enumerate(legs):
         path = Path(np.array([a, b]), DEPTH)
@@ -214,7 +212,6 @@ def p1_two_lines(cfg: FleetConfig = DEFAULT) -> Scenario:
                     focus="head-on give-way from sector patterns: RIGHT when the right side is free, else UP/DOWN")
 
 
-# ---------------------------------------------------------------------------------------------- P3
 def _survey(name: str, template_name: str, length: float, current: CurrentField, duration: float,
             title: str, desc: str, focus: str, windows=(), cfg: FleetConfig = DEFAULT, camera: int = 0) -> Scenario:
     tm = TEMPLATES[template_name]
@@ -292,9 +289,7 @@ def formation_gust(cfg: FleetConfig = DEFAULT) -> Scenario:
                    windows=[(12.0, 22.0)])
 
 
-# ---------------------------------------------------------------------------------------------- lost drones
-JET_DISPLACE_DRIFT = (-0.70, 0.55, 0.0)     # [m/s] the temporary jet of lost_drone_rejoin / lost_drone_rejoin_front: beyond the
-                                            # authority of the drone (as formation_gust), against the motion and across the lane
+JET_DISPLACE_DRIFT = (-0.70, 0.55, 0.0)
 
 
 def _lost_drone(name: str, t_on: float, t_off: Optional[float], duration: float, current: CurrentField, title: str,
@@ -318,7 +313,7 @@ def _lost_drone(name: str, t_on: float, t_off: Optional[float], duration: float,
                                radius=3.0, t_on=t_on, t_off=t_off, ramp=1.5)
         sc.sim.current.components.append(jet)
     sc.sim.chase_offset, sc.sim.side_offset = (-7.0, 0.0, 3.0), (2.0, 10.0, 2.0)
-    sc.automaton_drone = 0               # the faulty drone's neighbour ahead on its lane: it waits for it
+    sc.automaton_drone = 0
     return sc
 
 
@@ -346,7 +341,7 @@ def lost_drone_rejoin_front(cfg: FleetConfig = DEFAULT) -> Scenario:
                      f"to {fr.v_wait:.2f} m/s; it catches up from behind and passes the rear-left drone "
                      f"{fr.pass_dz_m:.1f} m below it, rising to its slot only past it; FOLLOW again, no communication",
                      cfg, faulty=0)
-    sc.automaton_drone = 2               # the drone of the rear slot on the faulty drone's lane
+    sc.automaton_drone = 2
     return sc
 
 
@@ -364,7 +359,6 @@ def lost_drone_timeout(cfg: FleetConfig = DEFAULT) -> Scenario:
                        f"{fr.v_nominal:.2f} m/s and keep their original slots: no reconfiguration, the hole stays", cfg)
 
 
-# ---------------------------------------------------------------------------------------------- P2
 def _gate_mission(name: str, template_name: str, duration: float, current: CurrentField, cfg: FleetConfig,
                   windows=(), title: str = "", desc: str = "", focus: str = "", lead_in: float = 0.0,
                   v_clock: Optional[float] = None, stress: StressSpec = StressSpec()) -> Scenario:
@@ -376,14 +370,14 @@ def _gate_mission(name: str, template_name: str, duration: float, current: Curre
     G = cfg.gate
     tm = TEMPLATES[template_name]
     q_s = queue_line(tm.slots, G)
-    s_gate = 40.0                                         # path arclength of the gate centre
+    s_gate = 40.0
     path = Path(np.array([g6.center[:2] - s_gate * g6.axis[:2], g6.center[:2] + 30.0 * g6.axis[:2]]),
                 float(g6.center[2]))
     max_al, min_al = max(sl.along for sl in tm.slots), min(sl.along for sl in tm.slots)
-    s0 = s_gate + q_s - 0.4 - max_al - lead_in          # leading slot 0.4 m behind the queue line (+ lead-in)
+    s0 = s_gate + q_s - 0.4 - max_al - lead_in
     s_jump = max(s0, s_gate + q_s - G.approach_len + 0.3 - min_al)
     s_rally = s_gate + G.rally_s
-    dwell = 26.0 * tm.n + 12.0                          # planned time budget for n one-at-a-time passages
+    dwell = 26.0 * tm.n + 12.0
     clock = FormationClock(s0, v_clock or cfg.form.v_nominal, 0.0, holds=((s_rally, dwell),),
                            jumps=((s_jump, s_rally),), s_end=path.length - 3.0)
     plans, spawns, yaws = _fleet(name, tm, path, clock, [g6], [g6], cfg, s_start=s0)
@@ -402,7 +396,7 @@ def gate_single(cfg: FleetConfig = DEFAULT) -> Scenario:
                          focus="queue relations from sector patterns, CR occupancy belief, occupancy <= 1, entry order")
 
 
-INTEGRATED_GUST = 0.27     # cross-current gust of integrated_short [m/s]
+INTEGRATED_GUST = 0.27
 
 
 def integrated_short(cfg: FleetConfig = DEFAULT) -> Scenario:
@@ -470,7 +464,7 @@ def lost_drone_front_rise_low(cfg: FleetConfig = DEFAULT) -> Scenario:
                      "4 drones (square), no current. The front-left drone fails completely at t = 8 s (no propulsion, electronics or transmitter) and rises at the low "
                      "end of the range.",
                      "the follower on the same lane meets the hull at mission depth: separation and avoidance, then vacancy by silence", cfg, faulty=0)
-    sc.automaton_drone = 2                      # the follower on its lane
+    sc.automaton_drone = 2
     sc.cfg_patch = dict(sc.cfg_patch, failure=dataclasses.replace(cfg.failure, v_rise_mps=0.06))
     return sc
 
@@ -486,15 +480,6 @@ def _rise_variant(base, name: str, v: float):
     make.__name__ = name
     return make
 
-
-# ---------------------------------------------------------------------------------------------- compact stress batch
-# P1, P2 and P3 under currents of several strengths and directions, time-varying water, other fleet configurations and
-# permanent failures away from the gate (outside the exclusion zone of holo_fleet/scope.py, checked by tests/test_scope.py).
-# The gate geometry and the six sonars are those of the standard set.  Directions are relative to the gate axis (head:
-# against the motion; cross: towards the left of the motion).  The steady limits of the control-feasible envelope at the
-# passage speed v_pass 0.5 m/s are about 0.21 m/s head and 0.57 m/s lateral, 0.41 m/s head at the survey speed
-# (control/current_envelope.py): st_gate_head_020 sits at the boundary, st_gate_head_030 beyond it (declared outside the
-# envelope over the whole run: P1 and P2 are required, the mission is not).
 
 def _g6():
     return {g.gate_id: g for g in load_arena_gates(HORSESHOE_TRACK)}["G06"]
@@ -557,41 +542,34 @@ def _survey_square_failure(cfg: FleetConfig = DEFAULT) -> Scenario:
 
 _U = lambda head=0.0, cross=0.0: CurrentField([CurrentComponent("uniform", drift=_rel(head, cross))])
 STRESS_BATCH: Dict[str, Callable[..., Scenario]] = {
-    # P2 and P3 at the gate: strength and direction of the water
     "st_gate_head_020": _stress(gate_single, "st_gate_head_020", _U(head=0.20), note="0.20 m/s head current, the boundary"),
     "st_gate_head_030": _stress(gate_single, "st_gate_head_030", _U(head=0.30), whole_window=True,
                                 note="0.30 m/s head current, beyond the envelope at v_pass"),
     "st_gate_tail_030": _stress(gate_single, "st_gate_tail_030", _U(head=-0.30), note="0.30 m/s following current"),
     "st_gate_cross_030": _stress(gate_single, "st_gate_cross_030", _U(cross=0.30), note="0.30 m/s cross current"),
     "st_gate_oblique_025": _stress(gate_single, "st_gate_oblique_025", _U(head=0.177, cross=-0.177), note="0.25 m/s oblique (head-right)"),
-    # time-varying water
     "st_gate_sinus": _stress(gate_single, "st_gate_sinus", CurrentField([CurrentComponent("sinusoid", drift=_rel(cross=0.10),
                              amplitude=_rel(head=0.15), period=40.0)]), note="0.10 m/s cross + 0.15 m/s head sinusoid, 40 s"),
     "st_gate_gusts": _stress(gate_single, "st_gate_gusts", CurrentField([CurrentComponent("uniform", drift=_rel(cross=0.05)),
                              CurrentComponent("gusts", amplitude=(0.15, 0.15, 0.0), seed=7)]), note="random gusts up to 0.21 m/s, 6 s cells"),
-    # fleet configurations
     "st_gate_pair": _stress(_gate_pair, "st_gate_pair", note="n = 2, column"),
     "st_gate_line3_cross": _stress(line_parallel_mutex, "st_gate_line3_cross", _U(cross=0.20), note="line abreast, 0.20 m/s cross"),
     "st_gate_stack_cross": _stress(mutex_deadlock_resolution, "st_gate_stack_cross", _U(cross=0.20), note="stacked queue, 0.20 m/s cross"),
-    # permanent failures away from the gate
     "st_lost_left_cross": _stress(_gate_line3_failure, "st_lost_left_cross", _U(cross=0.20), faulty=0, note="left drone lost, 0.20 m/s cross"),
     "st_lost_middle": _stress(_gate_line3_failure, "st_lost_middle", faulty=1, note="middle drone lost"),
     "st_lost_right_tail": _stress(_gate_line3_failure, "st_lost_right_tail", _U(head=-0.20), faulty=2, note="right drone lost, 0.20 m/s following"),
     "st_lost_survey_gusts": _stress(_survey_square_failure, "st_lost_survey_gusts", CurrentField([CurrentComponent("gusts",
                                     amplitude=(0.15, 0.15, 0.0), seed=11)]), note="survey, rear-left drone lost at 8 s, random gusts"),
-    # P1 under water
     "st_p1_head_on_cross": _stress(p1_head_on, "st_p1_head_on_cross", _uniform((0.0, 0.30, 0.0)), note="0.30 m/s cross current"),
     "st_p1_two_lines_sinus": _stress(p1_two_lines, "st_p1_two_lines_sinus", CurrentField([CurrentComponent("sinusoid",
                                      drift=(0.0, 0.05, 0.0), amplitude=(0.20, 0.0, 0.0), period=30.0)]), note="0.20 m/s sinusoid along the lines"),
     "st_formation_six_oblique": _stress(formation_six, "st_formation_six_oblique", _uniform((-0.21, 0.21, 0.0)), note="6 drones, 0.30 m/s oblique"),
-    # boundary probes: beyond the steady envelope at the passage speed, declared outside it over the whole run (P1 and P2 required)
     "st_bd_head_040": _stress(gate_single, "st_bd_head_040", _U(head=0.40), whole_window=True, note="0.40 m/s head current"),
     "st_bd_cross_050": _stress(gate_single, "st_bd_cross_050", _U(cross=0.50), whole_window=True, note="0.50 m/s cross current"),
     "st_bd_tail_050": _stress(gate_single, "st_bd_tail_050", _U(head=-0.50), whole_window=True, note="0.50 m/s following current"),
     "st_bd_oblique_040": _stress(gate_single, "st_bd_oblique_040", _U(head=0.283, cross=0.283), whole_window=True, note="0.40 m/s oblique (head-left)"),
     "st_bd_gusts_030": _stress(gate_single, "st_bd_gusts_030", CurrentField([CurrentComponent("gusts", amplitude=(0.30, 0.30, 0.0), seed=5)]),
                                whole_window=True, note="random gusts up to 0.42 m/s"),
-    # permanent failures near the gate, inside the scope (still water: the zone ends about 1.5 m outside the frame)
     "st_lost_at_queue": _stress_at(gate_single, "st_lost_at_queue", 0, -5.6, "the first drone fails on reaching its queue point"),
     "st_lost_committed": _stress_at(gate_single, "st_lost_committed", 0, -4.3, "the first drone fails committed, 3 m before the frame"),
     "st_lost_after_exit": _stress_at(gate_single, "st_lost_after_exit", 0, 4.5, "the first drone fails 3.3 m past the frame"),
@@ -599,7 +577,7 @@ STRESS_BATCH: Dict[str, Callable[..., Scenario]] = {
 }
 
 
-STRESS_SCENARIOS = ("lost_drone_front_rise_low", "lost_drone_mutex_rise_low", "lost_drone_mutex_rise_high")     # sensitivity, not in the acceptance matrix
+STRESS_SCENARIOS = ("lost_drone_front_rise_low", "lost_drone_mutex_rise_low", "lost_drone_mutex_rise_high")
 
 SCENARIOS: Dict[str, Callable[..., Scenario]] = {
     "p1_head_on": p1_head_on,

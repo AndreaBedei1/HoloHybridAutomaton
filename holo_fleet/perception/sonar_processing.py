@@ -38,8 +38,8 @@ OBSTACLE_CLASSES = (DYNAMIC, UNKNOWN)
 @dataclass
 class Echo:
     sector: str
-    r0: float                 # range of the first bin above threshold [m]
-    r1: float                 # range of the last bin of the segment [m]
+    r0: float
+    r1: float
     peak: float
     cls: str = UNKNOWN
     why: str = ""
@@ -52,13 +52,11 @@ class Echo:
 @dataclass
 class SectorReading:
     sector: str
-    age: float                                 # age of the profile [s]
-    healthy: bool                              # fresh enough to be trusted (incl. its silence)
+    age: float
+    healthy: bool
     echoes: List[Echo] = field(default_factory=list)
     structure_window: Optional[Tuple[float, float]] = None
     seabed_onset: Optional[float] = None
-    # range beyond which this sector is blind to vehicles (seabed clutter): a vehicle there cannot be
-    # told apart from the bottom with a range-only sensor, so the safety layer must assume one may be
     blind_from: Optional[float] = None
 
     def nearest(self, classes: Sequence[str]) -> Optional[Echo]:
@@ -108,10 +106,9 @@ class EchoClassifier:
         self.struct_pts = bar_surface_points(gate_bars)
         cosh = np.cos(np.radians(self.model.half_angle_deg))
         d = fibonacci_sphere(cone_samples * 4)
-        self.cone_dirs = d[d[:, 0] >= cosh]                       # directions inside a cone around +x
+        self.cone_dirs = d[d[:, 0] >= cosh]
         self.history: Dict[str, Deque[List[float]]] = {s: deque(maxlen=3) for s in SECTORS}
 
-    # ------------------------------------------------------------------ predictions
     @staticmethod
     def _sector_frame(sector: str, R_world_body: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
         """World boresight of the sector and a rotation taking +x to it (for the cone samples)."""
@@ -122,9 +119,6 @@ class EchoClassifier:
         if np.linalg.norm(v) < 1e-9 and c > 0:
             M = np.eye(3)
         elif 1.0 + c <= 1e-6:
-            # (nearly) antiparallel: Rodrigues' 1 / (1 + c) is singular (v9 campaign, formation_six CLEAN s701: the
-            # REAR sector of a drone heading exactly +x, 1 + c rounded to 0).  Half turn about z (+x -> -x), then the
-            # small, well-conditioned rotation from -x to the boresight.
             b = -x
             w = np.cross(b, a)
             wx = np.array([[0, -w[2], w[1]], [w[2], 0, -w[0]], [-w[1], w[0], 0]])
@@ -140,10 +134,6 @@ class EchoClassifier:
         d = self.struct_pts - sonar_pos
         r = np.linalg.norm(d, axis=1)
         ang = np.arccos(np.clip((d @ boresight) / np.maximum(r, 1e-9), -1.0, 1.0))
-        # near-field widening: strong reflectors close to the sonar are detected beyond the nominal
-        # cone (seen in HoloOcean: a gate post at 0.63 m and 78 deg off-axis; a real wide beam does the
-        # same through its side lobes), so the predicted structure window uses a cone widened by
-        # atan(NEAR_FIELD_WIDEN_M / r): 22 deg at 0.6 m, 5 deg at 3 m, 2 deg at 7 m
         widen = np.arctan2(NEAR_FIELD_WIDEN_M, np.maximum(r, 1e-6))
         sel = (ang <= np.radians(self.model.half_angle_deg) + widen) & (r >= self.model.range_min) & \
               (r <= self.model.range_max)
@@ -166,7 +156,6 @@ class EchoClassifier:
         rmin = float(r.min())
         return rmin if rmin <= self.model.range_max else None
 
-    # ------------------------------------------------------------------ classification
     def classify(self, profiles: Dict[str, Optional[np.ndarray]], ages: Dict[str, float], own_pos: np.ndarray,
                  R_world_body: np.ndarray, seabed_z: Optional[float], tau_healthy: float = 0.25) -> Dict[str, SectorReading]:
         pc = self.cfg.perc

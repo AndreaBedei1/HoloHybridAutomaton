@@ -21,7 +21,7 @@ import cv2
 import numpy as np
 
 W, H = 1600, 900
-SPLIT = 880                                  # ONBOARD | REFEREE
+SPLIT = 880
 HEADER = 54
 FOOTER = 54
 
@@ -68,14 +68,13 @@ def _fmt(v, nd=2):
     return "-" if v is None else f"{v:.{nd}f}"
 
 
-# ---------------------------------------------------------------------------------------------- onboard
 def _sector_glyph(img, rec, cx, cy):
     """Six sector boxes around a hull: F up, B down, L left, R right; U and D to the right."""
     bw, bh = 66, 30
     pos = {"FRONT": (cx - bw // 2, cy - 2 * bh - 4), "REAR": (cx - bw // 2, cy + bh // 2 + 4),
            "LEFT": (cx - bw - bw // 2 - 4, cy - bh // 2 - 8), "RIGHT": (cx + bw // 2 + 4, cy - bh // 2 - 8),
            "UP": (cx + 2 * bw - 6, cy - 2 * bh - 4), "DOWN": (cx + 2 * bw - 6, cy + bh // 2 + 4)}
-    cv2.rectangle(img, (cx - 12, cy - bh - 2), (cx + 12, cy + 4), INK2, 1)          # hull (top view)
+    cv2.rectangle(img, (cx - 12, cy - bh - 2), (cx + 12, cy + 4), INK2, 1)
     cv2.line(img, (cx, cy - bh - 2), (cx, cy - bh - 9), INK2, 1)
     for s, (x, y) in pos.items():
         sec = (rec.get("sectors") or {}).get(s, {})
@@ -140,7 +139,6 @@ def _legend(img, x, y):
         xx += 26 + cv2.getTextSize(label, FONT, 0.38, 1)[0][0]
 
 
-# ---------------------------------------------------------------------------------------------- referee
 def _map(img, meta, ref, trails, x0, y0, w, h):
     cv2.rectangle(img, (x0, y0), (x0 + w, y0 + h), PANEL, -1)
     row = ref.get("row") or {}
@@ -157,7 +155,6 @@ def _map(img, meta, ref, trails, x0, y0, w, h):
     def tx(q):
         return int(x0 + w / 2 + (q[0] - c[0]) * s), int(y0 + h / 2 - (q[1] - c[1]) * s)
 
-    # 1 m grid
     for gx in range(int(c[0] - span), int(c[0] + span) + 1, 2):
         a, b = tx((gx, c[1] - span)), tx((gx, c[1] + span))
         cv2.line(img, (a[0], y0), (a[0], y0 + h), (40, 40, 38), 1)
@@ -188,7 +185,6 @@ def _map(img, meta, ref, trails, x0, y0, w, h):
         cv2.rectangle(img, (q[0] - 7, q[1] - 7), (q[0] + 7, q[1] + 7), INK2, -1)
         _text(img, "intruder", q[0] + 10, q[1] + 4, 0.45, INK2)
         m += 1
-    # scale bar and current
     a = (x0 + 14, y0 + h - 14)
     cv2.line(img, a, (int(a[0] + 2 * s), a[1]), INK2, 2)
     _text(img, "2 m", a[0], a[1] - 6, 0.4, INK2)
@@ -242,14 +238,12 @@ def _status(img, meta, ref, recs, x, y):
               xx, y3, 0.45, INK)
 
 
-# ---------------------------------------------------------------------------------------------- frame
 def render(meta: Dict, recs: Sequence[Dict], ref: Dict, cam: Optional[np.ndarray] = None,
            trails: Optional[List[List]] = None) -> np.ndarray:
     img = np.full((H, W, 3), SURFACE, np.uint8)
     _text(img, meta.get("title", meta.get("scenario", "")), 16, 30, 0.75, INK, 2)
     _text(img, f"t = {meta.get('t', 0.0):5.1f} s / {meta.get('duration', 0):.0f} s", W - 250, 30, 0.7, INK, 2)
     _text(img, meta.get("focus", ""), 16, 48, 0.42, MUTED)
-    # ---- onboard
     cv2.rectangle(img, (8, HEADER + 4), (SPLIT - 8, HEADER + 28), ONBOARD_HDR, -1)
     _text(img, "ONBOARD  -  what each drone knows (own sensors + mission plan)", 16, HEADER + 22, 0.55, INK, 1)
     n = len(recs)
@@ -259,7 +253,6 @@ def render(meta: Dict, recs: Sequence[Dict], ref: Dict, cam: Optional[np.ndarray
     for k, rec in enumerate(recs):
         _drone_card(img, k, meta["names"][k], rec, 8, top + k * (ch + 6), SPLIT - 16, ch, meta.get("formation", True))
     _legend(img, 16, H - FOOTER - 40)
-    # ---- referee
     cv2.rectangle(img, (SPLIT + 4, HEADER + 4), (W - 8, HEADER + 28), REFEREE_HDR, -1)
     _text(img, "REFEREE / GROUND TRUTH  -  never sent to the drones", SPLIT + 12, HEADER + 22, 0.55, (16, 16, 16), 1)
     mx, my, mw, mh = SPLIT + 4, HEADER + 34, W - SPLIT - 12, 380
@@ -274,7 +267,6 @@ def render(meta: Dict, recs: Sequence[Dict], ref: Dict, cam: Optional[np.ndarray
         y0 = H - FOOTER - ih - 4
         img[y0:y0 + ih, SPLIT + 8:SPLIT + 8 + iw] = thumb
         _text(img, "chase camera (visualisation only)", SPLIT + 14, y0 + 16, 0.42, INK)
-    # ---- footer
     cv2.rectangle(img, (0, H - FOOTER), (W, H), PANEL, -1)
     _text(img, f"COMMUNICATION: {meta.get('messages', 0)} messages     GROUND TRUTH USED BY CONTROLLERS: "
                f"{'YES' if meta.get('gt_used') else 'NO'}     {meta.get('n_sonars', 6 * n)} sonars, 10 Hz     "

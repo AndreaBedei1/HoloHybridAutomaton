@@ -41,16 +41,16 @@ from typing import Optional
 import numpy as np
 
 PAYLOAD_BITS = 64
-POS_Q = 0.05                  # [m] position quantum
-BOUND_FINE_Q = 0.10           # [m] bound quantum up to BOUND_FINE_MAX
-BOUND_FINE_MAX = 3.9          # [m]
-BOUND_COARSE_Q = 0.50         # [m] bound quantum beyond it
+POS_Q = 0.05
+BOUND_FINE_Q = 0.10
+BOUND_FINE_MAX = 3.9
+BOUND_COARSE_Q = 0.50
 BOUND_INVALID = 63
-BOUND_MAX = BOUND_FINE_MAX + (BOUND_INVALID - 1 - 39) * BOUND_COARSE_Q     # 15.4 m: the largest representable bound
-FRAMES = 4                    # frame counter modulus
-QUANT_ERR = math.sqrt(3.0) * POS_Q / 2.0   # largest rounding error of a position (three axes)
+BOUND_MAX = BOUND_FINE_MAX + (BOUND_INVALID - 1 - 39) * BOUND_COARSE_Q
+FRAMES = 4
+QUANT_ERR = math.sqrt(3.0) * POS_Q / 2.0
 
-GP_NONE, GP_COMMITTED, GP_ADMITTED, GP_PASSED = 0, 1, 2, 3   # gate phases (perception/acoustic_gate.py)
+GP_NONE, GP_COMMITTED, GP_ADMITTED, GP_PASSED = 0, 1, 2, 3
 
 
 def crc16(data: bytes) -> int:
@@ -80,10 +80,10 @@ def decode_bound(code: int) -> float:
 @dataclass(frozen=True)
 class Payload:
     frame: int
-    p: np.ndarray                 # decoded mission-frame position (quantised)
-    bound: float                  # error-ball radius at the emission instant, quantisation included; inf = invalid
-    gate_idx: int = 0             # gate the phase refers to (mod 4)
-    phase: int = GP_NONE          # the sender's own gate phase
+    p: np.ndarray
+    bound: float
+    gate_idx: int = 0
+    phase: int = GP_NONE
 
     @property
     def valid_position(self) -> bool:
@@ -97,7 +97,7 @@ def encode(frame: int, p, bound: float, gate_idx: int = 0, phase: int = GP_NONE)
     depth = int(round(-float(p[2]) / POS_Q))
     b = encode_bound(float(bound) + QUANT_ERR) if math.isfinite(bound) else BOUND_INVALID
     if not (-2048 <= x <= 2047 and -2048 <= y <= 2047 and 0 <= depth <= 255):
-        b = BOUND_INVALID                 # outside the representable frame: sent, but marked unusable
+        b = BOUND_INVALID
         x, y, depth = max(-2048, min(2047, x)), max(-2048, min(2047, y)), max(0, min(255, depth))
     b = min(b, BOUND_INVALID)
     bits = (((frame % FRAMES) << 46) | ((x & 0xFFF) << 34) | ((y & 0xFFF) << 22) | ((depth & 0xFF) << 14) | ((b & 0x3F) << 8)
@@ -130,9 +130,7 @@ def air_time_s(rate_bps: float) -> float:
     return PAYLOAD_BITS / float(rate_bps)
 
 
-FRAME_GUARD_S = 0.02          # >> the error of an emission instant estimated as t_arrival - r / c (a few ms, even with a
-                              # 3 m multipath excess), << the 137 ms slot need: slot 0 of a frame is not taken for the last
-                              # slot of the previous one
+FRAME_GUARD_S = 0.02
 
 
 def frame_index(t_tx: float, period_s: float) -> int:

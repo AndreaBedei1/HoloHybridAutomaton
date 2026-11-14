@@ -29,13 +29,11 @@ def test_diagram_represents_exactly_the_spec_edges(mad):
     missing, extra = mad.coverage(model)
     assert not missing and not extra
     E = build_edges(DEFAULT)
-    assert model["n_edges"] == sum(len(v) for v in E.values()) == 130      # 13 per mode (pass_abort included)
+    assert model["n_edges"] == sum(len(v) for v in E.values()) == 130
     assert set(model["modes"]) == set(Mode) and len(model["modes"]) == 10
-    # the formation-keeping arrows are exactly the non-self-loop formation edges of the keeping modes
     drawn = {(k["source"], k["target"]) for k in model["keeping"]}
     assert drawn == {(m, e.target) for m in IN_FORMATION for e in E[m]
                      if e.name in mad.KEEPING_EDGES and e.target != m}
-    # self-loops: one per mode at least ("otherwise: remain")
     assert all(model["loops"][m] for m in MODES)
 
 
@@ -51,7 +49,6 @@ def test_drawn_guards_are_the_spec_labels(mad):
     for m, es in E.items():
         for e in es:
             assert e.label and guard_text.names(e.label) <= allowed, (e.name, e.label)
-            # a mode change always logs a cause, a self-loop none
             assert bool(e.reason) == (e.target != m), (m, e.name, e.reason)
 
 

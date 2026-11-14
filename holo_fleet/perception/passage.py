@@ -30,16 +30,15 @@ import numpy as np
 from holo_fleet.perception.payload import GP_ADMITTED, GP_COMMITTED, GP_NONE, GP_PASSED
 from holo_fleet.perception.sonar_geometry import MOUNTS, R_OUT
 
-CROSS_TOL_M = 0.25                # L + R agrees with the opening within this
-CROSS_N = 3                       # consecutive captures with the signature
-CROSS_MAX_RANGE_M = 1.6           # the posts are seen this close
-CROSS_S_WINDOW_M = 1.2            # only near the gate plane, by the odometry from the hold point
-REAR_RANGE_OFFSET_M = 0.50        # the REAR echo of the frame is this much shorter than the own distance to the gate plane
-REAR_TOL_M = 0.50                 # the echo agrees within this (DVL scale and heading error over the last metres, sonar jitter)
-REAR_N = 3                        # consecutive captures with a matching REAR echo
-T_ODO_MAX_S = 10.0                # without any sonar evidence, the odometry and the estimate suffice after this long
-CROSSING_RESTART_M = 0.6          # horizontal error bound at a detected crossing: along the axis, the signature lasts
-                                  # |s| <~ 0.4 m; laterally the measured (R - L) / 2 has sd 0.03 m in the MEDIUM logs
+CROSS_TOL_M = 0.25
+CROSS_N = 3
+CROSS_MAX_RANGE_M = 1.6
+CROSS_S_WINDOW_M = 1.2
+REAR_RANGE_OFFSET_M = 0.50
+REAR_TOL_M = 0.50
+REAR_N = 3
+T_ODO_MAX_S = 10.0
+CROSSING_RESTART_M = 0.6
 
 
 def inside_keepout(s: float, l: float, dz: float, G) -> bool:
@@ -78,17 +77,17 @@ def gate_report(verifier, go, p_est, committed: bool, cur_idx: int, G):
 class PassageVerifier:
     def __init__(self, cfg):
         self.cfg = cfg
-        self.idx = 0                       # index of the gate tracked
-        self.gate = None                   # its GateSpec
+        self.idx = 0
+        self.gate = None
         self.admitted = False
         self.verified = False
-        self.by = ""                       # "crossing" | "rear" | "odometry"
+        self.by = ""
         self.s0 = 0.0
         self.d = 0.0
         self.t_odo: Optional[float] = None
         self.rear_hits = 0
         self.cross_hits = 0
-        self.crossing: Optional[tuple] = None   # (l, dz or None) measured inside the opening; None until detected
+        self.crossing: Optional[tuple] = None
 
     @property
     def in_progress(self) -> bool:
@@ -133,7 +132,7 @@ class PassageVerifier:
             c = self._crossing_now(sectors)
             self.cross_hits = self.cross_hits + 1 if c is not None else 0
             if self.cross_hits >= CROSS_N:
-                self.crossing = c                  # measured position in the opening; from now on s_odo restarts at the plane
+                self.crossing = c
                 self.s0 = -self.d
                 s_odo = 0.0
         if self.crossing is not None and s_odo >= G.exit_s:
