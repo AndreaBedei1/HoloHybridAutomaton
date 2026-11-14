@@ -196,7 +196,7 @@ python -m pytest -q -m "not slow and not holoocean"   # fast tests
 python -m pytest -q                                   # all tests, including the Z3 suites and HoloOcean
 ```
 
-On the current branch: 264 fast tests and 267 tests in total pass.
+At the final version: 571 tests pass and 1 is skipped (45 files, `python scripts/run_tests.py <out dir>`, which also runs the formal suite).
 
 ## 9. Project structure
 
