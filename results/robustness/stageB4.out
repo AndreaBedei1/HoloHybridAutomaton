@@ -1,4 +1,0 @@
-phase targeted: 2 runs, 0 done, 2 to do
-22:37:14 phase targeted start: orchestrator pid 79132, shard 0/1, code {'sha': 'd90b3794c0bfdc6f10994ba95d26e4eb202dd969', 'dirty_files': ['formal/check_mutex.py', 'formal/results/mutex.json', 'holo_fleet/config.py', 'holo_fleet/mission.py', 'holo_fleet/perception/structure_aiding.py', 'holo_fleet/sim/scenarios.py', 'tests/test_structure_aiding.py']}
-22:40:21 B0 CLEAN                  integrated_short                 s0 PASS             P1 3.277 fail [] wall 185.5s exit 0
-22:45:41 B0 MEDIUM-ONE             integrated_short                 s0 SAFE_DEGRADED    P1 3.253 fail ['progress', 'gate_completed', 'P3_recovered', 'terminal_success'] wall 312.4s exit 0

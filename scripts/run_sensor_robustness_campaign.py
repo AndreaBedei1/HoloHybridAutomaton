@@ -94,8 +94,6 @@ def plan(phase: str, seeds, only=None, protocols=None, profiles=None):
     ``final``: the campaign matrix; ``targeted``: --only scenarios x --protocols x --profiles (targeted validation)."""
     if phase == "final":
         runs = final_matrix(seeds, only)
-    elif phase == "b2final":
-        runs = b2_final_matrix(only)
     elif phase == "targeted":
         if not (only and protocols and profiles):
             raise SystemExit("--phase targeted needs --only, --protocols and --profiles")
@@ -130,30 +128,9 @@ def final_matrix(seeds, only=None) -> list:
 
 FINAL_SCENARIOS = ALL_SCENARIOS
 
-# B2-only validation campaign (plan analysis/2026-11-03_B2_REVIEW_AND_PLAN.md, H.4), frozen with criteria v4
-# (docs/ACCEPTANCE_CRITERIA.md v4.4): the plan's smaller variant, chosen before any campaign run for the wall time
-# (~3.8 min per run, two instances: 920 runs ~ 29 h, 552 runs ~ 18 h): 8 cells x (11 non-gate scenarios x 3 seeds +
-# 6 gate scenarios x 6 seeds) = 552 runs on held-out seeds (100-105) never used in development
-# v7 (the user's decision, 2026-11-06): three conditions - ideal, nominal and upper realistic degradation - with the
-# documented LOW and MEDIUM levels (sensors and channel together, every drone); the total acoustic blackout is outside
-# the protocol's operating assumptions and is no longer a campaign cell (a stated limit).  Order: CLEAN, nominal,
-# degraded.
-B2_CELLS = (("B2_CLEAN", "CLEAN"), ("B2_LOW", "LOW-ALL"), ("B2_MEDIUM", "MEDIUM-ALL"))
+# the gate scenarios of the standard set (the final campaign of criteria v8 is defined in scripts/final_campaign.py)
 B2_GATE_SCENARIOS = ("gate_single", "integrated_short", "mutex_deadlock_resolution", "line_parallel_mutex",
                      "lost_drone_mutex")
-B2_NONGATE_SCENARIOS = tuple(s for s in ALL_SCENARIOS if s not in B2_GATE_SCENARIOS)
-B2_SEEDS_NONGATE = tuple(range(800, 803))      # v10: fresh held-out seeds (100-105 v4, 200-205 v5, 300-305 v6,
-B2_SEEDS_GATE = tuple(range(800, 806))         # 400-405 v7, 500-505 v8, 700-705 v9; 600-602 the v9 probes)
-
-
-def b2_final_matrix(only=None) -> list:
-    runs = []
-    for proto, prof in B2_CELLS:
-        for sc in B2_NONGATE_SCENARIOS:
-            runs += [(proto, prof, sc, s) for s in B2_SEEDS_NONGATE]
-        for sc in B2_GATE_SCENARIOS:
-            runs += [(proto, prof, sc, s) for s in B2_SEEDS_GATE]
-    return [r for r in runs if not only or r[2] in only]
 
 
 def run_dir(raw: Path, protocol: str, prof: str, sc: str, seed: int) -> Path:
@@ -499,7 +476,7 @@ def finish(d: Path, profile: str) -> dict:
 
 def main() -> int:
     ap = argparse.ArgumentParser()
-    ap.add_argument("--phase", default="final", choices=("final", "targeted", "b2final"))
+    ap.add_argument("--phase", default="final", choices=("final", "targeted"))
     ap.add_argument("--raw", default=str(RAW))
     ap.add_argument("--seeds", type=int, nargs="*", default=list(SEEDS))
     ap.add_argument("--only", nargs="*")
@@ -541,7 +518,7 @@ def main() -> int:
         return 4
     raw = Path(args.raw)
     runs = plan(args.phase, args.seeds, args.only, args.protocols, args.profiles)
-    todo = pending(raw, runs, code_version()["sha"] if args.phase == "b2final" else "")
+    todo = pending(raw, runs, "")
     print(f"phase {args.phase}: {len(runs)} runs, {len(runs) - len(todo)} done, {len(todo)} to do", flush=True)
     if args.nshards > 1:
         # slice the PLAN, not what is still pending: orchestrators started at different times then still own disjoint
@@ -564,10 +541,7 @@ def main() -> int:
 
     done = 0
     version = code_version()
-    if args.phase == "b2final" and float(os.environ.get("HOLO_FLEET_HORIZON_FACTOR", "1")) != 1.0:
-        say("refused: the campaign uses the v5 horizon as frozen (HOLO_FLEET_HORIZON_FACTOR must be unset or 1)")
-        return 2
-    if args.phase in ("final", "b2final") and version["dirty_files"]:
+    if args.phase == "final" and version["dirty_files"]:
         say(f"refused: the final campaign runs only from a clean commit; modified: {version['dirty_files']}")
         return 2
     build = engine_build()

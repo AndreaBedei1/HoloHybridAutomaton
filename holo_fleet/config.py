@@ -22,7 +22,7 @@ class SeparationThresholds:
 
     d_nominal > d_warning_exit > d_warning > d_ca_exit > d_ca > d_safe > d_collision.
     The values of d_warning and d_ca are the smallest ones for which formal/check_separation.py
-    proves G(d >= d_safe) on the pairwise model, plus a margin (see REPORT.md).
+    proves G(d >= d_safe) on the pairwise model, plus a margin (see docs/GUARANTEES.md).
     """
 
     d_nominal: float = 3.5           # smallest inter-slot distance of every formation template

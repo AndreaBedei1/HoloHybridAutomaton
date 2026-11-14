@@ -149,14 +149,13 @@ def test_gate_passages_stay_inside_the_validated_queue_domain():
             check_gate_domain(sc.plans[0].slots, DEFAULT.gate)
 
 
-def test_b2_final_matrix_is_the_preregistered_smaller_variant():
+def test_the_final_matrix_is_the_preregistered_one():
     import sys
     sys.path.insert(0, str(__import__("pathlib").Path(__file__).resolve().parents[1] / "scripts"))
-    import run_sensor_robustness_campaign as c
+    import final_campaign as fc
 
-    runs = c.b2_final_matrix()
-    assert len(runs) == 3 * (12 * 3 + 5 * 6) == len(set(runs)) and len(c.B2_CELLS) == 3
-    assert {r[3] for r in runs} == set(range(800, 806))                       # fresh held-out seeds (v10)
+    runs = fc.matrix()
+    assert len(runs) == 448 == len(set(runs)) and {r[3] for r in runs} <= set(range(5000, 5405))
 
 
 def test_the_stress_scenarios_build_and_keep_the_failure_model():
