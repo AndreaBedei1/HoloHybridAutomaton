@@ -18,7 +18,7 @@ Simulation: HoloOcean 2.3 with a sonar octree patch (`docs/HOLOOCEAN_OCTREE_PATC
 
 ## 2. Formal verification
 
-`formal/check_properties.py`, z3 5.1.0, at the frozen commit: 284 checks, every one with its expected verdict (`formal/results/SUMMARY.md`).
+`formal/check_properties.py`, z3 5.1.0, at the frozen commit: 284 checks, every one with its expected verdict. After the freeze the fleet suite gained 16 checks without changing the controller (section 6.2: the stage-2 claim guard in the model, the delayed claims F1c and F1d, the entries that bypass stage 2 F0p, F2p, F1p, F0q, F1pa); the suite now has 300 checks, all as expected (`formal/results/SUMMARY.md`).
 
 | Suite | Checks | What it establishes |
 | --- | --- | --- |
@@ -31,7 +31,7 @@ Simulation: HoloOcean 2.3 with a sonar octree patch (`docs/HOLOOCEAN_OCTREE_PATC
 | Payload, silence, passage | 32 | claims hold the gate; silence shorter than 70 s excludes nobody; rule D on real receptions (S4) and its mutations (S4m, S4b: the round 8 code); the exclusion zone (S12, nonlinear reals, with coast, rise lag and drift; mutations S12m, S12l) |
 | Interacting automata at the gate | 19 | the composition of n = 2, 3, 4 automata: an inductive invariant (at most one vehicle in the stage-2 hold or the CR) gives P2 with no time bound; from any invariant state the fleet re-forms within 26, 40, 52 steps of 5 s once failures and stops end; declared limits checked as satisfiable |
 
-Every proof is on an abstraction. P2 under B2 rests on premise V (the channel never silences a live vehicle for 70 s at a working receiver), premise C (a commitment is learnt within the 32 s bound of S2; not monitored), the H6 navigation bound and the gate-frame navigation premise (1 m). The fleet recovery rests on premise H (a dead hull stops counting as a queued vehicle once it has risen), on a fairness window of 35 s, and on at most n - 2 failures (n = 2: none while committed). The ranking certificate guarantees eventual recovery; the P3 deadlines ask for the nominal closing speed and are not themselves proved.
+Every proof is on an abstraction. P2 under B2 rests on premise V (the channel never silences a live vehicle for 70 s at a working receiver), premise C (a queued vehicle learns of a commitment before it commits itself, and two vehicles that commit together learn of each other's claim before either is admitted; restated and monitored after the freeze, section 6.2), the H6 navigation bound and the gate-frame navigation premise (1 m). The fleet recovery rests on premise H (a dead hull stops counting as a queued vehicle once it has risen), on a fairness window of 35 s, and on at most n - 2 failures (n = 2: none while committed). The ranking certificate guarantees eventual recovery; the P3 deadlines ask for the nominal closing speed and are not themselves proved.
 
 ## 3. Final campaign
 
@@ -107,6 +107,8 @@ Declared limits of liveness (safety held in every case observed):
 3. two vehicles, or the last survivor, after a failure while committed: a receiver that hears nobody declares no one dead;
 4. a failure outside the exclusion zone but within the onboard margin of rule D ends in a safe stop.
 
+Limit of the P2 proof (section 6.2): an entry into the CR that bypasses the stage-2 check, a held vehicle moved by the separation filter or the escape, keeps the invariant when claims are learnt in time. Two such entries at once after a concurrent commitment, or a queued vehicle moved into the CR, are not excluded by the model. Runtime: 2 of 1057 entries in 612 runs were of this kind, with no other vehicle inside.
+
 Operating envelope: horizontal current to 0.30 m/s at the passage (validated), up to 0.50 m/s across or following beyond the steady envelope with P1 and P2 held; MEDIUM sensors and channel; formations of 2 to 6 vehicles; gate passages run with 2 and 3 vehicles (abreast, column, a stacked pair), the queue geometry proved for abreast queues up to 3 and stacked 2 x 2; permanent failures outside the exclusion zone, at most n - 2 for n >= 3.
 
 Threats to validity: simulation only (HoloOcean sonar and the acoustic channel are models; the coast bound of 1 m and the rise speed are measured in the simulator, not on a vehicle); a single gate geometry; the declared current equals the true bound of each scenario (an operator declaration in the field); the scope, rule D and the P3 contract were set during development; the engine noise is unseeded.
@@ -115,4 +117,53 @@ Threats to validity: simulation only (HoloOcean sonar and the acoustic channel a
 
 Development is recorded in `analysis/MEDIUM_CAMPAIGN_LOG.md` (every batch, with its expectations written before it ran), the design note `analysis/2026-11-09_MEDIUM_ROBUSTNESS_DESIGN.md`, nine rounds of two independent reviews (formal verification; underwater robotics) in `analysis/review_round*_*.md` with their resolutions in `analysis/REVIEW_ROUND*_RESOLUTION.md`. The round 9 reviewers found that rule D read a pruned fix list (fixed and covered by S4b) and approved the freeze at re-check.
 
-Reproduce: `python formal/check_properties.py`; `python scripts/run_tests.py <out dir>` (unit and formal suites); `python scripts/final_campaign.py <list>` and the lanes `scripts/final_campaign_lane.sh` (one HoloOcean instance per lane); `python scripts/analyze_final_campaign.py results/robustness/raw_v11_final`. The raw runs of the final campaign stay on disk in `results/robustness/raw_v11_final` (not versioned); the historical development runs are archived outside the repository.
+Reproduce: `python formal/check_properties.py`; `python scripts/run_tests.py <out dir>` (unit and formal suites); `python scripts/final_campaign.py <list>` and the lanes `scripts/final_campaign_lane.sh` (one HoloOcean instance per lane); `python scripts/analyze_final_campaign.py results/robustness/raw_v11_final`. Post-freeze validation: `python scripts/analyze_validation.py <out> <raw>`, `python scripts/audit_commitment_visibility.py <raw> <out.json>`, `python scripts/audit_cr_entries.py <out.json> <raw...>`; its 164 raw runs stay in `results/validation/pilot` and `results/validation/heldout` (not versioned; code commit, seed and engine build in each `run_metrics.json`). The raw runs of the final campaign stay on disk in `results/robustness/raw_v11_final` (not versioned); the historical development runs are archived outside the repository.
+
+## 6. Post-freeze validation (2026-11-16)
+
+Three studies requested after the freeze, run on the v11 controller unchanged; details in `analysis/VALIDATION_REPORT.md`.
+- Additions on branch `lorenzo-validations`: a parametric acoustic channel, the no-adaptation baseline B2NA (`neighbour_adaptation`, default on, same code path), referee monitors and the scenario `em_delay_head`.
+- Runs: 164, all completed. The pilot has 64 runs (seed 6000, commit 58060df). The held-out set has 100 runs (seeds 6100-6104, commit 4d45dd0), chosen by a rule committed before the pilot was read (`analysis/VALIDATION_LOG.md`, `results/validation/report/heldout_selection.txt`).
+- Safety: P1 and P2 held in all 164 runs (smallest separation 2.86 m).
+
+### 6.1 Communication robustness
+One factor of the LOW channel at a time, gate_single and lost_drone_mutex, 5 held-out seeds per configuration.
+- **Finite degradation** (beacon period 8 s, latency 2 s, jitter 1 s, random loss 0.7 and 0.9, bursts of 30 s, asymmetric loss 0.9): every run complete, with no P3 failure. The mean gate wait rose from 29.9 s to at most 44.3 s and the last passage from 73.7 s to at most 101.5 s.
+- **Bursts of 60 s every 90 s:** 3 PASS and 2 P3_LATE.
+- **Pilot P3c failure:** one run of the pilot (loss 0.9, lost_drone_mutex) failed P3c. A live vehicle was declared vacant after a silence longer than the fairness premise allows (49.1 s against 35 s). The 5 held-out seeds of that configuration passed.
+- **Blackout:** lost_drone_mutex ended PREMISE_VIOLATED in 5 of 5 runs, because the vacancy is declared at 129-131 s, beyond its 48 s deadline.
+
+In this sweep, delay, jitter, period, bursts and asymmetry lengthened the waits. P3 was affected only by losses long enough to break the silence premises. Interactions between factors were not tested.
+
+![Communication sweep](results/validation/report/comm_sweep.png)
+
+### 6.2 Premise C, the composition model and an entry that bypasses stage 2
+**Episodes.** The 448 final runs contain 1007 episodes: commit edges, counted per other vehicle queued and not committed. The figure of 688 counts only B2_CLEAN, B2_LOW, B2_MEDIUM and B0; the other 319 are B2NP 296 and B2_MEDIUM_HT 23. Every episode was learnt within 14.4 s (B0, sonar only), and within 7.3 s under B2.
+
+**The fleet model.** The model lost P2 with a latch one step late because its stage-2 entry ignored the claims, which the code checks (`entry_ok`, S1). With that guard:
+- P2 holds with claims learnt up to 2 steps (10 s) late under the sonar precedence and up to 1 step (5 s) without it (F1d, n = 3, bounded), tight at the next step;
+- F0 and F2 are unchanged.
+
+The 32 s of S2 bounds the age of a report of not engaged, not this delay.
+
+**The concurrent commitment of `st_lost_middle` s5201.** Two vehicles committed 0.5 s apart, out of sonar range of each other. Each learnt of the other's claim in 0.3 and 0.6 s and held. The CR never held more than one vehicle. The held vehicle ahead, pushed forward by the separation filter and the escape away from the other, entered the CR without admission. While inside, it kept its claim (`report_phase`, S9), and the other vehicle was admitted only after it had passed.
+
+**Formal resolution** (`formal/check_fleet.py`):
+- **F0p, F2p:** an entry that bypasses the stage-2 check, by a committed vehicle at any step, keeps the inductive invariant and the bounded recovery for n = 2, 3, 4.
+- **F1p:** after a concurrent commitment, two such entries at once give two vehicles in the CR in the model.
+- **F0q:** so does a queued vehicle moved into the CR.
+- **F1pa:** the deployed escape planner is not antisymmetric along the gate axis. Two vehicles at their hold points that see each other can both be moved forward (8 mirrored patterns), so no lemma excludes the double entry. F1p and F0q are therefore declared limits.
+
+**Runtime audit** (`scripts/audit_cr_entries.py`, 612 runs): 1057 entries. 1055 were admitted, 2 were pushed (both in s5201) and none were uncommitted; at none of them was another vehicle inside the CR. No safety defect was demonstrated, so the controller was not changed. A CR-aware constraint on the escape of a held vehicle would close the gap; it is not part of v11.
+
+### 6.3 Emergent coordination
+One vehicle of a square of four was pushed back by a jet (8-15 s). B2 was compared with B2NA: the same plan, without the neighbours' adaptation. 5 seeds each, all PASS.
+- **B2 neighbours:** about 4.7 s after the jet starts they lower their reference speed from 0.30 to 0.20 m/s and yield 2.5 m (head jet) and 4.6 m (head and cross jet) of progress.
+- **B2NA neighbours:** they do not react.
+- **Effect of the adaptation:** the peak formation error is lower by 0.41 and 0.72 m (2.33 against 2.74 m, 2.83 against 3.55 m) and the recovery after the jet is shorter by 6.0 and 9.4 s. The seed ranges do not overlap on any of these measures.
+
+The response is local: each neighbour uses its own fixes of the delayed vehicle.
+
+![Emergence](results/validation/report/emergence.png)
+
+Limitations of the validation: one factor at a time, 5 seeds per held-out configuration, and the levels chosen by the rule. The rule's duration criterion was insensitive because the scenario end time is fixed by the plan. Fairness is logged, not used in the classification. The fleet model works in steps of 5 s.

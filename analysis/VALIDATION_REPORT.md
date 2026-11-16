@@ -64,18 +64,27 @@ The middle drone was dead. Drones 0 and 2 were at the outer queue points, 7 m ap
 - **Occupancy:** the referee never saw more than one drone in the CR (occupancy ≤ 1, P2 true, minimum separation 2.60 m).
 - **Entry without admission:** while holding, drone 2 was pushed forward by collision avoidance and separation warnings against drone 0. It entered the CR without an ADMIT (CR occupied from 53.7 s), crossed the centre at 63.5 s and left. Drone 0 was admitted at 80.0 s, after drone 2 had passed.
 
-This was a concurrent commitment, not a simultaneous occupancy of the CR. The P2 margin came from the stage-2 claim check of the drone that stayed outside. The entry of a held drone pushed by collision avoidance is not in the fleet model, which only stops drones; that part is supported only by this run.
+This was a concurrent commitment, not a simultaneous occupancy of the CR. The P2 margin came from the stage-2 claim check of the drone that stayed outside, and from the claim the moved drone keeps inside the keep-out box (`report_phase`, S9).
+
+Formal follow-up (`formal/check_fleet.py`, push option):
+- **F0p, F2p:** an entry into the CR that bypasses the stage-2 check, by a committed drone at any step, keeps the inductive invariant and the bounded recovery for n = 2, 3, 4. With claims learnt in time, no other drone is in the hold or the CR.
+- **F1p (declared limit):** after a concurrent commitment (claims one step late), two such entries at once put two drones in the CR in the model.
+- **F0q (declared limit):** a queued drone moved into the CR breaks the invariant.
+- **F1pa (scope):** an antisymmetry lemma on the deployed escape planner would exclude the double entry, but it does not hold. Two drones at their hold points that see each other, with the hold pulling back or holding, can both be given a forward component in 8 mirrored patterns. Most of these components are small (up to 0.05 m/s in the band of the warning filter).
+
+Runtime audit of every CR entry (`scripts/audit_cr_entries.py`, `results/validation/audit_cr_entries.json`): 612 runs (448 final, 164 validation), 1057 entries. 1055 were ADMITTED, 2 PUSHED (both drone 2 of s5201, an entry and a re-entry) and 0 UNCOMMITTED; at none of them was another drone inside the CR. No P2 violation and no safety defect were demonstrated, so the v11 controller is unchanged. A constraint in the escape and warning filter that keeps a held drone out of the CR would close the gap, but it is not part of v11. Regression tests: `tests/test_cr_entry.py`.
 
 ### What is proved, conditional, experimental
 - **Proved (Z3, the abstraction in 5 s steps):**
-  - P2 for n = 2, 3, 4 at every time (F0, k-induction), with claims learnt within the step;
-  - P2 from the launch for n = 3 with claims learnt up to 10 s late (with M2) or 5 s late (without M2), bounded, tight;
+  - P2 for n = 2, 3, 4 at every time (F0, k-induction), with claims learnt within the step, also with entries of committed drones that bypass the stage-2 check (F0p, F2p);
+  - P2 from the launch for n = 3 with claims learnt up to 10 s late (with M2) or 5 s late (without M2), bounded, tight, when every entry passes the stage-2 check;
   - bounded recovery F2.
 - **Conditional:**
   - on refined premise C: two drones that commit together learn of each other's claim before either is admitted. It is now monitored per run (`commitment_visibility.concurrent`, `admitted_without_evidence`);
   - on the latch, freshness and precedence lemmas M3, S1, S2 and M2;
   - on premises V, H and the fairness of the fixes.
 - **Experimental only:**
+  - entries into the CR that bypass the stage-2 check: 2 of 1057, never with another drone inside; two at once after a concurrent commitment are not excluded by the model (F1p, F1pa);
   - the delays at runtime: 1007 + 250 episodes, maximum 14.4 s (B0) and 7.3 s with B2 in the final campaign;
   - one concurrent commitment in 1257 episodes, learnt in 0.3-0.6 s;
   - P2 under a hold overridden by collision avoidance (s5201);

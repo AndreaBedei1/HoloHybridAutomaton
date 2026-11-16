@@ -9,7 +9,7 @@
       "expect": "sat",
       "verdict": "sat",
       "passed": true,
-      "seconds": 0.002,
+      "seconds": 0.001,
       "counterexample": {
         "at_queue": false,
         "committed": false,
@@ -30,7 +30,7 @@
       "expect": "sat",
       "verdict": "sat",
       "passed": true,
-      "seconds": 0.002,
+      "seconds": 0.0,
       "counterexample": {
         "at_queue": false,
         "committed": false,
@@ -51,7 +51,7 @@
       "expect": "sat",
       "verdict": "sat",
       "passed": true,
-      "seconds": 0.0,
+      "seconds": 0.001,
       "counterexample": {
         "at_queue": false,
         "committed": false,
@@ -72,7 +72,7 @@
       "expect": "sat",
       "verdict": "sat",
       "passed": true,
-      "seconds": 0.002,
+      "seconds": 0.0,
       "counterexample": {
         "at_queue": true,
         "d_min": 0.125,
@@ -90,7 +90,7 @@
       "expect": "sat",
       "verdict": "sat",
       "passed": true,
-      "seconds": 0.0,
+      "seconds": 0.001,
       "counterexample": {
         "at_queue": false,
         "d_min": 0.125,
@@ -110,7 +110,7 @@
       "expect": "sat",
       "verdict": "sat",
       "passed": true,
-      "seconds": 0.0,
+      "seconds": 0.001,
       "counterexample": {
         "at_queue": false,
         "committed": false,
@@ -131,7 +131,7 @@
       "expect": "sat",
       "verdict": "sat",
       "passed": true,
-      "seconds": 0.0,
+      "seconds": 0.001,
       "counterexample": {
         "at_queue": false,
         "committed": false,
@@ -152,7 +152,7 @@
       "expect": "sat",
       "verdict": "sat",
       "passed": true,
-      "seconds": 0.036,
+      "seconds": 0.02,
       "counterexample": null,
       "note": "13 edges"
     },
@@ -163,7 +163,7 @@
       "expect": "sat",
       "verdict": "sat",
       "passed": true,
-      "seconds": 0.031,
+      "seconds": 0.023,
       "counterexample": null,
       "note": "13 edges"
     },
@@ -174,7 +174,7 @@
       "expect": "sat",
       "verdict": "sat",
       "passed": true,
-      "seconds": 0.04,
+      "seconds": 0.022,
       "counterexample": null,
       "note": "13 edges"
     },
@@ -185,7 +185,7 @@
       "expect": "sat",
       "verdict": "sat",
       "passed": true,
-      "seconds": 0.034,
+      "seconds": 0.022,
       "counterexample": null,
       "note": "13 edges"
     },
@@ -196,7 +196,7 @@
       "expect": "sat",
       "verdict": "sat",
       "passed": true,
-      "seconds": 0.05,
+      "seconds": 0.02,
       "counterexample": null,
       "note": "13 edges"
     },
@@ -207,7 +207,7 @@
       "expect": "sat",
       "verdict": "sat",
       "passed": true,
-      "seconds": 0.041,
+      "seconds": 0.02,
       "counterexample": null,
       "note": "13 edges"
     },
@@ -218,7 +218,7 @@
       "expect": "sat",
       "verdict": "sat",
       "passed": true,
-      "seconds": 0.044,
+      "seconds": 0.02,
       "counterexample": null,
       "note": "13 edges"
     },
@@ -229,7 +229,7 @@
       "expect": "sat",
       "verdict": "sat",
       "passed": true,
-      "seconds": 0.047,
+      "seconds": 0.019,
       "counterexample": null,
       "note": "13 edges"
     },
@@ -240,7 +240,7 @@
       "expect": "sat",
       "verdict": "sat",
       "passed": true,
-      "seconds": 0.048,
+      "seconds": 0.018,
       "counterexample": null,
       "note": "13 edges"
     },
@@ -251,7 +251,7 @@
       "expect": "sat",
       "verdict": "sat",
       "passed": true,
-      "seconds": 0.044,
+      "seconds": 0.019,
       "counterexample": null,
       "note": "13 edges"
     },
@@ -262,7 +262,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 0.002,
+      "seconds": 0.001,
       "counterexample": null,
       "note": ""
     },
@@ -284,7 +284,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 0.0,
+      "seconds": 0.001,
       "counterexample": null,
       "note": ""
     },
@@ -295,7 +295,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 0.003,
+      "seconds": 0.002,
       "counterexample": null,
       "note": ""
     },
@@ -306,7 +306,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 0.002,
+      "seconds": 0.001,
       "counterexample": null,
       "note": ""
     },
@@ -317,7 +317,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 0.002,
+      "seconds": 0.0,
       "counterexample": null,
       "note": ""
     },
@@ -361,7 +361,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 0.002,
+      "seconds": 0.0,
       "counterexample": null,
       "note": ""
     },
@@ -383,7 +383,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 0.0,
+      "seconds": 0.002,
       "counterexample": null,
       "note": ""
     },
@@ -394,7 +394,7 @@
       "expect": "sat",
       "verdict": "sat",
       "passed": true,
-      "seconds": 0.002,
+      "seconds": 0.0,
       "counterexample": {
         "at_queue": true,
         "committed": false,

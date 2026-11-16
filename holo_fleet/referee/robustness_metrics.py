@@ -584,6 +584,18 @@ def commitment_visibility(names, t, states, m, bound_s: float = PREMISE_C_BOUND_
             "concurrent": conc, "admitted_without_evidence": sum(c["admitted_without_evidence"] for c in conc)}
 
 
+def cr_entry_kind(states_k, j: int) -> str:
+    """How a drone entered the CR at its state record j: ADMITTED (committed and admitted by the stage-2 check since its commit
+    edge), PUSHED (committed, never admitted: the hold overridden by separation warning or collision avoidance, st_lost_middle
+    s5201) or UNCOMMITTED."""
+    if not states_k[j].get("committed"):
+        return "UNCOMMITTED"
+    c0 = j
+    while c0 > 0 and states_k[c0 - 1].get("committed"):
+        c0 -= 1
+    return "ADMITTED" if any((states_k[y].get("gate") or {}).get("entry") == "ADMIT" for y in range(c0, j + 1)) else "PUSHED"
+
+
 def wrong_validated_fits(names, t, P, states, m, faults, worse_m: float = 0.3) -> int:
     """Corrections of the map fit after which the gate localization is validated and the true horizontal error of the estimate has
     grown by more than worse_m (1 s before against 1 s after): the round 8 monitor of a wrong validated fit."""
