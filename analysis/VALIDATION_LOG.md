@@ -1,0 +1,3 @@
+# Validation experiments (branch lorenzo-validations)
+
+Controller unchanged from b2-freeze-v11. Pilot (commit 58060df, development seed 6000), written before any run: 20 channel configurations (LOW baseline; one factor at a time: beacon period 2/4/8 s, latency 0.5/1/2 s, jitter 0.25/0.5/1 s, random loss 0.3/0.5/0.7/0.9, bursts of 10/30/60 s every 90 s on average, asymmetric loss 0.5/0.9, complete blackout) x gate_single, lost_drone_mutex, formation_square, LOW sensors; emergence: B2 and B2NA (no neighbour adaptation) x lost_drone_rejoin, em_delay_head. Hypothesis under test (Lorenzo): finite degradation mainly lengthens the mission; only prolonged or complete loss stops progress. The pilot selects the configurations of the held-out runs (seeds 6100-6104).
