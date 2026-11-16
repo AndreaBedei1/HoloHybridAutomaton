@@ -91,6 +91,12 @@ def emergence(d: Path) -> dict:
     t = np.array([float(r["t"]) for r in R])
     fe = np.array([float(r["form_err"]) if r.get("form_err") not in (None, "") else np.nan for r in R])
     displaced = 2
+    v_nom0 = DEFAULT.form.v_nominal
+    w_end = jet.t_off + float(DEFAULT.form.t_rejoin)
+
+    def adapting(r):
+        f = r.get("form") or {}
+        return bool(f.get("reduced")) or r.get("mode") == "FORMATION_WAIT_REJOIN" or (f.get("v_ref") is not None and f["v_ref"] < v_nom0 - 1e-3)
     react = None
     vref = {}
     v_nom = DEFAULT.form.v_nominal if hasattr(DEFAULT.form, "v_nominal") else None
@@ -99,10 +105,10 @@ def emergence(d: Path) -> dict:
         if k == displaced:
             continue
         for a, b in zip(st[k], st[k][1:]):
-            if a["t"] < jet.t_on:
+            if a["t"] < jet.t_on or a["t"] > w_end:
                 continue
             f = a.get("form") or {}
-            if f.get("reduced") or a.get("mode") == "FORMATION_WAIT_REJOIN":
+            if adapting(a):
                 adapt_s += b["t"] - a["t"]
             v = f.get("v_ref")
             if v is not None:
@@ -113,7 +119,7 @@ def emergence(d: Path) -> dict:
         if k == displaced:
             continue
         for r in st[k]:
-            if r["t"] >= jet.t_on and ((r.get("form") or {}).get("reduced") or r.get("mode") == "FORMATION_WAIT_REJOIN"):
+            if jet.t_on <= r["t"] <= w_end and adapting(r):
                 react = r["t"] if react is None else min(react, r["t"])
                 break
         vref[k] = [(r["t"], (r.get("form") or {}).get("v_ref")) for r in st[k]]
@@ -215,10 +221,15 @@ def plot_comm(out: Path, comm) -> None:
                 elif r["factor"] == "baseline":
                     pts[base[fa]].append(r)
             xs = sorted(pts)
-            axes[0, j].plot(xs, [np.mean([r["completion_s"] for r in pts[x] if r["completion_s"] is not None] or [np.nan]) for x in xs], marker=mk, label=sc)
+            ys = [[r["last_gate_s"] for r in pts[x] if r["last_gate_s"] is not None] for x in xs]
+            ok = [i for i, y in enumerate(ys) if y]
+            if ok:
+                mu = np.array([np.mean(ys[i]) for i in ok])
+                axes[0, j].errorbar([xs[i] for i in ok], mu, yerr=[mu - np.array([min(ys[i]) for i in ok]), np.array([max(ys[i]) for i in ok]) - mu],
+                                    marker=mk, capsize=3, label=sc)
             axes[1, j].plot(xs, [np.mean([r["complete"] for r in pts[x]]) for x in xs], marker=mk, label=sc)
         axes[1, j].set_xlabel(labels[fa])
-    axes[0, 0].set_ylabel("mission completion (s)")
+    axes[0, 0].set_ylabel("last gate passage (s), mean and range")
     axes[1, 0].set_ylabel("fraction complete")
     axes[0, 0].legend(fontsize=7)
     fig.tight_layout()
