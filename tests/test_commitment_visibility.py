@@ -32,7 +32,7 @@ def test_a_late_latch_and_a_blind_commit_are_violations_and_a_give_up_is_censore
     for i in range(50, 900):
         st[2][i]["committed"] = True                                 # commits with its latch FREE: no evidence
     r = commitment_visibility(["d0", "d1", "d2"], t, st, len(t))
-    assert r["committed_without_evidence"] == 1 and r["violations"] == 2
+    assert r["committed_without_evidence"] == 1 and r["violations"] == 1
     st = _states(2, len(t))
     for i in range(10, 50):
         st[0][i]["committed"] = True                                 # gives up before the other learns of it

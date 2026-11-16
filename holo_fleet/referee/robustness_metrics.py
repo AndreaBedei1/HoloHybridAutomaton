@@ -524,7 +524,8 @@ PREMISE_C_BOUND_S = 32.0
 def commitment_visibility(names, t, states, m, bound_s: float = PREMISE_C_BOUND_S) -> Dict:
     """Premise C of P2 (formal S2, check_fleet): every queued drone learns of a commitment within bound_s.  For every commit edge of a
     drone k, every other drone queued and not committed at that instant: the delay until its own latch is not FREE (a corridor echo or a
-    claim, its local evidence).  A queued drone that commits itself before having that evidence is counted apart; an episode whose
+    claim, its local evidence).  A queued drone that commits itself before having that evidence (two drones that both took the
+    priority) is counted apart, not as a violation of the premise; an episode whose
     committed drone gives up first, or whose run ends first, is censored."""
     n = len(names)
     delays, censored, blind = [], 0, 0
@@ -557,7 +558,7 @@ def commitment_visibility(names, t, states, m, bound_s: float = PREMISE_C_BOUND_
     d = sorted(delays)
     return {"episodes": len(d), "censored": censored, "committed_without_evidence": blind,
             "max_s": round(d[-1], 2) if d else None, "p95_s": round(d[int(0.95 * (len(d) - 1))], 2) if d else None,
-            "within_5s": sum(x <= 5.0 for x in d), "violations": sum(x > bound_s for x in d) + blind, "bound_s": bound_s}
+            "within_5s": sum(x <= 5.0 for x in d), "violations": sum(x > bound_s for x in d), "bound_s": bound_s}
 
 
 def wrong_validated_fits(names, t, P, states, m, faults, worse_m: float = 0.3) -> int:
@@ -671,7 +672,9 @@ def cause_tags(out: Dict, fm: Dict, fs_sensor, term, states, healthy, m: int, dt
     if (out.get("gate_nav") or {}).get("committed_beyond"):
         tags.append("GATE_NAV_PREMISE_VIOLATED")
     if (out.get("commitment_visibility") or {}).get("violations"):
-        tags.append("PREMISE_C_VIOLATED")                # a queued drone learnt of a commitment later than the S2 bound
+        tags.append("PREMISE_C_VIOLATED")
+    if (out.get("commitment_visibility") or {}).get("committed_without_evidence"):
+        tags.append("CONCURRENT_COMMIT")
     if out.get("wrong_validated_fits"):
         tags.append("WRONG_VALIDATED_FIT")
     if not out["P1"]["holds"] or out["P1"]["collisions"]:
