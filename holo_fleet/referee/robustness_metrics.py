@@ -160,6 +160,7 @@ def analyze_run(run_dir: Path, reference: Optional[Dict] = None, cfg=DEFAULT, pr
     out["validation_profile"] = bool((profile or "").split("-")[0] in ("CLEAN", "LOW", "MEDIUM") and channel in (None, "CLEAN", "LOW", "MEDIUM"))
     out["p3"] = p3_contract.evaluate(sc, cfg, names, faults, t, P, states, modes, m, validation=out["validation_profile"])
     out["wrong_validated_fits"] = wrong_validated_fits(names, t, P, states, m, faults)
+    out["commitment_visibility"] = commitment_visibility(names, t, states, m)
 
     p1 = met["P1_separation"]
     intr = p1.get("intruder") or {}
@@ -517,6 +518,84 @@ def refine_v8(cls: str, out: Dict) -> str:
     return cls
 
 
+PREMISE_C_BOUND_S = 32.0
+
+
+def commitment_visibility(names, t, states, m, bound_s: float = PREMISE_C_BOUND_S) -> Dict:
+    """Premise C of P2 (formal S2, check_fleet): every queued drone learns of a commitment within bound_s.  For every commit edge of a
+    drone k, every other drone queued and not committed at that instant: the delay until its own latch is not FREE (a corridor echo or a
+    claim, its local evidence).  A queued drone that commits itself before having that evidence (two drones that both took the
+    priority) is counted apart, not as a violation of the premise; an episode whose
+    committed drone gives up first, or whose run ends first, is censored.
+    Concurrent commitments (the refined premise C' of check_fleet F1d: two committed drones learn of each other's claim before
+    either is admitted to the CR): for each, the delay from the second commit until each of the two has evidence of the other (its
+    latch not FREE or its stage-2 entry_ok false), and whether either was admitted (entry ADMIT) before both had it."""
+    n = len(names)
+    delays, censored, blind, conc = [], 0, 0, []
+
+    def evidence(d, x0, x1):
+        for y in range(x0, x1):
+            g = states[d][y].get("gate") or {}
+            if g.get("occ") in ("BUSY", "EXITING") or g.get("entry_ok") is False:
+                return y
+        return None
+
+    def admitted(d, x0, x1):
+        return next((y for y in range(x0, x1) if (states[d][y].get("gate") or {}).get("entry") == "ADMIT"), None)
+    for k in range(n):
+        for i in range(1, m):
+            if not (states[k][i].get("committed") and not states[k][i - 1].get("committed")):
+                continue
+            i_end = next((x for x in range(i, m) if not states[k][x].get("committed")), m)
+            for j in range(n):
+                if j == k:
+                    continue
+                g0 = states[j][i].get("gate") or {}
+                if states[j][i].get("mode") == "DEAD" or not g0.get("at_queue") or states[j][i].get("committed"):
+                    continue
+                hit = None
+                for x in range(i, m):
+                    if (states[j][x].get("gate") or {}).get("occ") in ("BUSY", "EXITING"):
+                        hit = x
+                        break
+                    if states[j][x].get("committed"):
+                        blind += 1
+                        hit = -1
+                        j_end = next((y for y in range(x, m) if not states[j][y].get("committed")), m)
+                        e = [evidence(j, x, j_end), evidence(k, x, i_end)]
+                        a = [admitted(j, x, j_end), admitted(k, x, i_end)]
+                        known = max(e) if None not in e else None
+                        blind_adm = any(y is not None and (known is None or y < known) for y in a)
+                        conc.append({"drones": [names[k], names[j]], "t_first": round(float(t[i]), 2), "t_second": round(float(t[x]), 2),
+                                     "learn_s": [round(float(t[y] - t[x]), 2) if y is not None else None for y in e],
+                                     "admitted_t": [round(float(t[y]), 2) if y is not None else None for y in a],
+                                     "admitted_without_evidence": blind_adm})
+                        break
+                    if x >= i_end:
+                        break
+                if hit is None:
+                    censored += 1
+                elif hit >= 0:
+                    delays.append(float(t[hit] - t[i]))
+    d = sorted(delays)
+    return {"episodes": len(d), "censored": censored, "committed_without_evidence": blind,
+            "max_s": round(d[-1], 2) if d else None, "p95_s": round(d[int(0.95 * (len(d) - 1))], 2) if d else None,
+            "within_5s": sum(x <= 5.0 for x in d), "violations": sum(x > bound_s for x in d), "bound_s": bound_s,
+            "concurrent": conc, "admitted_without_evidence": sum(c["admitted_without_evidence"] for c in conc)}
+
+
+def cr_entry_kind(states_k, j: int) -> str:
+    """How a drone entered the CR at its state record j: ADMITTED (committed and admitted by the stage-2 check since its commit
+    edge), PUSHED (committed, never admitted: the hold overridden by separation warning or collision avoidance, st_lost_middle
+    s5201) or UNCOMMITTED."""
+    if not states_k[j].get("committed"):
+        return "UNCOMMITTED"
+    c0 = j
+    while c0 > 0 and states_k[c0 - 1].get("committed"):
+        c0 -= 1
+    return "ADMITTED" if any((states_k[y].get("gate") or {}).get("entry") == "ADMIT" for y in range(c0, j + 1)) else "PUSHED"
+
+
 def wrong_validated_fits(names, t, P, states, m, faults, worse_m: float = 0.3) -> int:
     """Corrections of the map fit after which the gate localization is validated and the true horizontal error of the estimate has
     grown by more than worse_m (1 s before against 1 s after): the round 8 monitor of a wrong validated fit."""
@@ -627,6 +706,10 @@ def cause_tags(out: Dict, fm: Dict, fs_sensor, term, states, healthy, m: int, dt
         tags.append("PREMISE_V_VIOLATED")
     if (out.get("gate_nav") or {}).get("committed_beyond"):
         tags.append("GATE_NAV_PREMISE_VIOLATED")
+    if (out.get("commitment_visibility") or {}).get("violations"):
+        tags.append("PREMISE_C_VIOLATED")
+    if (out.get("commitment_visibility") or {}).get("committed_without_evidence"):
+        tags.append("CONCURRENT_COMMIT")
     if out.get("wrong_validated_fits"):
         tags.append("WRONG_VALIDATED_FIT")
     if not out["P1"]["holds"] or out["P1"]["collisions"]:

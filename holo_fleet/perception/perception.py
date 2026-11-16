@@ -504,7 +504,13 @@ class Perception:
                                readings, vacant=self.vacant, acoustic=ac_rel,
                                missing={k for k, v in self.missing_state.items() if v})
         self.acoustic_residuals(t, form, R_form, nav.p, offset)
+        if not self.cfg.form.neighbour_adaptation:
+            form.missing = []
         self.track_missing(t, dt, form, in_formation, t_form)
+        if not self.cfg.form.neighbour_adaptation:
+            form.missing, form.neighbors_ok, form.front_residual = [], True, None
+            form.along_corr = form.lateral_corr = 0.0
+            self.acoustic_lag = {}
         lags = [v for k, v in self.acoustic_lag.items() if k not in self.vacant]
         form.behind = max(lags) if lags else None
         fr = self.cfg.form

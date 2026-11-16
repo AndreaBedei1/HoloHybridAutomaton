@@ -15,8 +15,8 @@ GATE_SCENARIOS = ("gate_single", "integrated_short", "mutex_deadlock_resolution"
 
 
 def test_catalogue_is_small_and_short():
-    from holo_fleet.sim.scenarios import STRESS_BATCH, STRESS_SCENARIOS
-    assert set(SCENARIOS) - set(STRESS_SCENARIOS) - set(STRESS_BATCH) == set(EXPECTED)
+    from holo_fleet.sim.scenarios import STRESS_BATCH, STRESS_SCENARIOS, VALIDATION_EXTRA
+    assert set(SCENARIOS) - set(STRESS_SCENARIOS) - set(STRESS_BATCH) - set(VALIDATION_EXTRA) == set(EXPECTED)
     for name, n in EXPECTED.items():
         sc = SCENARIOS[name](DEFAULT)
         assert len(sc.plans) == n == len(sc.sim.names), name

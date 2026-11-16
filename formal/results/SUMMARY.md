@@ -1,10 +1,10 @@
 # Formal verification summary
 
-Generated 2026-11-13 16:43:12 by `formal/check_properties.py`.
+Generated 2026-11-16 19:31:14 by `formal/check_properties.py`.
 
 UNSAT = the negated property has no model in the abstraction, i.e. the property HOLDS for the model; SAT is expected for the satisfiability / non-vacuity checks (a witness must exist) and for the mutation tests (deliberately broken designs must yield a counterexample); mutation Om2 expects UNSAT (a broken observation domain loses the reachability of an edge).  The observation domain of every suite is the conjunction of the invariants of holo_fleet/ha/observation_invariants.py.
 
-## Local determinism & priority hierarchy  (104/104 as expected, 0.3 s)
+## Local determinism & priority hierarchy  (104/104 as expected, 0.4 s)
 
 Encoding: `holo_fleet/ha/spec.py`
 
@@ -115,7 +115,7 @@ Encoding: `holo_fleet/ha/spec.py`
 | MA mutation: a give-up that keeps the commitment (the withdrawn retreat) must violate G2c | expect counterexample | SAT | SAT | yes |
 | ML mutation: a wrong readable guard (collision risk drawn at d_warning) must violate L1 | expect counterexample | SAT | SAT | yes |
 
-## Observation consistency (perception -> automaton interface)  (32/32 as expected, 0.7 s)
+## Observation consistency (perception -> automaton interface)  (32/32 as expected, 0.8 s)
 
 Encoding: `holo_fleet/ha/observation_invariants.py + holo_fleet/ha/spec.py`
 
@@ -154,7 +154,7 @@ Encoding: `holo_fleet/ha/observation_invariants.py + holo_fleet/ha/spec.py`
 | Om2 mutation: v1 constraint passed -> at_queue makes pass_done unreachable | expect UNSAT (reachability lost) | UNSAT | UNSAT | yes |
 | Om3 mutation: no monitor -> an inconsistent observation drives a mission edge | expect counterexample | SAT | SAT | yes |
 
-## P1 inter-vehicle separation  (15/15 as expected, 168.4 s)
+## P1 inter-vehicle separation  (15/15 as expected, 179.9 s)
 
 Encoding: `formal/check_separation.py`
 
@@ -176,7 +176,7 @@ Encoding: `formal/check_separation.py`
 | S3 at most one vertex angle >= 90 deg (pairwise d >= d_safe) | d_ij >= d_safe -> not(angle_i >= 90 and angle_j >= 90) | UNSAT | UNSAT | yes |
 | S4 blackout <= 0.8s starting at d >= 2.34 m keeps d >= d_safe | FAILSAFE hold with unrejected drift w_rel | UNSAT | UNSAT | yes |
 
-## P2 critical-region mutual exclusion  (45/45 as expected, 583.9 s)
+## P2 critical-region mutual exclusion  (45/45 as expected, 641.8 s)
 
 Encoding: `holo_fleet/ha/mutex_rule.py + formal/check_mutex.py`
 
@@ -228,7 +228,7 @@ Encoding: `holo_fleet/ha/mutex_rule.py + formal/check_mutex.py`
 | M3hs scope: beyond the 42 s bound a drone stopped behind the bars before the CR is released by the t_occ_max fallback | expect counterexample: the stop before the CR is bounded by the give-up of the code (26 s), not modelled; B2 claims cover it when heard | SAT | SAT | yes |
 | M3f scope: an occupant that stops inside the CR (fault) is released by the t_occ_max fallback | expect counterexample: crossing speed >= V_LO is an assumption of M3 | SAT | SAT | yes |
 
-## P3 formation recovery (liveness, ranking functions)  (24/24 as expected, 3.2 s)
+## P3 formation recovery (liveness, ranking functions)  (24/24 as expected, 3.5 s)
 
 Encoding: `formal/check_formation.py`
 
@@ -259,7 +259,7 @@ Encoding: `formal/check_formation.py`
 | Fm1 mutation: no catch-up margin (v_recovery = v_clock) must break F1 (along) | expect counterexample | SAT | SAT | yes |
 | Fm2 mutation: k_slot = 0 must break F2 (lateral) | expect counterexample | SAT | SAT | yes |
 
-## Variant B2 range-bearing beacon (own assumptions; B0 checks unchanged)  (13/13 as expected, 60.9 s)
+## Variant B2 range-bearing beacon (own assumptions; B0 checks unchanged)  (13/13 as expected, 63.8 s)
 
 Encoding: `perception/acoustic.py + perception/acoustic_gate.py + formal/check_acoustic.py`
 
@@ -279,7 +279,7 @@ Encoding: `perception/acoustic.py + perception/acoustic_gate.py + formal/check_a
 | B2-PEm mutation: without the keep-out claim a drone carried into the CR uncommitted reports not engaged and is excluded | expect counterexample | VIOLATED | VIOLATED | yes |
 | B2-S acoustic fixes never reach separation, collision avoidance, precedence or the sonar witness; acoustic exit evaluation requires the FRONT corridor empty (H6: the payload balls reach the map fit only as its identity premise, through Perception, never as a position input) | AST: no acoustic name in the safety / precedence modules; guarded call | HOLDS | HOLDS | yes |
 
-## Payload v2: gate status, silence, verified passage  (32/32 as expected, 392.0 s)
+## Payload v2: gate status, silence, verified passage  (32/32 as expected, 430.0 s)
 
 Encoding: `perception/payload.py + perception/acoustic_gate.py + perception/passage.py + formal/check_status.py`
 
@@ -318,7 +318,7 @@ Encoding: `perception/payload.py + perception/acoustic_gate.py + perception/pass
 | S12m mutation: the zone without the coast term misses hulls | expect violation | VIOLATED | VIOLATED | yes |
 | S12l mutation: the zone without the rise lag misses hulls | expect violation | VIOLATED | VIOLATED | yes |
 
-## Interacting automata of the fleet at the gate (composition, failures, timers, recovery)  (19/19 as expected, 152.0 s)
+## Interacting automata of the fleet at the gate (composition, failures, timers, recovery)  (35/35 as expected, 367.7 s)
 
 Encoding: `formal/check_fleet.py`
 
@@ -342,6 +342,22 @@ Encoding: `formal/check_fleet.py`
 | F2s4 declared limit: without premise H (a hull floating above the queue keeps counting as a queued drone) the survivors yield to it for ever (med12) | expect a run short of D at 60 steps | SAT | SAT | yes |
 | F2m mutation: without rule D a dead drone is never accounted for and the composition deadlocks (n=3) | expect a run with a live drone short of D at K | SAT | SAT | yes |
 | F2f scope: without the fairness of the fixes the recovery is not guaranteed (n=3) | expect a run with a live drone short of D at K | SAT | SAT | yes |
-| F1m mutation: a latch that ignores the drones in the stage-2 hold lets two into the CR (n=3, from the launch) | expect a run with two drones in X | SAT | SAT | yes |
+| F1d1 premise C relaxed, n=3, the sonar precedence M2: the latch and the stage-2 check learn of a claim 1 step(s) (5 s) late; never two drones in X | no two in X over the depth (from the launch) | UNSAT | UNSAT | yes |
+| F1d2 premise C relaxed, n=3, the sonar precedence M2: the latch and the stage-2 check learn of a claim 2 step(s) (10 s) late; never two drones in X | no two in X over the depth (from the launch) | UNSAT | UNSAT | yes |
+| F1d3 premise C relaxed, n=3, the sonar precedence M2: the latch and the stage-2 check learn of a claim 3 step(s) (15 s) late; two drones in X (the bound is tight) | expect a run with two drones in X | SAT | SAT | yes |
+| F1d1n premise C relaxed, n=3, no precedence between the queued drones (M2 gives no relation): the latch and the stage-2 check learn of a claim 1 step(s) (5 s) late; never two drones in X | no two in X over the depth (from the launch) | UNSAT | UNSAT | yes |
+| F1d2n premise C relaxed, n=3, no precedence between the queued drones (M2 gives no relation): the latch and the stage-2 check learn of a claim 2 step(s) (10 s) late; two drones in X (the bound is tight) | expect a run with two drones in X | SAT | SAT | yes |
+| F1c1 mutation: a stage-2 check that ignores the claims (only a drone in X holds the entry) with a latch 1 step(s) late lets two into the CR (n=3) | expect a run with two drones in X | SAT | SAT | yes |
+| F1c2 mutation: a stage-2 check that ignores the claims (only a drone in X holds the entry) with a latch 2 step(s) late lets two into the CR (n=3) | expect a run with two drones in X | SAT | SAT | yes |
+| F0p n=2: with an entry into the CR that bypasses the stage-2 check (a committed drone moved by separation warning or collision avoidance, at any step, st_lost_middle s5201) the invariant stays inductive | inv & step (push of a drone in C to X) -> inv' | UNSAT | UNSAT | yes |
+| F2p n=2: the recovery within 26 steps holds with those pushes | inv & pushes & fairness -> all live drones in D at K | UNSAT | UNSAT | yes |
+| F0p n=3: with an entry into the CR that bypasses the stage-2 check (a committed drone moved by separation warning or collision avoidance, at any step, st_lost_middle s5201) the invariant stays inductive | inv & step (push of a drone in C to X) -> inv' | UNSAT | UNSAT | yes |
+| F2p n=3: the recovery within 40 steps holds with those pushes | inv & pushes & fairness -> all live drones in D at K | UNSAT | UNSAT | yes |
+| F0p n=4: with an entry into the CR that bypasses the stage-2 check (a committed drone moved by separation warning or collision avoidance, at any step, st_lost_middle s5201) the invariant stays inductive | inv & step (push of a drone in C to X) -> inv' | UNSAT | UNSAT | yes |
+| F2p n=4: the recovery within 52 steps holds with those pushes | inv & pushes & fairness -> all live drones in D at K | UNSAT | UNSAT | yes |
+| F1p declared limit: claims learnt one step late (two drones committed together) and both moved into the CR by avoidance: two drones in X (n=3); the model has no geometry to exclude two pushes at once | expect a run with two drones in X | SAT | SAT | yes |
+| F0q declared limit: a queued, uncommitted drone moved into the CR by avoidance breaks the invariant (the queue points are at least 3.4 m before the CR; not modelled) | expect inv & push of a drone in Q -> not inv' | SAT | SAT | yes |
+| F1pa scope: the deployed escape planner is not antisymmetric along the gate axis (two drones at their hold points seeing each other can both be moved forward) | exists mirrored patterns with a forward choice for both | COUNTEREXAMPLE | COUNTEREXAMPLE | yes |
+| F1m mutation: a latch that ignores the drones in the stage-2 hold, with a stage-2 check that ignores the claims, lets two into the CR (n=3, from the launch) | expect a run with two drones in X | SAT | SAT | yes |
 
 **Overall: ALL CHECKS AS EXPECTED**
