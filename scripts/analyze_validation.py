@@ -54,12 +54,17 @@ def run_row(d: Path) -> dict:
     bc = m.get("beacon") or {}
     dur = (m.get("terminal") or {}).get("t_end") or m.get("horizon_s")
     q = m.get("p3") or {}
+    term = m.get("terminal") or {}
+    reach = [v for v in (term.get("reached_plan_target_t") or {}).values() if v is not None]
+    passed = [v for v in (term.get("gate_passed_t") or {}).values() if v is not None]
     f, lvl = factor(m.get("protocol") or "")
     return {"protocol": m.get("protocol"), "factor": f, "level": lvl, "profile": m.get("profile"), "scenario": m.get("scenario"),
             "seed": m.get("seed"), "class": m.get("class"), "complete": m.get("class") in COMPLETE,
             "P1_min_m": (m.get("P1") or {}).get("min_true_separation_m"), "P2_holds": (m.get("P2") or {}).get("holds"),
             "P3b": (q.get("P3b") or {}).get("verdict"), "P3c": (q.get("P3c") or {}).get("verdict"),
-            "duration_s": dur, "on_time": m.get("on_time"), "deadline_s": m.get("deadline_a_priori_s"),
+            "duration_s": dur, "completion_s": round(max(reach), 1) if reach else None,
+            "last_gate_s": round(max(passed), 1) if passed else None, "false_vacancy": (m.get("P3") or {}).get("false_vacancy"),
+            "fairness_holds": (m.get("fairness") or {}).get("holds"), "on_time": m.get("on_time"), "deadline_s": m.get("deadline_a_priori_s"),
             "gate_wait_mean_s": round(float(np.mean(gate_wait)), 1) if n else None, "gate_wait_max_s": round(float(max(gate_wait)), 1) if n else None,
             "reception_rate": bc.get("reception_rate"), "latency_mean_ms": bc.get("latency_mean_ms"),
             "longest_absence_s": bc.get("longest_absence_s"), "max_live_silence_s": round(live_sil, 1),
@@ -88,6 +93,22 @@ def emergence(d: Path) -> dict:
     displaced = 2
     react = None
     vref = {}
+    v_nom = DEFAULT.form.v_nominal if hasattr(DEFAULT.form, "v_nominal") else None
+    adapt_s, yielded_m, vmin = 0.0, 0.0, None
+    for k in range(len(st)):
+        if k == displaced:
+            continue
+        for a, b in zip(st[k], st[k][1:]):
+            if a["t"] < jet.t_on:
+                continue
+            f = a.get("form") or {}
+            if f.get("reduced") or a.get("mode") == "FORMATION_WAIT_REJOIN":
+                adapt_s += b["t"] - a["t"]
+            v = f.get("v_ref")
+            if v is not None:
+                vmin = v if vmin is None else min(vmin, v)
+                if v_nom is not None:
+                    yielded_m += max(v_nom - v, 0.0) * (b["t"] - a["t"])
     for k in range(len(st)):
         if k == displaced:
             continue
@@ -114,6 +135,7 @@ def emergence(d: Path) -> dict:
             "max_form_err_m": round(float(np.nanmax(fe[t >= jet.t_on])), 2), "form_err_at_jet_off_m": round(float(fe[i0]), 2),
             "recovery_after_jet_s": None if rec is None else round(rec - jet.t_off, 1),
             "mean_form_err_after_m": round(float(np.nanmean(fe[after])), 2),
+            "adapt_s": round(adapt_s, 1), "v_ref_min": None if vmin is None else round(vmin, 3), "yielded_m": round(yielded_m, 2),
             "P1_min_m": (m.get("P1") or {}).get("min_true_separation_m"), "duration_s": (m.get("terminal") or {}).get("t_end"),
             "_t": t.tolist(), "_fe": fe.tolist(), "_vref": {str(k): v for k, v in vref.items()}}
 
@@ -132,8 +154,8 @@ def main(out: Path, raws) -> None:
             w = csv.DictWriter(f, fieldnames=keys); w.writeheader(); w.writerows([{k: e[k] for k in keys} for e in emer])
     L = ["# Validation experiments", ""]
     if comm:
-        L += ["## Communication sweep", "", "| factor | level | scenario | runs | complete | P1/P2 ok | mean duration s | mean gate wait s | max live silence s | premise C max s | blind commits | reception rate |",
-              "|---|---|---|---|---|---|---|---|---|---|---|---|"]
+        L += ["## Communication sweep", "", "| factor | level | scenario | runs | complete | P3 failures | P1/P2 ok | mean completion s | mean last gate s | mean gate wait s | max live silence s | fairness violated | false vacancies | premise C max s | blind commits | reception rate |",
+              "|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|"]
         g = defaultdict(list)
         for r in comm:
             g[(r["factor"], r["level"], r["scenario"])].append(r)
@@ -142,8 +164,10 @@ def main(out: Path, raws) -> None:
             rs = g[key]
             ok = sum(1 for r in rs if r["P2_holds"] and (r["P1_min_m"] or 0) >= 1.0)
             mean = lambda f: round(float(np.mean([r[f] for r in rs if r[f] is not None])), 1) if any(r[f] is not None for r in rs) else None
-            L.append(f"| {key[0]} | {key[1]:g} | {key[2]} | {len(rs)} | {sum(r['complete'] for r in rs)} | {ok} | {mean('duration_s')} | "
-                     f"{mean('gate_wait_mean_s')} | {max(r['max_live_silence_s'] for r in rs)} | {max((r['premise_c_max_s'] or 0) for r in rs)} | "
+            L.append(f"| {key[0]} | {key[1]:g} | {key[2]} | {len(rs)} | {sum(r['complete'] for r in rs)} | {sum(r['class'] == 'P3_FAILURE' for r in rs)} | {ok} | "
+                     f"{mean('completion_s')} | {mean('last_gate_s')} | "
+                     f"{mean('gate_wait_mean_s')} | {max(r['max_live_silence_s'] for r in rs)} | {sum(r['fairness_holds'] is False for r in rs)} | "
+                     f"{sum(r['false_vacancy'] or 0 for r in rs)} | {max((r['premise_c_max_s'] or 0) for r in rs)} | "
                      f"{sum(r['blind_commits'] or 0 for r in rs)} | {mean('reception_rate')} |")
         plot_comm(out, comm)
     if emer:
@@ -152,6 +176,21 @@ def main(out: Path, raws) -> None:
         for e in sorted(emer, key=lambda e: (e["scenario"], e["protocol"], e["seed"])):
             L.append(f"| {e['protocol']} | {e['scenario']} | {e['seed']} | {e['class']} | {e['reaction_s']} | {e['max_form_err_m']} | {e['form_err_at_jet_off_m']} | "
                      f"{e['recovery_after_jet_s']} | {e['mean_form_err_after_m']} | {e['P1_min_m']} | {e['duration_s']} |")
+        L += ["", "### Emergence by configuration (mean, min-max over seeds)", "",
+              "| protocol | scenario | runs | complete | reaction s | adaptation time s | progress yielded m | min v_ref m/s | max form err m | recovery after jet s | mean err after m | P1 min m |",
+              "|---|---|---|---|---|---|---|---|---|---|---|---|"]
+        g = defaultdict(list)
+        for e in emer:
+            g[(e["protocol"], e["scenario"])].append(e)
+
+        def agg(rs, f):
+            v = [r[f] for r in rs if r[f] is not None]
+            return f"{np.mean(v):.2f} ({min(v):.2f}-{max(v):.2f}) n={len(v)}" if v else "none"
+        for key in sorted(g, key=lambda k: (k[1], k[0])):
+            rs = g[key]
+            L.append(f"| {key[0]} | {key[1]} | {len(rs)} | {sum(r['class'] in COMPLETE for r in rs)} | {agg(rs, 'reaction_s')} | {agg(rs, 'adapt_s')} | "
+                     f"{agg(rs, 'yielded_m')} | {agg(rs, 'v_ref_min')} | {agg(rs, 'max_form_err_m')} | {agg(rs, 'recovery_after_jet_s')} | "
+                     f"{agg(rs, 'mean_form_err_after_m')} | {min(r['P1_min_m'] for r in rs)} |")
         plot_emergence(out, emer)
     (out / "VALIDATION_TABLES.md").write_text("\n".join(L) + "\n", encoding="utf-8")
     print("\n".join(L))
@@ -176,10 +215,10 @@ def plot_comm(out: Path, comm) -> None:
                 elif r["factor"] == "baseline":
                     pts[base[fa]].append(r)
             xs = sorted(pts)
-            axes[0, j].plot(xs, [np.mean([r["duration_s"] for r in pts[x]]) for x in xs], marker=mk, label=sc)
+            axes[0, j].plot(xs, [np.mean([r["completion_s"] for r in pts[x] if r["completion_s"] is not None] or [np.nan]) for x in xs], marker=mk, label=sc)
             axes[1, j].plot(xs, [np.mean([r["complete"] for r in pts[x]]) for x in xs], marker=mk, label=sc)
         axes[1, j].set_xlabel(labels[fa])
-    axes[0, 0].set_ylabel("mission duration (s)")
+    axes[0, 0].set_ylabel("mission completion (s)")
     axes[1, 0].set_ylabel("fraction complete")
     axes[0, 0].legend(fontsize=7)
     fig.tight_layout()

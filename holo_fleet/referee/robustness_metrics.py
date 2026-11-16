@@ -526,9 +526,22 @@ def commitment_visibility(names, t, states, m, bound_s: float = PREMISE_C_BOUND_
     drone k, every other drone queued and not committed at that instant: the delay until its own latch is not FREE (a corridor echo or a
     claim, its local evidence).  A queued drone that commits itself before having that evidence (two drones that both took the
     priority) is counted apart, not as a violation of the premise; an episode whose
-    committed drone gives up first, or whose run ends first, is censored."""
+    committed drone gives up first, or whose run ends first, is censored.
+    Concurrent commitments (the refined premise C' of check_fleet F1d: two committed drones learn of each other's claim before
+    either is admitted to the CR): for each, the delay from the second commit until each of the two has evidence of the other (its
+    latch not FREE or its stage-2 entry_ok false), and whether either was admitted (entry ADMIT) before both had it."""
     n = len(names)
-    delays, censored, blind = [], 0, 0
+    delays, censored, blind, conc = [], 0, 0, []
+
+    def evidence(d, x0, x1):
+        for y in range(x0, x1):
+            g = states[d][y].get("gate") or {}
+            if g.get("occ") in ("BUSY", "EXITING") or g.get("entry_ok") is False:
+                return y
+        return None
+
+    def admitted(d, x0, x1):
+        return next((y for y in range(x0, x1) if (states[d][y].get("gate") or {}).get("entry") == "ADMIT"), None)
     for k in range(n):
         for i in range(1, m):
             if not (states[k][i].get("committed") and not states[k][i - 1].get("committed")):
@@ -548,6 +561,15 @@ def commitment_visibility(names, t, states, m, bound_s: float = PREMISE_C_BOUND_
                     if states[j][x].get("committed"):
                         blind += 1
                         hit = -1
+                        j_end = next((y for y in range(x, m) if not states[j][y].get("committed")), m)
+                        e = [evidence(j, x, j_end), evidence(k, x, i_end)]
+                        a = [admitted(j, x, j_end), admitted(k, x, i_end)]
+                        known = max(e) if None not in e else None
+                        blind_adm = any(y is not None and (known is None or y < known) for y in a)
+                        conc.append({"drones": [names[k], names[j]], "t_first": round(float(t[i]), 2), "t_second": round(float(t[x]), 2),
+                                     "learn_s": [round(float(t[y] - t[x]), 2) if y is not None else None for y in e],
+                                     "admitted_t": [round(float(t[y]), 2) if y is not None else None for y in a],
+                                     "admitted_without_evidence": blind_adm})
                         break
                     if x >= i_end:
                         break
@@ -558,7 +580,8 @@ def commitment_visibility(names, t, states, m, bound_s: float = PREMISE_C_BOUND_
     d = sorted(delays)
     return {"episodes": len(d), "censored": censored, "committed_without_evidence": blind,
             "max_s": round(d[-1], 2) if d else None, "p95_s": round(d[int(0.95 * (len(d) - 1))], 2) if d else None,
-            "within_5s": sum(x <= 5.0 for x in d), "violations": sum(x > bound_s for x in d), "bound_s": bound_s}
+            "within_5s": sum(x <= 5.0 for x in d), "violations": sum(x > bound_s for x in d), "bound_s": bound_s,
+            "concurrent": conc, "admitted_without_evidence": sum(c["admitted_without_evidence"] for c in conc)}
 
 
 def wrong_validated_fits(names, t, P, states, m, faults, worse_m: float = 0.3) -> int:

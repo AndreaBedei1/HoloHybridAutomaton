@@ -37,3 +37,21 @@ def test_a_late_latch_and_a_blind_commit_are_violations_and_a_give_up_is_censore
     for i in range(10, 50):
         st[0][i]["committed"] = True                                 # gives up before the other learns of it
     assert commitment_visibility(["d0", "d1"], t, st, len(t))["censored"] == 1
+
+
+def test_a_concurrent_commitment_records_when_each_drone_learns_of_the_other_and_a_blind_admission():
+    t = np.arange(0.0, 60.0, 0.1)
+    st = _states(2, len(t))
+    for i in range(100, 500):
+        st[0][i]["committed"] = True
+    for i in range(105, 500):
+        st[1][i]["committed"] = True                                 # commits 0.5 s later, its latch still FREE
+    for i in range(108, 500):
+        st[0][i]["gate"] = {"at_queue": True, "occ": "BUSY"}         # drone 0 learns 0.3 s after the second commit
+    for i in range(111, 500):
+        st[1][i]["gate"] = {"at_queue": True, "occ": "BUSY"}         # drone 1 learns 0.6 s after it
+    r = commitment_visibility(["d0", "d1"], t, st, len(t))
+    c = r["concurrent"][0]
+    assert r["committed_without_evidence"] == 1 and c["learn_s"] == [0.6, 0.3] and r["admitted_without_evidence"] == 0
+    st[1][109]["gate"] = {"at_queue": True, "occ": "FREE", "entry": "ADMIT"}   # drone 1 admitted before it knew of drone 0
+    assert commitment_visibility(["d0", "d1"], t, st, len(t))["admitted_without_evidence"] == 1

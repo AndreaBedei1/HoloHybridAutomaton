@@ -31,7 +31,12 @@ failure and none while committed; n = 3, 4 at most n - 2 failures (every receive
 keeps hearing another drone).  The two cases left out are declared limits and checked as such (F2s2, F2s3).  Not modelled: the
 admission blocked by the localization of the gate (loc_ok; the give-up branch of the hold is unreachable under the invariant, so
 the open class of s960 and s1103 is outside F2), the release delays of the latch (t_occ_max, t_clear, exit confirmation) beyond
-one step, and the premise that every queued drone learns of a commitment within the bound of S2 (32 s).
+one step.  The entry from C to X needs no live drone in X and no claim of another drone known at the receiver (S1: entry_ok of the
+code holds the entry on a heard report of committed or admitted).  F0 and F2 take the claims as learnt within the step; F1d relaxes
+it: the latch and the stage-2 check see the claims d steps late.  P2 then holds while d does not exceed the shortest stay in C
+(one step) plus the step the precedence puts between two commitments: d <= 2 with M2, d <= 1 without it (tight: F1d3, F1d2n).
+The 32 s bound of S2 is a different quantity (how long a report of not engaged may exclude a corridor echo) and does not bound
+the delay of a claim between two drones that commit together.
 Properties, for n = 2, 3, 4.  F0: the invariant (at most one drone in C or X) holds at the launch and is inductive under every
 step, failures and stops included, so P2 holds at every time with no bound (k-induction, k = 1).  F2: from any state of the
 invariant, with no further failure or stop and the fairness of the fixes, every live drone reaches D within K steps: after the
@@ -77,9 +82,14 @@ def timers(cfg: FleetConfig = DEFAULT, dt: float = 5.0) -> dict:
 
 class Fleet:
     def __init__(self, n: int, depth: int, L: int, T: dict, rule_d: bool = True, fair: bool = True, latch_claims: bool = True,
-                 free: bool = False, max_fail: int = None, fail_in_c: bool = True, hull_clears: bool = True, latch_delay: int = 0):
+                 free: bool = False, max_fail: int = None, fail_in_c: bool = True, hull_clears: bool = True, latch_delay: int = 0,
+                 stage2_claims: bool = True, precedence: bool = True):
         """free: the first state is any state of the invariant (inv), not the launch; L: failures and stops only before step L;
-        max_fail: at most this many permanent failures (default n - 1); fail_in_c: failures also while committed, before the CR."""
+        max_fail: at most this many permanent failures (default n - 1); fail_in_c: failures also while committed, before the CR.
+        latch_delay: the latch and the stage-2 check see the claims of the others latch_delay steps late (premise C relaxed);
+        stage2_claims: the entry from C to X also needs no claim of another drone known at the receiver (S1, entry_ok of the code:
+        a heard report of committed or admitted holds the entry), seen with the same delay; precedence False: no sonar precedence
+        between the queued drones (M2 gives no relation, as two drones out of sonar range of each other, st_lost_middle s5201)."""
         max_fail = n - 1 if max_fail is None else max_fail
         self.fail_in_c = fail_in_c
         self.n, self.depth, self.L, self.T = n, depth, L, T
@@ -124,6 +134,12 @@ class Fleet:
                 allk = z3.And([known(t, i, k) for k in range(n) if k != i] or [z3.BoolVal(True)])
                 prev = busy[t - 1][i] if t > 0 else (z3.Bool(f"busy{NAMES[i]}_init") if free else z3.BoolVal(False))
                 S.add(busy[t][i] == z3.Or(occ, z3.And(prev, echo, z3.Not(allk))))
+        def claim_known(t, i):
+            ts = max(t - latch_delay, 0)
+            return z3.Or([z3.Or(z3.And(z3.Not(dead(ts, k)), z3.Or(m[ts][k] == C, m[ts][k] == X)),
+                                z3.And(dead(ts, k), loc[ts][k] == C, z3.Not(known(ts, i, k))))
+                          for k in range(n) if k != i] or [z3.BoolVal(False)])
+
         nf = []
         for t in range(depth):
             for i in range(n):
@@ -132,7 +148,8 @@ class Fleet:
                 live_x = z3.Or([z3.And(m[t][k] == X) for k in others] or [z3.BoolVal(False)])
                 seen = (lambda tt, kk: age[tt][kk] < T["T_RISE"]) if hull_clears else (lambda tt, kk: z3.BoolVal(True))
                 prio = z3.And([z3.Not(z3.Or(m[t][k] == Q, z3.And(dead(t, k), z3.Or(loc[t][k] == Q, loc[t][k] == C), seen(t, k))))
-                               for k in range(i)] or [z3.BoolVal(True)])
+                               for k in range(i)] or [z3.BoolVal(True)]) if precedence else z3.BoolVal(True)
+                enter_ok = z3.And(z3.Not(live_x), z3.Not(claim_known(t, i))) if stage2_claims else z3.Not(live_x)
                 pending = z3.Or([z3.Or(m[t][k] == A, m[t][k] == Q, m[t][k] == C, m[t][k] == X) for k in others] or [z3.BoolVal(False)])
                 vacant = z3.And([z3.Implies(dead(t, k), age[t][k] >= T["T_VAC"]) for k in others] or [z3.BoolVal(True)])
                 if t >= L:
@@ -145,7 +162,7 @@ class Fleet:
                 go = lambda tgt: z3.And(mn == tgt, cn == 0)
                 live_step = z3.If(mi == A, z3.If(c >= T["T_APP"], go(Q), z3.Or(stay, z3.And(c >= 1, go(Q)))),
                             z3.If(mi == Q, z3.If(z3.And(prio, z3.Not(busy[t][i])), go(C), stay),
-                            z3.If(mi == C, z3.If(z3.Not(live_x),
+                            z3.If(mi == C, z3.If(enter_ok,
                                                  z3.If(c >= 2, go(X), z3.Or(stay, z3.And(c >= 1, go(X)))),
                                                  z3.If(c >= T["T_HOLD"], go(Q), stay)),
                             z3.If(mi == X, z3.If(c >= 2, go(B), z3.Or(stay, z3.And(c >= 1, go(B)))),
@@ -240,13 +257,20 @@ def run(cfg: FleetConfig = DEFAULT, verbose: bool = True) -> Report:
     rep.add(check("F2f scope: without the fairness of the fixes the recovery is not guaranteed (n=3)",
                   "expect a run with a live drone short of D at K", ENC, _run(ff, ff.not_recovered()), "sat",
                   timeout_ms=900000, note=tag), verbose)
+    for d, prec, exp in ((1, True, "unsat"), (2, True, "unsat"), (3, True, "sat"), (1, False, "unsat"), (2, False, "sat")):
+        fd = Fleet(3, L + K, L, T, latch_delay=d, precedence=prec, **PREMISES[3])
+        what = "the sonar precedence M2" if prec else "no precedence between the queued drones (M2 gives no relation)"
+        rep.add(check(f"F1d{d}{'' if prec else 'n'} premise C relaxed, n=3, {what}: the latch and the stage-2 check learn of a claim {d} "
+                      f"step(s) ({d * T['DT']:.0f} s) late; {'never two drones in X' if exp == 'unsat' else 'two drones in X (the bound is tight)'}",
+                      "no two in X over the depth (from the launch)" if exp == "unsat" else "expect a run with two drones in X", ENC,
+                      _run(fd, fd.two_in_cr()), exp, timeout_ms=600000, note=tag), verbose)
     for d in (1, 2):
-        fd = Fleet(3, L + K, L, T, latch_delay=d, **PREMISES[3])
-        rep.add(check(f"F1c{d} premise C at the step of the model: a latch that learns of a commitment {d} step(s) ({d * T['DT']:.0f} s) late "
-                      "lets two into the CR (n=3)", "expect a run with two drones in X", ENC, _run(fd, fd.two_in_cr()), "sat",
+        fd = Fleet(3, L + K, L, T, latch_delay=d, stage2_claims=False, **PREMISES[3])
+        rep.add(check(f"F1c{d} mutation: a stage-2 check that ignores the claims (only a drone in X holds the entry) with a latch {d} step(s) "
+                      "late lets two into the CR (n=3)", "expect a run with two drones in X", ENC, _run(fd, fd.two_in_cr()), "sat",
                       timeout_ms=600000, note=tag), verbose)
-    fc = Fleet(3, L + K, L, T, latch_claims=False, **PREMISES[3])
-    rep.add(check("F1m mutation: a latch that ignores the drones in the stage-2 hold lets two into the CR (n=3, from the launch)",
+    fc = Fleet(3, L + K, L, T, latch_claims=False, stage2_claims=False, **PREMISES[3])
+    rep.add(check("F1m mutation: a latch that ignores the drones in the stage-2 hold, with a stage-2 check that ignores the claims, lets two into the CR (n=3, from the launch)",
                   "expect a run with two drones in X", ENC, _run(fc, fc.two_in_cr()), "sat", timeout_ms=600000, note=tag), verbose)
     return rep
 
