@@ -164,10 +164,11 @@ class BeaconTransport:
             self.payload_stats["lost"] += 1
         elif packet is not None:
             self.payload_stats["delivered"] += 1
-        self.due.append((t_arr + ch.ch.latency_s, r, k_s, t_tx,
+        delay = ch.ch.latency_s + (abs(float(ch.rng.normal(0.0, ch.ch.jitter_s))) if ch.ch.jitter_s > 0.0 else 0.0)
+        self.due.append((t_arr + delay, r, k_s, t_tx,
                          (round(t_arr, 4), float(rng_m), float(az_m), float(el_m), packet)))
         self.stats["receptions"] += 1
-        self.stats["latency_s"].append(t_arr + ch.ch.latency_s - t_tx)
+        self.stats["latency_s"].append(t_arr + delay - t_tx)
         self.rb_log.append((round(t_tx, 4), k_r, k_s, round(geom[2], 3), round(float(rng_m), 3),
                             round(math.degrees(az_m - geom[0]), 2), round(math.degrees(el_m - geom[1]), 2), nlos))
 

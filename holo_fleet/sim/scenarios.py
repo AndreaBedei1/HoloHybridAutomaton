@@ -602,3 +602,18 @@ SCENARIOS: Dict[str, Callable[..., Scenario]] = {
     "lost_drone_mutex_rise_high": _rise_variant(lost_drone_mutex, "lost_drone_mutex_rise_high", 0.135),
 }
 SCENARIOS.update(STRESS_BATCH)
+
+
+def em_delay_head(cfg: FleetConfig = DEFAULT) -> Scenario:
+    """Emergence experiment: lost_drone_rejoin with the jet straight against the motion and no background current: one drone of the square
+    is delayed along the track for 7 s after the mission has begun, beyond its authority; nothing else is told."""
+    sc = lost_drone_rejoin(cfg)
+    sc.name = sc.sim.name = "em_delay_head"
+    jet = [c for c in sc.sim.current.components if c.kind == "jet"][0]
+    sc.sim.current = CurrentField([dataclasses.replace(jet, drift=(-0.70, 0.0, 0.0))])
+    sc.title = "Emergence: one drone delayed along the track by a head jet"
+    return sc
+
+
+VALIDATION_EXTRA: Dict[str, Callable[..., Scenario]] = {"em_delay_head": em_delay_head}
+SCENARIOS.update(VALIDATION_EXTRA)

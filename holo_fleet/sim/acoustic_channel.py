@@ -92,6 +92,8 @@ class AcousticChannel:
     link_on_mean_s: float = 0.0
     link_off_min_s: float = 6.0
     link_off_alpha: float = 1.2
+    jitter_s: float = 0.0
+    asym_loss: float = 0.0
 
     def as_dict(self) -> Dict:
         return asdict(self)
@@ -111,7 +113,28 @@ BLACKOUT = AcousticChannel(name="BLACKOUT", blackout=True)
 CHANNELS: Dict[str, AcousticChannel] = {c.name: c for c in (CLEAN, LOW, MEDIUM, MEDIUM_HT, BLACKOUT)}
 
 
+SWEEP_KEYS = {"per": "period_s", "lat": "latency_s", "jit": "jitter_s", "loss": "dropout", "burst": "outage_len_s",
+              "asym": "asym_loss"}
+SWEEP_BURST_EVERY_S = 90.0
+
+
+def sweep_spec(name: str) -> Dict[str, float]:
+    """'SW-lat0.5-loss0.3' -> {'latency_s': 0.5, 'dropout': 0.3}: one-factor variations of the LOW channel (communication sweep)."""
+    out = {}
+    for part in name.split("-")[1:]:
+        key = next(k for k in sorted(SWEEP_KEYS, key=len, reverse=True) if part.startswith(k))
+        out[SWEEP_KEYS[key]] = float(part[len(key):])
+    return out
+
+
 def channel(name: str) -> AcousticChannel:
+    if name.startswith("SW-"):
+        spec = {k: v for k, v in sweep_spec(name).items() if k != "period_s"}
+        if "dropout" in spec:
+            spec["dropout_far"] = spec["dropout"]
+        if "outage_len_s" in spec:
+            spec["outage_every_s"] = SWEEP_BURST_EVERY_S
+        return replace(LOW, name=name, **spec)
     if name not in CHANNELS:
         raise KeyError(f"unknown acoustic channel level {name!r}")
     return CHANNELS[name]
@@ -187,6 +210,9 @@ class ChannelModel:
         if self.in_outage(t, sender, receiver):
             self.stats["lost_outage"] += 1
             return None
+        if ch.asym_loss > 0.0 and sender > receiver and rng.random() < ch.asym_loss:
+            self.stats["lost_asym"] = self.stats.get("lost_asym", 0) + 1
+            return None
         blocked = bool(np.all(buf == -1.0))
         if blocked:
             self.stats["lost_blocked"] += 1
@@ -210,6 +236,8 @@ class ChannelModel:
         """Direct path shadowed by a drone hull or a gate bar (H4): lost, or the diffracted direct arrival."""
         ch, rng = self.ch, self.rng
         if ch.blackout or self.in_outage(t, sender, receiver) or rng.random() < ch.shadow_loss:
+            return None
+        if ch.asym_loss > 0.0 and sender > receiver and rng.random() < ch.asym_loss:
             return None
         az, el, d = geom
         p_drop = ch.dropout + (ch.dropout_far - ch.dropout) * min(1.0, d / self.max_range)

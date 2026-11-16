@@ -77,7 +77,7 @@ def timers(cfg: FleetConfig = DEFAULT, dt: float = 5.0) -> dict:
 
 class Fleet:
     def __init__(self, n: int, depth: int, L: int, T: dict, rule_d: bool = True, fair: bool = True, latch_claims: bool = True,
-                 free: bool = False, max_fail: int = None, fail_in_c: bool = True, hull_clears: bool = True):
+                 free: bool = False, max_fail: int = None, fail_in_c: bool = True, hull_clears: bool = True, latch_delay: int = 0):
         """free: the first state is any state of the invariant (inv), not the launch; L: failures and stops only before step L;
         max_fail: at most this many permanent failures (default n - 1); fail_in_c: failures also while committed, before the CR."""
         max_fail = n - 1 if max_fail is None else max_fail
@@ -115,8 +115,9 @@ class Fleet:
                 S.add(z3.Or([allfresh(s) for s in range(t, min(t + T["FAIR"], depth + 1))]))
         for t in range(depth + 1):
             for i in range(n):
-                occ = z3.Or([z3.Or(z3.And(z3.Not(dead(t, k)), z3.Or(m[t][k] == X, m[t][k] == C) if latch_claims else m[t][k] == X),
-                                   z3.And(dead(t, k), loc[t][k] == C, z3.Not(known(t, i, k))))
+                ts = max(t - latch_delay, 0)
+                occ = z3.Or([z3.Or(z3.And(z3.Not(dead(ts, k)), z3.Or(m[ts][k] == X, m[ts][k] == C) if latch_claims else m[ts][k] == X),
+                                   z3.And(dead(ts, k), loc[ts][k] == C, z3.Not(known(ts, i, k))))
                              for k in range(n) if k != i] or [z3.BoolVal(False)])
                 echo = z3.Or([z3.Or(m[t][k] == B, z3.And(dead(t, k), z3.Or(loc[t][k] == B, loc[t][k] == C), age[t][k] < T["T_RISE"]))
                               for k in range(n) if k != i] or [z3.BoolVal(False)])
@@ -239,6 +240,11 @@ def run(cfg: FleetConfig = DEFAULT, verbose: bool = True) -> Report:
     rep.add(check("F2f scope: without the fairness of the fixes the recovery is not guaranteed (n=3)",
                   "expect a run with a live drone short of D at K", ENC, _run(ff, ff.not_recovered()), "sat",
                   timeout_ms=900000, note=tag), verbose)
+    for d in (1, 2):
+        fd = Fleet(3, L + K, L, T, latch_delay=d, **PREMISES[3])
+        rep.add(check(f"F1c{d} premise C at the step of the model: a latch that learns of a commitment {d} step(s) ({d * T['DT']:.0f} s) late "
+                      "lets two into the CR (n=3)", "expect a run with two drones in X", ENC, _run(fd, fd.two_in_cr()), "sat",
+                      timeout_ms=600000, note=tag), verbose)
     fc = Fleet(3, L + K, L, T, latch_claims=False, **PREMISES[3])
     rep.add(check("F1m mutation: a latch that ignores the drones in the stage-2 hold lets two into the CR (n=3, from the launch)",
                   "expect a run with two drones in X", ENC, _run(fc, fc.two_in_cr()), "sat", timeout_ms=600000, note=tag), verbose)

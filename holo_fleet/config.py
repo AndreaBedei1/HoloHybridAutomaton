@@ -178,6 +178,7 @@ class FormationRule:
     v_nominal: float = 0.30
     v_slot_max: float = 0.40
     v_recovery_max: float = 0.50
+    neighbour_adaptation: bool = True
     range_gate_m: float = 1.2
     neighbour_range_m: float = 7.5
     t_reinclude: float = 1.0

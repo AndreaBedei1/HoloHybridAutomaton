@@ -160,6 +160,7 @@ def analyze_run(run_dir: Path, reference: Optional[Dict] = None, cfg=DEFAULT, pr
     out["validation_profile"] = bool((profile or "").split("-")[0] in ("CLEAN", "LOW", "MEDIUM") and channel in (None, "CLEAN", "LOW", "MEDIUM"))
     out["p3"] = p3_contract.evaluate(sc, cfg, names, faults, t, P, states, modes, m, validation=out["validation_profile"])
     out["wrong_validated_fits"] = wrong_validated_fits(names, t, P, states, m, faults)
+    out["commitment_visibility"] = commitment_visibility(names, t, states, m)
 
     p1 = met["P1_separation"]
     intr = p1.get("intruder") or {}
@@ -517,6 +518,48 @@ def refine_v8(cls: str, out: Dict) -> str:
     return cls
 
 
+PREMISE_C_BOUND_S = 32.0
+
+
+def commitment_visibility(names, t, states, m, bound_s: float = PREMISE_C_BOUND_S) -> Dict:
+    """Premise C of P2 (formal S2, check_fleet): every queued drone learns of a commitment within bound_s.  For every commit edge of a
+    drone k, every other drone queued and not committed at that instant: the delay until its own latch is not FREE (a corridor echo or a
+    claim, its local evidence).  A queued drone that commits itself before having that evidence is counted apart; an episode whose
+    committed drone gives up first, or whose run ends first, is censored."""
+    n = len(names)
+    delays, censored, blind = [], 0, 0
+    for k in range(n):
+        for i in range(1, m):
+            if not (states[k][i].get("committed") and not states[k][i - 1].get("committed")):
+                continue
+            i_end = next((x for x in range(i, m) if not states[k][x].get("committed")), m)
+            for j in range(n):
+                if j == k:
+                    continue
+                g0 = states[j][i].get("gate") or {}
+                if states[j][i].get("mode") == "DEAD" or not g0.get("at_queue") or states[j][i].get("committed"):
+                    continue
+                hit = None
+                for x in range(i, m):
+                    if (states[j][x].get("gate") or {}).get("occ") in ("BUSY", "EXITING"):
+                        hit = x
+                        break
+                    if states[j][x].get("committed"):
+                        blind += 1
+                        hit = -1
+                        break
+                    if x >= i_end:
+                        break
+                if hit is None:
+                    censored += 1
+                elif hit >= 0:
+                    delays.append(float(t[hit] - t[i]))
+    d = sorted(delays)
+    return {"episodes": len(d), "censored": censored, "committed_without_evidence": blind,
+            "max_s": round(d[-1], 2) if d else None, "p95_s": round(d[int(0.95 * (len(d) - 1))], 2) if d else None,
+            "within_5s": sum(x <= 5.0 for x in d), "violations": sum(x > bound_s for x in d) + blind, "bound_s": bound_s}
+
+
 def wrong_validated_fits(names, t, P, states, m, faults, worse_m: float = 0.3) -> int:
     """Corrections of the map fit after which the gate localization is validated and the true horizontal error of the estimate has
     grown by more than worse_m (1 s before against 1 s after): the round 8 monitor of a wrong validated fit."""
@@ -627,6 +670,8 @@ def cause_tags(out: Dict, fm: Dict, fs_sensor, term, states, healthy, m: int, dt
         tags.append("PREMISE_V_VIOLATED")
     if (out.get("gate_nav") or {}).get("committed_beyond"):
         tags.append("GATE_NAV_PREMISE_VIOLATED")
+    if (out.get("commitment_visibility") or {}).get("violations"):
+        tags.append("PREMISE_C_VIOLATED")                # a queued drone learnt of a commitment later than the S2 bound
     if out.get("wrong_validated_fits"):
         tags.append("WRONG_VALIDATED_FIT")
     if not out["P1"]["holds"] or out["P1"]["collisions"]:
