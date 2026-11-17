@@ -78,8 +78,8 @@ class EngineLease:
     def __init__(self, directory=None, capacity=None):
         self.directory = Path(SLOTS if directory is None else directory)
         self.capacity = int(os.environ.get("HOLO_FLEET_ENGINE_SLOTS", "1")) if capacity is None else capacity
-        if self.capacity not in (1, 2):
-            raise ValueError("engine capacity must be 1 or 2 (two only after isolation validation)")
+        if self.capacity not in (1, 2, 3, 4):
+            raise ValueError("engine capacity must be 1 to 4 (private engine roots per slot, scripts/prepare_engine_roots.ps1)")
         self.file = None
         self.slot = None
         self.metadata = None
