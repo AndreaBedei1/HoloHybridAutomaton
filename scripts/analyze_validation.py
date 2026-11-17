@@ -37,6 +37,20 @@ def states_of(d: Path):
     return [[json.loads(x) for x in gzip.open(f, "rt", encoding="utf-8")] for f in files]
 
 
+def premise_and_packets(d: Path) -> dict:
+    """Premise C classes and CR entries (scripts/audit_premise_c.py, by the order of events) and the acoustic packets of the
+    run: received, accepted, rejected, discarded as stale (older than acoustic.latency_max_s on delivery)."""
+    sys.path.insert(0, str(Path(__file__).resolve().parent))
+    from audit_premise_c import one
+
+    a = one(str(d))
+    at = (json.loads((d / "referee_metrics.json").read_text(encoding="utf-8")).get("run") or {}).get("acoustic_tracker") or {}
+    return {"pc_satisfied": a["counts"]["SATISFIED"], "pc_concurrent": a["counts"]["CONCURRENT"],
+            "pc_violated": a["counts"]["VIOLATED"], "pc_inconclusive": a["counts"]["INCONCLUSIVE"],
+            "cr_not_admitted": len(a["entries_not_admitted"]), "rx_received": at.get("received", 0),
+            "rx_accepted": at.get("accepted", 0), "rx_rejected": at.get("rejected", 0), "rx_stale": at.get("stale", 0)}
+
+
 def run_row(d: Path) -> dict:
     m = json.loads((d / "run_metrics.json").read_text(encoding="utf-8"))
     st = states_of(d)
@@ -71,9 +85,7 @@ def run_row(d: Path) -> dict:
             "overhead_bps_per_drone": round(PAYLOAD_BITS / bc["period_s"], 1) if bc.get("period_s") else None,
             "premise_v_live_dead": (m.get("premise_v") or {}).get("live_declared_dead"),
             "fairness_gap_s": (m.get("fairness") or {}).get("longest_gap_s"),
-            "premise_c_max_s": (m.get("commitment_visibility") or {}).get("max_s"),
-            "premise_c_violations": (m.get("commitment_visibility") or {}).get("violations"),
-            "blind_commits": (m.get("commitment_visibility") or {}).get("committed_without_evidence"),
+            **premise_and_packets(d),
             "gate_nav_beyond": (m.get("gate_nav") or {}).get("committed_beyond"),
             "tags": "+".join(m.get("cause_tags") or []), "run_dir": d.as_posix()}
 
@@ -160,8 +172,8 @@ def main(out: Path, raws) -> None:
             w = csv.DictWriter(f, fieldnames=keys); w.writeheader(); w.writerows([{k: e[k] for k in keys} for e in emer])
     L = ["# Validation experiments", ""]
     if comm:
-        L += ["## Communication sweep", "", "| factor | level | scenario | runs | complete | P3 failures | P1/P2 ok | mean completion s | mean last gate s | mean gate wait s | max live silence s | fairness violated | false vacancies | premise C max s | blind commits | reception rate |",
-              "|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|"]
+        L += ["## Communication sweep", "", "| factor | level | scenario | runs | complete | P3 failures | P1/P2 ok | mean completion s | mean last gate s | mean gate wait s | max live silence s | fairness violated | false vacancies | premise C sat / conc / viol / inc | CR entries not admitted | packets received | accepted | rejected | stale |",
+              "|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|"]
         g = defaultdict(list)
         for r in comm:
             g[(r["factor"], r["level"], r["scenario"])].append(r)
@@ -173,8 +185,11 @@ def main(out: Path, raws) -> None:
             L.append(f"| {key[0]} | {key[1]:g} | {key[2]} | {len(rs)} | {sum(r['complete'] for r in rs)} | {sum(r['class'] == 'P3_FAILURE' for r in rs)} | {ok} | "
                      f"{mean('completion_s')} | {mean('last_gate_s')} | "
                      f"{mean('gate_wait_mean_s')} | {max(r['max_live_silence_s'] for r in rs)} | {sum(r['fairness_holds'] is False for r in rs)} | "
-                     f"{sum(r['false_vacancy'] or 0 for r in rs)} | {max((r['premise_c_max_s'] or 0) for r in rs)} | "
-                     f"{sum(r['blind_commits'] or 0 for r in rs)} | {mean('reception_rate')} |")
+                     f"{sum(r['false_vacancy'] or 0 for r in rs)} | "
+                     f"{sum(r['pc_satisfied'] for r in rs)} / {sum(r['pc_concurrent'] for r in rs)} / {sum(r['pc_violated'] for r in rs)} / "
+                     f"{sum(r['pc_inconclusive'] for r in rs)} | {sum(r['cr_not_admitted'] for r in rs)} | "
+                     f"{sum(r['rx_received'] for r in rs)} | {sum(r['rx_accepted'] for r in rs)} | {sum(r['rx_rejected'] for r in rs)} | "
+                     f"{sum(r['rx_stale'] for r in rs)} |")
         plot_comm(out, comm)
     if emer:
         L += ["", "## Emergence", "", "| protocol | scenario | seed | class | reaction s | max form err m | err at jet end m | recovery after jet s | mean err after m | P1 min m | duration s |",

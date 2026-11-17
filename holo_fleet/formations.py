@@ -74,6 +74,8 @@ TEMPLATES: Dict[str, FormationTemplate] = {
     "line3": _t("line3", [(0.0, 3.5, 0.0), (0.0, 0.0, 0.0), (0.0, -3.5, 0.0)], "3 swaths 3.5 m apart", swath=3.6),
     "stack_pair": _t("stack_pair", [(0.0, 1.75, 1.75), (0.0, 1.75, -1.75), (0.0, -1.75, 0.0)],
                      "left lane at two depths (upper and lower drone 3.5 m apart), right lane at mid depth", swath=3.6),
+    "stack_square": _t("stack_square", [(0.0, 1.75, 1.75), (0.0, 1.75, -1.75), (0.0, -1.75, 1.75), (0.0, -1.75, -1.75)],
+                       "two lanes 3.5 m apart, each at two depths 3.5 m apart (four drones through one gate)", swath=3.6),
 }
 
 

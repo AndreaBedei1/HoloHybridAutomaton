@@ -37,8 +37,9 @@ it: the latch and the stage-2 check see the claims d steps late.  P2 then holds 
 (one step) plus the step the precedence puts between two commitments: d <= 2 with M2, d <= 1 without it (tight: F1d3, F1d2n).
 An entry that bypasses the stage-2 check (a committed drone moved into the CR by separation warning or collision avoidance while it
 holds, st_lost_middle s5201; the drone keeps its claim: report_phase, S9) keeps the invariant (F0p, F2p).  Two such pushes at once
-after a concurrent commitment (F1p), or a queued drone moved into the CR (F0q), are declared limits: the escape planner gives no
-antisymmetry along the axis (F1pa) and the positions are not modelled.
+after a concurrent commitment (F1p), or a queued drone moved into the CR (F0q), break P2 in this model, and the planner of b2-freeze-v11
+gives no antisymmetry along the axis to exclude them (F1pa).  These three checks describe the avoidance layer WITHOUT the gate guard;
+with the guard (formal/check_gate_guard.py) an avoidance entry needs a collision-avoidance override, and GG4 / GG4o compose it.
 The 32 s bound of S2 is a different quantity (how long a report of not engaged may exclude a corridor echo) and does not bound
 the delay of a claim between two drones that commit together.
 Properties, for n = 2, 3, 4.  F0: the invariant (at most one drone in C or X) holds at the launch and is inductive under every
@@ -319,19 +320,19 @@ def run(cfg: FleetConfig = DEFAULT, verbose: bool = True) -> Report:
         rep.add(check(f"F2p n={n}: the recovery within {K_FREE[n]} steps holds with those pushes", "inv & pushes & fairness -> all live drones in D at K",
                       ENC, _run(fp, fp.not_recovered()), "unsat", timeout_ms=900000, note=tag), verbose)
     fp = Fleet(3, L + K, L, T, latch_delay=1, push="committed", **PREMISES[3])
-    rep.add(check("F1p declared limit: claims learnt one step late (two drones committed together) and both moved into the CR by "
-                  "avoidance: two drones in X (n=3); the model has no geometry to exclude two pushes at once",
+    rep.add(check("F1p without the gate guard (b2-freeze-v11): claims learnt one step late (two drones committed together) and both moved "
+                  "into the CR by avoidance: two drones in X (n=3); superseded by GG4 with the guard",
                   "expect a run with two drones in X", ENC, _run(fp, fp.two_in_cr()), "sat", timeout_ms=600000, note=tag), verbose)
     fq = Fleet(3, 1, 1, T, free=True, push="any", **PREMISES[3])
-    rep.add(check("F0q declared limit: a queued, uncommitted drone moved into the CR by avoidance breaks the invariant (the queue points "
-                  "are at least 3.4 m before the CR; not modelled)", "expect inv & push of a drone in Q -> not inv'", ENC,
+    rep.add(check("F0q without the gate guard (b2-freeze-v11): a queued, uncommitted drone moved into the CR by avoidance breaks the "
+                  "invariant; superseded by GG4 with the guard", "expect inv & push of a drone in Q -> not inv'", ENC,
                   _run(fq, z3.Not(fq.inv(1))), "sat", note=tag), verbose)
     import time
     from common import CheckResult
     t0 = time.time()
     pairs = escape_forward_pairs(cfg)
-    rep.add(CheckResult("F1pa scope: the deployed escape planner is not antisymmetric along the gate axis (two drones at their hold "
-                        "points seeing each other can both be moved forward)", "exists mirrored patterns with a forward choice for both",
+    rep.add(CheckResult("F1pa scope: the escape planner without the gate guard (b2-freeze-v11) is not antisymmetric along the gate axis "
+                        "(two drones at their hold points seeing each other can both be moved forward)", "exists mirrored patterns with a forward choice for both",
                         "holo_fleet/control/escape.py (exhaustive over the sector patterns)", "counterexample",
                         "counterexample" if pairs else "none", bool(pairs), round(time.time() - t0, 3),
                         note=f"{len(pairs)} mirrored patterns, e.g. {pairs[:3]}"), verbose)

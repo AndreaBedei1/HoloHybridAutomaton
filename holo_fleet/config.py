@@ -102,6 +102,8 @@ class GateRule:
     the gate map.  A committed drone leaves the queue line on a path that keeps ``merge_clearance``
     from the queue points on its right (``pass_path``), joins the axis ``merge_ahead`` beyond the
     queue line, crosses the gate and veers towards its own formation lane after ``veer_s``.
+    ``avoidance_guard``: the gate guard of the avoidance layer (control/flows.gate_guard); False is the v11 behaviour, kept
+    for the comparison runs (protocols *NG_*).
     """
 
     cr_half_len: float = 0.8
@@ -130,6 +132,7 @@ class GateRule:
     stack_spacing: float = 3.5
     queue_lateral_max: float = 3.5
     hold_err_m: float = 0.10
+    avoidance_guard: bool = True
 
     @property
     def merge_s(self) -> float:

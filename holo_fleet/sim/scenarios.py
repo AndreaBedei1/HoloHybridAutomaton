@@ -615,5 +615,47 @@ def em_delay_head(cfg: FleetConfig = DEFAULT) -> Scenario:
     return sc
 
 
-VALIDATION_EXTRA: Dict[str, Callable[..., Scenario]] = {"em_delay_head": em_delay_head}
+def _rear_pusher(name: str, s_end: float, note: str):
+    """Adversarial test of the gate guard (st_lost_middle s5201): gate_single with a scripted, non-cooperative vehicle that
+    comes along the gate axis (the lane of the centre queue point, s = -5.4 m, l = 0), runs into the back of the drone queued
+    there while the first drone crosses the CR, and goes on to s = ``s_end`` (gate frame), between the queue line and the CR.
+    The queued drone sees it REAR: without the guard the separation filter and the escape move it forward along the axis,
+    through the keep-out box into the CR (an entry without a commitment, F0q, possibly while the first drone is inside); with
+    the guard it stops at the hold point (s_end = -3.6: about 2.4 m from the vehicle, the warning band) or, too close for any
+    allowed escape (s_end = -2.6), the escape overrides the guard (collision first) and the override is logged."""
+    def make(cfg: FleetConfig = DEFAULT) -> Scenario:
+        sc = gate_single(cfg)
+        sc.name = sc.sim.name = name
+        g = sc.judged_gates[0]
+        last = min(sc.plans, key=lambda p: abs(p.queue_lateral))
+        l, dz = float(last.queue_lateral), float(last.queue_dz)
+        w = lambda s_: [float(x) for x in g.from_gate_frame([s_, l, dz])]  # noqa: E731
+        sc.sim.intruders = ({"name": "pusher", "start": w(-16.0), "yaw_deg": float(np.degrees(np.arctan2(g.axis[1], g.axis[0]))),
+                             "waypoints": [[0.0] + w(-16.0), [10.0] + w(-11.0), [20.0] + w(-8.0), [32.0] + w(s_end),
+                                           [400.0] + w(s_end)]},)
+        sc.sim.duration_s = 120.0
+        sc.title = f"Gate guard: a vehicle stops behind the last queued drone ({note})"
+        sc.description = (f"gate_single; a scripted vehicle that does not react comes along the axis in the lane of {last.drone_id} "
+                          f"through its queue point (s = {last.queue_s:.1f} m) to s = {s_end} m, pushing it towards the CR")
+        sc.focus = "CR entries without admission (PUSHED, UNCOMMITTED), GATE_GUARD_HOLD / GATE_GUARD_OVERRIDE, P1 to the vehicle"
+        return sc
+    return make
+
+
+def gate_four(cfg: FleetConfig = DEFAULT) -> Scenario:
+    """Four drones through gate G06 (the same geometry as gate_single): two lanes, each with an upper and a lower drone; the
+    queue is two stacked columns (left first, then top first), within the validated domain of the exit witness (queue points
+    2.5 m off the axis)."""
+    return _gate_mission("gate_four", "stack_square", 100.0, _uniform((0.0, -0.05, 0.0)), cfg,
+                         title="P2: four drones one at a time through arena gate G06",
+                         desc="4 drones (two lanes at two depths) reach G06, queue in two stacked columns and pass one at a time",
+                         focus="queue order left first then top first, occupancy <= 1, completion time with n = 4")
+
+
+VALIDATION_EXTRA: Dict[str, Callable[..., Scenario]] = {
+    "gate_four": gate_four,
+    "em_delay_head": em_delay_head,
+    "st_rear_pusher": _rear_pusher("st_rear_pusher", -3.6, "the guard can hold the drone outside the CR"),
+    "st_rear_pusher_close": _rear_pusher("st_rear_pusher_close", -2.6, "too close: the escape must override the guard"),
+}
 SCENARIOS.update(VALIDATION_EXTRA)

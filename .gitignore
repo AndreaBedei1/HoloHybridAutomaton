@@ -36,3 +36,7 @@ results/robustness/raw*/
 results/robustness/v3_reeval/*/
 results/validation/pilot/
 results/validation/heldout/
+
+# review runs (raw, archived outside the repository)
+results/review/raw_*/
+results/review/*.log
