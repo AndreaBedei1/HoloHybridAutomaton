@@ -76,3 +76,21 @@ def test_the_guard_bounds_every_choice_of_the_separation_filter_over_the_sector_
                 pl.reset()
                 w = pl.warning_velocity(vd, [(P, ENV.v_open)], [], 0.0, ENV.v_max_nominal, cap=(X, u))
                 assert w.v_body @ X <= max(u, 0.0) + 1e-9, (P, u)
+
+
+def test_a_guard_hold_keeps_station_where_it_began_and_never_moves_back_beyond_it():
+    plan = SCENARIOS["gate_single"](DEFAULT).plans[0]
+    fl = Flows(plan, DEFAULT)
+    obs = _obs(plan, -1.0)
+    obs.R_wb = np.eye(3)
+    hold = SimpleNamespace(v_body=np.zeros(3), label="GUARD_HOLD", guard="HOLD")
+    cap = fl.gate_guard(obs)
+    a = cap[0]
+    assert np.allclose(fl._guarded(obs, hold, cap, "SEPARATION_WARNING"), 0.0)        # the hold begins at s = -1.0
+    ahead = _obs(plan, -0.9)
+    ahead.R_wb = np.eye(3)
+    v = fl._guarded(ahead, hold, fl.gate_guard(ahead), "SEPARATION_WARNING")          # drifted 0.1 m forward
+    assert abs(v @ a + 0.1) < 1e-9
+    behind = _obs(plan, -1.2)
+    behind.R_wb = np.eye(3)
+    assert np.allclose(fl._guarded(behind, hold, fl.gate_guard(behind), "SEPARATION_WARNING"), 0.0)   # never forward

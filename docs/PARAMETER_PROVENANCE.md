@@ -21,6 +21,8 @@ Status: 2026-10-29, branch `b2-acoustic-aided`, working tree as read during the 
 | STRESS ASSUMPTION | deliberately harsh or arbitrary setting; the phenomenon may be documented qualitatively but no source gives the value |
 | CONTRADICTED | a source or a computation contradicts the value or an assumption attached to it; the code action is stated in the row, and unresolved cases are listed in section 11 |
 
+**Four classes of the review of 2026-11-17.** Every row falls in one of: *literature-supported* (SUPPORTED, PARTIALLY SUPPORTED), *derived* (DERIVED), *design choice* (DESIGN CHOICE) and *stress setting* (STRESS ASSUMPTION). CONTRADICTED rows keep their flag on top of the class they would otherwise have and are listed in section 11.
+
 Mapping of report verdicts: R2 "MEASURED IN OUR SIMULATOR" is DERIVED (from simulator measurement); R2 "DESIGN ASSUMPTION" is DESIGN CHOICE; R1 "no support (simulator constants)" is DESIGN CHOICE (inherited default); R1 "omission" is DESIGN CHOICE with an open issue. Where the verdict of the reports differs by level (for example LOW and MEDIUM), the levels have separate rows.
 
 **Columns.** *Value*: the current code value with its location (file and qualified name); level-dependent values are given as CLEAN / LOW / MEDIUM. *Source*: the verdict class followed by the evidence. *DOI or URL*: identifiers of the entries in the *Citation key* column (DOI, arXiv number or URL) and, for simulator measurements, the repository file. *Derivation*: the mapping from source to value. *Validity*: conditions and limits. The registry keeps the same rows in the same order. "DI-n" refers to the numbered entries of `DESIGN_ITERATIONS.md` at the repository root.

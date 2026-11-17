@@ -25,6 +25,8 @@ RELOC_ZONE_M = 0.4
 RELOC_PERIOD_S = 6.0
 RELOC_BACK_M = 0.6
 GUARD_GAIN = 1.0
+HOLD_GAIN = 1.0
+HOLD_BACK_MAX = 0.25
 
 
 def _cap(v: np.ndarray, vmax_xy: float, vmax_z: float) -> np.ndarray:
@@ -72,6 +74,7 @@ class Flows:
         self.cr_cleared = False
         self.past_centre = False
         self.guard_state = ""
+        self.guard_hold_s: Optional[float] = None
         self.reloc_hold = False
         self.hold_since: Optional[float] = None
         self.hold_timeout = False
@@ -361,7 +364,18 @@ class Flows:
                                 "u_max": round(float(cap_world[1]), 3), "label": ch.label})
         self.guard_state = ch.guard if cap_world is not None else ""
         self.last_choice = ch
-        return obs.R_wb @ ch.v_body
+        v = obs.R_wb @ ch.v_body
+        if cap_world is not None and ch.label == "GUARD_HOLD":
+            # station keeping along the axis at the point where the hold began: the own drift is cancelled, the drone never
+            # goes back beyond that point (towards the threat) nor forward beyond the guard's bound (formal GG3h)
+            if self.guard_hold_s is None:
+                self.guard_hold_s = float(obs.gate.s)
+            a, u_max = cap_world
+            back = min(HOLD_BACK_MAX, HOLD_GAIN * max(0.0, float(obs.gate.s) - self.guard_hold_s))
+            v = -back * np.asarray(a, float)
+        else:
+            self.guard_hold_s = None
+        return v
 
     def separation_warning(self, obs: LocalObservation, v_mission_world: np.ndarray) -> np.ndarray:
         sep = self.cfg.sep

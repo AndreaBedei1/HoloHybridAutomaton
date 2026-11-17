@@ -30,8 +30,12 @@ Checks:
        centre stays within s_hold + 0.30 m, 0.079 m outside the CR face (GG3, GG3i); at the configured a_brake within
        s_hold + 0.32 m (GG3a, GG3ai).  Estimated position: the gate-frame navigation error is premise nav_err of the hold.
        GG3m mutation: without the guard (the v11 avoidance at v_escape) the bound is violated (BMC).
-  GG3h declared limit (BMC, SAT): a guard hold that cannot move back (a threat behind) drifts at w_drift_max and crosses
-       the bound in the worst case; logged at run time (GATE_GUARD_HOLD, the referee's CR entries).
+  GG3k a guard hold that cannot move back (a threat behind) keeps station at its starting point: within 0.20 m of it when
+       it starts at <= 0.05 m/s, 0.40 m at <= 0.20 m/s (inductive).  Composed with GG3 this does not exclude an entry of
+       the estimated centre up to about 0.3 m into the CR in the worst case (a hold that starts at the bound at speed with the
+       maximal residual drift): a declared limit, logged at run time (GATE_GUARD_HOLD, the referee's CR entries).
+  GG3h mutation (BMC, SAT): a hold without station keeping (zero velocity command, the first version of the guard,
+       observed in the adversarial run st_rear_pusher s7000/s7001) drifts past the bound.
   GG4  composition, n = 2, 3, 4 (check_fleet.Fleet, from the launch): two drones may commit together (no sonar precedence,
        the claims learnt one step late: the conditions of s5201), separation and collision avoidance may stop any drone at
        any step, and with the guard no avoidance moves a drone that is not admitted into the CR: never two drones in X.
@@ -57,7 +61,7 @@ from common import CheckResult, Report, check  # noqa: E402
 
 from holo_fleet.config import DEFAULT, FleetConfig  # noqa: E402
 from holo_fleet.control.escape import EscapePlanner  # noqa: E402
-from holo_fleet.control.flows import GUARD_GAIN, RELOC_MARGIN_M  # noqa: E402
+from holo_fleet.control.flows import GUARD_GAIN, HOLD_BACK_MAX, HOLD_GAIN, RELOC_MARGIN_M  # noqa: E402
 from holo_fleet.perception.sonar_geometry import HULL_HALF, R_OUT, SECTORS, fibonacci_sphere  # noqa: E402
 
 ENC = "formal/check_gate_guard.py"
@@ -219,6 +223,28 @@ def axis_invariant(cfg: FleetConfig = DEFAULT, a_dec: float = None, a_inv: float
     return step, init, s_hold
 
 
+def hold_invariant(cfg: FleetConfig = DEFAULT, B: float = 0.40, L: float = 1.0, v0: float = 0.20):
+    """GG3k: the guard hold keeps station along the axis at its starting point (flows._guarded: command -min(HOLD_BACK_MAX,
+    HOLD_GAIN max(0, x)) along a, x = s - s_start; never forward).  With the plant of axis_bmc and the residual drift,
+    J = {x <= B, |v| <= v_escape, v + w_max <= max(0, L (B - x))} is inductive and contains the start (x = 0, v <= v0).
+    Returns the constraints of the two obligations (UNSAT when they hold)."""
+    env = cfg.env
+    dt, W, a = env.dt, env.w_drift_max, env.a_brake_measured
+    q = lambda x_: z3.RealVal(repr(float(x_)))  # noqa: E731
+
+    def inv(x_, v_):
+        lin = q(L) * (q(B) - x_)
+        return z3.And(x_ <= q(B), v_ >= -q(env.v_escape), v_ <= q(env.v_escape), v_ + q(W) <= z3.If(lin >= 0, lin, q(0.0)))
+    x, v, w, x2, v2, vc = z3.Reals("x v w x2 v2 vc")
+    k = q(HOLD_GAIN) * (-x)
+    step = [inv(x, v), w >= -q(W), w <= q(W),
+            vc == z3.If(k < -q(HOLD_BACK_MAX), -q(HOLD_BACK_MAX), z3.If(k > 0, q(0.0), k)),
+            z3.Or(v2 <= vc, v2 <= v - q(a * dt)), v2 >= -q(env.v_escape), x2 == x + q(dt) * (v + v2) / 2 + q(dt) * w,
+            z3.Not(inv(x2, v2))]
+    init = [x == 0, v >= -q(env.v_escape), v <= q(v0), z3.Not(inv(x, v))]
+    return step, init
+
+
 def run(cfg: FleetConfig = DEFAULT, verbose: bool = True) -> Report:
     rep = Report("gate_guard")
     env, G = cfg.env, cfg.gate
@@ -278,10 +304,17 @@ def run(cfg: FleetConfig = DEFAULT, verbose: bool = True) -> Report:
                       note=f"dt {env.dt} s, w_drift_max {env.w_drift_max} m/s, GUARD_GAIN {GUARD_GAIN} 1/s"), verbose)
         rep.add(check(f"{name}i the initial set (the mission hold of the stage-2 check: s <= s_hold + w_drift_max / k_track, "
                       "v <= max(0, k_track (s_hold - s)) + 0.1, v <= v_pass) lies in I", "Init -> I", ENC, init, "unsat"), verbose)
+    for idx, (v0, B) in enumerate(((0.05, 0.20), (0.20, 0.40)), start=1):
+        step, init = hold_invariant(cfg, B=B, v0=v0)
+        rep.add(check(f"GG3k{idx} guard hold with station keeping (a threat behind, no move back allowed), started at {v0} m/s along the "
+                      f"axis: the centre stays within {B} m of where the hold began, for all time: inductive step",
+                      "J & T -> J' (J: x <= B, v + w_max <= max(0, L (B - x)))", ENC, step, "unsat", timeout_ms=600000,
+                      note=f"HOLD_GAIN {HOLD_GAIN} 1/s, HOLD_BACK_MAX {HOLD_BACK_MAX} m/s, w_drift_max {env.w_drift_max} m/s"), verbose)
+        rep.add(check(f"GG3k{idx}i the start of the hold (x = 0, v <= {v0} m/s) lies in J", "Init -> J", ENC, init, "unsat"), verbose)
     for name, kw, what in (("GG3m", {"guarded": False}, "mutation: without the guard (v11 avoidance at v_escape) the estimated centre "
                                                         "passes s_hold + 0.3 m"),
-                           ("GG3h", {"hold_still": True}, "declared limit: a guard hold that cannot move back (a threat behind) "
-                                                          "drifts at w_drift_max past s_hold + 0.3 m")):
+                           ("GG3h", {"hold_still": True}, "mutation: a guard hold without station keeping (zero velocity "
+                                                          "command, the b2 first version of the guard) drifts at w_drift_max past s_hold + 0.3 m")):
         cons, s_hold = axis_bmc(cfg, B=0.30, horizon_s=8.0, **kw)
         rep.add(check(f"{name} {what} (BMC 8 s)", "expect a run beyond s_hold + B", ENC, cons, "sat", timeout_ms=600000), verbose)
     import check_fleet

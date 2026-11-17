@@ -18,7 +18,8 @@ every threat (escape) and scores within HYSTERESIS of the best: no chattering be
 Gate guard (``cap`` = (a, u_max), a a unit body-frame vector, flows.gate_guard): a drone near a critical region
 that is not admitted to it may only use velocities V with V.a <= u_max.  The warning filter and the escape choose
 among those; when none of them opens every threat the warning filter holds (no closing of its
-own, moving back along a only when that closes on no threat: guard_hold) and the escape overrides the guard
+own, moving back along a only when that closes on no threat: guard_hold; flows._guarded keeps station along the axis
+where the hold began) and the escape overrides the guard
 (collision avoidance first), both reported in ``EscapeChoice.guard``.
 """
 

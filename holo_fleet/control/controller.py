@@ -191,6 +191,7 @@ class DroneController:
             self.flows.last_choice = None
             self.flows.escape.reset()
             self.flows.guard_state = ""
+            self.flows.guard_hold_s = None
         if mode == Mode.SEPARATION_WARNING:
             v = self.flows.separation_warning(obs, v_mis)
             authority = "brake"
