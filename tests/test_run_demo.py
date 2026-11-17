@@ -27,10 +27,11 @@ def demo(tmp_path, monkeypatch):
     state = {"status": "COMPLETE"}
 
     def fake_run(name, out_root, headless=True, run_id=None, duration=None, ui=None, frame_every_s=0.5, cfg=None,
-                 noise=None, seed=None):
+                 noise=None, seed=None, terminal=None):
         calls["run"].append(frame_every_s)
         calls.setdefault("args", []).append({"beacon": cfg.beacon.mode, "noise": None if noise is None else noise.name,
                                              "seed": seed})
+        calls.setdefault("span", []).append({"duration": duration, "terminal": terminal})
         out = Path(out_root) / (run_id or name)
         (out / "frames").mkdir(parents=True, exist_ok=True)
         (out / "run_status.json").write_text(json.dumps({"status": state["status"]}), encoding="utf-8")
@@ -142,3 +143,11 @@ def test_staging_left_by_a_killed_demo_is_removed(demo, monkeypatch):
     monkeypatch.setattr(demo, "_alive", lambda pid: pid == os.getpid())
     demo.main(["--scenario", "formation_triangle"])
     assert not dead.exists() and alive.exists()
+
+
+def test_a_demo_runs_to_completion_unless_a_duration_is_given(demo):
+    assert demo.main(["--scenario", "gate_single", "--headless", "--no-window"]) == 0
+    assert demo.main(["--scenario", "gate_single", "--headless", "--no-window", "--duration", "40"]) == 0
+    full, fixed = demo.calls["span"]
+    assert full["duration"] is None and full["terminal"] == {"profile": "CLEAN", "linger_s": demo.LINGER_S}
+    assert fixed["duration"] == 40.0 and fixed["terminal"] is None

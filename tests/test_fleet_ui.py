@@ -206,3 +206,17 @@ def test_client_waits_for_the_engine_semaphores_instead_of_failing(monkeypatch):
     hs.wait_for_engine_semaphores(timeout_s=5.0)
     with pytest.raises(pywintypes.error):
         holooceanclient.HoloOceanClient.__windows_init__(object())
+
+
+def test_time_axis_and_map_follow_the_run_beyond_the_scenario_duration():
+    """A demo runs to completion, past the scenario duration: the map covers the plan up to the run span and the
+    time axis extends while the run goes on, instead of stopping at the scenario duration."""
+    view = _view()
+    assert view.duration == formation_triangle(DEFAULT).duration_s
+    scale0 = view.scale
+    view.set_duration(200.0)
+    assert view.duration == 200.0 and view.scale < scale0
+    recs = [{"mode": "FORMATION_KEEP", "nav_yaw_deg": 0.0} for _ in range(3)]
+    view.step(199.0, recs, view.P, {})
+    assert view.duration >= 219.0
+    assert view.render().shape[0] > 0

@@ -23,6 +23,12 @@ refuses to replace an existing result unless ``--overwrite`` is given; an incomp
 saved.  ``--media`` (with ``--save``) also keeps the fleet-view / chase frames and the GIF.  ``--out``
 (with ``--save``) saves under another folder, for tests and smoke runs.
 
+A demo runs until the mission is complete: every drone at the end of its plan, through the gate, the formation
+recovered (or re-formed without the lost drone) and nobody waiting (referee/terminal.py, SUCCESS), then 8 s more so
+the final formation stays on screen; it stops earlier on a FAILURE and at the latest at the scenario horizon
+(referee/criteria.horizon_v5).  ``--duration S`` runs exactly S seconds instead.  The time axis of the fleet view
+extends as the run goes on.
+
 ``--profile`` runs with a sensor-noise profile of the robustness campaign (sim/sensor_noise.py) and ``--seed``
 fixes its seeded effects; ``--b2 LEVEL`` enables the variant-B2 one-way acoustic identity beacon with that channel
 level (sim/acoustic_channel.py).  Such runs are not reference demos: they are saved only with ``--out``.
@@ -45,6 +51,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
 from holo_fleet.config import DEFAULT, BeaconConfig  # noqa: E402
+from holo_fleet.referee.criteria import nominal_end_s  # noqa: E402
 from holo_fleet.runner import print_summary, run  # noqa: E402
 from holo_fleet.sim.scenarios import SCENARIOS  # noqa: E402
 from holo_fleet.ui.gif import make_gif  # noqa: E402
@@ -53,6 +60,7 @@ from holo_fleet.ui.live import DemoUI  # noqa: E402
 OUT = ROOT / "results" / "reference"
 STAGE_PREFIX = "holo_fleet_demo_"
 MEDIA_DIRS = ("fleet_view", "frames", "dashboard")
+LINGER_S = 8.0
 
 
 def _alive(pid: int) -> bool:
@@ -119,8 +127,13 @@ def _run_scenario(a, stage: Path) -> str:
         noise = profile(a.profile)
     sc = SCENARIOS[a.scenario](cfg)
     ui = DemoUI(sc, cfg, sc.sim.names, show=not a.no_window, draw_viewport=not a.headless, selected=a.select)
+    terminal = None if a.duration is not None else {"profile": a.profile or "CLEAN", "linger_s": LINGER_S}
+    view = getattr(ui, "view", None)
+    if view is not None:
+        span = a.duration if terminal is None else 10.0 * math.ceil((nominal_end_s(sc) + LINGER_S + 15.0) / 10.0)
+        view.set_duration(span)
     m = run(a.scenario, stage, headless=a.headless, run_id=a.scenario, duration=a.duration, ui=ui,
-            frame_every_s=0.5 if a.media else math.inf, cfg=cfg, noise=noise, seed=a.seed)
+            frame_every_s=0.5 if a.media else math.inf, cfg=cfg, noise=noise, seed=a.seed, terminal=terminal)
     print_summary(a.scenario, m)
     if a.media:
         gif = make_gif((stage / a.scenario / "fleet_view").glob("fleet_*.jpg"), stage / a.scenario / f"{a.scenario}.gif",
@@ -156,7 +169,7 @@ def main(argv=None) -> int:
                 print(f"  {k:24s} ~28 s  bench: gate / drone / gate+drone / behind the gate / abeam / seabed / clutter")
                 continue
             sc = SCENARIOS[k](DEFAULT)
-            print(f"  {k:24s} {sc.duration_s:4.0f} s  {sc.title}")
+            print(f"  {k:24s} ~{nominal_end_s(sc):3.0f} s  {sc.title}")
         return 0
     if not a.save and (a.overwrite or a.media or a.out):
         ap.error("--overwrite, --media and --out apply only with --save (a plain demo keeps nothing)")
