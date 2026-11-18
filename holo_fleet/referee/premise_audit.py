@@ -73,14 +73,16 @@ def _episodes(states_k, m: int) -> List[tuple]:
 
 
 def first_claim_emission(t, states_k, k: int, i0: int, i1: int, period_s: float, n_drones: int) -> Optional[float]:
-    """First TDMA emission of drone k at or after index i0 (before i1) whose logged own phase is a claim."""
+    """First TDMA emission of drone k at or after index i0 (before i1) that carries a claim.  A ping at tt is sent in a
+    tick of the sim.step that follows the control step at T < tt (runner: controllers step at T, then the ticks run at
+    T + 1/30 ... T + DT), so it carries the phase of the last record strictly before tt, not the record logged at tt."""
     slot = period_s / max(1, n_drones)
     t0 = float(t[i0])
     base = np.floor(t0 / period_s) * period_s + k * slot
     tt = base if base >= t0 - 1e-9 else base + period_s
     while tt <= float(t[min(i1, len(t) - 1)]) + 1e-9:
-        j = min(int(np.searchsorted(t, tt - 1e-9)), len(states_k) - 1)
-        if _claims(states_k[j]):
+        j = min(int(np.searchsorted(t, tt - 1e-9)) - 1, len(states_k) - 1)
+        if j >= 0 and _claims(states_k[j]):
             return float(tt)
         tt += period_s
     return None

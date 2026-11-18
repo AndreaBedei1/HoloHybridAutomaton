@@ -45,6 +45,29 @@ def test_the_first_claim_emission_follows_the_tdma_slot_of_the_claimant():
     assert abs(first_claim_emission(T, st[2], 2, 100, 400, 1.0, 3) - (10.0 + 2.0 / 3.0)) < 1e-6
 
 
+def test_a_ping_carries_the_phase_of_the_control_step_before_it_not_the_record_of_its_own_time():
+    # runner: the controllers step at T, then sim.step ticks at T + 1/30 ... T + 0.1 and the beacon pings in those
+    # ticks with the phase of the step at T.  A commit logged at 10.0 s misses the slot-0 ping of 10.0 s (taken in the
+    # ticks after the 9.9 s step): the first ping with the claim is at 11.0 s.
+    st = _states(2)
+    _commit(st, 0, 100, 400)                 # committed in the record of 10.0 s
+    assert abs(first_claim_emission(T, st[0], 0, 100, 400, 1.0, 2) - 11.0) < 1e-6
+    st = _states(2)
+    _commit(st, 0, 99, 400)                  # committed in the record of 9.9 s: the 10.0 s ping carries it
+    assert abs(first_claim_emission(T, st[0], 0, 99, 400, 1.0, 2) - 10.0) < 1e-6
+
+
+def test_a_commit_between_an_aligned_ping_missed_and_the_next_delivery_is_concurrent_not_a_violation():
+    # held-out st_lost_middle s7313: claimant committed at the record of its slot time, the other drone committed
+    # 0.8 s later, before the next ping could arrive.
+    st = _states(2)
+    _commit(st, 0, 100, 400)
+    _commit(st, 1, 108, 400)
+    _block(st, 1, 113, 400)
+    r = _cls(st)
+    assert r["class"] == "CONCURRENT", r
+
+
 def test_a_commit_before_the_claim_could_arrive_is_concurrent_and_needs_evidence_before_admission():
     st = _states(2)
     _commit(st, 0, 100, 400, admit_at=150)
