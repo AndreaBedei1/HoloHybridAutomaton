@@ -63,7 +63,7 @@ A controller deadlock is never classed as an external infeasibility: PREMISE_VIO
 - INCOMPLETE: `st_lost_at_queue`, `st_lost_committed` (the hull floating above the queue blocks the sonar-only precedence; a failure of the passage, not of P3).
 - med13 (cb2f5a7, after the fix of rule A-P, judged by v8): MEDIUM-ALL 31 of 31 and LOW-ALL 17 of 17 PASS, among them `integrated_short` 4 of 4 and `st_lost_middle` 3 of 3; compass bias 4 deg 3 of 6 PASS (one P3_FAILURE, one PREMISE_VIOLATED, one INCOMPLETE).
 
-## Final campaign (b2-freeze-v11, 448 runs, `results/final/FINAL_CAMPAIGN_ANALYSIS.md`)
+## Final campaign (b2-freeze-v11, 448 runs, `results/final/FINAL_CAMPAIGN_ANALYSIS.md` in the archive)
 
 P3a 724 MET, 5 LATE, 17 PREMISE_VIOLATED, 2 NOT_MET, 68 not applicable; P3b 374 MET, 2 LATE, 2 NOT_MET, 33 not applicable; P3c 145 MET, 3 NOT_MET (all three without a beacon: false vacancies). P3_LATE in 7 runs (`formation_gust` 2, `st_lost_right_tail` 2, a boundary probe 3), no P3_FAILURE with the beacon. Slack of P3b to its deadline in the met windows: minimum 2.5 s, median 19.7 s.
 

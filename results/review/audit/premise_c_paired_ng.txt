@@ -1,0 +1,2 @@
+B2NG_MEDIUM: runs 15; pairs {'SATISFIED': 16, 'CONCURRENT': 10, 'VIOLATED': 1, 'INCONCLUSIVE': 0, 'satisfied_blocked': 16, 'satisfied_never_blocked': 0, 'arrivals_during_claim': 0, 'releases_while_claimed': 1}; CR entries {'ADMITTED': 30, 'PUSHED': 0, 'UNCOMMITTED': 0, 'with another inside': 0, 'runs': 15}
+TOTAL 15 runs; pairs {'SATISFIED': 16, 'CONCURRENT': 10, 'VIOLATED': 1, 'INCONCLUSIVE': 0, 'satisfied_blocked': 16, 'satisfied_never_blocked': 0, 'arrivals_during_claim': 0, 'releases_while_claimed': 1} ; P2 false runs: 0

@@ -1,0 +1,2802 @@
+[
+ {
+  "run": "results/validation/heldout/B2NA_LOW/LOW-ALL/em_delay_head/s6100",
+  "protocol": "B2NA_LOW",
+  "profile": "LOW-ALL",
+  "scenario": "em_delay_head",
+  "seed": 6100,
+  "class": "PASS",
+  "P2_holds": true,
+  "counts": {
+   "SATISFIED": 0,
+   "CONCURRENT": 0,
+   "VIOLATED": 0,
+   "INCONCLUSIVE": 0
+  },
+  "claim_delivery_s": 0.15,
+  "satisfied_blocked": 0,
+  "satisfied_never_blocked": 0,
+  "arrivals_during_claim": 0,
+  "releases_while_claimed": 0,
+  "not_satisfied": [],
+  "entry_counts": {
+   "ADMITTED": 0,
+   "PUSHED": 0,
+   "UNCOMMITTED": 0
+  },
+  "entries_not_admitted": [],
+  "entries_with_another_inside": 0
+ },
+ {
+  "run": "results/validation/heldout/B2NA_LOW/LOW-ALL/em_delay_head/s6101",
+  "protocol": "B2NA_LOW",
+  "profile": "LOW-ALL",
+  "scenario": "em_delay_head",
+  "seed": 6101,
+  "class": "PASS",
+  "P2_holds": true,
+  "counts": {
+   "SATISFIED": 0,
+   "CONCURRENT": 0,
+   "VIOLATED": 0,
+   "INCONCLUSIVE": 0
+  },
+  "claim_delivery_s": 0.15,
+  "satisfied_blocked": 0,
+  "satisfied_never_blocked": 0,
+  "arrivals_during_claim": 0,
+  "releases_while_claimed": 0,
+  "not_satisfied": [],
+  "entry_counts": {
+   "ADMITTED": 0,
+   "PUSHED": 0,
+   "UNCOMMITTED": 0
+  },
+  "entries_not_admitted": [],
+  "entries_with_another_inside": 0
+ },
+ {
+  "run": "results/validation/heldout/B2NA_LOW/LOW-ALL/em_delay_head/s6102",
+  "protocol": "B2NA_LOW",
+  "profile": "LOW-ALL",
+  "scenario": "em_delay_head",
+  "seed": 6102,
+  "class": "PASS",
+  "P2_holds": true,
+  "counts": {
+   "SATISFIED": 0,
+   "CONCURRENT": 0,
+   "VIOLATED": 0,
+   "INCONCLUSIVE": 0
+  },
+  "claim_delivery_s": 0.15,
+  "satisfied_blocked": 0,
+  "satisfied_never_blocked": 0,
+  "arrivals_during_claim": 0,
+  "releases_while_claimed": 0,
+  "not_satisfied": [],
+  "entry_counts": {
+   "ADMITTED": 0,
+   "PUSHED": 0,
+   "UNCOMMITTED": 0
+  },
+  "entries_not_admitted": [],
+  "entries_with_another_inside": 0
+ },
+ {
+  "run": "results/validation/heldout/B2NA_LOW/LOW-ALL/em_delay_head/s6103",
+  "protocol": "B2NA_LOW",
+  "profile": "LOW-ALL",
+  "scenario": "em_delay_head",
+  "seed": 6103,
+  "class": "PASS",
+  "P2_holds": true,
+  "counts": {
+   "SATISFIED": 0,
+   "CONCURRENT": 0,
+   "VIOLATED": 0,
+   "INCONCLUSIVE": 0
+  },
+  "claim_delivery_s": 0.15,
+  "satisfied_blocked": 0,
+  "satisfied_never_blocked": 0,
+  "arrivals_during_claim": 0,
+  "releases_while_claimed": 0,
+  "not_satisfied": [],
+  "entry_counts": {
+   "ADMITTED": 0,
+   "PUSHED": 0,
+   "UNCOMMITTED": 0
+  },
+  "entries_not_admitted": [],
+  "entries_with_another_inside": 0
+ },
+ {
+  "run": "results/validation/heldout/B2NA_LOW/LOW-ALL/em_delay_head/s6104",
+  "protocol": "B2NA_LOW",
+  "profile": "LOW-ALL",
+  "scenario": "em_delay_head",
+  "seed": 6104,
+  "class": "PASS",
+  "P2_holds": true,
+  "counts": {
+   "SATISFIED": 0,
+   "CONCURRENT": 0,
+   "VIOLATED": 0,
+   "INCONCLUSIVE": 0
+  },
+  "claim_delivery_s": 0.15,
+  "satisfied_blocked": 0,
+  "satisfied_never_blocked": 0,
+  "arrivals_during_claim": 0,
+  "releases_while_claimed": 0,
+  "not_satisfied": [],
+  "entry_counts": {
+   "ADMITTED": 0,
+   "PUSHED": 0,
+   "UNCOMMITTED": 0
+  },
+  "entries_not_admitted": [],
+  "entries_with_another_inside": 0
+ },
+ {
+  "run": "results/validation/heldout/B2NA_LOW/LOW-ALL/lost_drone_rejoin/s6100",
+  "protocol": "B2NA_LOW",
+  "profile": "LOW-ALL",
+  "scenario": "lost_drone_rejoin",
+  "seed": 6100,
+  "class": "PASS",
+  "P2_holds": true,
+  "counts": {
+   "SATISFIED": 0,
+   "CONCURRENT": 0,
+   "VIOLATED": 0,
+   "INCONCLUSIVE": 0
+  },
+  "claim_delivery_s": 0.15,
+  "satisfied_blocked": 0,
+  "satisfied_never_blocked": 0,
+  "arrivals_during_claim": 0,
+  "releases_while_claimed": 0,
+  "not_satisfied": [],
+  "entry_counts": {
+   "ADMITTED": 0,
+   "PUSHED": 0,
+   "UNCOMMITTED": 0
+  },
+  "entries_not_admitted": [],
+  "entries_with_another_inside": 0
+ },
+ {
+  "run": "results/validation/heldout/B2NA_LOW/LOW-ALL/lost_drone_rejoin/s6101",
+  "protocol": "B2NA_LOW",
+  "profile": "LOW-ALL",
+  "scenario": "lost_drone_rejoin",
+  "seed": 6101,
+  "class": "PASS",
+  "P2_holds": true,
+  "counts": {
+   "SATISFIED": 0,
+   "CONCURRENT": 0,
+   "VIOLATED": 0,
+   "INCONCLUSIVE": 0
+  },
+  "claim_delivery_s": 0.15,
+  "satisfied_blocked": 0,
+  "satisfied_never_blocked": 0,
+  "arrivals_during_claim": 0,
+  "releases_while_claimed": 0,
+  "not_satisfied": [],
+  "entry_counts": {
+   "ADMITTED": 0,
+   "PUSHED": 0,
+   "UNCOMMITTED": 0
+  },
+  "entries_not_admitted": [],
+  "entries_with_another_inside": 0
+ },
+ {
+  "run": "results/validation/heldout/B2NA_LOW/LOW-ALL/lost_drone_rejoin/s6102",
+  "protocol": "B2NA_LOW",
+  "profile": "LOW-ALL",
+  "scenario": "lost_drone_rejoin",
+  "seed": 6102,
+  "class": "PASS",
+  "P2_holds": true,
+  "counts": {
+   "SATISFIED": 0,
+   "CONCURRENT": 0,
+   "VIOLATED": 0,
+   "INCONCLUSIVE": 0
+  },
+  "claim_delivery_s": 0.15,
+  "satisfied_blocked": 0,
+  "satisfied_never_blocked": 0,
+  "arrivals_during_claim": 0,
+  "releases_while_claimed": 0,
+  "not_satisfied": [],
+  "entry_counts": {
+   "ADMITTED": 0,
+   "PUSHED": 0,
+   "UNCOMMITTED": 0
+  },
+  "entries_not_admitted": [],
+  "entries_with_another_inside": 0
+ },
+ {
+  "run": "results/validation/heldout/B2NA_LOW/LOW-ALL/lost_drone_rejoin/s6103",
+  "protocol": "B2NA_LOW",
+  "profile": "LOW-ALL",
+  "scenario": "lost_drone_rejoin",
+  "seed": 6103,
+  "class": "PASS",
+  "P2_holds": true,
+  "counts": {
+   "SATISFIED": 0,
+   "CONCURRENT": 0,
+   "VIOLATED": 0,
+   "INCONCLUSIVE": 0
+  },
+  "claim_delivery_s": 0.15,
+  "satisfied_blocked": 0,
+  "satisfied_never_blocked": 0,
+  "arrivals_during_claim": 0,
+  "releases_while_claimed": 0,
+  "not_satisfied": [],
+  "entry_counts": {
+   "ADMITTED": 0,
+   "PUSHED": 0,
+   "UNCOMMITTED": 0
+  },
+  "entries_not_admitted": [],
+  "entries_with_another_inside": 0
+ },
+ {
+  "run": "results/validation/heldout/B2NA_LOW/LOW-ALL/lost_drone_rejoin/s6104",
+  "protocol": "B2NA_LOW",
+  "profile": "LOW-ALL",
+  "scenario": "lost_drone_rejoin",
+  "seed": 6104,
+  "class": "PASS",
+  "P2_holds": true,
+  "counts": {
+   "SATISFIED": 0,
+   "CONCURRENT": 0,
+   "VIOLATED": 0,
+   "INCONCLUSIVE": 0
+  },
+  "claim_delivery_s": 0.15,
+  "satisfied_blocked": 0,
+  "satisfied_never_blocked": 0,
+  "arrivals_during_claim": 0,
+  "releases_while_claimed": 0,
+  "not_satisfied": [],
+  "entry_counts": {
+   "ADMITTED": 0,
+   "PUSHED": 0,
+   "UNCOMMITTED": 0
+  },
+  "entries_not_admitted": [],
+  "entries_with_another_inside": 0
+ },
+ {
+  "run": "results/validation/heldout/B2_BLACKOUT/LOW-ALL/formation_square/s6100",
+  "protocol": "B2_BLACKOUT",
+  "profile": "LOW-ALL",
+  "scenario": "formation_square",
+  "seed": 6100,
+  "class": "PASS",
+  "P2_holds": true,
+  "counts": {
+   "SATISFIED": 0,
+   "CONCURRENT": 0,
+   "VIOLATED": 0,
+   "INCONCLUSIVE": 0
+  },
+  "claim_delivery_s": 0.1,
+  "satisfied_blocked": 0,
+  "satisfied_never_blocked": 0,
+  "arrivals_during_claim": 0,
+  "releases_while_claimed": 0,
+  "not_satisfied": [],
+  "entry_counts": {
+   "ADMITTED": 0,
+   "PUSHED": 0,
+   "UNCOMMITTED": 0
+  },
+  "entries_not_admitted": [],
+  "entries_with_another_inside": 0
+ },
+ {
+  "run": "results/validation/heldout/B2_BLACKOUT/LOW-ALL/formation_square/s6101",
+  "protocol": "B2_BLACKOUT",
+  "profile": "LOW-ALL",
+  "scenario": "formation_square",
+  "seed": 6101,
+  "class": "PASS",
+  "P2_holds": true,
+  "counts": {
+   "SATISFIED": 0,
+   "CONCURRENT": 0,
+   "VIOLATED": 0,
+   "INCONCLUSIVE": 0
+  },
+  "claim_delivery_s": 0.1,
+  "satisfied_blocked": 0,
+  "satisfied_never_blocked": 0,
+  "arrivals_during_claim": 0,
+  "releases_while_claimed": 0,
+  "not_satisfied": [],
+  "entry_counts": {
+   "ADMITTED": 0,
+   "PUSHED": 0,
+   "UNCOMMITTED": 0
+  },
+  "entries_not_admitted": [],
+  "entries_with_another_inside": 0
+ },
+ {
+  "run": "results/validation/heldout/B2_BLACKOUT/LOW-ALL/formation_square/s6102",
+  "protocol": "B2_BLACKOUT",
+  "profile": "LOW-ALL",
+  "scenario": "formation_square",
+  "seed": 6102,
+  "class": "PASS",
+  "P2_holds": true,
+  "counts": {
+   "SATISFIED": 0,
+   "CONCURRENT": 0,
+   "VIOLATED": 0,
+   "INCONCLUSIVE": 0
+  },
+  "claim_delivery_s": 0.1,
+  "satisfied_blocked": 0,
+  "satisfied_never_blocked": 0,
+  "arrivals_during_claim": 0,
+  "releases_while_claimed": 0,
+  "not_satisfied": [],
+  "entry_counts": {
+   "ADMITTED": 0,
+   "PUSHED": 0,
+   "UNCOMMITTED": 0
+  },
+  "entries_not_admitted": [],
+  "entries_with_another_inside": 0
+ },
+ {
+  "run": "results/validation/heldout/B2_BLACKOUT/LOW-ALL/formation_square/s6103",
+  "protocol": "B2_BLACKOUT",
+  "profile": "LOW-ALL",
+  "scenario": "formation_square",
+  "seed": 6103,
+  "class": "PASS",
+  "P2_holds": true,
+  "counts": {
+   "SATISFIED": 0,
+   "CONCURRENT": 0,
+   "VIOLATED": 0,
+   "INCONCLUSIVE": 0
+  },
+  "claim_delivery_s": 0.1,
+  "satisfied_blocked": 0,
+  "satisfied_never_blocked": 0,
+  "arrivals_during_claim": 0,
+  "releases_while_claimed": 0,
+  "not_satisfied": [],
+  "entry_counts": {
+   "ADMITTED": 0,
+   "PUSHED": 0,
+   "UNCOMMITTED": 0
+  },
+  "entries_not_admitted": [],
+  "entries_with_another_inside": 0
+ },
+ {
+  "run": "results/validation/heldout/B2_BLACKOUT/LOW-ALL/formation_square/s6104",
+  "protocol": "B2_BLACKOUT",
+  "profile": "LOW-ALL",
+  "scenario": "formation_square",
+  "seed": 6104,
+  "class": "PASS",
+  "P2_holds": true,
+  "counts": {
+   "SATISFIED": 0,
+   "CONCURRENT": 0,
+   "VIOLATED": 0,
+   "INCONCLUSIVE": 0
+  },
+  "claim_delivery_s": 0.1,
+  "satisfied_blocked": 0,
+  "satisfied_never_blocked": 0,
+  "arrivals_during_claim": 0,
+  "releases_while_claimed": 0,
+  "not_satisfied": [],
+  "entry_counts": {
+   "ADMITTED": 0,
+   "PUSHED": 0,
+   "UNCOMMITTED": 0
+  },
+  "entries_not_admitted": [],
+  "entries_with_another_inside": 0
+ },
+ {
+  "run": "results/validation/heldout/B2_BLACKOUT/LOW-ALL/gate_single/s6100",
+  "protocol": "B2_BLACKOUT",
+  "profile": "LOW-ALL",
+  "scenario": "gate_single",
+  "seed": 6100,
+  "class": "PASS",
+  "P2_holds": true,
+  "counts": {
+   "SATISFIED": 3,
+   "CONCURRENT": 0,
+   "VIOLATED": 0,
+   "INCONCLUSIVE": 0
+  },
+  "claim_delivery_s": 0.1,
+  "satisfied_blocked": 3,
+  "satisfied_never_blocked": 0,
+  "arrivals_during_claim": 0,
+  "releases_while_claimed": 0,
+  "not_satisfied": [],
+  "entry_counts": {
+   "ADMITTED": 3,
+   "PUSHED": 0,
+   "UNCOMMITTED": 0
+  },
+  "entries_not_admitted": [],
+  "entries_with_another_inside": 0
+ },
+ {
+  "run": "results/validation/heldout/B2_BLACKOUT/LOW-ALL/gate_single/s6101",
+  "protocol": "B2_BLACKOUT",
+  "profile": "LOW-ALL",
+  "scenario": "gate_single",
+  "seed": 6101,
+  "class": "PASS",
+  "P2_holds": true,
+  "counts": {
+   "SATISFIED": 3,
+   "CONCURRENT": 0,
+   "VIOLATED": 0,
+   "INCONCLUSIVE": 0
+  },
+  "claim_delivery_s": 0.1,
+  "satisfied_blocked": 3,
+  "satisfied_never_blocked": 0,
+  "arrivals_during_claim": 0,
+  "releases_while_claimed": 0,
+  "not_satisfied": [],
+  "entry_counts": {
+   "ADMITTED": 3,
+   "PUSHED": 0,
+   "UNCOMMITTED": 0
+  },
+  "entries_not_admitted": [],
+  "entries_with_another_inside": 0
+ },
+ {
+  "run": "results/validation/heldout/B2_BLACKOUT/LOW-ALL/gate_single/s6102",
+  "protocol": "B2_BLACKOUT",
+  "profile": "LOW-ALL",
+  "scenario": "gate_single",
+  "seed": 6102,
+  "class": "PASS",
+  "P2_holds": true,
+  "counts": {
+   "SATISFIED": 3,
+   "CONCURRENT": 0,
+   "VIOLATED": 0,
+   "INCONCLUSIVE": 0
+  },
+  "claim_delivery_s": 0.1,
+  "satisfied_blocked": 3,
+  "satisfied_never_blocked": 0,
+  "arrivals_during_claim": 0,
+  "releases_while_claimed": 0,
+  "not_satisfied": [],
+  "entry_counts": {
+   "ADMITTED": 3,
+   "PUSHED": 0,
+   "UNCOMMITTED": 0
+  },
+  "entries_not_admitted": [],
+  "entries_with_another_inside": 0
+ },
+ {
+  "run": "results/validation/heldout/B2_BLACKOUT/LOW-ALL/gate_single/s6103",
+  "protocol": "B2_BLACKOUT",
+  "profile": "LOW-ALL",
+  "scenario": "gate_single",
+  "seed": 6103,
+  "class": "PASS",
+  "P2_holds": true,
+  "counts": {
+   "SATISFIED": 3,
+   "CONCURRENT": 0,
+   "VIOLATED": 0,
+   "INCONCLUSIVE": 0
+  },
+  "claim_delivery_s": 0.1,
+  "satisfied_blocked": 3,
+  "satisfied_never_blocked": 0,
+  "arrivals_during_claim": 0,
+  "releases_while_claimed": 0,
+  "not_satisfied": [],
+  "entry_counts": {
+   "ADMITTED": 3,
+   "PUSHED": 0,
+   "UNCOMMITTED": 0
+  },
+  "entries_not_admitted": [],
+  "entries_with_another_inside": 0
+ },
+ {
+  "run": "results/validation/heldout/B2_BLACKOUT/LOW-ALL/gate_single/s6104",
+  "protocol": "B2_BLACKOUT",
+  "profile": "LOW-ALL",
+  "scenario": "gate_single",
+  "seed": 6104,
+  "class": "PASS",
+  "P2_holds": true,
+  "counts": {
+   "SATISFIED": 3,
+   "CONCURRENT": 0,
+   "VIOLATED": 0,
+   "INCONCLUSIVE": 0
+  },
+  "claim_delivery_s": 0.1,
+  "satisfied_blocked": 3,
+  "satisfied_never_blocked": 0,
+  "arrivals_during_claim": 0,
+  "releases_while_claimed": 0,
+  "not_satisfied": [],
+  "entry_counts": {
+   "ADMITTED": 3,
+   "PUSHED": 0,
+   "UNCOMMITTED": 0
+  },
+  "entries_not_admitted": [],
+  "entries_with_another_inside": 0
+ },
+ {
+  "run": "results/validation/heldout/B2_BLACKOUT/LOW-ALL/lost_drone_mutex/s6100",
+  "protocol": "B2_BLACKOUT",
+  "profile": "LOW-ALL",
+  "scenario": "lost_drone_mutex",
+  "seed": 6100,
+  "class": "PREMISE_VIOLATED",
+  "P2_holds": true,
+  "counts": {
+   "SATISFIED": 1,
+   "CONCURRENT": 0,
+   "VIOLATED": 0,
+   "INCONCLUSIVE": 0
+  },
+  "claim_delivery_s": 0.1,
+  "satisfied_blocked": 1,
+  "satisfied_never_blocked": 0,
+  "arrivals_during_claim": 0,
+  "releases_while_claimed": 0,
+  "not_satisfied": [],
+  "entry_counts": {
+   "ADMITTED": 2,
+   "PUSHED": 0,
+   "UNCOMMITTED": 0
+  },
+  "entries_not_admitted": [],
+  "entries_with_another_inside": 0
+ },
+ {
+  "run": "results/validation/heldout/B2_BLACKOUT/LOW-ALL/lost_drone_mutex/s6101",
+  "protocol": "B2_BLACKOUT",
+  "profile": "LOW-ALL",
+  "scenario": "lost_drone_mutex",
+  "seed": 6101,
+  "class": "PREMISE_VIOLATED",
+  "P2_holds": true,
+  "counts": {
+   "SATISFIED": 2,
+   "CONCURRENT": 0,
+   "VIOLATED": 0,
+   "INCONCLUSIVE": 0
+  },
+  "claim_delivery_s": 0.1,
+  "satisfied_blocked": 1,
+  "satisfied_never_blocked": 1,
+  "arrivals_during_claim": 0,
+  "releases_while_claimed": 0,
+  "not_satisfied": [],
+  "entry_counts": {
+   "ADMITTED": 2,
+   "PUSHED": 0,
+   "UNCOMMITTED": 0
+  },
+  "entries_not_admitted": [],
+  "entries_with_another_inside": 0
+ },
+ {
+  "run": "results/validation/heldout/B2_BLACKOUT/LOW-ALL/lost_drone_mutex/s6102",
+  "protocol": "B2_BLACKOUT",
+  "profile": "LOW-ALL",
+  "scenario": "lost_drone_mutex",
+  "seed": 6102,
+  "class": "PREMISE_VIOLATED",
+  "P2_holds": true,
+  "counts": {
+   "SATISFIED": 1,
+   "CONCURRENT": 0,
+   "VIOLATED": 0,
+   "INCONCLUSIVE": 0
+  },
+  "claim_delivery_s": 0.1,
+  "satisfied_blocked": 1,
+  "satisfied_never_blocked": 0,
+  "arrivals_during_claim": 0,
+  "releases_while_claimed": 0,
+  "not_satisfied": [],
+  "entry_counts": {
+   "ADMITTED": 2,
+   "PUSHED": 0,
+   "UNCOMMITTED": 0
+  },
+  "entries_not_admitted": [],
+  "entries_with_another_inside": 0
+ },
+ {
+  "run": "results/validation/heldout/B2_BLACKOUT/LOW-ALL/lost_drone_mutex/s6103",
+  "protocol": "B2_BLACKOUT",
+  "profile": "LOW-ALL",
+  "scenario": "lost_drone_mutex",
+  "seed": 6103,
+  "class": "PREMISE_VIOLATED",
+  "P2_holds": true,
+  "counts": {
+   "SATISFIED": 1,
+   "CONCURRENT": 0,
+   "VIOLATED": 0,
+   "INCONCLUSIVE": 0
+  },
+  "claim_delivery_s": 0.1,
+  "satisfied_blocked": 1,
+  "satisfied_never_blocked": 0,
+  "arrivals_during_claim": 0,
+  "releases_while_claimed": 0,
+  "not_satisfied": [],
+  "entry_counts": {
+   "ADMITTED": 2,
+   "PUSHED": 0,
+   "UNCOMMITTED": 0
+  },
+  "entries_not_admitted": [],
+  "entries_with_another_inside": 0
+ },
+ {
+  "run": "results/validation/heldout/B2_BLACKOUT/LOW-ALL/lost_drone_mutex/s6104",
+  "protocol": "B2_BLACKOUT",
+  "profile": "LOW-ALL",
+  "scenario": "lost_drone_mutex",
+  "seed": 6104,
+  "class": "PREMISE_VIOLATED",
+  "P2_holds": true,
+  "counts": {
+   "SATISFIED": 1,
+   "CONCURRENT": 0,
+   "VIOLATED": 0,
+   "INCONCLUSIVE": 0
+  },
+  "claim_delivery_s": 0.1,
+  "satisfied_blocked": 1,
+  "satisfied_never_blocked": 0,
+  "arrivals_during_claim": 0,
+  "releases_while_claimed": 0,
+  "not_satisfied": [],
+  "entry_counts": {
+   "ADMITTED": 2,
+   "PUSHED": 0,
+   "UNCOMMITTED": 0
+  },
+  "entries_not_admitted": [],
+  "entries_with_another_inside": 0
+ },
+ {
+  "run": "results/validation/heldout/B2_LOW/LOW-ALL/em_delay_head/s6100",
+  "protocol": "B2_LOW",
+  "profile": "LOW-ALL",
+  "scenario": "em_delay_head",
+  "seed": 6100,
+  "class": "PASS",
+  "P2_holds": true,
+  "counts": {
+   "SATISFIED": 0,
+   "CONCURRENT": 0,
+   "VIOLATED": 0,
+   "INCONCLUSIVE": 0
+  },
+  "claim_delivery_s": 0.15,
+  "satisfied_blocked": 0,
+  "satisfied_never_blocked": 0,
+  "arrivals_during_claim": 0,
+  "releases_while_claimed": 0,
+  "not_satisfied": [],
+  "entry_counts": {
+   "ADMITTED": 0,
+   "PUSHED": 0,
+   "UNCOMMITTED": 0
+  },
+  "entries_not_admitted": [],
+  "entries_with_another_inside": 0
+ },
+ {
+  "run": "results/validation/heldout/B2_LOW/LOW-ALL/em_delay_head/s6101",
+  "protocol": "B2_LOW",
+  "profile": "LOW-ALL",
+  "scenario": "em_delay_head",
+  "seed": 6101,
+  "class": "PASS",
+  "P2_holds": true,
+  "counts": {
+   "SATISFIED": 0,
+   "CONCURRENT": 0,
+   "VIOLATED": 0,
+   "INCONCLUSIVE": 0
+  },
+  "claim_delivery_s": 0.15,
+  "satisfied_blocked": 0,
+  "satisfied_never_blocked": 0,
+  "arrivals_during_claim": 0,
+  "releases_while_claimed": 0,
+  "not_satisfied": [],
+  "entry_counts": {
+   "ADMITTED": 0,
+   "PUSHED": 0,
+   "UNCOMMITTED": 0
+  },
+  "entries_not_admitted": [],
+  "entries_with_another_inside": 0
+ },
+ {
+  "run": "results/validation/heldout/B2_LOW/LOW-ALL/em_delay_head/s6102",
+  "protocol": "B2_LOW",
+  "profile": "LOW-ALL",
+  "scenario": "em_delay_head",
+  "seed": 6102,
+  "class": "PASS",
+  "P2_holds": true,
+  "counts": {
+   "SATISFIED": 0,
+   "CONCURRENT": 0,
+   "VIOLATED": 0,
+   "INCONCLUSIVE": 0
+  },
+  "claim_delivery_s": 0.15,
+  "satisfied_blocked": 0,
+  "satisfied_never_blocked": 0,
+  "arrivals_during_claim": 0,
+  "releases_while_claimed": 0,
+  "not_satisfied": [],
+  "entry_counts": {
+   "ADMITTED": 0,
+   "PUSHED": 0,
+   "UNCOMMITTED": 0
+  },
+  "entries_not_admitted": [],
+  "entries_with_another_inside": 0
+ },
+ {
+  "run": "results/validation/heldout/B2_LOW/LOW-ALL/em_delay_head/s6103",
+  "protocol": "B2_LOW",
+  "profile": "LOW-ALL",
+  "scenario": "em_delay_head",
+  "seed": 6103,
+  "class": "PASS",
+  "P2_holds": true,
+  "counts": {
+   "SATISFIED": 0,
+   "CONCURRENT": 0,
+   "VIOLATED": 0,
+   "INCONCLUSIVE": 0
+  },
+  "claim_delivery_s": 0.15,
+  "satisfied_blocked": 0,
+  "satisfied_never_blocked": 0,
+  "arrivals_during_claim": 0,
+  "releases_while_claimed": 0,
+  "not_satisfied": [],
+  "entry_counts": {
+   "ADMITTED": 0,
+   "PUSHED": 0,
+   "UNCOMMITTED": 0
+  },
+  "entries_not_admitted": [],
+  "entries_with_another_inside": 0
+ },
+ {
+  "run": "results/validation/heldout/B2_LOW/LOW-ALL/em_delay_head/s6104",
+  "protocol": "B2_LOW",
+  "profile": "LOW-ALL",
+  "scenario": "em_delay_head",
+  "seed": 6104,
+  "class": "PASS",
+  "P2_holds": true,
+  "counts": {
+   "SATISFIED": 0,
+   "CONCURRENT": 0,
+   "VIOLATED": 0,
+   "INCONCLUSIVE": 0
+  },
+  "claim_delivery_s": 0.15,
+  "satisfied_blocked": 0,
+  "satisfied_never_blocked": 0,
+  "arrivals_during_claim": 0,
+  "releases_while_claimed": 0,
+  "not_satisfied": [],
+  "entry_counts": {
+   "ADMITTED": 0,
+   "PUSHED": 0,
+   "UNCOMMITTED": 0
+  },
+  "entries_not_admitted": [],
+  "entries_with_another_inside": 0
+ },
+ {
+  "run": "results/validation/heldout/B2_LOW/LOW-ALL/formation_square/s6100",
+  "protocol": "B2_LOW",
+  "profile": "LOW-ALL",
+  "scenario": "formation_square",
+  "seed": 6100,
+  "class": "PASS",
+  "P2_holds": true,
+  "counts": {
+   "SATISFIED": 0,
+   "CONCURRENT": 0,
+   "VIOLATED": 0,
+   "INCONCLUSIVE": 0
+  },
+  "claim_delivery_s": 0.15,
+  "satisfied_blocked": 0,
+  "satisfied_never_blocked": 0,
+  "arrivals_during_claim": 0,
+  "releases_while_claimed": 0,
+  "not_satisfied": [],
+  "entry_counts": {
+   "ADMITTED": 0,
+   "PUSHED": 0,
+   "UNCOMMITTED": 0
+  },
+  "entries_not_admitted": [],
+  "entries_with_another_inside": 0
+ },
+ {
+  "run": "results/validation/heldout/B2_LOW/LOW-ALL/formation_square/s6101",
+  "protocol": "B2_LOW",
+  "profile": "LOW-ALL",
+  "scenario": "formation_square",
+  "seed": 6101,
+  "class": "PASS",
+  "P2_holds": true,
+  "counts": {
+   "SATISFIED": 0,
+   "CONCURRENT": 0,
+   "VIOLATED": 0,
+   "INCONCLUSIVE": 0
+  },
+  "claim_delivery_s": 0.15,
+  "satisfied_blocked": 0,
+  "satisfied_never_blocked": 0,
+  "arrivals_during_claim": 0,
+  "releases_while_claimed": 0,
+  "not_satisfied": [],
+  "entry_counts": {
+   "ADMITTED": 0,
+   "PUSHED": 0,
+   "UNCOMMITTED": 0
+  },
+  "entries_not_admitted": [],
+  "entries_with_another_inside": 0
+ },
+ {
+  "run": "results/validation/heldout/B2_LOW/LOW-ALL/formation_square/s6102",
+  "protocol": "B2_LOW",
+  "profile": "LOW-ALL",
+  "scenario": "formation_square",
+  "seed": 6102,
+  "class": "PASS",
+  "P2_holds": true,
+  "counts": {
+   "SATISFIED": 0,
+   "CONCURRENT": 0,
+   "VIOLATED": 0,
+   "INCONCLUSIVE": 0
+  },
+  "claim_delivery_s": 0.15,
+  "satisfied_blocked": 0,
+  "satisfied_never_blocked": 0,
+  "arrivals_during_claim": 0,
+  "releases_while_claimed": 0,
+  "not_satisfied": [],
+  "entry_counts": {
+   "ADMITTED": 0,
+   "PUSHED": 0,
+   "UNCOMMITTED": 0
+  },
+  "entries_not_admitted": [],
+  "entries_with_another_inside": 0
+ },
+ {
+  "run": "results/validation/heldout/B2_LOW/LOW-ALL/formation_square/s6103",
+  "protocol": "B2_LOW",
+  "profile": "LOW-ALL",
+  "scenario": "formation_square",
+  "seed": 6103,
+  "class": "PASS",
+  "P2_holds": true,
+  "counts": {
+   "SATISFIED": 0,
+   "CONCURRENT": 0,
+   "VIOLATED": 0,
+   "INCONCLUSIVE": 0
+  },
+  "claim_delivery_s": 0.15,
+  "satisfied_blocked": 0,
+  "satisfied_never_blocked": 0,
+  "arrivals_during_claim": 0,
+  "releases_while_claimed": 0,
+  "not_satisfied": [],
+  "entry_counts": {
+   "ADMITTED": 0,
+   "PUSHED": 0,
+   "UNCOMMITTED": 0
+  },
+  "entries_not_admitted": [],
+  "entries_with_another_inside": 0
+ },
+ {
+  "run": "results/validation/heldout/B2_LOW/LOW-ALL/formation_square/s6104",
+  "protocol": "B2_LOW",
+  "profile": "LOW-ALL",
+  "scenario": "formation_square",
+  "seed": 6104,
+  "class": "PASS",
+  "P2_holds": true,
+  "counts": {
+   "SATISFIED": 0,
+   "CONCURRENT": 0,
+   "VIOLATED": 0,
+   "INCONCLUSIVE": 0
+  },
+  "claim_delivery_s": 0.15,
+  "satisfied_blocked": 0,
+  "satisfied_never_blocked": 0,
+  "arrivals_during_claim": 0,
+  "releases_while_claimed": 0,
+  "not_satisfied": [],
+  "entry_counts": {
+   "ADMITTED": 0,
+   "PUSHED": 0,
+   "UNCOMMITTED": 0
+  },
+  "entries_not_admitted": [],
+  "entries_with_another_inside": 0
+ },
+ {
+  "run": "results/validation/heldout/B2_LOW/LOW-ALL/gate_single/s6100",
+  "protocol": "B2_LOW",
+  "profile": "LOW-ALL",
+  "scenario": "gate_single",
+  "seed": 6100,
+  "class": "PASS",
+  "P2_holds": true,
+  "counts": {
+   "SATISFIED": 3,
+   "CONCURRENT": 0,
+   "VIOLATED": 0,
+   "INCONCLUSIVE": 0
+  },
+  "claim_delivery_s": 0.15,
+  "satisfied_blocked": 3,
+  "satisfied_never_blocked": 0,
+  "arrivals_during_claim": 0,
+  "releases_while_claimed": 0,
+  "not_satisfied": [],
+  "entry_counts": {
+   "ADMITTED": 3,
+   "PUSHED": 0,
+   "UNCOMMITTED": 0
+  },
+  "entries_not_admitted": [],
+  "entries_with_another_inside": 0
+ },
+ {
+  "run": "results/validation/heldout/B2_LOW/LOW-ALL/gate_single/s6101",
+  "protocol": "B2_LOW",
+  "profile": "LOW-ALL",
+  "scenario": "gate_single",
+  "seed": 6101,
+  "class": "PASS",
+  "P2_holds": true,
+  "counts": {
+   "SATISFIED": 3,
+   "CONCURRENT": 0,
+   "VIOLATED": 0,
+   "INCONCLUSIVE": 0
+  },
+  "claim_delivery_s": 0.15,
+  "satisfied_blocked": 3,
+  "satisfied_never_blocked": 0,
+  "arrivals_during_claim": 0,
+  "releases_while_claimed": 1,
+  "not_satisfied": [],
+  "entry_counts": {
+   "ADMITTED": 3,
+   "PUSHED": 0,
+   "UNCOMMITTED": 0
+  },
+  "entries_not_admitted": [],
+  "entries_with_another_inside": 0
+ },
+ {
+  "run": "results/validation/heldout/B2_LOW/LOW-ALL/gate_single/s6102",
+  "protocol": "B2_LOW",
+  "profile": "LOW-ALL",
+  "scenario": "gate_single",
+  "seed": 6102,
+  "class": "PASS",
+  "P2_holds": true,
+  "counts": {
+   "SATISFIED": 3,
+   "CONCURRENT": 0,
+   "VIOLATED": 0,
+   "INCONCLUSIVE": 0
+  },
+  "claim_delivery_s": 0.15,
+  "satisfied_blocked": 3,
+  "satisfied_never_blocked": 0,
+  "arrivals_during_claim": 0,
+  "releases_while_claimed": 0,
+  "not_satisfied": [],
+  "entry_counts": {
+   "ADMITTED": 3,
+   "PUSHED": 0,
+   "UNCOMMITTED": 0
+  },
+  "entries_not_admitted": [],
+  "entries_with_another_inside": 0
+ },
+ {
+  "run": "results/validation/heldout/B2_LOW/LOW-ALL/gate_single/s6103",
+  "protocol": "B2_LOW",
+  "profile": "LOW-ALL",
+  "scenario": "gate_single",
+  "seed": 6103,
+  "class": "PASS",
+  "P2_holds": true,
+  "counts": {
+   "SATISFIED": 3,
+   "CONCURRENT": 0,
+   "VIOLATED": 0,
+   "INCONCLUSIVE": 0
+  },
+  "claim_delivery_s": 0.15,
+  "satisfied_blocked": 3,
+  "satisfied_never_blocked": 0,
+  "arrivals_during_claim": 0,
+  "releases_while_claimed": 0,
+  "not_satisfied": [],
+  "entry_counts": {
+   "ADMITTED": 3,
+   "PUSHED": 0,
+   "UNCOMMITTED": 0
+  },
+  "entries_not_admitted": [],
+  "entries_with_another_inside": 0
+ },
+ {
+  "run": "results/validation/heldout/B2_LOW/LOW-ALL/gate_single/s6104",
+  "protocol": "B2_LOW",
+  "profile": "LOW-ALL",
+  "scenario": "gate_single",
+  "seed": 6104,
+  "class": "PASS",
+  "P2_holds": true,
+  "counts": {
+   "SATISFIED": 3,
+   "CONCURRENT": 0,
+   "VIOLATED": 0,
+   "INCONCLUSIVE": 0
+  },
+  "claim_delivery_s": 0.15,
+  "satisfied_blocked": 3,
+  "satisfied_never_blocked": 0,
+  "arrivals_during_claim": 0,
+  "releases_while_claimed": 0,
+  "not_satisfied": [],
+  "entry_counts": {
+   "ADMITTED": 3,
+   "PUSHED": 0,
+   "UNCOMMITTED": 0
+  },
+  "entries_not_admitted": [],
+  "entries_with_another_inside": 0
+ },
+ {
+  "run": "results/validation/heldout/B2_LOW/LOW-ALL/lost_drone_mutex/s6100",
+  "protocol": "B2_LOW",
+  "profile": "LOW-ALL",
+  "scenario": "lost_drone_mutex",
+  "seed": 6100,
+  "class": "PASS",
+  "P2_holds": true,
+  "counts": {
+   "SATISFIED": 1,
+   "CONCURRENT": 0,
+   "VIOLATED": 0,
+   "INCONCLUSIVE": 0
+  },
+  "claim_delivery_s": 0.15,
+  "satisfied_blocked": 1,
+  "satisfied_never_blocked": 0,
+  "arrivals_during_claim": 0,
+  "releases_while_claimed": 0,
+  "not_satisfied": [],
+  "entry_counts": {
+   "ADMITTED": 2,
+   "PUSHED": 0,
+   "UNCOMMITTED": 0
+  },
+  "entries_not_admitted": [],
+  "entries_with_another_inside": 0
+ },
+ {
+  "run": "results/validation/heldout/B2_LOW/LOW-ALL/lost_drone_mutex/s6101",
+  "protocol": "B2_LOW",
+  "profile": "LOW-ALL",
+  "scenario": "lost_drone_mutex",
+  "seed": 6101,
+  "class": "PASS",
+  "P2_holds": true,
+  "counts": {
+   "SATISFIED": 1,
+   "CONCURRENT": 0,
+   "VIOLATED": 0,
+   "INCONCLUSIVE": 0
+  },
+  "claim_delivery_s": 0.15,
+  "satisfied_blocked": 1,
+  "satisfied_never_blocked": 0,
+  "arrivals_during_claim": 0,
+  "releases_while_claimed": 0,
+  "not_satisfied": [],
+  "entry_counts": {
+   "ADMITTED": 2,
+   "PUSHED": 0,
+   "UNCOMMITTED": 0
+  },
+  "entries_not_admitted": [],
+  "entries_with_another_inside": 0
+ },
+ {
+  "run": "results/validation/heldout/B2_LOW/LOW-ALL/lost_drone_mutex/s6102",
+  "protocol": "B2_LOW",
+  "profile": "LOW-ALL",
+  "scenario": "lost_drone_mutex",
+  "seed": 6102,
+  "class": "PASS",
+  "P2_holds": true,
+  "counts": {
+   "SATISFIED": 1,
+   "CONCURRENT": 0,
+   "VIOLATED": 0,
+   "INCONCLUSIVE": 0
+  },
+  "claim_delivery_s": 0.15,
+  "satisfied_blocked": 1,
+  "satisfied_never_blocked": 0,
+  "arrivals_during_claim": 0,
+  "releases_while_claimed": 0,
+  "not_satisfied": [],
+  "entry_counts": {
+   "ADMITTED": 2,
+   "PUSHED": 0,
+   "UNCOMMITTED": 0
+  },
+  "entries_not_admitted": [],
+  "entries_with_another_inside": 0
+ },
+ {
+  "run": "results/validation/heldout/B2_LOW/LOW-ALL/lost_drone_mutex/s6103",
+  "protocol": "B2_LOW",
+  "profile": "LOW-ALL",
+  "scenario": "lost_drone_mutex",
+  "seed": 6103,
+  "class": "PASS",
+  "P2_holds": true,
+  "counts": {
+   "SATISFIED": 1,
+   "CONCURRENT": 0,
+   "VIOLATED": 0,
+   "INCONCLUSIVE": 0
+  },
+  "claim_delivery_s": 0.15,
+  "satisfied_blocked": 1,
+  "satisfied_never_blocked": 0,
+  "arrivals_during_claim": 0,
+  "releases_while_claimed": 0,
+  "not_satisfied": [],
+  "entry_counts": {
+   "ADMITTED": 2,
+   "PUSHED": 0,
+   "UNCOMMITTED": 0
+  },
+  "entries_not_admitted": [],
+  "entries_with_another_inside": 0
+ },
+ {
+  "run": "results/validation/heldout/B2_LOW/LOW-ALL/lost_drone_mutex/s6104",
+  "protocol": "B2_LOW",
+  "profile": "LOW-ALL",
+  "scenario": "lost_drone_mutex",
+  "seed": 6104,
+  "class": "PASS",
+  "P2_holds": true,
+  "counts": {
+   "SATISFIED": 1,
+   "CONCURRENT": 0,
+   "VIOLATED": 0,
+   "INCONCLUSIVE": 0
+  },
+  "claim_delivery_s": 0.15,
+  "satisfied_blocked": 1,
+  "satisfied_never_blocked": 0,
+  "arrivals_during_claim": 0,
+  "releases_while_claimed": 0,
+  "not_satisfied": [],
+  "entry_counts": {
+   "ADMITTED": 2,
+   "PUSHED": 0,
+   "UNCOMMITTED": 0
+  },
+  "entries_not_admitted": [],
+  "entries_with_another_inside": 0
+ },
+ {
+  "run": "results/validation/heldout/B2_LOW/LOW-ALL/lost_drone_rejoin/s6100",
+  "protocol": "B2_LOW",
+  "profile": "LOW-ALL",
+  "scenario": "lost_drone_rejoin",
+  "seed": 6100,
+  "class": "PASS",
+  "P2_holds": true,
+  "counts": {
+   "SATISFIED": 0,
+   "CONCURRENT": 0,
+   "VIOLATED": 0,
+   "INCONCLUSIVE": 0
+  },
+  "claim_delivery_s": 0.15,
+  "satisfied_blocked": 0,
+  "satisfied_never_blocked": 0,
+  "arrivals_during_claim": 0,
+  "releases_while_claimed": 0,
+  "not_satisfied": [],
+  "entry_counts": {
+   "ADMITTED": 0,
+   "PUSHED": 0,
+   "UNCOMMITTED": 0
+  },
+  "entries_not_admitted": [],
+  "entries_with_another_inside": 0
+ },
+ {
+  "run": "results/validation/heldout/B2_LOW/LOW-ALL/lost_drone_rejoin/s6101",
+  "protocol": "B2_LOW",
+  "profile": "LOW-ALL",
+  "scenario": "lost_drone_rejoin",
+  "seed": 6101,
+  "class": "PASS",
+  "P2_holds": true,
+  "counts": {
+   "SATISFIED": 0,
+   "CONCURRENT": 0,
+   "VIOLATED": 0,
+   "INCONCLUSIVE": 0
+  },
+  "claim_delivery_s": 0.15,
+  "satisfied_blocked": 0,
+  "satisfied_never_blocked": 0,
+  "arrivals_during_claim": 0,
+  "releases_while_claimed": 0,
+  "not_satisfied": [],
+  "entry_counts": {
+   "ADMITTED": 0,
+   "PUSHED": 0,
+   "UNCOMMITTED": 0
+  },
+  "entries_not_admitted": [],
+  "entries_with_another_inside": 0
+ },
+ {
+  "run": "results/validation/heldout/B2_LOW/LOW-ALL/lost_drone_rejoin/s6102",
+  "protocol": "B2_LOW",
+  "profile": "LOW-ALL",
+  "scenario": "lost_drone_rejoin",
+  "seed": 6102,
+  "class": "PASS",
+  "P2_holds": true,
+  "counts": {
+   "SATISFIED": 0,
+   "CONCURRENT": 0,
+   "VIOLATED": 0,
+   "INCONCLUSIVE": 0
+  },
+  "claim_delivery_s": 0.15,
+  "satisfied_blocked": 0,
+  "satisfied_never_blocked": 0,
+  "arrivals_during_claim": 0,
+  "releases_while_claimed": 0,
+  "not_satisfied": [],
+  "entry_counts": {
+   "ADMITTED": 0,
+   "PUSHED": 0,
+   "UNCOMMITTED": 0
+  },
+  "entries_not_admitted": [],
+  "entries_with_another_inside": 0
+ },
+ {
+  "run": "results/validation/heldout/B2_LOW/LOW-ALL/lost_drone_rejoin/s6103",
+  "protocol": "B2_LOW",
+  "profile": "LOW-ALL",
+  "scenario": "lost_drone_rejoin",
+  "seed": 6103,
+  "class": "PASS",
+  "P2_holds": true,
+  "counts": {
+   "SATISFIED": 0,
+   "CONCURRENT": 0,
+   "VIOLATED": 0,
+   "INCONCLUSIVE": 0
+  },
+  "claim_delivery_s": 0.15,
+  "satisfied_blocked": 0,
+  "satisfied_never_blocked": 0,
+  "arrivals_during_claim": 0,
+  "releases_while_claimed": 0,
+  "not_satisfied": [],
+  "entry_counts": {
+   "ADMITTED": 0,
+   "PUSHED": 0,
+   "UNCOMMITTED": 0
+  },
+  "entries_not_admitted": [],
+  "entries_with_another_inside": 0
+ },
+ {
+  "run": "results/validation/heldout/B2_LOW/LOW-ALL/lost_drone_rejoin/s6104",
+  "protocol": "B2_LOW",
+  "profile": "LOW-ALL",
+  "scenario": "lost_drone_rejoin",
+  "seed": 6104,
+  "class": "PASS",
+  "P2_holds": true,
+  "counts": {
+   "SATISFIED": 0,
+   "CONCURRENT": 0,
+   "VIOLATED": 0,
+   "INCONCLUSIVE": 0
+  },
+  "claim_delivery_s": 0.15,
+  "satisfied_blocked": 0,
+  "satisfied_never_blocked": 0,
+  "arrivals_during_claim": 0,
+  "releases_while_claimed": 0,
+  "not_satisfied": [],
+  "entry_counts": {
+   "ADMITTED": 0,
+   "PUSHED": 0,
+   "UNCOMMITTED": 0
+  },
+  "entries_not_admitted": [],
+  "entries_with_another_inside": 0
+ },
+ {
+  "run": "results/validation/heldout/B2_SW-asym0.9/LOW-ALL/gate_single/s6100",
+  "protocol": "B2_SW-asym0.9",
+  "profile": "LOW-ALL",
+  "scenario": "gate_single",
+  "seed": 6100,
+  "class": "PASS",
+  "P2_holds": true,
+  "counts": {
+   "SATISFIED": 3,
+   "CONCURRENT": 0,
+   "VIOLATED": 0,
+   "INCONCLUSIVE": 0
+  },
+  "claim_delivery_s": 0.15,
+  "satisfied_blocked": 3,
+  "satisfied_never_blocked": 0,
+  "arrivals_during_claim": 0,
+  "releases_while_claimed": 0,
+  "not_satisfied": [],
+  "entry_counts": {
+   "ADMITTED": 3,
+   "PUSHED": 0,
+   "UNCOMMITTED": 0
+  },
+  "entries_not_admitted": [],
+  "entries_with_another_inside": 0
+ },
+ {
+  "run": "results/validation/heldout/B2_SW-asym0.9/LOW-ALL/gate_single/s6101",
+  "protocol": "B2_SW-asym0.9",
+  "profile": "LOW-ALL",
+  "scenario": "gate_single",
+  "seed": 6101,
+  "class": "PASS",
+  "P2_holds": true,
+  "counts": {
+   "SATISFIED": 3,
+   "CONCURRENT": 0,
+   "VIOLATED": 0,
+   "INCONCLUSIVE": 0
+  },
+  "claim_delivery_s": 0.15,
+  "satisfied_blocked": 3,
+  "satisfied_never_blocked": 0,
+  "arrivals_during_claim": 0,
+  "releases_while_claimed": 0,
+  "not_satisfied": [],
+  "entry_counts": {
+   "ADMITTED": 3,
+   "PUSHED": 0,
+   "UNCOMMITTED": 0
+  },
+  "entries_not_admitted": [],
+  "entries_with_another_inside": 0
+ },
+ {
+  "run": "results/validation/heldout/B2_SW-asym0.9/LOW-ALL/gate_single/s6102",
+  "protocol": "B2_SW-asym0.9",
+  "profile": "LOW-ALL",
+  "scenario": "gate_single",
+  "seed": 6102,
+  "class": "PASS",
+  "P2_holds": true,
+  "counts": {
+   "SATISFIED": 3,
+   "CONCURRENT": 0,
+   "VIOLATED": 0,
+   "INCONCLUSIVE": 0
+  },
+  "claim_delivery_s": 0.15,
+  "satisfied_blocked": 3,
+  "satisfied_never_blocked": 0,
+  "arrivals_during_claim": 0,
+  "releases_while_claimed": 0,
+  "not_satisfied": [],
+  "entry_counts": {
+   "ADMITTED": 3,
+   "PUSHED": 0,
+   "UNCOMMITTED": 0
+  },
+  "entries_not_admitted": [],
+  "entries_with_another_inside": 0
+ },
+ {
+  "run": "results/validation/heldout/B2_SW-asym0.9/LOW-ALL/gate_single/s6103",
+  "protocol": "B2_SW-asym0.9",
+  "profile": "LOW-ALL",
+  "scenario": "gate_single",
+  "seed": 6103,
+  "class": "PASS",
+  "P2_holds": true,
+  "counts": {
+   "SATISFIED": 3,
+   "CONCURRENT": 0,
+   "VIOLATED": 0,
+   "INCONCLUSIVE": 0
+  },
+  "claim_delivery_s": 0.15,
+  "satisfied_blocked": 3,
+  "satisfied_never_blocked": 0,
+  "arrivals_during_claim": 0,
+  "releases_while_claimed": 0,
+  "not_satisfied": [],
+  "entry_counts": {
+   "ADMITTED": 3,
+   "PUSHED": 0,
+   "UNCOMMITTED": 0
+  },
+  "entries_not_admitted": [],
+  "entries_with_another_inside": 0
+ },
+ {
+  "run": "results/validation/heldout/B2_SW-asym0.9/LOW-ALL/gate_single/s6104",
+  "protocol": "B2_SW-asym0.9",
+  "profile": "LOW-ALL",
+  "scenario": "gate_single",
+  "seed": 6104,
+  "class": "PASS",
+  "P2_holds": true,
+  "counts": {
+   "SATISFIED": 3,
+   "CONCURRENT": 0,
+   "VIOLATED": 0,
+   "INCONCLUSIVE": 0
+  },
+  "claim_delivery_s": 0.15,
+  "satisfied_blocked": 3,
+  "satisfied_never_blocked": 0,
+  "arrivals_during_claim": 0,
+  "releases_while_claimed": 0,
+  "not_satisfied": [],
+  "entry_counts": {
+   "ADMITTED": 3,
+   "PUSHED": 0,
+   "UNCOMMITTED": 0
+  },
+  "entries_not_admitted": [],
+  "entries_with_another_inside": 0
+ },
+ {
+  "run": "results/validation/heldout/B2_SW-burst30/LOW-ALL/gate_single/s6100",
+  "protocol": "B2_SW-burst30",
+  "profile": "LOW-ALL",
+  "scenario": "gate_single",
+  "seed": 6100,
+  "class": "PASS",
+  "P2_holds": true,
+  "counts": {
+   "SATISFIED": 3,
+   "CONCURRENT": 0,
+   "VIOLATED": 0,
+   "INCONCLUSIVE": 0
+  },
+  "claim_delivery_s": 0.15,
+  "satisfied_blocked": 3,
+  "satisfied_never_blocked": 0,
+  "arrivals_during_claim": 0,
+  "releases_while_claimed": 0,
+  "not_satisfied": [],
+  "entry_counts": {
+   "ADMITTED": 3,
+   "PUSHED": 0,
+   "UNCOMMITTED": 0
+  },
+  "entries_not_admitted": [],
+  "entries_with_another_inside": 0
+ },
+ {
+  "run": "results/validation/heldout/B2_SW-burst30/LOW-ALL/gate_single/s6101",
+  "protocol": "B2_SW-burst30",
+  "profile": "LOW-ALL",
+  "scenario": "gate_single",
+  "seed": 6101,
+  "class": "PASS",
+  "P2_holds": true,
+  "counts": {
+   "SATISFIED": 3,
+   "CONCURRENT": 0,
+   "VIOLATED": 0,
+   "INCONCLUSIVE": 0
+  },
+  "claim_delivery_s": 0.15,
+  "satisfied_blocked": 3,
+  "satisfied_never_blocked": 0,
+  "arrivals_during_claim": 0,
+  "releases_while_claimed": 0,
+  "not_satisfied": [],
+  "entry_counts": {
+   "ADMITTED": 3,
+   "PUSHED": 0,
+   "UNCOMMITTED": 0
+  },
+  "entries_not_admitted": [],
+  "entries_with_another_inside": 0
+ },
+ {
+  "run": "results/validation/heldout/B2_SW-burst30/LOW-ALL/gate_single/s6102",
+  "protocol": "B2_SW-burst30",
+  "profile": "LOW-ALL",
+  "scenario": "gate_single",
+  "seed": 6102,
+  "class": "PASS",
+  "P2_holds": true,
+  "counts": {
+   "SATISFIED": 3,
+   "CONCURRENT": 0,
+   "VIOLATED": 0,
+   "INCONCLUSIVE": 0
+  },
+  "claim_delivery_s": 0.15,
+  "satisfied_blocked": 3,
+  "satisfied_never_blocked": 0,
+  "arrivals_during_claim": 0,
+  "releases_while_claimed": 0,
+  "not_satisfied": [],
+  "entry_counts": {
+   "ADMITTED": 3,
+   "PUSHED": 0,
+   "UNCOMMITTED": 0
+  },
+  "entries_not_admitted": [],
+  "entries_with_another_inside": 0
+ },
+ {
+  "run": "results/validation/heldout/B2_SW-burst30/LOW-ALL/gate_single/s6103",
+  "protocol": "B2_SW-burst30",
+  "profile": "LOW-ALL",
+  "scenario": "gate_single",
+  "seed": 6103,
+  "class": "PASS",
+  "P2_holds": true,
+  "counts": {
+   "SATISFIED": 3,
+   "CONCURRENT": 0,
+   "VIOLATED": 0,
+   "INCONCLUSIVE": 0
+  },
+  "claim_delivery_s": 0.15,
+  "satisfied_blocked": 3,
+  "satisfied_never_blocked": 0,
+  "arrivals_during_claim": 0,
+  "releases_while_claimed": 0,
+  "not_satisfied": [],
+  "entry_counts": {
+   "ADMITTED": 3,
+   "PUSHED": 0,
+   "UNCOMMITTED": 0
+  },
+  "entries_not_admitted": [],
+  "entries_with_another_inside": 0
+ },
+ {
+  "run": "results/validation/heldout/B2_SW-burst30/LOW-ALL/gate_single/s6104",
+  "protocol": "B2_SW-burst30",
+  "profile": "LOW-ALL",
+  "scenario": "gate_single",
+  "seed": 6104,
+  "class": "PASS",
+  "P2_holds": true,
+  "counts": {
+   "SATISFIED": 3,
+   "CONCURRENT": 0,
+   "VIOLATED": 0,
+   "INCONCLUSIVE": 0
+  },
+  "claim_delivery_s": 0.15,
+  "satisfied_blocked": 3,
+  "satisfied_never_blocked": 0,
+  "arrivals_during_claim": 0,
+  "releases_while_claimed": 0,
+  "not_satisfied": [],
+  "entry_counts": {
+   "ADMITTED": 3,
+   "PUSHED": 0,
+   "UNCOMMITTED": 0
+  },
+  "entries_not_admitted": [],
+  "entries_with_another_inside": 0
+ },
+ {
+  "run": "results/validation/heldout/B2_SW-burst60/LOW-ALL/gate_single/s6100",
+  "protocol": "B2_SW-burst60",
+  "profile": "LOW-ALL",
+  "scenario": "gate_single",
+  "seed": 6100,
+  "class": "PASS",
+  "P2_holds": true,
+  "counts": {
+   "SATISFIED": 3,
+   "CONCURRENT": 0,
+   "VIOLATED": 0,
+   "INCONCLUSIVE": 0
+  },
+  "claim_delivery_s": 0.15,
+  "satisfied_blocked": 3,
+  "satisfied_never_blocked": 0,
+  "arrivals_during_claim": 0,
+  "releases_while_claimed": 0,
+  "not_satisfied": [],
+  "entry_counts": {
+   "ADMITTED": 3,
+   "PUSHED": 0,
+   "UNCOMMITTED": 0
+  },
+  "entries_not_admitted": [],
+  "entries_with_another_inside": 0
+ },
+ {
+  "run": "results/validation/heldout/B2_SW-burst60/LOW-ALL/gate_single/s6101",
+  "protocol": "B2_SW-burst60",
+  "profile": "LOW-ALL",
+  "scenario": "gate_single",
+  "seed": 6101,
+  "class": "PASS",
+  "P2_holds": true,
+  "counts": {
+   "SATISFIED": 3,
+   "CONCURRENT": 0,
+   "VIOLATED": 0,
+   "INCONCLUSIVE": 0
+  },
+  "claim_delivery_s": 0.15,
+  "satisfied_blocked": 3,
+  "satisfied_never_blocked": 0,
+  "arrivals_during_claim": 0,
+  "releases_while_claimed": 0,
+  "not_satisfied": [],
+  "entry_counts": {
+   "ADMITTED": 3,
+   "PUSHED": 0,
+   "UNCOMMITTED": 0
+  },
+  "entries_not_admitted": [],
+  "entries_with_another_inside": 0
+ },
+ {
+  "run": "results/validation/heldout/B2_SW-burst60/LOW-ALL/gate_single/s6102",
+  "protocol": "B2_SW-burst60",
+  "profile": "LOW-ALL",
+  "scenario": "gate_single",
+  "seed": 6102,
+  "class": "PASS",
+  "P2_holds": true,
+  "counts": {
+   "SATISFIED": 3,
+   "CONCURRENT": 0,
+   "VIOLATED": 0,
+   "INCONCLUSIVE": 0
+  },
+  "claim_delivery_s": 0.15,
+  "satisfied_blocked": 3,
+  "satisfied_never_blocked": 0,
+  "arrivals_during_claim": 0,
+  "releases_while_claimed": 0,
+  "not_satisfied": [],
+  "entry_counts": {
+   "ADMITTED": 3,
+   "PUSHED": 0,
+   "UNCOMMITTED": 0
+  },
+  "entries_not_admitted": [],
+  "entries_with_another_inside": 0
+ },
+ {
+  "run": "results/validation/heldout/B2_SW-burst60/LOW-ALL/gate_single/s6103",
+  "protocol": "B2_SW-burst60",
+  "profile": "LOW-ALL",
+  "scenario": "gate_single",
+  "seed": 6103,
+  "class": "P3_LATE",
+  "P2_holds": true,
+  "counts": {
+   "SATISFIED": 3,
+   "CONCURRENT": 0,
+   "VIOLATED": 0,
+   "INCONCLUSIVE": 0
+  },
+  "claim_delivery_s": 0.15,
+  "satisfied_blocked": 3,
+  "satisfied_never_blocked": 0,
+  "arrivals_during_claim": 0,
+  "releases_while_claimed": 0,
+  "not_satisfied": [],
+  "entry_counts": {
+   "ADMITTED": 3,
+   "PUSHED": 0,
+   "UNCOMMITTED": 0
+  },
+  "entries_not_admitted": [],
+  "entries_with_another_inside": 0
+ },
+ {
+  "run": "results/validation/heldout/B2_SW-burst60/LOW-ALL/gate_single/s6104",
+  "protocol": "B2_SW-burst60",
+  "profile": "LOW-ALL",
+  "scenario": "gate_single",
+  "seed": 6104,
+  "class": "P3_LATE",
+  "P2_holds": true,
+  "counts": {
+   "SATISFIED": 3,
+   "CONCURRENT": 0,
+   "VIOLATED": 0,
+   "INCONCLUSIVE": 0
+  },
+  "claim_delivery_s": 0.15,
+  "satisfied_blocked": 3,
+  "satisfied_never_blocked": 0,
+  "arrivals_during_claim": 0,
+  "releases_while_claimed": 0,
+  "not_satisfied": [],
+  "entry_counts": {
+   "ADMITTED": 3,
+   "PUSHED": 0,
+   "UNCOMMITTED": 0
+  },
+  "entries_not_admitted": [],
+  "entries_with_another_inside": 0
+ },
+ {
+  "run": "results/validation/heldout/B2_SW-jit1/LOW-ALL/gate_single/s6100",
+  "protocol": "B2_SW-jit1",
+  "profile": "LOW-ALL",
+  "scenario": "gate_single",
+  "seed": 6100,
+  "class": "PASS",
+  "P2_holds": true,
+  "counts": {
+   "SATISFIED": 3,
+   "CONCURRENT": 0,
+   "VIOLATED": 0,
+   "INCONCLUSIVE": 0
+  },
+  "claim_delivery_s": 0.15,
+  "satisfied_blocked": 3,
+  "satisfied_never_blocked": 0,
+  "arrivals_during_claim": 0,
+  "releases_while_claimed": 0,
+  "not_satisfied": [],
+  "entry_counts": {
+   "ADMITTED": 3,
+   "PUSHED": 0,
+   "UNCOMMITTED": 0
+  },
+  "entries_not_admitted": [],
+  "entries_with_another_inside": 0
+ },
+ {
+  "run": "results/validation/heldout/B2_SW-jit1/LOW-ALL/gate_single/s6101",
+  "protocol": "B2_SW-jit1",
+  "profile": "LOW-ALL",
+  "scenario": "gate_single",
+  "seed": 6101,
+  "class": "PASS",
+  "P2_holds": true,
+  "counts": {
+   "SATISFIED": 3,
+   "CONCURRENT": 0,
+   "VIOLATED": 0,
+   "INCONCLUSIVE": 0
+  },
+  "claim_delivery_s": 0.15,
+  "satisfied_blocked": 3,
+  "satisfied_never_blocked": 0,
+  "arrivals_during_claim": 0,
+  "releases_while_claimed": 0,
+  "not_satisfied": [],
+  "entry_counts": {
+   "ADMITTED": 3,
+   "PUSHED": 0,
+   "UNCOMMITTED": 0
+  },
+  "entries_not_admitted": [],
+  "entries_with_another_inside": 0
+ },
+ {
+  "run": "results/validation/heldout/B2_SW-jit1/LOW-ALL/gate_single/s6102",
+  "protocol": "B2_SW-jit1",
+  "profile": "LOW-ALL",
+  "scenario": "gate_single",
+  "seed": 6102,
+  "class": "PASS",
+  "P2_holds": true,
+  "counts": {
+   "SATISFIED": 3,
+   "CONCURRENT": 0,
+   "VIOLATED": 0,
+   "INCONCLUSIVE": 0
+  },
+  "claim_delivery_s": 0.15,
+  "satisfied_blocked": 3,
+  "satisfied_never_blocked": 0,
+  "arrivals_during_claim": 0,
+  "releases_while_claimed": 0,
+  "not_satisfied": [],
+  "entry_counts": {
+   "ADMITTED": 3,
+   "PUSHED": 0,
+   "UNCOMMITTED": 0
+  },
+  "entries_not_admitted": [],
+  "entries_with_another_inside": 0
+ },
+ {
+  "run": "results/validation/heldout/B2_SW-jit1/LOW-ALL/gate_single/s6103",
+  "protocol": "B2_SW-jit1",
+  "profile": "LOW-ALL",
+  "scenario": "gate_single",
+  "seed": 6103,
+  "class": "PASS",
+  "P2_holds": true,
+  "counts": {
+   "SATISFIED": 3,
+   "CONCURRENT": 0,
+   "VIOLATED": 0,
+   "INCONCLUSIVE": 0
+  },
+  "claim_delivery_s": 0.15,
+  "satisfied_blocked": 3,
+  "satisfied_never_blocked": 0,
+  "arrivals_during_claim": 0,
+  "releases_while_claimed": 0,
+  "not_satisfied": [],
+  "entry_counts": {
+   "ADMITTED": 3,
+   "PUSHED": 0,
+   "UNCOMMITTED": 0
+  },
+  "entries_not_admitted": [],
+  "entries_with_another_inside": 0
+ },
+ {
+  "run": "results/validation/heldout/B2_SW-jit1/LOW-ALL/gate_single/s6104",
+  "protocol": "B2_SW-jit1",
+  "profile": "LOW-ALL",
+  "scenario": "gate_single",
+  "seed": 6104,
+  "class": "PASS",
+  "P2_holds": true,
+  "counts": {
+   "SATISFIED": 3,
+   "CONCURRENT": 0,
+   "VIOLATED": 0,
+   "INCONCLUSIVE": 0
+  },
+  "claim_delivery_s": 0.15,
+  "satisfied_blocked": 3,
+  "satisfied_never_blocked": 0,
+  "arrivals_during_claim": 0,
+  "releases_while_claimed": 1,
+  "not_satisfied": [],
+  "entry_counts": {
+   "ADMITTED": 3,
+   "PUSHED": 0,
+   "UNCOMMITTED": 0
+  },
+  "entries_not_admitted": [],
+  "entries_with_another_inside": 0
+ },
+ {
+  "run": "results/validation/heldout/B2_SW-lat2/LOW-ALL/gate_single/s6100",
+  "protocol": "B2_SW-lat2",
+  "profile": "LOW-ALL",
+  "scenario": "gate_single",
+  "seed": 6100,
+  "class": "PASS",
+  "P2_holds": true,
+  "counts": {
+   "SATISFIED": 3,
+   "CONCURRENT": 0,
+   "VIOLATED": 0,
+   "INCONCLUSIVE": 0
+  },
+  "claim_delivery_s": null,
+  "satisfied_blocked": 3,
+  "satisfied_never_blocked": 0,
+  "arrivals_during_claim": 0,
+  "releases_while_claimed": 0,
+  "not_satisfied": [],
+  "entry_counts": {
+   "ADMITTED": 3,
+   "PUSHED": 0,
+   "UNCOMMITTED": 0
+  },
+  "entries_not_admitted": [],
+  "entries_with_another_inside": 0
+ },
+ {
+  "run": "results/validation/heldout/B2_SW-lat2/LOW-ALL/gate_single/s6101",
+  "protocol": "B2_SW-lat2",
+  "profile": "LOW-ALL",
+  "scenario": "gate_single",
+  "seed": 6101,
+  "class": "PASS",
+  "P2_holds": true,
+  "counts": {
+   "SATISFIED": 3,
+   "CONCURRENT": 0,
+   "VIOLATED": 0,
+   "INCONCLUSIVE": 0
+  },
+  "claim_delivery_s": null,
+  "satisfied_blocked": 3,
+  "satisfied_never_blocked": 0,
+  "arrivals_during_claim": 0,
+  "releases_while_claimed": 0,
+  "not_satisfied": [],
+  "entry_counts": {
+   "ADMITTED": 3,
+   "PUSHED": 0,
+   "UNCOMMITTED": 0
+  },
+  "entries_not_admitted": [],
+  "entries_with_another_inside": 0
+ },
+ {
+  "run": "results/validation/heldout/B2_SW-lat2/LOW-ALL/gate_single/s6102",
+  "protocol": "B2_SW-lat2",
+  "profile": "LOW-ALL",
+  "scenario": "gate_single",
+  "seed": 6102,
+  "class": "PASS",
+  "P2_holds": true,
+  "counts": {
+   "SATISFIED": 3,
+   "CONCURRENT": 0,
+   "VIOLATED": 0,
+   "INCONCLUSIVE": 0
+  },
+  "claim_delivery_s": null,
+  "satisfied_blocked": 3,
+  "satisfied_never_blocked": 0,
+  "arrivals_during_claim": 0,
+  "releases_while_claimed": 0,
+  "not_satisfied": [],
+  "entry_counts": {
+   "ADMITTED": 3,
+   "PUSHED": 0,
+   "UNCOMMITTED": 0
+  },
+  "entries_not_admitted": [],
+  "entries_with_another_inside": 0
+ },
+ {
+  "run": "results/validation/heldout/B2_SW-lat2/LOW-ALL/gate_single/s6103",
+  "protocol": "B2_SW-lat2",
+  "profile": "LOW-ALL",
+  "scenario": "gate_single",
+  "seed": 6103,
+  "class": "PASS",
+  "P2_holds": true,
+  "counts": {
+   "SATISFIED": 3,
+   "CONCURRENT": 0,
+   "VIOLATED": 0,
+   "INCONCLUSIVE": 0
+  },
+  "claim_delivery_s": null,
+  "satisfied_blocked": 3,
+  "satisfied_never_blocked": 0,
+  "arrivals_during_claim": 0,
+  "releases_while_claimed": 0,
+  "not_satisfied": [],
+  "entry_counts": {
+   "ADMITTED": 3,
+   "PUSHED": 0,
+   "UNCOMMITTED": 0
+  },
+  "entries_not_admitted": [],
+  "entries_with_another_inside": 0
+ },
+ {
+  "run": "results/validation/heldout/B2_SW-lat2/LOW-ALL/gate_single/s6104",
+  "protocol": "B2_SW-lat2",
+  "profile": "LOW-ALL",
+  "scenario": "gate_single",
+  "seed": 6104,
+  "class": "PASS",
+  "P2_holds": true,
+  "counts": {
+   "SATISFIED": 3,
+   "CONCURRENT": 0,
+   "VIOLATED": 0,
+   "INCONCLUSIVE": 0
+  },
+  "claim_delivery_s": null,
+  "satisfied_blocked": 3,
+  "satisfied_never_blocked": 0,
+  "arrivals_during_claim": 0,
+  "releases_while_claimed": 0,
+  "not_satisfied": [],
+  "entry_counts": {
+   "ADMITTED": 3,
+   "PUSHED": 0,
+   "UNCOMMITTED": 0
+  },
+  "entries_not_admitted": [],
+  "entries_with_another_inside": 0
+ },
+ {
+  "run": "results/validation/heldout/B2_SW-loss0.7/LOW-ALL/gate_single/s6100",
+  "protocol": "B2_SW-loss0.7",
+  "profile": "LOW-ALL",
+  "scenario": "gate_single",
+  "seed": 6100,
+  "class": "PASS",
+  "P2_holds": true,
+  "counts": {
+   "SATISFIED": 3,
+   "CONCURRENT": 0,
+   "VIOLATED": 0,
+   "INCONCLUSIVE": 0
+  },
+  "claim_delivery_s": 0.15,
+  "satisfied_blocked": 3,
+  "satisfied_never_blocked": 0,
+  "arrivals_during_claim": 0,
+  "releases_while_claimed": 0,
+  "not_satisfied": [],
+  "entry_counts": {
+   "ADMITTED": 3,
+   "PUSHED": 0,
+   "UNCOMMITTED": 0
+  },
+  "entries_not_admitted": [],
+  "entries_with_another_inside": 0
+ },
+ {
+  "run": "results/validation/heldout/B2_SW-loss0.7/LOW-ALL/gate_single/s6101",
+  "protocol": "B2_SW-loss0.7",
+  "profile": "LOW-ALL",
+  "scenario": "gate_single",
+  "seed": 6101,
+  "class": "PASS",
+  "P2_holds": true,
+  "counts": {
+   "SATISFIED": 3,
+   "CONCURRENT": 0,
+   "VIOLATED": 0,
+   "INCONCLUSIVE": 0
+  },
+  "claim_delivery_s": 0.15,
+  "satisfied_blocked": 3,
+  "satisfied_never_blocked": 0,
+  "arrivals_during_claim": 0,
+  "releases_while_claimed": 0,
+  "not_satisfied": [],
+  "entry_counts": {
+   "ADMITTED": 3,
+   "PUSHED": 0,
+   "UNCOMMITTED": 0
+  },
+  "entries_not_admitted": [],
+  "entries_with_another_inside": 0
+ },
+ {
+  "run": "results/validation/heldout/B2_SW-loss0.7/LOW-ALL/gate_single/s6102",
+  "protocol": "B2_SW-loss0.7",
+  "profile": "LOW-ALL",
+  "scenario": "gate_single",
+  "seed": 6102,
+  "class": "PASS",
+  "P2_holds": true,
+  "counts": {
+   "SATISFIED": 3,
+   "CONCURRENT": 0,
+   "VIOLATED": 0,
+   "INCONCLUSIVE": 0
+  },
+  "claim_delivery_s": 0.15,
+  "satisfied_blocked": 3,
+  "satisfied_never_blocked": 0,
+  "arrivals_during_claim": 0,
+  "releases_while_claimed": 0,
+  "not_satisfied": [],
+  "entry_counts": {
+   "ADMITTED": 3,
+   "PUSHED": 0,
+   "UNCOMMITTED": 0
+  },
+  "entries_not_admitted": [],
+  "entries_with_another_inside": 0
+ },
+ {
+  "run": "results/validation/heldout/B2_SW-loss0.7/LOW-ALL/gate_single/s6103",
+  "protocol": "B2_SW-loss0.7",
+  "profile": "LOW-ALL",
+  "scenario": "gate_single",
+  "seed": 6103,
+  "class": "PASS",
+  "P2_holds": true,
+  "counts": {
+   "SATISFIED": 3,
+   "CONCURRENT": 0,
+   "VIOLATED": 0,
+   "INCONCLUSIVE": 0
+  },
+  "claim_delivery_s": 0.15,
+  "satisfied_blocked": 3,
+  "satisfied_never_blocked": 0,
+  "arrivals_during_claim": 0,
+  "releases_while_claimed": 0,
+  "not_satisfied": [],
+  "entry_counts": {
+   "ADMITTED": 3,
+   "PUSHED": 0,
+   "UNCOMMITTED": 0
+  },
+  "entries_not_admitted": [],
+  "entries_with_another_inside": 0
+ },
+ {
+  "run": "results/validation/heldout/B2_SW-loss0.7/LOW-ALL/gate_single/s6104",
+  "protocol": "B2_SW-loss0.7",
+  "profile": "LOW-ALL",
+  "scenario": "gate_single",
+  "seed": 6104,
+  "class": "PASS",
+  "P2_holds": true,
+  "counts": {
+   "SATISFIED": 3,
+   "CONCURRENT": 0,
+   "VIOLATED": 0,
+   "INCONCLUSIVE": 0
+  },
+  "claim_delivery_s": 0.15,
+  "satisfied_blocked": 3,
+  "satisfied_never_blocked": 0,
+  "arrivals_during_claim": 0,
+  "releases_while_claimed": 0,
+  "not_satisfied": [],
+  "entry_counts": {
+   "ADMITTED": 3,
+   "PUSHED": 0,
+   "UNCOMMITTED": 0
+  },
+  "entries_not_admitted": [],
+  "entries_with_another_inside": 0
+ },
+ {
+  "run": "results/validation/heldout/B2_SW-loss0.7/LOW-ALL/lost_drone_mutex/s6100",
+  "protocol": "B2_SW-loss0.7",
+  "profile": "LOW-ALL",
+  "scenario": "lost_drone_mutex",
+  "seed": 6100,
+  "class": "PASS",
+  "P2_holds": true,
+  "counts": {
+   "SATISFIED": 1,
+   "CONCURRENT": 0,
+   "VIOLATED": 0,
+   "INCONCLUSIVE": 0
+  },
+  "claim_delivery_s": 0.15,
+  "satisfied_blocked": 1,
+  "satisfied_never_blocked": 0,
+  "arrivals_during_claim": 0,
+  "releases_while_claimed": 0,
+  "not_satisfied": [],
+  "entry_counts": {
+   "ADMITTED": 2,
+   "PUSHED": 0,
+   "UNCOMMITTED": 0
+  },
+  "entries_not_admitted": [],
+  "entries_with_another_inside": 0
+ },
+ {
+  "run": "results/validation/heldout/B2_SW-loss0.7/LOW-ALL/lost_drone_mutex/s6101",
+  "protocol": "B2_SW-loss0.7",
+  "profile": "LOW-ALL",
+  "scenario": "lost_drone_mutex",
+  "seed": 6101,
+  "class": "PASS",
+  "P2_holds": true,
+  "counts": {
+   "SATISFIED": 1,
+   "CONCURRENT": 0,
+   "VIOLATED": 0,
+   "INCONCLUSIVE": 0
+  },
+  "claim_delivery_s": 0.15,
+  "satisfied_blocked": 1,
+  "satisfied_never_blocked": 0,
+  "arrivals_during_claim": 0,
+  "releases_while_claimed": 0,
+  "not_satisfied": [],
+  "entry_counts": {
+   "ADMITTED": 2,
+   "PUSHED": 0,
+   "UNCOMMITTED": 0
+  },
+  "entries_not_admitted": [],
+  "entries_with_another_inside": 0
+ },
+ {
+  "run": "results/validation/heldout/B2_SW-loss0.7/LOW-ALL/lost_drone_mutex/s6102",
+  "protocol": "B2_SW-loss0.7",
+  "profile": "LOW-ALL",
+  "scenario": "lost_drone_mutex",
+  "seed": 6102,
+  "class": "PASS",
+  "P2_holds": true,
+  "counts": {
+   "SATISFIED": 1,
+   "CONCURRENT": 0,
+   "VIOLATED": 0,
+   "INCONCLUSIVE": 0
+  },
+  "claim_delivery_s": 0.15,
+  "satisfied_blocked": 1,
+  "satisfied_never_blocked": 0,
+  "arrivals_during_claim": 0,
+  "releases_while_claimed": 0,
+  "not_satisfied": [],
+  "entry_counts": {
+   "ADMITTED": 2,
+   "PUSHED": 0,
+   "UNCOMMITTED": 0
+  },
+  "entries_not_admitted": [],
+  "entries_with_another_inside": 0
+ },
+ {
+  "run": "results/validation/heldout/B2_SW-loss0.7/LOW-ALL/lost_drone_mutex/s6103",
+  "protocol": "B2_SW-loss0.7",
+  "profile": "LOW-ALL",
+  "scenario": "lost_drone_mutex",
+  "seed": 6103,
+  "class": "PASS",
+  "P2_holds": true,
+  "counts": {
+   "SATISFIED": 1,
+   "CONCURRENT": 0,
+   "VIOLATED": 0,
+   "INCONCLUSIVE": 0
+  },
+  "claim_delivery_s": 0.15,
+  "satisfied_blocked": 1,
+  "satisfied_never_blocked": 0,
+  "arrivals_during_claim": 0,
+  "releases_while_claimed": 0,
+  "not_satisfied": [],
+  "entry_counts": {
+   "ADMITTED": 2,
+   "PUSHED": 0,
+   "UNCOMMITTED": 0
+  },
+  "entries_not_admitted": [],
+  "entries_with_another_inside": 0
+ },
+ {
+  "run": "results/validation/heldout/B2_SW-loss0.7/LOW-ALL/lost_drone_mutex/s6104",
+  "protocol": "B2_SW-loss0.7",
+  "profile": "LOW-ALL",
+  "scenario": "lost_drone_mutex",
+  "seed": 6104,
+  "class": "PASS",
+  "P2_holds": true,
+  "counts": {
+   "SATISFIED": 1,
+   "CONCURRENT": 0,
+   "VIOLATED": 0,
+   "INCONCLUSIVE": 0
+  },
+  "claim_delivery_s": 0.15,
+  "satisfied_blocked": 1,
+  "satisfied_never_blocked": 0,
+  "arrivals_during_claim": 0,
+  "releases_while_claimed": 0,
+  "not_satisfied": [],
+  "entry_counts": {
+   "ADMITTED": 2,
+   "PUSHED": 0,
+   "UNCOMMITTED": 0
+  },
+  "entries_not_admitted": [],
+  "entries_with_another_inside": 0
+ },
+ {
+  "run": "results/validation/heldout/B2_SW-loss0.9/LOW-ALL/gate_single/s6100",
+  "protocol": "B2_SW-loss0.9",
+  "profile": "LOW-ALL",
+  "scenario": "gate_single",
+  "seed": 6100,
+  "class": "PASS",
+  "P2_holds": true,
+  "counts": {
+   "SATISFIED": 3,
+   "CONCURRENT": 0,
+   "VIOLATED": 0,
+   "INCONCLUSIVE": 0
+  },
+  "claim_delivery_s": 0.15,
+  "satisfied_blocked": 3,
+  "satisfied_never_blocked": 0,
+  "arrivals_during_claim": 0,
+  "releases_while_claimed": 0,
+  "not_satisfied": [],
+  "entry_counts": {
+   "ADMITTED": 3,
+   "PUSHED": 0,
+   "UNCOMMITTED": 0
+  },
+  "entries_not_admitted": [],
+  "entries_with_another_inside": 0
+ },
+ {
+  "run": "results/validation/heldout/B2_SW-loss0.9/LOW-ALL/gate_single/s6101",
+  "protocol": "B2_SW-loss0.9",
+  "profile": "LOW-ALL",
+  "scenario": "gate_single",
+  "seed": 6101,
+  "class": "PASS",
+  "P2_holds": true,
+  "counts": {
+   "SATISFIED": 3,
+   "CONCURRENT": 0,
+   "VIOLATED": 0,
+   "INCONCLUSIVE": 0
+  },
+  "claim_delivery_s": 0.15,
+  "satisfied_blocked": 3,
+  "satisfied_never_blocked": 0,
+  "arrivals_during_claim": 0,
+  "releases_while_claimed": 0,
+  "not_satisfied": [],
+  "entry_counts": {
+   "ADMITTED": 3,
+   "PUSHED": 0,
+   "UNCOMMITTED": 0
+  },
+  "entries_not_admitted": [],
+  "entries_with_another_inside": 0
+ },
+ {
+  "run": "results/validation/heldout/B2_SW-loss0.9/LOW-ALL/gate_single/s6102",
+  "protocol": "B2_SW-loss0.9",
+  "profile": "LOW-ALL",
+  "scenario": "gate_single",
+  "seed": 6102,
+  "class": "PASS",
+  "P2_holds": true,
+  "counts": {
+   "SATISFIED": 3,
+   "CONCURRENT": 0,
+   "VIOLATED": 0,
+   "INCONCLUSIVE": 0
+  },
+  "claim_delivery_s": 0.15,
+  "satisfied_blocked": 3,
+  "satisfied_never_blocked": 0,
+  "arrivals_during_claim": 0,
+  "releases_while_claimed": 0,
+  "not_satisfied": [],
+  "entry_counts": {
+   "ADMITTED": 3,
+   "PUSHED": 0,
+   "UNCOMMITTED": 0
+  },
+  "entries_not_admitted": [],
+  "entries_with_another_inside": 0
+ },
+ {
+  "run": "results/validation/heldout/B2_SW-loss0.9/LOW-ALL/gate_single/s6103",
+  "protocol": "B2_SW-loss0.9",
+  "profile": "LOW-ALL",
+  "scenario": "gate_single",
+  "seed": 6103,
+  "class": "PASS",
+  "P2_holds": true,
+  "counts": {
+   "SATISFIED": 3,
+   "CONCURRENT": 0,
+   "VIOLATED": 0,
+   "INCONCLUSIVE": 0
+  },
+  "claim_delivery_s": 0.15,
+  "satisfied_blocked": 3,
+  "satisfied_never_blocked": 0,
+  "arrivals_during_claim": 0,
+  "releases_while_claimed": 0,
+  "not_satisfied": [],
+  "entry_counts": {
+   "ADMITTED": 3,
+   "PUSHED": 0,
+   "UNCOMMITTED": 0
+  },
+  "entries_not_admitted": [],
+  "entries_with_another_inside": 0
+ },
+ {
+  "run": "results/validation/heldout/B2_SW-loss0.9/LOW-ALL/gate_single/s6104",
+  "protocol": "B2_SW-loss0.9",
+  "profile": "LOW-ALL",
+  "scenario": "gate_single",
+  "seed": 6104,
+  "class": "PASS",
+  "P2_holds": true,
+  "counts": {
+   "SATISFIED": 3,
+   "CONCURRENT": 0,
+   "VIOLATED": 0,
+   "INCONCLUSIVE": 0
+  },
+  "claim_delivery_s": 0.15,
+  "satisfied_blocked": 3,
+  "satisfied_never_blocked": 0,
+  "arrivals_during_claim": 0,
+  "releases_while_claimed": 0,
+  "not_satisfied": [],
+  "entry_counts": {
+   "ADMITTED": 3,
+   "PUSHED": 0,
+   "UNCOMMITTED": 0
+  },
+  "entries_not_admitted": [],
+  "entries_with_another_inside": 0
+ },
+ {
+  "run": "results/validation/heldout/B2_SW-loss0.9/LOW-ALL/lost_drone_mutex/s6100",
+  "protocol": "B2_SW-loss0.9",
+  "profile": "LOW-ALL",
+  "scenario": "lost_drone_mutex",
+  "seed": 6100,
+  "class": "PASS",
+  "P2_holds": true,
+  "counts": {
+   "SATISFIED": 1,
+   "CONCURRENT": 0,
+   "VIOLATED": 0,
+   "INCONCLUSIVE": 0
+  },
+  "claim_delivery_s": 0.15,
+  "satisfied_blocked": 1,
+  "satisfied_never_blocked": 0,
+  "arrivals_during_claim": 0,
+  "releases_while_claimed": 0,
+  "not_satisfied": [],
+  "entry_counts": {
+   "ADMITTED": 2,
+   "PUSHED": 0,
+   "UNCOMMITTED": 0
+  },
+  "entries_not_admitted": [],
+  "entries_with_another_inside": 0
+ },
+ {
+  "run": "results/validation/heldout/B2_SW-loss0.9/LOW-ALL/lost_drone_mutex/s6101",
+  "protocol": "B2_SW-loss0.9",
+  "profile": "LOW-ALL",
+  "scenario": "lost_drone_mutex",
+  "seed": 6101,
+  "class": "PASS",
+  "P2_holds": true,
+  "counts": {
+   "SATISFIED": 1,
+   "CONCURRENT": 0,
+   "VIOLATED": 0,
+   "INCONCLUSIVE": 0
+  },
+  "claim_delivery_s": 0.15,
+  "satisfied_blocked": 1,
+  "satisfied_never_blocked": 0,
+  "arrivals_during_claim": 0,
+  "releases_while_claimed": 0,
+  "not_satisfied": [],
+  "entry_counts": {
+   "ADMITTED": 2,
+   "PUSHED": 0,
+   "UNCOMMITTED": 0
+  },
+  "entries_not_admitted": [],
+  "entries_with_another_inside": 0
+ },
+ {
+  "run": "results/validation/heldout/B2_SW-loss0.9/LOW-ALL/lost_drone_mutex/s6102",
+  "protocol": "B2_SW-loss0.9",
+  "profile": "LOW-ALL",
+  "scenario": "lost_drone_mutex",
+  "seed": 6102,
+  "class": "PASS",
+  "P2_holds": true,
+  "counts": {
+   "SATISFIED": 1,
+   "CONCURRENT": 0,
+   "VIOLATED": 0,
+   "INCONCLUSIVE": 0
+  },
+  "claim_delivery_s": 0.15,
+  "satisfied_blocked": 1,
+  "satisfied_never_blocked": 0,
+  "arrivals_during_claim": 0,
+  "releases_while_claimed": 0,
+  "not_satisfied": [],
+  "entry_counts": {
+   "ADMITTED": 2,
+   "PUSHED": 0,
+   "UNCOMMITTED": 0
+  },
+  "entries_not_admitted": [],
+  "entries_with_another_inside": 0
+ },
+ {
+  "run": "results/validation/heldout/B2_SW-loss0.9/LOW-ALL/lost_drone_mutex/s6103",
+  "protocol": "B2_SW-loss0.9",
+  "profile": "LOW-ALL",
+  "scenario": "lost_drone_mutex",
+  "seed": 6103,
+  "class": "PASS",
+  "P2_holds": true,
+  "counts": {
+   "SATISFIED": 1,
+   "CONCURRENT": 0,
+   "VIOLATED": 0,
+   "INCONCLUSIVE": 0
+  },
+  "claim_delivery_s": 0.15,
+  "satisfied_blocked": 1,
+  "satisfied_never_blocked": 0,
+  "arrivals_during_claim": 0,
+  "releases_while_claimed": 0,
+  "not_satisfied": [],
+  "entry_counts": {
+   "ADMITTED": 2,
+   "PUSHED": 0,
+   "UNCOMMITTED": 0
+  },
+  "entries_not_admitted": [],
+  "entries_with_another_inside": 0
+ },
+ {
+  "run": "results/validation/heldout/B2_SW-loss0.9/LOW-ALL/lost_drone_mutex/s6104",
+  "protocol": "B2_SW-loss0.9",
+  "profile": "LOW-ALL",
+  "scenario": "lost_drone_mutex",
+  "seed": 6104,
+  "class": "PASS",
+  "P2_holds": true,
+  "counts": {
+   "SATISFIED": 1,
+   "CONCURRENT": 0,
+   "VIOLATED": 0,
+   "INCONCLUSIVE": 0
+  },
+  "claim_delivery_s": 0.15,
+  "satisfied_blocked": 1,
+  "satisfied_never_blocked": 0,
+  "arrivals_during_claim": 0,
+  "releases_while_claimed": 0,
+  "not_satisfied": [],
+  "entry_counts": {
+   "ADMITTED": 2,
+   "PUSHED": 0,
+   "UNCOMMITTED": 0
+  },
+  "entries_not_admitted": [],
+  "entries_with_another_inside": 0
+ },
+ {
+  "run": "results/validation/heldout/B2_SW-per8/LOW-ALL/gate_single/s6100",
+  "protocol": "B2_SW-per8",
+  "profile": "LOW-ALL",
+  "scenario": "gate_single",
+  "seed": 6100,
+  "class": "PASS",
+  "P2_holds": true,
+  "counts": {
+   "SATISFIED": 3,
+   "CONCURRENT": 0,
+   "VIOLATED": 0,
+   "INCONCLUSIVE": 0
+  },
+  "claim_delivery_s": 0.15,
+  "satisfied_blocked": 3,
+  "satisfied_never_blocked": 0,
+  "arrivals_during_claim": 0,
+  "releases_while_claimed": 0,
+  "not_satisfied": [],
+  "entry_counts": {
+   "ADMITTED": 3,
+   "PUSHED": 0,
+   "UNCOMMITTED": 0
+  },
+  "entries_not_admitted": [],
+  "entries_with_another_inside": 0
+ },
+ {
+  "run": "results/validation/heldout/B2_SW-per8/LOW-ALL/gate_single/s6101",
+  "protocol": "B2_SW-per8",
+  "profile": "LOW-ALL",
+  "scenario": "gate_single",
+  "seed": 6101,
+  "class": "PASS",
+  "P2_holds": true,
+  "counts": {
+   "SATISFIED": 3,
+   "CONCURRENT": 0,
+   "VIOLATED": 0,
+   "INCONCLUSIVE": 0
+  },
+  "claim_delivery_s": 0.15,
+  "satisfied_blocked": 3,
+  "satisfied_never_blocked": 0,
+  "arrivals_during_claim": 0,
+  "releases_while_claimed": 0,
+  "not_satisfied": [],
+  "entry_counts": {
+   "ADMITTED": 3,
+   "PUSHED": 0,
+   "UNCOMMITTED": 0
+  },
+  "entries_not_admitted": [],
+  "entries_with_another_inside": 0
+ },
+ {
+  "run": "results/validation/heldout/B2_SW-per8/LOW-ALL/gate_single/s6102",
+  "protocol": "B2_SW-per8",
+  "profile": "LOW-ALL",
+  "scenario": "gate_single",
+  "seed": 6102,
+  "class": "PASS",
+  "P2_holds": true,
+  "counts": {
+   "SATISFIED": 3,
+   "CONCURRENT": 0,
+   "VIOLATED": 0,
+   "INCONCLUSIVE": 0
+  },
+  "claim_delivery_s": 0.15,
+  "satisfied_blocked": 3,
+  "satisfied_never_blocked": 0,
+  "arrivals_during_claim": 0,
+  "releases_while_claimed": 0,
+  "not_satisfied": [],
+  "entry_counts": {
+   "ADMITTED": 3,
+   "PUSHED": 0,
+   "UNCOMMITTED": 0
+  },
+  "entries_not_admitted": [],
+  "entries_with_another_inside": 0
+ },
+ {
+  "run": "results/validation/heldout/B2_SW-per8/LOW-ALL/gate_single/s6103",
+  "protocol": "B2_SW-per8",
+  "profile": "LOW-ALL",
+  "scenario": "gate_single",
+  "seed": 6103,
+  "class": "PASS",
+  "P2_holds": true,
+  "counts": {
+   "SATISFIED": 3,
+   "CONCURRENT": 0,
+   "VIOLATED": 0,
+   "INCONCLUSIVE": 0
+  },
+  "claim_delivery_s": 0.15,
+  "satisfied_blocked": 3,
+  "satisfied_never_blocked": 0,
+  "arrivals_during_claim": 0,
+  "releases_while_claimed": 0,
+  "not_satisfied": [],
+  "entry_counts": {
+   "ADMITTED": 3,
+   "PUSHED": 0,
+   "UNCOMMITTED": 0
+  },
+  "entries_not_admitted": [],
+  "entries_with_another_inside": 0
+ },
+ {
+  "run": "results/validation/heldout/B2_SW-per8/LOW-ALL/gate_single/s6104",
+  "protocol": "B2_SW-per8",
+  "profile": "LOW-ALL",
+  "scenario": "gate_single",
+  "seed": 6104,
+  "class": "PASS",
+  "P2_holds": true,
+  "counts": {
+   "SATISFIED": 3,
+   "CONCURRENT": 0,
+   "VIOLATED": 0,
+   "INCONCLUSIVE": 0
+  },
+  "claim_delivery_s": 0.15,
+  "satisfied_blocked": 3,
+  "satisfied_never_blocked": 0,
+  "arrivals_during_claim": 0,
+  "releases_while_claimed": 0,
+  "not_satisfied": [],
+  "entry_counts": {
+   "ADMITTED": 3,
+   "PUSHED": 0,
+   "UNCOMMITTED": 0
+  },
+  "entries_not_admitted": [],
+  "entries_with_another_inside": 0
+ }
+]

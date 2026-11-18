@@ -1,0 +1,282 @@
+[
+ {
+  "run": "results/review/raw_four/B0/LOW-ALL/gate_four/s7400",
+  "protocol": "B0",
+  "profile": "LOW-ALL",
+  "scenario": "gate_four",
+  "seed": 7400,
+  "class": "PASS",
+  "P2_holds": true,
+  "counts": {
+   "SATISFIED": 6,
+   "CONCURRENT": 0,
+   "VIOLATED": 0,
+   "INCONCLUSIVE": 0
+  },
+  "claim_delivery_s": null,
+  "satisfied_blocked": 6,
+  "satisfied_never_blocked": 0,
+  "arrivals_during_claim": 0,
+  "releases_while_claimed": 2,
+  "not_satisfied": [],
+  "entry_counts": {
+   "ADMITTED": 4,
+   "PUSHED": 0,
+   "UNCOMMITTED": 0
+  },
+  "entries_not_admitted": [],
+  "entries_with_another_inside": 0
+ },
+ {
+  "run": "results/review/raw_four/B0/LOW-ALL/gate_four/s7401",
+  "protocol": "B0",
+  "profile": "LOW-ALL",
+  "scenario": "gate_four",
+  "seed": 7401,
+  "class": "PASS",
+  "P2_holds": true,
+  "counts": {
+   "SATISFIED": 6,
+   "CONCURRENT": 0,
+   "VIOLATED": 0,
+   "INCONCLUSIVE": 0
+  },
+  "claim_delivery_s": null,
+  "satisfied_blocked": 6,
+  "satisfied_never_blocked": 0,
+  "arrivals_during_claim": 0,
+  "releases_while_claimed": 1,
+  "not_satisfied": [],
+  "entry_counts": {
+   "ADMITTED": 4,
+   "PUSHED": 0,
+   "UNCOMMITTED": 0
+  },
+  "entries_not_admitted": [],
+  "entries_with_another_inside": 0
+ },
+ {
+  "run": "results/review/raw_four/B0/LOW-ALL/gate_four/s7402",
+  "protocol": "B0",
+  "profile": "LOW-ALL",
+  "scenario": "gate_four",
+  "seed": 7402,
+  "class": "PASS",
+  "P2_holds": true,
+  "counts": {
+   "SATISFIED": 6,
+   "CONCURRENT": 0,
+   "VIOLATED": 0,
+   "INCONCLUSIVE": 0
+  },
+  "claim_delivery_s": null,
+  "satisfied_blocked": 6,
+  "satisfied_never_blocked": 0,
+  "arrivals_during_claim": 0,
+  "releases_while_claimed": 1,
+  "not_satisfied": [],
+  "entry_counts": {
+   "ADMITTED": 4,
+   "PUSHED": 0,
+   "UNCOMMITTED": 0
+  },
+  "entries_not_admitted": [],
+  "entries_with_another_inside": 0
+ },
+ {
+  "run": "results/review/raw_four/B0/LOW-ALL/gate_four/s7403",
+  "protocol": "B0",
+  "profile": "LOW-ALL",
+  "scenario": "gate_four",
+  "seed": 7403,
+  "class": "PASS",
+  "P2_holds": true,
+  "counts": {
+   "SATISFIED": 6,
+   "CONCURRENT": 0,
+   "VIOLATED": 0,
+   "INCONCLUSIVE": 0
+  },
+  "claim_delivery_s": null,
+  "satisfied_blocked": 6,
+  "satisfied_never_blocked": 0,
+  "arrivals_during_claim": 0,
+  "releases_while_claimed": 2,
+  "not_satisfied": [],
+  "entry_counts": {
+   "ADMITTED": 4,
+   "PUSHED": 0,
+   "UNCOMMITTED": 0
+  },
+  "entries_not_admitted": [],
+  "entries_with_another_inside": 0
+ },
+ {
+  "run": "results/review/raw_four/B0/LOW-ALL/gate_four/s7404",
+  "protocol": "B0",
+  "profile": "LOW-ALL",
+  "scenario": "gate_four",
+  "seed": 7404,
+  "class": "PASS",
+  "P2_holds": true,
+  "counts": {
+   "SATISFIED": 6,
+   "CONCURRENT": 0,
+   "VIOLATED": 0,
+   "INCONCLUSIVE": 0
+  },
+  "claim_delivery_s": null,
+  "satisfied_blocked": 6,
+  "satisfied_never_blocked": 0,
+  "arrivals_during_claim": 0,
+  "releases_while_claimed": 1,
+  "not_satisfied": [],
+  "entry_counts": {
+   "ADMITTED": 4,
+   "PUSHED": 0,
+   "UNCOMMITTED": 0
+  },
+  "entries_not_admitted": [],
+  "entries_with_another_inside": 0
+ },
+ {
+  "run": "results/review/raw_four/B2_MEDIUM/MEDIUM-ALL/gate_four/s7400",
+  "protocol": "B2_MEDIUM",
+  "profile": "MEDIUM-ALL",
+  "scenario": "gate_four",
+  "seed": 7400,
+  "class": "PASS",
+  "P2_holds": true,
+  "counts": {
+   "SATISFIED": 6,
+   "CONCURRENT": 0,
+   "VIOLATED": 0,
+   "INCONCLUSIVE": 0
+  },
+  "claim_delivery_s": 0.25,
+  "satisfied_blocked": 6,
+  "satisfied_never_blocked": 0,
+  "arrivals_during_claim": 0,
+  "releases_while_claimed": 0,
+  "not_satisfied": [],
+  "entry_counts": {
+   "ADMITTED": 4,
+   "PUSHED": 0,
+   "UNCOMMITTED": 0
+  },
+  "entries_not_admitted": [],
+  "entries_with_another_inside": 0
+ },
+ {
+  "run": "results/review/raw_four/B2_MEDIUM/MEDIUM-ALL/gate_four/s7401",
+  "protocol": "B2_MEDIUM",
+  "profile": "MEDIUM-ALL",
+  "scenario": "gate_four",
+  "seed": 7401,
+  "class": "PASS",
+  "P2_holds": true,
+  "counts": {
+   "SATISFIED": 6,
+   "CONCURRENT": 0,
+   "VIOLATED": 0,
+   "INCONCLUSIVE": 0
+  },
+  "claim_delivery_s": 0.25,
+  "satisfied_blocked": 6,
+  "satisfied_never_blocked": 0,
+  "arrivals_during_claim": 0,
+  "releases_while_claimed": 0,
+  "not_satisfied": [],
+  "entry_counts": {
+   "ADMITTED": 4,
+   "PUSHED": 0,
+   "UNCOMMITTED": 0
+  },
+  "entries_not_admitted": [],
+  "entries_with_another_inside": 0
+ },
+ {
+  "run": "results/review/raw_four/B2_MEDIUM/MEDIUM-ALL/gate_four/s7402",
+  "protocol": "B2_MEDIUM",
+  "profile": "MEDIUM-ALL",
+  "scenario": "gate_four",
+  "seed": 7402,
+  "class": "PASS",
+  "P2_holds": true,
+  "counts": {
+   "SATISFIED": 6,
+   "CONCURRENT": 0,
+   "VIOLATED": 0,
+   "INCONCLUSIVE": 0
+  },
+  "claim_delivery_s": 0.25,
+  "satisfied_blocked": 6,
+  "satisfied_never_blocked": 0,
+  "arrivals_during_claim": 0,
+  "releases_while_claimed": 0,
+  "not_satisfied": [],
+  "entry_counts": {
+   "ADMITTED": 4,
+   "PUSHED": 0,
+   "UNCOMMITTED": 0
+  },
+  "entries_not_admitted": [],
+  "entries_with_another_inside": 0
+ },
+ {
+  "run": "results/review/raw_four/B2_MEDIUM/MEDIUM-ALL/gate_four/s7403",
+  "protocol": "B2_MEDIUM",
+  "profile": "MEDIUM-ALL",
+  "scenario": "gate_four",
+  "seed": 7403,
+  "class": "P3_LATE",
+  "P2_holds": true,
+  "counts": {
+   "SATISFIED": 6,
+   "CONCURRENT": 0,
+   "VIOLATED": 0,
+   "INCONCLUSIVE": 0
+  },
+  "claim_delivery_s": 0.25,
+  "satisfied_blocked": 6,
+  "satisfied_never_blocked": 0,
+  "arrivals_during_claim": 0,
+  "releases_while_claimed": 0,
+  "not_satisfied": [],
+  "entry_counts": {
+   "ADMITTED": 4,
+   "PUSHED": 0,
+   "UNCOMMITTED": 0
+  },
+  "entries_not_admitted": [],
+  "entries_with_another_inside": 0
+ },
+ {
+  "run": "results/review/raw_four/B2_MEDIUM/MEDIUM-ALL/gate_four/s7404",
+  "protocol": "B2_MEDIUM",
+  "profile": "MEDIUM-ALL",
+  "scenario": "gate_four",
+  "seed": 7404,
+  "class": "PASS",
+  "P2_holds": true,
+  "counts": {
+   "SATISFIED": 6,
+   "CONCURRENT": 0,
+   "VIOLATED": 0,
+   "INCONCLUSIVE": 0
+  },
+  "claim_delivery_s": 0.25,
+  "satisfied_blocked": 6,
+  "satisfied_never_blocked": 0,
+  "arrivals_during_claim": 0,
+  "releases_while_claimed": 0,
+  "not_satisfied": [],
+  "entry_counts": {
+   "ADMITTED": 4,
+   "PUSHED": 0,
+   "UNCOMMITTED": 0
+  },
+  "entries_not_admitted": [],
+  "entries_with_another_inside": 0
+ }
+]
