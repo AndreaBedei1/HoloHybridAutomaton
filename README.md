@@ -15,7 +15,8 @@ Principal contributions:
   in a Z3 fleet model (P2);
 - formation keeping, recovery and degraded formation after permanent failures with ranking-function certificates (P3);
 - architecture B2: a one-way TDMA acoustic beacon (64-bit packet) that never enters separation, collision avoidance or
-  the gate precedence, with an event-ordered runtime audit of its premise C;
+  the gate precedence, with an offline audit of its premise C against the integer-tick TDMA timing and the
+  behaviour logged by each vehicle;
 - a referee that judges every run from ground truth, and a reproducible campaign runner.
 
 The controller is the one frozen as tag `b2-freeze-v11`: its code is identical to that tag apart from comments and
@@ -178,7 +179,7 @@ Analysis (no simulator):
 
 ```bash
 python scripts/analyze_validation.py <out dir> <raw dir>        # tables (VALIDATION_TABLES.md) and figures
-python scripts/audit_premise_c.py <out.json> <raw dir>          # premise C and every CR entry, from the logs
+python scripts/audit_premise_c.py <out dir> <label>=<raw dir> ...   # premise C pairs and CR entries -> runs/pairs/entries CSV, summary JSON
 python scripts/analyze_final_campaign.py <raw dir>              # acceptance criteria of the final matrix
 python formal/check_properties.py                               # every Z3 suite -> formal/results/SUMMARY.{json,csv}
 python scripts/build_archive.py --dest <root> --version <name> --refs <refs> --runs <raw dirs>   # versioned archive

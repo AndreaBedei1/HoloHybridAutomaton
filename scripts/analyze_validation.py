@@ -43,12 +43,11 @@ def premise_and_packets(d: Path) -> dict:
     sys.path.insert(0, str(Path(__file__).resolve().parent))
     from audit_premise_c import one
 
-    a = one(str(d))
-    at = (json.loads((d / "referee_metrics.json").read_text(encoding="utf-8")).get("run") or {}).get("acoustic_tracker") or {}
-    return {"pc_satisfied": a["counts"]["SATISFIED"], "pc_concurrent": a["counts"]["CONCURRENT"],
-            "pc_violated": a["counts"]["VIOLATED"], "pc_inconclusive": a["counts"]["INCONCLUSIVE"],
-            "cr_not_admitted": len(a["entries_not_admitted"]), "rx_received": at.get("received", 0),
-            "rx_accepted": at.get("accepted", 0), "rx_rejected": at.get("rejected", 0), "rx_stale": at.get("stale", 0)}
+    a = one(("", str(d)))
+    return {"pc_satisfied": a.get("pc_SATISFIED", 0), "pc_concurrent": a.get("pc_CONCURRENT", 0),
+            "pc_violated": a.get("pc_VIOLATED", 0), "pc_inconclusive": a.get("pc_INCONCLUSIVE", 0),
+            "cr_not_admitted": sum(1 for e in a["entries"] if e["kind"] != "ADMITTED"), "rx_received": a["rx_received"] or 0,
+            "rx_accepted": a["rx_accepted"] or 0, "rx_rejected": a["rx_rejected"] or 0, "rx_stale": a["rx_stale"] or 0}
 
 
 def run_row(d: Path) -> dict:
