@@ -63,7 +63,7 @@ def main(argv=None) -> int:
         raise SystemExit(f"{out} exists: an archive version is never overwritten")
     for sub in ("code", "runs", "reports", "evidence"):
         (out / sub).mkdir(parents=True)
-    refs = {r: git("rev-parse", r) for r in a.refs}
+    refs = {r: git("rev-parse", f"{r}^{{commit}}") for r in a.refs}  # the commit, also for an annotated tag
     git("bundle", "create", str(out / "code" / "repository.bundle"), "--all")
     for r, sha in refs.items():
         name = r.replace("/", "_")

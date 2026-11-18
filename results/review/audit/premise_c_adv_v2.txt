@@ -1,2 +1,0 @@
-B2_MEDIUM: runs 6; pairs {'SATISFIED': 12, 'CONCURRENT': 0, 'VIOLATED': 0, 'INCONCLUSIVE': 0, 'satisfied_blocked': 12, 'satisfied_never_blocked': 0, 'arrivals_during_claim': 0, 'releases_while_claimed': 0}; CR entries {'ADMITTED': 6, 'PUSHED': 0, 'UNCOMMITTED': 3, 'with another inside': 0, 'runs': 6}
-TOTAL 6 runs; pairs {'SATISFIED': 12, 'CONCURRENT': 0, 'VIOLATED': 0, 'INCONCLUSIVE': 0, 'satisfied_blocked': 12, 'satisfied_never_blocked': 0, 'arrivals_during_claim': 0, 'releases_while_claimed': 0} ; P2 false runs: 0
