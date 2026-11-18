@@ -9,7 +9,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 0.012,
+      "seconds": 0.015,
       "counterexample": null,
       "note": ""
     },
@@ -20,7 +20,7 @@
       "expect": "sat",
       "verdict": "sat",
       "passed": true,
-      "seconds": 0.007,
+      "seconds": 0.008,
       "counterexample": {
         "ad_iB": 128.0,
         "ad_iF": 52.0,
@@ -66,7 +66,7 @@
       "expect": "sat",
       "verdict": "sat",
       "passed": true,
-      "seconds": 0.009,
+      "seconds": 0.013,
       "counterexample": {
         "ad_iB": 101.75,
         "ad_iF": 78.25,
@@ -123,7 +123,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 0.063,
+      "seconds": 0.062,
       "counterexample": null,
       "note": "queue line s = -5.41 m, adjacent bearing deviation <= 20.0 deg; no deadlock (a leader exists) and no double priority"
     },
@@ -145,7 +145,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 0.498,
+      "seconds": 0.564,
       "counterexample": null,
       "note": "queue line s = -7.99 m, adjacent bearing deviation <= 20.0 deg; no deadlock (a leader exists) and no double priority"
     },
@@ -156,7 +156,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 0.974,
+      "seconds": 1.343,
       "counterexample": null,
       "note": "queue line s = -9.52 m, adjacent bearing deviation <= 20.0 deg; no deadlock (a leader exists) and no double priority"
     },
@@ -167,7 +167,7 @@
       "expect": "sat",
       "verdict": "sat",
       "passed": true,
-      "seconds": 0.162,
+      "seconds": 0.172,
       "counterexample": {
         "ad_q4_0_1_B": 110.03624346792648,
         "ad_q4_0_1_F": 69.96375653207352,
@@ -625,7 +625,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 11.922,
+      "seconds": 13.655,
       "counterexample": null,
       "note": "masked s in (-0.5499999999999998, 2.0250000000000004), beyond s > 1.7400000000000002, B needs >= 67 steps to the CR, A crosses at >= 0.12 m/s"
     },
@@ -636,7 +636,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 140.632,
+      "seconds": 161.747,
       "counterexample": null,
       "note": "band from s -6.0, FRONT-only s (0.0, 6.0)"
     },
@@ -647,7 +647,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 8.145,
+      "seconds": 9.522,
       "counterexample": null,
       "note": "masked s in (-0.9349999999999996, 2.285), beyond s > 1.9300000000000006, B needs >= 92 steps to the CR, A crosses at >= 0.12 m/s"
     },
@@ -658,7 +658,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 63.473,
+      "seconds": 83.573,
       "counterexample": null,
       "note": "band from s -3.655, FRONT-only s (2.700000000000001, 6.0)"
     },
@@ -669,7 +669,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 9.706,
+      "seconds": 11.452,
       "counterexample": null,
       "note": "masked s in (-0.05999999999999961, 1.4299999999999997), beyond s > 1.3399999999999999, B needs >= 92 steps to the CR, A crosses at >= 0.12 m/s"
     },
@@ -680,7 +680,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 64.718,
+      "seconds": 76.948,
       "counterexample": null,
       "note": "band from s -2.015, FRONT-only s (-4.65, 6.0)"
     },
@@ -691,7 +691,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 4.638,
+      "seconds": 5.429,
       "counterexample": null,
       "note": "masked s in (-1.17, 2.4700000000000006), beyond s > 2.0649999999999995, B needs >= 116 steps to the CR, A crosses at >= 0.12 m/s"
     },
@@ -702,7 +702,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 29.673,
+      "seconds": 37.561,
       "counterexample": null,
       "note": "band from s -3.915, FRONT-only s (5.4, 6.0)"
     },
@@ -713,7 +713,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 9.003,
+      "seconds": 10.036,
       "counterexample": null,
       "note": "masked s in (-0.3849999999999998, 1.7199999999999998), beyond s > 1.5549999999999997, B needs >= 116 steps to the CR, A crosses at >= 0.12 m/s"
     },
@@ -724,7 +724,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 34.591,
+      "seconds": 42.222,
       "counterexample": null,
       "note": "band from s -2.33, FRONT-only s (-2.4499999999999997, 6.0)"
     },
@@ -735,7 +735,7 @@
       "expect": "sat",
       "verdict": "sat",
       "passed": true,
-      "seconds": 4.743,
+      "seconds": 4.569,
       "counterexample": {
         "beyond_0": false,
         "beyond_1": false,
@@ -1147,7 +1147,7 @@
       "expect": "sat",
       "verdict": "sat",
       "passed": true,
-      "seconds": 4.866,
+      "seconds": 4.821,
       "counterexample": {
         "beyond_0": false,
         "beyond_1": false,
@@ -1559,7 +1559,7 @@
       "expect": "sat",
       "verdict": "sat",
       "passed": true,
-      "seconds": 82.769,
+      "seconds": 79.309,
       "counterexample": {
         "beyond_0": false,
         "beyond_1": false,
@@ -1971,7 +1971,7 @@
       "expect": "sat",
       "verdict": "sat",
       "passed": true,
-      "seconds": 24.969,
+      "seconds": 23.403,
       "counterexample": {
         "beyond_0": false,
         "beyond_1": false,
