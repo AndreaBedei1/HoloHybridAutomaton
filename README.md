@@ -45,8 +45,8 @@ At a gate a vehicle waits at its queue point, commits when it has priority and b
 and checks once more at the stage-2 hold point before entering. In B2 each vehicle broadcasts position, error bound,
 gate index and phase (CRC-16, period 1 s); receivers measure range and bearing themselves; packets older than 0.4 s on
 delivery are dropped. Beacon data never reach separation, collision avoidance, the gate precedence or the sonar exit
-witness (`tests/test_b2_isolation.py`); controllers never read ground truth (`tests/test_isolation.py`). B0 is the same
-controller without the beacon.
+witness (`tests/test_b2_isolation.py`); controllers never read ground truth (`tests/test_isolation.py`). B2 on the MEDIUM
+channel is the final architecture; B0, the same controller without the beacon, is the communication-free baseline.
 
 ## Installation
 
@@ -190,8 +190,10 @@ bundle of the history, source tarballs and a `MANIFEST.json` with the sha256 of 
 - `v13-final-v11-2026-11-18`: the final validation (raw runs, tables, logs, formal results);
 - `v14-reference-runs-2026-11-18`: the CLEAN reference runs;
 - `v12-review-2026-11-18`: the earlier campaigns, reports and reviews.
-- `v15-premise-c-reaudit-2026-11-18`: the offline premise C and CR-entry re-audit of the final campaign, the
-  post-freeze validation and the final validation (`runs.csv`, `pairs.csv`, `entries.csv`, `summary.json`).
+- `v16-premise-c-reaudit-2026-11-18`: the offline premise C and CR-entry re-audit of the final campaign, the
+  post-freeze validation and the final validation (`runs.csv`, `pairs.csv`, `entries.csv`, `summary.json`);
+  `v15-premise-c-reaudit-2026-11-18` is the first pass, kept unchanged, superseded by v16 (resolution of concurrent
+  pairs from the logged end of each commitment).
 
 The formal results of every check (formula, verdict, counterexample) are in `formal/results/SUMMARY.csv` and
 `SUMMARY.json`.

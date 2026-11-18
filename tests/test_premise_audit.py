@@ -25,13 +25,15 @@ def _set(st, k, i0, i1, **g):
         st[k][i]["gate"] = {**st[k][i]["gate"], **g}
 
 
-def _commit(st, k, i0, i1, admit_at=None):
+def _commit(st, k, i0, i1, admit_at=None, end_edge="pass_abort"):
     for i in range(i0, i1):
         st[k][i]["committed"] = True
         st[k][i]["mode"] = "MUTEX_PASS"
     _set(st, k, i0, i1, tx=[0, 1])
     if admit_at is not None:
         _set(st, k, admit_at, admit_at + 1, entry="ADMIT")
+    if i1 < M:
+        st[k][i1]["transition"] = {"edge": end_edge}
 
 
 def _geo(n, d=3.0):
@@ -284,3 +286,15 @@ def test_a_blackout_channel_never_lets_a_claim_be_used():
     _commit(st, 1, 200, 220)
     r = _rows(st, link=Link(n=2, latency_s=0.1, blackout=True))[0]
     assert r["class"] == "VIOLATED" and "BLACKOUT" in r["why"]
+
+
+def test_the_resolution_of_a_concurrent_pair_follows_the_logged_end_of_each_commitment():
+    st = _states(2)
+    _commit(st, 0, 99, 300, end_edge="pass_done")        # crossed without admission (a PUSHED entry): not a give-up
+    _commit(st, 1, 101, 400, admit_at=350, end_edge="pass_done")
+    r = _rows(st, ep=(99, 300))[0]
+    assert r["class"] == "CONCURRENT" and r["resolution"] == "PASSED_WITHOUT_ADMISSION" and r["end_claimant"] == "PASSED"
+    st = _states(2)
+    _commit(st, 0, 99, 300, end_edge="pass_abort")
+    _commit(st, 1, 101, 400, admit_at=350, end_edge="pass_done")
+    assert _rows(st, ep=(99, 300))[0]["resolution"] == "WITHDRAWAL"

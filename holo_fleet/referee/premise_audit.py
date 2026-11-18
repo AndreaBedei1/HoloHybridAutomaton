@@ -23,7 +23,8 @@ Pair classes, for each claim episode of k and each other live drone j at the gat
   SATISFIED     j did not commit while k's claim held for j, and every step of j at its queue point in that window is
                 explained by the logged guard inputs (``basis``: BLOCKED, PRECEDENCE, BEFORE_USE);
   CONCURRENT    j committed before k's claim could be used at j, and the pair was resolved within the logs without an
-                admission made while the other's claim could be used (``resolution``: SEQUENTIAL or WITHDRAWAL);
+                admission made while the other's claim could be used (``resolution``: SEQUENTIAL, both admitted;
+                WITHDRAWAL, one gave up; PASSED_WITHOUT_ADMISSION, one crossed without admission, a PUSHED entry);
   VIOLATED      j committed while k's claim could already be used at j (each commit edge, recommitments included), or a
                 drone of a concurrent pair was admitted while the other's claim could be used, or both were admitted
                 before either could learn of the other, or the claim could never be used (stale beyond the limit);
@@ -224,6 +225,18 @@ def _episode_end(states_x, c: int, m: int) -> int:
     return next((y for y in range(c, m) if not states_x[y].get("committed")), m)
 
 
+def episode_end_kind(states_x, e: int, m: int) -> str:
+    """How a commitment ended at record e, from the automaton edge logged there: PASSED (pass_done), ABORTED
+    (pass_abort, the give-up), DEAD, OPEN (the logs end first) or OTHER."""
+    if e >= m:
+        return "OPEN"
+    if states_x[e].get("mode") == "DEAD":
+        return "DEAD"
+    tr = states_x[e].get("transition")
+    edge = tr.get("edge") if isinstance(tr, dict) else None
+    return {"pass_done": "PASSED", "pass_abort": "ABORTED"}.get(edge, "OTHER")
+
+
 def _exit_witnessed(states_x, i0: int, c: int) -> bool:
     """The latch of the drone passed through EXITING (an exit witness) between records i0 and c."""
     return any(_gate(states_x[y]).get("occ") == "EXITING" for y in range(i0, c))
@@ -249,8 +262,10 @@ def _concurrent(ctrl, states, geo, link, k, ep_k, j, c, m, w_kj) -> Dict:
     ep_j = (c, _episode_end(states[j], c, m))
     w_jk = use_window(ctrl, states, geo, link, j, ep_j, k, m)
     a_k, a_j = _admission(states[k], ep_k[0], ep_k[1]), _admission(states[j], ep_j[0], ep_j[1])
+    end_k, end_j = episode_end_kind(states[k], ep_k[1], m), episode_end_kind(states[j], ep_j[1], m)
     out = {"t_admitted_claimant": None if a_k is None else _t(ctrl, ctrl[a_k]),
            "t_admitted_drone": None if a_j is None else _t(ctrl, ctrl[a_j]),
+           "end_claimant": end_k, "end_drone": end_j,
            "t_drone_claim_usable_at_claimant": _t(ctrl, w_jk["start"])}
     if UNKNOWN in (w_jk["start"], w_jk["end"], w_kj["end"]):
         return {**out, "class": "INCONCLUSIVE", "why": "missing geometry or phase evidence for the concurrent pair"}
@@ -271,7 +286,14 @@ def _concurrent(ctrl, states, geo, link, k, ep_k, j, c, m, w_kj) -> Dict:
         return {**out, "class": "VIOLATED", "why": "; ".join(why)}
     if ep_k[1] >= m or ep_j[1] >= m:
         return {**out, "class": "INCONCLUSIVE", "why": "logs end before the concurrent pair is resolved"}
-    res = "WITHDRAWAL" if (a_k is None or a_j is None) else "SEQUENTIAL"
+    if "ABORTED" in (end_k, end_j):
+        res = "WITHDRAWAL"
+    elif a_k is not None and a_j is not None:
+        res = "SEQUENTIAL"
+    elif (end_k == "PASSED" and a_k is None) or (end_j == "PASSED" and a_j is None):
+        res = "PASSED_WITHOUT_ADMISSION"
+    else:
+        res = "OTHER"
     return {**out, "class": "CONCURRENT", "resolution": res,
             "why": "committed before the claimant's claim could be used at the drone"}
 

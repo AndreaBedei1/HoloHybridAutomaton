@@ -24,7 +24,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 PAIR_COLS = ["dataset", "run", "claimant", "drone", "class", "why", "basis", "resolution", "t_commit_claimant",
              "t_claim_usable", "t_end_usable", "t_claim_end", "t_commit", "release_at_commit", "sonar_exit_witnessed", "claim_emissions",
-             "claim_uses_possible_before_commit", "t_admitted_claimant", "t_admitted_drone", "steps_at_queue", "steps",
+             "claim_uses_possible_before_commit", "t_admitted_claimant", "t_admitted_drone", "end_claimant", "end_drone", "steps_at_queue", "steps",
              "releases_while_claimed"]
 ENTRY_COLS = ["dataset", "run", "gate", "drone", "t", "kind", "others_inside_at_entry", "others_inside_while_in"]
 
