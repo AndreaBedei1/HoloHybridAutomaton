@@ -1,4 +1,4 @@
-"""Run every formal check and write formal/results/SUMMARY.{json,md}.
+"""Run every formal check and write formal/results/SUMMARY.json and SUMMARY.csv (one row per check).
 
     python formal/check_properties.py            # all suites
     python formal/check_properties.py --quick    # skip the slowest suite (P1: triangle lemma, ~60 s)
@@ -43,6 +43,22 @@ SUITES = [
 ]
 
 
+def write_csv(summary: dict) -> None:
+    """One row per check: suite, encoding, property, formula, expected and returned verdict, pass, seconds, note,
+    counterexample (expected SAT checks and failures; the same as SUMMARY.json)."""
+    import csv
+
+    cols = ["suite", "encoding", "prop", "formula", "expect", "verdict", "passed", "seconds", "note", "counterexample"]
+    with open(RESULTS_DIR / "SUMMARY.csv", "w", newline="", encoding="utf-8") as f:
+        w = csv.writer(f)
+        w.writerow(cols)
+        for s in summary["suites"]:
+            for c in s["checks"]:
+                ce = c.get("counterexample")
+                w.writerow([s["title"], s["encoding"], c["prop"], c["formula"], c["expect"], c["verdict"], c["passed"],
+                            c["seconds"], c["note"], "" if ce is None else json.dumps(ce, default=str)])
+
+
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--quick", action="store_true")
@@ -69,23 +85,8 @@ def main(argv=None) -> int:
     summary["all_passed"] = all_ok
     RESULTS_DIR.mkdir(parents=True, exist_ok=True)
     (RESULTS_DIR / "SUMMARY.json").write_text(json.dumps(summary, indent=2, default=str))
-    lines = ["# Formal verification summary", "", f"Generated {summary['started']} by `formal/check_properties.py`.", "",
-             "UNSAT = the negated property has no model in the abstraction, i.e. the property HOLDS for the model; "
-             "SAT is expected for the satisfiability / non-vacuity checks (a witness must exist) and for the mutation "
-             "tests (deliberately broken designs must yield a counterexample); mutation Om2 expects UNSAT (a broken "
-             "observation domain loses the reachability of an edge).  The observation domain of every suite is the "
-             "conjunction of the invariants of holo_fleet/ha/observation_invariants.py.", ""]
-    for s in summary["suites"]:
-        n_ok = sum(c["passed"] for c in s["checks"])
-        lines += [f"## {s['title']}  ({n_ok}/{len(s['checks'])} as expected, {s['seconds']} s)", "",
-                  f"Encoding: `{s['encoding']}`", "", "| check | formula | expected | verdict | ok |", "|---|---|---|---|---|"]
-        for c in s["checks"]:
-            lines.append(f"| {c['prop']} | {c['formula'].replace('|', '/')} | {c['expect'].upper()} | {c['verdict'].upper()} | "
-                         f"{'yes' if c['passed'] else '**NO**'} |")
-        lines.append("")
-    lines.append(f"**Overall: {'ALL CHECKS AS EXPECTED' if all_ok else 'SOME CHECKS FAILED'}**")
-    (RESULTS_DIR / "SUMMARY.md").write_text("\n".join(lines) + "\n")
-    print(f"\nOVERALL: {'PASS' if all_ok else 'FAIL'} -> {RESULTS_DIR / 'SUMMARY.md'}")
+    write_csv(summary)
+    print(f"\nOVERALL: {'PASS' if all_ok else 'FAIL'} -> {RESULTS_DIR / 'SUMMARY.json'}, {RESULTS_DIR / 'SUMMARY.csv'}")
     return 0 if all_ok else 1
 
 

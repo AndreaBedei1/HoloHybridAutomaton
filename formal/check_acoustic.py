@@ -1,6 +1,6 @@
 """Variant B2 (range-bearing beacon): the geometric guarantees of the acoustic exit evidence, and its scope.
 
-These checks are B2's own: they hold under the B2 assumptions (docs/GUARANTEES.md: H1-H5 and
+These checks are B2's own: they hold under the B2 assumptions (README.md: H1-H5 and
 the declared measurement envelope config.AcousticConfig) and add nothing to, and take nothing from, the B0 checks
 (the B0 M4g of check_mutex.py stays what it is).  Numeric, exhaustive over sampled geometry:
 

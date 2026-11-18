@@ -1,7 +1,7 @@
 """Gate-status payload, the total failure model and the vacancy by silence: formal and randomized checks.
 
 The B2-specific checks of formal/check_acoustic.py keep covering the geometry of the fixes; these cover the gate status,
-the failure model and the vacancy by silence.  The premises are the declared ones (docs/GUARANTEES.md): the gate-frame navigation error at most ``nav_err_m``, the
+the failure model and the vacancy by silence.  The premises are the declared ones (README.md): the gate-frame navigation error at most ``nav_err_m``, the
 speed bound of a drone, the queue tolerance, a received packet is genuine (CRC-16) and of its frame.  The freshness bound is
 a function of the queue layout.
 

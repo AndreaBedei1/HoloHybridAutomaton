@@ -1,6 +1,6 @@
 """Map-aided correction of the dead-reckoning position near a mapped structure (the gate).
 
-A compass heading bias of a few degrees (inside the calibrated range of underwater AHRS, docs/PARAMETER_PROVENANCE.md)
+A compass heading bias of a few degrees (inside the calibrated range of underwater AHRS, config/parameter_sources.json)
 turns the dead reckoning into a lateral drift of a few percent of the distance travelled: about 0.5 m after the
 approach to the gate, more than the lateral margin of the opening (~0.4 m).  The bar the drone approaches is then not
 where the map predicts it and its echo is an obstacle.  The gate map is used as a landmark to bound this drift.

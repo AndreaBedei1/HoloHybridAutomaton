@@ -45,7 +45,7 @@ are.  This module turns them into what a real receiver would deliver, under expl
   vessel noise).  Two arrivals never collide at a receiver: the TDMA slots of H1 are far wider than the propagation
   spread of the ranges here.
 
-Levels (sources: docs/PARAMETER_PROVENANCE.md): CLEAN, LOW, MEDIUM and BLACKOUT (the channel delivers nothing).  Anchors:
+Levels (sources: config/parameter_sources.json): CLEAN, LOW, MEDIUM and BLACKOUT (the channel delivers nothing).  Anchors:
 range resolution +-0.1 m of a commercial micro-USBL modem (Blueprint SeaTrac X150 datasheet, "dependant on provided
 VOS accuracy"); bearing 1 deg RMS (Tritech MicronNav 200 datasheet) to +-3 deg (older micro-USBL); a low-cost
 one-way inverted-USBL beacon (Rypkema, Schmidt, Fischell, Field Robotics 2022) reported, in a static test at about

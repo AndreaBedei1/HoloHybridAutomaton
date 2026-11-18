@@ -157,7 +157,7 @@ def worker(args) -> int:
 
     if hs.patched_root() is None and not args.allow_unpatched:
         print(f"patched HoloOcean root not found ({hs.DEFAULT_PATCHED_ROOT}): refusing to run "
-              "(the baseline needs the octree patch, docs/HOLOOCEAN_OCTREE_PATCH.md)", file=sys.stderr)
+              "(the baseline needs the octree patch, README.md)", file=sys.stderr)
         return 4
     base = DEFAULT
     cfg = base

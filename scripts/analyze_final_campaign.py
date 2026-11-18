@@ -1,4 +1,4 @@
-"""Analysis of the final campaign against the acceptance criteria (criteria v8, docs/GUARANTEES.md), from the
+"""Analysis of the final campaign against the acceptance criteria (criteria v8, README.md), from the
 run_metrics.json written by the referee:  python scripts/analyze_final_campaign.py <campaign_dir> > <report.md>"""
 
 import json

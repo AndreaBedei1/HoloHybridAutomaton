@@ -1,6 +1,6 @@
 """Event- and ordering-based audit of premise C of P2 and of every physical entry into the critical region (CR).
 
-Premise C (docs/GUARANTEES.md, check_fleet F1d): a drone at the gate learns of another drone's commitment (its claim, or
+Premise C (README.md, check_fleet F1d): a drone at the gate learns of another drone's commitment (its claim, or
 the corridor echo) before it commits itself; two drones that commit together learn of each other's claim before either is
 admitted to the CR.  The 32 s of S2 is the horizon of the bounded check S2h (how long a crossing drone may stop before the
 CR in the model), not a delivery deadline.  The quantity that does bound the use of a report is the freshness cutoff ``status_fresh_s`` (1.95 s

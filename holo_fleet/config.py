@@ -3,7 +3,7 @@
 Every number used by the formal models in ``formal/`` is imported from here, so the verified
 abstraction and the deployed controller cannot silently diverge.  Sensor numbers come from the
 sonar probe (calibration/analyze_sonar_probe.py), plant numbers from calibration/calibrate_plant.py;
-provenance of each value in docs/PARAMETER_PROVENANCE.md.
+provenance of each value in config/parameter_sources.json.
 """
 
 from __future__ import annotations
@@ -23,7 +23,7 @@ class SeparationThresholds:
 
     d_nominal > d_warning_exit > d_warning > d_ca_exit > d_ca > d_safe > d_collision.
     The values of d_warning and d_ca are the smallest ones for which formal/check_separation.py
-    proves G(d >= d_safe) on the pairwise model, plus a margin (see docs/GUARANTEES.md).
+    proves G(d >= d_safe) on the pairwise model, plus a margin (see README.md).
     """
 
     d_nominal: float = 3.5
@@ -274,7 +274,7 @@ class AcousticConfig:
     """Onboard side of the range-bearing beacon (perception/acoustic.py): the DECLARED measurement envelope.
 
     The perception does not know the channel level of a run: it uses these bounds everywhere
-    (docs/PARAMETER_PROVENANCE.md).  A reception inside the envelope has
+    (config/parameter_sources.json).  A reception inside the envelope has
     |range error| <= k_sigma * sigma_range_m + sound_speed_err * r + clock_offset_m and direction errors within
     k_sigma * sigma + the array calibration bias + the own attitude error bound; anything else (a reflected
     arrival, a clear-path multipath episode) is an outlier that the

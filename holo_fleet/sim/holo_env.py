@@ -6,7 +6,7 @@ depth.  PoseSensor/VelocitySensor/CollisionSensor and the visualisation cameras 
 and to the UI only.
 
 Static scene and sonar octree: the arena gates (and any prop) are spawned right after start, then
-``env.rebuild_sonar_octree()`` (patched HoloOcean, docs/HOLOOCEAN_OCTREE_PATCH.md) makes every sonar
+``env.rebuild_sonar_octree()`` (patched HoloOcean, README.md) makes every sonar
 rebuild its octree from the current scene, so runtime props are visible and no cached cell of
 another scene can produce a ghost echo.
 """

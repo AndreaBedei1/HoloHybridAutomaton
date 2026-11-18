@@ -2,7 +2,7 @@
 
 HoloOcean 2.3.0 sonars see the static scene through an octree that the engine builds once and
 caches on disk per level and octree size.  The project runs on a
-*patched* HoloOcean root (docs/HOLOOCEAN_OCTREE_PATCH.md) whose engine understands the
+*patched* HoloOcean root (README.md) whose engine understands the
 ``RebuildSonarOctree`` command and whose client exposes ``env.rebuild_sonar_octree()``:
 
 * the patched root lives in its own folder (default ``DEFAULT_PATCHED_ROOT``,
