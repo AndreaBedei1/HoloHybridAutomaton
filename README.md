@@ -184,11 +184,9 @@ python formal/check_properties.py                               # every Z3 suite
 python scripts/build_archive.py --dest <root> --version <name> --refs <refs> --runs <raw dirs>   # versioned archive
 ```
 
-The raw runs are not in the repository. They are kept in a versioned archive outside it; each version holds a git
-bundle of the history, source tarballs and a `MANIFEST.json` with the sha256 of every file:
-- `v13-final-v11-2026-11-18`: the final validation (raw runs, tables, logs, formal results);
-- `v14-reference-runs-2026-11-18`: the CLEAN reference runs;
-- `v12-review-2026-11-18`: the earlier campaigns, reports and reviews.
+The raw runs are not in the repository. The final validation is kept in the versioned archive
+`v13-final-v11-2026-11-18` outside it (raw runs, tables, logs, formal results, a git bundle of the history, source
+tarballs and a `MANIFEST.json` with the sha256 of every file).
 
 The formal results of every check (formula, verdict, counterexample) are in `formal/results/SUMMARY.csv` and
 `SUMMARY.json`.
