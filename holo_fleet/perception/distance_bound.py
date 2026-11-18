@@ -1,10 +1,8 @@
 """Association-free conservative distance to the nearest object (P1), from the nearest obstacle echo of each sector.
 
-Why.  A sector reports echo ranges, not which object produced them.  targets.build_targets groups echoes of adjacent
-sectors at similar ranges into targets (for the escape planner, the gate and the formation logic), and two different
-drones can end up in one group: in a square formation the left and the rear neighbour of a drone (3.5 m, 90 deg apart)
-become one LEFT+REAR target.  The safety distance must not depend on that grouping, nor be needlessly pessimistic
-because of it.
+A sector reports echo ranges, not which object produced them, and targets.build_targets can group the echoes of two
+drones into one target (e.g. the left and rear neighbours of a square formation become one LEFT+REAR target).  The
+safety distance must not depend on that grouping.
 
 Model, per healthy sector s with mount m_s and axis a_s, for every physical object O with centre c and distance d = |c|:
  (D) detection: when the hull of O reaches into the detection cone K_s (half-angle 60 deg minus the angular size of one
@@ -34,7 +32,7 @@ for any number of objects and any grouping of their echoes.  No region table exi
 
 The regions are sampled on a spherical lattice; a certification holds only if it holds with the margin gamma(rho):
 lattice covering radius + region shift to the next tabulated radius, amplified by the mount parallax.  The claims
-(D) and (H) are assumptions (measured: results/reference/ASSUMPTIONS.md, calibration/probe_singlebeam.py); the
+(D) and (H) are assumptions (measured on the CLEAN reference runs (external archive) and by calibration/probe_singlebeam.py); the
 inequality d_hat <= d is checked numerically on single- and multi-hull scenes by formal/check_separation.py (S0).
 """
 

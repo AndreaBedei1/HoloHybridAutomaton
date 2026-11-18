@@ -1,4 +1,4 @@
-"""Ground-truth referee / validator (v2, generic N).
+"""Ground-truth referee / validator (generic N).
 
 The referee is the ONLY component that reads simulator ground truth.  It is fed by the runner and
 never returns anything to a controller.  It judges, on agent-origin (hull-centre) positions:
@@ -8,13 +8,13 @@ never returns anything to a controller.  It judges, on agent-origin (hull-centre
 * P3  G(formation_lost -> F formation_recovered) - episodes of formation loss with their recovery
   times.  A finite run cannot falsify a liveness property: an episode still open at the end of a
   run is reported as "not recovered within the run", never as a counterexample.
-* P3-deg  with ``faults`` (criteria v3) the ABSENT drones are the permanently faulted ones from their fault
-  onset (ground truth of the scripted fault, never seen by a controller); without it (v2) a drone farther
+* P3-deg  with ``faults`` the ABSENT drones are the permanently faulted ones from their fault
+  onset (ground truth of the scripted fault, never seen by a controller); without it a drone farther
   than e_lost from its slot (robust fit of the others) for t_rejoin of mission time (the shared clock
   moving) is absent, and present again back within e_ok.  The formation of the PRESENT drones on their
   original slots is judged with the same episode logic: the degraded formation is stable when every such
-  episode is recovered.  v3 never declares a healthy drone absent, so a healthy drone that stays off its
-  slot fails P3-deg instead of leaving the judged set.
+  episode is recovered.  With ``faults`` a healthy drone is never declared absent, so a healthy drone that
+  stays off its slot fails P3-deg instead of leaving the judged set.
 """
 
 from __future__ import annotations

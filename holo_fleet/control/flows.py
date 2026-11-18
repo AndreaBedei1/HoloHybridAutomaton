@@ -1,4 +1,4 @@
-"""Continuous flows of the local hybrid automaton (one control law per mode) - v2.
+"""Continuous flows of the local hybrid automaton (one control law per mode).
 
 All inputs are onboard: the perception observation (navigation estimate, classified sonar
 sectors, gate and formation observations), the mission plan and the onboard current estimate of

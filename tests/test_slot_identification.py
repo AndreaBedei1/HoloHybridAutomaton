@@ -1,10 +1,4 @@
-"""Association is not identification (C3): regressions from the diagnosed false re-occupations of a lost drone's slot.
-
-In the stopped B2 campaign a healthy neighbour, displaced to the range of the lost drone's vacant slot in a
-compatible sector, re-occupied that slot (11 cases, B0 and B2): its own slot was unseen at the same steps, so the
-echo could have been it.  The deployed association (formation_perception.check_formation) and lifecycle
-(perception.track_missing) are exercised here on a square seen from drone 3: slot 0 diagonal (FRONT+LEFT, 4.95 m),
-slot 1 FRONT and slot 2 LEFT (3.5 m)."""
+"""Association is not identification: a displaced neighbour must not re-occupy a lost drone's vacant slot."""
 
 import numpy as np
 

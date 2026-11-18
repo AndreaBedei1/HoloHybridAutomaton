@@ -1,6 +1,4 @@
-"""scripts/run_demo.py: a plain demo keeps nothing; --save keeps a new result, --overwrite replaces it,
---media alone produces frames and GIFs.  The simulation is replaced by a fake run that writes the
-same kind of files as holo_fleet.runner.run."""
+"""scripts/run_demo.py: --save, --overwrite and --media behaviour, on a fake run."""
 
 import importlib.util
 import json

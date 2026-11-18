@@ -1,4 +1,4 @@
-"""P2 - critical-region mutual exclusion:  G( sum_i inside_CR_i <= 1 )   (v2: sector-pattern rule).
+"""P2 - critical-region mutual exclusion:  G( sum_i inside_CR_i <= 1 )   (sector-pattern rule).
 
 The rule (holo_fleet/ha/mutex_rule.py) is evaluated here with Z3 terms - the same functions the
 drones run.  Queue geometry and thresholds come from holo_fleet.config.GateRule.
@@ -20,7 +20,7 @@ M2v Stacked queue (numeric, 3-D cones): the 2 x 2 queue of a template with two d
     position (+-queue_tol per axis) and heading (+-heading_tol) tolerances, every cone boundary within
     +-fuzz free: every pair has ONE possible relation, and for every occupancy exactly the first in the
     order left-top, left-bottom, right-top, right-bottom has PRIORITY; the static rank is never needed.
-    M2m (mutation, the v2 rule): vertical-only patterns resolved by the static rank with unknown ranks
+    M2m (mutation, static-rank rule): vertical-only patterns resolved by the static rank with unknown ranks
     - no drone has PRIORITY in the stacked queue: a deadlock (expected).
 M3  Occupancy latch (Z3, bounded model checking of a timed abstraction, 30 s): drone A commits and
     crosses the CR at a speed in [v_lo, v_pass] without stopping; drone B, next in the order, sees A
@@ -43,8 +43,8 @@ M4f The queue neighbours a decision needs are never hidden by the gate frame (an
     queue line (mission.queue_line) is moved back until this holds.  The pair around ONE vacant point of
     an abreast queue is hidden for n = 3 at this gate: that occupancy (the middle drone missing) is
     outside the scope of M2 (listed in the note); moving the line back would put the exits beyond the range
-    at which the outer drones detect a hull (probe runs: occupancy-latch timeouts).  M4fm: the stacked
-    queue at the cone-only line hides its diagonal neighbours (seen in a probe run).
+    at which the outer drones detect a hull.  M4fm: the stacked
+    queue at the cone-only line hides its diagonal neighbours.
 M5  Progress of the queue (argument + spec): for every occupancy in scope some queued drone has
     PRIORITY - the first in the order left first, then top first (M2, M2v); the belief returns FREE
     after the previous drone is seen beyond the CR (or after t_occ_max, logged); the commit edge is
@@ -209,7 +209,7 @@ def possible_relations(G, p_i, p_j, fuzz: float, relation=mutex_rule.relation, g
 
 
 def _old_relation(F, B, L, R, U, D, Lg):
-    """The v2 rule (mutation): any vertical-only pattern is RANK."""
+    """Mutation: any vertical-only pattern is RANK."""
     horiz = Lg.Or(F, B, L, R)
     wait = Lg.Or(F, L)
     return {mutex_rule.WAIT: wait, mutex_rule.PRIORITY: Lg.And(Lg.Not(wait), Lg.Or(B, R)),

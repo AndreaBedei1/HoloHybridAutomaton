@@ -238,8 +238,7 @@ def structure_masked_pairs(points: Sequence[Tuple[float, float]], q_s: float, G,
     cone contains the neighbour, the classifier explains an echo by the gate map when its range falls in
     [min, max] of the frame points inside that (near-field widened) cone, minus / plus the structure
     tolerances (perception/sonar_processing.py): such a neighbour is classified STRUCTURE, its relation is
-    lost and the precedence can change (seen in a probe run of the stacked queue: the diagonal neighbour
-    hidden in LEFT/RIGHT, seen only in UP/DOWN).  Checked at the corners of a box of +-``tol`` around both
+    lost and the precedence can change.  Checked at the corners of a box of +-``tol`` around both
     queue points (default: the measured holding error, as formal M4c; heading along the gate axis).
     ``pairs`` restricts the check to those ordered pairs.  Returns (i, j, sector, echo, window) tuples."""
     from holo_fleet.perception.sonar_geometry import AXES, MOUNTS, NEAR_FIELD_WIDEN_M
@@ -282,9 +281,9 @@ def queue_line(slots: Sequence[Slot], G, perc=None) -> float:
 
     A queue with a vertical stack is moved back in 0.1 m steps until no queue neighbour within the bracket
     is hidden by the gate frame (``structure_masked_pairs``, formal M4f): its diagonal pairs are needed in
-    the nominal order.  An abreast queue keeps the v2 line: its adjacent pairs are never hidden (M4f), and
-    moving it back for the pair around a vacant middle point would put the passing drone's exit beyond
-    the range at which the outer queued drones detect a hull (~8.5 m, probe runs: occupancy-latch timeouts)."""
+    the nominal order.  An abreast queue keeps the GateRule.queue_s line: its adjacent pairs are never hidden
+    (M4f), and moving it back would put the passing drone's exit beyond the range at which the outer queued
+    drones detect a hull (~8.5 m)."""
     if perc is None:
         from holo_fleet.config import DEFAULT
 

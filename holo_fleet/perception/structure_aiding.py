@@ -1,12 +1,9 @@
 """Map-aided correction of the dead-reckoning position near a mapped structure (the gate).
 
-Why.  The drone navigates by dead reckoning (DVL velocity rotated by the compass heading).  A compass heading bias
-of a few degrees - inside the calibrated range of underwater AHRS (the sensor-robustness method document, section 1) - turns
-into a lateral drift of a few percent of the distance travelled: about 0.5 m after the approach to the gate, more
-than the lateral margin of the opening (~0.4 m).  The drone then aims at the centre of the opening in its estimate
-but is really off-centre: the bar it approaches is not where the map predicts it, its echo is an obstacle, collision
-avoidance pushes the drone back and the passage livelocks or, with momentum, the hull touches the bar.  Real
-vehicles bound this drift with landmarks; the gate map is the landmark the mission plan already contains.
+A compass heading bias of a few degrees (inside the calibrated range of underwater AHRS, docs/PARAMETER_PROVENANCE.md)
+turns the dead reckoning into a lateral drift of a few percent of the distance travelled: about 0.5 m after the
+approach to the gate, more than the lateral margin of the opening (~0.4 m).  The bar the drone approaches is then not
+where the map predicts it and its echo is an obstacle.  The gate map is used as a landmark to bound this drift.
 
 How.  Candidate horizontal offsets d of the estimate (a coarse-to-fine grid within +-``MAX_CORR_M``) are scored
 against the leading edges of the echoes of every healthy sector: for each sector whose cone, seen from the candidate
@@ -29,8 +26,7 @@ near-optimal offsets (the positions the echoes cannot tell apart) plus the RMS o
 (s <= the end of the critical region) a fit validates the localization only if the HULL (lateral half-extent
 ``HULL_LAT_M``, the BlueROV2 half-width plus the yaw allowance) plus ``u``, around the fitted position, lies entirely
 inside the free opening (inner half-width of the gate); a fit that places the hull beside the opening is not applied
-either, whatever its RMS.  Replay of the archived MEDIUM runs with such fits applied (scratch evidence summarised in
-docs): they were wrong by 0.4-1.2 m, resting on the echo of another drone taken for a bar in a side sector, and even
+either, whatever its RMS: such a fit can rest on the echo of another drone taken for a bar in a side sector, and even
 four well-matched sectors determine the lateral position beside the opening only to ~0.3 m, more than the near-optimal
 spread reports.  A drone whose drift brought it in front of a bar therefore cannot be relocalized there by a range-only
 fit without an assumption on the identity of an echo: it holds (safe), the documented C5 limitation.  A usable fit
@@ -52,19 +48,17 @@ stopped by the echo it cannot explain.  Nothing is assumed about the identity of
 on several sectors matching the bars within FIT_RMS_M, uniquely and consistently over CONSIST_N captures, and the queue
 points, beside the opening, never pass the robust clearance below.
 
-Identity from the B2 beacon (v11).  The C5 restriction rests on one premise: an echo matched to a bar may be the hull of
+Identity from the B2 beacon.  The C5 restriction rests on one premise: an echo matched to a bar may be the hull of
 another fleet drone.  When every other drone of the plan is located by a fresh identified acoustic fix (or is dead or
 has reported passing this gate) and no echo matched to a bar lies in a sector cone and range that the region of any
 of those fixes can reach, the premise is excluded and a fit that places the hull beside the opening may be APPLIED (the
-drone learns it is in front of a bar and corrects towards the opening); v10 needed the payload error balls, which grow
-with the navigation bound and never excluded anything in MEDIUM.  The test uses the matched echoes only, in the
+drone learns it is in front of a bar and corrects towards the opening).  The test uses the matched echoes only, in the
 own frame (the measurement, not any navigation estimate).  It still never VALIDATES the localization: ``valid`` needs a
 later fit with the hull inside the opening.  Only fleet drones and the mapped gate are assumed in the gate area (a non-fleet
 object there is outside this premise and stays an obstacle for the separation layer).
 
 On the axis of the gate only the FRONT sector sees the frame until about 2.2 m, so an along-axis error leaves the first bar echo
-unexplained, the separation layer stops the drone at the band, and the side sectors never see the bars: a deadlock of the perception (RC7,
-MEDIUM-ALL lost_drone_mutex s920).  With the same identity premise (every other drone excluded as the source of that echo) a single FRONT echo may
+unexplained, the separation layer stops the drone at the band, and the side sectors never see the bars: a deadlock of the perception.  With the same identity premise (every other drone excluded as the source of that echo) a single FRONT echo may
 correct the ALONG-AXIS estimate only, uniquely and consistently over CONSIST_N captures, by at most MAX_CORR_M in total until a validated fit.  It
 never moves the lateral estimate and never validates the localization.  Identification is by elimination only: any single echo within the correction range is adopted, and is then
 labelled STRUCTURE by the classifier.  A hull not accounted for by the premise (a drone silent for t_silent_gate_s) can therefore be taken for a bar.  It relies on the wide FRONT sonar: a
@@ -75,11 +69,10 @@ ranges in the body frame and does not depend on it, and the structure test keeps
 widened), so a vehicle in front of a bar stays an obstacle (tests/test_structure_aiding.py).
 
 A correction accepted without a validated fit (the identity rule, the along-axis correction) is a hypothesis.  Near the gate the sectors see the bars at the edge of their cones and a fit mirrored
-about the axis can explain the echoes about as well as the true pose (RC12, MEDIUM-ALL lost_drone_mutex s995: two such fits moved the estimate 2.2 m the wrong way, beyond the reach MAX_CORR_M of any later
-fit).  So the step of a correction under the identity rule is capped (IDENTITY_STEP_M): one wrong step stays within reach of a later fit; a right correction arrives in steps.  ``unconfirmed`` is the sum of these
+about the axis can explain the echoes about as well as the true pose.  So the step of a correction under the identity rule is capped (IDENTITY_STEP_M): one wrong step stays within reach of a later fit; a right correction arrives in steps.  ``unconfirmed`` is the sum of these
 corrections since the start of the current commitment or the last validated fit, whichever is later (a measured crossing also ends it; those made before the commitment include real drift corrected during the
 wait at the queue).  When a hold at the gate ends with no valid localization the sum is sealed (``seal_unconfirmed``) and undone after the give-up edge (``take_sealed``; DroneController._drain_flow_events,
-Perception.undo_unconfirmed_corrections); what is corrected between the two stays (med7 s981: a right fit between the timeout and the edge would have been removed), and a validated fit or a measured crossing
+Perception.undo_unconfirmed_corrections); what is corrected between the two stays, and a validated fit or a measured crossing
 drops the seal.  This is a recovery heuristic: a hold without validation does not refute a correction.  The bound grows by the step.
 """
 

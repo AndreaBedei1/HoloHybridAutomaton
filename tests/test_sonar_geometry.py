@@ -58,7 +58,7 @@ def test_onboard_whitelist_has_no_privileged_sensor():
 
 
 def test_sector_frame_is_a_rotation_to_the_boresight_also_antiparallel_to_x():
-    """v9 campaign, formation_six CLEAN s701: the REAR sector of a drone heading exactly +x made Rodrigues'
+    """The REAR sector of a drone heading exactly +x must not make Rodrigues'
     1 / (1 + c) divide by zero.  Every sector, at yaws around 0 and pi down to 1e-12 rad: M is a rotation, M x = a."""
     import math
 

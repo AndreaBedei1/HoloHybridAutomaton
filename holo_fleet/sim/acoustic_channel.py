@@ -10,8 +10,7 @@ a prop such as a gate bar); the result is written after round(d / (dt * 1500)) t
 The fourth field is the RECEIVER's own depth, not the sender's: nothing of the sender's state is carried.
 
 Those engine values are treated as the geometric truth of the direct path, never handed to a controller as they
-are.  This module turns them into what a real receiver would deliver, under explicit hardware assumptions
-(docs/B2_ACOUSTIC_AIDED_COORDINATION.md, section 2):
+are.  This module turns them into what a real receiver would deliver, under explicit hardware assumptions:
 
 * H1 static identity, fixed schedule: drone k emits a coded ping (its identity, no payload) at the pre-assigned
   instants t = m * period + k * period / n (TDMA: the schedule is mission-plan knowledge, like the identity);
@@ -46,14 +45,14 @@ are.  This module turns them into what a real receiver would deliver, under expl
   vessel noise).  Two arrivals never collide at a receiver: the TDMA slots of H1 are far wider than the propagation
   spread of the ranges here.
 
-Levels (docs/ACOUSTIC_CHANNEL_MODEL.md): CLEAN, LOW, MEDIUM and BLACKOUT (the channel delivers nothing).  Anchors:
+Levels (sources: docs/PARAMETER_PROVENANCE.md): CLEAN, LOW, MEDIUM and BLACKOUT (the channel delivers nothing).  Anchors:
 range resolution +-0.1 m of a commercial micro-USBL modem (Blueprint SeaTrac X150 datasheet, "dependant on provided
 VOS accuracy"); bearing 1 deg RMS (Tritech MicronNav 200 datasheet) to +-3 deg (older micro-USBL); a low-cost
 one-way inverted-USBL beacon (Rypkema, Schmidt, Fischell, Field Robotics 2022) reported, in a static test at about
 30 and 57 m in a river, 68 % of the azimuth errors below 7 deg, with a direction-dependent bias.  Our ranges are
 2-20 m in open water: CLEAN / LOW sit near the datasheet values, MEDIUM between them and the field figures.  The
-calibration bias and the clear-path multipath episodes were added after the provenance audit of the model (stress
-values: no source gives their probability), before the final campaign; they only make the channel harsher.
+calibration bias and the clear-path multipath episodes are stress values (no source gives their probability); they
+only make the channel harsher.
 """
 
 from __future__ import annotations

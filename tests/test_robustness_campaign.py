@@ -1,7 +1,4 @@
-"""The robustness campaign orchestrator: resume rules, our processes only, run metadata.
-
-No HoloOcean here: process lists and run directories are faked.
-"""
+"""The robustness campaign orchestrator: resume rules, our processes only, run metadata (no HoloOcean, faked processes)."""
 
 import importlib.util
 import json

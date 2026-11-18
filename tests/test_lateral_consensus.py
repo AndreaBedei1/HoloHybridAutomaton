@@ -1,8 +1,4 @@
-"""Lateral sonar consensus of the formation (control/flows.py): the lateral counterpart of the along-track progress
-consensus (sigma).  A drone whose dead reckoning drifts sideways (a compass bias: about 1 m over the validation
-missions at the MEDIUM level) tracks its slot in its own estimate and is really off the formation; the neighbours'
-range residuals measure that relative displacement and the integrated lateral offset moves the slot reference to
-remove it."""
+"""Lateral sonar consensus of the formation (control/flows.py): neighbour residuals remove a sideways dead-reckoning drift."""
 
 import dataclasses
 from types import SimpleNamespace

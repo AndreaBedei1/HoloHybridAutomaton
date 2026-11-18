@@ -1,5 +1,4 @@
-"""Payload v2 (gate status) and the failure model: vacancy by silence, status exclusion and positive occupancy, the
-passage verification, the DROP_BACK at a stationary reference."""
+"""Gate-status payload and failure model: vacancy by silence, status exclusion, positive occupancy, passage verification, DROP_BACK."""
 
 import dataclasses
 import math
@@ -351,7 +350,7 @@ def test_a_drone_stopped_at_a_bar_does_not_verify_its_passage():
 
 
 def test_a_recovering_drone_goes_straight_to_its_slot_when_the_reference_stands_still():
-    """v10 RC3: at the end of the path the rejoin phases kept a recovering drone off its slot for good."""
+    """At the end of the path the rejoin phases must not keep a recovering drone off its slot for good."""
     from holo_fleet.config import DEFAULT as D
     from holo_fleet.control.flows import Flows
     from holo_fleet.formations import TEMPLATES
@@ -401,7 +400,7 @@ def _rx_meas(per, p, t, k, rel, reported, bound=2.0):
 
 def test_far_from_its_slot_the_fixes_measure_the_lateral_error_of_the_own_reference():
     """The residual is compensated for the own displacement from the slot: a drone behind its slot does not read the neighbours
-    as misplaced, and the part left is the relative navigation error (RC6: two opposite compass biases)."""
+    as misplaced, and the part left is the relative navigation error (e.g. two opposite compass biases)."""
     per, p, d, se, o, e_me = _far_setup()
     for k in (1, 2):
         _rx_meas(per, p, 5.0, k, d[k] + se + e_me, p + se + d[k])
@@ -468,7 +467,7 @@ def test_a_drone_inside_the_keepout_box_never_reports_not_engaged():
 
 
 def test_silence_never_discards_a_corridor_echo_a_fresh_report_may():
-    """Formal review round 2, F2: a drone unheard for t_silent_gate after reporting not engaged may be alive and in the CR."""
+    """A drone unheard for t_silent_gate after reporting not engaged may be alive and in the CR."""
     for silent in (False, True):
         tr, gp = _observer(P, others=(1,))
         gp.update(0.5, P, 0., [], {})
@@ -485,7 +484,7 @@ def test_silence_never_discards_a_corridor_echo_a_fresh_report_may():
 
 
 def test_no_relation_implies_latch_input_in_the_whole_front_only_band():
-    """Formal review round 2, F1: without a beacon a FRONT-only echo nearer than the corridor made neither a relation nor a latch input."""
+    """Without a beacon a FRONT-only echo nearer than the corridor still makes a relation or a latch input."""
     tr, gp = _observer(P, others=(1,))
     gp.acoustic_exit = None
     r_near = float(gp.cr_ranges(GATE, P, 0.)[0]) - 0.389 - B2.env.eps_range_far

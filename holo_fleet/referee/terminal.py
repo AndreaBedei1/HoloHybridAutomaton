@@ -4,7 +4,7 @@ A run ends with one of three outcomes instead of at a fixed duration:
 
 * FAILURE  - a safety violation is demonstrated: two drones closer than d_safe (P1), two drones in a critical region
              (P2), a contact (drones, gate, the non-cooperative vehicle) or that vehicle closer than d_safe;
-* SUCCESS  - every requirement of criteria v3 (referee/criteria.py) holds at the same time, not before the
+* SUCCESS  - every requirement of the acceptance criteria (referee/criteria.py) holds at the same time, not before the
              scenario's nominal end T_nom:
              - progress: every healthy drone is within progress_tol_m of its PLANNED end position (now, not once);
              - gate: every healthy drone has passed the judged gate THROUGH the critical region (before it, inside
@@ -18,7 +18,7 @@ A run ends with one of three outcomes instead of at a fixed duration:
 * DEADLINE - none of the above by the deadline (criteria.deadline_v3: T_nom plus the protocol's worst-case delays).
 
 The same monitor is replayed offline on logged runs (robustness_metrics.replay_terminal), so the online stop and the
-offline verdict use one requirement set (v2 checked the false vacancy only offline).
+offline verdict use one requirement set.
 """
 
 from __future__ import annotations

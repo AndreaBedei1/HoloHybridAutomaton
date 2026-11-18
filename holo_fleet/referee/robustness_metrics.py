@@ -2,32 +2,30 @@
 
 ``analyze_run(run_dir, reference)`` reads a run directory written by holo_fleet.runner (controller logs = what
 the drones knew, referee time series = ground truth) and returns the P1 / P2 / P3 / automaton / sensor metrics
-and the run class of criteria v3 (referee/criteria.py):
+and the run class (referee/criteria.py):
 
 * INVALID         the run did not complete for a reason outside the system under test (simulator, infrastructure);
 * SUT_ERROR       the run stopped on an exception raised in the drones' own code (control, perception, automaton):
                   a failure of the system under test, never retried as INVALID;
-* SAFETY_FAILURE  P1 or P2 violated, a contact of a live drone (the hull of a dead drone against the structure is recorded, v7), or a scripted
+* SAFETY_FAILURE  P1 or P2 violated, a contact of a live drone (the hull of a dead drone against the structure is recorded), or a scripted
                   vehicle closer than d_safe;
 * UNSAFE_ACTION   no violation, but an entry into the CR was authorised while another drone was truly in it (E4,
                   referee/gate_events.py: an unsafe control action in the STPA sense);
 * SPEC_VIOLATION  a determinism or observation-consistency violation of the automaton at run time;
-* STALLED         (v4 only; v5 reports the gate bounded response as a metric, liveness being eventual) a
-                  bounded-response requirement of the gate was violated (gate liveness), whether or not the run
-                  completed later;
-* PASS            every v3 requirement reached by the deadline (replay of the TerminalMonitor on the logs);
-* CENSORED        historical runs only: the log ends (criteria v2 stop) before the v3 deadline without an outcome;
+* STALLED         a bounded-response requirement of the gate was violated (gate liveness), whether or not the run
+                  completed later (not assigned: the gate bounded response is reported as a metric, liveness being
+                  eventual);
+* PASS            every requirement reached by the deadline (replay of the TerminalMonitor on the logs);
+* CENSORED        the log ends before the deadline without an outcome (a run stopped by an older criterion);
 * SAFE_DEGRADED   requirements missed, and the miss is CAUSED by healthy drones that hold in FAILSAFE at the end on a
-                  sensor fault of their injected noise profile: every missed requirement involves only those drones
-                  (v2 used ANY sensor-fault FAILSAFE entry at any time, which absorbed nearly every liveness failure);
+                  sensor fault of their injected noise profile: every missed requirement involves only those drones;
 * INCOMPLETE      requirements missed at the deadline otherwise (slow or diverging).
 
-Every metric is judged on the replay's horizon [0, t_end] (the v3 stop), so a historical run is not judged on the
-longer v2 log for some quantities and on the v3 stop for others.
+Every metric is judged on the replay's horizon [0, t_end] (the terminal stop), so a longer log is not judged on
+different horizons for different quantities.
 
 The requirements are a-priori (mission plan, protocol bounds, profile definitions) and the same for every protocol;
-the deadline's FAILSAFE term depends on the sensor profile (criteria.failsafe_allowance_s).  v2 took the requirements
-from the scenario's committed CLEAN reference run.
+the deadline's FAILSAFE term depends on the sensor profile (criteria.failsafe_allowance_s).
 """
 
 from __future__ import annotations
@@ -88,7 +86,7 @@ def _queued(gs: Dict) -> bool:
 
 
 def analyze_run(run_dir: Path, reference: Optional[Dict] = None, cfg=DEFAULT, profile: Optional[str] = None) -> Dict:
-    """``reference`` is accepted for compatibility and no longer used (criteria v3 has a-priori requirements)."""
+    """Metrics and class of one run.  ``reference`` is accepted for compatibility and unused (the requirements are a-priori)."""
     from holo_fleet.referee.referee import Referee
     from holo_fleet.sim.scenarios import SCENARIOS
 
@@ -431,10 +429,10 @@ def _profile_from_path(run_dir: Path) -> Optional[str]:
 
 
 def replay_terminal(sc, cfg, names, t, P, states, modes, profile, logged: Optional[Dict] = None, edges=()):
-    """Replay the v3 TerminalMonitor on the logged ground truth and records: the same requirement set as the online
-    stop.  A log that ends before the deadline without an outcome (a historical run stopped by criteria v2) is
-    CENSORED.  For a v3 run the logged deadline is used and the replayed outcome is compared with the logged one
-    (``replay_consistent``).  Returns (summary, monitor, referee)."""
+    """Replay the TerminalMonitor on the logged ground truth and records: the same requirement set as the online
+    stop.  A log that ends before the deadline without an outcome (a run stopped by an older criterion) is
+    CENSORED.  For a run that logs its terminal criteria the logged deadline is used and the replayed outcome is
+    compared with the logged one (``replay_consistent``).  Returns (summary, monitor, referee)."""
     from types import SimpleNamespace
 
     from holo_fleet.referee.referee import Referee
@@ -491,7 +489,7 @@ def _applies(req: str, mon) -> bool:
 
 
 def refine_v8(cls: str, out: Dict) -> str:
-    """Criteria v8: the P3 contract (referee/p3.py) and the premise monitors refine PASS and INCOMPLETE.
+    """Criteria v8 (output class): the P3 contract (referee/p3.py) and the premise monitors refine PASS and INCOMPLETE.
     PASS             online SUCCESS and every part of P3 MET or not applicable;
     P3_LATE          the gate passed; a part of P3 met only after its deadline (within the run), the premises held;
     P3_FAILURE       the gate passed, a part of P3 NOT_MET with its premises held (a genuine liveness failure of the formation);
@@ -537,7 +535,7 @@ def cr_entry_kind(states_k, j: int) -> str:
 
 def wrong_validated_fits(names, t, P, states, m, faults, worse_m: float = 0.3) -> int:
     """Corrections of the map fit after which the gate localization is validated and the true horizontal error of the estimate has
-    grown by more than worse_m (1 s before against 1 s after): the round 8 monitor of a wrong validated fit."""
+    grown by more than worse_m (1 s before against 1 s after): the monitor of a wrong validated fit."""
     n = len(names)
     out = 0
     for k in range(n):
@@ -560,7 +558,7 @@ def wrong_validated_fits(names, t, P, states, m, faults, worse_m: float = 0.3) -
 
 def fairness_gap(names, onset, t, states, m, cfg) -> Dict:
     """Premise of formal/check_fleet.py: the longest stretch with no instant at which every live drone has a fresh reception
-    (status_fresh_s) of every other live drone (gate.silence, logged from 5c80591)."""
+    (status_fresh_s) of every other live drone (from the logged gate.silence)."""
     n = len(names)
     fresh_lim = cfg.acoustic.status_fresh_s
     longest, since, seen = 0.0, None, False
@@ -636,7 +634,7 @@ def premise_monitors(sc, cfg, names, faults, t, P, states, m) -> Dict:
 
 
 def cause_tags(out: Dict, fm: Dict, fs_sensor, term, states, healthy, m: int, dt: float, met: Dict) -> List[str]:
-    """Diagnostic mechanism tags of a run (never used by the class, fixed before the final campaign): which known
+    """Diagnostic mechanism tags of a run (never used by the class): which known
     mechanisms were active, so that a non-PASS run can be read without re-deriving its cause by hand."""
     tags = []
     if (out.get("nav_bound") or {}).get("exceeded"):

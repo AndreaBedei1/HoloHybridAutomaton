@@ -12,7 +12,7 @@ knows the shared mission plan.  The rule maps a neighbour's sector pattern to a 
 i.e. precedence to the LEFT, then from the TOP down, and the static rank only as the very last
 tie-break, for a pattern that cannot be ordered geometrically.  The static rank is the slot order of
 the shared plan, compared with the plan's drones whose queue points lie within the queue bracket
-(GatePerception): no identity is ever exchanged.  It is counted in every run (0 so far).
+(GatePerception): no identity is ever exchanged.  Its use is counted in every run.
 
 Horizontal bearing beta of the neighbour from the own bow (left positive); cones of half-angle 60
 deg, so F = (-60, 60), L = (30, 150), B = (120, 240), R = (-150, -30).  PRIORITY needs the

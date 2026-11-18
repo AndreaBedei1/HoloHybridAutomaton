@@ -1,4 +1,4 @@
-"""Short demonstration scenarios (v2): one seed each, 20-90 s, built to show one behaviour each.
+"""Short demonstration scenarios: one seed each, 20-90 s, built to show one behaviour each.
 
   sonar_classification   (bench, see scripts/run_demo.py)    pinned cases A-F of the echo classifier
   p1_head_on             2 drones, no current                 head-on encounter, right-hand passing
@@ -29,8 +29,8 @@ lost drones and the mutex queue:
                                                               vacant and keep a degraded formation at the survey
                                                               speed (DEGRADED_FORMATION)
   mutex_deadlock_resolution
-                         3 drones, a stacked pair, G06        stacked queue: left first, then top first; the v2 rule
-                                                              (static rank with unknown ranks) deadlocked here
+                         3 drones, a stacked pair, G06        stacked queue: left first, then top first; a static
+                                                              rank with unknown ranks would deadlock here
   line_parallel_mutex    3 drones abreast, G06                a line arrives at the gate side by side: left first,
                                                               no static rank
   lost_drone_mutex       3 drones abreast, G06                the left drone is lost before the gate: the leftmost
@@ -248,15 +248,14 @@ def formation_six(cfg: FleetConfig = DEFAULT) -> Scenario:
 
 
 def formation_recovery_head_current(cfg: FleetConfig = DEFAULT) -> Scenario:
-    """P3 under a 0.6 m/s current against the motion: the old scalar bound, which this scenario showed to be
-    too general.  0.6 m/s is the largest current exercised (Envelope.current_validated_max); against
+    """P3 under a 0.6 m/s current against the motion.  0.6 m/s is the largest current exercised (Envelope.current_validated_max); against
     the motion at the 0.30 m/s survey speed the control-feasible limit is about 0.41 m/s, so the hit drone is
     outside the envelope and declares it (ENVELOPE_VIOLATION).
 
     Choice of the disturbance (not tuned on the outcome):
     * direction: against the survey direction, the one with the smallest control margin (the survey
       speed adds to the current; a lateral 0.6 m/s jet is rejected with a formation error below 0.5 m);
-    * intensity: the old claimed limit itself, 0.6 m/s; no background current, so the drift stays <= 0.6;
+    * intensity: 0.6 m/s; no background current, so the drift stays <= 0.6;
     * shape: a localized jet (Gaussian, radius 3 m, as formation_gust), so that it deforms the geometry
       (a uniform current only translates the formation);
     * target: centred on the track of the rear-left drone when it switches on, the front-left drone being
@@ -347,8 +346,8 @@ def lost_drone_rejoin_front(cfg: FleetConfig = DEFAULT) -> Scenario:
 
 def lost_drone_timeout(cfg: FleetConfig = DEFAULT) -> Scenario:
     """80 s: every neighbour times the absence from its OWN detection, and a range-only sonar detects late when an
-    echo of another neighbour stands in for the missing drone (the rear-right drone noticed it between 22 and 48 s
-    in probe runs); the run lasts until the latest one can have declared the slot vacant (+ t_rejoin)."""
+    echo of another neighbour stands in for the missing drone (the rear-right drone can take up to about 48 s);
+    the run lasts until the latest one can have declared the slot vacant (+ t_rejoin)."""
     fr = cfg.form
     return _lost_drone("lost_drone_timeout", 8.0, None, 80.0, CurrentField(),
                        "Lost drone: permanent failure, timeout and degraded formation",
@@ -400,12 +399,9 @@ INTEGRATED_GUST = 0.27
 
 
 def integrated_short(cfg: FleetConfig = DEFAULT) -> Scenario:
-    """A 0.35 m/s gust would make drone 0's diagonal gate passage at v_pass 0.5 m/s against it need up to
-    1.12 x the nominal authority (OUTSIDE the control-feasible envelope).  Only the scenario changes, not the
-    controller: replaying the logged passage with the gust scaled gives 1.12 at 0.35, 1.03 at 0.30 (over the
-    authority for 3 s), 1.00 at 0.28 and 0.98 at 0.27 m/s - the first value with a margin (2 %) for the run-to-run
-    differences of HoloOcean.  The cross-current stays well felt (0.27 m/s gust, about 0.22 m/s net of the background)
-    while the drones survey at 0.40 m/s, queue and pass the gate opening."""
+    """Cross-current gust of 0.27 m/s (about 0.22 m/s net of the background): drone 0's diagonal gate passage at
+    v_pass 0.5 m/s against it needs up to 0.98 x the nominal authority (a 2 % margin; 0.35 m/s would need 1.12 x,
+    outside the control-feasible envelope) while the drones survey at 0.40 m/s, queue and pass the gate opening."""
     g6 = {g.gate_id: g for g in load_arena_gates(HORSESHOE_TRACK)}["G06"]
     left = np.array([-g6.axis[1], g6.axis[0]])
     w = INTEGRATED_GUST

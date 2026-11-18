@@ -34,7 +34,7 @@ def _cls(st, k=0, j=1, ep=None, deliver=0.15, b2=True):
 def test_a_queued_drone_that_never_commits_during_the_claim_is_satisfied_whatever_the_delay_of_its_evidence():
     st = _states(2)
     _commit(st, 0, 100, 500)
-    _block(st, 1, 450, 500)                  # 35 s after the commit (the old monitor's 32 s bound): the order is what counts
+    _block(st, 1, 450, 500)                  # 35 s after the commit (beyond a 32 s bound): the order is what counts
     r = _cls(st, ep=(100, 500))
     assert r["class"] == "SATISFIED" and r["t_evidence"] == 45.0 and r["t_commit"] is None
 
@@ -58,7 +58,7 @@ def test_a_ping_carries_the_phase_of_the_control_step_before_it_not_the_record_o
 
 
 def test_a_commit_between_an_aligned_ping_missed_and_the_next_delivery_is_concurrent_not_a_violation():
-    # held-out st_lost_middle s7313: claimant committed at the record of its slot time, the other drone committed
+    # claimant committed at the record of its slot time, the other drone committed
     # 0.8 s later, before the next ping could arrive.
     st = _states(2)
     _commit(st, 0, 100, 400)

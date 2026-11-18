@@ -1,5 +1,4 @@
-"""Relocalization hold (control/flows.py): a committed drone enters the critical region only with a valid gate
-localization; short of it, it holds on its path before the CR (mutex, priority and the automaton unchanged)."""
+"""Relocalization hold (control/flows.py): a committed drone enters the CR only with a valid gate localization."""
 
 from types import SimpleNamespace
 
@@ -75,7 +74,7 @@ def test_the_stage_two_hold_is_logged_once_beyond_its_bound_and_never_forced():
 
 def test_give_up_only_behind_the_entry_plane_and_never_once_admitted():
     """After the bounded stage-2 hold the drone backs off (still committed) behind the give-up plane, and only there
-    requests the automaton's give-up edge; an admitted drone never requests it (sticky-flag regression)."""
+    requests the automaton's give-up edge; an admitted drone never requests it."""
     from holo_fleet.perception.sonar_geometry import R_OUT
 
     plan = SCENARIOS["lost_drone_mutex"](DEFAULT).plans[0]

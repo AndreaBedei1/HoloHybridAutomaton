@@ -1,0 +1,155 @@
+{
+ "p1_head_on": {
+  "ONE": [
+   0
+  ],
+  "SUBSET": [
+   0
+  ]
+ },
+ "p1_vertical_escape": {
+  "ONE": [
+   1
+  ],
+  "SUBSET": [
+   1,
+   2
+  ]
+ },
+ "p1_two_lines": {
+  "ONE": [
+   1
+  ],
+  "SUBSET": [
+   1,
+   2,
+   3
+  ]
+ },
+ "p1_close_encounter": {
+  "ONE": [
+   0
+  ],
+  "SUBSET": [
+   0
+  ]
+ },
+ "formation_triangle": {
+  "ONE": [
+   0
+  ],
+  "SUBSET": [
+   0,
+   1
+  ]
+ },
+ "formation_square": {
+  "ONE": [
+   0
+  ],
+  "SUBSET": [
+   0,
+   1
+  ]
+ },
+ "formation_six": {
+  "ONE": [
+   1
+  ],
+  "SUBSET": [
+   1,
+   2,
+   3
+  ]
+ },
+ "formation_recovery_head_current": {
+  "ONE": [
+   1
+  ],
+  "SUBSET": [
+   1,
+   2
+  ]
+ },
+ "formation_gust": {
+  "ONE": [
+   0
+  ],
+  "SUBSET": [
+   0,
+   1
+  ]
+ },
+ "gate_single": {
+  "ONE": [
+   0
+  ],
+  "SUBSET": [
+   0,
+   1
+  ]
+ },
+ "integrated_short": {
+  "ONE": [
+   1
+  ],
+  "SUBSET": [
+   1,
+   2
+  ]
+ },
+ "lost_drone_rejoin": {
+  "ONE": [
+   1
+  ],
+  "SUBSET": [
+   1,
+   2
+  ]
+ },
+ "lost_drone_rejoin_front": {
+  "ONE": [
+   1
+  ],
+  "SUBSET": [
+   1,
+   2
+  ]
+ },
+ "lost_drone_timeout": {
+  "ONE": [
+   1
+  ],
+  "SUBSET": [
+   1,
+   3
+  ]
+ },
+ "mutex_deadlock_resolution": {
+  "ONE": [
+   1
+  ],
+  "SUBSET": [
+   1,
+   2
+  ]
+ },
+ "line_parallel_mutex": {
+  "ONE": [
+   0
+  ],
+  "SUBSET": [
+   0,
+   1
+  ]
+ },
+ "lost_drone_mutex": {
+  "ONE": [
+   2
+  ],
+  "SUBSET": [
+   1,
+   2
+  ]
+ }
+}

@@ -178,8 +178,7 @@ class Persistence:
     t_exit good steps, which also empties the accumulator (otherwise, after a violation longer than
     t_enter + t_exit, the clear would be undone at the next step).  While a violation is declared the onboard
     monitor may mark a step ``hold="reset"`` (the vehicle does not deliver what it requests: the clear counter
-    restarts) or ``hold="pause"`` (nothing to verify: the counter neither grows nor restarts).  Shared by the
-    onboard monitor and by the run evaluation (which uses only the first declaration)."""
+    restarts) or ``hold="pause"`` (nothing to verify: the counter neither grows nor restarts)."""
 
     def __init__(self, t_enter: float = 4.0, t_exit: float = 4.0):
         self.t_enter, self.t_exit = t_enter, t_exit

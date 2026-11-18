@@ -1,9 +1,4 @@
-"""Map-aided correction of the dead-reckoning position at the gate (perception/structure_aiding.py).
-
-Synthetic sonar profiles are generated from the TRUE pose (leading edge of each sector at the true nearest-bar range
-within the nominal cone, the model the CLEAN runs support: structure_aiding._pred); the drone's estimate carries a
-lateral error, as the compass bias of the realistic MEDIUM level produces at the gate.
-"""
+"""Map-aided correction of the dead-reckoning position at the gate (perception/structure_aiding.py)."""
 
 import math
 
@@ -226,7 +221,7 @@ def test_a_centred_drone_has_a_valid_gate_localization():
 
 
 def test_an_equally_good_far_position_makes_the_fit_ambiguous():
-    """Logged echoes (MEDIUM-ALL integrated_short seed 2, drone 1, t = 85.9 s): the estimate is on the axis, the drone
+    """Logged echoes of a MEDIUM-level run: the estimate is on the axis, the drone
     really 0.56 m to the left.  The estimate explains three sectors and the true pose explains them as well (total cost
     0.818 vs 0.820): the echoes cannot separate them, so the localization must not be confirmed.  The echoes were
     recorded at the track's 1.5 m wide G06 (0.18 x 0.22 m bars), so that gate is the map here."""

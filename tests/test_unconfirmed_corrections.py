@@ -1,6 +1,4 @@
-"""A correction of the estimate accepted without a validated localization is a hypothesis.  It stands until a fit puts the hull inside the opening; a hold that ends with no valid localization undoes it
-(med9 lost_drone_mutex s995: two fits moved the estimate 2.2 m the wrong way, beyond the reach of any later fit, and the drone looped at the gate for the rest of the mission).  The step waits for the give-up
-edge: while committed, a jump of the estimate could feed the position-gated transitions of the hold (formal review, N13)."""
+"""An estimate correction without a validated localization is a hypothesis, undone when a hold ends with no valid localization."""
 
 import numpy as np
 
@@ -179,7 +177,7 @@ def test_a_correction_under_the_identity_rule_is_capped_and_a_right_one_arrives_
 
 def test_a_validated_fit_beyond_the_navigation_premise_does_not_validate_and_is_capped():
     """A fit inside the opening that says the error exceeds nav_err_m (the premise of P2) does not validate the localization and
-    moves the estimate by at most IDENTITY_STEP_M; a later fit within the premise validates it (round 8, s1103)."""
+    moves the estimate by at most IDENTITY_STEP_M; a later fit within the premise validates it."""
     clf, aid = _aid()
     R, p_true = _R(), _world(-1.6, 0.05)
     est, steps, first_valid = p_true + np.array([0.0, 1.1, 0.0]), [], None

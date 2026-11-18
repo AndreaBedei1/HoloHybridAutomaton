@@ -1,4 +1,4 @@
-"""HoloOcean multi-agent wrapper (v2): owns the simulator and the ground truth.
+"""HoloOcean multi-agent wrapper: owns the simulator and the ground truth.
 
 Controllers only ever receive a :class:`SensorFrame` per drone built from the whitelisted onboard
 sensors (``perception.sensor_suite.is_onboard``): six sonar echo profiles, DVL, IMU, compass and

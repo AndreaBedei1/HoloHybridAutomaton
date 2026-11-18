@@ -1,8 +1,7 @@
 """Ocean-current fields expressed as *effective drift* (m/s of an unactuated BlueROV2).
 
 HoloOcean's ``set_ocean_currents`` argument is converted server-side into a force,
-and the steady drift it produces is strongly nonlinear (DISCOVERY.md, probe
-``probe_current.py``).  We therefore specify experiments in effective drift and
+and the steady drift it produces is strongly nonlinear (calibration/probe_current.py).  We therefore specify experiments in effective drift and
 invert the measured calibration table to obtain the command sent to HoloOcean.
 """
 

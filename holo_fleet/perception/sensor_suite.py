@@ -1,11 +1,11 @@
-"""Onboard sensor suite of every drone (hardware description, no simulator state) - v2.
+"""Onboard sensor suite of every drone (hardware description, no simulator state).
 
 Six identical wide-beam single-beam sonars (``SinglebeamSonar``), one on each hull face, plus DVL
 (velocity over ground and four beam ranges), IMU, compass and depth.  No ray-cast rangefinder
 ring and no imaging sonar: what a drone knows about its surroundings comes from the six echo
 profiles.
 
-Conventions measured on HoloOcean 2.3.0 / BlueROV2 (DISCOVERY.md, docs/v2/SONAR_PROBE.md):
+Conventions measured on HoloOcean 2.3.0 / BlueROV2 (probes in calibration/):
 * sensor ``location`` is relative to the agent origin; PoseSensor sits at IMUSocket, (+0.11, 0, -0.065) m;
 * rotation pitch is positive downward (pitch -90 points the beam up);
 * MagnetometerSensor heading = atan2(m_y, m_x); DVL body velocity x fwd / y left / z up;

@@ -1,4 +1,4 @@
-"""P1 - inter-vehicle separation:  G( forall i != j : d_ij >= d_safe )   (v2: six wide-beam sonars).
+"""P1 - inter-vehicle separation:  G( forall i != j : d_ij >= d_safe )   (six wide-beam sonars).
 
 All numbers come from holo_fleet.config; the sensing lemmas evaluate the deployed perception and
 escape code (holo_fleet.perception.sonar_geometry, holo_fleet.control.escape) - nothing is copied.
@@ -39,7 +39,7 @@ S3  Triangle lemma (Z3, nonlinear): with all pairwise distances >= d_safe at mos
 S4  Blackout lemma (Z3): a sonar blackout of <= T_b s starting at d >= d_blackout keeps d >= d_safe
     (FAILSAFE holds position; unrejected drift w_rel).
 
-NOT proved here (assumptions, measured in results/reference/ASSUMPTIONS.md): the sonar detects a BlueROV2
+NOT proved here (assumptions, measured on the CLEAN reference runs, external archive): the sonar detects a BlueROV2
 anywhere in its 60 deg cone within range (probe F), both drones of a pair detect each other (six
 cones cover the sphere), a_brake, w_rel_max (a RESIDUAL drift after the low-level compensation: it holds
 while the commanded velocities are control-feasible against the raw current, control/current_envelope.py, and
@@ -143,7 +143,7 @@ def bound_scenes(cfg: FleetConfig, n_scenes: int, bound, seed: int = 1, kind: st
                  n_hulls=(1, 1), dist=(1.0, 8.0), errors: str = "random", boundary: str = "random"):
     """Scenes of 1..3 hulls -> (true distance of the nearest hull, bound evaluated on the nearest echo of every
     sector).  ``kind`` places the hull centres: single (uniform directions), corner, edge, or square (two neighbours
-    90 deg apart in the horizontal plane, the formation case that motivated the association-free bound)."""
+    90 deg apart in the horizontal plane, the formation case)."""
     from holo_fleet.perception.distance_bound import MAX_REL_TILT_DEG
 
     tilt = MAX_REL_TILT_DEG if tilt_deg is None else tilt_deg

@@ -1,6 +1,6 @@
-"""Phase-1 probe of a realistic directional sonar: ONE HoloOcean ``SinglebeamSonar`` on a BlueROV2.
+"""Probe of a realistic directional sonar: ONE HoloOcean ``SinglebeamSonar`` on a BlueROV2.
 
-Questions (v2 brief, section 2): does it see (A) another BlueROV2, (B) an arena gate, (C) a runtime-spawned
+Questions: does it see (A) another BlueROV2, (B) an arena gate, (C) a runtime-spawned
 prop; what does it return (D); effective range (E); opening angle (F); behaviour near the surface (G) and the
 seabed (H); noise (I); update rate and cost (J); octree pitfalls (K).
 
@@ -11,7 +11,7 @@ moving octrees.  A runtime prop is therefore visible only if it already existed 
 was first computed.  The sessions below test exactly that:
 
   k1  sonar declared in the scenario (octree built inside ``reset()``), gates + box spawned afterwards
-      (the v1 order)                                    -> reproduces "runtime props are invisible"
+                                                        -> reproduces "runtime props are invisible"
   k2  fresh project cache, gates + box spawned FIRST, sonar attached afterwards with ``add_sensors``
                                                         -> props, vehicles, range, FOV, noise, surface,
                                                            seabed, timing

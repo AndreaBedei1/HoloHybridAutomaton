@@ -1,5 +1,4 @@
-"""Communication-free critical-region rule on sector patterns (sampled checks; the proofs are in
-formal/check_mutex.py)."""
+"""Communication-free critical-region rule on sector patterns (sampled checks; the proofs are in formal/check_mutex.py)."""
 
 import math
 import random

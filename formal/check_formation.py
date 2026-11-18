@@ -30,14 +30,14 @@ F6  bounded waiting (P3-deg): the missing timer of a neighbour that never reappe
     (t_rejoin - tau decreases by dt in every step in which the drone holds its slot and the shared clock
     moves); a BMC over ceil(t_rejoin / dt) + 1 such steps shows that the slot is declared vacant, neighbors_ok
     holds again and the edge out of FORMATION_WAIT_REJOIN is enabled: no drone waits forever.  Fm4: without
-    the timeout (the v2 baseline: a missing neighbour kept the drone in FORMATION_RECOVERY) the same run
+    the timeout (a missing neighbour keeps the drone in FORMATION_RECOVERY) the same run
     waits for ever (counterexample);
 F5  current envelope: for every head current admitted by the control-feasible envelope evaluated
     at the recovery speed V, the deliverable along-track speed is >= V, so the saturated band of F1 keeps
     its margin; the same parameters as the runtime (plant curve, AUTHORITY, v_clock, V);
 Fm  mutations: no catch-up margin (v_recovery = v_clock) must break F1; k_slot = 0 must break F2;
     the envelope evaluated at the survey speed only (Fm3) admits head currents with which the catch-up
-    margin of F1 vanishes; the v1-v2 scalar bound |w| <= 0.6 m/s (Em1) admits head currents with which
+    margin of F1 vanishes; a scalar bound |w| <= 0.6 m/s (Em1) admits head currents with which
     not even the survey speed is deliverable.
 
 Raw current, controller authority, residual drift.  The ranking model works with the RESIDUAL w after the

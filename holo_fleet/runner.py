@@ -1,10 +1,10 @@
-"""Run one scenario in HoloOcean (v2): controllers (onboard only) + referee (ground truth only).
+"""Run one scenario in HoloOcean: controllers (onboard only) + referee (ground truth only).
 
 Writes results/<run_id>/: run_config.json, events.jsonl, drone_<k>_state.jsonl,
 referee_timeseries.csv, referee_metrics.json, sensor_audit.json, summary.csv, perf.json and (optionally)
 camera / fleet-view frames for GIFs.  A run that does not reach its end writes ``status: INCOMPLETE``.
 ``noise`` (sim.sensor_noise.NoiseProfile) degrades the onboard sensors, ``seed`` overrides the scenario seed
-(every seeded simulator-side effect); ``cfg.beacon`` enables the B2 one-way acoustic beacon (identity pings only).
+(every seeded simulator-side effect); ``cfg.beacon`` enables the one-way acoustic beacon.
 """
 
 from __future__ import annotations
@@ -85,8 +85,8 @@ def run(name: str, out_root: Path, headless: bool = True, run_id: Optional[str] 
         terminal: Optional[Dict] = None) -> Dict:
     """``noise_drones``: indices of the drones that receive ``noise`` (None: all; the others keep the deployed
     sensors).  ``terminal``: {"profile": sensor-profile name, "deadline_s": optional override} ends the run on SUCCESS,
-    FAILURE or DEADLINE (referee/terminal.py, criteria v3) instead of at the scenario duration; the horizon is then the
-    deadline, by default referee/criteria.deadline_v3 of the scenario and profile.  ``terminal["linger_s"]`` keeps
+    FAILURE or DEADLINE (referee/terminal.py) instead of at the scenario duration; the horizon is then the
+    deadline, by default referee/criteria.horizon_v5 of the scenario and profile.  ``terminal["linger_s"]`` keeps
     simulating that many seconds after the outcome (demos: the final fleet stays on screen); default 0."""
     sc: Scenario = SCENARIOS[name](cfg)
     if sc.cfg_patch:

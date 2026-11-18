@@ -1,4 +1,4 @@
-"""The heading loop has an integral action: a steady yaw moment does not leave a standing error (a queued drone keeps its heading tolerance through a long wait)."""
+"""The heading loop has integral action: a steady yaw moment leaves no standing heading error."""
 
 import math
 

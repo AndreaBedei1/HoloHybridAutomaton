@@ -1,14 +1,13 @@
-"""Onboard perception of one drone (v2): six sonar profiles + DVL + IMU + compass + depth -> observation.
+"""Onboard perception of one drone: six sonar profiles + DVL + IMU + compass + depth -> observation.
 
 Only data a real vehicle has is used: its own sensors and the mission plan (survey line, formation
-template, gate map).  No simulator state, no neighbour identity, no communication.  Near a mapped gate the
-dead-reckoning position is corrected against the gate map (perception/structure_aiding.py).
+template, gate map); no simulator state.  Near a mapped gate the dead-reckoning position is corrected against
+the gate map (perception/structure_aiding.py).
 
-Missing neighbours (lost-drone handling).  Every expected neighbour that should be visible and
-is not seen is MISSING; its timer runs only while the drone itself holds its slot (FORMATION_FOLLOW,
-FORMATION_WAIT_REJOIN, DEGRADED_FORMATION: a drone that is itself lost or avoiding cannot judge the
-others) and while the shared clock moves at the drone's own formation time (planned holds such as the
-rendezvous beyond a gate are not absences; control/formation_time.py).  After ``t_rejoin`` of missing
+Missing neighbours.  Every expected neighbour that should be visible and is not seen is MISSING; its timer runs
+only while the drone itself holds its slot (FORMATION_FOLLOW, FORMATION_WAIT_REJOIN, DEGRADED_FORMATION) and while
+the shared clock moves at the drone's own formation time (planned holds are not absences;
+control/formation_time.py).  After ``t_rejoin`` of missing
 time the slot is declared VACANT (a latch: ``degraded``); a vacant slot is no longer required, so the
 drone continues in DEGRADED_FORMATION on its own original slot.  A neighbour becomes MISSING when it is
 not seen for NEIGHBOUR_MEMORY_S and counts as back only when CONFIRMED near its slot (at least ``CONFIRM_N``
@@ -18,9 +17,9 @@ formation is complete by plan (every neighbour counts as seen at the first updat
 
 Association is not identification.  A range-only sonar sees that something is where a slot expects its drone, not
 which drone it is: a displaced neighbour at the right range in a compatible sector fits a missing or vacant slot.
-An association identifies the neighbour (counts toward a confirmation) only when every other required neighbour that
-is not vacant is accounted for at the same step - matched by its own echo, or (B2) located by a fresh accepted fix,
-whose echo is then that drone's (formation_perception.check_formation) - so that no other drone can be the echo.
+An association identifies the neighbour (counts toward a confirmation) only when every other required, non-vacant
+neighbour is accounted for at the same step - matched by its own echo, or (B2) located by a fresh accepted fix
+(formation_perception.check_formation) - so that no other drone can be the echo.
 Otherwise the uncertainty is kept: the association still counts as a sighting (no new MISSING), but it neither
 brings a missing neighbour back, nor resets its timer, nor re-includes a vacant slot.
 
@@ -29,17 +28,14 @@ Variant B2 (range-bearing beacon, perception/acoustic.py).  Identified fixes ent
 * gate: a second way to an exit witness of the CR latch (perception/acoustic_gate.py);
 * association: a sonar echo is associated with a neighbour where its fix places it (formation_perception);
 * presence (rule A-P): while the latest accepted fix is fresh (``acoustic.fresh_s``: one lost ping plus the
-  latency) and within ``e_lost`` plus the uncertainty of the fix (its error region, ``fix_uncertainty``) of the neighbour's
-  expected position (without it, two drones 7 m apart with opposite compass biases never counted each other present: st1
-  st_lost_middle s2000, a mutual wait), the neighbour counts as sighted now for the
-  NEIGHBOUR_MEMORY_S timer (a drone occluded for the sonar but heard where it should be is not missing); it never
-  confirms a MISSING neighbour back (only the sonar confirmation does) and never clears a vacancy;
+  latency) and within ``e_lost`` plus the uncertainty of the fix (``fix_uncertainty``) of the neighbour's expected
+  position, the neighbour counts as sighted now for the NEIGHBOUR_MEMORY_S timer (a drone occluded for the sonar but
+  heard where it should be is not missing); it never confirms a MISSING neighbour back (only the sonar confirmation
+  does) and never clears a vacancy;
 * ahead (veto): the latest fresh fix puts the neighbour more than ``e_lost`` plus the white-noise band AHEAD of where
-  the own (possibly delayed) formation time places its slot, on its lane (decided like A-P, before the sonar memory
-  runs out, at the deployed ping period): the own reference
-  is the one behind, and slowing for the neighbour would widen the gap (the positive feedback that let the private
-  formation times diverge).  It vetoes a NEW missing episode only, for at most t_rejoin; an existing episode and
-  its vacancy timer are kept;
+  the own (possibly delayed) formation time places its slot, on its lane: the own reference is the one behind, and
+  slowing for the neighbour would widen the gap.  It vetoes a NEW missing episode only, for at most t_rejoin; an
+  existing episode and its vacancy timer are kept;
 * displacement (rule A-D): ``A_CONFIRM`` consecutive accepted fixes whose whole error region lies farther than
   ``e_lost`` + ``A_DISPLACED_MARGIN`` from the neighbour's expected position, unless it is under the "ahead" veto
   below, declare it MISSING at once (and keep it so: no sonar confirmation while the fixes say otherwise);
@@ -56,7 +52,7 @@ Variant B2 (range-bearing beacon, perception/acoustic.py).  Identified fixes ent
   directly: it replaces the range-bearing point estimate for the lag and the "ahead" veto, with the band e_ok (the
   neighbour's own in-formation tolerance) plus its largest speed deviation from the clock over the payload's age.
   A_CONFIRM payloads of one track farther than e_lost + A_DISPLACED_MARGIN + band from the slot are rule A-D;
-* vacancy by silence (v11): the failure model of the deployment is the total one - a broken drone stops transmitting -
+* vacancy by silence: the failure model of the deployment is the total one - a broken drone stops transmitting -
   so with the beacon active a slot is vacant exactly when its drone has not been heard for ``form.t_silent_s``
   (config.FormationRule), whatever the observer's own mode or position; displacement alone never makes a slot
   vacant, and a drone heard again is required again;
@@ -322,7 +318,7 @@ class Perception:
     def payload(self, t_emit: float):
         """What this drone sends in its B2 beacon payload (H6) at t_emit: its onboard position estimate and the error
         bound, grown by the speed bound over the age of the estimate (inf, sent as invalid, after an integrity
-        failure), and its own gate phase (payload v2, set by the controller each step)."""
+        failure), and its own gate phase (set by the controller each step)."""
         if self.t_nav is None:
             return None
         return (self.nav.state.p.copy(), self.nav_bound.value + self.acoustic.v_bound * max(0.0, t_emit - self.t_nav),
@@ -405,9 +401,8 @@ class Perception:
 
         A neighbour k holding its slot is measured at d_k + (slot - p) + e, d_k the template offset, (slot - p) the own
         displacement from the slot and e the relative navigation error; two opposite compass biases give e of 1-2 m after a
-        30 m run.  The lanes of the plan are then nearer in reality than the spacing, and a drone returning from behind runs
-        into the separation band of the neighbour of the next lane for good (MEDIUM-ALL formation_gust s912,
-        lost_drone_rejoin s911).  Only neighbours that report being near their slot count, the identified fix being the
+        30 m run.  The lanes of the plan are then nearer in reality than the spacing, and a drone returning from behind can
+        stay in the separation band of the neighbour of the next lane.  Only neighbours that report being near their slot count, the identified fix being the
         measurement (no association of echoes is involved); with (slot - p) taken with the correction in, the residual goes
         to zero with the correction.  Near the slot the ordinary consensus acts instead."""
         fr = self.cfg.form

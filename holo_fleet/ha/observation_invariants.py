@@ -174,6 +174,6 @@ def consistent(o, cfg: FleetConfig = DEFAULT) -> bool:
 
 
 def table() -> List[Dict[str, str]]:
-    """Documentation rows (README / REPORT / formal summary)."""
+    """Documentation rows (README / formal summary)."""
     return [{"name": inv.name, "formula": inv.formula, "meaning": inv.meaning, "why": inv.why,
              "excludes": inv.excludes} for inv in INVARIANTS]

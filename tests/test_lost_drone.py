@@ -1,6 +1,4 @@
-"""Lost drones without communication: missing timers, slot vacancy, the timeout derived from the
-catch-up, the reduced progress of a waiting formation (local formation time), the formation-keeping modes and
-their transition reasons, rejoin from behind, the envelope clear rule and the referee's degraded verdict."""
+"""Lost drones without communication: missing timers, slot vacancy, reduced progress, formation-keeping modes, rejoin, degraded verdict."""
 
 import dataclasses
 
@@ -257,7 +255,7 @@ def test_missing_neighbour_is_declared_vacant_after_t_rejoin_and_reincluded():
 
 
 def test_isolated_spurious_association_does_not_end_the_wait():
-    """A single echo of another neighbour that fits the missing one's range gate (seen in the logs, once every
+    """A single echo of another neighbour that fits the missing one's range gate (once every
     1-2 s) neither ends FORMATION_WAIT_REJOIN nor resets the timer; a confirmed return does."""
     p = Perception(_plan(0), DEFAULT)
     o, t = _run(p, 0.0, 3.0, {1, 2, 3})
@@ -300,7 +298,7 @@ def _obs(**kw):
 
 def test_a_stacked_pair_seen_from_the_side_is_confirmed_as_a_group():
     """Seen from the right drone of the stack_pair template, the upper and the lower drone are in LEFT at the same
-    range: one echo for both (seen in the mutex_deadlock_resolution run).  A range-only sonar cannot separate them, so
+    range: one echo for both.  A range-only sonar cannot separate them, so
     one association confirms both; otherwise one of them would be missing for ever and declared vacant."""
     from holo_fleet.perception.formation_perception import check_formation
 
@@ -390,8 +388,7 @@ def test_rejoin_from_behind_never_cuts_across_the_fleet():
 
 def test_rejoin_to_a_slot_with_a_drone_behind_it_on_its_lane_passes_below_it():
     """A slot with another slot behind it on the same lane (square front drones, the tee centre drone) cannot be
-    reached from behind along the lane: the drone of the rear slot is in the way (v8 campaign, p1_vertical_escape
-    LOW s502: the tee centre drone held 2.9 m behind the rear drone for 250 s).  The rejoining drone passes on a
+    reached from behind along the lane: the drone of the rear slot is in the way.  The rejoining drone passes on a
     level pass_dz below (above if the depth band has no room), descending first, and rises only past it."""
     plan = _plan(0)
     fl = Flows(plan, DEFAULT)
@@ -444,7 +441,7 @@ def test_rejoin_to_a_slot_with_a_drone_behind_it_on_its_lane_passes_below_it():
 
 def test_failsafe_cancels_a_give_way():
     """A head-on give-way decided while holding in FAILSAFE would displace the target after the drone resumes
-    (seen in the lost_drone_rejoin run: a closing-rate spike of a re-acquired echo)."""
+    (a closing-rate spike of a re-acquired echo)."""
     fl = Flows(_plan(2), DEFAULT)
     tg = Target(pattern=frozenset({"FRONT"}), r_min=5.0, d_lower=5.0, age=0.0, closing_rate=1.4, cls="DYNAMIC")
     obs = SimpleNamespace(t=0.0, p=np.zeros(3), R_wb=np.eye(3), yaw=0.0, targets=[tg])
@@ -504,7 +501,7 @@ def test_referee_declares_a_drone_absent_and_judges_the_degraded_formation():
 
 
 def test_no_give_way_while_catching_up_with_the_own_fleet():
-    """Seen in a lost_drone_rejoin probe: a drone rejoining from behind at the catch-up speed sees the drone
+    """A drone rejoining from behind at the catch-up speed sees the drone
     ahead close in its FRONT sector faster than the head-on threshold and, 3 m behind its slot, does not recognise
     it as a neighbour; a give-way decided then pushed it 2 m towards the next lane."""
     plan = _plan(2)

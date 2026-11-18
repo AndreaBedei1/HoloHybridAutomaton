@@ -1,7 +1,7 @@
 """B2 beacon payload (hardware assumption H6): the bits a drone sends with its TDMA identity ping.
 
 Strictly one-way: the payload is the sender's ONBOARD navigation estimate in the shared mission frame, a conservative
-bound of its error (perception/nav.py, NavBound) and, since v11, its own gate phase.  No request, reply, acknowledgement,
+bound of its error (perception/nav.py, NavBound) and its own gate phase.  No request, reply, acknowledgement,
 queue position, mode or control command is ever sent: the gate phase is a statement of fact about the sender's own
 state at the gate (never a request, an order or a grant of precedence), used by the receivers only to exclude the sender
 as a possible occupant of a critical region, or as positive evidence of occupancy (perception/acoustic_gate.py).  The
@@ -14,7 +14,7 @@ packet is 64 bits (8 bytes):
   depth         8  -z, unsigned, 0.05 m (0 - 12.75 m; the operating band is 1.5 - 9 m)
   bound         6  error-ball radius, rounded UP after adding the quantisation error: 0 - 3.9 m in 0.10 m steps, then
                    0.50 m steps up to 15.4 m; 63 = invalid (the integrity monitor flags its own bound, NavBound.invalid,
-                   or a bound beyond the representable range: v10 saturated at 6.2 m and lost the payload there)
+                   or a bound beyond the representable range)
   gate index    2  index (mod 4) of the gate the phase refers to
   gate phase    2  GP_NONE not engaged with that gate / GP_COMMITTED committed, held before the CR, not admitted /
                    GP_ADMITTED admitted, possibly inside the CR / GP_PASSED passage verified onboard (perception/passage.py)

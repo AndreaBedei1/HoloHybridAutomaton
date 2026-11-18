@@ -38,7 +38,7 @@ occupant at t_lc only when both regions allow it (A1), and is beyond the exit fa
 histories of the range-bearing measurement alone (a drone beyond the exit with a +3 m excess) are separated by the
 independent navigation estimate.  An inconsistent or missing payload leaves the measurement-only rules.
 
-Gate phase (payload v2, perception/payload.py).  A drone reports its own phase with this gate.  It is used only to exclude
+Gate phase (perception/payload.py).  A drone reports its own phase with this gate.  It is used only to exclude
 it as a possible occupant, or as positive occupancy, never to give precedence.  GP_COMMITTED / GP_ADMITTED of another drone
 hold the latch BUSY until the drone reports otherwise or is dead (below).  A drone inside the keep-out box reports a claim whatever its history (passage.report_phase), so a drone carried into
 the CR uncommitted, or back after a passage, does not report that it is not there.  GP_NONE or a phase of another gate excludes a

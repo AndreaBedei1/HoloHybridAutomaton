@@ -1,6 +1,6 @@
-"""Gate events E1-E8 and the gate liveness monitor (REFEREE side, criteria v3; offline, from the logs of a run).
+"""Gate events E1-E8 and the gate liveness monitor (REFEREE side; offline, from the logs of a run).
 
-P2 itself is unchanged: G(sum_i inside_CR_i <= 1) on ground truth (E5).  The events separate what the drones
+P2 is G(sum_i inside_CR_i <= 1) on ground truth (E5).  The events separate what the drones
 believed, what they decided and what physically happened, in the terms of hazard analysis (STPA: Leveson, Engineering
 a Safer World, MIT Press 2012, doi:10.7551/mitpress/8179.001.0001): a wrong belief is a flaw of the controller's
 process model; it is hazardous only through an UNSAFE CONTROL ACTION, here an authorisation to enter an occupied CR.
@@ -33,7 +33,7 @@ doi:10.1145/302405.302672), with bounds taken from the protocol (config.GateRule
             counted from its FIRST commit to the gate: a give-up (ABORT_PASS) and a later re-commit do not reset the
             obligation;
   A-cross   the latch model's premise (formal M3): every CR dwell <= t_occ_max (reported as a validity flag).
-A drone that went around the frame (GATE_BYPASS) no longer takes part in the idle check from the instant it is beyond
+A drone that went around the frame (GATE_BYPASS) does not take part in the idle check from the instant it is beyond
 the exit (its passage requirement fails separately).  A violation is a liveness failure whether or not the run
 completes later (class STALLED).  An open interval at the end of the log is a violation once it exceeds its bound,
 and inconclusive only while it is shorter (finite-trace semantics).

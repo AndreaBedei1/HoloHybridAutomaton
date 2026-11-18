@@ -1,4 +1,4 @@
-"""One drone's controller (v2): perception -> hybrid automaton -> mode flow -> low-level -> thrusters.
+"""One drone's controller: perception -> hybrid automaton -> mode flow -> low-level -> thrusters.
 
 Identical code on every drone; inputs are only the drone's own SensorFrame (six sonars, DVL,
 IMU, compass, depth) and its mission plan.  ``uses_ground_truth`` is checked by the tests.
@@ -295,8 +295,9 @@ class DroneController:
                             "dz": None if dz is None else round(dz, 3), "correction": np.round(corr, 3).tolist()})
 
     def _drain_flow_events(self, t: float, mode: Mode) -> None:
-        """The events of the flows (ENTRY_HOLD_TIMEOUT of stage 2, flows.gate; PAST_CENTRE).  A hold that ends with no valid localization undoes the corrections of this commitment not confirmed by a validated fit (a recovery heuristic, structure_aiding).
-        The step waits for the give-up edge: while committed, a jump of the estimate would feed the position-gated transitions of the hold (past_centre, the give-up plane, flows.gate)."""
+        """Log the flow events (ENTRY_HOLD_TIMEOUT, PAST_CENTRE).  A hold that ends with no valid localization undoes the
+        corrections of this commitment not confirmed by a validated fit, only after the give-up edge: while committed, a
+        jump of the estimate would feed the position-gated transitions of the hold (past_centre, give-up plane)."""
         if self.ha.committed and not self.was_committed:
             self.perception.aiding.start_commitment()
         self.was_committed = self.ha.committed
@@ -311,7 +312,7 @@ class DroneController:
                 self.events.append({"t": t, "type": "UNCONFIRMED_CORRECTIONS_UNDONE", "correction": np.round(c, 3).tolist()})
 
     def _update_gate_report(self, t: float, dt: float, obs: LocalObservation) -> None:
-        """Gate phase this drone reports about itself (payload v2): the facts of its own automaton and flow, never a command
+        """Gate phase this drone reports about itself (acoustic payload): the facts of its own automaton and flow, never a command
         or a request.  It stays on the gate of an unfinished passage until that passage is verified."""
         p, gp = self.passage, self.perception.gp
         if p.idx != gp.idx and not p.in_progress and (not p.verified or self.ha.committed):

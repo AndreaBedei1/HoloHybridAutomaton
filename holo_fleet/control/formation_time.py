@@ -16,7 +16,7 @@ which a waiting drone declares the slot vacant and continues at the planned spee
 ``tau`` is kept afterwards: the formation stays behind the plan by tau seconds, it does not speed up to
 recover the schedule.
 
-Re-synchronisation (B2).  ``tau`` is private, so drones that slowed in different episodes - or falsely, on a
+Re-synchronisation (B2 fixes).  ``tau`` is private, so drones that slowed in different episodes - or falsely, on a
 neighbour missed by the sonar - end with different delays: their slots, each placed by its own formation time,
 drift apart along the track while every drone believes it is on its slot.  With identified fixes the drift is
 observable: a neighbour heard behind the slot the own clock places it at, by more than the white-noise band of the
@@ -27,8 +27,8 @@ on a NEW missing episode, perception rule "ahead") and keeps the planned speed. 
 largest one, as the progress consensus of coordinated path following (Ghabcheloo et al. 2009,
 doi:10.1137/060678993), here from sensed progress, without communication; with the dead band it is a PRACTICAL
 consensus: the residual offset is bounded by the band (k_sigma * sigma_w(r), about 0.6-0.8 m at 3.5-5 m) plus the
-constant biases of the envelope, not driven to zero.  The speed stays in [v_wait, v_plan]: the same range as the reduced progress, so the
-catch-up margin of a recovering drone (formal F1) is unchanged.  Without receptions (a silent channel) only the
+constant biases of the envelope, not driven to zero.  The speed stays in [v_wait, v_plan], the same range as the
+reduced progress, so the catch-up margin of a recovering drone (formal F1) is unchanged.  Without receptions (a silent channel) only the
 same-lane rules below act.
 
 Who slows down, each from its own observation only:

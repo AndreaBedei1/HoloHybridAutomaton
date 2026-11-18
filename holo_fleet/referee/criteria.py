@@ -1,4 +1,4 @@
-"""Acceptance criteria v3 (REFEREE side): a-priori requirements and deadlines from the mission plan, the protocol's
+"""Acceptance criteria (REFEREE side): a-priori requirements and deadlines from the mission plan, the protocol's
 own bounds and the definition of the sensor profiles, never from runs of the system under test.
 
 Every constant is labelled by its provenance:
@@ -25,8 +25,7 @@ Requirements of a run (the same set is used by the online TerminalMonitor and th
                gate longer than the protocol's slowest release, and no committed healthy drone takes longer than its
                crossing budget (L / v_pass + t_occ_max + t_clear).
 
-One band E_TOL_M opens and closes an episode (recovery needs T_HOLD_S inside the band): the v2 pair e_lost 1.2 /
-e_ok 0.5 left a band in which an error never opened an episode.  T_HOLD_S is the 2 % settling time of the
+One band E_TOL_M opens and closes an episode (recovery needs T_HOLD_S inside the band).  T_HOLD_S is the 2 % settling time of the
 slot-tracking loop, 4 time constants of a first-order loop (Ogata, Modern Control Engineering): a transient crossing of
 the band does not count as recovery.  The run stops at the first SUCCESS instant, so a slow limit cycle whose in-band
 phase lasts longer than the hold is not excluded (a stated limit of the finite run).
@@ -46,8 +45,8 @@ T_nom and deadline (``deadline_v3``):
             quantile of its Poisson count over the horizon times (outage length + the freshness limit that ends the
             FAILSAFE, 0.35 s) [PROF].
 DEADLINE means "not done within this allowance", not a proof that a protocol bound was exceeded; deadlocks and
-bounded-response violations of the gate are judged separately (gate liveness; a generic no-progress detector outside
-the gate does not exist yet).  Comparisons between cells are to use time-to-SUCCESS with right censoring
+bounded-response violations of the gate are judged separately (gate liveness; there is no generic no-progress
+detector outside the gate).  Comparisons between cells are to use time-to-SUCCESS with right censoring
 (Kaplan-Meier, doi:10.1080/01621459.1958.10501452), so that a conclusion does not hinge on the deadline value.
 """
 
@@ -72,7 +71,7 @@ def t_hold_s(cfg) -> float:
 
 def progress_tol_m(cfg) -> float:
     """[PROT] the along-track lag the reduced progress may leave by design, t_rejoin (v_nominal - v_wait) (3.0 m with
-    the configured values; v2 used 3.0 m without a derivation)."""
+    the configured values)."""
     F = cfg.form
     return F.t_rejoin * (F.v_nominal - F.v_wait)
 

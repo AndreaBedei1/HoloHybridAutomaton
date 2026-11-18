@@ -2,8 +2,8 @@
 
 What the controller guarantees, on which evidence, under which premises, how each premise is monitored at run time and
 what happens when it fails. The formal checks are in `formal/` (`python formal/check_properties.py`, 300 checks, all
-with their expected verdict; `formal/results/SUMMARY.md`). The full evidence of every campaign, including the negative
-results, is in the versioned archive of the project (`MANIFEST.json` of each archive version).
+with their expected verdict; `formal/results/SUMMARY.md`). The raw runs of the final validation and the
+evidence of earlier campaigns are in the external archive (`MANIFEST.json` of each archive version).
 
 Kinds of evidence:
 
@@ -28,8 +28,8 @@ claimed, a model of the composition is checked (fleet model F0-F2), and its limi
 | The same with one vehicle reacting | BMC S1d at the simulator deceleration 0.743 m/s^2; SAT at the configured 0.5 m/s^2 (S1o) | the simulator calibration, not yet measured on a vehicle |
 | The escape opens every threat pattern | exhaustive numeric S2a-S2d | six-sector geometry |
 
-Monitors: referee P1 on ground truth in every run; echo-bound exceedance per run. When the echo bound fails (LOW 0.86 %
-of captures, MEDIUM 3.6 % on average), P1 is tested, not proved.
+Monitors: referee P1 on ground truth in every run; echo-bound exceedance per run. In the captures where the echo error
+leaves the declared band (the MEDIUM profile is a stress level beyond it), P1 is tested, not proved.
 
 ## P2, mutual exclusion: at most one vehicle centre in the critical region (CR) of a gate
 
@@ -45,11 +45,11 @@ Premises of P2 under B2, their monitors and the behaviour when they fail:
 
 | Premise | Monitor | When it fails |
 |---|---|---|
-| **V**: the channel never silences a live vehicle for 70 s at a receiver that hears another vehicle | `PREMISE_V_VIOLATED` per run | a live vehicle can be declared dead for the gate; observed only under the long-tail channel, with no wrong declaration |
-| **C**: a queued vehicle learns of a commitment (claim or corridor echo) before it commits; two that commit together learn of each other's claim before either is admitted | event-ordered audit (`referee/premise_audit.py`): SATISFIED, CONCURRENT, VIOLATED, INCONCLUSIVE | a lost claim lets a second vehicle commit; the stage-2 check then holds it until the CR is seen free (final validation: 64 pairs SATISFIED, none CONCURRENT, VIOLATED or INCONCLUSIVE in 34 runs) |
+| **V**: the channel never silences a live vehicle for 70 s at a receiver that hears another vehicle | `PREMISE_V_VIOLATED` per run | a live vehicle can be declared dead for the gate |
+| **C**: a queued vehicle learns of a commitment (claim or corridor echo) before it commits; two that commit together learn of each other's claim before either is admitted | event-ordered audit (`referee/premise_audit.py`): SATISFIED, CONCURRENT, VIOLATED, INCONCLUSIVE | a lost claim lets a second vehicle commit; the stage-2 check then holds it until the CR is seen free |
 | **H6**: the sender's navigation error lies within its sent bound | `NAV_BOUND_PREMISE_VIOLATED` | payload rules are not used as P2 evidence for that run |
 | Gate-frame navigation error of a committed vehicle <= 1 m | `GATE_NAV_PREMISE_VIOLATED` | admission waits for a validated fit; the run may end INCOMPLETE (the open localization class) |
-| Packets arrive within `latency_max_s` = 0.4 s | received / accepted / rejected / stale counts per run | late packets are dropped before decoding: the claims are lost and the gate runs on the sonar only (latency 0.45 s: 100 % stale; 0.35 s: 32.0 % stale) |
+| Packets arrive within `latency_max_s` = 0.4 s | received / accepted / rejected / stale counts per run | late packets are dropped before decoding: the claims are lost and the gate runs on the sonar only |
 
 The verification horizon of S2h (32 s) is the time a crossing vehicle may stop before the CR in a bounded model; it is
 not a delivery deadline. The bound on the use of a report is the freshness cutoff `status_fresh_s` (1.95 s for the
@@ -60,7 +60,7 @@ Declared limits (checked as satisfiable, not excluded):
 - F1p: two vehicles that commit together, with the claims learnt one step late, can both be moved into the CR by
   avoidance; F0q: a queued, uncommitted vehicle moved into the CR by avoidance breaks the invariant; F1pa: the escape
   planner is not antisymmetric along the gate axis, so the model cannot exclude either case. The referee logs every
-  CR entry as ADMITTED, PUSHED or UNCOMMITTED, with the vehicles inside at that instant (final validation: 64 entries, all ADMITTED);
+  CR entry as ADMITTED, PUSHED or UNCOMMITTED, with the vehicles inside at that instant;
 - a stopped occupant beyond the 32 s horizon with no claim heard (S2hs); a vehicle stopped in the CR by a fault and
   released by the `t_occ_max` fallback (M3f).
 
@@ -74,8 +74,28 @@ Declared limits (checked as satisfiable, not excluded):
 | The fleet re-forms from any state of the gate invariant once failures and stops end (26, 40, 52 steps of 5 s for n = 2, 3, 4) | proof F2 (bounded recovery) | at most n - 2 failures; fairness: a fresh fix within every 35 s |
 
 The ranking functions concern each vehicle's estimated slot, not the true formation; the P3 deadlines assume the nominal
-closing speed and are not proved. Monitors: P3a, P3b, P3c verdicts per run ([`P3_CONTRACT.md`](P3_CONTRACT.md));
-fairness gaps; false vacancies.
+closing speed and are not proved. Monitors: P3a, P3b, P3c verdicts per run (`referee/p3.py`); fairness gaps; false vacancies.
+
+The contract judged per run (offline, from ground truth; tolerance E_TOL = 1 m held for T_HOLD = 8.9 s):
+
+- **P3a**, slot recovery after the gate: each healthy vehicle that has crossed is back within E_TOL of its template slot,
+  relative to the vehicles already across, within its deadline;
+- **P3b**, fleet formation: after the last crossing (or the last declared disturbance) the formation error of the healthy
+  vehicles on their slots is within E_TOL within its deadline;
+- **P3c**, degraded formation after an admissible permanent failure: every neighbour of the lost vehicle declares its slot
+  vacant within 47 s (the last survivor within `t_rejoin` = 30 s of its timer), no slot of a live vehicle is held vacant,
+  and P3b then holds for the survivors.
+
+Deadline D = e0 / 0.10 m/s + 5 s + T_HOLD (e0 the error at the start of the window), extended by the time spent in a mode
+that pre-empts the formation (P1 first, failsafe) and inside declared disturbance windows. D is a requirement on the
+nominal dynamics, not the proved bound. A part not met is PREMISE_VIOLATED only when a premise is measured on ground
+truth: W (current within the control authority), N (onboard horizontal error <= 0.5 m), A (acoustics, P3c), O (no dead
+hull obstructing the path), S (failures outside the exclusion zone of `scope.py`, at most n - 2), plus fairness.
+
+Run classes (`referee/robustness_metrics.py refine_v8`): PASS (mission complete, every applicable part of P3 met);
+P3_LATE (a part met after its deadline); P3_FAILURE (a part never met with the premises held); PREMISE_VIOLATED;
+INCOMPLETE (gate or progress not reached with the premises held); SAFETY_FAILURE, UNSAFE_ACTION, INVALID.
+
 
 ## Isolation of the beacon
 
@@ -83,15 +103,24 @@ Beacon data never reach separation, collision avoidance, the gate precedence or 
 B2-S, `tests/test_b2_isolation.py`); controllers never read ground truth (`tests/test_isolation.py`). The beacon is
 strictly one-way: no request, reply, acknowledgement or command.
 
-## Empirical evidence
+## Empirical evidence: final validation
 
-| Batch | Runs | Result |
-|---|---|---|
-| Final campaign, `b2-freeze-v11` | 448 | P1, P2 in all; every v8 criterion met |
-| Post-freeze validation (communication sweep, emergence) | 164 (80 held-out communication runs, 20 held-out emergence runs, 64 pilot) | P1, P2 in all |
-| Final validation of the restored controller, fresh seeds 8000-8001 (`--phase validation`) | 34 | P1 (min 2.84 m), P2 in all; 31 PASS; B0 `lost_drone_mutex` 2 P3_FAILURE (false vacancy, the declared B0 limit), B0 `integrated_short` 1 P3_LATE; packets accepted at latency 0.35 / 0.45 s: 67.4 % / 0 % (32.0 % / 100 % stale), B2 MEDIUM 97.4 %; one commit, clean tree, one engine build |
+`python scripts/run_sensor_robustness_campaign.py --phase validation`: 34 runs, seeds 8000-8001, all from one clean
+commit (d5f424e) and one engine build. Empirical, not proved.
 
-Declared limits of liveness (safety held in every case observed): a failure at or near the queue in still water (the
+| Protocol / profile | Scenarios | Runs | Result |
+|---|---|---|---|
+| B2 MEDIUM / MEDIUM-ALL | p1_head_on, formation_six, lost_drone_rejoin, gate_single, mutex_deadlock_resolution, lost_drone_mutex, integrated_short | 14 | 14 PASS |
+| B0 / LOW-ALL | the same seven | 14 | 11 PASS; `lost_drone_mutex` 2 P3_FAILURE (false vacancy); `integrated_short` s8000 P3_LATE |
+| B2 latency 0.35 s and 0.45 s / LOW-ALL | gate_single | 4 | 4 PASS |
+| B2 MEDIUM / MEDIUM-ALL | gate_four | 2 | 2 PASS |
+
+- P1 and P2 held in all 34 runs; smallest true separation 2.84 m; at most one vehicle in the CR.
+- Premise C audit: 64 pairs SATISFIED, 0 CONCURRENT, 0 VIOLATED, 0 INCONCLUSIVE. CR entries: 64, all ADMITTED.
+- Packets accepted on board: B2 MEDIUM 97.4 % (0 stale); latency 0.35 s 67.4 % (32.0 % stale); latency 0.45 s 0 %
+  (100 % stale).
+
+Declared limits of liveness: a failure at or near the queue in still water (the
 floating hull blocks the sonar-only precedence); the localization at the gate (lateral error with an ambiguous map fit,
 sensitive to compass bias); two vehicles, or the last survivor, after a failure while committed; a failure within the
 onboard margin of the exclusion zone ends in a safe stop; without a beacon (B0) a lost vehicle is vacated by a heuristic
@@ -103,6 +132,5 @@ the P3 contract were set during development; HoloOcean's own sensor noise is uns
 statistically, not bit for bit (the wrapper noise, the acoustic channel and the controllers are seeded and
 deterministic; every run records commit, engine build, configuration and seeds in `run_config.json`).
 
-The controller is the one frozen as `b2-freeze-v11`: its code is identical to that tag apart from comments and two
+The controller is the one frozen as `b2-freeze-v11`: its code is identical to that tag apart from comments and
 ablation switches whose defaults keep the frozen behaviour (`FormationRule.neighbour_adaptation`, the sweep channels).
-Earlier controller variants and their evaluations are kept in the archive.

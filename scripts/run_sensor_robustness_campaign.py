@@ -1,7 +1,7 @@
-"""B0 / B2 robustness campaign orchestrator (headless HoloOcean, resumable, optionally sharded).
+"""Campaign runner (headless HoloOcean, resumable, optionally sharded).
 
-    python scripts/run_sensor_robustness_campaign.py --phase final [--dry-run]
-    python scripts/run_sensor_robustness_campaign.py --phase validation --raw <root>   # VALIDATION, seeds 8000-8001
+    python scripts/run_sensor_robustness_campaign.py --phase final --raw <root> [--dry-run]   # 448 runs, seeds 5000-5404
+    python scripts/run_sensor_robustness_campaign.py --phase validation --raw <root>          # 34 runs, seeds 8000-8001
     python scripts/run_sensor_robustness_campaign.py --phase targeted --only lost_drone_timeout \
         --protocols B0 B2_CLEAN --profiles CLEAN LOW-ALL --seeds 0 --raw <root>
 
@@ -14,7 +14,7 @@ Bulky per-step logs (drone_*_state.jsonl) are gzip-compressed after the analysis
 HoloOcean instance at a time (``--shard i --nshards n``: n orchestrators on disjoint slices); after every run the
 Holodeck.exe processes started by that run (and only those) are terminated if still alive.
 
-Protocols: B0 (communication-free) and B2_<channel level> (one-way acoustic identity beacon, sim/acoustic_channel.py).
+Protocols: B0 (no beacon) and B2_<channel level> (one-way acoustic beacon, sim/acoustic_channel.py); see README.md.
 Profiles: CLEAN or <LEVEL>-<SCOPE> (sim/sensor_noise.py; scope ONE / SUBSET / ALL, scope_drones).  Every run ends
 on SUCCESS / FAILURE / DEADLINE (referee/terminal.py, criteria v3); the deadline is a priori, from the mission plan
 and the protocol bounds (referee/criteria.deadline_v3), the same for every protocol and cell.
@@ -40,14 +40,13 @@ sys.path.insert(0, str(ROOT))
 from holo_fleet.sim.engine_lease import owned_engine, worker_engines
 
 RAW = ROOT / "results" / "robustness" / "raw_final"
-DEMOS = ROOT / "results" / "reference"
 SEEDS = (0, 1, 2)
 ALL_SCENARIOS = ("p1_head_on", "p1_vertical_escape", "p1_two_lines", "p1_close_encounter", "formation_triangle",
                  "formation_square", "formation_six", "formation_recovery_head_current", "formation_gust", "gate_single",
                  "integrated_short", "lost_drone_rejoin", "lost_drone_rejoin_front", "lost_drone_timeout", "mutex_deadlock_resolution",
                  "line_parallel_mutex", "lost_drone_mutex")
 PY = sys.executable
-# Final validation of the controller (b2-freeze-v11 restored): fixed matrix and fresh seeds, never used before.
+# Final validation: fixed matrix, seeds not used by any earlier campaign.
 # Each entry: (protocols, profiles, scenarios); every cell runs every seed of VALIDATION_SEEDS.
 VALIDATION_SEEDS = (8000, 8001)
 VALIDATION = (
@@ -61,51 +60,26 @@ VALIDATION = (
 
 
 def scope_drones(scenario: str, scope: str) -> list:
-    """Drones that receive the degraded profile (deterministic, from the committed CLEAN reference run):
-    ONE    = the healthy drone that comes closest to another vehicle (drone or non-cooperative vehicle) or to a gate
-             bar in the reference (the drone whose sensing matters most; ties: lowest index);
-    SUBSET = ceil(n / 2) healthy drones: ONE and the next healthy drones by index (cyclic);
-    ALL    = every drone."""
-    import csv
-
-    import numpy as np
-
+    """Drones that receive the degraded profile.  ALL: every drone.  ONE: the healthy drone that came closest to
+    another vehicle or to a gate bar in the CLEAN reference run of the scenario; SUBSET: ceil(n / 2) healthy drones, ONE
+    and the next ones by index (cyclic).  ONE and SUBSET are fixed in config/scope_drones.json."""
     from holo_fleet.config import DEFAULT
     from holo_fleet.sim.scenarios import SCENARIOS
 
-    sc = SCENARIOS[scenario](DEFAULT)
-    n = len(sc.sim.names)
     if scope == "ALL":
-        return list(range(n))
-    lost = {f["drone"] for f in getattr(sc.sim, "faults", ()) or () if f.get("t_off") is None}
-    healthy = [k for k in range(n) if sc.sim.names[k] not in lost]
+        return list(range(len(SCENARIOS[scenario](DEFAULT).sim.names)))
+    table = json.loads((ROOT / "config" / "scope_drones.json").read_text(encoding="utf-8"))
     ref_name = {"lost_drone_rejoin_front": "lost_drone_rejoin"}.get(scenario, scenario)
-    rows = list(csv.DictReader(open(DEMOS / ref_name / "referee_timeseries.csv", encoding="utf-8")))
-    P = np.array([[[float(r[f"{a}{k}"]) for a in "xyz"] for k in range(n)] for r in rows])
-    bars = [b for st in sc.plans[0].structures for b in st.bars]
-    near = np.full(n, 1e9)
-    for k in range(n):
-        for j in range(n):
-            if j != k:
-                near[k] = min(near[k], np.linalg.norm(P[:, k] - P[:, j], axis=1).min())
-        if rows[0].get("ix0"):
-            q = np.array([[float(r["ix0"]), float(r["iy0"]), float(r["iz0"])] for r in rows])
-            near[k] = min(near[k], np.linalg.norm(P[:, k] - q, axis=1).min())
-        for b in bars:
-            d = np.maximum(np.abs((P[:, k] - b.center) @ b.axes) - b.half, 0.0)
-            near[k] = min(near[k], np.linalg.norm(d, axis=1).min())
-    one = min(healthy, key=lambda k: (round(float(near[k]), 2), k))
-    if scope == "ONE":
-        return [one]
-    order = [(one + i) % n for i in range(n)]
-    return sorted([k for k in order if k in healthy][:(n + 1) // 2])
+    if ref_name not in table:
+        raise SystemExit(f"no fixed {scope} drones for {scenario} (config/scope_drones.json)")
+    return list(table[ref_name][scope])
 
 
 def plan(phase: str, seeds, only=None, protocols=None, profiles=None):
     """Runs (protocol, profile, scenario, seed); deadlines are a priori (criteria v3), so no run depends on another.
-    ``final``: the campaign matrix; ``validation``: VALIDATION; ``targeted``: --only scenarios x --protocols x --profiles."""
+    ``final``: the final campaign; ``validation``: VALIDATION; ``targeted``: --only scenarios x --protocols x --profiles."""
     if phase == "final":
-        runs = final_matrix(seeds or SEEDS, only)
+        runs = final_matrix(seeds, only)
     elif phase == "validation":
         runs = [(proto, prof, sc, s) for protos, profs, scs in VALIDATION for sc in scs for prof in profs for proto in protos
                 for s in (seeds or VALIDATION_SEEDS) if not only or sc in only]
@@ -122,26 +96,23 @@ def plan(phase: str, seeds, only=None, protocols=None, profiles=None):
     return list(dict.fromkeys(runs))
 
 
-def final_matrix(seeds, only=None) -> list:
-    """B0 vs B2 on the same scenarios and seeds (provisional: redefined when the final plan is frozen):
-    * sensors CLEAN, LOW-ALL and MEDIUM-{ONE,SUBSET,ALL}: B0, and B2 with the channel at the sensors' level (LOW-ONE
-      and LOW-SUBSET are dropped: LOW-ALL is the most degraded LOW case and the LOW scopes are characterised for B0
-      in the sensor-robustness campaign);
-    * the channel alone: sensors CLEAN with the channel MEDIUM and BLACKOUT (LOW lies between CLEAN and MEDIUM);
-    * channel BLACKOUT with MEDIUM-ALL sensors (B2 must fall back to B0)."""
-    scen = tuple(only) if only else FINAL_SCENARIOS
+def final_matrix(seeds=None, only=None) -> list:
+    """The final campaign (448 runs, seeds 5000-5404), fixed before its first run; ``seeds`` / ``only`` filter it."""
+    from holo_fleet.sim.scenarios import STRESS_BATCH
+
     runs = []
-    for sc in scen:
-        runs += [(proto, "CLEAN", sc, s) for proto in ("B0", "B2_CLEAN") for s in seeds]
-    for sc in scen:
-        for prof, lvl in (("LOW-ALL", "LOW"), ("MEDIUM-ONE", "MEDIUM"), ("MEDIUM-SUBSET", "MEDIUM"), ("MEDIUM-ALL", "MEDIUM")):
-            runs += [(proto, prof, sc, s) for proto in ("B0", f"B2_{lvl}") for s in seeds]
-        runs += [(f"B2_{ch}", "CLEAN", sc, s) for ch in ("MEDIUM", "BLACKOUT") for s in seeds]
-        runs += [("B2_BLACKOUT", "MEDIUM-ALL", sc, s) for s in seeds]
-    return runs
+    for proto, prof in (("B2_CLEAN", "CLEAN"), ("B2_LOW", "LOW-ALL"), ("B2_MEDIUM", "MEDIUM-ALL")):
+        for sc in ALL_SCENARIOS:
+            runs += [(proto, prof, sc, s) for s in (range(5000, 5006) if sc in B2_GATE_SCENARIOS else range(5000, 5003))]
+    runs += [("B2_MEDIUM", "MEDIUM-ALL", "lost_drone_mutex", s) for s in range(5100, 5140)]
+    runs += [("B2_MEDIUM", "MEDIUM-ALL", f"lost_drone_mutex_{v}", s) for v in ("rise_low", "rise_high") for s in range(5100, 5110)]
+    runs += [("B2_MEDIUM", "MEDIUM-ALL", sc, s) for sc in STRESS_BATCH for s in range(5200, 5205)]
+    runs += [(proto, "MEDIUM-ALL", sc, s) for proto in ("B0", "B2NP_MEDIUM") for sc in B2_GATE_SCENARIOS for s in range(5300, 5303)]
+    runs += [("B2_MEDIUM", f"{prof}-ALL", sc, s) for prof in ("MEDIUM_HB3", "MEDIUM_HB4") for sc in ("gate_single", "lost_drone_mutex")
+             for s in range(5400, 5405)]
+    runs += [("B2_MEDIUM_HT", "MEDIUM-ALL", sc, s) for sc in ("gate_single", "lost_drone_mutex") for s in range(5400, 5405)]
+    return [r for r in runs if (not seeds or r[3] in seeds) and (not only or r[2] in only)]
 
-
-FINAL_SCENARIOS = ALL_SCENARIOS
 
 B2_GATE_SCENARIOS = ("gate_single", "integrated_short", "mutex_deadlock_resolution", "line_parallel_mutex",
                      "lost_drone_mutex")
@@ -500,7 +471,7 @@ def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--phase", default="final", choices=("final", "validation", "targeted"))
     ap.add_argument("--raw", default=str(RAW))
-    ap.add_argument("--seeds", type=int, nargs="*", help="default: SEEDS (final, targeted), VALIDATION_SEEDS (validation)")
+    ap.add_argument("--seeds", type=int, nargs="*", help="final: filter of its seeds; validation: default VALIDATION_SEEDS; targeted: default SEEDS")
     ap.add_argument("--only", nargs="*")
     ap.add_argument("--profiles", nargs="*", help="profile labels (e.g. CLEAN MEDIUM-ALL)")
     ap.add_argument("--protocols", nargs="*", help="--phase targeted: protocols (e.g. B0 B2_CLEAN)")

@@ -1,14 +1,4 @@
-"""Mapped gate + navigation error (sensor-robustness campaign: line_parallel_mutex under navigation drift).
-
-The structure test predicts the gate bars from the drone's ESTIMATED pose, with a tolerance of structure_tol_m
-(0.30 m on the near side).  When the navigation error exceeds it, a real bar echo is no longer explained by the
-map and stays an obstacle: conservative.  In the campaign (DVL velocity noise at its HIGH level, navigation error
-up to 1 m) the drone that could not explain the bar was really 0.9 m from it, heading into the bar instead of the
-opening; the avoidance kept it off the gate and the run ended in a safe livelock.  The tolerance is deliberately
-not widened: in front of a bar, an echo within structure_tol_m (plus the pose error toward the bar) of the predicted
-surface is explained by the map, so every centimetre added to the tolerance is a centimetre in which a vehicle
-would be explained away.
-"""
+"""Mapped gate under navigation error: a bar echo the map cannot explain stays an obstacle (conservative)."""
 
 import numpy as np
 

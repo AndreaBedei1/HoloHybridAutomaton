@@ -1,4 +1,4 @@
-"""The parametric channel of the communication sweep and the no-adaptation baseline (experimental branch)."""
+"""The parametric channel of the communication sweep and the no-adaptation baseline."""
 
 import numpy as np
 

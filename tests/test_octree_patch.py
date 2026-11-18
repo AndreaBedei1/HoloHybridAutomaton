@@ -1,8 +1,4 @@
-"""The HoloOcean sonar-octree patch is installed and passes its regression test.
-
-The regression (calibration/octree_rebuild_regression.py) needs the patched engine and takes about a
-minute: it is marked ``holoocean`` and ``slow``.
-"""
+"""The HoloOcean sonar-octree patch is installed and passes calibration/octree_rebuild_regression.py (marked holoocean, slow)."""
 
 import json
 import os

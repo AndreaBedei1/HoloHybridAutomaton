@@ -1,5 +1,4 @@
-"""Variant B2 never reaches the safety layer: same sonar frames with or without acoustic receptions give the same
-separation, collision-avoidance, sensing-health and escape inputs; only perception modules read the beacon."""
+"""Variant B2 never reaches the safety layer: acoustic receptions change no separation, avoidance, health or escape input."""
 
 import ast
 import dataclasses

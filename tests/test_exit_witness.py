@@ -147,7 +147,7 @@ def test_a_side_sector_facing_the_exit_side_can_witness_the_exit():
 
 
 def test_a_drone_behind_the_queue_is_never_a_witness():
-    """Regression (raw_gate_bars lost_drone_mutex s0): the lost drone, 9 m behind and 7 m beside the right-hand
+    """The lost drone, 9 m behind and 7 m beside the right-hand
     queue point, seen by its LEFT sonar at 10.7 m while the CR is latched, does not release it."""
     lat = -3.5
     gp = perception(lateral=lat)

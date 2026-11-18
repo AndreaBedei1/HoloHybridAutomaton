@@ -1,8 +1,7 @@
 """Build a versioned, reproducible archive of the scientific evidence outside the repository.
 
-    python scripts/build_archive.py --dest F:/Andrea/HoloFleet_ARCHIVE --version v12-review \
-        --refs b2-freeze-v11 b2-v11-validation HEAD --runs results/robustness/raw_v11_final ... \
-        --docs REPORT.md analysis docs/SENSOR_ROBUSTNESS_LITERATURE.md ... --evidence results/validation/report ...
+    python scripts/build_archive.py --dest <archive dir> --version <version> \
+        --refs <ref> [<ref> ...] HEAD --runs <run dir> ... --docs <doc> ... --evidence <evidence dir> ...
 
 Layout of <dest>/<version>/:
   code/        a git bundle of every ref (full history, restorable with ``git clone``) and a source tarball per ref;

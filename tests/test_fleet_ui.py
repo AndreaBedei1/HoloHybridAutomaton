@@ -1,3 +1,4 @@
+"""The fleet UI: live window lifecycle, fleet camera framing and viewport rotation, engine semaphore retry, demo map extent."""
 from types import SimpleNamespace
 
 import cv2

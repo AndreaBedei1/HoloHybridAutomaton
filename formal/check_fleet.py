@@ -26,11 +26,11 @@ counting as present until it has risen (T_RISE).  Modelled here:
     out of the scope, not modelled).  A drone that fails committed keeps its claim until it is known dead;
   * rule D at a receiver needs another live drone it hears (acoustic.py: a receiver that hears nobody declares no one dead).
 Premises of the recovery: H, a dead hull stops counting as a queued drone for the sonar precedence once it has risen (it does
-not when it floats at the surface above the queue in still water: F2s4, a declared limit observed in med12); n = 2 at most one
+not when it floats at the surface above the queue in still water: F2s4, a declared limit); n = 2 at most one
 failure and none while committed; n = 3, 4 at most n - 2 failures (every receiver
 keeps hearing another drone).  The two cases left out are declared limits and checked as such (F2s2, F2s3).  Not modelled: the
 admission blocked by the localization of the gate (loc_ok; the give-up branch of the hold is unreachable under the invariant, so
-the open class of s960 and s1103 is outside F2), the release delays of the latch (t_occ_max, t_clear, exit confirmation) beyond
+that case is outside F2), the release delays of the latch (t_occ_max, t_clear, exit confirmation) beyond
 one step.  The entry from C to X needs no live drone in X and no claim of another drone known at the receiver (S1: entry_ok of the
 code holds the entry on a heard report of committed or admitted).  F0 and F2 take the claims as learnt within the step; F1d relaxes
 it: the latch and the stage-2 check see the claims d steps late.  P2 then holds while d does not exceed the shortest stay in C
@@ -46,7 +46,7 @@ step, failures and stops included, so P2 holds at every time with no bound (k-in
 invariant, with no further failure or stop and the fairness of the fixes, every live drone reaches D within K steps: after the
 last failure and the last stop of an execution the fleet re-forms (P3, or P3-deg with the vacancies) within K * DT seconds of
 the abstraction; F2t shows K tight.  Mutations and scope: F1m a latch that ignores the drones in C lets two into the CR; F2m
-without rule D the composition deadlocks (the mechanism of the campaign runs lost_drone_mutex s1068, s1071 and s960: a drone
+without rule D the composition deadlocks (a drone
 waiting beyond the gate in the corridor, a queued drone whose latch it holds, a dead drone never accounted for); F2f without the
 fairness premise the recovery is not guaranteed.  F3 non-vacuity: from the launch, a run with a failure re-forms.
 The model does not cover: the geometry and timing inside the CR (M3, S2, M4), positions (the waiting point is assumed inside

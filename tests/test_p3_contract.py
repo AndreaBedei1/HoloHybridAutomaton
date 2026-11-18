@@ -1,4 +1,4 @@
-"""The P3 contract (referee/p3.py) and the classes of criteria v8 (robustness_metrics.refine_v8)."""
+"""The P3 contract (referee/p3.py) and the outcome classes of robustness_metrics.refine_v8."""
 
 import numpy as np
 

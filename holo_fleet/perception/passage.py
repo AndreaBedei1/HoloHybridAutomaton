@@ -1,4 +1,4 @@
-"""Onboard verification of the drone's own passage through a gate (payload v2, gate phase GP_PASSED).
+"""Onboard verification of the drone's own passage through a gate (gate phase GP_PASSED).
 
 The gate phase a drone reports must not rest on the long-term dead reckoning: its drift is exactly what breaks the rest
 of the gate logic under MEDIUM sensors.  Since the drone was admitted (stage 2), a passage is verified by what its own
@@ -6,13 +6,13 @@ sensors observe of the gate itself:
 
 * the CROSSING signature: while passing the gate plane the LEFT and RIGHT sonars both see the frame posts at a sum of ranges
   that matches the opening (L + R = inner width - the sonar mounts, within ``CROSS_TOL_M``), for ``CROSS_N`` captures: a
-  direct measurement of being inside the opening, independent of the navigation estimate (in the MEDIUM logs of v10 both
+  direct measurement of being inside the opening, independent of the navigation estimate (with MEDIUM sensors both
   sides are seen in 94 % of the captures at |s| <= 0.2 m).  It also gives the lateral position in the gate (R - L) / 2
   and the vertical one (D - U) / 2, measured, not estimated.  Then the along-axis DVL displacement carries the drone
   beyond the exit face: verified.
 * otherwise (the signature was missed: a fade): the DVL displacement from the map-validated hold point beyond the exit face, the
   navigation estimate agreeing, and a REAR sonar echo of the frame at the range the displacement predicts (97 % of the captures
-  in the MEDIUM logs), for ``REAR_N`` captures;
+  with MEDIUM sensors), for ``REAR_N`` captures;
 * failing that too (a sonar fault), the displacement and the estimate alone after ``T_ODO_MAX_S``, so that a sonar fault
   does not stall the fleet behind a drone that has passed: only the odometry over the last few metres from a map-validated
   start is then relied on.

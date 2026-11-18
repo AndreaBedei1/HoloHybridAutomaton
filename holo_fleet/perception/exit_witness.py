@@ -2,17 +2,16 @@
 
 A queued drone holds the CR BUSY from the moment it sees an unexplained echo in its FRONT corridor.  It may
 release it only on POSITIVE evidence that the occupant has left: an obstacle echo, in ANY healthy sonar
-sector, that no hull inside the CR can produce and that a hull leaving the CR on the exit side could.  The
-FRONT-only rule (an echo beyond the far corner of the CR) is the special case of the FRONT sector; from a
-lateral queue point the bars of a wide gate can hide the exiting hull from the FRONT sonar exactly where that
-rule needs it, while another sector, or the FRONT sonar a little later, sees it.
+sector, that no hull inside the CR can produce and that a hull leaving the CR on the exit side could.  An
+echo beyond the far corner of the CR is the special case of the FRONT sector; other sectors matter because,
+from a lateral queue point, the bars of a wide gate can hide the exiting hull from the FRONT sonar.
 
 Witness conditions for an echo at range r in sector k (gate map, estimated own pose, no identity):
 
 (W1) not from the CR: r > r_far(k) + eps_range_far (an echo is at most eps_range_far beyond the true near surface).
      When the whole CR lies inside the sector's cone (the FRONT cone of every queue point, formal M4a), a hull
      centred in the CR is in the cone and its near surface is nearer than its centre: r_far(k) = the farthest
-     CR corner (the FRONT corridor bound of v2).  Otherwise a hull centred in the CR just outside the cone can
+     CR corner (the FRONT corridor bound).  Otherwise a hull centred in the CR just outside the cone can
      reach into it: r_far(k) = the largest range of a point of the CR grown by the hull radius R_OUT inside
      the (near-field widened) cone, -inf if there is none - every echo of that sector satisfies W1, W2-W3 decide.
 (W2) ahead and on the exit side, within reach: every hull centre compatible with the echo (shell of the cone

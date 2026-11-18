@@ -18,8 +18,8 @@ perception and automaton.
       enabled edge is commit or yield (this one relies on I2);
 mutations, each with its expected verdict:
   Om1 without I2, Q1 has a counterexample: at_queue & !mutex_zone takes a formation edge (SAT);
-  Om2 the v1 domain constraint passed -> at_queue makes pass_done unreachable (UNSAT): the v1
-      determinism proof silently excluded every reachable 'passed' observation;
+  Om2 the domain constraint passed -> at_queue makes pass_done unreachable (UNSAT): a determinism
+      proof under it would silently exclude every reachable 'passed' observation;
   Om3 without the monitor an inconsistent observation is taken by a mission edge, not by FAILSAFE (SAT).
 """
 

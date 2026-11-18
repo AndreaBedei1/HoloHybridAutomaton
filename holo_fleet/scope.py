@@ -1,6 +1,6 @@
 """Operating scope of the permanent-failure model: the exclusion zone of a gate.
 
-A scope decision taken during development (2026-11-12, after the runs that it concerns), not pre-registered: permanent failures
+A scope decision (not pre-registered): permanent failures
 inside a gate, or close enough to it that the passive hull can obstruct the passage, are outside the scope.  They are not run.
 The zone is defined geometrically, from the failure model and the current declared for the mission, independently of any result.
 

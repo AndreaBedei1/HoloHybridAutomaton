@@ -1,5 +1,4 @@
-"""Terminal criterion of a run (referee/terminal.py, criteria v3), the a-priori deadline (referee/criteria.py) and the
-deterministic choice of the degraded drones."""
+"""Terminal criterion of a run (referee/terminal.py), the a-priori deadline (referee/criteria.py), the choice of degraded drones."""
 
 import importlib.util
 from pathlib import Path

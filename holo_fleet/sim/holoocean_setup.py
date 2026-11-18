@@ -5,15 +5,14 @@ caches on disk per level and octree size.  The project runs on a
 *patched* HoloOcean root (docs/HOLOOCEAN_OCTREE_PATCH.md) whose engine understands the
 ``RebuildSonarOctree`` command and whose client exposes ``env.rebuild_sonar_octree()``:
 
-* the patched root lives in its own folder (default ``F:\\Andrea\\holoocean_patched_root``,
+* the patched root lives in its own folder (default ``DEFAULT_PATCHED_ROOT``,
   override with ``HOLO_FLEET_HOLOOCEAN_ROOT``); its world content is a junction to the official
-  package, its octree cache is private, and the official installation (used by the Marine Race
-  Arena's frozen benchmark) is never modified;
+  package, its octree cache is private, and the official installation is never modified;
 * every scenario rebuilds the sonar octree right after the static scene (arena gates, props)
   has been spawned, so the octree always describes the current scene: runtime props are visible
   and a cache written by another scene can never produce ghost echoes.
 
-Without the patch the project falls back to the Phase-1 procedure: static scene first, sonars
+Without the patch the project falls back to: static scene first, sonars
 attached afterwards, cache folder deleted when the scene signature changes.  The fallback is
 kept only so that the code still runs on an unpatched machine; it is reported in every run.
 """

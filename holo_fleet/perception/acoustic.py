@@ -2,7 +2,7 @@
 
 A reception (sim/beacon.py, delivered as ``AcousticRx``) is (identity, arrival time, range, azimuth, elevation):
 the identity is the static pinger code of the plan (which drone holds which slot), range and direction come from
-the receiver's own OWTT clock and array (docs/B2_ACOUSTIC_AIDED_COORDINATION.md, H1-H5).  Nothing else of the
+the receiver's own OWTT clock and array (hardware assumptions H1-H5, sim/acoustic_channel.py).  Nothing else of the
 sender is known.  This module turns receptions into FIXES:
 
 * the nominal relative position r * u(az, el) in the own body frame at the arrival time, rotated with the own
@@ -18,8 +18,7 @@ sender is known.  This module turns receptions into FIXES:
 * a track per identity: a fix is ACCEPTED when it is kinematically consistent with the previous accepted fix of
   that identity (displacement <= v_bound dt + k sqrt(2) sigma_white + ``track_gate_m``, and range change <= the
   sender's motion + the own displacement + k sqrt(2) sigma_range + RANGE_SLACK_M: a reflection is always longer).
-  An inconsistent fix is
-  REJECTED but kept (the gate uses the white part of the errors only: the biases are common to two fixes); it is contradictory evidence, and whatever a rejected fix could mean is never ignored by a
+  An inconsistent fix is REJECTED but kept (the gate uses the white part of the errors only: the biases are common to two fixes); it is contradictory evidence, and whatever a rejected fix could mean is never ignored by a
   decision that relies on the identity's absence (gate_perception).  Two mutually consistent rejected fixes, while
   the track has had no accepted fix for ``REINIT_S``, start a new track (a new track id: whatever was established
   on the old one is not carried over).
@@ -114,7 +113,7 @@ class Fix:
 
 @dataclass(frozen=True)
 class GateStatus:
-    """Latest gate phase a drone reported about itself (payload v2, perception/payload.py)."""
+    """Latest gate phase a drone reported about itself (perception/payload.py)."""
     t_tx: float
     gate_idx: int
     phase: int

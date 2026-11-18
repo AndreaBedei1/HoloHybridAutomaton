@@ -78,7 +78,7 @@ class DeadReckoning:
 
 def _model_table():
     """Outage length [s] -> MAX integrated position error [m] of the commanded-velocity model, measured on logged runs
-    (analysis/scripts/cmd_velocity_model.py --table, results/calibration/dr_model_calibration.json)."""
+    (results/calibration/dr_model_calibration.json)."""
     import json
     from pathlib import Path
 

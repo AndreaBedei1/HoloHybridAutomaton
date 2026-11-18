@@ -1,5 +1,5 @@
-"""Analysis of the final campaign against the criteria v8 (docs/ACCEPTANCE_CRITERIA.md), from the run_metrics.json written by the
-frozen referee:  python scripts/analyze_final_campaign.py results/robustness/raw_v11_final > <report.md>"""
+"""Analysis of the final campaign against the acceptance criteria (criteria v8, docs/GUARANTEES.md), from the
+run_metrics.json written by the referee:  python scripts/analyze_final_campaign.py <campaign_dir> > <report.md>"""
 
 import json
 import math
@@ -10,7 +10,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from final_campaign import ABLATION_SCENARIOS, GATE, matrix  # noqa: E402
+from run_sensor_robustness_campaign import B2_GATE_SCENARIOS as ABLATION_SCENARIOS, B2_GATE_SCENARIOS as GATE, final_matrix as matrix  # noqa: E402
 
 from holo_fleet.sim.scenarios import STRESS_BATCH  # noqa: E402
 

@@ -1,5 +1,4 @@
-"""The operating scope: the exclusion zone of a gate (holo_fleet/scope.py), every failure scenario outside it, and rule D only
-outside it (perception/acoustic_gate.py)."""
+"""The operating scope: the exclusion zone of a gate (holo_fleet/scope.py), failure scenarios outside it, rule D only outside it."""
 
 import dataclasses
 import math

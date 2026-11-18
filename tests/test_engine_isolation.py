@@ -1,11 +1,4 @@
-"""Coexistence with other HoloOcean / Unreal programs on the same machine (CARLA, other projects).
-
-HoloOcean's client and engine meet through shared memory and named semaphores whose names carry a fresh
-per-instance UUID: no network port is involved, so an instance of another program cannot take "our" port or be
-reached by us.  These tests pin that fact in the installed client (a client upgrade that introduced a fixed port
-would fail here) and check that the run metadata records the sockets of OUR engine only (Unreal's TraceLog
-control port, 1985 or a free high port when 1985 is taken: recorded, never used).
-"""
+"""Coexistence with other HoloOcean / Unreal programs: no fixed network port, run metadata records our engine's sockets only."""
 
 import inspect
 import re

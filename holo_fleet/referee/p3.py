@@ -2,7 +2,7 @@
 
 P3 is a conditional liveness property in three parts, each with a deadline derived from the mission geometry and the vehicle
 dynamics, and judged against premises monitored on ground truth.  Tolerance E_TOL_M = 1 m and hold T_HOLD = 4 / k_slot = 8.9 s
-(the 2 % settling time of the slot loop) as before.
+(the 2 % settling time of the slot loop).
 
 P3a  individual slot recovery after the gate.  Healthy drone k crosses the gate at t_x (true centre beyond the exit plane
      after having been before the CR).  Within D_a(k) of t_x - or of the second crossing, for the first drone - its deviation

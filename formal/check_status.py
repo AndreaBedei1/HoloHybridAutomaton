@@ -1,7 +1,7 @@
-"""Payload v2 (gate status), the total failure model and the vacancy by silence: formal and randomized checks.
+"""Gate-status payload, the total failure model and the vacancy by silence: formal and randomized checks.
 
-The B2-specific checks of formal/check_acoustic.py keep covering the geometry of the fixes; these cover what the v11 design
-adds.  The premises are the declared ones (docs/GUARANTEES.md): the gate-frame navigation error at most ``nav_err_m``, the
+The B2-specific checks of formal/check_acoustic.py keep covering the geometry of the fixes; these cover the gate status,
+the failure model and the vacancy by silence.  The premises are the declared ones (docs/GUARANTEES.md): the gate-frame navigation error at most ``nav_err_m``, the
 speed bound of a drone, the queue tolerance, a received packet is genuine (CRC-16) and of its frame.  The freshness bound is
 a function of the queue layout.
 
@@ -109,7 +109,7 @@ def positive_occupancy(cfg: FleetConfig, g, n_cases: int = 300, seed: int = 11, 
 
 
 def m3_status_model(cfg, geo, view, t_status, v_hi, e0, steps=320, hold=False, band_latch=True):
-    """The timed latch abstraction of M3 extended with the phantom rule of the payload v2: B ignores the corridor echoes of A
+    """The timed latch abstraction of M3 extended with the phantom rule of the gate-status payload: B ignores the corridor echoes of A
     while A's last report (before A commits, the later packets being lost) is younger than t_status; the FRONT-only corridor
     echoes make no relation at all."""
     G = cfg.gate

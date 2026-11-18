@@ -1,5 +1,4 @@
-"""The onboard conservative distance never exceeds the true distance of the nearest hull (lemma S0, quick version),
-for single and merged multi-hull scenes, and it is not needlessly pessimistic in the formation geometries."""
+"""The onboard conservative distance never exceeds the true nearest-hull distance (lemma S0, quick) and is not needlessly pessimistic."""
 
 import math
 import sys

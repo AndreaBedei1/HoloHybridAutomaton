@@ -1,6 +1,4 @@
-"""The automaton diagram is generated from the spec (scripts/make_automaton_diagram.py): every edge of
-build_edges is represented, nothing else; the guards drawn are the spec labels; the committed figures name every
-state and show the guards; the readable labels only use observation variables and configured thresholds."""
+"""The automaton diagram generated from the spec: every edge drawn with its spec label, nothing else, readable guards."""
 
 import html
 import sys

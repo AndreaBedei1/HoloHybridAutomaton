@@ -237,7 +237,7 @@ def test_a_corridor_echo_no_fleet_drone_can_have_produced_does_not_set_the_latch
 
 
 def test_silence_never_clears_a_drone_last_known_possibly_inside():
-    """v11: the buoyancy-rise release of v8 is gone: a silent drone last known possibly in the CR stays a possible
+    """A silent drone last known possibly in the CR stays a possible
     occupant for ever (silence alone is no proof that the gate is physically clear)."""
     p = np.array([-4.6, 0., -5.])
     tracker, gp = _observer(p)

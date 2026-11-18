@@ -2,11 +2,10 @@
 
 Premise C (docs/GUARANTEES.md, check_fleet F1d): a drone at the gate learns of another drone's commitment (its claim, or
 the corridor echo) before it commits itself; two drones that commit together learn of each other's claim before either is
-admitted to the CR.  The audit replaces the monitor of b2-freeze-v11, which compared a delay with the 32 s of S2.  That
-number is the horizon of the bounded check S2h (how long a crossing drone may stop before the CR in the model); it is not a
-delivery deadline.  The quantity that does bound the use of a report is the freshness cutoff ``status_fresh_s`` (1.95 s
-for st_gate_pair, 2.50 s for the other plans: GatePerception), the age beyond which a report of NOT ENGAGED no longer
-excludes a drone; a claim is never dropped by age.  No time threshold enters the classes below: only the order of events.
+admitted to the CR.  The 32 s of S2 is the horizon of the bounded check S2h (how long a crossing drone may stop before the
+CR in the model), not a delivery deadline.  The quantity that does bound the use of a report is the freshness cutoff ``status_fresh_s`` (1.95 s
+for st_gate_pair, 2.50 s for the other plans: GatePerception), the age beyond which a report of NOT ENGAGED does not
+exclude a drone; a claim is never dropped by age.  No time threshold enters the classes below: only the order of events.
 
 Events read from the logs (onboard state records, referee ground truth, the TDMA schedule of sim/beacon.py):
   * the commit edge of every drone k (``committed`` rises) and the end of its claim (``committed`` falls);

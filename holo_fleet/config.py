@@ -1,8 +1,9 @@
-"""Single source of truth for thresholds, envelope assumptions and controller gains (v2).
+"""Single source of truth for thresholds, envelope assumptions and controller gains.
 
 Every number used by the formal models in ``formal/`` is imported from here, so the verified
 abstraction and the deployed controller cannot silently diverge.  Sensor numbers come from the
-Phase-1 probe (docs/v2/SONAR_PROBE.md), plant numbers from calibration/calibrate_plant.py.
+sonar probe (calibration/analyze_sonar_probe.py), plant numbers from calibration/calibrate_plant.py;
+provenance of each value in docs/PARAMETER_PROVENANCE.md.
 """
 
 from __future__ import annotations
@@ -36,7 +37,7 @@ class SeparationThresholds:
 
 @dataclass(frozen=True)
 class Envelope:
-    """Assumptions of the formal proofs (each one measured back on the logs, results/reference/ASSUMPTIONS.md)."""
+    """Assumptions of the formal proofs (each one measured on the logs of the CLEAN reference runs, external archive)."""
 
     dt: float = 0.1
     tau_max: float = 0.25
@@ -233,10 +234,9 @@ class PlantCalibration:
 
 @dataclass(frozen=True)
 class RefereeConfig:
-    """Ground-truth judging (never visible to a controller).  Criteria v3 (referee/criteria.py): one tolerance band of
-    1.0 m opens an episode (error above it) and closes it (inside it for t_ok_hold).  v2 used e_lost 1.2 / e_ok 0.5,
-    whose band in between never opened an episode, and a 2 s hold.  t_ok_hold = 4 / k_slot: the 2 % settling time of
-    the first-order slot-tracking loop (criteria.t_hold_s; a test keeps them equal)."""
+    """Ground-truth judging (never visible to a controller, referee/criteria.py): one tolerance band of 1.0 m opens
+    an episode (error above it) and closes it (inside it for t_ok_hold [s]).  t_ok_hold = 4 / k_slot: the 2 % settling
+    time of the first-order slot-tracking loop (criteria.t_hold_s; a test keeps them equal)."""
 
     e_lost: float = 1.0
     e_ok: float = 1.0
@@ -245,11 +245,11 @@ class RefereeConfig:
 
 @dataclass(frozen=True)
 class BeaconConfig:
-    """Variant B2 one-way acoustic beacon (OFF in the communication-free baseline B0).
+    """One-way acoustic beacon (OFF in the communication-free baseline).
 
     Every drone emits, on a pre-assigned TDMA schedule of period ``period_s``, a coded ping carrying its static
     identity and (``payload``) a short data packet with its ONBOARD position estimate and a conservative bound of
-    that estimate's error (docs/B2_ACOUSTIC_AIDED_COORDINATION.md, H6; sim/beacon.py, encode_payload).  Strictly
+    that estimate's error (sim/beacon.py, encode_payload).  Strictly
     one-way broadcast: no handshake, no reply, no acknowledgement, no control decision; receivers measure range
     (one-way travel time, synchronised clocks) and direction (receiving array) themselves.  Transport: HoloOcean's AcousticBeaconSensor driven by
     sim/beacon.py, measurement model sim/acoustic_channel.py (level ``channel``, simulator side only), onboard use
@@ -271,10 +271,10 @@ class BeaconConfig:
 
 @dataclass(frozen=True)
 class AcousticConfig:
-    """Onboard side of the B2 range-bearing beacon (perception/acoustic.py): the DECLARED measurement envelope.
+    """Onboard side of the range-bearing beacon (perception/acoustic.py): the DECLARED measurement envelope.
 
-    The perception does not know the channel level of a run: it uses these bounds everywhere, fixed before any B2
-    result (docs/B2_ACOUSTIC_AIDED_COORDINATION.md, section 3).  A reception inside the envelope has
+    The perception does not know the channel level of a run: it uses these bounds everywhere
+    (docs/PARAMETER_PROVENANCE.md).  A reception inside the envelope has
     |range error| <= k_sigma * sigma_range_m + sound_speed_err * r + clock_offset_m and direction errors within
     k_sigma * sigma + the array calibration bias + the own attitude error bound; anything else (a reflected
     arrival, a clear-path multipath episode) is an outlier that the
@@ -310,7 +310,7 @@ class AcousticConfig:
 
 @dataclass(frozen=True)
 class FailureModel:
-    """Simulator side only (never read onboard): the failure model of a drone, the deployment's (the owner's decision).
+    """Simulator side only (never read onboard): the failure model of a drone, a deployment assumption.
 
     A broken drone is completely broken: propulsion, electronics and acoustic transmission stop together, and, being
     ballasted positively buoyant (a deployment requirement of the vehicle, ~ +0.2 kg net), it rises.  The engine's
@@ -318,7 +318,7 @@ class FailureModel:
     current drift vector (holo_env.truth; the terminal speed is calibrated by calibration/probe_buoyant_ascent.py).
     ``v_rise_mps``: steady ascent of net buoyancy F against the vertical drag: sqrt(2 F / (rho C_d A)) for F = 1.96 N
     and C_d A of the BlueROV2 Heavy plan area (0.458 x 0.576 m x 1.1) gives about 0.12 m/s; with an identified heave damping of
-    the vehicle (linear 33 N s/m, quadratic 190 N s^2/m^2, reviewer round 2) it is 0.047 m/s, 0.102 m/s with the quadratic term
+    the vehicle (linear 33 N s/m, quadratic 190 N s^2/m^2) it is 0.047 m/s, 0.102 m/s with the quadratic term
     alone.  Credible range 0.05 - 0.13 m/s; the nominal 0.10 m/s is in its upper part and is an assumption: the +0.2 kg is not
     measured; the sensitivity runs use the ends of the range (*_rise_low, *_rise_high).  ``surface_z_m``: the centre stops rising
     here (just awash).  It is an emulation: the engine's drag acts on the whole relative velocity."""
@@ -332,7 +332,7 @@ class ScopeConfig:
     """The operating scope of the permanent-failure model (holo_fleet/scope.py), known onboard: what a broken drone can do at
     most, and the current declared for the mission.  ``v_rise_min_mps`` below the model value of FailureModel (0.047 m/s with the
     identified heave damping): a hull that does not rise (a leak) is outside the model.  ``coast_h_m``: measured in the simulator,
-    at most 0.39 m at 0.39 m/s through the water and at most 1.22 s times the speed at the failure (39 failure runs), about 0.9 m
+    at most 0.39 m at 0.39 m/s through the water and at most 1.22 s times the speed at the failure, about 0.9 m
     at 0.75 m/s; not validated on a vehicle.  ``coast_v_m``: the vertical speed is at most 0.25 m/s.  ``rise_lag_s``: the heave
     time constant is about 0.35 s (mass over linear damping).  ``drift_factor``: a hull drifted up to 4 % faster than the effective
     drift in the runs.  ``t_lost_s``: a drone fails within this time of its last reception heard (one TDMA period): the margin

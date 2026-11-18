@@ -20,7 +20,7 @@ The levels are related to the project's declared assumptions (config.Envelope: s
 eps_range_far 0.12 m / eps_range_near 0.08 m; FormationRule e_ok 0.5 / e_lost 1.2 m; GateRule queue_tol 0.35 m) but are
 stress levels, not a hardware characterisation: LOW stays inside the sonar range envelope, MEDIUM exceeds it in about
 1.2 % of captures (+-2-bin jitter) and exceeds tau_max with its outages; their provenance is in
-docs/PARAMETER_PROVENANCE.md and docs/SENSOR_DEGRADATION_REFERENCES.md.
+docs/PARAMETER_PROVENANCE.md.
 """
 
 from __future__ import annotations
