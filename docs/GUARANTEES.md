@@ -46,10 +46,10 @@ Premises of P2 under B2, their monitors and the behaviour when they fail:
 | Premise | Monitor | When it fails |
 |---|---|---|
 | **V**: the channel never silences a live vehicle for 70 s at a receiver that hears another vehicle | `PREMISE_V_VIOLATED` per run | a live vehicle can be declared dead for the gate; observed only under the long-tail channel, with no wrong declaration |
-| **C**: a queued vehicle learns of a commitment (claim or corridor echo) before it commits; two that commit together learn of each other's claim before either is admitted | event-ordered audit (`referee/premise_audit.py`): SATISFIED, CONCURRENT, VIOLATED, INCONCLUSIVE | a lost claim lets a second vehicle commit; the stage-2 check then holds it until the CR is seen free ({VAL_PC}) |
+| **C**: a queued vehicle learns of a commitment (claim or corridor echo) before it commits; two that commit together learn of each other's claim before either is admitted | event-ordered audit (`referee/premise_audit.py`): SATISFIED, CONCURRENT, VIOLATED, INCONCLUSIVE | a lost claim lets a second vehicle commit; the stage-2 check then holds it until the CR is seen free (final validation: 64 pairs SATISFIED, none CONCURRENT, VIOLATED or INCONCLUSIVE in 34 runs) |
 | **H6**: the sender's navigation error lies within its sent bound | `NAV_BOUND_PREMISE_VIOLATED` | payload rules are not used as P2 evidence for that run |
 | Gate-frame navigation error of a committed vehicle <= 1 m | `GATE_NAV_PREMISE_VIOLATED` | admission waits for a validated fit; the run may end INCOMPLETE (the open localization class) |
-| Packets arrive within `latency_max_s` = 0.4 s | received / accepted / rejected / stale counts per run | late packets are dropped before decoding: the claims are lost and the gate runs on the sonar only (latency 0.45 s and above: 100 % stale) |
+| Packets arrive within `latency_max_s` = 0.4 s | received / accepted / rejected / stale counts per run | late packets are dropped before decoding: the claims are lost and the gate runs on the sonar only (latency 0.45 s: 100 % stale; 0.35 s: 32.0 % stale) |
 
 The verification horizon of S2h (32 s) is the time a crossing vehicle may stop before the CR in a bounded model; it is
 not a delivery deadline. The bound on the use of a report is the freshness cutoff `status_fresh_s` (1.95 s for the
@@ -60,7 +60,7 @@ Declared limits (checked as satisfiable, not excluded):
 - F1p: two vehicles that commit together, with the claims learnt one step late, can both be moved into the CR by
   avoidance; F0q: a queued, uncommitted vehicle moved into the CR by avoidance breaks the invariant; F1pa: the escape
   planner is not antisymmetric along the gate axis, so the model cannot exclude either case. The referee logs every
-  CR entry as ADMITTED, PUSHED or UNCOMMITTED, with the vehicles inside at that instant ({VAL_CR});
+  CR entry as ADMITTED, PUSHED or UNCOMMITTED, with the vehicles inside at that instant (final validation: 64 entries, all ADMITTED);
 - a stopped occupant beyond the 32 s horizon with no claim heard (S2hs); a vehicle stopped in the CR by a fault and
   released by the `t_occ_max` fallback (M3f).
 
@@ -89,7 +89,7 @@ strictly one-way: no request, reply, acknowledgement or command.
 |---|---|---|
 | Final campaign, `b2-freeze-v11` | 448 | P1, P2 in all; every v8 criterion met |
 | Post-freeze validation (communication sweep, emergence) | 164 (80 held-out communication runs, 20 held-out emergence runs, 64 pilot) | P1, P2 in all |
-| Final validation of the restored controller, fresh seeds 8000-8001 (`--phase validation`) | {VAL_N} | {VAL_RES} |
+| Final validation of the restored controller, fresh seeds 8000-8001 (`--phase validation`) | 34 | P1 (min 2.84 m), P2 in all; 31 PASS; B0 `lost_drone_mutex` 2 P3_FAILURE (false vacancy, the declared B0 limit), B0 `integrated_short` 1 P3_LATE; packets accepted at latency 0.35 / 0.45 s: 67.4 % / 0 % (32.0 % / 100 % stale), B2 MEDIUM 97.4 %; one commit, clean tree, one engine build |
 
 Declared limits of liveness (safety held in every case observed): a failure at or near the queue in still water (the
 floating hull blocks the sonar-only precedence); the localization at the gate (lateral error with an ambiguous map fit,

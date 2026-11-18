@@ -69,6 +69,14 @@ python scripts/run_sensor_robustness_campaign.py --phase targeted --only gate_si
     --protocols B2_MEDIUM B0 --profiles MEDIUM-ALL --seeds 7300 7301 --raw results/my_batch
 ```
 
+The final validation is a fixed matrix (`VALIDATION`, seeds `VALIDATION_SEEDS` = 8000, 8001: 34 runs) and runs only
+from a clean commit; to repeat it independently, check out the commit in its own worktree and run:
+
+```bash
+python scripts/run_sensor_robustness_campaign.py --phase validation --raw <raw dir>
+python scripts/analyze_validation.py <out dir> <raw dir>
+```
+
 Shard a batch over several engines with `--shard i --nshards n` and `HOLO_FLEET_ENGINE_SLOTS=n` (see
 [`INSTALL.md`](INSTALL.md), section 4); `--dry-run` lists the runs. Protocols, profiles and channels are listed in
 [`CONFIGURATION.md`](CONFIGURATION.md).
