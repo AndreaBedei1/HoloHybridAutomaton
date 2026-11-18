@@ -26,7 +26,7 @@ import shutil
 from pathlib import Path
 from typing import Iterable, Optional, Sequence
 
-DEFAULT_PATCHED_ROOT = Path(r"F:\Andrea\holoocean_patched_root")
+DEFAULT_PATCHED_ROOT = Path.home() / "holoocean_patched_root"
 OCTREE_MIN = 0.06
 OCTREE_MAX = 5.0
 ENV_MIN = [-64.0, -64.0, -32.0]

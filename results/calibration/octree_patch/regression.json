@@ -1,9 +1,9 @@
 {
  "patch": {
   "patched": true,
-  "root": "F:\\Andrea\\holoocean_patched_root",
+  "root": "<patched root>",
   "patch": "sonar-octree-rebuild",
-  "source": "F:\\Andrea\\holoocean-octree-patch (branch sonar-octree-rebuild)",
+  "source": "<patched source checkout> (branch sonar-octree-rebuild)",
   "source_commit": "a8d3070",
   "holoocean": "2.3.0",
   "unreal": "5.3.2",

@@ -1,13 +1,14 @@
 """Calibrate BlueROV2 actuation (arena thruster mapping) and DVL/IMU frames."""
 import json
 import math
+import os
 import sys
 from pathlib import Path
 
 import numpy as np
 from holo_fleet.sim.engine_session import make
 
-ARENA_ROOT = Path.home() / "Desktop" / "HoloDroneCompetition"
+ARENA_ROOT = Path(os.environ.get("MARINE_RACE_ARENA_ROOT", Path(__file__).resolve().parents[2] / "HoloDroneCompetition"))
 sys.path.insert(0, str(ARENA_ROOT))
 
 

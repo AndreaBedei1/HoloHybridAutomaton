@@ -1,6 +1,6 @@
 """Bridge to the existing Marine Race Arena project (re-used, not copied).
 
-The arena lives in ``~/Desktop/HoloDroneCompetition`` (override with the
+The arena is a checkout of HoloDroneCompetition beside this repository (override with the
 ``MARINE_RACE_ARENA_ROOT`` environment variable).  We reuse its track files, its
 config loader, its gate geometry/visual factory and its HoloOcean prop spawner.
 Only static map geometry crosses this bridge; no simulator state does.
@@ -17,7 +17,7 @@ from typing import List, Optional, Sequence
 
 import numpy as np
 
-DEFAULT_ARENA_ROOT = Path.home() / "Desktop" / "HoloDroneCompetition"
+DEFAULT_ARENA_ROOT = Path(__file__).resolve().parents[2] / "HoloDroneCompetition"
 HORSESHOE_TRACK = "marine_race_arena/tracks/marine_race_horseshoe_bay.json"
 GATE_INNER_SIZE_M = {"G06": (2.0, 2.0)}
 GATE_BAR_SECTION_M = {"G06": (0.25, 0.30)}

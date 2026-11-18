@@ -6323,9 +6323,9 @@
  "setup": {
   "holoocean": {
    "patched": true,
-   "root": "F:\\Andrea\\holoocean_patched_root",
+   "root": "<patched root>",
    "unreal": "5.3.2",
-   "source": "F:\\Andrea\\holoocean-octree-patch (branch sonar-octree-rebuild)",
+   "source": "<patched source checkout> (branch sonar-octree-rebuild)",
    "holoocean": "2.3.0",
    "exe_sha256": "EE76E89687FB3AE5DDB2A428C9B1E0FE918B25AF666103606208B7B6BBB14D5F",
    "patch": "sonar-octree-rebuild",

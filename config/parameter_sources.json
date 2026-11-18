@@ -135,7 +135,7 @@
    "unit": "kg",
    "verdict": "SUPPORTED",
    "source": "(a) Heavy kit page: 11.5 kg (26 lb) with ballast; BlueROV2 page 11-12 kg; Wu 2018 Table 5.1: 11.5 kg; von Benzon Table A1: 13.5 kg measured (R1 1.2)",
-   "doi_or_url": "https://bluerobotics.com/store/rov/bluerov2-upgrade-kits/brov2-heavy-retrofit/; https://bluerobotics.com/store/rov/bluerov2/; 10.3390/jmse10121898; https://flex.flinders.edu.au/file/27aa0064-9de2-441c-8a17-655405d5fc2e/1/ThesisWu2018.pdf; local copy F:/Andrea/holoocean-octree-patch/engine/Source/Holodeck",
+   "doi_or_url": "https://bluerobotics.com/store/rov/bluerov2-upgrade-kits/brov2-heavy-retrofit/; https://bluerobotics.com/store/rov/bluerov2/; 10.3390/jmse10121898; https://flex.flinders.edu.au/file/27aa0064-9de2-441c-8a17-655405d5fc2e/1/ThesisWu2018.pdf; local copy of the patched HoloOcean source",
    "derivation": "surge inertia with added mass would be 13.5 + 6.36 = 19.9 kg (von Benzon), 55 % above the simulated 11.5 kg",
    "validity": "The engine models no added mass; this mainly affects transients such as braking, which are calibrated in closed loop in the simulator (see a_brake)",
    "citation_keys": [
@@ -155,7 +155,7 @@
    "unit": "N",
    "verdict": "DESIGN_CHOICE",
    "source": "project choice, conservative against every source (R1 1.4 verdict: DERIVED, class d): T200 forward thrust 36.4 N at 12 V and 51.5 N at 16 V; von Benzon regression F(1) = 30.4 N; Gabl whole-vehicle bollard force 92 N forward; HoloOcean clamp 28.75 N (R1 1.4)",
-   "doi_or_url": "https://bluerobotics.com/store/thrusters/t100-t200-thrusters/t200-thruster-r2-rp/; https://bluerobotics.com/learn/technical-reference/; 10.3390/jmse10121898; 10.1016/j.oceaneng.2021.109279; local copy F:/Andrea/holoocean-octree-patch/engine/Source/Holodeck",
+   "doi_or_url": "https://bluerobotics.com/store/thrusters/t100-t200-thrusters/t200-thruster-r2-rp/; https://bluerobotics.com/learn/technical-reference/; 10.3390/jmse10121898; 10.1016/j.oceaneng.2021.109279; local copy of the patched HoloOcean source",
    "derivation": "12 N is 33 % of the T200 at 12 V and 23 % at 16 V. Four horizontal thrusters at 45 deg give 4 x 12 / sqrt(2) = 33.9 N of surge force at full command (37-40 % of the 85-92 N of a real vehicle) and 13.6 N at the nominal authority 0.40 (about 15 %)",
    "validity": "T200 figures are bench data at fixed voltage. Not modelled: thruster deadzone and about 0.08 s thruster lag. State that the simulated horizontal thrust is about 0.15 (nominal) to 0.4 (full) of a real Heavy",
    "citation_keys": [
@@ -198,7 +198,7 @@
    "unit": "-, m^2, -, -",
    "verdict": "DESIGN_CHOICE",
    "source": "inherited simulator constants, no cited source. Literature differs widely: von Benzon (pool, tether) quadratic surge damping 141.0 N s^2/m^2; Wu 2018 18.18 (values taken from another vehicle); Gabl 16.4 N measured at 0.6 m/s (R1 2.4)",
-   "doi_or_url": "10.3390/jmse10121898; https://flex.flinders.edu.au/file/27aa0064-9de2-441c-8a17-655405d5fc2e/1/ThesisWu2018.pdf; 10.1016/j.oceaneng.2021.109279; local copy F:/Andrea/holoocean-octree-patch/engine/Source/Holodeck",
+   "doi_or_url": "10.3390/jmse10121898; https://flex.flinders.edu.au/file/27aa0064-9de2-441c-8a17-655405d5fc2e/1/ThesisWu2018.pdf; 10.1016/j.oceaneng.2021.109279; local copy of the patched HoloOcean source",
    "derivation": "surge drag at 0.6 m/s through the water: von Benzon 59.0 N, Wu 9.0 N, Gabl 16.4 N, simulator 11.0 N; the simulator is 0.67 of Gabl and 0.19 of von Benzon",
    "validity": "Isotropic quadratic drag cannot represent the measured anisotropy (141 / 217 / 190 N s^2/m^2 in surge / sway / heave). Call the plant HoloOcean default dynamics calibrated in closed loop, not BlueROV2 hydrodynamics",
    "citation_keys": [

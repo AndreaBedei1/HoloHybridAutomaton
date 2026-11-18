@@ -3,7 +3,7 @@
 # %LOCALAPPDATA%\holoocean is never modified.
 param(
     [string]$UE = "C:\Program Files\Epic Games\UE_5.3",
-    [string]$Root = "F:\Andrea\holoocean_patched_root"
+    [string]$Root = "$env:USERPROFILE\holoocean_patched_root"
 )
 $ErrorActionPreference = "Stop"
 $here = Split-Path -Parent $MyInvocation.MyCommand.Path

@@ -1,5 +1,5 @@
 # Immutable engine/content are shared; every writable engine file belongs to one project slot.
-param([string]$SourceRoot = 'F:\Andrea\holoocean_patched_root', [int[]]$Slots = @(0, 1))
+param([string]$SourceRoot = "$env:USERPROFILE\holoocean_patched_root", [int[]]$Slots = @(0, 1))
 $ErrorActionPreference = 'Stop'
 $source = (Resolve-Path -LiteralPath $SourceRoot).Path
 $ocean = Join-Path $source '2.3.0\worlds\Ocean'
