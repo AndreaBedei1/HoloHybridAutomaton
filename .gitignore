@@ -16,3 +16,7 @@ figures/gifs/
 # local material outside the code base
 ppt/
 analysis/
+
+# local tool configuration
+.claude/
+.serena/
