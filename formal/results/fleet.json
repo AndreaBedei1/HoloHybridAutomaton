@@ -20,7 +20,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 0.039,
+      "seconds": 0.057,
       "counterexample": null,
       "note": "DT 5 s, T_DEAD 14, T_VAC 9, T_HOLD 6, T_RISE 10, FAIR 7 steps"
     },
@@ -31,7 +31,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 0.367,
+      "seconds": 0.73,
       "counterexample": null,
       "note": "DT 5 s, T_DEAD 14, T_VAC 9, T_HOLD 6, T_RISE 10, FAIR 7 steps"
     },
@@ -42,7 +42,7 @@
       "expect": "sat",
       "verdict": "sat",
       "passed": true,
-      "seconds": 0.353,
+      "seconds": 0.522,
       "counterexample": {
         "accab_0": true,
         "accab_1": true,
@@ -463,7 +463,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 0.045,
+      "seconds": 0.06,
       "counterexample": null,
       "note": "DT 5 s, T_DEAD 14, T_VAC 9, T_HOLD 6, T_RISE 10, FAIR 7 steps"
     },
@@ -474,7 +474,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 11.018,
+      "seconds": 22.756,
       "counterexample": null,
       "note": "DT 5 s, T_DEAD 14, T_VAC 9, T_HOLD 6, T_RISE 10, FAIR 7 steps"
     },
@@ -485,7 +485,7 @@
       "expect": "sat",
       "verdict": "sat",
       "passed": true,
-      "seconds": 10.719,
+      "seconds": 21.806,
       "counterexample": {
         "accab_0": false,
         "accab_1": false,
@@ -897,7 +897,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 0.007,
+      "seconds": 0.008,
       "counterexample": null,
       "note": "DT 5 s, T_DEAD 14, T_VAC 9, T_HOLD 6, T_RISE 10, FAIR 7 steps"
     },
@@ -908,7 +908,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 0.083,
+      "seconds": 0.101,
       "counterexample": null,
       "note": "DT 5 s, T_DEAD 14, T_VAC 9, T_HOLD 6, T_RISE 10, FAIR 7 steps"
     },
@@ -919,7 +919,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 59.969,
+      "seconds": 120.647,
       "counterexample": null,
       "note": "DT 5 s, T_DEAD 14, T_VAC 9, T_HOLD 6, T_RISE 10, FAIR 7 steps"
     },
@@ -930,7 +930,7 @@
       "expect": "sat",
       "verdict": "sat",
       "passed": true,
-      "seconds": 50.76,
+      "seconds": 100.33,
       "counterexample": {
         "accab_0": false,
         "accab_1": false,
@@ -1342,7 +1342,7 @@
       "expect": "sat",
       "verdict": "sat",
       "passed": true,
-      "seconds": 3.802,
+      "seconds": 7.206,
       "counterexample": {
         "accab_0": true,
         "accab_2": false,
@@ -1754,7 +1754,7 @@
       "expect": "sat",
       "verdict": "sat",
       "passed": true,
-      "seconds": 1.115,
+      "seconds": 1.417,
       "counterexample": {
         "accab_0": false,
         "accab_1": false,
@@ -2166,7 +2166,7 @@
       "expect": "sat",
       "verdict": "sat",
       "passed": true,
-      "seconds": 7.679,
+      "seconds": 13.969,
       "counterexample": {
         "accba_0": false,
         "accba_1": false,
@@ -2578,7 +2578,7 @@
       "expect": "sat",
       "verdict": "sat",
       "passed": true,
-      "seconds": 20.954,
+      "seconds": 42.077,
       "counterexample": {
         "accac_0": false,
         "accac_1": false,
@@ -2990,7 +2990,7 @@
       "expect": "sat",
       "verdict": "sat",
       "passed": true,
-      "seconds": 6.268,
+      "seconds": 11.151,
       "counterexample": {
         "accab_0": false,
         "accab_1": false,
@@ -3402,7 +3402,7 @@
       "expect": "sat",
       "verdict": "sat",
       "passed": true,
-      "seconds": 6.697,
+      "seconds": 12.021,
       "counterexample": {
         "accab_0": false,
         "accab_1": false,
@@ -3814,7 +3814,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 18.909,
+      "seconds": 31.23,
       "counterexample": null,
       "note": "DT 5 s, T_DEAD 14, T_VAC 9, T_HOLD 6, T_RISE 10, FAIR 7 steps"
     },
@@ -3825,7 +3825,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 24.319,
+      "seconds": 41.079,
       "counterexample": null,
       "note": "DT 5 s, T_DEAD 14, T_VAC 9, T_HOLD 6, T_RISE 10, FAIR 7 steps"
     },
@@ -3836,7 +3836,7 @@
       "expect": "sat",
       "verdict": "sat",
       "passed": true,
-      "seconds": 4.54,
+      "seconds": 7.414,
       "counterexample": {
         "accab_0": true,
         "accab_1": true,
@@ -4248,7 +4248,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 20.05,
+      "seconds": 25.478,
       "counterexample": null,
       "note": "DT 5 s, T_DEAD 14, T_VAC 9, T_HOLD 6, T_RISE 10, FAIR 7 steps"
     },
@@ -4259,7 +4259,7 @@
       "expect": "sat",
       "verdict": "sat",
       "passed": true,
-      "seconds": 3.372,
+      "seconds": 4.268,
       "counterexample": {
         "accab_0": true,
         "accac_0": true,
@@ -4671,7 +4671,7 @@
       "expect": "sat",
       "verdict": "sat",
       "passed": true,
-      "seconds": 3.28,
+      "seconds": 5.286,
       "counterexample": {
         "accab_0": true,
         "accab_3": true,
@@ -5083,7 +5083,7 @@
       "expect": "sat",
       "verdict": "sat",
       "passed": true,
-      "seconds": 5.88,
+      "seconds": 8.215,
       "counterexample": {
         "accab_0": true,
         "accab_4": false,
@@ -5489,13 +5489,13 @@
       "note": "DT 5 s, T_DEAD 14, T_VAC 9, T_HOLD 6, T_RISE 10, FAIR 7 steps"
     },
     {
-      "prop": "F0p n=2: with an entry into the CR that bypasses the stage-2 check (a committed drone moved by separation warning or collision avoidance, at any step, st_lost_middle s5201) the invariant stays inductive",
+      "prop": "F0p n=2: with an entry into the CR that bypasses the stage-2 check (a committed drone moved by separation warning or collision avoidance, at any step) the invariant stays inductive",
       "formula": "inv & step (push of a drone in C to X) -> inv'",
       "encoding": "formal/check_fleet.py",
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 0.151,
+      "seconds": 0.07,
       "counterexample": null,
       "note": "DT 5 s, T_DEAD 14, T_VAC 9, T_HOLD 6, T_RISE 10, FAIR 7 steps"
     },
@@ -5506,18 +5506,18 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 0.401,
+      "seconds": 0.474,
       "counterexample": null,
       "note": "DT 5 s, T_DEAD 14, T_VAC 9, T_HOLD 6, T_RISE 10, FAIR 7 steps"
     },
     {
-      "prop": "F0p n=3: with an entry into the CR that bypasses the stage-2 check (a committed drone moved by separation warning or collision avoidance, at any step, st_lost_middle s5201) the invariant stays inductive",
+      "prop": "F0p n=3: with an entry into the CR that bypasses the stage-2 check (a committed drone moved by separation warning or collision avoidance, at any step) the invariant stays inductive",
       "formula": "inv & step (push of a drone in C to X) -> inv'",
       "encoding": "formal/check_fleet.py",
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 0.058,
+      "seconds": 0.072,
       "counterexample": null,
       "note": "DT 5 s, T_DEAD 14, T_VAC 9, T_HOLD 6, T_RISE 10, FAIR 7 steps"
     },
@@ -5528,18 +5528,18 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 13.257,
+      "seconds": 20.876,
       "counterexample": null,
       "note": "DT 5 s, T_DEAD 14, T_VAC 9, T_HOLD 6, T_RISE 10, FAIR 7 steps"
     },
     {
-      "prop": "F0p n=4: with an entry into the CR that bypasses the stage-2 check (a committed drone moved by separation warning or collision avoidance, at any step, st_lost_middle s5201) the invariant stays inductive",
+      "prop": "F0p n=4: with an entry into the CR that bypasses the stage-2 check (a committed drone moved by separation warning or collision avoidance, at any step) the invariant stays inductive",
       "formula": "inv & step (push of a drone in C to X) -> inv'",
       "encoding": "formal/check_fleet.py",
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 0.074,
+      "seconds": 0.09,
       "counterexample": null,
       "note": "DT 5 s, T_DEAD 14, T_VAC 9, T_HOLD 6, T_RISE 10, FAIR 7 steps"
     },
@@ -5550,18 +5550,18 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 77.675,
+      "seconds": 127.436,
       "counterexample": null,
       "note": "DT 5 s, T_DEAD 14, T_VAC 9, T_HOLD 6, T_RISE 10, FAIR 7 steps"
     },
     {
-      "prop": "F1p without the gate guard (b2-freeze-v11): claims learnt one step late (two drones committed together) and both moved into the CR by avoidance: two drones in X (n=3); superseded by GG4 with the guard",
+      "prop": "F1p declared limit: claims learnt one step late (two drones committed together) and both moved into the CR by avoidance: two drones in X (n=3); the model has no geometry to exclude two pushes at once",
       "formula": "expect a run with two drones in X",
       "encoding": "formal/check_fleet.py",
       "expect": "sat",
       "verdict": "sat",
       "passed": true,
-      "seconds": 3.9,
+      "seconds": 5.834,
       "counterexample": {
         "accab_0": true,
         "accac_0": true,
@@ -5967,13 +5967,13 @@
       "note": "DT 5 s, T_DEAD 14, T_VAC 9, T_HOLD 6, T_RISE 10, FAIR 7 steps"
     },
     {
-      "prop": "F0q without the gate guard (b2-freeze-v11): a queued, uncommitted drone moved into the CR by avoidance breaks the invariant; superseded by GG4 with the guard",
+      "prop": "F0q declared limit: a queued, uncommitted drone moved into the CR by avoidance breaks the invariant (the queue points are at least 3.4 m before the CR; not modelled)",
       "formula": "expect inv & push of a drone in Q -> not inv'",
       "encoding": "formal/check_fleet.py",
       "expect": "sat",
       "verdict": "sat",
       "passed": true,
-      "seconds": 0.049,
+      "seconds": 0.05,
       "counterexample": {
         "accab_0": false,
         "accab_1": false,
@@ -6031,13 +6031,13 @@
       "note": "DT 5 s, T_DEAD 14, T_VAC 9, T_HOLD 6, T_RISE 10, FAIR 7 steps"
     },
     {
-      "prop": "F1pa scope: the escape planner without the gate guard (b2-freeze-v11) is not antisymmetric along the gate axis (two drones at their hold points seeing each other can both be moved forward)",
+      "prop": "F1pa scope: the deployed escape planner is not antisymmetric along the gate axis (two drones at their hold points seeing each other can both be moved forward)",
       "formula": "exists mirrored patterns with a forward choice for both",
       "encoding": "holo_fleet/control/escape.py (exhaustive over the sector patterns)",
       "expect": "counterexample",
       "verdict": "counterexample",
       "passed": true,
-      "seconds": 0.609,
+      "seconds": 0.653,
       "counterexample": null,
       "note": "8 mirrored patterns, e.g. [['UP'], ['RIGHT', 'UP'], ['LEFT', 'UP']]"
     },
@@ -6048,7 +6048,7 @@
       "expect": "sat",
       "verdict": "sat",
       "passed": true,
-      "seconds": 3.211,
+      "seconds": 5.186,
       "counterexample": {
         "accab_0": true,
         "accab_2": false,
