@@ -190,8 +190,6 @@ class DroneController:
         if mode not in AVOIDANCE:
             self.flows.last_choice = None
             self.flows.escape.reset()
-            self.flows.guard_state = ""
-            self.flows.guard_hold_s = None
         if mode == Mode.SEPARATION_WARNING:
             v = self.flows.separation_warning(obs, v_mis)
             authority = "brake"
@@ -243,7 +241,7 @@ class DroneController:
             "targets": [{"pattern": "+".join(sorted(tg.pattern)), "r": round(tg.r_min, 2), "d_lower": round(tg.d_lower, 2),
                          "cls": tg.cls, "closing": round(tg.closing_rate, 2)} for tg in obs.targets],
             "escape": None if ch is None else {"dir": ch.label, "guarantee": round(ch.guarantee, 2),
-                                               "feasible": ch.feasible, "guard": ch.guard},
+                                               "feasible": ch.feasible},
             "current_est": np.round(self.ll.current_estimate(), 3).tolist(),
             "gate": {"id": obs.gate.gate_id, "s": round(obs.gate.s, 2), "l": round(obs.gate.l, 2),
                      "at_queue": obs.gate.at_queue, "decision": obs.gate.decision, "has_prio": obs.gate.has_prio,

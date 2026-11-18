@@ -27,7 +27,7 @@ Mapping of report verdicts: R2 "MEASURED IN OUR SIMULATOR" is DERIVED (from simu
 
 **Columns.** *Value*: the current code value with its location (file and qualified name); level-dependent values are given as CLEAN / LOW / MEDIUM. *Source*: the verdict class followed by the evidence. *DOI or URL*: identifiers of the entries in the *Citation key* column (DOI, arXiv number or URL) and, for simulator measurements, the repository file. *Derivation*: the mapping from source to value. *Validity*: conditions and limits. The registry keeps the same rows in the same order. "DI-n" refers to the numbered entries of `DESIGN_ITERATIONS.md` at the repository root. The audit reports, `DESIGN_ITERATIONS.md`, `docs/SENSOR_DEGRADATION_REFERENCES.md`, `docs/ACOUSTIC_CHANNEL_MODEL.md` and the other reports cited here are kept in the versioned archive of the project (`reports/`), not in the repository.
 
-**Counts.** 128 rows in total.
+**Counts.** 126 rows in total.
 
 | Section | Rows | SUPPORTED | PARTIALLY SUPPORTED | DERIVED | DESIGN CHOICE | STRESS ASSUMPTION | CONTRADICTED |
 |---|---|---|---|---|---|---|---|
@@ -35,11 +35,11 @@ Mapping of report verdicts: R2 "MEASURED IN OUR SIMULATOR" is DERIVED (from simu
 | 2 Navigation sensors | 18 | 9 | 1 | 0 | 2 | 5 | 1 |
 | 3 Sonar and HoloOcean | 23 | 2 | 1 | 5 | 7 | 7 | 1 |
 | 4 Separation and envelope | 12 | 0 | 0 | 6 | 6 | 0 | 0 |
-| 5 Gate (P2) | 16 | 0 | 0 | 4 | 12 | 0 | 0 |
+| 5 Gate (P2) | 14 | 0 | 0 | 4 | 10 | 0 | 0 |
 | 6 Formation (P3) | 7 | 0 | 0 | 1 | 6 | 0 | 0 |
 | 7 Acoustic B2 channel | 23 | 5 | 3 | 5 | 1 | 8 | 1 |
 | 8 Onboard acoustic envelope | 16 | 0 | 0 | 10 | 6 | 0 | 0 |
-| **Total** | **128** | **18** | **6** | **35** | **45** | **21** | **3** |
+| **Total** | **126** | **18** | **6** | **35** | **43** | **21** | **3** |
 
 ## 1. Vehicle and plant
 
@@ -154,8 +154,6 @@ The audit reports do not cover the gate parameters. No external literature appli
 | MAX_CORR_M (largest horizontal correction of the structure aiding) | 1.2 m (`structure_aiding.py MAX_CORR_M`) | DESIGN CHOICE: the drift a run can accumulate (code comment); no external source | - | a 2 deg bias drifts 3.49 % of the distance; the docstring quotes about 0.5 m after the approach to the gate | A drone whose drift brought it in front of a bar cannot be relocalised by a range-only fit without an assumption on echo identity: it holds (documented C5 limitation) | - |
 | acquisition_distance (farthest distance before the gate plane at which a fit can be accepted) | 4.24 m (`structure_aiding.py acquisition_distance`) | DERIVED (from sonar geometry) a side cone sees a bar point at offset c from the gate axis only when x <= tan(half_angle) abs(c - e); over true offsets abs(e) <= MAX_CORR_M | - | tan(60 deg) x (outer half-extent 1.25 m + MAX_CORR_M 1.2 m) = 4.24 m, with outer = 1.0 m half-opening + 0.25 m bar; capped by SonarModel.range_max | Gate with a 2.0 m opening and 0.25 m bars; the code evaluates it from the gate map. Recent change (C5: derived from sonar visibility); the audit reports do not cover it | - |
 | Fit acceptance constants of the structure aiding | ASSOC_GATE_M 0.9 m; FIT_RMS_M 0.10 m; MIN_MATCHED 2; GAIN_MIN 0.05 m^2; AMBIGUITY 0.005 m^2; UNIQUE_M 0.4 m; CONSIST_M 0.15 m; CONSIST_N 4; GAIN 1.0; COARSE_M 0.3 m; FINE_M 0.05 m; POINT_STRIDE 3; LOC_TTL_S 1.0 s (`structure_aiding.py module constants`) | DESIGN CHOICE: design constants; validated against the CLEAN runs: the nominal cone predicts the first echo of the horizontal sonars within 0.023-0.026 m (SD) and a bar that is not seen in 0-2 % of the samples (structure_aiding.py) | - | HULL_LAT_M = 0.288 + 0.229 sin 5 deg = 0.308 m (computed from HULL_HALF) | Replay of archived MEDIUM runs with range-only fits applied beside the opening was wrong by 0.4-1.2 m, so a fit beside the opening is never applied | - |
-| GUARD_GAIN (gate guard of the avoidance layer) | 1.0 1/s (`flows.py GUARD_GAIN`); active when `config.py GateRule.avoidance_guard` is True (default; False reproduces b2-freeze-v11 in the NG_ protocols) | DESIGN CHOICE: chosen by the project; verified, not tuned: formal GG3/GG3i (inductive braking-curve invariant, centre within 0.079 m of s_hold + 0.3 m) and GG3a/GG3ai with a_brake 0.5 m/s^2 (margin 0.059 m); mutation GG3m (no guard) | formal/check_gate_guard.py; formal/results/gate_guard.json | an avoidance velocity v of a drone inside the keep-out box and not admitted is limited to v.a <= GUARD_GAIN (s_hold - s); s_hold = -(cr_half_len + hull half length + RELOC_MARGIN_M) = -1.179 m; keep-out box s >= -2.189 m, lateral reach 2.39 m | inside the plant model of axis_bmc (dt, w_drift_max, a_brake_measured); infeasible cases are handled explicitly (GUARD_HOLD, GUARD_RETREAT, OVERRIDE for collision avoidance) and logged | - |
-| HOLD_GAIN and HOLD_BACK_MAX (station keeping of a guard hold) | HOLD_GAIN 1.0 1/s, HOLD_BACK_MAX 0.25 m/s (`flows.py HOLD_GAIN, HOLD_BACK_MAX`) | DESIGN CHOICE: introduced after the adversarial runs st_rear_pusher s7000/s7001 (a zero-velocity hold drifted into the CR face); verified by GG3k1/GG3k1i (hold within 0.20 m of its start when it starts at <= 0.05 m/s) and GG3k2/GG3k2i (0.40 m at <= 0.20 m/s); mutation GG3h (the first version without station keeping) | formal/check_gate_guard.py; results/review (adversarial runs) | command -min(HOLD_BACK_MAX, HOLD_GAIN max(0, s - s_start)) along the gate axis, never forward | the hold bound composed with GG3 still allows the estimated centre about 0.3 m into the CR in the worst case (declared limit, logged as GATE_GUARD_HOLD) | - |
 | S2h horizon (bounded check of the status model) | 32 s (`formal/check_status.py` S2h, M3h 42 s) | DESIGN CHOICE: verification horizon of a bounded model check: how long a crossing drone may stop before the CR in the model. It is not a delivery deadline of claims and is not used by any monitor since the review of 2026-11-17 (the premise C audit is ordered by events, `referee/premise_audit.py`) | formal/check_status.py | none | beyond it S2hs gives the counterexample of a stop behind the bars with no claim heard | - |
 
 ## 6. Formation (P3)

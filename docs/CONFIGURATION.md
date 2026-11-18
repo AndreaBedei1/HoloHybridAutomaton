@@ -9,7 +9,7 @@ The formal suites import the same values, so the verified models and the control
 |---|---|---|
 | `sep` | `SeparationThresholds` | d_nominal 3.5, d_warning 2.4, d_ca 1.7, d_safe 1.0 m and their exit thresholds |
 | `env` | `Envelope` | speed, current, drift, braking and staleness bounds assumed by the proofs |
-| `gate` | `GateRule` | CR extents, queue geometry and tolerances, pass path, timers, `avoidance_guard` |
+| `gate` | `GateRule` | CR extents, queue geometry and tolerances, pass path, timers |
 | `form` | `FormationRule` | formation tolerances, recovery, rejoin and vacancy timers, `neighbour_adaptation` |
 | `perc` | `PerceptionConfig` | echo classification and distance-bound parameters |
 | `plant` | `PlantCalibration` | thruster limit and plant constants measured in the simulator |
@@ -25,7 +25,7 @@ import dataclasses
 from holo_fleet.config import DEFAULT, BeaconConfig
 
 cfg = dataclasses.replace(DEFAULT, beacon=BeaconConfig(mode="ACOUSTIC_RB", channel="MEDIUM"))
-cfg_v11 = dataclasses.replace(DEFAULT, gate=dataclasses.replace(DEFAULT.gate, avoidance_guard=False))
+cfg_lat = dataclasses.replace(DEFAULT, acoustic=dataclasses.replace(DEFAULT.acoustic, latency_max_s=0.3))
 ```
 
 The source of every parameter (literature, derivation, design choice or stress setting) is in
@@ -54,7 +54,6 @@ variations of `LOW` are named `SW-<key><value>`, with keys `per` (period s), `la
 | `B2_SW-<spec>` | beacon on a sweep channel, e.g. `B2_SW-lat0.45` |
 | `B2NP_<channel>` | beacon without payload (ablation) |
 | `B2NA_<channel>` | beacon without the neighbours' speed adaptation (`FormationRule.neighbour_adaptation = False`) |
-| `B0NG`, `B2NG_<channel>`, ... | the same without the gate guard (`GateRule.avoidance_guard = False`, the `b2-freeze-v11` controller) |
 
 ## Environment variables
 

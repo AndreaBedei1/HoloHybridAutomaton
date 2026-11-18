@@ -22,7 +22,6 @@ import check_acoustic  # noqa: E402
 import check_determinism  # noqa: E402
 import check_fleet  # noqa: E402
 import check_formation  # noqa: E402
-import check_gate_guard  # noqa: E402
 import check_mutex  # noqa: E402
 import check_observations  # noqa: E402
 import check_separation  # noqa: E402
@@ -41,8 +40,6 @@ SUITES = [
     ("Payload v2: gate status, silence, verified passage", check_status,
      "perception/payload.py + perception/acoustic_gate.py + perception/passage.py + formal/check_status.py"),
     ("Interacting automata of the fleet at the gate (composition, failures, timers, recovery)", check_fleet, "formal/check_fleet.py"),
-    ("Gate guard of the avoidance layer and composition of the gate with separation and avoidance", check_gate_guard,
-     "control/flows.py gate_guard + control/escape.py + formal/check_gate_guard.py"),
 ]
 
 

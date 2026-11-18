@@ -24,9 +24,6 @@ RELOC_MARGIN_M = 0.15
 RELOC_ZONE_M = 0.4
 RELOC_PERIOD_S = 6.0
 RELOC_BACK_M = 0.6
-GUARD_GAIN = 1.0
-HOLD_GAIN = 1.0
-HOLD_BACK_MAX = 0.25
 
 
 def _cap(v: np.ndarray, vmax_xy: float, vmax_z: float) -> np.ndarray:
@@ -73,8 +70,6 @@ class Flows:
         self.offset = np.zeros(3)
         self.cr_cleared = False
         self.past_centre = False
-        self.guard_state = ""
-        self.guard_hold_s: Optional[float] = None
         self.reloc_hold = False
         self.hold_since: Optional[float] = None
         self.hold_timeout = False
@@ -339,53 +334,14 @@ class Flows:
             out.append((tg.pattern, req))
         return out
 
-    def gate_guard(self, obs: LocalObservation) -> Optional[Tuple[np.ndarray, float]]:
-        """Gate guard of the avoidance layer: (a, u_max) with a the world gate axis, or None.  Active for a drone not
-        admitted to the CR (not cleared by the stage-2 check, not past the centre) inside the keep-out box of
-        keepout_filter: the separation filter and the escape may only use velocities with v.a <= u_max =
-        GUARD_GAIN (s_hold - s), s_hold the stage-2 hold point (the CR grown by the hull and RELOC_MARGIN_M).  Behind
-        the hold point the avoidance may still move forward, at a speed that vanishes at it; beyond it, only back."""
-        go, G = obs.gate, self.cfg.gate
-        if not G.avoidance_guard or go.gate_id is None or go.passed or self.cr_cleared or self.past_centre:
-            return None
-        if go.s <= -(G.cr_half_len + float(R_OUT) + G.nav_err_m) - 1e-6 or go.s > G.cr_half_len:
-            return None
-        if abs(go.l) > G.cr_half_width + float(R_OUT) + G.nav_err_m or abs(go.dz) > G.cr_half_height + float(R_OUT) + G.nav_err_m:
-            return None
-        g = self.plan.gates[min(obs.gate_index, len(self.plan.gates) - 1)]
-        a = np.array([float(g.axis[0]), float(g.axis[1]), 0.0])
-        a /= max(float(np.linalg.norm(a)), 1e-9)
-        s_hold = -(G.cr_half_len + float(HULL_HALF[0]) + RELOC_MARGIN_M)
-        return a, GUARD_GAIN * (s_hold - float(go.s))
-
-    def _guarded(self, obs: LocalObservation, ch, cap_world, mode: str):
-        if cap_world is not None and ch.guard in ("HOLD", "OVERRIDE") and ch.guard != self.guard_state:
-            self.events.append({"t": obs.t, "type": "GATE_GUARD_" + ch.guard, "mode": mode, "s": round(float(obs.gate.s), 2),
-                                "u_max": round(float(cap_world[1]), 3), "label": ch.label})
-        self.guard_state = ch.guard if cap_world is not None else ""
-        self.last_choice = ch
-        v = obs.R_wb @ ch.v_body
-        if cap_world is not None and ch.label == "GUARD_HOLD":
-            # station keeping along the axis at the point where the hold began: the own drift is cancelled, the drone never
-            # goes back beyond that point (towards the threat) nor forward beyond the guard's bound (formal GG3h)
-            if self.guard_hold_s is None:
-                self.guard_hold_s = float(obs.gate.s)
-            a, u_max = cap_world
-            back = min(HOLD_BACK_MAX, HOLD_GAIN * max(0.0, float(obs.gate.s) - self.guard_hold_s))
-            v = -back * np.asarray(a, float)
-        else:
-            self.guard_hold_s = None
-        return v
-
     def separation_warning(self, obs: LocalObservation, v_mission_world: np.ndarray) -> np.ndarray:
         sep = self.cfg.sep
         R = obs.R_wb
         v_des_b = R.T @ v_mission_world
         th = self.threats(obs, sep.d_warning_exit)
-        capw = self.gate_guard(obs)
-        cap = None if capw is None else (R.T @ capw[0], capw[1])
-        ch = self.escape.warning_velocity(v_des_b, th, obs.unhealthy, obs.yaw, self.cfg.env.v_max_nominal, cap=cap)
-        return self._guarded(obs, ch, capw, "SEPARATION_WARNING")
+        ch = self.escape.warning_velocity(v_des_b, th, obs.unhealthy, obs.yaw, self.cfg.env.v_max_nominal)
+        self.last_choice = ch
+        return R @ ch.v_body
 
     def collision_avoidance(self, obs: LocalObservation, current_world: np.ndarray,
                             v_mission_world: np.ndarray) -> np.ndarray:
@@ -394,12 +350,11 @@ class Flows:
         th = self.threats(obs, sep.d_ca_exit)
         occupied = {s for tg in obs.targets if tg.r_min < 4.0 for s in tg.pattern}
         z = obs.p[2]
-        capw = self.gate_guard(obs)
-        cap = None if capw is None else (R.T @ capw[0], capw[1])
         ch = self.escape.escape_velocity(th, obs.unhealthy, obs.yaw, env.v_escape, current_body=R.T @ current_world,
                                          mission_body=R.T @ v_mission_world, occupied=occupied,
-                                         depth_room=(z - env.z_min, env.z_max - z), cap=cap, override=True)
-        return self._guarded(obs, ch, capw, "COLLISION_AVOIDANCE")
+                                         depth_room=(z - env.z_min, env.z_max - z))
+        self.last_choice = ch
+        return R @ ch.v_body
 
     def failsafe(self, obs: LocalObservation, probe: bool = False, amp: float = 0.3, period: float = 8.0) -> np.ndarray:
         """Hold the position at the own failsafe layer.  With ``probe`` (an envelope violation is declared) the
