@@ -190,6 +190,8 @@ bundle of the history, source tarballs and a `MANIFEST.json` with the sha256 of 
 - `v13-final-v11-2026-11-18`: the final validation (raw runs, tables, logs, formal results);
 - `v14-reference-runs-2026-11-18`: the CLEAN reference runs;
 - `v12-review-2026-11-18`: the earlier campaigns, reports and reviews.
+- `v15-premise-c-reaudit-2026-11-18`: the offline premise C and CR-entry re-audit of the final campaign, the
+  post-freeze validation and the final validation (`runs.csv`, `pairs.csv`, `entries.csv`, `summary.json`).
 
 The formal results of every check (formula, verdict, counterexample) are in `formal/results/SUMMARY.csv` and
 `SUMMARY.json`.
