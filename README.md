@@ -15,8 +15,7 @@ Principal contributions:
   in a Z3 fleet model (P2);
 - formation keeping, recovery and degraded formation after permanent failures with ranking-function certificates (P3);
 - architecture B2: a one-way TDMA acoustic beacon (64-bit packet) that never enters separation, collision avoidance or
-  the gate precedence, with an offline audit of its premise C against the integer-tick TDMA timing and the
-  behaviour logged by each vehicle;
+  the gate precedence, with an event-ordered runtime audit of its premise C;
 - a referee that judges every run from ground truth, and a reproducible campaign runner.
 
 The controller is the one frozen as tag `b2-freeze-v11`: its code is identical to that tag apart from comments and
@@ -179,7 +178,7 @@ Analysis (no simulator):
 
 ```bash
 python scripts/analyze_validation.py <out dir> <raw dir>        # tables (VALIDATION_TABLES.md) and figures
-python scripts/audit_premise_c.py <out dir> <label>=<raw dir> ...   # premise C pairs and CR entries -> runs/pairs/entries CSV, summary JSON
+python scripts/audit_premise_c.py <out.json> <raw dir>          # premise C and every CR entry, from the logs
 python scripts/analyze_final_campaign.py <raw dir>              # acceptance criteria of the final matrix
 python formal/check_properties.py                               # every Z3 suite -> formal/results/SUMMARY.{json,csv}
 python scripts/build_archive.py --dest <root> --version <name> --refs <refs> --runs <raw dirs>   # versioned archive
@@ -190,10 +189,6 @@ bundle of the history, source tarballs and a `MANIFEST.json` with the sha256 of 
 - `v13-final-v11-2026-11-18`: the final validation (raw runs, tables, logs, formal results);
 - `v14-reference-runs-2026-11-18`: the CLEAN reference runs;
 - `v12-review-2026-11-18`: the earlier campaigns, reports and reviews.
-- `v16-premise-c-reaudit-2026-11-18`: the offline premise C and CR-entry re-audit of the final campaign, the
-  post-freeze validation and the final validation (`runs.csv`, `pairs.csv`, `entries.csv`, `summary.json`);
-  `v15-premise-c-reaudit-2026-11-18` is the first pass, kept unchanged, superseded by v16 (resolution of concurrent
-  pairs from the logged end of each commitment).
 
 The formal results of every check (formula, verdict, counterexample) are in `formal/results/SUMMARY.csv` and
 `SUMMARY.json`.
