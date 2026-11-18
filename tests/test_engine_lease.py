@@ -23,17 +23,26 @@ def test_live_lease_cannot_be_taken_and_release_allows_reuse(tmp_path):
     again.release()
 
 
-def test_two_slots_are_the_absolute_limit(tmp_path):
+def test_a_full_pool_is_busy_and_four_slots_are_the_absolute_limit(tmp_path):
     leases = [EngineLease(tmp_path, capacity=2).acquire() for _ in range(2)]
     try:
         assert {p.slot for p in leases} == {0, 1}
         with pytest.raises(RuntimeError, match="busy"):
             EngineLease(tmp_path, capacity=2).acquire()
-        with pytest.raises(ValueError):
-            EngineLease(tmp_path, capacity=3)
     finally:
         for lease in leases:
             lease.release()
+    leases = [EngineLease(tmp_path, capacity=4).acquire() for _ in range(4)]
+    try:
+        assert {p.slot for p in leases} == {0, 1, 2, 3}
+        with pytest.raises(RuntimeError, match="busy"):
+            EngineLease(tmp_path, capacity=4).acquire()
+    finally:
+        for lease in leases:
+            lease.release()
+    for bad in (0, 5):
+        with pytest.raises(ValueError):
+            EngineLease(tmp_path, capacity=bad)
 
 
 def test_recycled_owner_pid_is_stale_but_live_orphan_engine_blocks_reuse(tmp_path):

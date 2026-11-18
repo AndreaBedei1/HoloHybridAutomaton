@@ -1,250 +1,59 @@
 # HoloFleet-HA
 
 Decentralised coordination of BlueROV2 fleets with local hybrid automata in HoloOcean, aided by a one-way acoustic
-identity beacon.
+beacon.
 
-HoloFleet-HA simulates fleets of BlueROV2 drones in HoloOcean. Every drone runs its own copy of the same
-local hybrid automaton. There is no leader and no message with content: each drone uses its own sonars and onboard
-navigation, a mission plan shared before the dive (path, formation clock, formation template, gate map) and, in the
-operational architecture B2, the one-way packets every drone broadcasts on a TDMA schedule (64 bits: its position,
-error bound and gate phase, CRC-16; no request, reply or command; the receiver measures range and direction itself). B2 is
-therefore one-way acoustic communication, not communication-free; the beacon never enters separation, collision avoidance or the
-gate precedence. With this, the fleet keeps a formation, keeps its separation, avoids collisions, crosses
-a narrow gate one drone at a time, recovers its formation after a disturbance and copes with lost drones.
+Every vehicle runs its own copy of the same local hybrid automaton on its own sonars and onboard navigation and on a
+mission plan shared before the dive. There is no leader and no request, reply or command between vehicles. In
+architecture B2 each vehicle also broadcasts a 64-bit packet on a TDMA schedule (position, error bound, gate phase,
+CRC-16) and every receiver measures range and bearing itself. The beacon never enters separation, collision avoidance
+or the gate precedence.
 
-## 1. How it works
+The fleet keeps a formation, keeps its separation, avoids collisions, crosses a narrow gate one vehicle at a time,
+re-forms beyond it and copes with lost vehicles:
 
-```
-Sensors        six single-beam sonars, DVL, IMU, compass, depth
-   |
-Perception     echo classification, neighbour targets, gate belief, formation check
-   |
-Abstract observation
-   |
-Local hybrid automaton   one mode per drone (holo_fleet/ha/)
-   |
-Mode controller          the continuous flow of that mode (holo_fleet/control/)
-   |
-BlueROV2 thrusters
-```
-
-The fleet is the parallel composition `H_fleet = H_1 || ... || H_N` of identical automata, coupled only
-through what each drone senses in the water.
-
-- Each drone executes its own instance of the same automaton.
-- No message is exchanged at runtime.
-- The referee and the Fleet View may read simulator ground truth, for evaluation and visualization only.
-- The controllers never receive ground truth (checked by tests).
-
-## 2. The hybrid automaton
-
-| what | where |
-|---|---|
-| Automaton specification (modes, edges, guards) | [`holo_fleet/ha/spec.py`](holo_fleet/ha/spec.py) |
-| Runtime execution | [`holo_fleet/ha/automaton.py`](holo_fleet/ha/automaton.py) |
-| Continuous mode controllers | [`holo_fleet/control/`](holo_fleet/control/) |
-| Diagrams (generated from the spec) | [`automaton_presentation.svg`](figures/automaton/automaton_presentation.svg), [`automaton_full.svg`](figures/automaton/automaton_full.svg) |
+- **P1**, separation: every pair of live vehicles stays at least 1 m apart;
+- **P2**, mutual exclusion: at most one vehicle in the critical region of a gate;
+- **P3**, formation: slot recovery, fleet formation and degraded formation within their deadlines.
 
 ![automaton](figures/automaton/automaton_presentation.png)
 
-| state | what the drone does |
-|---|---|
-| `FORMATION_FOLLOW` | Tracks its own slot of the shared formation plan. |
-| `FORMATION_WAIT_REJOIN` | Keeps its slot at reduced progress while an expected neighbour is missing. |
-| `DEGRADED_FORMATION` | Keeps its original slot after a missing neighbour has been declared vacant (no reconfiguration). |
-| `FORMATION_RECOVERY` | Returns to its own slot, from behind along its own lane when it is off it. |
-| `MUTEX_APPROACH` | Moves to its queue point in front of the gate. |
-| `MUTEX_YIELD` | Waits at the queue point while the gate is occupied or another drone has priority. |
-| `MUTEX_PASS` | Crosses the gate alone. |
-| `SEPARATION_WARNING` | Brakes and opens the distance to a neighbour that is too close. |
-| `COLLISION_AVOIDANCE` | Escapes in 3-D from an imminent collision. |
-| `FAILSAFE_HOLD_OR_RETREAT` | Holds position on a sensor fault or when it cannot deliver its commands. |
-
-The priority order
-
-```
-FAILSAFE > COLLISION_AVOIDANCE > SEPARATION_WARNING > MUTEX > FORMATION_RECOVERY > formation keeping
-```
-
-is encoded in the guards of the automaton itself, not in a separate scheduler: a lower-priority edge can
-fire only when the guards of every higher one are false. The real guards are in `spec.py`.
-
-## 3. Live demo
+## Quick start
 
 ```bash
 conda activate holo_fleet_ha
 python scripts/run_demo.py --list
-python scripts/run_demo.py --scenario lost_drone_rejoin
-```
-
-By default a demo is **live only**: it opens HoloOcean and the Fleet View, prints a summary at the end,
-does not modify the official results and keeps no new files.
-
-The Fleet View shows:
-- the whole fleet from above, with the planned slots, the states of the drones and a state timeline;
-- P1 / P2 / P3 status and readable events;
-- an automaton panel for one drone: current state, last transition, its guard and its reason.
-
-Click a drone on the map, or its row in the side panel, to select it (keys `0`-`9` work too).
-`--select K` chooses the initial drone:
-
-```bash
-python scripts/run_demo.py --scenario lost_drone_rejoin --select 2
-```
-
-Other options: `--headless` (no HoloOcean window), `--no-window` (no Fleet View), `--duration S`.
-
-Degraded sensors (noise profiles CLEAN, LOW, MEDIUM):
-
-```bash
-python scripts/run_demo.py --scenario lost_drone_rejoin --profile MEDIUM --seed 1
-```
-
-## 4. Available scenarios
-
-**P1 - Separation / collision avoidance**
-
-| scenario | purpose |
-|---|---|
-| `p1_head_on` | Two drones meet head-on and give way by the sector traffic rule. |
-| `p1_vertical_escape` | Traffic rule off: drones escape in 3-D from a non-cooperative vehicle. |
-| `p1_two_lines` | Two survey lines meet head-on; flanked drones give way vertically. |
-| `p1_close_encounter` | Right-angle crossing with simultaneous arrival; the separation warning keeps the drones apart. |
-
-**Formation**
-
-| scenario | purpose |
-|---|---|
-| `formation_triangle` | Triangle survey under a lateral current. |
-| `formation_square` | 2 x 2 square survey under a diagonal current. |
-| `formation_six` | Six-drone survey line under a current with a vertical component. |
-| `formation_recovery_head_current` | A head current beyond what one drone can deliver; the formation is lost and recovered. |
-| `formation_gust` | Stress test: a strong gust breaks the formation, which then recovers. |
-
-**P2 - Mutual exclusion at the gate**
-
-| scenario | purpose |
-|---|---|
-| `gate_single` | Three drones cross arena gate G06 one at a time and re-form beyond it. |
-| `integrated_short` | Survey, cross-current at the gate, one-at-a-time passage and re-formation. |
-| `mutex_deadlock_resolution` | A stacked pair and a third drone queue at the gate: left first, then top first. |
-| `line_parallel_mutex` | A line abreast reaches the gate side by side. |
-
-**Lost drone**
-
-| scenario | purpose |
-|---|---|
-| `lost_drone_rejoin` | A jet beyond the authority displaces a drone: the others slow down, the drone rejoins from behind. |
-| `lost_drone_timeout` | Permanent failure: after a timeout the others continue in a degraded formation. |
-| `lost_drone_mutex` | A drone is lost before the gate; the leftmost drone still present goes first. |
-
-**Stress batch** (`STRESS_BATCH` in `holo_fleet/sim/scenarios.py`, outside the acceptance matrix): currents of several
-strengths and directions, time-varying water, other fleet configurations, failures away from the gate, boundary probes beyond
-the envelope and probes of the declared limits.
-
-**Perception bench**
-
-| scenario | purpose |
-|---|---|
-| `sonar_classification` | Sonar echo classes: gate structure, drone, both in one cone, seabed, clutter. |
-
-## 5. Recommended demos
-
-If you only want to see the main behaviours:
-
-```bash
-python scripts/run_demo.py --scenario formation_six               # formation keeping with six drones
-python scripts/run_demo.py --scenario p1_vertical_escape          # warning, avoidance and 3-D escape
-python scripts/run_demo.py --scenario mutex_deadlock_resolution   # queue order and one-at-a-time passage
-python scripts/run_demo.py --scenario lost_drone_rejoin           # WAIT_REJOIN, FAILSAFE, rejoin from behind
-python scripts/run_demo.py --scenario lost_drone_timeout          # timeout, then DEGRADED_FORMATION
-python scripts/run_demo.py --scenario integrated_short            # survey, gate and re-formation together
-```
-
-## 6. Saving results
-
-| command | effect |
-|---|---|
-| `python scripts/run_demo.py --scenario X` | Temporary demo, nothing is kept. |
-| `python scripts/run_demo.py --scenario X --save` | Keeps the run in `results/reference/X/`, only if no result exists there yet. |
-| `python scripts/run_demo.py --scenario X --save --overwrite` | Intentionally regenerates the existing result. |
-| `python scripts/run_demo.py --scenario X --save --overwrite --media` | Also keeps the frames and the GIF. |
-
-Only a complete run is saved. `--out DIR` (with `--save`) saves under another folder.
-
-## 7. Formal verification
-
-The project includes Z3 checks of:
-- automaton determinism and completeness, and the priority order;
-- observation consistency (perception to automaton interface);
-- P1 inter-vehicle separation;
-- P2 critical-region mutual exclusion and queue progress, under stated assumptions;
-- P3 formation recovery and the degraded behaviour with a drone that never returns.
-
-```bash
+python scripts/run_demo.py --scenario gate_single
+python -m pytest -q -m "not slow and not holoocean"
 python formal/check_properties.py
 ```
 
-Current status (freeze b2-freeze-v11): all 284 checks give their expected verdict, including the composition of the fleet's
-automata at the gate (`formal/check_fleet.py`) and the exclusion zone of permanent failures. The proofs are on abstractions of the
-drones and their sensing, not on HoloOcean's physics; their premises are listed in `docs/GUARANTEES.md`. Details: [`formal/results/SUMMARY.md`](formal/results/SUMMARY.md).
+## Documentation
 
-## 8. Tests
-
-```bash
-python -m pytest -q -m "not slow and not holoocean"   # fast tests
-python -m pytest -q                                   # all tests, including the Z3 suites and HoloOcean
-```
-
-At the final version: 571 tests pass and 1 is skipped (45 files, `python scripts/run_tests.py <out dir>`, which also runs the formal suite).
-
-## 9. Project structure
-
-```
-holo_fleet/
-  ha/           hybrid automaton: spec, runtime, guards, mutex precedence
-  control/      continuous mode controllers, escape planner, low level
-  perception/   sonar geometry, echo classification, onboard perception
-  sim/          HoloOcean integration and scenarios
-  referee/      evaluation only (ground truth)
-  ui/           Fleet View and HoloOcean fleet camera
-scripts/        demos, campaign orchestrator, figures, automaton diagram
-calibration/    probes and offline analyses behind the measured / derived parameters
-formal/         Z3 verification suites and their results
-tests/          unit, integration and isolation tests
-figures/        automaton diagrams, calibration figures, demo figures
-results/        reference/ (CLEAN reference runs, measured assumptions), calibration/ (probe and analysis outputs)
-```
-
-## 10. Installation
-
-The project runs on HoloOcean 2.3 with a sonar octree patch, in the conda environment `holo_fleet_ha`.
-
-```bash
-conda create -n holo_fleet_ha --clone ocean -y
-conda activate holo_fleet_ha
-pip install z3-solver imageio
-pip install -e .
-pip install -e F:\Andrea\holoocean-octree-patch\client --no-deps                            # patched client
-powershell -ExecutionPolicy Bypass -File patches/build_and_install_patched_holoocean.ps1   # patched engine
-```
-
-The patched engine lives in its own root (`F:\Andrea\holoocean_patched_root`, override with
-`HOLO_FLEET_HOLOOCEAN_ROOT`); the official HoloOcean installation is not modified. The gate scenarios
-import the Marine Race Arena from `~/Desktop/HoloDroneCompetition` (override with `MARINE_RACE_ARENA_ROOT`).
-See [`docs/HOLOOCEAN_OCTREE_PATCH.md`](docs/HOLOOCEAN_OCTREE_PATCH.md) for the patch.
-
-## 11. Results and documentation
-
-| topic | document |
+| Topic | Document |
 |---|---|
-| Final report | [`REPORT.md`](REPORT.md) |
-| Claims, evidence, premises | [`docs/GUARANTEES.md`](docs/GUARANTEES.md) |
+| Installation (Python environment, patched HoloOcean engine, arena, several engines) | [`docs/INSTALL.md`](docs/INSTALL.md) |
+| Usage (demos, scenarios, tests, formal checks, campaigns, analysis, archive) | [`docs/USAGE.md`](docs/USAGE.md) |
+| Architecture (automaton, gate passage and gate guard, beacon, package layout) | [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) |
+| Configuration (`FleetConfig`, profiles, channels, protocols, environment variables) | [`docs/CONFIGURATION.md`](docs/CONFIGURATION.md) |
+| Parameter provenance | [`docs/PARAMETER_PROVENANCE.md`](docs/PARAMETER_PROVENANCE.md) |
+| Guarantees, premises, monitors and limits | [`docs/GUARANTEES.md`](docs/GUARANTEES.md) |
 | Formation contract P3 | [`docs/P3_CONTRACT.md`](docs/P3_CONTRACT.md) |
-| Acceptance criteria (v8 and history) | [`docs/ACCEPTANCE_CRITERIA.md`](docs/ACCEPTANCE_CRITERIA.md) |
-| Final campaign | [`results/final/FINAL_CAMPAIGN_ANALYSIS.md`](results/final/FINAL_CAMPAIGN_ANALYSIS.md), [`results/final/runs.csv`](results/final/runs.csv) |
-| Development record and reviews | [`analysis/MEDIUM_CAMPAIGN_LOG.md`](analysis/MEDIUM_CAMPAIGN_LOG.md), `analysis/review_round*_*.md` |
-| Formal verification | [`formal/results/SUMMARY.md`](formal/results/SUMMARY.md) |
-| Current demo results | [`results/reference/SUMMARY.md`](results/reference/SUMMARY.md) |
-| HoloOcean sonar patch | [`docs/HOLOOCEAN_OCTREE_PATCH.md`](docs/HOLOOCEAN_OCTREE_PATCH.md) |
-| Sonar validation | [`docs/v2/SONAR_PROBE.md`](docs/v2/SONAR_PROBE.md) |
+| HoloOcean sonar octree patch | [`docs/HOLOOCEAN_OCTREE_PATCH.md`](docs/HOLOOCEAN_OCTREE_PATCH.md) |
+| Formal results | [`formal/results/SUMMARY.md`](formal/results/SUMMARY.md) |
+
+Reports, campaign logs, reviews and raw runs are kept in a versioned archive outside the repository; the history of
+the repository keeps every earlier version of them.
+
+## Repository layout
+
+```
+holo_fleet/    the package: automaton, controllers, perception, simulation, referee, user interface
+formal/        Z3 suites and their summary
+scripts/       demos, campaign runner, analysis, archive builder, engine slots
+calibration/   simulator probes behind the measured parameters
+tests/         unit, integration and isolation tests
+results/       calibration/ (probe outputs read by the code) and reference/ (CLEAN reference runs)
+patches/       the HoloOcean patch and its build script
+figures/       automaton diagrams and calibration figures
+```

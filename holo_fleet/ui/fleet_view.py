@@ -191,6 +191,11 @@ class FleetView:
         self.vertical = (max(dz) - min(dz) > 1.0) or bool(getattr(scenario.sim, "intruders", ()))
         self._fit()
 
+    def set_duration(self, duration: float) -> None:
+        """Time span of the run: the time axis and the map extent (the plan up to that instant)."""
+        self.duration = float(duration)
+        self._fit()
+
     def select_drone(self, k: int) -> bool:
         """Select a fleet member for the automaton panel; return whether selection changed."""
         if not 0 <= int(k) < self.n:
@@ -268,6 +273,8 @@ class FleetView:
     def step(self, t: float, recs: Sequence[Dict], positions, referee_live: Dict, events: Sequence[Dict] = (),
              yaws=None) -> None:
         self.t = t
+        if t > self.duration - 2.0:
+            self.duration = 10.0 * math.ceil((t + 20.0) / 10.0)
         self.recs = [dict(r or {}) for r in recs]
         self.P = np.asarray(positions, float)
         if yaws is not None:
@@ -696,7 +703,8 @@ class FleetView:
             y = ly0 + k * (lh + 4)
             dr.text((x0 + 18, y + lh / 2 - 8), dname(self.names[k]), font=F["sb"], fill=INK)
         T = self.duration
-        for tt in np.arange(0.0, T + 1e-6, 10.0):
+        step = 10.0 if T <= 120.0 else (20.0 if T <= 240.0 else 30.0)
+        for tt in np.arange(0.0, T + 1e-6, step):
             X = lx0 + (lx1 - lx0) * tt / T
             dr.text((X - 8, ly0 + self.n * (lh + 4) + 2), f"{tt:.0f}", font=F["xs"], fill=MUTED)
         if self.marks:

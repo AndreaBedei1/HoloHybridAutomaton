@@ -36,3 +36,15 @@ results/robustness/raw*/
 results/robustness/v3_reeval/*/
 results/validation/pilot/
 results/validation/heldout/
+
+# review runs (raw, archived outside the repository)
+results/review/raw_*/
+results/review/*.log
+
+# reports, development logs, reviews and raw runs live in the versioned archive (scripts/build_archive.py)
+analysis/
+results/final/
+results/validation/
+results/review/
+results/robustness/
+REPORT.md

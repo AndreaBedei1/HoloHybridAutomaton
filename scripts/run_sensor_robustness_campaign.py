@@ -174,20 +174,25 @@ def worker(args) -> int:
               "(the baseline needs the octree patch, docs/HOLOOCEAN_OCTREE_PATCH.md)", file=sys.stderr)
         return 4
     cfg = DEFAULT
-    if args.protocol.startswith(("B2_SW-", "B2NA_")):
+    proto = args.protocol
+    if "NG_" in proto or proto == "B0NG":
+        cfg = dataclasses.replace(DEFAULT, gate=dataclasses.replace(DEFAULT.gate, avoidance_guard=False))
+        proto = proto.replace("NG_", "_") if proto != "B0NG" else "B0"
+    base = cfg
+    if proto.startswith(("B2_SW-", "B2NA_")):
         from holo_fleet.sim.acoustic_channel import sweep_spec
 
-        na = args.protocol.startswith("B2NA_")
-        chan = args.protocol[5:] if na else args.protocol[3:]
+        na = proto.startswith("B2NA_")
+        chan = proto[5:] if na else proto[3:]
         per = sweep_spec(chan).get("period_s", 1.0) if chan.startswith("SW-") else 1.0
-        cfg = dataclasses.replace(DEFAULT, beacon=BeaconConfig(mode="ACOUSTIC_RB", channel=chan, period_s=per))
+        cfg = dataclasses.replace(base, beacon=BeaconConfig(mode="ACOUSTIC_RB", channel=chan, period_s=per))
         if na:
             cfg = dataclasses.replace(cfg, form=dataclasses.replace(cfg.form, neighbour_adaptation=False))
-    elif args.protocol.startswith("B2_"):
-        cfg = dataclasses.replace(DEFAULT, beacon=BeaconConfig(mode="ACOUSTIC_RB", channel=args.protocol[3:]))
-    elif args.protocol.startswith("B2NP_"):
-        cfg = dataclasses.replace(DEFAULT, beacon=BeaconConfig(mode="ACOUSTIC_RB", channel=args.protocol[5:],
-                                                               payload=False))
+    elif proto.startswith("B2_"):
+        cfg = dataclasses.replace(base, beacon=BeaconConfig(mode="ACOUSTIC_RB", channel=proto[3:]))
+    elif proto.startswith("B2NP_"):
+        cfg = dataclasses.replace(base, beacon=BeaconConfig(mode="ACOUSTIC_RB", channel=proto[5:],
+                                                            payload=False))
     d = Path(args.run_dir)
     prof, _, scope = args.profile.partition("-")
     terminal = {"profile": args.profile} if args.terminal else None

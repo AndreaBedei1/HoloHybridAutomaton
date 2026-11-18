@@ -86,7 +86,8 @@ def run(name: str, out_root: Path, headless: bool = True, run_id: Optional[str] 
     """``noise_drones``: indices of the drones that receive ``noise`` (None: all; the others keep the deployed
     sensors).  ``terminal``: {"profile": sensor-profile name, "deadline_s": optional override} ends the run on SUCCESS,
     FAILURE or DEADLINE (referee/terminal.py, criteria v3) instead of at the scenario duration; the horizon is then the
-    deadline, by default referee/criteria.deadline_v3 of the scenario and profile."""
+    deadline, by default referee/criteria.deadline_v3 of the scenario and profile.  ``terminal["linger_s"]`` keeps
+    simulating that many seconds after the outcome (demos: the final fleet stays on screen); default 0."""
     sc: Scenario = SCENARIOS[name](cfg)
     if sc.cfg_patch:
         cfg = dataclasses.replace(cfg, **sc.cfg_patch)
@@ -104,6 +105,7 @@ def run(name: str, out_root: Path, headless: bool = True, run_id: Optional[str] 
         t_nom = nominal_end_s(sc)
         duration = float(terminal.get("deadline_s") or horizon_v5(sc, cfg, terminal.get("profile")))
         sc.sim.duration_s = duration
+        duration += float(terminal.get("linger_s") or 0.0)
     run_id = run_id or name
     out = Path(out_root) / run_id
     out.mkdir(parents=True, exist_ok=True)
@@ -174,6 +176,8 @@ def run(name: str, out_root: Path, headless: bool = True, run_id: Optional[str] 
     last_frame_t = -1e9
     ctrl_ms = []
     fault_on = {i: False for i in range(len(getattr(sc.sim, "faults", ())))}
+    t_terminal = None
+    linger_s = float((terminal or {}).get("linger_s") or 0.0)
     try:
         for step in range(n_steps):
             step_events = []
@@ -235,9 +239,11 @@ def run(name: str, out_root: Path, headless: bool = True, run_id: Optional[str] 
 
                     cv2.imwrite(str(out / "frames" / f"chase_{int(round(sim.t * 10)):05d}.jpg"),
                                 np.asarray(img)[:, :, :3], [cv2.IMWRITE_JPEG_QUALITY, 85])
-            if monitor is not None and monitor.update(sim.t, truth.positions, ref,
-                                                      [ctrls[nm].last_record for nm in sim.names]):
+            if t_terminal is None and monitor is not None and monitor.update(
+                    sim.t, truth.positions, ref, [ctrls[nm].last_record for nm in sim.names]):
                 ev_f.write(json.dumps({"t": sim.t, "type": "TERMINAL", **monitor.summary()}, default=_jsonable) + "\n")
+                t_terminal = sim.t
+            if t_terminal is not None and sim.t >= t_terminal + linger_s - 1e-9:
                 break
         if monitor is not None and monitor.outcome is None:
             monitor.finalize(sim.t, ref, [ctrls[nm].last_record for nm in sim.names])

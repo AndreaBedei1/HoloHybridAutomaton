@@ -1,11 +1,11 @@
 # Immutable engine/content are shared; every writable engine file belongs to one project slot.
-param([string]$SourceRoot = 'F:\Andrea\holoocean_patched_root')
+param([string]$SourceRoot = 'F:\Andrea\holoocean_patched_root', [int[]]$Slots = @(0, 1))
 $ErrorActionPreference = 'Stop'
 $source = (Resolve-Path -LiteralPath $SourceRoot).Path
 $ocean = Join-Path $source '2.3.0\worlds\Ocean'
 $sourceExe = Join-Path $ocean 'Windows\Holodeck\Binaries\Win64\Holodeck.exe'
 $hash = (Get-FileHash -LiteralPath $sourceExe -Algorithm SHA256).Hash
-foreach ($slot in 0, 1) {
+foreach ($slot in $Slots) {
     $target = $source + '_slot' + $slot
     if (Test-Path -LiteralPath $target) { throw "Refusing to overwrite existing root: $target" }
     $dest = Join-Path $target '2.3.0\worlds\Ocean'

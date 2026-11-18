@@ -36,7 +36,7 @@ cell boundary are lost.**  Example: a box face at x = 324 cm with 6 cm leaves.
 ## 2. Reproduction (unpatched 2.3.0)
 
 `probe/octree_debug_box.py` and `calibration/sonar_probe_lib.py` (sessions k1-k3,
-`docs/v2/SONAR_PROBE.md`):
+`docs/v2/SONAR_PROBE.md`, in the versioned archive):
 
 * **k1:** reset, spawn the arena gate G06 and a 0.5 m steel box 3 m ahead of a SinglebeamSonar.
   The gate and the box are never echoed; a BlueROV2 at the same distance is.

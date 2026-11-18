@@ -66,7 +66,7 @@ ALLOWED = {"config.py", "runner.py", "sim/beacon.py", "sim/holo_env.py", "sim/ac
            "perception/formation_perception.py", "perception/gate_perception.py", "perception/sensor_suite.py",
            "perception/payload.py", "perception/nav.py",
            "perception/structure_aiding.py",
-           "control/controller.py", "referee/robustness_metrics.py", "referee/referee.py",
+           "control/controller.py", "referee/robustness_metrics.py", "referee/premise_audit.py", "referee/referee.py",
            "referee/p3.py"}
 
 

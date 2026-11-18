@@ -1,5 +1,0 @@
-protocol,scenario,seed,class,jet_on,jet_off,reaction_s,max_form_err_m,form_err_at_jet_off_m,recovery_after_jet_s,mean_form_err_after_m,adapt_s,v_ref_min,yielded_m,P1_min_m,duration_s
-B2NA_LOW,em_delay_head,6000,PASS,8.0,15.0,,2.72,1.26,16.2,0.56,0.0,0.3,0.0,3.058,102.1
-B2NA_LOW,lost_drone_rejoin,6000,PASS,8.0,15.0,,3.54,1.99,24.0,0.81,0.0,0.3,0.0,3.134,102.1
-B2_LOW,em_delay_head,6000,PASS,8.0,15.0,5.7,2.3,1.21,10.4,0.34,47.6,0.2,2.45,3.074,102.1
-B2_LOW,lost_drone_rejoin,6000,PASS,8.0,15.0,3.7,2.67,1.87,13.7,0.45,68.6,0.2,4.98,2.956,102.1

@@ -31,7 +31,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 66.189,
+      "seconds": 62.937,
       "counterexample": null,
       "note": ""
     },
@@ -42,7 +42,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 7.716,
+      "seconds": 7.487,
       "counterexample": null,
       "note": ""
     },
@@ -53,7 +53,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 47.602,
+      "seconds": 48.689,
       "counterexample": null,
       "note": ""
     },
@@ -64,7 +64,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 9.418,
+      "seconds": 9.343,
       "counterexample": null,
       "note": ""
     },
@@ -75,7 +75,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 44.236,
+      "seconds": 48.449,
       "counterexample": null,
       "note": ""
     },
@@ -86,7 +86,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 9.769,
+      "seconds": 10.507,
       "counterexample": null,
       "note": ""
     },
@@ -97,7 +97,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 23.442,
+      "seconds": 23.952,
       "counterexample": null,
       "note": ""
     },
@@ -108,7 +108,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 5.583,
+      "seconds": 5.468,
       "counterexample": null,
       "note": ""
     },
@@ -119,7 +119,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 24.587,
+      "seconds": 24.864,
       "counterexample": null,
       "note": ""
     },
@@ -130,7 +130,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 10.952,
+      "seconds": 11.361,
       "counterexample": null,
       "note": ""
     },
@@ -141,7 +141,7 @@
       "expect": "sat",
       "verdict": "sat",
       "passed": true,
-      "seconds": 2.596,
+      "seconds": 2.458,
       "counterexample": {
         "beyond_0": false,
         "beyond_1": false,
@@ -553,7 +553,7 @@
       "expect": "sat",
       "verdict": "sat",
       "passed": true,
-      "seconds": 82.837,
+      "seconds": 85.15,
       "counterexample": {
         "beyond_0": false,
         "beyond_1": false,
@@ -965,7 +965,7 @@
       "expect": "sat",
       "verdict": "sat",
       "passed": true,
-      "seconds": 5.512,
+      "seconds": 6.146,
       "counterexample": {
         "beyond_0": false,
         "beyond_1": false,
