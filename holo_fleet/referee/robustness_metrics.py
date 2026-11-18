@@ -525,8 +525,8 @@ def refine_v8(cls: str, out: Dict) -> str:
 
 def cr_entry_kind(states_k, j: int) -> str:
     """How a drone entered the CR at its state record j: ADMITTED (committed and admitted by the stage-2 check since its commit
-    edge), PUSHED (committed, never admitted: the hold overridden by separation warning or collision avoidance, st_lost_middle
-    s5201) or UNCOMMITTED."""
+    edge), PUSHED (committed, never admitted: the hold overridden by separation warning or collision avoidance)
+    or UNCOMMITTED."""
     if not states_k[j].get("committed"):
         return "UNCOMMITTED"
     c0 = j

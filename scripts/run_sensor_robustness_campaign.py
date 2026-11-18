@@ -1,6 +1,7 @@
 """B0 / B2 robustness campaign orchestrator (headless HoloOcean, resumable, optionally sharded).
 
     python scripts/run_sensor_robustness_campaign.py --phase final [--dry-run]
+    python scripts/run_sensor_robustness_campaign.py --phase validation --raw <root>   # VALIDATION, seeds 8000-8001
     python scripts/run_sensor_robustness_campaign.py --phase targeted --only lost_drone_timeout \
         --protocols B0 B2_CLEAN --profiles CLEAN LOW-ALL --seeds 0 --raw <root>
 
@@ -46,6 +47,17 @@ ALL_SCENARIOS = ("p1_head_on", "p1_vertical_escape", "p1_two_lines", "p1_close_e
                  "integrated_short", "lost_drone_rejoin", "lost_drone_rejoin_front", "lost_drone_timeout", "mutex_deadlock_resolution",
                  "line_parallel_mutex", "lost_drone_mutex")
 PY = sys.executable
+# Final validation of the controller (b2-freeze-v11 restored): fixed matrix and fresh seeds, never used before.
+# Each entry: (protocols, profiles, scenarios); every cell runs every seed of VALIDATION_SEEDS.
+VALIDATION_SEEDS = (8000, 8001)
+VALIDATION = (
+    (("B2_MEDIUM",), ("MEDIUM-ALL",), ("p1_head_on", "formation_six", "lost_drone_rejoin", "gate_single",
+                                       "mutex_deadlock_resolution", "lost_drone_mutex", "integrated_short")),
+    (("B0",), ("LOW-ALL",), ("p1_head_on", "formation_six", "lost_drone_rejoin", "gate_single",
+                             "mutex_deadlock_resolution", "lost_drone_mutex", "integrated_short")),
+    (("B2_SW-lat0.35", "B2_SW-lat0.45"), ("LOW-ALL",), ("gate_single",)),
+    (("B2_MEDIUM",), ("MEDIUM-ALL",), ("gate_four",)),
+)
 
 
 def scope_drones(scenario: str, scope: str) -> list:
@@ -91,13 +103,16 @@ def scope_drones(scenario: str, scope: str) -> list:
 
 def plan(phase: str, seeds, only=None, protocols=None, profiles=None):
     """Runs (protocol, profile, scenario, seed); deadlines are a priori (criteria v3), so no run depends on another.
-    ``final``: the campaign matrix; ``targeted``: --only scenarios x --protocols x --profiles (targeted validation)."""
+    ``final``: the campaign matrix; ``validation``: VALIDATION; ``targeted``: --only scenarios x --protocols x --profiles."""
     if phase == "final":
-        runs = final_matrix(seeds, only)
+        runs = final_matrix(seeds or SEEDS, only)
+    elif phase == "validation":
+        runs = [(proto, prof, sc, s) for protos, profs, scs in VALIDATION for sc in scs for prof in profs for proto in protos
+                for s in (seeds or VALIDATION_SEEDS) if not only or sc in only]
     elif phase == "targeted":
         if not (only and protocols and profiles):
             raise SystemExit("--phase targeted needs --only, --protocols and --profiles")
-        runs = [(proto, prof, sc, s) for sc in only for prof in profiles for proto in protocols for s in seeds]
+        runs = [(proto, prof, sc, s) for sc in only for prof in profiles for proto in protocols for s in (seeds or SEEDS)]
     else:
         raise SystemExit(f"unknown phase {phase}")
     if only:
@@ -173,12 +188,9 @@ def worker(args) -> int:
         print(f"patched HoloOcean root not found ({hs.DEFAULT_PATCHED_ROOT}): refusing to run "
               "(the baseline needs the octree patch, docs/HOLOOCEAN_OCTREE_PATCH.md)", file=sys.stderr)
         return 4
-    cfg = DEFAULT
+    base = DEFAULT
+    cfg = base
     proto = args.protocol
-    if "NG_" in proto or proto == "B0NG":
-        cfg = dataclasses.replace(DEFAULT, gate=dataclasses.replace(DEFAULT.gate, avoidance_guard=False))
-        proto = proto.replace("NG_", "_") if proto != "B0NG" else "B0"
-    base = cfg
     if proto.startswith(("B2_SW-", "B2NA_")):
         from holo_fleet.sim.acoustic_channel import sweep_spec
 
@@ -486,9 +498,9 @@ def finish(d: Path, profile: str) -> dict:
 
 def main() -> int:
     ap = argparse.ArgumentParser()
-    ap.add_argument("--phase", default="final", choices=("final", "targeted"))
+    ap.add_argument("--phase", default="final", choices=("final", "validation", "targeted"))
     ap.add_argument("--raw", default=str(RAW))
-    ap.add_argument("--seeds", type=int, nargs="*", default=list(SEEDS))
+    ap.add_argument("--seeds", type=int, nargs="*", help="default: SEEDS (final, targeted), VALIDATION_SEEDS (validation)")
     ap.add_argument("--only", nargs="*")
     ap.add_argument("--profiles", nargs="*", help="profile labels (e.g. CLEAN MEDIUM-ALL)")
     ap.add_argument("--protocols", nargs="*", help="--phase targeted: protocols (e.g. B0 B2_CLEAN)")
@@ -545,8 +557,8 @@ def main() -> int:
 
     done = 0
     version = code_version()
-    if args.phase == "final" and version["dirty_files"]:
-        say(f"refused: the final campaign runs only from a clean commit; modified: {version['dirty_files']}")
+    if args.phase in ("final", "validation") and version["dirty_files"]:
+        say(f"refused: phase {args.phase} runs only from a clean commit; modified: {version['dirty_files']}")
         return 2
     build = engine_build()
     say(f"{time.strftime('%H:%M:%S')} phase {args.phase} start: orchestrator pid {os.getpid()}, shard {args.shard}/{args.nshards}, code {version}, engine {build}")

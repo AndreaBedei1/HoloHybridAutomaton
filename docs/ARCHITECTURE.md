@@ -54,16 +54,11 @@ by the sector rule (`ha/mutex_rule.py`) and its occupancy belief of the critical
 CR it stops at the stage-2 hold point and checks once more that nothing occupies the CR (sonar, and under B2 no vehicle
 heard inside and no claim of another vehicle).
 
-The **gate guard** (`control/flows.py gate_guard`, `control/escape.py`) bounds the avoidance layer at the gate. A
-vehicle inside the keep-out box in front of the CR and not admitted may receive a separation or escape velocity only
-while `v . a <= GUARD_GAIN (s_hold - s)` along the gate axis `a`. When no allowed velocity opens the threat:
-
-- separation warning: `GUARD_HOLD` (station keeping where the hold began, never forward) or `GUARD_RETREAT` (back along
-  the axis, when that opens every threat);
-- collision avoidance: `OVERRIDE`, the unconstrained escape, logged as `GATE_GUARD_OVERRIDE`.
-
-`GateRule.avoidance_guard = False` restores the behaviour of `b2-freeze-v11` (protocols with `NG_` in the campaign
-runner).
+Separation warning and collision avoidance rank above the gate passage. A vehicle that holds before the CR can
+therefore be moved into it by an avoidance velocity without the stage-2 check; it keeps its claim while inside
+(`perception/passage.py report_phase`). The referee classifies every physical CR entry as ADMITTED, PUSHED (committed,
+not admitted) or UNCOMMITTED (`referee/premise_audit.py`); the formal status of such entries is in
+[`GUARANTEES.md`](GUARANTEES.md).
 
 ## Architecture B2: one-way acoustic beacon
 

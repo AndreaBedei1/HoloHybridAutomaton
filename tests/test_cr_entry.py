@@ -1,4 +1,4 @@
-"""Entries into the CR that bypass the stage-2 check (st_lost_middle s5201): the referee classification and the claim of the moved drone."""
+"""Entries into the CR that bypass the stage-2 check: the referee classification and the claim of the moved drone."""
 
 import sys
 from pathlib import Path

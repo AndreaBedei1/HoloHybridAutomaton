@@ -31,7 +31,7 @@ claim, or committing during it), the pair is:
   INCONCLUSIVE  the logs end, or k gives up, before the order is decided; j dead; B0 runs where a commit without evidence
                 cannot be ordered against a claim (B0 has no claim: the sonar corridor premise M3 applies instead).
 The physical entries list every entry of a drone's true position into the CR box: ADMITTED, PUSHED (committed, not
-admitted), UNCOMMITTED, with the drones inside at that instant and the guard events of the last 10 s.
+admitted), UNCOMMITTED, with the drones inside at that instant and the automaton modes of the last 10 s.
 """
 
 from __future__ import annotations
@@ -172,14 +172,12 @@ def physical_entries(t, P, states, gate, cfg, names) -> List[Dict]:
             if states[k][j].get("mode") == "DEAD":
                 continue
             j0 = int(np.searchsorted(st_t[k], t[i] - 10.0))
-            guard = sorted({(states[k][y].get("escape") or {}).get("guard") for y in range(j0, j + 1)} - {None, ""})
             i_out = i
             while i_out < len(t) and inside[i_out, k]:
                 i_out += 1
             out.append({"gate": gate.gate_id, "drone": names[k], "t": round(float(t[i]), 2), "kind": cr_entry_kind(states[k], j),
                         "others_inside_at_entry": [names[x] for x in range(n) if x != k and inside[i, x]],
                         "others_inside_while_in": int(inside[i:i_out].sum(axis=1).max() - 1) if i_out > i else 0,
-                        "guard_10s": guard,
                         "modes_10s": sorted({states[k][y].get("mode") for y in range(j0, j + 1)})})
     return out
 

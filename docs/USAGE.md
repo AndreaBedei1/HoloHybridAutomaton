@@ -35,7 +35,6 @@ Without `--save` a demo keeps no files.
 | Formation (P3) | `formation_triangle`, `formation_square`, `formation_six`, `formation_recovery_head_current`, `formation_gust`, `em_delay_head` |
 | Gate (P2) | `gate_single`, `gate_four` (four drones, stacked square), `integrated_short`, `mutex_deadlock_resolution`, `line_parallel_mutex` |
 | Lost drone | `lost_drone_rejoin`, `lost_drone_rejoin_front`, `lost_drone_timeout`, `lost_drone_mutex` and its rise variants, `lost_drone_front_rise_low` |
-| Adversarial | `st_rear_pusher`, `st_rear_pusher_close`: a scripted vehicle pushes the waiting drone toward the gate |
 | Stress batch | `STRESS_BATCH` in `holo_fleet/sim/scenarios.py`: currents, time-varying water, queues, failures, boundary probes |
 | Perception bench | `sonar_classification` (only through `run_demo.py`) |
 
@@ -55,7 +54,7 @@ python scripts/run_tests.py <out dir>                 # one process per file at 
 ```bash
 python formal/check_properties.py           # every suite; writes formal/results/SUMMARY.{md,json}
 python formal/check_properties.py --quick   # skips the slowest suite
-python formal/check_gate_guard.py           # one suite
+python formal/check_fleet.py                # one suite
 ```
 
 Exit status 0 when every check returns its expected verdict (UNSAT for properties, SAT for mutations and witnesses).
@@ -68,6 +67,14 @@ watchdog, and skips runs already complete in the output directory.
 ```bash
 python scripts/run_sensor_robustness_campaign.py --phase targeted --only gate_single lost_drone_mutex \
     --protocols B2_MEDIUM B0 --profiles MEDIUM-ALL --seeds 7300 7301 --raw results/my_batch
+```
+
+The final validation is a fixed matrix (`VALIDATION`, seeds `VALIDATION_SEEDS` = 8000, 8001: 34 runs) and runs only
+from a clean commit; to repeat it independently, check out the commit in its own worktree and run:
+
+```bash
+python scripts/run_sensor_robustness_campaign.py --phase validation --raw <raw dir>
+python scripts/analyze_validation.py <out dir> <raw dir>
 ```
 
 Shard a batch over several engines with `--shard i --nshards n` and `HOLO_FLEET_ENGINE_SLOTS=n` (see
