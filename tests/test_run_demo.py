@@ -101,13 +101,15 @@ def test_media_only_with_media(demo):
 
 
 def test_noise_profile_and_beacon_reach_the_run(demo):
-    assert demo.main(["--scenario", "formation_triangle"]) == 0
+    assert demo.main(["--scenario", "formation_triangle"]) == 0                      # default: B2 on the CLEAN channel
     assert demo.main(["--scenario", "formation_triangle", "--profile", "MEDIUM", "--seed", "2", "--b2", "MEDIUM"]) == 0
-    assert demo.calls["args"] == [{"beacon": "NONE", "noise": None, "seed": None},
-                                  {"beacon": "ACOUSTIC_RB", "noise": "MEDIUM", "seed": 2}]
+    assert demo.main(["--scenario", "formation_triangle", "--b2", "OFF"]) == 0         # B0
+    assert demo.calls["args"] == [{"beacon": "ACOUSTIC_RB", "noise": None, "seed": None},
+                                  {"beacon": "ACOUSTIC_RB", "noise": "MEDIUM", "seed": 2},
+                                  {"beacon": "NONE", "noise": None, "seed": None}]
 
 
-@pytest.mark.parametrize("flags", [["--profile", "LOW"], ["--b2", "CLEAN"]])
+@pytest.mark.parametrize("flags", [["--profile", "LOW"], ["--b2", "MEDIUM"], ["--b2", "OFF"]])
 def test_noisy_or_beacon_runs_are_never_saved_as_reference_demos(demo, flags):
     with pytest.raises(SystemExit):
         demo.main(["--scenario", "formation_triangle", "--save", *flags])

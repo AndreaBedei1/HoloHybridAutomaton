@@ -8,7 +8,8 @@
     python scripts/run_demo.py --scenario lost_drone_rejoin --save --overwrite   # replace the canonical result
     python scripts/run_demo.py --scenario lost_drone_rejoin --save --overwrite --media   # ... with GIF / frames
     python scripts/run_demo.py --scenario lost_drone_rejoin --profile MEDIUM --seed 1    # noisy sensors (live)
-    python scripts/run_demo.py --scenario lost_drone_rejoin --profile MEDIUM --b2 MEDIUM  # + B2 acoustic beacon
+    python scripts/run_demo.py --scenario lost_drone_rejoin --profile MEDIUM --b2 MEDIUM  # B2 on the MEDIUM channel
+    python scripts/run_demo.py --scenario lost_drone_rejoin --b2 OFF                      # B0: no beacon
 
 Two windows: the HoloOcean viewport (the onboard belief is drawn on it: nearest echo per sonar
 sector coloured by class - grey structure, brown seabed, red possible vehicle, amber unknown - and
@@ -34,8 +35,9 @@ the final formation stays on screen; it stops earlier on a FAILURE and at the la
 extends as the run goes on.
 
 ``--profile`` runs with a sensor-noise profile of the robustness campaign (sim/sensor_noise.py) and ``--seed``
-fixes its seeded effects; ``--b2 LEVEL`` enables the variant-B2 one-way acoustic identity beacon with that channel
-level (sim/acoustic_channel.py).  Such runs are not reference demos: they are saved only with ``--out``.
+fixes its seeded effects.  A demo runs B2, the one-way acoustic beacon, on the CLEAN channel by default; ``--b2 LEVEL``
+chooses another channel level (sim/acoustic_channel.py) and ``--b2 OFF`` runs B0 (no beacon).  Runs with a profile or
+another level are not reference demos: they are saved only with ``--out``.
 """
 
 from __future__ import annotations
@@ -122,7 +124,7 @@ def _run_scenario(a, stage: Path) -> str:
         except (OSError, ValueError, KeyError):
             return "INCOMPLETE"
     cfg = DEFAULT
-    if a.b2:
+    if a.b2 != "OFF":
         cfg = dataclasses.replace(DEFAULT, beacon=BeaconConfig(mode="ACOUSTIC_RB", channel=a.b2))
     noise = None
     if a.profile:
@@ -173,8 +175,8 @@ def main(argv=None) -> int:
     ap.add_argument("--profile", choices=("CLEAN", "LOW", "MEDIUM", "HIGH"), default=None,
                     help="sensor-noise profile of the robustness campaign (default: the deployed sensors)")
     ap.add_argument("--seed", type=int, default=None, help="seed of the noise profile's effects")
-    ap.add_argument("--b2", choices=("CLEAN", "LOW", "MEDIUM", "BLACKOUT"), default=None,
-                    help="variant B2: one-way acoustic identity beacon with this channel level (default: B0)")
+    ap.add_argument("--b2", choices=("OFF", "CLEAN", "LOW", "MEDIUM", "BLACKOUT"), default="CLEAN",
+                    help="B2 one-way acoustic beacon on this channel level (default CLEAN); OFF: B0, no beacon")
     a = ap.parse_args(argv)
     if a.list or not a.scenario:
         print("scenarios (one seed each):")
@@ -187,8 +189,8 @@ def main(argv=None) -> int:
         return 0
     if not a.save and (a.overwrite or a.media or a.out):
         ap.error("--overwrite, --media and --out apply only with --save (a plain demo keeps nothing)")
-    if a.save and (a.profile or a.b2) and not a.out:
-        ap.error("a run with --profile or --b2 is not a reference demo: save it only with --out")
+    if a.save and (a.profile or a.b2 != "CLEAN") and not a.out:
+        ap.error("a run with --profile or another --b2 level is not a reference demo: save it only with --out")
     dest = Path(a.out or OUT) / a.scenario
     if a.save and dest.exists() and not a.overwrite:
         print(f"{dest} already exists and was not touched; add --overwrite to replace it.", file=sys.stderr)
