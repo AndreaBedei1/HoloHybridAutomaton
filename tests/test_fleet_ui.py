@@ -256,7 +256,7 @@ def test_the_replay_rebuilds_an_earlier_instant_exactly_as_it_was_shown(monkeypa
     assert np.array_equal(ui.frame_at(34), ui.view.render())
 
 
-def test_the_keys_move_the_replay_back_and_forth_and_space_returns_to_live(monkeypatch):
+def test_the_keys_move_the_replay_back_and_forth(monkeypatch):
     ui, *_ = _replay_ui(monkeypatch)
     ui._key(2424832)                                       # left: one step back from the latest
     assert ui.cursor == 33
@@ -266,17 +266,46 @@ def test_the_keys_move_the_replay_back_and_forth_and_space_returns_to_live(monke
     assert ui.cursor == 0
     ui._key(2555904)                                       # right
     assert ui.cursor == 1
-    ui._key(ord(" "))                                      # back to live
+    ui._key(2293760)                                       # End during the run: live again
     assert ui.cursor is None
     ui._key(ord("2"))
     assert ui.view.sel == 2
+
+
+def test_a_held_key_moves_by_every_repeat_and_is_drawn_once(monkeypatch):
+    ui, *_ = _replay_ui(monkeypatch)
+    keys = iter([2424832] * 12 + [-1])
+    monkeypatch.setattr("holo_fleet.ui.live.cv2.waitKeyEx", lambda *a: next(keys, -1))
+    shown = []
+    monkeypatch.setattr("holo_fleet.ui.live.cv2.imshow", lambda w, img: shown.append(img.shape))
+    ui._poll(1)
+    ui._show_replay()
+    assert ui.cursor == 34 - 12 and len(shown) == 1
+    assert shown[0] == ui.view.render().shape                 # no bar below the view
+
+
+def test_space_pauses_and_plays_on_from_where_it_stopped(monkeypatch):
+    ui, *_ = _replay_ui(monkeypatch)
+    clock = {"t": 100.0}
+    monkeypatch.setattr("holo_fleet.ui.live.time.monotonic", lambda: clock["t"])
+    ui._key(ord(" "))                                      # pause at the latest step
+    assert ui.cursor == 34 and not ui.playing
+    ui._key(2621440)                                       # one second back
+    assert ui.cursor == 24
+    ui._key(ord(" "))                                      # play on
+    clock["t"] += 0.55
+    ui._advance()
+    assert ui.cursor == 29 and ui.playing                  # from where it stopped, at the real-time rate
+    clock["t"] += 2.0
+    ui._advance()
+    assert ui.cursor is None                               # caught up with the run: live again
 
 
 def test_the_window_stays_open_after_the_run_until_it_is_closed(monkeypatch):
     ui, *_ = _replay_ui(monkeypatch)
     ui.close()                                             # the runner's close at the end of the run
     assert ui.show and ui.finished and not ui._closed
-    keys = iter([2424832, 2424832, ord("q")])
-    monkeypatch.setattr("holo_fleet.ui.live.cv2.waitKeyEx", lambda *a: next(keys))
+    keys = iter([2424832, -1, 2424832, -1, ord("q")])
+    monkeypatch.setattr("holo_fleet.ui.live.cv2.waitKeyEx", lambda *a: next(keys, -1))
     ui.hold()
     assert ui.cursor == 32 and ui._closed and not ui.show

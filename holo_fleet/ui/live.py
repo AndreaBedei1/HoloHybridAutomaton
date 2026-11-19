@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import math
 import sys
+import time
 from pathlib import Path
 from typing import Dict, List
 
@@ -62,12 +63,14 @@ KEY_STEPS = {2424832: -1, 2555904: 1, 2490368: 10, 2621440: -10, 2162688: 100, 2
 KEY_HOME, KEY_END, KEY_SPACE = (2359296, ord("h")), (2293760, ord("e")), ord(" ")
 KEY_QUIT = (ord("q"), 27)
 CHECKPOINT_EVERY = 10
-BAR_H = 30
+STEP_S = 0.1
+MAX_KEYS_PER_POLL = 64
 
 
 class DemoUI:
     """Fleet view window of a run.  With replay=True every step is kept: the view can be moved back and forth while the
-    run goes on and after it ends, and the window stays open until it is closed (X, q or Esc)."""
+    run goes on and after it ends (arrows, Home/End), paused and played on from where it was (Space), and the window
+    stays open after the run until it is closed (X, q or Esc)."""
 
     def __init__(self, scenario, cfg, names, show: bool = True, draw_viewport: bool = True,
                  window: str = "holo_fleet - fleet view", selected=None, replay: bool = False):
@@ -84,10 +87,15 @@ class DemoUI:
         self.replay = replay
         self.history: List[tuple] = []
         self.checkpoints: Dict[int, Dict] = {}
-        self.cursor = None
+        self.cursor = None            # None: live; else the index of the step shown
+        self.playing = False          # with a cursor: the replay advances at the real-time rate
         self.finished = False
+        self._play_t = 0.0
         self._rview = None
+        self._rv_i = None
+        self._cache = None            # (index, selected drone, image)
         self._dirty = False
+        self._quit = False
 
     def __call__(self, sim, scenario, ctrls, referee, truth, t, out, save_frame, events=()) -> None:
         recs = [ctrls[nm].last_record for nm in self.names]
@@ -102,7 +110,7 @@ class DemoUI:
             self._viewport(sim, recs, scenario, truth, t)
         if not (self.show or save_frame):
             return
-        img = self.view.render() if (save_frame or self.cursor is None) else None
+        img = self.view.render() if (save_frame or not self.replay) else None
         if save_frame:
             d = Path(out) / "fleet_view"
             d.mkdir(parents=True, exist_ok=True)
@@ -114,15 +122,28 @@ class DemoUI:
                 if not self.replay:
                     cv2.imshow(self.window, img)
                     self._key(cv2.waitKey(1) & 0xFF)
-                elif self.cursor is None:
-                    cv2.imshow(self.window, self._with_bar(img))
-                    self._key(cv2.waitKeyEx(1))
                 else:
-                    self._key(cv2.waitKeyEx(1))
-                    self._show_replay()
+                    self._poll(1)
+                    self._advance()
+                    if self.cursor is None:
+                        cv2.imshow(self.window, img if img is not None else self.view.render())
+                    else:
+                        self._show_replay()
                 self._check_window_open()
             except cv2.error:
                 self.show = False
+
+    def _poll(self, wait_ms: int) -> None:
+        """Every key waiting in the queue (a held key repeats): moved together, then drawn once."""
+        key = cv2.waitKeyEx(wait_ms)
+        n = 0
+        while key is not None and key >= 0 and n < MAX_KEYS_PER_POLL:
+            if key in KEY_QUIT:
+                self._quit = True
+                return
+            self._key(key)
+            n += 1
+            key = cv2.waitKeyEx(1)
 
     def _key(self, key: int) -> None:
         if key is None or key < 0:
@@ -136,7 +157,11 @@ class DemoUI:
         last = len(self.history) - 1
         cur = last if self.cursor is None else self.cursor
         if key == KEY_SPACE:
-            self.cursor = cur if self.cursor is None else None
+            if self.cursor is None:
+                self.cursor, self.playing = cur, False
+            else:
+                self.playing = not self.playing
+                self._play_t = time.monotonic()
             self._dirty = True
             return
         if key in KEY_STEPS:
@@ -147,40 +172,57 @@ class DemoUI:
             cur = last
         else:
             return
-        self.cursor = None if (key in KEY_END and not self.finished) else cur
+        if key in KEY_END and not self.finished:
+            self.cursor, self.playing = None, False
+        else:
+            self.cursor = cur
+            self._play_t = time.monotonic()
+        self._dirty = True
+
+    def _advance(self) -> None:
+        """A playing replay moves on at the real-time rate; it rejoins the live view when it catches up with it."""
+        if self.cursor is None or not self.playing or not self.history:
+            return
+        now = time.monotonic()
+        n = int((now - self._play_t) / STEP_S)
+        if n <= 0:
+            return
+        self._play_t += n * STEP_S
+        last = len(self.history) - 1
+        if self.cursor + n >= last:
+            if self.finished:
+                self.cursor, self.playing = last, False
+            else:
+                self.cursor, self.playing = None, False
+        else:
+            self.cursor += n
         self._dirty = True
 
     def frame_at(self, i: int) -> np.ndarray:
-        """The fleet view as it was after step i of the run: the nearest checkpoint, then the logged steps after it."""
+        """The fleet view as it was after step i of the run: from the state already rebuilt when moving forward a
+        little, else from the nearest checkpoint, then the logged steps after it."""
+        sel = self.view.sel
+        if self._cache is not None and self._cache[0] == i and self._cache[1] == sel:
+            return self._cache[2]
         if self._rview is None:
             import copy
 
             self._rview = copy.copy(self.view)
-        ck = max(c for c in self.checkpoints if c <= i)
         rv = self._rview
-        rv.restore(self.checkpoints[ck])
-        for j in range(ck + 1, i + 1):
+        ck = max(c for c in self.checkpoints if c <= i)
+        if self._rv_i is not None and ck <= self._rv_i <= i:
+            start = self._rv_i
+        else:
+            rv.restore(self.checkpoints[ck])
+            start = ck
+        for j in range(start + 1, i + 1):
             t, recs, P, live, events = self.history[j]
             rv.step(t, recs, P, live, events)
-        rv.sel = self.view.sel
-        return rv.render()
-
-    def _with_bar(self, img: np.ndarray) -> np.ndarray:
-        """The fleet view with a status bar below it (below the image: clicks keep their coordinates)."""
-        bar = np.full((BAR_H, img.shape[1], 3), 32, np.uint8)
-        last = len(self.history) - 1
-        i = last if self.cursor is None else self.cursor
-        state = "REPLAY" if self.cursor is not None else ("END" if self.finished else "LIVE")
-        t_now = self.history[i][0] if self.history else 0.0
-        t_end = self.history[last][0] if self.history else 0.0
-        txt = (f"{state}  t = {t_now:6.1f} / {t_end:6.1f} s{'  (run finished)' if self.finished else ''}    "
-               "<- -> 0.1 s   up/down 1 s   PgUp/PgDn 10 s   Home/End   Space live/pause   0-9 drone   q/Esc/X close")
-        cv2.putText(bar, txt, (10, 19), cv2.FONT_HERSHEY_SIMPLEX, 0.46, (230, 230, 230), 1, cv2.LINE_AA)
-        if self.history:
-            x = int(round(10 + (img.shape[1] - 20) * (i / max(1, last))))
-            cv2.line(bar, (10, BAR_H - 3), (img.shape[1] - 10, BAR_H - 3), (90, 90, 90), 2)
-            cv2.line(bar, (10, BAR_H - 3), (x, BAR_H - 3), (80, 170, 250), 2)
-        return np.vstack([img, bar])
+        self._rv_i = i
+        rv.sel = sel
+        img = rv.render()
+        self._cache = (i, sel, img)
+        return img
 
     def _show_replay(self) -> None:
         if not self._dirty or not self.history:
@@ -188,7 +230,7 @@ class DemoUI:
         self._dirty = False
         i = len(self.history) - 1 if self.cursor is None else self.cursor
         img = self.frame_at(i) if (self.cursor is not None or self.finished) else self.view.render()
-        cv2.imshow(self.window, self._with_bar(img))
+        cv2.imshow(self.window, img)
 
     def hold(self) -> None:
         """After the run: keep the window open and the view movable back and forth until it is closed (X, q, Esc)."""
@@ -198,12 +240,10 @@ class DemoUI:
             return
         self._dirty = True
         try:
-            while self.show:
+            while self.show and not self._quit:
                 self._show_replay()
-                key = cv2.waitKeyEx(30)
-                if key in KEY_QUIT:
-                    break
-                self._key(key)
+                self._poll(15)
+                self._advance()
                 self._check_window_open()
         except (cv2.error, KeyboardInterrupt):
             pass
