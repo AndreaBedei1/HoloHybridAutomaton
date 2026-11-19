@@ -16,6 +16,10 @@ the escape direction in magenta) and the fleet view (top view of the fleet with 
 and the gate queue, P1 / P2 / P3 status, one row per drone, readable events, automaton timeline;
 holo_fleet/ui/fleet_view.py).  The post-run summary is printed at the end.  Ctrl+C stops the run.
 
+The fleet view keeps every step: while the run goes on and after it ends, the arrow keys move it back and forth
+(left/right 0.1 s, up/down 1 s, PgUp/PgDn 10 s, Home/End, Space live/pause, 0-9 or a click selects a drone).  The
+window stays open after the run until it is closed (X, q or Esc).
+
 By default a demo is LIVE ONLY: the files the run needs (logs read back for the summary) live in a
 temporary folder that is deleted at the end; no GIF, no frames, nothing under results/, nothing in
 git status.  ``--save`` keeps a COMPLETE run in results/reference/<scenario>/ (logs and metrics) and
@@ -126,15 +130,25 @@ def _run_scenario(a, stage: Path) -> str:
 
         noise = profile(a.profile)
     sc = SCENARIOS[a.scenario](cfg)
-    ui = DemoUI(sc, cfg, sc.sim.names, show=not a.no_window, draw_viewport=not a.headless, selected=a.select)
+    ui = DemoUI(sc, cfg, sc.sim.names, show=not a.no_window, draw_viewport=not a.headless, selected=a.select,
+                replay=not a.no_window)
     terminal = None if a.duration is not None else {"profile": a.profile or "CLEAN", "linger_s": LINGER_S}
     view = getattr(ui, "view", None)
     if view is not None:
         span = a.duration if terminal is None else 10.0 * math.ceil((nominal_end_s(sc) + LINGER_S + 15.0) / 10.0)
         view.set_duration(span)
-    m = run(a.scenario, stage, headless=a.headless, run_id=a.scenario, duration=a.duration, ui=ui,
-            frame_every_s=0.5 if a.media else math.inf, cfg=cfg, noise=noise, seed=a.seed, terminal=terminal)
+    try:
+        m = run(a.scenario, stage, headless=a.headless, run_id=a.scenario, duration=a.duration, ui=ui,
+                frame_every_s=0.5 if a.media else math.inf, cfg=cfg, noise=noise, seed=a.seed, terminal=terminal)
+    except BaseException:
+        if hasattr(ui, "close"):
+            ui.close(force=True)
+        raise
     print_summary(a.scenario, m)
+    if hasattr(ui, "hold"):
+        if getattr(ui, "show", False):
+            print("fleet view open: move back and forth with the arrow keys (q, Esc or X to close)")
+        ui.hold()
     if a.media:
         gif = make_gif((stage / a.scenario / "fleet_view").glob("fleet_*.jpg"), stage / a.scenario / f"{a.scenario}.gif",
                        width=1280, fps=6.0)

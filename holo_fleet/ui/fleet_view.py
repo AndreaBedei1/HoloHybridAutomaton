@@ -322,6 +322,21 @@ class FleetView:
         else:
             self.no_leader_since = None
 
+    STATE = ("t", "duration", "trails", "timeline", "events", "last_trail_t", "recs", "P", "yaw", "ref", "min_d",
+             "no_leader_since", "entered", "inside_prev", "marks", "_ever_missing")
+
+    def snapshot(self) -> Dict:
+        """Deep copy of the history accumulated by ``step`` (the replay restores it to render an earlier instant)."""
+        import copy
+
+        return copy.deepcopy({k: getattr(self, k) for k in self.STATE})
+
+    def restore(self, snap: Dict) -> None:
+        import copy
+
+        for k, v in copy.deepcopy(snap).items():
+            setattr(self, k, v)
+
     def beliefs(self):
         """missing[k] / vacant[k]: drone k is missing / declared vacant for at least one neighbour that is itself
         keeping the formation (the beliefs of a drone that is lost, avoiding or in FAILSAFE are not its

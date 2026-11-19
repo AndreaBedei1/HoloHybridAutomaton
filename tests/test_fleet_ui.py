@@ -221,3 +221,62 @@ def test_time_axis_and_map_follow_the_run_beyond_the_scenario_duration():
     view.step(199.0, recs, view.P, {})
     assert view.duration >= 219.0
     assert view.render().shape[0] > 0
+
+
+def _replay_ui(monkeypatch, steps=35):
+    """A replay DemoUI driven through ``steps`` control steps with synthetic records (no simulator, no window)."""
+    for name in ("namedWindow", "setMouseCallback", "imshow", "destroyWindow"):
+        monkeypatch.setattr(f"holo_fleet.ui.live.cv2.{name}", lambda *a, **k: None)
+    monkeypatch.setattr("holo_fleet.ui.live.cv2.waitKeyEx", lambda *a: -1)
+    monkeypatch.setattr("holo_fleet.ui.live.cv2.waitKey", lambda *a: -1)
+    monkeypatch.setattr("holo_fleet.ui.live.cv2.getWindowProperty", lambda *a: 1.0)
+    sc = formation_triangle(DEFAULT)
+    names = ["drone_0", "drone_1", "drone_2"]
+    ui = DemoUI(sc, DEFAULT, names, show=True, draw_viewport=False, replay=True)
+    P0 = np.array([np.asarray(p, float) for p in sc.sim.spawn_positions])
+    for i in range(steps):
+        t = round(0.1 * (i + 1), 1)
+        modes = ["FORMATION_FOLLOW", "SEPARATION_WARNING" if 10 <= i < 20 else "FORMATION_FOLLOW", "FORMATION_FOLLOW"]
+        ctrls = {nm: SimpleNamespace(last_record={"t": t, "mode": modes[k], "nav_yaw_deg": 0.0}) for k, nm in enumerate(names)}
+        truth = SimpleNamespace(positions=P0 + np.array([0.3 * (i + 1), 0.0, 0.0]))
+        ref = SimpleNamespace(live=lambda: {"p1_ok": True, "p2_ok": True}, rows=[])
+        ui(sim=SimpleNamespace(headless=True), scenario=sc, ctrls=ctrls, referee=ref, truth=truth, t=t, out=".",
+           save_frame=False)
+    return ui, sc, names, P0
+
+
+def test_the_replay_rebuilds_an_earlier_instant_exactly_as_it_was_shown(monkeypatch):
+    ui, sc, names, P0 = _replay_ui(monkeypatch)
+    ref_view = FleetView(sc, DEFAULT, names)
+    for j in range(15):
+        t, recs, P, live, ev = ui.history[j]
+        ref_view.step(t, recs, P, live, ev)
+    assert np.array_equal(ui.frame_at(14), ref_view.render())
+    assert ui.view.t == ui.history[-1][0]                  # the live view is not disturbed by the replay
+    assert np.array_equal(ui.frame_at(34), ui.view.render())
+
+
+def test_the_keys_move_the_replay_back_and_forth_and_space_returns_to_live(monkeypatch):
+    ui, *_ = _replay_ui(monkeypatch)
+    ui._key(2424832)                                       # left: one step back from the latest
+    assert ui.cursor == 33
+    ui._key(2621440)                                       # down: one second back
+    assert ui.cursor == 23
+    ui._key(2359296)                                       # Home
+    assert ui.cursor == 0
+    ui._key(2555904)                                       # right
+    assert ui.cursor == 1
+    ui._key(ord(" "))                                      # back to live
+    assert ui.cursor is None
+    ui._key(ord("2"))
+    assert ui.view.sel == 2
+
+
+def test_the_window_stays_open_after_the_run_until_it_is_closed(monkeypatch):
+    ui, *_ = _replay_ui(monkeypatch)
+    ui.close()                                             # the runner's close at the end of the run
+    assert ui.show and ui.finished and not ui._closed
+    keys = iter([2424832, 2424832, ord("q")])
+    monkeypatch.setattr("holo_fleet.ui.live.cv2.waitKeyEx", lambda *a: next(keys))
+    ui.hold()
+    assert ui.cursor == 32 and ui._closed and not ui.show

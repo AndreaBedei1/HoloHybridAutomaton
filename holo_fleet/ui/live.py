@@ -56,9 +56,21 @@ def _arrow_cursor(title: str) -> None:
         pass
 
 
+# cv2.waitKeyEx codes (Windows) and letter fallbacks; replay moves in control steps (0.1 s)
+KEY_STEPS = {2424832: -1, 2555904: 1, 2490368: 10, 2621440: -10, 2162688: 100, 2228224: -100,
+             ord("a"): -1, ord("d"): 1, ord("w"): 10, ord("s"): -10}
+KEY_HOME, KEY_END, KEY_SPACE = (2359296, ord("h")), (2293760, ord("e")), ord(" ")
+KEY_QUIT = (ord("q"), 27)
+CHECKPOINT_EVERY = 10
+BAR_H = 30
+
+
 class DemoUI:
+    """Fleet view window of a run.  With replay=True every step is kept: the view can be moved back and forth while the
+    run goes on and after it ends, and the window stays open until it is closed (X, q or Esc)."""
+
     def __init__(self, scenario, cfg, names, show: bool = True, draw_viewport: bool = True,
-                 window: str = "holo_fleet - fleet view", selected=None):
+                 window: str = "holo_fleet - fleet view", selected=None, replay: bool = False):
         self.view = FleetView(scenario, cfg, names, selected=selected)
         self.names = list(names)
         self.show = show
@@ -69,16 +81,28 @@ class DemoUI:
         self._window_created = False
         self._camera = FleetCamera(scenario.path)
         self._last_camera_t = None
+        self.replay = replay
+        self.history: List[tuple] = []
+        self.checkpoints: Dict[int, Dict] = {}
+        self.cursor = None
+        self.finished = False
+        self._rview = None
+        self._dirty = False
 
     def __call__(self, sim, scenario, ctrls, referee, truth, t, out, save_frame, events=()) -> None:
         recs = [ctrls[nm].last_record for nm in self.names]
         live = dict(referee.live(), row=referee.rows[-1] if referee.rows else {})
         self.view.step(t, recs, truth.positions, live, list(events))
+        if self.replay:
+            self.history.append((t, [dict(r or {}) for r in recs], np.asarray(truth.positions, float).copy(), live,
+                                 list(events)))
+            if (len(self.history) - 1) % CHECKPOINT_EVERY == 0:
+                self.checkpoints[len(self.history) - 1] = self.view.snapshot()
         if self.draw_viewport and not sim.headless:
             self._viewport(sim, recs, scenario, truth, t)
         if not (self.show or save_frame):
             return
-        img = self.view.render()
+        img = self.view.render() if (save_frame or self.cursor is None) else None
         if save_frame:
             d = Path(out) / "fleet_view"
             d.mkdir(parents=True, exist_ok=True)
@@ -87,13 +111,103 @@ class DemoUI:
         if self.show:
             try:
                 self._ensure_window()
-                cv2.imshow(self.window, img)
-                key = cv2.waitKey(1) & 0xFF
-                if ord("0") <= key <= ord("9"):
-                    self.view.select_drone(key - ord("0"))
+                if not self.replay:
+                    cv2.imshow(self.window, img)
+                    self._key(cv2.waitKey(1) & 0xFF)
+                elif self.cursor is None:
+                    cv2.imshow(self.window, self._with_bar(img))
+                    self._key(cv2.waitKeyEx(1))
+                else:
+                    self._key(cv2.waitKeyEx(1))
+                    self._show_replay()
                 self._check_window_open()
             except cv2.error:
                 self.show = False
+
+    def _key(self, key: int) -> None:
+        if key is None or key < 0:
+            return
+        if ord("0") <= key <= ord("9"):
+            if self.view.select_drone(key - ord("0")):
+                self._dirty = True
+            return
+        if not self.replay or not self.history:
+            return
+        last = len(self.history) - 1
+        cur = last if self.cursor is None else self.cursor
+        if key == KEY_SPACE:
+            self.cursor = cur if self.cursor is None else None
+            self._dirty = True
+            return
+        if key in KEY_STEPS:
+            cur = int(np.clip(cur + KEY_STEPS[key], 0, last))
+        elif key in KEY_HOME:
+            cur = 0
+        elif key in KEY_END:
+            cur = last
+        else:
+            return
+        self.cursor = None if (key in KEY_END and not self.finished) else cur
+        self._dirty = True
+
+    def frame_at(self, i: int) -> np.ndarray:
+        """The fleet view as it was after step i of the run: the nearest checkpoint, then the logged steps after it."""
+        if self._rview is None:
+            import copy
+
+            self._rview = copy.copy(self.view)
+        ck = max(c for c in self.checkpoints if c <= i)
+        rv = self._rview
+        rv.restore(self.checkpoints[ck])
+        for j in range(ck + 1, i + 1):
+            t, recs, P, live, events = self.history[j]
+            rv.step(t, recs, P, live, events)
+        rv.sel = self.view.sel
+        return rv.render()
+
+    def _with_bar(self, img: np.ndarray) -> np.ndarray:
+        """The fleet view with a status bar below it (below the image: clicks keep their coordinates)."""
+        bar = np.full((BAR_H, img.shape[1], 3), 32, np.uint8)
+        last = len(self.history) - 1
+        i = last if self.cursor is None else self.cursor
+        state = "REPLAY" if self.cursor is not None else ("END" if self.finished else "LIVE")
+        t_now = self.history[i][0] if self.history else 0.0
+        t_end = self.history[last][0] if self.history else 0.0
+        txt = (f"{state}  t = {t_now:6.1f} / {t_end:6.1f} s{'  (run finished)' if self.finished else ''}    "
+               "<- -> 0.1 s   up/down 1 s   PgUp/PgDn 10 s   Home/End   Space live/pause   0-9 drone   q/Esc/X close")
+        cv2.putText(bar, txt, (10, 19), cv2.FONT_HERSHEY_SIMPLEX, 0.46, (230, 230, 230), 1, cv2.LINE_AA)
+        if self.history:
+            x = int(round(10 + (img.shape[1] - 20) * (i / max(1, last))))
+            cv2.line(bar, (10, BAR_H - 3), (img.shape[1] - 10, BAR_H - 3), (90, 90, 90), 2)
+            cv2.line(bar, (10, BAR_H - 3), (x, BAR_H - 3), (80, 170, 250), 2)
+        return np.vstack([img, bar])
+
+    def _show_replay(self) -> None:
+        if not self._dirty or not self.history:
+            return
+        self._dirty = False
+        i = len(self.history) - 1 if self.cursor is None else self.cursor
+        img = self.frame_at(i) if (self.cursor is not None or self.finished) else self.view.render()
+        cv2.imshow(self.window, self._with_bar(img))
+
+    def hold(self) -> None:
+        """After the run: keep the window open and the view movable back and forth until it is closed (X, q, Esc)."""
+        self.finished = True
+        if not (self.replay and self.show and self._window_created and self.history):
+            self.close(force=True)
+            return
+        self._dirty = True
+        try:
+            while self.show:
+                self._show_replay()
+                key = cv2.waitKeyEx(30)
+                if key in KEY_QUIT:
+                    break
+                self._key(key)
+                self._check_window_open()
+        except (cv2.error, KeyboardInterrupt):
+            pass
+        self.close(force=True)
 
     def _ensure_window(self) -> None:
         """A plain fixed-size window (1:1 pixels, so a click maps directly to the fleet-view image)."""
@@ -106,7 +220,11 @@ class DemoUI:
 
     def _mouse(self, event, x, y, flags, _param=None):
         if event == cv2.EVENT_LBUTTONDOWN and self.show:
-            self.view.select_at(x, y)
+            shown = self._rview if (self.cursor is not None and self._rview is not None) else self.view
+            k = shown.select_at(x, y)
+            if k is not None:
+                self.view.select_drone(k)
+                self._dirty = True
 
     def _check_window_open(self):
         if not self.show or not self._window_created:
@@ -117,8 +235,12 @@ class DemoUI:
         except cv2.error:
             self.show = False
 
-    def close(self) -> None:
-        """Stop drawing and close this window. Safe to call more than once."""
+    def close(self, force: bool = False) -> None:
+        """Stop drawing and close this window; with replay the end of the run keeps it open for hold() (unless
+        force).  Safe to call more than once."""
+        if self.replay and not force and self.show and self._window_created and not self._closed:
+            self.finished = True
+            return
         if self._closed:
             return
         self._closed = True
