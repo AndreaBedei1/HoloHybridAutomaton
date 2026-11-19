@@ -155,6 +155,107 @@ parameter are in `config/parameter_sources.json` (citation keys in `references.b
 | Sensor noise | `--profile CLEAN\|LOW\|MEDIUM\|HIGH` | `CLEAN` or `<LEVEL>-<SCOPE>`, LEVEL in `LOW MEDIUM MEDIUM_HB3 MEDIUM_HB4`, SCOPE in `ALL SUBSET ONE` (fixed drones in `config/scope_drones.json`) |
 | Seed | `--seed N` | `--seeds N ...` |
 
+## Guarantees and limitations
+
+Three kinds of statement are kept apart: formal results on abstractions (Z3), simulation observations, and engineering
+assumptions. `formal/results/SUMMARY.json` gives every check a `kind`; only `proved` and `bounded` support a guarantee. An
+expected counterexample (`limit`, `scope`, `mutation`, `witness`) is never evidence of safety, and `open_limits` lists the
+unresolved ones. Current run: 302 checks, all with the expected verdict. They are 146 proved, 33 bounded, 37
+numeric, 6 open limits, 10 scope, 40 mutations, 23 witnesses and 7 reported.
+
+**Formally proved on the abstractions.**
+- Determinism and priority hierarchy of the automaton for every legal observation (`holo_fleet/ha/spec.py`).
+- P1, pairwise: the onboard distance lower bound, the escape and warning-filter guarantees, and `d >= d_safe = 1.0 m` for
+  all time by k-induction. The triangle lemma extends the pairwise argument to a fleet.
+- P2 at one gate, when every claim is learnt within one step of 5 s (premise C): at most one vehicle committed or in the
+  CR. The invariant is inductive for 2, 3 and 4 vehicles, with failures, stops and entries by avoidance of one committed
+  vehicle (`F0s`, `F0p`). The queue precedence holds for 2 to 6 queue points.
+- P3: ranking functions of slot tracking (along and lateral), and the vacancy of a neighbour that never reappears.
+
+**Bounded model checking only.**
+- The occupancy latch M3: 42 s horizon.
+- The status freshness S2: 32 s.
+- The P1 start-up window S1a: 4 s.
+- Recovery of the fleet within 26, 40 and 52 steps for 2, 3 and 4 vehicles (`F2`, `F2p`). These start from every state of
+  the invariant, with no further failure or stop.
+- P2 with claims learnt up to 2 steps late, without entries by avoidance (`F1d1`, `F1d2`; the bound is tight, `F1d3`).
+
+**Supported fleet sizes.** P2 and recovery: 2 to 4 vehicles at one gate. Queue layouts:
+- abreast for 2 or 3 vehicles;
+- stacked 2 x 2 and the 3-vehicle stack pair;
+- abreast queues of 4 or more are refused by the planner.
+
+P1 is proved pairwise. Several neighbours are covered by the triangle lemma and the two-threat escape, not by a fleet
+model. Formation keeping is per vehicle; `formation_six` (6 vehicles) is simulated only.
+
+**Assumptions** (provenance and limits in `config/parameter_sources.json`).
+- **Environment.**
+  - Currents inside the control-feasibility envelope (`control/current_envelope.py`).
+  - Unrejected drift at most 0.15 m/s for P1.
+  - For P3, a residual disturbance of at most 0.05 m/s once the integrator has converged. This rests on window means of
+    one simulated vehicle at survey speed. The proof fails above 0.064 m/s.
+- **Sensors.** The sonar model of `perception/sonar_geometry.py`, hull tilt within the bound of
+  `perception/distance_bound.py`, and the declared navigation error (1 m in the gate frame).
+- **Communication.**
+  - B0 needs none.
+  - B2 adds claims and assumes four premises:
+    - **C:** a claim is known before another vehicle can commit. The premise C audit checks it at runtime.
+    - **V:** no live vehicle outside the exclusion zone is silent for 70 s.
+    - **Fairness:** a 35 s fairness window of the fixes. It holds in every gate scenario of the validation, at most 26.3 s,
+      and is exceeded in `formation_six`, which is outside the fleet model.
+    - **Freshness:** packets older than 0.4 s on delivery are dropped.
+- **Failures.**
+  - Permanent: a failed vehicle stops moving and transmitting.
+  - Never inside the CR, and only outside the exclusion zone of `holo_fleet/scope.py`.
+  - At most 1 failure for 2 vehicles (none while committed), 1 for 3, and 2 for 4. A sunk or risen hull stops counting
+    as queued (premise H).
+
+**Open limitations** (expected counterexamples, unresolved).
+- **F1p / F1pm.** A concurrent commitment combined with one entry into the CR by avoidance can put two vehicles in the CR,
+  in the abstraction. The counterexample needs a claim learnt one step late (two vehicles committed together). One vehicle
+  enters by its own stage-2 check, or is moved in; the other, held by that claim, is moved in by avoidance while the first
+  is inside.
+  - It survives the motion limit of an entry by avoidance (`F1pm`: at least 6.1 s from the queue point to the CR).
+  - The deployed escape planner is not antisymmetric along the gate axis (`F1pa`), and no gate rule edits the avoidance
+    output of a committed vehicle. The model has no positions to exclude it.
+  - A kinematic reconstruction with the deployed gate flow and escape planner, with idealised sensing (`F1pk`, reported),
+    finds single entries by avoidance in 48 of 384 episodes and two vehicles in the CR in none.
+    - It finds none either when no claim is ever known, and 20 of 24 when avoidance is also removed.
+    - So in that reconstruction the separation layer and the pass path converging on the gate axis keep two vehicles out of
+      the CR together, not the gate protocol.
+    - This suggests that a realisation of F1p needs sensing or dynamics outside those idealisations. It is not a proof, and
+      it does not test the stage-2 logic.
+  - P2 is therefore guaranteed only while premise C holds or while no committed vehicle is moved into the CR by
+    avoidance during a concurrent commitment.
+- **F0q.** A queued, uncommitted vehicle moved into the CR by avoidance.
+- **F2s2, F2s3.** A failure while committed that leaves a single survivor.
+- **F2s4.** A hull floating above the queue (no premise H).
+- The `scope` checks mark the other bounds: a vehicle stopped before the CR beyond the latch horizon, an occupant that
+  stops inside the CR, and recovery without fairness.
+- Not covered by any proof: failures inside the exclusion zone, the continuous geometry inside the CR, and field
+  conditions. Every result is on HoloOcean models.
+
+**What the final validation shows.** Archive `v13-final-v11-2026-11-18`: 34 runs of the v11 controller at commit `d5f424e`.
+- **Configurations:** 7 scenarios in B0 (LOW noise), 8 in B2 MEDIUM, and gate_single at beacon latencies of 0.35 s and
+  0.45 s; seeds 8000 and 8001.
+- **P1 and P2:** both held in every run, with a minimum separation of 2.84 m and at most one vehicle in the CR. All 64 CR
+  entries were admitted by the stage-2 check, none by avoidance.
+- **Classes:** 31 PASS. The B2 MEDIUM runs are 16 of 16 PASS. In B0, `lost_drone_mutex` failed P3 on both seeds (a false
+  vacancy) and `integrated_short` s8000 was P3_LATE.
+- **Premise C:** the audit at that commit classified all 64 pairs SATISFIED. The corrected audit, re-run on the unchanged
+  raw logs (separate archive `v17-premise-c-v13-reaudit-2026-11-19`, original outcome alongside), gives the same 64
+  SATISFIED:
+  - observable blocking: 57 blocked by the latch, 7 hand-offs after an exit witness;
+  - claim knowledge: 36 certified by a usable claim, 8 claims undeliverable by the channel timing (the 0.45 s latency runs,
+    and slot 2 at 0.35 s), 20 not applicable (B0).
+- No concurrent commitment occurred, so these runs do not exercise F1p.
+- They are observations on a finite matrix, not a statistical bound. The 448-run campaign is a separate dataset and is not
+  aggregated with them.
+
+The archives are on local storage only. Each has a `MANIFEST.json` with the sha256 of every file, and v13 also holds the
+code tarballs, a git bundle and every `run_config.json`; its checksums were verified on 2026-11-19. They have no public
+location, so the results can be reproduced only by re-running the campaign from this repository.
+
 ## Reproducing the experiments
 
 `scripts/run_sensor_robustness_campaign.py` runs each simulation in its own process at below-normal priority, with a
