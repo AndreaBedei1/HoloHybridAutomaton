@@ -67,13 +67,40 @@ STEP_S = 0.1
 MAX_KEYS_PER_POLL = 64
 
 
+ICON = Path(__file__).resolve().parent / "assets" / "holofleetviewer.ico"
+
+
+def _set_icon(title: str) -> None:
+    """Window and taskbar icon of the viewer (Windows only; cosmetic: a no-op if anything fails)."""
+    if sys.platform != "win32" or not ICON.exists():
+        return
+    try:
+        import ctypes
+
+        u = ctypes.windll.user32
+        u.FindWindowW.restype = ctypes.c_void_p
+        u.FindWindowW.argtypes = [ctypes.c_wchar_p, ctypes.c_wchar_p]
+        u.LoadImageW.restype = ctypes.c_void_p
+        u.LoadImageW.argtypes = [ctypes.c_void_p, ctypes.c_wchar_p, ctypes.c_uint, ctypes.c_int, ctypes.c_int, ctypes.c_uint]
+        u.SendMessageW.argtypes = [ctypes.c_void_p, ctypes.c_uint, ctypes.c_void_p, ctypes.c_void_p]
+        hwnd = u.FindWindowW("Main HighGUI class", title)
+        if not hwnd:
+            return
+        for which, size in ((0, 16), (1, 32)):          # ICON_SMALL, ICON_BIG
+            h = u.LoadImageW(None, str(ICON), 1, size, size, 0x10)   # IMAGE_ICON, LR_LOADFROMFILE
+            if h:
+                u.SendMessageW(hwnd, 0x80, ctypes.c_void_p(which), h)  # WM_SETICON
+    except Exception:  # noqa: BLE001 - cosmetic only
+        pass
+
+
 class DemoUI:
     """Fleet view window of a run.  With replay=True every step is kept: the view can be moved back and forth while the
     run goes on and after it ends (arrows, Home/End), paused and played on from where it was (Space), and the window
     stays open after the run until it is closed (X, q or Esc)."""
 
     def __init__(self, scenario, cfg, names, show: bool = True, draw_viewport: bool = True,
-                 window: str = "holo_fleet - fleet view", selected=None, replay: bool = False):
+                 window: str = "HoloFleetViewer", selected=None, replay: bool = False):
         self.view = FleetView(scenario, cfg, names, selected=selected)
         self.names = list(names)
         self.show = show
@@ -257,6 +284,7 @@ class DemoUI:
         cv2.setMouseCallback(self.window, self._mouse)
         self._window_created = True
         _arrow_cursor(self.window)
+        _set_icon(self.window)
 
     def _mouse(self, event, x, y, flags, _param=None):
         if event == cv2.EVENT_LBUTTONDOWN and self.show:

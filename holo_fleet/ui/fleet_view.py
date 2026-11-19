@@ -91,7 +91,7 @@ def _font(size: int, bold: bool = False):
 
 F = {k: _font(s, b) for k, (s, b) in {"title": (24, True), "sub": (14, False), "h": (15, True), "b": (14, False),
                                        "bb": (14, True), "s": (12, False), "sb": (12, True), "xs": (11, False),
-                                       "chip": (12, True), "tag": (11, True)}.items()}
+                                       "chip": (12, True), "chips": (10, True), "tag": (11, True)}.items()}
 
 
 def _bgr(c):
@@ -575,10 +575,11 @@ class FleetView:
                 cz = self.pz(self.P[k])
                 dr.text((cz[0] + 10, cz[1] - 18), txt, font=F["tag"], fill=INK2)
 
-    def _chip(self, dr, x, y, text, col):
-        w = dr.textlength(text, font=F["chip"]) + 16
-        dr.rounded_rectangle((x, y, x + w, y + 20), radius=10, fill=col)
-        dr.text((x + 8, y + 2), text, font=F["chip"], fill=(255, 255, 255))
+    def _chip(self, dr, x, y, text, col, small: bool = False):
+        font, h, pad = (F["chips"], 16, 6) if small else (F["chip"], 20, 8)
+        w = dr.textlength(text, font=font) + 2 * pad
+        dr.rounded_rectangle((x, y, x + w, y + h), radius=h // 2, fill=col)
+        dr.text((x + pad, y + (1 if small else 2)), text, font=font, fill=(255, 255, 255))
         return x + w + 8
 
     def _panel(self, dr, pil):
@@ -646,8 +647,9 @@ class FleetView:
             self._row(dr, x, y, "Queue", chip, col, det)
             y += 34
         active = [k for k in range(self.n) if modes[k] != "FAILSAFE_HOLD_OR_RETREAT" and k not in vacant]
-        dr.text((x, y + 4), f"{self.n} drones  ·  {len(active)} active  ·  {len(missing)} missing  ·  "
-                            f"{len(vacant)} assumed failed", font=F["bb"], fill=INK)
+        for i, line in enumerate((f"{self.n} drones", f"{len(active)} active", f"{len(missing)} missing",
+                                  f"{len(vacant)} assumed failed")):
+            dr.text((x, y + 15 * i), line, font=F["sb"], fill=INK)
         dr.text((x, 334), "Drones", font=F["h"], fill=INK)
         y = 360
         rowh = min(26, int(122 / max(1, self.n)))
@@ -659,7 +661,7 @@ class FleetView:
             col = STATE_COLOR.get(st, MUTED)
             dr.ellipse((x, y + 4, x + 12, y + 16), fill=col)
             dr.text((x + 20, y), dname(self.names[k]), font=F["bb"], fill=INK)
-            self._chip(dr, x + 56, y, st, col)
+            self._chip(dr, x + 56, y + 2, st, col, small=True)
             stt = self.status(k, missing, vacant)
             dr.text((x + 170, y + 1), stt, font=F["b"], fill=BAD_C if stt == "assumed failed" else (
                 WARN_C if stt in ("missing", "rejoining") else INK2))
@@ -732,9 +734,7 @@ class FleetView:
         rec = self.recs[k] if k < len(self.recs) else {}
         cur = short(rec.get("mode", "")) or "-"
         tr = rec.get("transition") or {}
-        dr.text((x0 + 14, y0 + 8), f"Automaton · {dname(self.names[k])}", font=F["h"], fill=INK)
-        dr.text((x0 + 210, y0 + 10), "onboard state, last transition, cause",
-                font=F["s"], fill=MUTED)
+        dr.text((x0 + 14, y0 + 8), f"Automaton: {dname(self.names[k])}", font=F["h"], fill=INK)
         cw, ch, gx, gy = 70, 18, 76, 25
         ox, oy = x0 + 14, y0 + 38
         centre = {}

@@ -1,4 +1,4 @@
-"""Watch one short demonstration scenario (one seed) with the live fleet view.
+"""Watch one short demonstration scenario (one seed) in HoloFleetViewer.
 
     python scripts/run_demo.py --list
     python scripts/run_demo.py --scenario lost_drone_rejoin                       # live only, nothing kept
@@ -13,12 +13,12 @@
 
 Two windows: the HoloOcean viewport (the onboard belief is drawn on it: nearest echo per sonar
 sector coloured by class - grey structure, brown seabed, red possible vehicle, amber unknown - and
-the escape direction in magenta) and the fleet view (top view of the fleet with the formation slots
+the escape direction in magenta) and HoloFleetViewer (top view of the fleet with the formation slots
 and the gate queue, P1 / P2 / P3 status, one row per drone, readable events, automaton timeline;
 holo_fleet/ui/fleet_view.py).  The post-run summary is printed at the end.  Ctrl+C stops the run.
 
-The fleet view keeps every step: while the run goes on and after it ends, the arrow keys move it back and forth
-(left/right 0.1 s, up/down 1 s, PgUp/PgDn 10 s, Home/End, Space live/pause, 0-9 or a click selects a drone).  The
+HoloFleetViewer keeps every step: while the run goes on and after it ends, the arrow keys move it back and forth
+(left/right 0.1 s, up/down 1 s, PgUp/PgDn 10 s, Home/End, Space pause and play on, End live, 0-9 or a click selects a drone).  The
 window stays open after the run until it is closed (X, q or Esc).
 
 By default a demo is LIVE ONLY: the files the run needs (logs read back for the summary) live in a
@@ -149,7 +149,7 @@ def _run_scenario(a, stage: Path) -> str:
     print_summary(a.scenario, m)
     if hasattr(ui, "hold"):
         if getattr(ui, "show", False):
-            print("fleet view open: move back and forth with the arrow keys (q, Esc or X to close)")
+            print("HoloFleetViewer open: move back and forth with the arrow keys (q, Esc or X to close)")
         ui.hold()
     if a.media:
         gif = make_gif((stage / a.scenario / "fleet_view").glob("fleet_*.jpg"), stage / a.scenario / f"{a.scenario}.gif",

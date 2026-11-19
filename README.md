@@ -124,14 +124,16 @@ Check without the engine: `python -m pytest -q -m "not slow and not holoocean"`.
 
 ```bash
 python scripts/run_demo.py --list                                   # scenarios with duration and title
-python scripts/run_demo.py --scenario gate_single                   # HoloOcean viewport + Fleet View
+python scripts/run_demo.py --scenario gate_single                   # HoloOcean viewport + HoloFleetViewer
 python scripts/run_demo.py --scenario lost_drone_rejoin --select 2  # automaton panel of drone 2
 ```
 
-The Fleet View shows the fleet from above with the planned slots, P1/P2/P3 status, events and the automaton panel of
-the selected vehicle (click a vehicle or press `0`-`9`). A demo runs until the mission is complete (plus 8 s) or its
-deadline. Options: `--headless` (no viewport), `--no-window` (no Fleet View), `--duration S`, `--save [--out DIR]`
-(keep the run; without it nothing is written).
+HoloFleetViewer shows the fleet from above with the planned slots, P1/P2/P3 status, events and the automaton panel
+of the selected vehicle (click a vehicle or press `0`-`9`). It keeps every step: during the run and after it, the arrow
+keys move back and forth (left/right 0.1 s, up/down 1 s, PgUp/PgDn 10 s, Home/End), Space pauses and plays on from the
+paused instant, End returns to live; the window stays open after the run until it is closed (X, `q` or `Esc`). A demo
+runs until the mission is complete (plus 8 s) or its deadline. Options: `--headless` (no viewport), `--no-window` (no
+HoloFleetViewer), `--duration S`, `--save [--out DIR]` (keep the run; without it nothing is written).
 
 | Topic | Scenario | What to look for |
 |---|---|---|
@@ -194,7 +196,7 @@ The formal results of every check (formula, verdict, counterexample) are in `for
 ## Repository layout
 
 ```
-holo_fleet/   automaton, controllers, perception, simulation, referee, Fleet View; runner.py runs one scenario
+holo_fleet/   automaton, controllers, perception, simulation, referee, HoloFleetViewer; runner.py runs one scenario
 formal/       Z3 suites; formal/results/ (SUMMARY.csv, SUMMARY.json, one JSON per suite)
 scripts/      demos, campaign runner, analysis, archive builder, engine slots and isolation probe
 calibration/  simulator probes behind the measured parameters (outputs in results/calibration/, read by the code)
