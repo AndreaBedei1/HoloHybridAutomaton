@@ -3,13 +3,16 @@
     python formal/check_properties.py            # all suites
     python formal/check_properties.py --quick    # skip the slowest suite (P1: triangle lemma, ~60 s)
 
-Exit status 0 iff every check returned its expected verdict.
+Exit status 0 iff every check returned its expected verdict.  An expected verdict is not a proof of safety: every check
+carries a ``kind`` (see KINDS) and only the kinds "proved" and "bounded" support a guarantee; an expected counterexample of kind
+"limit" is an open limitation of the guarantee, never evidence for it.
 """
 
 from __future__ import annotations
 
 import argparse
 import json
+import re
 import sys
 import time
 from pathlib import Path
@@ -43,19 +46,50 @@ SUITES = [
 ]
 
 
+KINDS = {
+    "proved": "UNSAT of a universal or inductive property (local predicate, inductive invariant, k-induction, ranking function)",
+    "bounded": "UNSAT over a bounded horizon (bounded model checking or bounded response from every state of an invariant)",
+    "numeric": "property checked by finite enumeration or sampling of a continuous domain (not a proof outside the samples)",
+    "limit": "declared limitation: an expected counterexample outside the guarantee, left unresolved",
+    "scope": "expected counterexample that marks where an assumption or a bound of the guarantee ends",
+    "mutation": "expected counterexample of a deliberately broken variant: the check can fail",
+    "witness": "expected satisfiable query: non-vacuity, tightness of a bound, independence of the invariants",
+    "reported": "quantity reported, not guaranteed",
+}
+_BOUNDED = {"P1": r"^(S1[ad]|S4) ", "P2": r"^M3h? ", "Payload": r"^S2h? ", "P3": r"^F6 ", "Interacting": r"^(F2p?|F1d\d+n?) "}
+
+
+def kind(title: str, check: dict) -> str:
+    """Kind of a check (KINDS), from the suite and the declared role in the property name."""
+    prop, expect = check["prop"], check["expect"]
+    if "reported" in prop:
+        return "reported"
+    if "declared limit" in prop:
+        return "limit"
+    if "mutation" in prop:
+        return "mutation"
+    if "scope" in prop or "domain boundary" in prop:
+        return "scope"
+    if expect in ("unsat", "holds"):
+        if any(title.startswith(k) and re.search(rx, prop) for k, rx in _BOUNDED.items()):
+            return "bounded"
+        return "numeric" if expect == "holds" else "proved"
+    return "witness"
+
+
 def write_csv(summary: dict) -> None:
     """One row per check: suite, encoding, property, formula, expected and returned verdict, pass, seconds, note,
     counterexample (expected SAT checks and failures; the same as SUMMARY.json)."""
     import csv
 
-    cols = ["suite", "encoding", "prop", "formula", "expect", "verdict", "passed", "seconds", "note", "counterexample"]
+    cols = ["suite", "encoding", "kind", "prop", "formula", "expect", "verdict", "as_expected", "seconds", "note", "counterexample"]
     with open(RESULTS_DIR / "SUMMARY.csv", "w", newline="", encoding="utf-8") as f:
         w = csv.writer(f)
         w.writerow(cols)
         for s in summary["suites"]:
             for c in s["checks"]:
                 ce = c.get("counterexample")
-                w.writerow([s["title"], s["encoding"], c["prop"], c["formula"], c["expect"], c["verdict"], c["passed"],
+                w.writerow([s["title"], s["encoding"], c["kind"], c["prop"], c["formula"], c["expect"], c["verdict"], c["as_expected"],
                             c["seconds"], c["note"], "" if ce is None else json.dumps(ce, default=str)])
 
 
@@ -78,11 +112,18 @@ def main(argv=None) -> int:
         summary["suites"].append({
             "title": title, "encoding": enc, "seconds": round(time.time() - t0, 1), "all_passed": ok,
             "checks": [{"prop": r.prop, "formula": r.formula, "expect": r.expect, "verdict": r.verdict,
-                        "passed": r.passed, "seconds": r.seconds, "note": r.note,
+                        "as_expected": r.passed, "seconds": r.seconds, "note": r.note,
                         "counterexample": r.counterexample if (r.expect == "sat" or not r.passed) else None}
                        for r in rep.results],
         })
-    summary["all_passed"] = all_ok
+    for su in summary["suites"]:
+        for c in su["checks"]:
+            c["kind"] = kind(su["title"], c)
+    counts = {k: sum(c["kind"] == k for su in summary["suites"] for c in su["checks"]) for k in KINDS}
+    summary["all_as_expected"] = all_ok
+    summary["kinds"] = {k: {"count": counts[k], "meaning": v} for k, v in KINDS.items()}
+    summary["open_limits"] = [c["prop"] for su in summary["suites"] for c in su["checks"] if c["kind"] == "limit"]
+    summary["unexpected"] = [c["prop"] for su in summary["suites"] for c in su["checks"] if not c["as_expected"]]
     RESULTS_DIR.mkdir(parents=True, exist_ok=True)
     (RESULTS_DIR / "SUMMARY.json").write_text(json.dumps(summary, indent=2, default=str))
     write_csv(summary)

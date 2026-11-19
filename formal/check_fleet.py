@@ -36,9 +36,20 @@ code holds the entry on a heard report of committed or admitted).  F0 and F2 tak
 it: the latch and the stage-2 check see the claims d steps late.  P2 then holds while d does not exceed the shortest stay in C
 (one step) plus the step the precedence puts between two commitments: d <= 2 with M2, d <= 1 without it (tight: F1d3, F1d2n).
 An entry that bypasses the stage-2 check (a committed drone moved into the CR by separation warning or collision avoidance while it
-holds; the drone keeps its claim: report_phase, S9) keeps the invariant (F0p, F2p).  Two such pushes at once
-after a concurrent commitment (F1p), or a queued drone moved into the CR (F0q), are declared limits: the escape planner gives no
-antisymmetry along the axis (F1pa) and the positions are not modelled.
+holds; the drone keeps its claim: report_phase, S9) keeps the invariant (F0p, F2p).  F1p, the combination, is OPEN (a declared
+limit, not a result): with a claim learnt one step late two drones can be committed together (F1d1 shows the stage-2 check alone
+still keeps them apart), and the counterexample then needs only one entry by avoidance: one drone enters by its own stage-2 check
+before the claim of the other is known, or is moved in, and the other, held by that claim, is moved in by avoidance while the first
+is inside.  F1pm keeps the counterexample with the motion limit of an entry by avoidance (push_dwell: the queue point is at least
+6.1 s from the CR at the highest ground speed of the Envelope for n = 3), so it does not rest on an instantaneous entry.  The
+model has no positions, so it cannot exclude that the avoidance layer moves a drone forward while another is inside: the deployed
+escape planner gives no antisymmetry along the axis (F1pa) and the avoidance output of a committed drone is not edited by any
+gate rule (control/controller.py: keepout_filter only before the commitment).  F1pk (formal/check_f1p_kinematic.py, reported)
+gives the abstraction its positions with the deployed flows and idealised sensing: single entries by avoidance occur and no double
+occupancy is found, but none is found either when no claim is ever known (its control set), so there the separation layer and the
+pass path converging on the axis, not the gate protocol, keep two drones out of the CR together; it does not test the stage-2 logic
+and F1p stays open.  A queued drone moved into
+the CR (F0q) is a declared limit as well.
 The 32 s bound of S2 is a different quantity (how long a report of not engaged may exclude a corridor echo) and does not bound
 the delay of a claim between two drones that commit together.
 Properties, for n = 2, 3, 4.  F0: the invariant (at most one drone in C or X) holds at the launch and is inductive under every
@@ -87,7 +98,7 @@ def timers(cfg: FleetConfig = DEFAULT, dt: float = 5.0) -> dict:
 class Fleet:
     def __init__(self, n: int, depth: int, L: int, T: dict, rule_d: bool = True, fair: bool = True, latch_claims: bool = True,
                  free: bool = False, max_fail: int = None, fail_in_c: bool = True, hull_clears: bool = True, latch_delay: int = 0,
-                 stage2_claims: bool = True, precedence: bool = True, push: str = "none"):
+                 stage2_claims: bool = True, precedence: bool = True, push: str = "none", push_min_ct: int = 0):
         """free: the first state is any state of the invariant (inv), not the launch; L: failures and stops only before step L;
         max_fail: at most this many permanent failures (default n - 1); fail_in_c: failures also while committed, before the CR.
         latch_delay: the latch and the stage-2 check see the claims of the others latch_delay steps late (premise C relaxed);
@@ -95,7 +106,9 @@ class Fleet:
         a heard report of committed or admitted holds the entry), seen with the same delay; precedence False: no sonar precedence
         between the queued drones (M2 gives no relation, as two drones out of sonar range of each other).
         push: an entry into the CR that bypasses the stage-2 check (separation warning or collision avoidance moving a drone that
-        holds before the CR): "committed" a drone in C may enter X at any step; "any" also a queued drone."""
+        holds before the CR): "committed" a drone in C may enter X at any step; "any" also a queued drone.
+        push_min_ct: a push needs at least this many steps already spent in C (the motion limit of push_dwell; the natural
+        entry needs one)."""
         max_fail = n - 1 if max_fail is None else max_fail
         self.fail_in_c = fail_in_c
         self.n, self.depth, self.L, self.T = n, depth, L, T
@@ -176,7 +189,7 @@ class Fleet:
                             z3.If(mi == B, z3.If(z3.And(z3.Not(pending), vacant), go(D), stay),
                                   stay)))))
                 pushable = z3.Or(mi == C, mi == Q) if push == "any" else (mi == C)
-                S.add(z3.Implies(pushed[t][i], pushable))
+                S.add(z3.Implies(pushed[t][i], z3.And(pushable, c >= push_min_ct)))
                 S.add(z3.If(dead(t, i), z3.And(mn == F, cn == 0),
                       z3.If(fail[t][i], z3.And(mn == F, cn == 0),
                       z3.If(pushed[t][i], go(X),
@@ -213,6 +226,37 @@ class Fleet:
 
 def _run(fl: Fleet, prop) -> list:
     return list(fl.S.assertions()) + [prop]
+
+
+def push_dwell(cfg: FleetConfig, n: int, dt: float) -> tuple:
+    """Motion limit of an entry by avoidance: the shortest path of a committed drone from its queue point (within queue_tol of
+    the queue line) to the CR, |queue_s(n)| - queue_tol - cr_half_len, at the highest ground speed of the Envelope (v_escape plus
+    the unrejected drift w_drift_max, the speed bound of the P1 proof).  Returns (seconds, steps already spent in C before a push
+    can reach the CR, rounded up like every timer of the model)."""
+    G, env = cfg.gate, cfg.env
+    t_min = (abs(G.queue_s(n)) - G.queue_tol - G.cr_half_len) / (env.v_escape + env.w_drift_max)
+    return t_min, max(int(math.ceil(t_min / dt - 1e-9)) - 1, 0)
+
+
+def modes(fl: Fleet, prop) -> str:
+    """Mode series of one counterexample of ``prop``, one letter per step (A Q C X B D F), up to the first step with two drones
+    in X, and the steps with an entry by avoidance.  Solved again, so not necessarily the model stored with the check."""
+    S = z3.Solver()
+    S.set("timeout", 600000)
+    S.add(*_run(fl, prop))
+    if S.check() != z3.sat:
+        return "no counterexample"
+    M, n, letters = S.model(), fl.n, "AQCXBDF"
+    rows, pushes = ["" for _ in range(n)], []
+    for t in range(fl.depth + 1):
+        ms = [M.eval(fl.m[t][i], model_completion=True).as_long() for i in range(n)]
+        for i in range(n):
+            rows[i] += letters[ms[i]]
+        if sum(m == X for m in ms) >= 2:
+            break
+        pushes += [(t, NAMES[i]) for i in range(n) if t < fl.depth and z3.is_true(M.eval(z3.Bool(f"push{NAMES[i]}_{t}"),
+                                                                                           model_completion=True))]
+    return " | ".join(f"{NAMES[i]}: {rows[i]}" for i in range(n)) + f"; entries by avoidance (step, drone): {pushes}"
 
 
 MIRROR = {"FRONT": "REAR", "REAR": "FRONT", "LEFT": "RIGHT", "RIGHT": "LEFT", "UP": "DOWN", "DOWN": "UP"}
@@ -319,9 +363,22 @@ def run(cfg: FleetConfig = DEFAULT, verbose: bool = True) -> Report:
         rep.add(check(f"F2p n={n}: the recovery within {K_FREE[n]} steps holds with those pushes", "inv & pushes & fairness -> all live drones in D at K",
                       ENC, _run(fp, fp.not_recovered()), "unsat", timeout_ms=900000, note=tag), verbose)
     fp = Fleet(3, L + K, L, T, latch_delay=1, push="committed", **PREMISES[3])
-    rep.add(check("F1p declared limit: claims learnt one step late (two drones committed together) and both moved into the CR by "
-                  "avoidance: two drones in X (n=3); the model has no geometry to exclude two pushes at once",
-                  "expect a run with two drones in X", ENC, _run(fp, fp.two_in_cr()), "sat", timeout_ms=600000, note=tag), verbose)
+    r = check("F1p declared limit (unresolved): claims learnt one step late (two drones committed concurrently) and an entry into "
+              "the CR by avoidance: two drones in X (n=3); the model has no positions to exclude it",
+              "expect a run with two drones in X", ENC, _run(fp, fp.two_in_cr()), "sat", timeout_ms=600000, note=tag)
+    if r.verdict == "sat":
+        r.note += "; one counterexample trace " + modes(fp, fp.two_in_cr())
+    rep.add(r, verbose)
+    t_push, k_push = push_dwell(cfg, 3, T["DT"])
+    fp = Fleet(3, L + K, L, T, latch_delay=1, push="committed", push_min_ct=k_push, **PREMISES[3])
+    r = check(f"F1pm declared limit (unresolved): F1p with the motion limit of an entry by avoidance (at least {t_push:.1f} s from "
+              f"the queue point to the CR, {k_push} step(s) in C before a push): still two drones in X (n=3); a concurrent "
+              "commitment, one entry by the stage-2 check before the claim of the other is known, then the other moved in by "
+              "avoidance while the first is inside", "expect a run with two drones in X", ENC, _run(fp, fp.two_in_cr()), "sat",
+              timeout_ms=600000, note=tag)
+    if r.verdict == "sat":
+        r.note += "; one counterexample trace " + modes(fp, fp.two_in_cr())
+    rep.add(r, verbose)
     fq = Fleet(3, 1, 1, T, free=True, push="any", **PREMISES[3])
     rep.add(check("F0q declared limit: a queued, uncommitted drone moved into the CR by avoidance breaks the invariant (the queue points "
                   "are at least 3.4 m before the CR; not modelled)", "expect inv & push of a drone in Q -> not inv'", ENC,
@@ -335,6 +392,8 @@ def run(cfg: FleetConfig = DEFAULT, verbose: bool = True) -> Report:
                         "holo_fleet/control/escape.py (exhaustive over the sector patterns)", "counterexample",
                         "counterexample" if pairs else "none", bool(pairs), round(time.time() - t0, 3),
                         note=f"{len(pairs)} mirrored patterns, e.g. {pairs[:3]}"), verbose)
+    import check_f1p_kinematic
+    rep.add(check_f1p_kinematic.check(cfg), verbose)
     fc = Fleet(3, L + K, L, T, latch_claims=False, stage2_claims=False, **PREMISES[3])
     rep.add(check("F1m mutation: a latch that ignores the drones in the stage-2 hold, with a stage-2 check that ignores the claims, lets two into the CR (n=3, from the launch)",
                   "expect a run with two drones in X", ENC, _run(fc, fc.two_in_cr()), "sat", timeout_ms=600000, note=tag), verbose)

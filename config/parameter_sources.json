@@ -10,11 +10,11 @@
  },
  "evidence_classes": "(a) manufacturer specification; (b) peer-reviewed field or tank measurement; (c) derivation, with the formula given; (d) calibration in our own simulator; (e) assumption without empirical support.",
  "counts": {
-  "rows": 126,
+  "rows": 130,
   "SUPPORTED": 18,
   "PARTIALLY_SUPPORTED": 6,
   "DERIVED": 35,
-  "DESIGN_CHOICE": 43,
+  "DESIGN_CHOICE": 47,
   "STRESS_ASSUMPTION": 21,
   "CONTRADICTED": 3
  },
@@ -1599,6 +1599,27 @@
    "code_action": "none"
   },
   {
+   "section": "5 Gate protocol (P2)",
+   "parameter": "FAIR (fairness window of the fixes, premise of the fleet model)",
+   "module": "formal/check_fleet.py:timers (FAIR = up(35.0)); holo_fleet/referee/robustness_metrics.py:fairness_gap (window_s 35.0)",
+   "value": 35.0,
+   "unit": "s (7 steps of DT = 5 s)",
+   "verdict": "DESIGN_CHOICE",
+   "source": "premise of formal/check_fleet.py: within every FAIR seconds there is one instant at which every live drone has a fresh fix of every other live drone at every receiver. When it was introduced (commit 33e59aa, 2026-11-13) the value was set as the longest such gap measured in one scenario of a pre-v11 run set (26 s), rounded up; those runs are not re-examined here and are not evidence for v11",
+   "doi_or_url": "formal/check_fleet.py; holo_fleet/referee/robustness_metrics.py; archive v13-final-v11-2026-11-18 (final validation, seeds 8000-8001), run_metrics.json -> fairness",
+   "derivation": "FAIR = ceil(35 / 5) = 7 steps. The recovery bounds of F2 (K = 26 / 40 / 52 steps for n = 2 / 3 / 4) and F2p are proved under this window; F2f shows that without it recovery is not guaranteed. With the monitor's freshness limit status_fresh_s = 2.5 s, the premise bounds every live link's silence by FAIR + status_fresh_s = 37.5 s, below t_silent_s = 45 s and t_silent_gate_s = 70 s",
+   "validity": "Monitored per run on the logged gate.silence (fairness_gap). In the 34-run final validation (archive v13-final-v11-2026-11-18 (final validation, seeds 8000-8001)): holds in every gate scenario with a logged beacon (B2 MEDIUM gate_four 10.9 / 26.3 s, gate_single 7.9 / 9.6 s, integrated_short 5.3 / 11.3 s, lost_drone_mutex 4.6 / 7.2 s, lost_drone_rejoin 7.1 / 6.1 s, mutex_deadlock_resolution 7.3 / 6.0 s; B2 latency sweep 1.8-3.8 s); not logged in B0 and in p1_head_on (no beacon or no gate); VIOLATED in B2 MEDIUM formation_six (92.7 s, both seeds: six drones, 30 links, no gate), which is outside the fleet model (n = 2-4 at a gate). Simulator channel only; no field evidence. The two literals 35.0 (formal model and monitor) are equal but not tied to one constant",
+   "citation_keys": [],
+   "code_action": "none",
+   "evidence": {
+    "manufacturer_or_literature": "none",
+    "simulator_calibration": "per-run monitor values of the final validation listed under validity (largest in a gate scenario 26.3 s, gate_four s8001; violated only in formation_six, 92.7 s); the original 26 s measurement belongs to a pre-v11 run set and is not used here",
+    "mathematical_derivation": "FAIR steps = ceil(35 / DT); silence of a live link <= FAIR + status_fresh_s = 37.5 s under the premise; F2 bounds proved at FAIR = 7",
+    "engineering_design_choice": "the value 35 s (round number above the gap measured when the model was built)",
+    "operating_assumption": "the acoustic channel delivers, within every 35 s, an instant at which all links of a fleet of 2-4 drones near a gate are fresh (premise V and the channel model); assumed, not guaranteed by any onboard mechanism"
+   }
+  },
+  {
    "section": "6 Formation (P3)",
    "parameter": "Formation error thresholds (e_lost, e_ok, t_ok_hold; same values in RefereeConfig)",
    "module": "holo_fleet/config.py:FormationRule.e_lost, e_ok, t_ok_hold",
@@ -1708,6 +1729,48 @@
    "validity": "Formal F6 (BMC over ceil(t_rejoin / dt) + 1 steps) and F6r (ranking): a neighbour that never reappears is declared vacant and the drone leaves FORMATION_WAIT_REJOIN",
    "citation_keys": [],
    "code_action": "none"
+  },
+  {
+   "section": "6 Formation (P3)",
+   "parameter": "t_silent_s (vacancy by silence with the B2 beacon)",
+   "module": "holo_fleet/config.py:FormationRule.t_silent_s; holo_fleet/perception/acoustic.py:AcousticTracker.silent",
+   "value": 45.0,
+   "unit": "s",
+   "verdict": "DESIGN_CHOICE",
+   "source": "with the beacon active a slot is vacant exactly when its drone has not been heard for t_silent_s (perception.py, total-failure model: a broken drone stops transmitting). The comment that introduced the value (commit f50260a, 2026-11-09) cited the longest silence between two drones observed in a pre-v11 MEDIUM run set (31 s); those runs are not re-examined here",
+   "doi_or_url": "holo_fleet/perception/acoustic.py; holo_fleet/referee/p3.py; formal/check_fleet.py; archive v13-final-v11-2026-11-18 (final validation, seeds 8000-8001), drone_*_state.jsonl.gz -> gate.silence",
+   "derivation": "lower bound: under the fairness premise a live link is silent for at most FAIR + status_fresh_s = 35 + 2.5 = 37.5 s, so 45 s leaves 7.5 s. Ordering kept by the fleet model: T_VAC = ceil(45 / 5) = 9 steps < T_DEAD = 14 steps (vacancy before death). The P3 deadline of a vacancy is t_f + t_silent_s + 2 s (referee/p3.py). Under the stress channel MEDIUM_HT (link outages Pareto, minimum 6 s, alpha 1.2) P(outage >= 45 s) = (6 / 45)^1.2 = 0.089 per outage, and the 60 s bursts of the communication sweep exceed 45 s, so false vacancies are expected there by construction",
+   "validity": "B2 only (B0 uses t_rejoin). Longest silence of a live sender at any receiver in the B2 runs of the final validation, computed read-only from the logged gate.silence (same tracker as the vacancy rule): 32.2 s (formation_six s8000), 22.5 s (formation_six s8001), at most 17.2 s in the gate scenarios (gate_four s8001); every B2 run of that validation is PASS. A false vacancy degrades P3 (the live drone is no longer waited for) but releases no gate claim. Simulator channel model only (independent losses per reception, with bursts at MEDIUM); not validated on hardware",
+   "citation_keys": [],
+   "code_action": "none",
+   "evidence": {
+    "manufacturer_or_literature": "none",
+    "simulator_calibration": "final validation: longest live-sender silence 32.2 s (all B2 runs), 17.2 s (gate scenarios), margin 12.8 s to 45 s; the 31 s figure of the original comment is pre-v11 and not used",
+    "mathematical_derivation": "45 > FAIR + status_fresh_s = 37.5 s; T_VAC 9 < T_DEAD 14 steps; MEDIUM_HT tail (6 / 45)^1.2 = 0.089",
+    "engineering_design_choice": "45 s: long enough not to declare a live drone vacant on the MEDIUM channel, short enough that the fleet stops waiting for a dead drone within one minute",
+    "operating_assumption": "a live drone is heard by every receiver at least once every 45 s (otherwise a false vacancy, a P3 consequence only)"
+   }
+  },
+  {
+   "section": "6 Formation (P3)",
+   "parameter": "W_RES (residual disturbance after the low-level integrator has converged, premise A2 of the P3 ranking functions)",
+   "module": "formal/check_formation.py:W_RES",
+   "value": 0.05,
+   "unit": "m/s",
+   "verdict": "DESIGN_CHOICE",
+   "source": "operating assumption A2 of formal/check_formation.py: after a perturbation the unrejected disturbance is |w| <= w_res, which can hold only while the commanded velocity is control-feasible (A1, control/current_envelope.py). Compared with the closed-loop calibration results/calibration/head_current_authority.json (calibration/probe_head_current_authority.py, authority 0.40, survey speed 0.30 m/s, means over 14-32 s): along-track deficit -0.001 to +0.003 m/s for unsaturated head currents of 0.30-0.40 m/s, +0.037 m/s at 0.45 m/s (91 % saturated) and +0.089 / +0.198 m/s at 0.50 / 0.60 m/s (saturated, outside the envelope); cross-track mean ground velocity 0.033 m/s under a 0.60 m/s lateral current. The station-keeping residuals of R1 3.1 (0.034 m/s at 0.60 m/s, 0.158 m/s at 0.80 m/s) are recorded in the w_rel_max row",
+   "doi_or_url": "formal/check_formation.py; results/calibration/head_current_authority.json; calibration/probe_head_current_authority.py; formal/results/formation.json",
+   "derivation": "the along-track ranking margin of F1 is V - v_clock - s_rate - w_res = 0.50 - 0.30 - (0.08 x 1.2 + 0.02 x 2.0) - 0.05 = 0.014 m/s (formal/results/formation.json, eps_far 0.0140 m/s), so F1 fails for w_res >= 0.064 m/s; the ball e* = (s_rate + w_res) / k_slot x 1.05 + 0.005 = 0.439 m must stay below e_ok = 0.5 m (w_res < 0.076 m/s). The binding limit is 0.064 m/s: the assumed 0.05 m/s leaves 0.014 m/s",
+   "validity": "The measured values are window means of steady uniform currents on one simulated vehicle at the survey speed; they do not bound the instantaneous |w| that the abstraction assumes at every step, they do not cover the recovery speed 0.50 m/s, oscillating or vertical currents, gusts or the transient before the integrator converges, and the lateral value (0.033 m/s at 0.60 m/s) uses two thirds of the budget. No field or tank measurement. P3 is therefore proved conditionally on A2; A2 itself is an assumption, not a validated property",
+   "citation_keys": [],
+   "code_action": "none",
+   "evidence": {
+    "manufacturer_or_literature": "none",
+    "simulator_calibration": "results/calibration/head_current_authority.json: |along deficit| <= 0.003 m/s unsaturated (head 0.30-0.40 m/s), 0.037 m/s at 0.45 m/s (saturated 91 %); lateral residual 0.033 m/s at 0.60 m/s; window means at 0.30 m/s",
+    "mathematical_derivation": "F1 along margin 0.014 m/s; F1 holds for w_res < 0.064 m/s, F3 ball below e_ok for w_res < 0.076 m/s",
+    "engineering_design_choice": "0.05 m/s: above the unsaturated residuals measured in the calibration, below the 0.064 m/s at which the F1 margin vanishes",
+    "operating_assumption": "A2: inside the control-feasible envelope and after convergence, the residual disturbance stays within 0.05 m/s at every step, at every speed the formation law commands"
+   }
   },
   {
    "section": "6 Formation (P3)",
@@ -2454,6 +2517,27 @@
    "validity": "a claim is never dropped by age; distinct from the 32 s S2h horizon",
    "citation_keys": [],
    "code_action": "none"
+  },
+  {
+   "section": "8 Onboard acoustic envelope (`AcousticConfig`)",
+   "parameter": "t_silent_gate_s (gate silence: rule D, a drone not heard this long may be dead for the gate decisions)",
+   "module": "holo_fleet/config.py:AcousticConfig.t_silent_gate_s; holo_fleet/perception/acoustic_gate.py:AcousticExit.dead; holo_fleet/perception/perception.py",
+   "value": 70.0,
+   "unit": "s",
+   "verdict": "DESIGN_CHOICE",
+   "source": "rule D: a drone not heard for t_silent_gate_s by a receiver that hears another drone is dead for the gate decisions (its claim included) only if last known outside the exclusion zone of the gate (holo_fleet/scope.py); otherwise it holds the gate for ever. The comment that introduced the value argued that a live drone cannot stay unheard this long on a queue link (a channel-model estimate P(silence >= 70 s) < 1e-3 per mission in an archived design note) while a dead drone has risen above the gate by then; that estimate is not recomputed here",
+   "doi_or_url": "holo_fleet/perception/acoustic_gate.py; holo_fleet/scope.py; formal/check_status.py; formal/check_fleet.py; holo_fleet/referee/robustness_metrics.py; archive v13-final-v11-2026-11-18 (final validation, seeds 8000-8001), run_metrics.json -> premise_v",
+   "derivation": "T_DEAD = ceil(70 / 5) = 14 steps > T_VAC = 9 (vacancy before death) and > T_RISE = 10 steps (the hull has left the queue corridor) in formal/check_fleet.py; 70 > FAIR + status_fresh_s = 37.5 s, so under the fairness premise no live drone is held dead (premise V follows); 70 > t_occ_max + t_clear = 26 s. With 1 Hz pings a 70 s silence needs about 70 consecutive lost receptions; the MEDIUM model draws losses independently per reception (bursts of 4 s), so the risk lies in correlated losses, which that model does not represent: under MEDIUM_HT P(outage >= 70 s) = (6 / 70)^1.2 = 0.052 per outage, and the sweep bursts of 60 s stay below 70 s",
+   "validity": "Premise V (no live drone declared dead) holds in all 34 runs of the final validation (premise_v.live_declared_dead = 0); longest live-sender silence there 32.2 s (38 s margin). A live drone silent for 70 s outside the zone violates premise V and can release its claim, so P2 depends on premise V; inside the zone silence never releases a claim (safe stop, S4 / S12 of formal/check_status.py). Simulator channel only; no field evidence",
+   "citation_keys": [],
+   "code_action": "none",
+   "evidence": {
+    "manufacturer_or_literature": "none",
+    "simulator_calibration": "final validation: premise_v.live_declared_dead = 0 in 34 / 34 runs; longest live-sender silence 32.2 s; the archived channel-model estimate (< 1e-3 per mission) is not recomputed",
+    "mathematical_derivation": "T_DEAD 14 > T_RISE 10 and > T_VAC 9 steps; 70 > 37.5 s (fairness bound) and > 26 s (t_occ_max + t_clear); MEDIUM_HT tail (6 / 70)^1.2 = 0.052",
+    "engineering_design_choice": "70 s: well above the longest live silence and the 60 s sweep bursts, below the time after which a fleet stuck behind a dead claim would be unacceptable",
+    "operating_assumption": "premise V: the channel never silences a live drone for 70 s at a receiver that hears another drone (correlated outages of this length are excluded)"
+   }
   }
  ]
 }

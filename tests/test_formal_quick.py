@@ -50,4 +50,6 @@ def test_saved_summary_is_all_passed():
     if not p.exists():
         pytest.skip("python formal/check_properties.py not run yet")
     data = json.loads(p.read_text())
-    assert data["all_passed"], [c["prop"] for s in data["suites"] for c in s["checks"] if not c["passed"]]
+    assert data["all_as_expected"], data["unexpected"]
+    kinds = {c["kind"] for s in data["suites"] for c in s["checks"]}
+    assert kinds <= set(data["kinds"]), kinds
