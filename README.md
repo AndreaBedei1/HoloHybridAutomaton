@@ -282,8 +282,10 @@ per vehicle; `formation_six` (6 vehicles) is simulated only.
   a concurrent commitment), with the motion limit as well, and a queued vehicle can be moved in.
 - **S1gm.** Two vehicles that can only stop, facing each other, are not kept apart: a jointly infeasible configuration.
   The queue geometry and the standoff are meant to keep it unreachable; that is shown in simulation, not proved.
-- **Localization.** The acquisition gap above (bias +0.4 m, from +0.7 m) and, in HoloOcean, the negative-bias stalls
-  (-0.5 m, -1.0 m) cost the passage, not safety.
+- **Localization.** The B0 acquisition gap above (bias +0.4 m, from +0.7 m) costs the passage, not safety. In B2 the
+  negative-bias stall is corrected (below); with -1.0 m the passage is late: the unexplained FRONT echo of the near bar
+  keeps a queued vehicle's occupancy latch busy until B2 recognises it as no fleet vehicle (about 217 s on the MEDIUM
+  channel). This latch behaviour predates the gate-safety revision and is left unchanged.
 - **Stacked column on the axis.** Queue bound (c) ignores depth: a column stacked on the axis (only the `stack_axis`
   template of `gate_rear_approach`) puts a queued vehicle 2.17 m from the hold, inside its warning band.
 - **Liveness.** Mutual warning stalls after concurrent commitments are outside the stage-2 timer.
@@ -328,6 +330,19 @@ per vehicle; `formation_six` (6 vehicles) is simulated only.
     forward between the occupant and the rear vehicle and came within 1.0 m of the occupant. A silent occupant next to
     the bars is masked from the stage-2 check in both versions (the masked part of `M4h`, covered by B2 claims).
   - A single seed per configuration and one noise level: observations, not a statistical bound.
+- **Current controller, B2 negative navigation bias: `results/gate_safety_v2_negbias/`** (raw logs in the local archive
+  `v19-b2-negative-bias-2026-11-20`).
+  - **Cause of the -0.5 m and -1.0 m stalls** (present in v11 as well): a committed vehicle on its diagonal lane beside
+    the opening, its estimate behind the truth, sees the near bar where the map does not expect it and is held in the
+    warning band. Two sectors match the bars, so the 2-D map fit exists, but it places the hull beside the opening and
+    is not identified (a queued vehicle can reach a side echo), so it can neither validate nor be applied; the
+    along-axis FRONT correction ran only when fewer than two sectors matched. It now also runs when the 2-D fit cannot
+    be applied, with its own B2 identity test on the FRONT echo, its uniqueness and consistency checks and its bound; it
+    never validates the localization (`perception/structure_aiding.py`).
+  - **B2 MEDIUM, seed 8000:** -0.5 m PASS (INCOMPLETE before, same seed), -1.0 m all requirements met but P3_LATE
+    (INCOMPLETE before), +0.5 m, +1.0 m, gate_single, the rear approach and line_parallel_mutex (three concurrent
+    commitments) PASS. P2 at most one vehicle, no CR entry without admission, no ENTRY_HOLD_TIMEOUT, minimum separation
+    2.80 m.
 
 The archives are on local storage only. Each has a `MANIFEST.json` with the sha256 of every file, and v13 also holds the
 code tarballs, a git bundle and every `run_config.json`. They have no public location, so the results can be reproduced
