@@ -16,7 +16,8 @@ Principal contributions:
 - a gate-aware safety layer: mutual exclusion as a constraint on the final velocity command of every vehicle not
   admitted to the CR, a stage-2 hold placed for the declared navigation error, and avoidance choices classified as
   jointly feasible, uncertain or jointly infeasible (`holo_fleet/control/gate_safety.py`);
-- formation keeping, recovery and degraded formation after permanent failures with ranking-function certificates (P3);
+- formation keeping, eventual recovery and degraded formation after permanent failures, with ranking-function
+  certificates (P3);
 - architecture B2: a one-way TDMA acoustic beacon (64-bit packet) that never enters separation, collision avoidance or
   the gate precedence, with an event-ordered runtime audit of its premise C;
 - a referee that judges every run from ground truth, and a reproducible campaign runner.
@@ -165,6 +166,24 @@ parameter are in `config/parameter_sources.json` (citation keys in `references.b
 
 ## Guarantees and limitations
 
+**Properties.**
+- **P1, separation:** every pair of vehicles keeps its centre distance at least `d_safe = 1.0 m`.
+- **P2, mutual exclusion:** at most one vehicle in the critical region of a gate, and only after admission.
+- **P3, eventual formation recovery:** after every loss, the healthy vehicles recover the intended formation. After an
+  admissible permanent failure, they recover the degraded formation of the healthy vehicles, with the lost slots declared
+  vacant and no false vacancy.
+
+  Under acceptance criteria v9 (`holo_fleet/referee/criteria.py`, `robustness_metrics.refine_v9`), a run is `PASS` when:
+  the mission is completed (progress, gate passage, P3 reached within the run horizon, nobody waiting), P1 and P2 hold,
+  and every part of the P3 contract (`referee/p3.py`: P3a per vehicle, P3b fleet, P3c degraded) is met. A part met after
+  its own deadline is recorded as late (`p3_late`, with its recovery time) and is a performance indicator, not a failure.
+  Criteria v8 called it `P3_LATE`; that class is kept as `class_v8`.
+
+  Non-recovery, an invalid or falsely vacant formation, an incomplete mission, a violated premise and an unsafe run keep
+  their classes. The P3 deadlines and the formal recovery bounds remain bounded-time statements: a finite run shows
+  recovery within its horizon, not for unbounded time. `results/criteria_v9_reclassification.json` gives the v9 class
+  of every archived run next to its recorded class and the sha256 of its `run_metrics.json`.
+
 Three kinds of statement are kept apart: formal results on abstractions (Z3), simulation observations, and engineering
 assumptions. `formal/results/SUMMARY.json` gives every check a `kind`; only `proved` and `bounded` support a guarantee, and
 `numeric` checks are exhaustive or sampled evaluations of the deployed code. An expected counterexample (`limit`, `scope`,
@@ -301,8 +320,9 @@ per vehicle; `formation_six` (6 vehicles) is simulated only.
     0.45 s; seeds 8000 and 8001.
   - **P1 and P2:** both held in every run, with a minimum separation of 2.84 m and at most one vehicle in the CR. All 64
     CR entries were admitted by the stage-2 check, none by avoidance.
-  - **Classes:** 31 PASS. The B2 MEDIUM runs are 16 of 16 PASS. In B0, `lost_drone_mutex` failed P3 on both seeds (a false
-    vacancy) and `integrated_short` s8000 was P3_LATE.
+  - **Classes** (recorded, criteria v8): 31 PASS. The B2 MEDIUM runs are 16 of 16 PASS. In B0, `lost_drone_mutex` failed
+    P3 on both seeds (a false vacancy) and `integrated_short` s8000 was P3_LATE. Under v9 the latter is a late PASS:
+    32 PASS and the 2 P3 failures.
   - **Premise C:** all 64 pairs SATISFIED, before and after the audit correction (separate archive
     `v17-premise-c-v13-reaudit-2026-11-19`): 57 blocked by the latch, 7 hand-offs after an exit witness; claim knowledge 36
     certified, 8 undeliverable by the channel timing, 20 not applicable (B0).
@@ -339,9 +359,10 @@ per vehicle; `formation_six` (6 vehicles) is simulated only.
     along-axis FRONT correction ran only when fewer than two sectors matched. It now also runs when the 2-D fit cannot
     be applied, with its own B2 identity test on the FRONT echo, its uniqueness and consistency checks and its bound; it
     never validates the localization (`perception/structure_aiding.py`).
-  - **B2 MEDIUM, seed 8000:** -0.5 m PASS (INCOMPLETE before, same seed), -1.0 m all requirements met but P3_LATE
-    (INCOMPLETE before), +0.5 m, +1.0 m, gate_single, the rear approach and line_parallel_mutex (three concurrent
-    commitments) PASS. P2 at most one vehicle, no CR entry without admission, no ENTRY_HOLD_TIMEOUT, minimum separation
+  - **B2 MEDIUM, seed 8000, 7 of 7 PASS under v9:** -0.5 m (INCOMPLETE before, same seed), -1.0 m (INCOMPLETE before;
+    a late recovery after the ~217 s wait at the queue, recorded P3_LATE under v8: P3a of two vehicles late, the fleet
+    P3b met at 348.5 s), +0.5 m, +1.0 m, gate_single, the rear approach and line_parallel_mutex (three concurrent
+    commitments). P2 at most one vehicle, no CR entry without admission, no ENTRY_HOLD_TIMEOUT, minimum separation
     2.80 m.
 
 The archives are on local storage only. Each has a `MANIFEST.json` with the sha256 of every file, and v13 also holds the

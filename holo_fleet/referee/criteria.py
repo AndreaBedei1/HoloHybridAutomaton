@@ -7,6 +7,12 @@ Every constant is labelled by its provenance:
   [LIT]   a criterion from the literature, applied to a protocol parameter;
   [PROF]  derived from the definition of a sensor profile (sim/sensor_noise.py), never from its effect on a run.
 
+P3 is EVENTUAL formation recovery (criteria v9): the requirements below must be reached within the run's horizon (a
+finite run cannot show more), and the recovery time is a performance metric.  A part of the P3 contract met after its
+own deadline is LATE, recorded with its time, and no longer turns a completed run into a failure (v8 classified it
+P3_LATE; robustness_metrics.refine_v9 keeps that class as ``class_v8``).  The deadlines stay bounded-time statements: v9
+does not turn them into unbounded guarantees.
+
 Requirements of a run (the same set is used by the online TerminalMonitor and the offline classifier):
   progress     at the SUCCESS instant every healthy drone is within PROGRESS_TOL_M of its PLANNED end position: its
                slot where the plan clock reaches the end of the path (T_nom, below).  Not a latch: a drone that came
@@ -57,7 +63,7 @@ from typing import Dict, List, Optional
 
 import numpy as np
 
-CRITERIA_VERSION = "v8"
+CRITERIA_VERSION = "v9"
 E_TOL_M = 1.0
 GIVEWAY_OFFSET_M = 2.5
 DETECT_S = 0.35

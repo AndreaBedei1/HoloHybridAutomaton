@@ -392,7 +392,9 @@ def analyze_run(run_dir: Path, reference: Optional[Dict] = None, cfg=DEFAULT, pr
                                   "failsafe_explains_missed": caused}
     out["failed_requirements"] = [k for k, v in out["requirements"].items() if not v]
     out["class_v7"] = cls
-    out["class"] = refine_v8(cls, out)
+    out["class_v8"] = refine_v8(cls, out)
+    out["class"] = refine_v9(cls, out)
+    out["p3_late"] = p3_late_parts(out)
     out["cause_tags"] = cause_tags(out, fm, fs_sensor, term, states, healthy, m, dt, met)
     return out
 
@@ -442,7 +444,7 @@ def replay_terminal(sc, cfg, names, t, P, states, modes, profile, logged: Option
     faults = getattr(sc.sim, "faults", ()) or ()
     ref = Referee(names, sc.template.offsets() if sc.template is not None else None, sc.path, sc.judged_gates, cfg,
                   sc.formation_enabled, clock=sc.plans[0].clock if sc.formation_enabled else None, faults=faults)
-    v3 = bool(logged) and logged.get("criteria") in ("v3", "v7", CRITERIA_VERSION)
+    v3 = bool(logged) and logged.get("criteria") in ("v3", "v7", "v8", CRITERIA_VERSION)
     dl = float(logged["deadline_s"]) if v3 else horizon_v5(sc, cfg, profile)
     mon = TerminalMonitor(sc, cfg, names, dl)
     z = np.zeros((n, 3))
@@ -519,6 +521,37 @@ def refine_v8(cls: str, out: Dict) -> str:
     if parts or failed & {"P3 recovered", "P3-deg re-formed", "P3-deg vacancy", "no false vacancy", "not waiting"}:
         return "P3_FAILURE"
     return cls
+
+
+def p3_late_parts(out: Dict) -> list:
+    """The parts of P3 met only after their deadline (verdict LATE): a performance indicator, kept with the run's
+    recovery times (p3 -> P3a / P3b / P3c), never a failure under criteria v9."""
+    q = out.get("p3") or {}
+    late = [f"P3a:{k}" for k, v in (q.get("P3a") or {}).items() if (v or {}).get("verdict") == "LATE"]
+    return late + [x for x in ("P3b", "P3c") if (q.get(x) or {}).get("verdict") == "LATE"]
+
+
+def refine_v9(cls: str, out: Dict) -> str:
+    """Criteria v9 (output class): P3 is EVENTUAL formation recovery.  A run whose online outcome is SUCCESS (every
+    required outcome reached within the horizon: progress, gate, P3 recovered or P3-deg re-formed and vacant, no false
+    vacancy, nobody waiting), with P1 and P2 judged separately as before, is PASS when every part of P3 is MET or LATE:
+    a part met only after its deadline is a late recovery, recorded in ``p3_late`` with its recovery times, not a
+    failure.  Everything else keeps the v8 class: a part NOT_MET (P3_FAILURE), a part not judged because a premise was
+    violated (PREMISE_VIOLATED, also when the other parts are only late), a mission not completed (INCOMPLETE: a late
+    recovery never upgrades an incomplete run), unsafe and invalid runs.  The v8 class stays in ``class_v8``.  The deadlines
+    of P3a / P3b / P3c remain the bounded-time statements of the contract (referee/p3.py); v9 changes only which outcome
+    counts as experimental success."""
+    v8 = refine_v8(cls, out)
+    if v8 != "P3_LATE":
+        return v8
+    q = out.get("p3") or {}
+    parts = [v.get("verdict") for v in (q.get("P3a") or {}).values()] + [(q.get(x) or {}).get("verdict") for x in ("P3b", "P3c")]
+    parts = [v for v in parts if v not in (None, "NA", "MET")]
+    if cls == "PASS" and parts and all(v == "LATE" for v in parts) and not out.get("failed_requirements"):
+        return "PASS"
+    if "PREMISE_VIOLATED" in parts:
+        return "PREMISE_VIOLATED"
+    return "INCOMPLETE"
 
 
 def cr_entry_kind(states_k, j: int) -> str:
