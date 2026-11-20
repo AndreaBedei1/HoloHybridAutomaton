@@ -10,11 +10,11 @@
  },
  "evidence_classes": "(a) manufacturer specification; (b) peer-reviewed field or tank measurement; (c) derivation, with the formula given; (d) calibration in our own simulator; (e) assumption without empirical support.",
  "counts": {
-  "rows": 130,
+  "rows": 137,
   "SUPPORTED": 18,
   "PARTIALLY_SUPPORTED": 6,
-  "DERIVED": 35,
-  "DESIGN_CHOICE": 47,
+  "DERIVED": 39,
+  "DESIGN_CHOICE": 50,
   "STRESS_ASSUMPTION": 21,
   "CONTRADICTED": 3
  },
@@ -1620,6 +1620,129 @@
    }
   },
   {
+   "section": "5 Gate protocol (P2)",
+   "parameter": "stage2_hold_s (stage-2 hold of a committed drone before admission, gate frame s on the axis)",
+   "module": "holo_fleet/config.py:GateRule.stage2_hold_s; holo_fleet/control/gate_safety.py:hold_s; holo_fleet/control/flows.py:Flows.gate",
+   "value": -2.3025,
+   "unit": "m",
+   "verdict": "DERIVED",
+   "source": "(from the declared bounds) the nearest point where holding is P2-safe under the declared gate-frame navigation error, minus the measured holding error; replaces the v11 hold at -(cr_half_len + HULL_HALF[0] + 0.15) = -1.179 m, where an estimate 1 m short puts the centre at s = -0.179 m, inside the CR (formal P2Bm)",
+   "doi_or_url": "-",
+   "derivation": "hold_s = -(cr_half_len + nav_err_m + w_drift_max * tau_c + e_track + SLACK_M) = -(0.8 + 1.0 + 0.0525 + 0.30 + 0.05) = -2.2025 m; target = hold_s - hold_err_m = -2.3025 m (tests/test_hold_point.py keeps it equal to the derivation)",
+   "validity": "Holds while the navigation premise |e_h| <= nav_err_m and the drift bound w_drift_max hold; the CR occupancy is the centre definition of P2. Localization acquisition from it: bias (estimate - truth) along the axis -1.0 to +0.3 and +0.5, +0.6 acquired in the synthetic B0 scan, +0.4 and >= +0.7 not (bounded hold, then give-up): formal/results/f1p_kinematic.json, tests/test_hold_point.py",
+   "citation_keys": [],
+   "code_action": "none"
+  },
+  {
+   "section": "5 Gate protocol (P2)",
+   "parameter": "hold_lateral_allow (lateral allowance of the stage-2 hold in the queue clearance bound)",
+   "module": "holo_fleet/config.py:GateRule.hold_lateral_allow, GateRule.queue_s (c)",
+   "value": 0.27,
+   "unit": "m",
+   "verdict": "DERIVED",
+   "source": "(from the declared drift) the steady lateral deviation of the hold loop against the declared residual drift, w_drift_max / k_track = 0.25 m, plus 0.02 m; the acquisition offsets at the hold are vertical (flows.ACQ_OFFSETS)",
+   "doi_or_url": "-",
+   "derivation": "0.15 / 0.6 + 0.02 = 0.27 m (tests/test_hold_point.py measures the deviation in closed loop)",
+   "validity": "Bound (c) of queue_s: with two or more columns every queue point keeps merge_clearance from the hold within this allowance (formal Q1)",
+   "citation_keys": [],
+   "code_action": "none"
+  },
+  {
+   "section": "5 Gate protocol (P2)",
+   "parameter": "queue_s bounds (c) hold clearance and (d) queue not ahead of the hold",
+   "module": "holo_fleet/config.py:GateRule.queue_s",
+   "value": {
+    "n1": -2.303,
+    "n2": -5.14,
+    "n3": -5.503,
+    "n4": -6.632
+   },
+   "unit": "m",
+   "verdict": "DERIVED",
+   "source": "(from the geometry) (c) a drone held at the stage-2 hold keeps merge_clearance (3.2 m, the criterion of bound (b)) from every other queue point, so a queued drone and a held drone are not in each other's warning band; (d) a queued drone holds where holding is P2-safe",
+   "doi_or_url": "-",
+   "derivation": "(c) queue_s <= stage2_hold_s - sqrt(merge_clearance^2 - max(|l_q| - hold_lateral_allow, 0)^2) for each column lateral l_q when there are >= 2 columns; (d) queue_s <= stage2_hold_s. v11 lines: n1 -1.909, n2 -4.181, n3 -5.406, n4 -6.632",
+   "validity": "Formal Q1 (deployed conservative distance >= d_warning from the hold to every queue point; the n = 3 centre point has the thinnest margin, 2.43 against 2.4) and the mutation Q1m (the v11 n = 2 line fails)",
+   "citation_keys": [],
+   "code_action": "none"
+  },
+  {
+   "section": "5 Gate protocol (P2)",
+   "parameter": "P2 filter backup bounds (tau_c, e_track, K_HOLD, SLACK_M, v_err)",
+   "module": "holo_fleet/control/gate_safety.py:P2Bounds, K_HOLD, SLACK_M",
+   "value": {
+    "tau_c": 0.35,
+    "e_track": 0.3,
+    "K_HOLD": 0.5,
+    "HOLD_V_MAX": 0.27,
+    "SLACK_M": 0.05,
+    "e_z": 1.0
+   },
+   "unit": "s; m; 1/s; m/s; m; m",
+   "verdict": "DERIVED",
+   "source": "(from FleetConfig) tau_c = Envelope.dt + Envelope.tau_max (one control period and the largest data age); e_track = w_drift_max / K_HOLD, the steady deviation of a first-order position loop against the declared residual drift, K_HOLD the smallest hold gain of the flows; the vertical error is taken equal to nav_err_m (more than the depth envelope); v_err = the DVL 3-sigma velocity noise while the DVL is fresh, the speed bound during an outage",
+   "doi_or_url": "-",
+   "derivation": "backup of a command: applied for tau_c (an increase reached at once, a decrease at >= a_brake), braking at a_brake, then station keeping with deviation <= e_track; drift w_drift_max in any direction; robust margin = min(one-step margin, margin of braking after dt from the worst-case state)",
+   "validity": "An abstraction of the vehicle: a first-order hold loop and the declared a_brake / w_drift_max (formal P2B1, P2B1r, P2B3 numeric soundness; P2B2s: strict invariance of the one-step margin fails, hence the robust margin and the latched station keeping)",
+   "citation_keys": [],
+   "code_action": "none"
+  },
+  {
+   "section": "5 Gate protocol (P2)",
+   "parameter": "ACTIVE_RANGE_M (range of the P2 filter around the critical region)",
+   "module": "holo_fleet/control/gate_safety.py:ACTIVE_RANGE_M, constraint_for",
+   "value": 8.0,
+   "unit": "m",
+   "verdict": "DESIGN_CHOICE",
+   "source": "chosen by the project: beyond it no command of one control step can reach the CR",
+   "doi_or_url": "-",
+   "derivation": "none",
+   "validity": "Inside it the gate-aware selection engages only when the CR removes candidates; otherwise the P1 planner of the proofs runs unchanged",
+   "citation_keys": [],
+   "code_action": "none"
+  },
+  {
+   "section": "5 Gate protocol (P2)",
+   "parameter": "ACQ_OFFSETS and ACQ_PERIOD_S (localization acquisition pattern at the stage-2 hold)",
+   "module": "holo_fleet/control/flows.py:ACQ_OFFSETS, ACQ_PERIOD_S",
+   "value": {
+    "dz_m": [
+     -0.6,
+     0.6,
+     -0.4,
+     0.8,
+     0.4,
+     -0.8
+    ],
+    "period_s": 4.0
+   },
+   "unit": "m; s",
+   "verdict": "DESIGN_CHOICE",
+   "source": "chosen by the project from the synthetic acquisition scan (real StructureAiding, bar echoes only): vertical offsets let the up / down sonars see the frame from farther than on the axis; vertical only, so the queue clearance (c) is unchanged",
+   "doi_or_url": "-",
+   "derivation": "six offsets x 4 s = 24 s, within t_occ_max + t_clear = 26 s",
+   "validity": "Idealised bar echoes (no seabed, no other hulls); HoloOcean behaviour in results/gate_safety_v1",
+   "citation_keys": [],
+   "code_action": "none"
+  },
+  {
+   "section": "5 Gate protocol (P2)",
+   "parameter": "STANDOFF_MARGIN_M and STANDOFF_ZONE_M (a committed drone stops behind a drone ahead in the corridor)",
+   "module": "holo_fleet/control/flows.py:STANDOFF_MARGIN_M, STANDOFF_ZONE_M, Flows._ahead",
+   "value": {
+    "margin_m": 0.5,
+    "zone_m": 1.5
+   },
+   "unit": "m",
+   "verdict": "DESIGN_CHOICE",
+   "source": "chosen by the project: the follower stops at d_warning_exit + 0.5 m (conservative distance) from a DYNAMIC echo in its FRONT sector, only farther than 1.5 m behind the hold (an unexplained bar echo near the gate must not stop it out of the acquisition region); the standoff is anchored and runs the stage-2 timer",
+   "doi_or_url": "-",
+   "derivation": "none",
+   "validity": "Prevention of a rear approach to a held drone; liveness cost measured in formal/results/f1p_kinematic.json",
+   "citation_keys": [],
+   "code_action": "none"
+  },
+  {
    "section": "6 Formation (P3)",
    "parameter": "Formation error thresholds (e_lost, e_ok, t_ok_hold; same values in RefereeConfig)",
    "module": "holo_fleet/config.py:FormationRule.e_lost, e_ok, t_ok_hold",
@@ -2508,7 +2631,7 @@
    "section": "8 Onboard acoustic envelope (`AcousticConfig`)",
    "parameter": "status_fresh_s (age beyond which a report of not engaged no longer excludes a drone)",
    "module": "config.py AcousticConfig.status_fresh_s; gate_perception.py",
-   "value": "2.5 s cap (`config.py AcousticConfig.status_fresh_s`); per plan min(2.5, t_min - latency_max_s): 1.946 s for st_gate_pair, 2.5 s for the other plans (`gate_perception.py`)",
+   "value": "2.5 s cap (`config.py AcousticConfig.status_fresh_s`); per plan min(2.5, t_min - latency_max_s): 2.5 s for every gate plan since the queue lines moved back (bounds (c), (d) of GateRule.queue_s; st_gate_pair had 1.946 s with the v11 line at -4.18 m)",
    "unit": "",
    "verdict": "DERIVED",
    "source": "(from the gate geometry) t_min = (abs(queue_s) - (cr_half_len + R_OUT) - queue_tol - nav_err_m) / v_bound, the smallest time from the queue point to the CR at the speed bound",

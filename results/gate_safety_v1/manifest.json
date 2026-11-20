@@ -1,0 +1,432 @@
+{
+ "snapshots": {},
+ "runs": [
+  {
+   "dir": "runs/B0/CLEAN/gate_hold_nav_bias_m10/s8000",
+   "scenario": "gate_hold_nav_bias_m10",
+   "protocol": "B0",
+   "class": "INCOMPLETE",
+   "sha": "8e7ebb5543d0ef6d6f46dca654e50fc825ea5e29",
+   "dirty_files": [],
+   "wall_s": 2292.6,
+   "engine_listen_ports": [
+    37362
+   ],
+   "engine_uuid": null,
+   "engine_root": "<HOLOOCEAN_ROOT>_slot2",
+   "reaped_holodeck": [],
+   "attempt": 1,
+   "start_time": "2026-11-20T17:56:36"
+  },
+  {
+   "dir": "runs/B0/CLEAN/gate_hold_nav_bias_p10/s8000",
+   "scenario": "gate_hold_nav_bias_p10",
+   "protocol": "B0",
+   "class": "INCOMPLETE",
+   "sha": "8e7ebb5543d0ef6d6f46dca654e50fc825ea5e29",
+   "dirty_files": [],
+   "wall_s": 1605.6,
+   "engine_listen_ports": [
+    38901
+   ],
+   "engine_uuid": null,
+   "engine_root": "<HOLOOCEAN_ROOT>_slot2",
+   "reaped_holodeck": [],
+   "attempt": 1,
+   "start_time": "2026-11-20T18:36:27"
+  },
+  {
+   "dir": "runs/B0/CLEAN/gate_rear_approach_unloc/s8000",
+   "scenario": "gate_rear_approach_unloc",
+   "protocol": "B0",
+   "class": "REPLAY_MISMATCH",
+   "sha": "8e7ebb5543d0ef6d6f46dca654e50fc825ea5e29",
+   "dirty_files": [],
+   "wall_s": 78.0,
+   "engine_listen_ports": [
+    39489
+   ],
+   "engine_uuid": null,
+   "engine_root": "<HOLOOCEAN_ROOT>_slot2",
+   "reaped_holodeck": [],
+   "attempt": 1,
+   "start_time": "2026-11-20T18:35:05"
+  },
+  {
+   "dir": "runs/B2_CLEAN/CLEAN/formation_recovery_head_current/s8000",
+   "scenario": "formation_recovery_head_current",
+   "protocol": "B2_CLEAN",
+   "class": "PASS",
+   "sha": "8e7ebb5543d0ef6d6f46dca654e50fc825ea5e29",
+   "dirty_files": [],
+   "wall_s": 222.8,
+   "engine_listen_ports": [
+    37579
+   ],
+   "engine_uuid": null,
+   "engine_root": "<HOLOOCEAN_ROOT>_slot1",
+   "reaped_holodeck": [],
+   "attempt": 1,
+   "start_time": "2026-11-20T18:52:17"
+  },
+  {
+   "dir": "runs/B2_CLEAN/CLEAN/gate_four/s8000",
+   "scenario": "gate_four",
+   "protocol": "B2_CLEAN",
+   "class": "PASS",
+   "sha": "8e7ebb5543d0ef6d6f46dca654e50fc825ea5e29",
+   "dirty_files": [],
+   "wall_s": 486.2,
+   "engine_listen_ports": [
+    36282
+   ],
+   "engine_uuid": null,
+   "engine_root": "<HOLOOCEAN_ROOT>_slot0",
+   "reaped_holodeck": [],
+   "attempt": 1,
+   "start_time": "2026-11-20T18:36:41"
+  },
+  {
+   "dir": "runs/B2_CLEAN/CLEAN/gate_hold_nav_bias_m05/s8000",
+   "scenario": "gate_hold_nav_bias_m05",
+   "protocol": "B2_CLEAN",
+   "class": "INCOMPLETE",
+   "sha": "8e7ebb5543d0ef6d6f46dca654e50fc825ea5e29",
+   "dirty_files": [],
+   "wall_s": 2189.0,
+   "engine_listen_ports": [
+    38307
+   ],
+   "engine_uuid": null,
+   "engine_root": "<HOLOOCEAN_ROOT>_slot1",
+   "reaped_holodeck": [],
+   "attempt": 1,
+   "start_time": "2026-11-20T17:56:35"
+  },
+  {
+   "dir": "runs/B2_CLEAN/CLEAN/gate_hold_nav_bias_m10/s8000",
+   "scenario": "gate_hold_nav_bias_m10",
+   "protocol": "B2_CLEAN",
+   "class": "INCOMPLETE",
+   "sha": "8e7ebb5543d0ef6d6f46dca654e50fc825ea5e29",
+   "dirty_files": [],
+   "wall_s": 2066.3,
+   "engine_listen_ports": [
+    37907
+   ],
+   "engine_uuid": null,
+   "engine_root": "<HOLOOCEAN_ROOT>_slot0",
+   "reaped_holodeck": [],
+   "attempt": 1,
+   "start_time": "2026-11-20T17:56:35"
+  },
+  {
+   "dir": "runs/B2_CLEAN/CLEAN/gate_hold_nav_bias_p05/s8000",
+   "scenario": "gate_hold_nav_bias_p05",
+   "protocol": "B2_CLEAN",
+   "class": "PASS",
+   "sha": "8e7ebb5543d0ef6d6f46dca654e50fc825ea5e29",
+   "dirty_files": [],
+   "wall_s": 430.2,
+   "engine_listen_ports": [
+    38186
+   ],
+   "engine_uuid": null,
+   "engine_root": "<HOLOOCEAN_ROOT>_slot3",
+   "reaped_holodeck": [],
+   "attempt": 1,
+   "start_time": "2026-11-20T18:35:19"
+  },
+  {
+   "dir": "runs/B2_CLEAN/CLEAN/gate_hold_nav_bias_p10/s8000",
+   "scenario": "gate_hold_nav_bias_p10",
+   "protocol": "B2_CLEAN",
+   "class": "PASS",
+   "sha": "8e7ebb5543d0ef6d6f46dca654e50fc825ea5e29",
+   "dirty_files": [],
+   "wall_s": 434.0,
+   "engine_listen_ports": [
+    36606
+   ],
+   "engine_uuid": null,
+   "engine_root": "<HOLOOCEAN_ROOT>_slot1",
+   "reaped_holodeck": [],
+   "attempt": 1,
+   "start_time": "2026-11-20T18:39:33"
+  },
+  {
+   "dir": "runs/B2_CLEAN/CLEAN/gate_rear_approach/s8000",
+   "scenario": "gate_rear_approach",
+   "protocol": "B2_CLEAN",
+   "class": "PASS",
+   "sha": "8e7ebb5543d0ef6d6f46dca654e50fc825ea5e29",
+   "dirty_files": [],
+   "wall_s": 315.2,
+   "engine_listen_ports": [
+    40343
+   ],
+   "engine_uuid": null,
+   "engine_root": "<HOLOOCEAN_ROOT>_slot0",
+   "reaped_holodeck": [],
+   "attempt": 1,
+   "start_time": "2026-11-20T18:31:17"
+  },
+  {
+   "dir": "runs/B2_CLEAN/CLEAN/gate_rear_approach_cal/s8000",
+   "scenario": "gate_rear_approach_cal",
+   "protocol": "B2_CLEAN",
+   "class": "PASS",
+   "sha": "8e7ebb5543d0ef6d6f46dca654e50fc825ea5e29",
+   "dirty_files": [],
+   "wall_s": 317.4,
+   "engine_listen_ports": [
+    37426
+   ],
+   "engine_uuid": null,
+   "engine_root": "<HOLOOCEAN_ROOT>_slot1",
+   "reaped_holodeck": [],
+   "attempt": 1,
+   "start_time": "2026-11-20T18:46:54"
+  },
+  {
+   "dir": "runs/B2_CLEAN/CLEAN/gate_single/s8000",
+   "scenario": "gate_single",
+   "protocol": "B2_CLEAN",
+   "class": "PASS",
+   "sha": "8e7ebb5543d0ef6d6f46dca654e50fc825ea5e29",
+   "dirty_files": [],
+   "wall_s": 366.7,
+   "engine_listen_ports": [
+    34399
+   ],
+   "engine_uuid": null,
+   "engine_root": "<HOLOOCEAN_ROOT>_slot1",
+   "reaped_holodeck": [],
+   "attempt": 1,
+   "start_time": "2026-11-20T18:33:20"
+  },
+  {
+   "dir": "runs/B2_CLEAN/CLEAN/line_parallel_mutex/s8000",
+   "scenario": "line_parallel_mutex",
+   "protocol": "B2_CLEAN",
+   "class": "PASS",
+   "sha": "8e7ebb5543d0ef6d6f46dca654e50fc825ea5e29",
+   "dirty_files": [],
+   "wall_s": 659.1,
+   "engine_listen_ports": [
+    37311
+   ],
+   "engine_uuid": null,
+   "engine_root": "<HOLOOCEAN_ROOT>_slot3",
+   "reaped_holodeck": [],
+   "attempt": 1,
+   "start_time": "2026-11-20T18:24:13"
+  },
+  {
+   "dir": "runs/B2_CLEAN/CLEAN/lost_drone_rejoin/s8000",
+   "scenario": "lost_drone_rejoin",
+   "protocol": "B2_CLEAN",
+   "class": "PASS",
+   "sha": "8e7ebb5543d0ef6d6f46dca654e50fc825ea5e29",
+   "dirty_files": [],
+   "wall_s": 186.1,
+   "engine_listen_ports": [
+    38123
+   ],
+   "engine_uuid": null,
+   "engine_root": "<HOLOOCEAN_ROOT>_slot1",
+   "reaped_holodeck": [],
+   "attempt": 1,
+   "start_time": "2026-11-20T18:56:05"
+  },
+  {
+   "dir": "runs/B2_CLEAN/CLEAN/mutex_deadlock_resolution/s8000",
+   "scenario": "mutex_deadlock_resolution",
+   "protocol": "B2_CLEAN",
+   "class": "PASS",
+   "sha": "8e7ebb5543d0ef6d6f46dca654e50fc825ea5e29",
+   "dirty_files": [],
+   "wall_s": 394.0,
+   "engine_listen_ports": [
+    33240
+   ],
+   "engine_uuid": null,
+   "engine_root": "<HOLOOCEAN_ROOT>_slot0",
+   "reaped_holodeck": [],
+   "attempt": 1,
+   "start_time": "2026-11-20T18:44:55"
+  },
+  {
+   "dir": "runs/B2_CLEAN/CLEAN/p1_close_encounter/s8000",
+   "scenario": "p1_close_encounter",
+   "protocol": "B2_CLEAN",
+   "class": "PASS",
+   "sha": "8e7ebb5543d0ef6d6f46dca654e50fc825ea5e29",
+   "dirty_files": [],
+   "wall_s": 184.7,
+   "engine_listen_ports": [
+    39088
+   ],
+   "engine_uuid": null,
+   "engine_root": "<HOLOOCEAN_ROOT>_slot0",
+   "reaped_holodeck": [],
+   "attempt": 1,
+   "start_time": "2026-11-20T18:51:36"
+  },
+  {
+   "dir": "runs/B2_CLEAN/CLEAN/p1_head_on/s8000",
+   "scenario": "p1_head_on",
+   "protocol": "B2_CLEAN",
+   "class": "PASS",
+   "sha": "8e7ebb5543d0ef6d6f46dca654e50fc825ea5e29",
+   "dirty_files": [],
+   "wall_s": 177.2,
+   "engine_listen_ports": [
+    33191
+   ],
+   "engine_uuid": null,
+   "engine_root": "<HOLOOCEAN_ROOT>_slot3",
+   "reaped_holodeck": [],
+   "attempt": 1,
+   "start_time": "2026-11-20T18:48:15"
+  },
+  {
+   "dir": "runs/B2_CLEAN/CLEAN/p1_two_lines/s8000",
+   "scenario": "p1_two_lines",
+   "protocol": "B2_CLEAN",
+   "class": "PASS",
+   "sha": "8e7ebb5543d0ef6d6f46dca654e50fc825ea5e29",
+   "dirty_files": [],
+   "wall_s": 183.0,
+   "engine_listen_ports": [
+    38679
+   ],
+   "engine_uuid": null,
+   "engine_root": "<HOLOOCEAN_ROOT>_slot0",
+   "reaped_holodeck": [],
+   "attempt": 1,
+   "start_time": "2026-11-20T18:54:45"
+  },
+  {
+   "dir": "runs/B2_CLEAN/CLEAN/p1_vertical_escape/s8000",
+   "scenario": "p1_vertical_escape",
+   "protocol": "B2_CLEAN",
+   "class": "PASS",
+   "sha": "8e7ebb5543d0ef6d6f46dca654e50fc825ea5e29",
+   "dirty_files": [],
+   "wall_s": 163.9,
+   "engine_listen_ports": [
+    33510
+   ],
+   "engine_uuid": null,
+   "engine_root": "<HOLOOCEAN_ROOT>_slot3",
+   "reaped_holodeck": [],
+   "attempt": 1,
+   "start_time": "2026-11-20T18:51:16"
+  },
+  {
+   "dir": "runs/B2_CLEAN/CLEAN/st_lost_committed/s8000",
+   "scenario": "st_lost_committed",
+   "protocol": "B2_CLEAN",
+   "class": "INCOMPLETE",
+   "sha": "8e7ebb5543d0ef6d6f46dca654e50fc825ea5e29",
+   "dirty_files": [],
+   "wall_s": 1645.5,
+   "engine_listen_ports": [
+    35888
+   ],
+   "engine_uuid": null,
+   "engine_root": "<HOLOOCEAN_ROOT>_slot3",
+   "reaped_holodeck": [],
+   "attempt": 1,
+   "start_time": "2026-11-20T17:56:35"
+  },
+  {
+   "dir": "runs_9b42cec/B2_CLEAN/CLEAN/st_gate_pair/s8000",
+   "scenario": "st_gate_pair",
+   "protocol": "B2_CLEAN",
+   "class": "PASS",
+   "sha": "9b42cec32e9e8a61189d60392fbc7cebfaa58dcd",
+   "dirty_files": [],
+   "wall_s": 1291.1,
+   "engine_listen_ports": [
+    39623
+   ],
+   "engine_uuid": null,
+   "engine_root": "<HOLOOCEAN_ROOT>_slot3",
+   "reaped_holodeck": [],
+   "attempt": 1,
+   "start_time": "2026-11-20T18:07:38"
+  },
+  {
+   "dir": "runs_v11/B2_CLEAN/CLEAN/gate_hold_nav_bias_m10/s8000",
+   "scenario": "gate_hold_nav_bias_m10",
+   "protocol": "B2_CLEAN",
+   "class": "INCOMPLETE",
+   "sha": "82f799781c8e0480b38f307f5cbe4c933ccac507",
+   "dirty_files": [],
+   "wall_s": 1451.5,
+   "engine_listen_ports": [
+    34420
+   ],
+   "engine_uuid": null,
+   "engine_root": "<HOLOOCEAN_ROOT>_slot0",
+   "reaped_holodeck": [],
+   "attempt": 1,
+   "start_time": "2026-11-19T20:09:25"
+  },
+  {
+   "dir": "runs_v11/B2_CLEAN/CLEAN/gate_rear_approach/s8000",
+   "scenario": "gate_rear_approach",
+   "protocol": "B2_CLEAN",
+   "class": "INCOMPLETE",
+   "sha": "7922f664b5bc38f918ab5f0984a48ef76d957924",
+   "dirty_files": [],
+   "wall_s": 793.2,
+   "engine_listen_ports": [
+    34120
+   ],
+   "engine_uuid": null,
+   "engine_root": "<HOLOOCEAN_ROOT>_slot0",
+   "reaped_holodeck": [],
+   "attempt": 1,
+   "start_time": "2026-11-19T20:36:45"
+  },
+  {
+   "dir": "runs_v11/B2_CLEAN/CLEAN/gate_rear_approach_cal/s8000",
+   "scenario": "gate_rear_approach_cal",
+   "protocol": "B2_CLEAN",
+   "class": "PASS",
+   "sha": "d8518ca5e56374ea3f8e0ebc44baf7a09fe3c9eb",
+   "dirty_files": [],
+   "wall_s": 185.7,
+   "engine_listen_ports": [
+    40566
+   ],
+   "engine_uuid": null,
+   "engine_root": "<HOLOOCEAN_ROOT>_slot1",
+   "reaped_holodeck": [],
+   "attempt": 1,
+   "start_time": "2026-11-19T20:25:42"
+  }
+ ],
+ "default_port_1985_used": false,
+ "cleanup_at_build": {
+  "holodeck_processes": [],
+  "our_campaign_processes": [
+   3984,
+   28224,
+   30544
+  ],
+  "engine_ports_still_listening": []
+ },
+ "total_bytes": 84975046,
+ "code_under_test": {
+  "runs": "8e7ebb5 (gate-aware-safety, detached worktree, final core)",
+  "runs_9b42cec": "9b42cec (st_gate_pair only: n=2 queue line -5.14 m)",
+  "runs_v11": "v11 controller 0e85d2d + validation scenarios only (snapshots 82f7997, d8518ca, 7922f66)",
+  "non_gate_runs": "rerun on 8e7ebb5 (escape.py/controller.py changed since the first snapshot)"
+ },
+ "superseded": "superseded/: runs of earlier snapshots and scenario designs, kept for provenance",
+ "note": "Runs from detached snapshot commits of the gate-aware-safety working tree (not branch commits); the v11 reference runs from 0e85d2d plus the validation scenarios only (scenarios.py, runner.py nav-error hook)."
+}

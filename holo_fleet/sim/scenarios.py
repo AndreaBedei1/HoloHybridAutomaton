@@ -73,6 +73,7 @@ class Scenario:
     focus: str = ""
     cfg_patch: Dict = field(default_factory=dict)
     automaton_drone: Optional[int] = None
+    nav_init_err: Dict[str, Tuple[float, float, float]] = field(default_factory=dict)
 
     @property
     def duration_s(self) -> float:
@@ -360,14 +361,15 @@ def lost_drone_timeout(cfg: FleetConfig = DEFAULT) -> Scenario:
 
 def _gate_mission(name: str, template_name: str, duration: float, current: CurrentField, cfg: FleetConfig,
                   windows=(), title: str = "", desc: str = "", focus: str = "", lead_in: float = 0.0,
-                  v_clock: Optional[float] = None, stress: StressSpec = StressSpec()) -> Scenario:
+                  v_clock: Optional[float] = None, stress: StressSpec = StressSpec(),
+                  template: Optional[FormationTemplate] = None) -> Scenario:
     """Survey line through arena gate G06 (the only gate spawned).  The formation reference follows the
     line, is re-established at the rendezvous ``rally_s`` beyond the gate as soon as every drone is in
     the approach zone (FormationClock jump), waits there while the drones pass one at a time and then
     resumes the survey.  ``lead_in`` metres of survey precede the approach zone."""
     g6 = {g.gate_id: g for g in load_arena_gates(HORSESHOE_TRACK)}["G06"]
     G = cfg.gate
-    tm = TEMPLATES[template_name]
+    tm = template if template is not None else TEMPLATES[template_name]
     q_s = queue_line(tm.slots, G)
     s_gate = 40.0
     path = Path(np.array([g6.center[:2] - s_gate * g6.axis[:2], g6.center[:2] + 30.0 * g6.axis[:2]]),
@@ -626,3 +628,123 @@ VALIDATION_EXTRA: Dict[str, Callable[..., Scenario]] = {
     "em_delay_head": em_delay_head,
 }
 SCENARIOS.update(VALIDATION_EXTRA)
+
+
+# Targeted validation of the gate-aware safety layer (control/gate_safety.py): the stage-2 hold under a navigation error and a
+# drone held before an occupied CR with a vehicle closing on it from behind.
+NAV_BIASES = {"m10": -1.0, "m05": -0.5, "p05": 0.5, "p10": 1.0}
+
+
+def _nav_bias(key: str):
+    bias = NAV_BIASES[key]
+    name = f"gate_hold_nav_bias_{key}"
+
+    def make(cfg: FleetConfig = DEFAULT) -> Scenario:
+        """gate_single with every drone's launch estimate off by ``bias`` metres along the axis of G06 (estimate minus truth;
+        > 0: the drone believes it is nearer the gate than it is).  Simulator-side fault: the controller is not told.  The error
+        persists through the dead reckoning until the gate map aiding corrects it."""
+        sc = gate_single(cfg)
+        sc.name = sc.sim.name = name
+        g = sc.judged_gates[0]
+        off = (round(float(bias * g.axis[0]), 4), round(float(bias * g.axis[1]), 4), 0.0)
+        sc.nav_init_err = {p.drone_id: off for p in sc.plans}
+        sc.title = f"Stage-2 hold with a {bias:+.1f} m along-axis navigation error"
+        sc.description = (f"{sc.description} Every drone starts with its position estimate {bias:+.1f} m along the gate axis "
+                          "from the truth (estimate minus truth).")
+        sc.focus = "true centre never in the CR while not admitted; localization acquisition at the hold; admission or timeout"
+        return sc
+    make.__name__ = name
+    return make
+
+
+STACK_AXIS = FormationTemplate("stack_axis", (Slot(0.0, 0.0, 1.75), Slot(0.0, 0.0, -1.75)),
+                               "two drones stacked on the gate axis (one column: the upper queues and passes first)", 3.2)
+REAR_BEHIND_M = 2.2
+OCCUPANT_S = -0.45  # entry side of the CR: outside the structure window of the FRONT sonar (formal M4h), seen by the stage-2 check
+REAR_T_COMMIT_S = {"v12": 0.5, "v11": 0.6}  # the occupant reaches the CR 3 s later: 2 s after the first commitment of
+# gate_rear_approach_cal (B2 CLEAN, seed 8000; v11: commitment 1.6 s, admission 5.8 s; v12: commitment 1.5 s, admission
+# 10.5 s), per controller version
+
+
+def gate_rear_approach(cfg: FleetConfig = DEFAULT) -> Scenario:
+    """Two drones stacked on the gate axis reach G06 (one queue column on the axis: the upper drone commits first and
+    approaches along the axis).  Right after it commits, a scripted vehicle
+    (non-cooperative, no controller) enters the CR from the exit side and stays there, so the committed drone holds before
+    the CR; a second scripted vehicle then closes on the holding drone from behind along the axis at 0.5 m/s and stops
+    REAR_BEHIND_M behind the stage-2 hold of the controller version (the occupant stays at s = OCCUPANT_S, inside the CR
+    on its entry side, where the FRONT sonar of a holding drone sees it outside the structure window: a silent vehicle
+    masked by the bars is outside the stage-2 premise, formal M4h), so the held drone has a vehicle in front (the occupant) and one behind while the CR is occupied.  The holding
+    drone must not answer the rear vehicle by moving into the occupied CR.  Both vehicles leave; the drones are admitted
+    and pass.  The commitment time (REAR_T_COMMIT_S) comes from a calibration run without the vehicles
+    (gate_rear_approach_cal), one per controller version (the stage-2 hold of the version: GateRule.stage2_hold_s, or the
+    hold of the v11 controller)."""
+    sc = _gate_mission("gate_rear_approach", "stack_axis", 150.0, CurrentField(), cfg, template=STACK_AXIS)
+    sc.title = "Held before an occupied CR, a vehicle closing from behind"
+    sc.description = ("Two drones stacked on the axis reach G06; right after the upper one commits a scripted vehicle occupies the CR; a "
+                      "second scripted vehicle closes on the holding drone from behind and stops behind it; then both leave.")
+    sc.focus = ("no forward escape into the occupied CR (P2 constraint), joint-feasibility class of the avoidance decisions, "
+                "P1 to the rear vehicle, admission after the CR clears")
+    g = sc.judged_gates[0]
+    G = cfg.gate
+    v12 = hasattr(G, "stage2_hold_s")
+    s_hold = float(G.stage2_hold_s) if v12 else -(G.cr_half_len + 0.229 + 0.15)
+    t0 = REAR_T_COMMIT_S["v12" if v12 else "v11"]
+    W = lambda t, s, l=0.0, dz=0.0: [float(t)] + [float(v) for v in g.from_gate_frame([s, l, dz])]
+    occupant = [W(0.0, 9.0, 7.0), W(t0, 9.0, 7.0), W(t0 + 3.0, OCCUPANT_S, 0.0), W(t0 + 45.0, OCCUPANT_S, 0.0),
+                W(t0 + 49.0, 1.8, 0.0), W(t0 + 57.0, 1.8, 7.0), W(600.0, 1.8, 7.0)]
+    s_stop = s_hold - REAR_BEHIND_M
+    rear = [W(0.0, s_stop - 12.0, -8.0), W(t0 + 2.0, s_stop - 12.0, -8.0), W(t0 + 14.0, s_stop - 8.0, 0.0),
+            W(t0 + 30.0, s_stop, 0.0), W(t0 + 40.0, s_stop, 0.0), W(t0 + 50.0, s_stop - 5.0, 0.0),
+            W(t0 + 58.0, s_stop - 5.0, -8.0), W(600.0, s_stop - 5.0, -8.0)]
+    yaw = math.degrees(math.atan2(g.axis[1], g.axis[0]))
+    sc.sim.intruders = ({"name": "occupant", "start": occupant[0][1:], "yaw_deg": yaw + 180.0, "waypoints": occupant},
+                        {"name": "rear", "start": rear[0][1:], "yaw_deg": yaw, "waypoints": rear})
+    return sc
+
+
+def gate_rear_approach_unloc(cfg: FleetConfig = DEFAULT) -> Scenario:
+    """gate_rear_approach with the CR EMPTY: the upper drone holds before the CR because its gate localization is not
+    validated (every drone starts with a +1.0 m along-axis navigation error, the B0 acquisition limit of the stage-2 hold),
+    and the scripted vehicle closes on it from behind along the axis and stops 1.6 m (centre) behind the hold of the
+    version, inside its collision-avoidance band, while it is held.  A drone that is not admitted must not escape forward
+    into the CR (the P2 constraint of the avoidance); P1 to the rear vehicle and the timeout/retreat of the hold are
+    observed.  Run in B0, the communication-free baseline: in B2 the along-axis correction can validate the localization."""
+    sc = gate_rear_approach(cfg)
+    sc.name = sc.sim.name = "gate_rear_approach_unloc"
+    g = sc.judged_gates[0]
+    G = cfg.gate
+    v12 = hasattr(G, "stage2_hold_s")
+    s_hold = float(G.stage2_hold_s) if v12 else -(G.cr_half_len + 0.229 + 0.15)
+    t0 = REAR_T_COMMIT_S["v12" if v12 else "v11"]
+    W = lambda t, s, l=0.0, dz=0.0: [float(t)] + [float(v) for v in g.from_gate_frame([s, l, dz])]
+    s_stop = s_hold - 1.6
+    rear = [W(0.0, s_stop - 12.0, -8.0), W(t0 + 1.0, s_stop - 12.0, -8.0), W(t0 + 9.0, s_stop - 8.0, 0.0),
+            W(t0 + 21.0, s_stop, 0.0), W(t0 + 36.0, s_stop, 0.0), W(t0 + 44.0, s_stop - 5.0, 0.0),
+            W(t0 + 52.0, s_stop - 5.0, -8.0), W(900.0, s_stop - 5.0, -8.0)]
+    yaw = math.degrees(math.atan2(g.axis[1], g.axis[0]))
+    sc.sim.intruders = ({"name": "rear", "start": rear[0][1:], "yaw_deg": yaw, "waypoints": rear},)
+    off = (round(float(g.axis[0]), 4), round(float(g.axis[1]), 4), 0.0)
+    sc.nav_init_err = {p.drone_id: off for p in sc.plans}
+    sc.title = "Held before the CR without a validated localization, a vehicle closing from behind"
+    sc.description = ("Two drones stacked on the axis reach G06 with a +1.0 m along-axis navigation error; the upper one holds "
+                      "before the empty CR (no validated localization); a scripted vehicle closes on it from behind and stops "
+                      "1.6 m from the hold, then leaves.")
+    return sc
+
+
+def gate_rear_approach_cal(cfg: FleetConfig = DEFAULT) -> Scenario:
+    """gate_rear_approach without the scripted vehicles: the calibration of REAR_T_COMMIT_S."""
+    sc = gate_rear_approach(cfg)
+    sc.name = sc.sim.name = "gate_rear_approach_cal"
+    sc.sim.intruders = ()
+    return sc
+
+
+GATE_SAFETY_EXTRA: Dict[str, Callable[..., Scenario]] = {
+    **{f"gate_hold_nav_bias_{k}": _nav_bias(k) for k in NAV_BIASES},
+    "gate_rear_approach": gate_rear_approach,
+    "gate_rear_approach_cal": gate_rear_approach_cal,
+    "gate_rear_approach_unloc": gate_rear_approach_unloc,
+}
+VALIDATION_EXTRA.update(GATE_SAFETY_EXTRA)
+SCENARIOS.update(GATE_SAFETY_EXTRA)

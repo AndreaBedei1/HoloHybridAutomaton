@@ -57,6 +57,18 @@ def test_stage_two_admission_and_hold_are_separated():
         st[1][i]["gate"]["entry"] = "HOLD" if t[i] < 15.0 else "ADMIT"
     ev = gate_events(t, gf, st, [0, 1], "g", PLANS, DEFAULT)
     assert ev["E3"] == 1 and ev["E4"] == 0 and ev["E7"] == 1 and ev["E4_source"] == "stage2"
+    assert ev["E7_by_kind"] == {"HOLD": 1, "STANDOFF": 0}
+
+
+def test_a_standoff_behind_a_drone_ahead_counts_as_a_cancelled_unsafe_approach():
+    t, gf, st = _trace()
+    a, b = np.searchsorted(t, 10.0), np.searchsorted(t, 14.0)
+    gf[a:b, 0, :] = [0.0, 0.0, 0.0]
+    for i in range(np.searchsorted(t, 11.0), len(t)):
+        st[1][i]["committed"] = True
+        st[1][i]["gate"]["entry"] = "STANDOFF" if t[i] < 12.0 else ("HOLD" if t[i] < 15.0 else "ADMIT")
+    ev = gate_events(t, gf, st, [0, 1], "g", PLANS, DEFAULT)
+    assert ev["E7"] == 1 and ev["E7_by_kind"] == {"HOLD": 0, "STANDOFF": 1} and ev["E4"] == 0
 
 
 def test_idle_gate_beyond_the_release_bound_is_a_stall():

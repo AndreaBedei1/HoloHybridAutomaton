@@ -25,6 +25,7 @@ import check_acoustic  # noqa: E402
 import check_determinism  # noqa: E402
 import check_fleet  # noqa: E402
 import check_formation  # noqa: E402
+import check_gate_safety  # noqa: E402
 import check_mutex  # noqa: E402
 import check_observations  # noqa: E402
 import check_separation  # noqa: E402
@@ -43,6 +44,8 @@ SUITES = [
     ("Payload v2: gate status, silence, verified passage", check_status,
      "perception/payload.py + perception/acoustic_gate.py + perception/passage.py + formal/check_status.py"),
     ("Interacting automata of the fleet at the gate (composition, failures, timers, recovery)", check_fleet, "formal/check_fleet.py"),
+    ("Gate-aware joint safety (P2 as a constraint on the final command, P1 x P2 feasibility)", check_gate_safety,
+     "holo_fleet/control/gate_safety.py + holo_fleet/control/escape.py + formal/check_gate_safety.py + formal/check_stage2.py"),
 ]
 
 
@@ -56,7 +59,8 @@ KINDS = {
     "witness": "expected satisfiable query: non-vacuity, tightness of a bound, independence of the invariants",
     "reported": "quantity reported, not guaranteed",
 }
-_BOUNDED = {"P1": r"^(S1[ad]|S4) ", "P2": r"^M3h? ", "Payload": r"^S2h? ", "P3": r"^F6 ", "Interacting": r"^(F2p?|F1d\d+n?) "}
+_BOUNDED = {"P1": r"^(S1[ad]|S4) ", "P2": r"^M3h? ", "Payload": r"^S2h? ", "P3": r"^F6 ", "Interacting": r"^(F2p?|F1d\d+n?|F1p) ",
+            "Gate-aware": r"^S1ga "}
 
 
 def kind(title: str, check: dict) -> str:

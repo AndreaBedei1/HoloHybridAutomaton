@@ -1,7 +1,8 @@
 """Stage-2 entry admission (control/flows.py, perception/gate_perception.py): what the hold point can observe.
 
-M4h (reported, numeric grid): from the hold point before the critical region (on the gate axis, at the deployed
-s_hold, with an own lateral position error up to ``nav_err_gate_m``), which hull centres inside the CR produce, in
+M4h (reported, numeric grid): from the hold point before the critical region (on the gate axis, at the deployed stage-2
+hold ``GateRule.stage2_hold_s``, -2.30 m since the gate-aware correction (control/gate_safety.py; the v11 hold was -1.18 m),
+with an own lateral position error up to ``nav_err_gate_m``), which hull centres inside the CR produce, in
 the FRONT sonar, an echo that the classifier cannot explain by the mapped bars (outside the structure window grown by
 its tolerances) on a line of sight not blocked by a bar.  Such an occupant makes the stage-2 check hold the entry
 (GateObs.entry_ok); an occupant whose hull echo falls inside the structure window is MASKED there.
@@ -24,7 +25,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from common import CheckResult, Report  # noqa: E402
 from holo_fleet.arena_bridge import HORSESHOE_TRACK, load_arena_gates  # noqa: E402
 from holo_fleet.config import DEFAULT, FleetConfig  # noqa: E402
-from holo_fleet.perception.sonar_geometry import AXES, HULL_HALF, MOUNTS  # noqa: E402
+from holo_fleet.perception.sonar_geometry import AXES, HULL_HALF, MOUNTS  # noqa: E402,F401
 from holo_fleet.perception.sonar_processing import EchoClassifier  # noqa: E402
 
 ENC = "numeric grid over hull centres in the CR (deployed classifier structure window, bars as occluders)"
@@ -51,7 +52,7 @@ def observability(cfg: FleetConfig = DEFAULT, n_s: int = 17, n_l: int = 9, n_z: 
     G, pc = cfg.gate, cfg.perc
     g = load_arena_gates(HORSESHOE_TRACK, ["G06"])[0]
     clf = EchoClassifier(gate_bars=list(g.bars), cfg=cfg)
-    s_hold = -(G.cr_half_len + float(HULL_HALF[0]) + 0.15)
+    s_hold = float(G.stage2_hold_s)
     yaw = math.atan2(g.axis[1], g.axis[0])
     R = np.array([[math.cos(yaw), -math.sin(yaw), 0.0], [math.sin(yaw), math.cos(yaw), 0.0], [0.0, 0.0, 1.0]])
     half = math.radians(pc.sonar.half_angle_deg)

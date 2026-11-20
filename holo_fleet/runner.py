@@ -126,7 +126,9 @@ def run(name: str, out_root: Path, headless: bool = True, run_id: Optional[str] 
             sim.close()
         raise
     try:
-        ctrls = {p.drone_id: DroneController(p, cfg) for p in sc.plans}
+        nav0 = getattr(sc, "nav_init_err", {}) or {}
+        ctrls = {p.drone_id: DroneController(p, cfg, nav_init_err=None if p.drone_id not in nav0 else np.asarray(nav0[p.drone_id], float))
+                 for p in sc.plans}
         if cfg.beacon.enabled:
             for p in sc.plans:
                 ctrls[p.drone_id].perception.acoustic.set_identities(beacon_identities(sc.plans, sim.names, p))
@@ -152,6 +154,7 @@ def run(name: str, out_root: Path, headless: bool = True, run_id: Optional[str] 
                 "gates": [g.gate_id for g in sc.judged_gates], "current": sc.sim.current.describe(),
                 "intruders": list(getattr(sc.sim, "intruders", ())), "cfg_patch": sc.cfg_patch,
                 "faults": list(getattr(sc.sim, "faults", ())),
+                "nav_init_err": {k: list(v) for k, v in (getattr(sc, "nav_init_err", {}) or {}).items()},
                 "seed": sc.sim.seed, "noise": None if noise is None else noise.as_dict(),
                 "noise_drones": None if noise is None else sorted(getattr(sim, "noisy_idx", range(len(sim.names)))),
                 "terminal": None if monitor is None else {"criteria": CRITERIA_VERSION, "t_nom": monitor.t_nom,

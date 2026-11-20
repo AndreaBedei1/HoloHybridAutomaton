@@ -33,7 +33,7 @@
       "passed": true,
       "seconds": 0.0,
       "counterexample": null,
-      "note": "2 pairs; confirmation through a shadowed ray for 0, accounting through a shadowed ray for 0 (probable, not certain); worst exit evidence 17.2 s after the exit face (observer l=+1.75, passer lane -1.75, passer at s=9.2)"
+      "note": "2 pairs; confirmation through a shadowed ray for 0, accounting through a shadowed ray for 0 (probable, not certain); worst exit evidence 17.0 s after the exit face (observer l=+1.75, passer lane -1.75, passer at s=9.1)"
     },
     {
       "prop": "B2-M4g availability (reported), n=3: every queued drone gets an acoustic exit evidence of every passing drone (bars' and queued hulls' occlusion, worst envelope error, worst ping phase) and can account for the other queued drones",

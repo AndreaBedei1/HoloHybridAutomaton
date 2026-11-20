@@ -18,8 +18,9 @@ was made).
       (gate.entry == "ADMIT"), else the commit itself (without a second check the commit is the entry decision);
   E5  simultaneous occupancy (a P2 violation), samples;
   E6  contacts (from the P1 metrics, added by the caller);
-  E7  detected and cancelled unsafe approach: a stage-2 hold started while the CR is truly occupied (None when the
-      drones log no stage 2);
+  E7  detected and cancelled unsafe approach: a wait before the CR (a stage-2 HOLD, or a STANDOFF behind a drone ahead
+      in the corridor) started while the CR is truly occupied (None when the drones log no stage 2); E7_by_kind splits
+      the starts by the kind of wait they began with;
   E8  waiting and passage of the healthy drones: queue wait, passage (through the CR cross-section), bypass, entry
       gap, CR dwell, and the bounded-response checks below.
 
@@ -85,6 +86,7 @@ def gate_events(t: np.ndarray, gf: np.ndarray, states: Sequence[Sequence[Dict]],
     e1 = {"queued_s": 0.0, "false_free_s": 0.0, "false_busy_s": 0.0}
     e2 = {"SONAR": 0, "ACOUSTIC": 0, "TIMEOUT": 0}
     e2_free = e3 = e4 = e7 = 0
+    e7_kind = {"HOLD": 0, "STANDOFF": 0}
     stage2_logged = False
     queued = np.zeros((m, n), bool)
     for k in healthy:
@@ -111,8 +113,9 @@ def gate_events(t: np.ndarray, gf: np.ndarray, states: Sequence[Sequence[Dict]],
             if entry is not None:
                 if entry == "ADMIT" and prev_entry != "ADMIT":
                     e4 += int(other_in[i, k])
-                if entry == "HOLD" and prev_entry != "HOLD":
+                if entry in e7_kind and prev_entry not in e7_kind:
                     e7 += int(other_in[i, k])
+                    e7_kind[entry] += int(other_in[i, k])
             prev_entry = entry
     if not stage2_logged:
         e4 = e3
@@ -168,6 +171,7 @@ def gate_events(t: np.ndarray, gf: np.ndarray, states: Sequence[Sequence[Dict]],
             "E2": {**e2, "total": sum(e2.values()), "to_free": e2_free}, "E3": e3, "E4": e4,
             "E4_source": "stage2" if stage2_logged else "commit",
             "E5": int((occ_n > 1).sum()), "E7": e7 if stage2_logged else None,
+            "E7_by_kind": dict(e7_kind) if stage2_logged else None,
             "E8": {"passed": sorted(passed), "all_passed": all(k in passed for k in healthy), "bypass": bypass,
                    "wait_max_s": round(max(w), 1) if w else None, "wait_mean_s": round(float(np.mean(w)), 1) if w else None,
                    "entry_gap_min_s": round(min(gaps), 1) if gaps else None,

@@ -13,6 +13,7 @@ import numpy as np
 
 from holo_fleet.arena_bridge import thruster_command
 from holo_fleet.config import DEFAULT, FleetConfig
+from holo_fleet.control import gate_safety as gs
 from holo_fleet.control.current_envelope import CurrentCheck, Persistence, check_onboard
 from holo_fleet.control.flows import Flows
 from holo_fleet.control.lowlevel import AUTHORITY, LowLevelController
@@ -138,6 +139,9 @@ class DroneController:
         self.last_record: Dict[str, Any] = {}
         self.v_requested = np.zeros(3)
         self.last_transition: Optional[Dict[str, Any]] = None
+        self.gate_safety: Dict[str, Any] = {}
+        self._joint_key: Optional[tuple] = None
+        self._p2_key: Optional[tuple] = None
 
     def step(self, frame: SensorFrame, dt: float) -> np.ndarray:
         t = frame.t
@@ -186,22 +190,42 @@ class DroneController:
                                                 traffic=(mode != Mode.FAILSAFE_HOLD_OR_RETREAT))
         if not self.ha.committed:
             v_mis = self.flows.keepout_filter(obs, v_mis)
+        from holo_fleet.perception.nav import NavBound
+
+        nb = self.perception.nav_bound
+        fresh = t - self.perception.nav.state.t_dvl <= NavBound.DVL_STALE_S
+        # error of the measured velocity in the P2 envelope: the DVL noise (3 sigma) while it is fresh, the speed bound
+        # during an outage
+        v_err = float(nb.k_rw) if fresh else float(nb.v_bound)
+        gc = self.flows.gate_constraint(obs, authorized=self.ha.committed and self.flows.cr_cleared, v_err=v_err)
+        mission_filter = self.flows.p2_filter(gc, v_mis, self.flows.mission_anchor(gc) if gate_flow else {})
+        if mission_filter is not None:
+            v_mis = mission_filter.v
         authority = "nominal"
         if mode not in AVOIDANCE:
             self.flows.last_choice = None
             self.flows.escape.reset()
+            self.flows.p2_anchor = None
         if mode == Mode.SEPARATION_WARNING:
-            v = self.flows.separation_warning(obs, v_mis)
+            v = self.flows.separation_warning(obs, v_mis, gc)
             authority = "brake"
         elif mode == Mode.COLLISION_AVOIDANCE:
-            v = self.flows.collision_avoidance(obs, self.ll.current_estimate(), v_mis)
+            v = self.flows.collision_avoidance(obs, self.ll.current_estimate(), v_mis, gc)
             authority = "escape"
         elif mode == Mode.FAILSAFE_HOLD_OR_RETREAT:
             v = self.flows.failsafe(obs, probe=not self.envmon.ok)
+            if gc is not None:
+                mission_filter = self.flows.p2_filter(gc, v, self.flows.mission_anchor(gc, failsafe=True,
+                                                                                       probe=not self.envmon.ok))
+                v = mission_filter.v
             authority = "brake"
         else:
             v = v_mis
+        v_pre = np.asarray(v, float)
         v = self.flows.structure_filter(obs, v)
+        self._gate_safety_step(t, mode, gc, mission_filter, v_pre, v, obs)
+        if self.gate_safety.get("guard"):
+            v = self.gate_safety.pop("_v_guard")
         from holo_fleet.perception.nav import NavBound
         dvl_fresh = t - self.perception.nav.state.t_dvl <= NavBound.DVL_STALE_S
         cmd = self.ll.command(self.perception.nav.state, v, yaw_d, authority, dt, dvl_fresh=dvl_fresh)
@@ -273,11 +297,71 @@ class DroneController:
             "nav_aid": None if self.perception.aiding.last is None else {**self.perception.aiding.last,
                                                                          "applied_m": round(self.perception.aiding.applied_m, 3)},
             "transition": self.last_transition,
+            "gate_safety": {k: v for k, v in self.gate_safety.items() if not k.startswith("_")} or None,
             "determinism_violations": self.ha.determinism_violations,
             "obs_consistent": self.obs_consistent, "observation_violations": self.observation_violations,
             "saturated": self.ll.saturated,
         }
         return thruster_command(cmd["surge"], cmd["sway"], cmd["heave"], cmd["yaw"], self.cfg.plant.thruster_limit)
+
+    def _gate_safety_step(self, t: float, mode: Mode, gc, mission_filter, v_pre: np.ndarray, v: np.ndarray,
+                          obs: Optional[LocalObservation] = None) -> None:
+        """Record of the P2 constraint of this step (control/gate_safety.py) and events on a change of the decision: the
+        joint-feasibility class of an avoidance decision (JOINT_SAFETY), a mission command edited by the P2 filter
+        (P2_FILTER), and the guard of the APPLIED command: when the structure filter changed the chosen command and the
+        result has a smaller P2 margin that is not positive, the P2 filter edits it (P2_GUARD) and the structure filter is
+        applied again only if the result stays P2-safe (otherwise the CR constraint takes precedence and the conflict is
+        logged).  The class logged is that of the command applied."""
+        self.gate_safety = {}
+        if gc is None:
+            self._joint_key = self._p2_key = None
+            return
+        ch = self.flows.last_choice
+        joint = ch.joint if (mode in AVOIDANCE and ch is not None) else None
+        if joint is not None and joint.p2_margin is not None:
+            m_pre = float(joint.p2_margin)
+        elif mission_filter is not None:
+            m_pre = float(mission_filter.margin)
+        else:
+            m_pre = float(gc.margins_world(v_pre)[0])
+        changed = not np.allclose(np.asarray(v, float), v_pre, atol=1e-9)
+        m = float(gc.margins_world(v)[0]) if changed else m_pre
+        rec: Dict[str, Any] = {"q": np.round(gc.q, 2).tolist(), "e_h": gc.bounds.e_h, "v_err": round(gc.v_err, 3),
+                               "margin": round(m, 3), "authorized": False}
+        if mission_filter is not None and mission_filter.modified:
+            rec["mission"] = {"status": mission_filter.status, "reason": mission_filter.reason,
+                              "margin": round(mission_filter.margin, 3)}
+        if changed and m < m_pre and m <= 0.0:
+            fix = gc.filter_mission(v, self.cfg.env.v_max_nominal)
+            v_fix, conflict = fix.v, False
+            if obs is not None:
+                v_s = self.flows.structure_filter(obs, fix.v)
+                if float(gc.margins_world(v_s)[0]) > 0.0:
+                    v_fix = v_s
+                else:
+                    conflict = True
+            m = float(gc.margins_world(v_fix)[0])
+            rec["guard"] = {"margin_chosen": round(m_pre, 3), "margin_after_structure": round(m, 3),
+                            "status": fix.status, "reason": fix.reason, "structure_conflict": conflict}
+            rec["_v_guard"] = v_fix
+            rec["margin"] = round(m, 3)
+            self.events.append({"t": t, "type": "P2_GUARD", "mode": mode.value, **rec["guard"]})
+        if joint is not None:
+            applied = joint.status if "guard" not in rec else (gs.UNCERTAIN if m > 0.0 else gs.INFEASIBLE)
+            rec["joint"] = {**joint.record(), "chosen": ch.label, "applied_status": applied,
+                            "applied_margin": round(m, 3)}
+            key = (applied, joint.reason)
+            if key != self._joint_key:
+                self.events.append({"t": t, "type": "JOINT_SAFETY", "mode": mode.value, "chosen": ch.label,
+                                    **rec["joint"]})
+            self._joint_key = key
+        else:
+            self._joint_key = None
+        p2_key = None if "mission" not in rec else (rec["mission"]["status"],)
+        if p2_key is not None and p2_key != self._p2_key:
+            self.events.append({"t": t, "type": "P2_FILTER", "mode": mode.value, **rec["mission"]})
+        self._p2_key = p2_key
+        self.gate_safety = rec
 
     def _apply_crossing(self, t: float, gate, p_est) -> None:
         """A detected crossing is a direct measurement of the position in the opening: the estimate is corrected to it (the

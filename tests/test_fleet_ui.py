@@ -103,7 +103,7 @@ def test_runner_closes_ui_when_run_raises(tmp_path, monkeypatch):
             closed["sim"] += 1
 
     class FakeController:
-        def __init__(self, *_args):
+        def __init__(self, *_args, **_kwargs):
             self.last_record, self.events = {}, []
 
         def step(self, *_args):
