@@ -63,6 +63,10 @@ correct the ALONG-AXIS estimate only, uniquely and consistently over CONSIST_N c
 never moves the lateral estimate and never validates the localization.  Identification is by elimination only: any single echo within the correction range is adopted, and is then
 labelled STRUCTURE by the classifier.  A hull not accounted for by the premise (a drone silent for t_silent_gate_s) can therefore be taken for a bar.  It relies on the wide FRONT sonar: a
 25 deg beam would not see the bars from the axis at this range.
+The same deadlock occurs beside the opening, on the diagonal lane of a committed drone: two sectors match the bars, so a
+2-D fit exists, but it places the hull beside the opening (never validated) and is not identified when another drone can
+reach a side echo, so it is not applied either.  The FRONT rule is then tried as well, with its own identity test on the
+FRONT echo alone (B2 runs gate_hold_nav_bias_m05 / m10; before, it ran only when fewer than two sectors matched).
 
 The correction changes the drone's OWN position estimate only: the collision-avoidance distance bound uses the raw echo
 ranges in the body frame and does not depend on it, and the structure test keeps its tolerance (structure_tol_m is not
@@ -377,7 +381,7 @@ class StructureAiding:
         self.last["others"] = None if others is None else len(others)
         if not fit_ok or not (safe or identified):
             self.recent.clear()
-            return self._axial(p, R_wb, obs, g, others) if (self.gates and matched_k < MIN_MATCHED) else None
+            return self._axial(p, R_wb, obs, g, others) if self.gates else None
         if safe and float(np.linalg.norm(d)) <= CONSIST_M:
             self.loc_t, self.loc_u = t, u
             self.axial_total = 0.0

@@ -325,3 +325,33 @@ def test_the_along_axis_correction_is_bounded_and_randomly_sound():
         p = _axial_run(aid, clf, _world(s_true, 0.0), _world(s_true + err, 0.0), _R(), others=[])
         assert abs(float(GATE.to_gate_frame(p)[0]) - s_true) <= abs(err)
         assert abs(aid.axial_total) <= MAX_CORR_M + 1e-9
+
+
+SIDE_LANE = [(-2.4, 3.0), (-2.5, 2.9), (-2.8, 2.2), (-2.6, 1.9)]
+QUEUED_MIDDLE = [(np.array([_world(-5.5, 0.0)]), 0.5)]
+
+
+def test_beside_the_opening_a_fit_that_cannot_be_applied_leaves_the_front_echo_to_the_along_axis_rule():
+    """B2 runs gate_hold_nav_bias_m05 / m10: a committed drone on its diagonal lane beside the opening, its estimate 0.5 or
+    1 m behind the truth.  Two sectors match the bars, so the 2-D fit exists, but it places the hull beside the opening
+    (not safe) and is not identified (the middle queued drone, acoustically fixed, could be the source of the side echo):
+    it can neither validate nor be applied.  The FRONT echo of the frame, with every
+    other drone excluded as its source, corrects the along-axis error (bounded, unconfirmed, never a validation)."""
+    for s, l in SIDE_LANE:
+        for err in (-1.0, -0.5):
+            clf, aid = _axial_setup()
+            p_true, p_est = _world(s, l), _world(s + err, l)
+            p = _axial_run(aid, clf, p_true, p_est, _R(), others=QUEUED_MIDDLE)
+            q = GATE.to_gate_frame(p)
+            assert abs(float(q[0]) - s) <= 0.15, (s, l, err, q, aid.last)
+            assert abs(float(q[1]) - l) <= 1e-6
+            assert not aid.valid(1e9)
+
+
+def test_beside_the_opening_without_identity_or_with_a_drone_near_the_front_echo_nothing_moves():
+    s, l = SIDE_LANE[0]
+    for others in (None, QUEUED_MIDDLE + [(np.array([_world(-0.3, 1.2)]), 0.5)]):
+        clf, aid = _axial_setup()
+        p_est = _world(s - 1.0, l)
+        p = _axial_run(aid, clf, _world(s, l), p_est, _R(), others=others)
+        assert np.allclose(p, p_est), (others, aid.last)
