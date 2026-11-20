@@ -24,3 +24,5 @@ analysis/
 # gate-safety targeted runs: raw logs kept in the local archive v18 (paths of the machine inside)
 results/gate_safety_v1/runs*/
 results/gate_safety_v1/superseded/
+results/gate_safety_v2_negbias/runs*/
+scratch/

@@ -1,0 +1,239 @@
+{
+ "code": {
+  "b5943cfb6170481ad89fe505eac07226520ab42e": {
+   "holo_fleet/__init__.py": "4f17e5db9c777b3da72bf464d200df0b600d615937d5a63c2cabe206cc6b64bf",
+   "holo_fleet/arena_bridge.py": "14babd43d094d976a47cb10271b2ddfa56c3fd3e618e98293a5cf43846ee8ff8",
+   "holo_fleet/config.py": "0b134462ae8c8f99c24eff4dfd207a84c0f5a8630be55694aafb3362d96c4dad",
+   "holo_fleet/control/__init__.py": "dc87d7a8d45e4dd09adc6e839739aaa5e0be76e53ad1d79dd7f8c11c4102e39e",
+   "holo_fleet/control/controller.py": "a94fecd6c6a5fd63eb3f92275910e9d0cdc8dbfd7bfbfcd2f8d1f3a0ec965d8a",
+   "holo_fleet/control/current_envelope.py": "aed17014acab69b2c2410d816e2812213bafe6e16d22c5e9b71b2c2a91cc08b4",
+   "holo_fleet/control/escape.py": "45cfef63a4f233ae7ec2e125c082848938e0c8e1898003f42164e5eaee81767b",
+   "holo_fleet/control/flows.py": "b251f150f1ca04cb7c39e9290d685262d18276f1d7deb9bfe4f9fa8b574d7c06",
+   "holo_fleet/control/formation_time.py": "90b62abda1c5c69e55af32a587ea6313b4110c440cc1be4cd2c1b2a8fe4b739c",
+   "holo_fleet/control/gate_safety.py": "4c50fd10d9e05c48cf1d2edf05c3aae9af35a26c7dc3a9eeb7429d7c51c410d8",
+   "holo_fleet/control/lowlevel.py": "88b547978ea45b8355ac2985277eb3311e56b5baf8f78a8b5aef7a8c5c66ef06",
+   "holo_fleet/formations.py": "63d71857e375ce969792bfef45d83774b0f764a391dd4594fcd0cde717e9bdae",
+   "holo_fleet/ha/__init__.py": "d3f085310dc9ce945cf76fceb65e6cd58d889ef143b97d4dd7790f5dbc77e515",
+   "holo_fleet/ha/automaton.py": "cce682f066f6d4c0c4131103681d2bcf0dfbbabc7543628a637563ee1847fa4c",
+   "holo_fleet/ha/guard_text.py": "8bd86a5b6268c1432d85df26bce3f14e9bd7e5c29889fcc391624441a5a02798",
+   "holo_fleet/ha/mutex_rule.py": "fa5365c6022bb87240796eed1697b3ea9bf8ea95a48b792acbca257d25ca5374",
+   "holo_fleet/ha/observation_invariants.py": "768c0ff22f57b45df4c51eed650be0c2e667edcae059b3e923df7a9783d8adb4",
+   "holo_fleet/ha/spec.py": "37f605a1d53193757a4264f43cdecd44a2f2fed971e9c229a218133e28491dec",
+   "holo_fleet/mission.py": "6bbc034497806185e7b8938600316f7428b53edd9d9e0741f229206a4b886587",
+   "holo_fleet/perception/__init__.py": "e6dbf11582740592ebee92e63c2d5bc3c04ef73116ecb4314985e69cbf332a8e",
+   "holo_fleet/perception/acoustic.py": "17f2f04c3b07bdc5f8440a1fc81dd9f8ddd7109cf39ed5496a47f9c433ef78b2",
+   "holo_fleet/perception/acoustic_gate.py": "af796081700ea4739f9fb5c56d48bcb39cc64acdc14ed79d3e4bfc4d42107720",
+   "holo_fleet/perception/distance_bound.py": "578eefc149d0f9f002ad383ebc109b1853a5c5f489b06d93690f87972a33aaa4",
+   "holo_fleet/perception/exit_witness.py": "a66840145027d1c51ee8d1b01d5b8ccda87dfa66adb611af20f7ed34e441c218",
+   "holo_fleet/perception/formation_perception.py": "7877c541f6aace9e54edb0543d69cae1de244a1d2ade5d2921732621ecca7a2b",
+   "holo_fleet/perception/frame.py": "728e75064480ae866f5a4ed2ad53a6ce8a4eeae3df2863cc19303fe3de644911",
+   "holo_fleet/perception/gate_perception.py": "b2e6d0b1a07cd38fd5595b9a7f1731f278ecda05007a0419d525604e7778b79c",
+   "holo_fleet/perception/nav.py": "afbe28a013063be3072f4bb7bd202419cbad572c2ba3859671fed6efb3494e7d",
+   "holo_fleet/perception/passage.py": "391544fb6327d3014cefcfc791819720f2b1ed22d766d3d3c17b0c7fccdd0d66",
+   "holo_fleet/perception/payload.py": "b7cbc91655cba113c9dc21c9040009ad438d643338d4f12fea8a14920dfed97b",
+   "holo_fleet/perception/perception.py": "d455682d8b3677cee7b2d2d0aea58ca26724fcb78a45b235511b5889d3a66fa1",
+   "holo_fleet/perception/sensor_suite.py": "3733d555897c5514efd514f4eef36a44e7a81c92c4be83b07275cf9cf1bfd550",
+   "holo_fleet/perception/sonar_geometry.py": "e7f339b3c0b72fa5cbd1e89088494f93a1148b8aa100308b17a8aeadecfedf39",
+   "holo_fleet/perception/sonar_processing.py": "3a002626a6e65c53b89e6e8182e173ad8ae192a2f6b7dd007b8b5e9513afa58a",
+   "holo_fleet/perception/structure_aiding.py": "a08137c3d9881173ad6cb28cf904f12845485831902b8d21858367491e0a5620",
+   "holo_fleet/perception/targets.py": "1281019d46f593b1686a5818738f18ecea2cdba4da45269c634237c274dc2f6d",
+   "holo_fleet/referee/__init__.py": "32b99a1d1d0cd29780ed3c8f554b872c103e24b657ac1b537afd9ace54415c3e",
+   "holo_fleet/referee/criteria.py": "329af97b396364b57014ab177912a706838f75e430abdb8a51b77b50c271bd4c",
+   "holo_fleet/referee/envelope.py": "54a97d3a232651a3928cb67987c00f784e96020d009a9dbd78746eb408e7890a",
+   "holo_fleet/referee/gate_events.py": "0b663c16d66e79a87872e000ad3a04ecb42b293073f60df26260a231204246f3",
+   "holo_fleet/referee/p3.py": "e9d85b152a7816e70d038ca7c24193960b137c60382221f77099083be2a2834d",
+   "holo_fleet/referee/premise_audit.py": "81cab185f78f7f432a4858a5d9e4671ec3f0ac73fef1b3f80d9e69f6ddf81bd9",
+   "holo_fleet/referee/referee.py": "6efe73d88828b055cb41aa5c4769c7030afc3c381f8b07cdcf9fdd8cd23a5536",
+   "holo_fleet/referee/robustness_metrics.py": "5f0e127d2c419338157b9c2c0eca67827bc63c0b74b924bcc3a653ff51e82e37",
+   "holo_fleet/referee/sensor_audit.py": "664e4e8d4c15c7ac43c9946f3bfb4930585cd64083bf357f8625403586006e89",
+   "holo_fleet/referee/terminal.py": "4bfbee995569157c874bd255c284336bc4e8766216ba6f1561189fd94bc3e075",
+   "holo_fleet/runner.py": "3eda4898c8fa583b3e78476a475389e991bd61f85ee8547861cac14cfe8c0041",
+   "holo_fleet/scope.py": "d5f7e11dfcd0e6bcf1df325085c621d968d43e099f9e9c6120428bb8af69ba0d",
+   "holo_fleet/sim/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+   "holo_fleet/sim/acoustic_channel.py": "43296f7b98759586fb4c3a448d4f2460c11051bbcf1ce9f8f95debae8d834172",
+   "holo_fleet/sim/beacon.py": "236822773f37c9dbb1b04cbb3abe083423c8ffeef1f2c3a958cacdfae478b67a",
+   "holo_fleet/sim/currents.py": "f29dba3b98d1f45c2e856c8596b85e9299aab26523e7f6fb06ca1d45be2264d8",
+   "holo_fleet/sim/engine_lease.py": "60fd618d5b57fc3a0f647e33be53c5be353d760d01533cc67c273921beffc3c6",
+   "holo_fleet/sim/engine_session.py": "898ac1fdd20a22517e4ee7adfbab1efcca914adf42a47c60249bac069600c073",
+   "holo_fleet/sim/engine_watchdog.py": "74107f27b259c08313813cdc372cb927549e1ef92706406bf6bb407a1342cc15",
+   "holo_fleet/sim/holo_env.py": "70980e3abb2c3ac68a1268ee24fc3d49d6723687b042216803460d947e93f9b9",
+   "holo_fleet/sim/holoocean_setup.py": "cb4d372f5b833347ff56163f8ce6591599c6857d58c9ba8407999f594ca5cdeb",
+   "holo_fleet/sim/scenarios.py": "58453d537d4df4aafa00c2d0ede27b4c56e543e822c6c9b82245f186a548f53f",
+   "holo_fleet/sim/sensor_noise.py": "14819cc3e4f12ebb827e3f613e9362ac4eb11dc4024fcbfcbbb3cb1a2ea14dfa",
+   "holo_fleet/sim/spec.py": "0c39399d19e923f68499805b0740f76786b9a5a2b379600979f9d1960f29ade7",
+   "holo_fleet/ui/__init__.py": "155b99f5a4b1962783dc18aecc4b92e0e37153529cac234f4af8996cacd7db52",
+   "holo_fleet/ui/dashboard.py": "611107fd7f524e6d46991e5d93508ed40e522547272bf84b53eae3dc8674ce33",
+   "holo_fleet/ui/fleet_camera.py": "0607c69ceac168f650070cd5d933b5b9a8ff23d533b4e92709efc1d3e9b4c347",
+   "holo_fleet/ui/fleet_view.py": "f996af99f701e8bce34e72f305b6ebc857781953e6acf46597875a8502feb039",
+   "holo_fleet/ui/gif.py": "e1112ea5503d205fd3b25e86bb074e6c4fd4cdbe5ab5209a9be9295fbc5f42c6",
+   "holo_fleet/ui/live.py": "abcecfdcf9a48666192fe0c0d6ebe6a2194dd623d0a2f2f791e1e10281bd9242"
+  },
+  "ed5b1de7fb9d7fcf15824bd7142323883a4da18a": {
+   "holo_fleet/__init__.py": "4f17e5db9c777b3da72bf464d200df0b600d615937d5a63c2cabe206cc6b64bf",
+   "holo_fleet/arena_bridge.py": "14babd43d094d976a47cb10271b2ddfa56c3fd3e618e98293a5cf43846ee8ff8",
+   "holo_fleet/config.py": "0b134462ae8c8f99c24eff4dfd207a84c0f5a8630be55694aafb3362d96c4dad",
+   "holo_fleet/control/__init__.py": "dc87d7a8d45e4dd09adc6e839739aaa5e0be76e53ad1d79dd7f8c11c4102e39e",
+   "holo_fleet/control/controller.py": "a94fecd6c6a5fd63eb3f92275910e9d0cdc8dbfd7bfbfcd2f8d1f3a0ec965d8a",
+   "holo_fleet/control/current_envelope.py": "aed17014acab69b2c2410d816e2812213bafe6e16d22c5e9b71b2c2a91cc08b4",
+   "holo_fleet/control/escape.py": "45cfef63a4f233ae7ec2e125c082848938e0c8e1898003f42164e5eaee81767b",
+   "holo_fleet/control/flows.py": "b251f150f1ca04cb7c39e9290d685262d18276f1d7deb9bfe4f9fa8b574d7c06",
+   "holo_fleet/control/formation_time.py": "90b62abda1c5c69e55af32a587ea6313b4110c440cc1be4cd2c1b2a8fe4b739c",
+   "holo_fleet/control/gate_safety.py": "4c50fd10d9e05c48cf1d2edf05c3aae9af35a26c7dc3a9eeb7429d7c51c410d8",
+   "holo_fleet/control/lowlevel.py": "88b547978ea45b8355ac2985277eb3311e56b5baf8f78a8b5aef7a8c5c66ef06",
+   "holo_fleet/formations.py": "63d71857e375ce969792bfef45d83774b0f764a391dd4594fcd0cde717e9bdae",
+   "holo_fleet/ha/__init__.py": "d3f085310dc9ce945cf76fceb65e6cd58d889ef143b97d4dd7790f5dbc77e515",
+   "holo_fleet/ha/automaton.py": "cce682f066f6d4c0c4131103681d2bcf0dfbbabc7543628a637563ee1847fa4c",
+   "holo_fleet/ha/guard_text.py": "8bd86a5b6268c1432d85df26bce3f14e9bd7e5c29889fcc391624441a5a02798",
+   "holo_fleet/ha/mutex_rule.py": "fa5365c6022bb87240796eed1697b3ea9bf8ea95a48b792acbca257d25ca5374",
+   "holo_fleet/ha/observation_invariants.py": "768c0ff22f57b45df4c51eed650be0c2e667edcae059b3e923df7a9783d8adb4",
+   "holo_fleet/ha/spec.py": "37f605a1d53193757a4264f43cdecd44a2f2fed971e9c229a218133e28491dec",
+   "holo_fleet/mission.py": "6bbc034497806185e7b8938600316f7428b53edd9d9e0741f229206a4b886587",
+   "holo_fleet/perception/__init__.py": "e6dbf11582740592ebee92e63c2d5bc3c04ef73116ecb4314985e69cbf332a8e",
+   "holo_fleet/perception/acoustic.py": "17f2f04c3b07bdc5f8440a1fc81dd9f8ddd7109cf39ed5496a47f9c433ef78b2",
+   "holo_fleet/perception/acoustic_gate.py": "af796081700ea4739f9fb5c56d48bcb39cc64acdc14ed79d3e4bfc4d42107720",
+   "holo_fleet/perception/distance_bound.py": "578eefc149d0f9f002ad383ebc109b1853a5c5f489b06d93690f87972a33aaa4",
+   "holo_fleet/perception/exit_witness.py": "a66840145027d1c51ee8d1b01d5b8ccda87dfa66adb611af20f7ed34e441c218",
+   "holo_fleet/perception/formation_perception.py": "7877c541f6aace9e54edb0543d69cae1de244a1d2ade5d2921732621ecca7a2b",
+   "holo_fleet/perception/frame.py": "728e75064480ae866f5a4ed2ad53a6ce8a4eeae3df2863cc19303fe3de644911",
+   "holo_fleet/perception/gate_perception.py": "b2e6d0b1a07cd38fd5595b9a7f1731f278ecda05007a0419d525604e7778b79c",
+   "holo_fleet/perception/nav.py": "afbe28a013063be3072f4bb7bd202419cbad572c2ba3859671fed6efb3494e7d",
+   "holo_fleet/perception/passage.py": "391544fb6327d3014cefcfc791819720f2b1ed22d766d3d3c17b0c7fccdd0d66",
+   "holo_fleet/perception/payload.py": "b7cbc91655cba113c9dc21c9040009ad438d643338d4f12fea8a14920dfed97b",
+   "holo_fleet/perception/perception.py": "d455682d8b3677cee7b2d2d0aea58ca26724fcb78a45b235511b5889d3a66fa1",
+   "holo_fleet/perception/sensor_suite.py": "3733d555897c5514efd514f4eef36a44e7a81c92c4be83b07275cf9cf1bfd550",
+   "holo_fleet/perception/sonar_geometry.py": "e7f339b3c0b72fa5cbd1e89088494f93a1148b8aa100308b17a8aeadecfedf39",
+   "holo_fleet/perception/sonar_processing.py": "3a002626a6e65c53b89e6e8182e173ad8ae192a2f6b7dd007b8b5e9513afa58a",
+   "holo_fleet/perception/structure_aiding.py": "7f097ef3c8a0bbd3f3eb36387f5bdd124eaf2355178c1a01eff2cb4dcf0c8573",
+   "holo_fleet/perception/targets.py": "1281019d46f593b1686a5818738f18ecea2cdba4da45269c634237c274dc2f6d",
+   "holo_fleet/referee/__init__.py": "32b99a1d1d0cd29780ed3c8f554b872c103e24b657ac1b537afd9ace54415c3e",
+   "holo_fleet/referee/criteria.py": "329af97b396364b57014ab177912a706838f75e430abdb8a51b77b50c271bd4c",
+   "holo_fleet/referee/envelope.py": "54a97d3a232651a3928cb67987c00f784e96020d009a9dbd78746eb408e7890a",
+   "holo_fleet/referee/gate_events.py": "0b663c16d66e79a87872e000ad3a04ecb42b293073f60df26260a231204246f3",
+   "holo_fleet/referee/p3.py": "e9d85b152a7816e70d038ca7c24193960b137c60382221f77099083be2a2834d",
+   "holo_fleet/referee/premise_audit.py": "81cab185f78f7f432a4858a5d9e4671ec3f0ac73fef1b3f80d9e69f6ddf81bd9",
+   "holo_fleet/referee/referee.py": "6efe73d88828b055cb41aa5c4769c7030afc3c381f8b07cdcf9fdd8cd23a5536",
+   "holo_fleet/referee/robustness_metrics.py": "5f0e127d2c419338157b9c2c0eca67827bc63c0b74b924bcc3a653ff51e82e37",
+   "holo_fleet/referee/sensor_audit.py": "664e4e8d4c15c7ac43c9946f3bfb4930585cd64083bf357f8625403586006e89",
+   "holo_fleet/referee/terminal.py": "4bfbee995569157c874bd255c284336bc4e8766216ba6f1561189fd94bc3e075",
+   "holo_fleet/runner.py": "3eda4898c8fa583b3e78476a475389e991bd61f85ee8547861cac14cfe8c0041",
+   "holo_fleet/scope.py": "d5f7e11dfcd0e6bcf1df325085c621d968d43e099f9e9c6120428bb8af69ba0d",
+   "holo_fleet/sim/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+   "holo_fleet/sim/acoustic_channel.py": "43296f7b98759586fb4c3a448d4f2460c11051bbcf1ce9f8f95debae8d834172",
+   "holo_fleet/sim/beacon.py": "236822773f37c9dbb1b04cbb3abe083423c8ffeef1f2c3a958cacdfae478b67a",
+   "holo_fleet/sim/currents.py": "f29dba3b98d1f45c2e856c8596b85e9299aab26523e7f6fb06ca1d45be2264d8",
+   "holo_fleet/sim/engine_lease.py": "60fd618d5b57fc3a0f647e33be53c5be353d760d01533cc67c273921beffc3c6",
+   "holo_fleet/sim/engine_session.py": "898ac1fdd20a22517e4ee7adfbab1efcca914adf42a47c60249bac069600c073",
+   "holo_fleet/sim/engine_watchdog.py": "74107f27b259c08313813cdc372cb927549e1ef92706406bf6bb407a1342cc15",
+   "holo_fleet/sim/holo_env.py": "70980e3abb2c3ac68a1268ee24fc3d49d6723687b042216803460d947e93f9b9",
+   "holo_fleet/sim/holoocean_setup.py": "cb4d372f5b833347ff56163f8ce6591599c6857d58c9ba8407999f594ca5cdeb",
+   "holo_fleet/sim/scenarios.py": "58453d537d4df4aafa00c2d0ede27b4c56e543e822c6c9b82245f186a548f53f",
+   "holo_fleet/sim/sensor_noise.py": "14819cc3e4f12ebb827e3f613e9362ac4eb11dc4024fcbfcbbb3cb1a2ea14dfa",
+   "holo_fleet/sim/spec.py": "0c39399d19e923f68499805b0740f76786b9a5a2b379600979f9d1960f29ade7",
+   "holo_fleet/ui/__init__.py": "155b99f5a4b1962783dc18aecc4b92e0e37153529cac234f4af8996cacd7db52",
+   "holo_fleet/ui/dashboard.py": "611107fd7f524e6d46991e5d93508ed40e522547272bf84b53eae3dc8674ce33",
+   "holo_fleet/ui/fleet_camera.py": "0607c69ceac168f650070cd5d933b5b9a8ff23d533b4e92709efc1d3e9b4c347",
+   "holo_fleet/ui/fleet_view.py": "f996af99f701e8bce34e72f305b6ebc857781953e6acf46597875a8502feb039",
+   "holo_fleet/ui/gif.py": "e1112ea5503d205fd3b25e86bb074e6c4fd4cdbe5ab5209a9be9295fbc5f42c6",
+   "holo_fleet/ui/live.py": "abcecfdcf9a48666192fe0c0d6ebe6a2194dd623d0a2f2f791e1e10281bd9242"
+  }
+ },
+ "runs": [
+  {
+   "dir": "runs/B2_MEDIUM/CLEAN/gate_hold_nav_bias_m05/s8000",
+   "sha": "b5943cfb6170481ad89fe505eac07226520ab42e",
+   "class": "PASS",
+   "wall_s": 269.6,
+   "engine_listen_ports": [
+    38085
+   ],
+   "attempt": 1
+  },
+  {
+   "dir": "runs/B2_MEDIUM/CLEAN/gate_hold_nav_bias_m10/s8000",
+   "sha": "b5943cfb6170481ad89fe505eac07226520ab42e",
+   "class": "P3_LATE",
+   "wall_s": 685.0,
+   "engine_listen_ports": [
+    38513
+   ],
+   "attempt": 1
+  },
+  {
+   "dir": "runs/B2_MEDIUM/CLEAN/gate_hold_nav_bias_p05/s8000",
+   "sha": "b5943cfb6170481ad89fe505eac07226520ab42e",
+   "class": "PASS",
+   "wall_s": 256.9,
+   "engine_listen_ports": [
+    40593
+   ],
+   "attempt": 1
+  },
+  {
+   "dir": "runs/B2_MEDIUM/CLEAN/gate_hold_nav_bias_p10/s8000",
+   "sha": "b5943cfb6170481ad89fe505eac07226520ab42e",
+   "class": "PASS",
+   "wall_s": 260.8,
+   "engine_listen_ports": [
+    39391
+   ],
+   "attempt": 1
+  },
+  {
+   "dir": "runs/B2_MEDIUM/CLEAN/gate_rear_approach/s8000",
+   "sha": "b5943cfb6170481ad89fe505eac07226520ab42e",
+   "class": "PASS",
+   "wall_s": 224.0,
+   "engine_listen_ports": [
+    39728
+   ],
+   "attempt": 1
+  },
+  {
+   "dir": "runs/B2_MEDIUM/CLEAN/gate_single/s8000",
+   "sha": "b5943cfb6170481ad89fe505eac07226520ab42e",
+   "class": "PASS",
+   "wall_s": 263.8,
+   "engine_listen_ports": [
+    34818
+   ],
+   "attempt": 1
+  },
+  {
+   "dir": "runs/B2_MEDIUM/CLEAN/line_parallel_mutex/s8000",
+   "sha": "b5943cfb6170481ad89fe505eac07226520ab42e",
+   "class": "PASS",
+   "wall_s": 291.4,
+   "engine_listen_ports": [
+    38435
+   ],
+   "attempt": 1
+  },
+  {
+   "dir": "runs_before_ed5b1de/B2_MEDIUM/CLEAN/gate_hold_nav_bias_m05/s8000",
+   "sha": "ed5b1de7fb9d7fcf15824bd7142323883a4da18a",
+   "class": "INCOMPLETE",
+   "wall_s": 1613.5,
+   "engine_listen_ports": [
+    33949
+   ],
+   "attempt": 1
+  },
+  {
+   "dir": "runs_before_ed5b1de/B2_MEDIUM/CLEAN/gate_hold_nav_bias_m10/s8000",
+   "sha": "ed5b1de7fb9d7fcf15824bd7142323883a4da18a",
+   "class": "INCOMPLETE",
+   "wall_s": 1522.0,
+   "engine_listen_ports": [
+    40597
+   ],
+   "attempt": 1
+  }
+ ],
+ "protocol": "B2_MEDIUM channel, sensor profile CLEAN, seed 8000",
+ "instances": "at most 2 at once (HOLO_FLEET_ENGINE_SLOTS=2), isolated private engine roots, TraceLog listener off the default port",
+ "cleanup": {
+  "holodeck_processes": [],
+  "engine_ports_still_listening": [],
+  "default_port_1985_used": false
+ }
+}
