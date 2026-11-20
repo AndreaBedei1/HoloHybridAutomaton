@@ -36,20 +36,25 @@ code holds the entry on a heard report of committed or admitted).  F0 and F2 tak
 it: the latch and the stage-2 check see the claims d steps late.  P2 then holds while d does not exceed the shortest stay in C
 (one step) plus the step the precedence puts between two commitments: d <= 2 with M2, d <= 1 without it (tight: F1d3, F1d2n).
 An entry that bypasses the stage-2 check (a committed drone moved into the CR by separation warning or collision avoidance while it
-holds; the drone keeps its claim: report_phase, S9) keeps the invariant (F0p, F2p).  F1p, the combination, is OPEN (a declared
-limit, not a result): with a claim learnt one step late two drones can be committed together (F1d1 shows the stage-2 check alone
-still keeps them apart), and the counterexample then needs only one entry by avoidance: one drone enters by its own stage-2 check
-before the claim of the other is known, or is moved in, and the other, held by that claim, is moved in by avoidance while the first
-is inside.  F1pm keeps the counterexample with the motion limit of an entry by avoidance (push_dwell: the queue point is at least
-6.1 s from the CR at the highest ground speed of the Envelope for n = 3), so it does not rest on an instantaneous entry.  The
-model has no positions, so it cannot exclude that the avoidance layer moves a drone forward while another is inside: the deployed
-escape planner gives no antisymmetry along the axis (F1pa) and the avoidance output of a committed drone is not edited by any
-gate rule (control/controller.py: keepout_filter only before the commitment).  F1pk (formal/check_f1p_kinematic.py, reported)
-gives the abstraction its positions with the deployed flows and idealised sensing: single entries by avoidance occur and no double
-occupancy is found, but none is found either when no claim is ever known (its control set), so there the separation layer and the
-pass path converging on the axis, not the gate protocol, keep two drones out of the CR together; it does not test the stage-2 logic
-and F1p stays open.  A queued drone moved into
-the CR (F0q) is a declared limit as well.
+holds; the drone keeps its claim: report_phase, S9) keeps the invariant (F0p, F2p).  With a claim learnt one step late two drones
+can be committed together (F1d1 shows the stage-2 check alone still keeps them apart), and with entries by avoidance as well the
+v11 controller had a counterexample: one drone enters by its own stage-2 check before the claim of the other is known, and the
+other, held by that claim, is moved in by avoidance while the first is inside; it survives the motion limit of push_dwell.  The
+escape planner alone is not antisymmetric along the axis (F1pa), so nothing excluded that forward motion.  The corrected
+controller (control/gate_safety.py) edits the final command of every drone that is not admitted to the CR - committed or queued,
+mission modes and avoidance modes alike: a command is applied only if the backup that follows it (the command for one control
+period plus the largest data age, braking at a_brake, holding with the error of the drift) keeps the true centre out of the CR
+under the declared navigation error and drift (formal/check_gate_safety.py: P2B1 per-step soundness, P2B1r the computed reach,
+P2B3 adversarial trajectories).  So, while the declared premises hold, there is no entry by avoidance and F1p, the combination of
+claims learnt one step late with the entries of the corrected controller, reduces to F1d1: never two drones in X over the depth
+(bounded model checking from the launch, not an induction; the stage-2 check is made at the hold, at most
+(|stage2_hold_s| + 0.4 - cr_half_len) / v_pass = 3.8 s before the entry, within one step).  Outside the declared envelope (a
+navigation error above nav_err_m, a drift above w_drift_max, an estimate jump, or a step with no P2-safe command: P2_RECOVERY or
+JOINTLY_INFEASIBLE with P2 uncertified, logged by the controller; P2B2s shows that a P2-safe command with a margin below the
+step deficit can lead there) entries by avoidance remain possible, and the counterexample stays: F1pe and F1pme (with the motion
+limit) are declared limits with their trace.  Likewise F0qe, a queued drone moved into the CR (inside the envelope a queued drone
+is filtered too and F0s covers it).  F1pk (formal/check_f1p_kinematic.py, reported) gives the case positions with the deployed
+flows.
 The 32 s bound of S2 is a different quantity (how long a report of not engaged may exclude a corridor echo) and does not bound
 the delay of a claim between two drones that commit together.
 Properties, for n = 2, 3, 4.  F0: the invariant (at most one drone in C or X) holds at the launch and is inductive under every
@@ -362,33 +367,42 @@ def run(cfg: FleetConfig = DEFAULT, verbose: bool = True) -> Report:
         fp = Fleet(n, K_FREE[n], 0, T, free=True, push="committed", **PREMISES[n])
         rep.add(check(f"F2p n={n}: the recovery within {K_FREE[n]} steps holds with those pushes", "inv & pushes & fairness -> all live drones in D at K",
                       ENC, _run(fp, fp.not_recovered()), "unsat", timeout_ms=900000, note=tag), verbose)
+    fp = Fleet(3, L + K, L, T, latch_delay=1, push="none", **PREMISES[3])
+    G = cfg.gate
+    t_adm = (abs(G.stage2_hold_s) + 0.4 - G.cr_half_len) / G.v_pass
+    rep.add(check("F1p corrected controller, n=3: claims learnt one step late (two drones can commit together) and entries into the "
+                  "CR only through the stage-2 check, an entry by avoidance from a P2-safe state being excluded by the P2 filter "
+                  "(check_gate_safety P2B1, P2B3) while the declared premises hold: never two drones in X over the depth",
+                  "no two in X over the depth (from the launch), push = none", ENC, _run(fp, fp.two_in_cr()), "unsat",
+                  timeout_ms=600000, note=tag + f"; the same composition as F1d1; admission at the stage-2 hold at most "
+                                                f"{t_adm:.1f} s before the entry (< DT)"), verbose)
     fp = Fleet(3, L + K, L, T, latch_delay=1, push="committed", **PREMISES[3])
-    r = check("F1p declared limit (unresolved): claims learnt one step late (two drones committed concurrently) and an entry into "
-              "the CR by avoidance: two drones in X (n=3); the model has no positions to exclude it",
+    r = check("F1pe declared limit: outside the declared envelope of the P2 filter (navigation error above nav_err_m, drift above "
+              "w_drift_max, an estimate jump, no P2-safe command) a committed drone can still be moved into the CR by avoidance, and "
+              "with claims learnt one step late two drones are in X (n=3; the v11 counterexample of F1p)",
               "expect a run with two drones in X", ENC, _run(fp, fp.two_in_cr()), "sat", timeout_ms=600000, note=tag)
     if r.verdict == "sat":
         r.note += "; one counterexample trace " + modes(fp, fp.two_in_cr())
     rep.add(r, verbose)
     t_push, k_push = push_dwell(cfg, 3, T["DT"])
     fp = Fleet(3, L + K, L, T, latch_delay=1, push="committed", push_min_ct=k_push, **PREMISES[3])
-    r = check(f"F1pm declared limit (unresolved): F1p with the motion limit of an entry by avoidance (at least {t_push:.1f} s from "
-              f"the queue point to the CR, {k_push} step(s) in C before a push): still two drones in X (n=3); a concurrent "
-              "commitment, one entry by the stage-2 check before the claim of the other is known, then the other moved in by "
-              "avoidance while the first is inside", "expect a run with two drones in X", ENC, _run(fp, fp.two_in_cr()), "sat",
-              timeout_ms=600000, note=tag)
+    r = check(f"F1pme declared limit: F1pe with the motion limit of an entry by avoidance (at least {t_push:.1f} s from the queue "
+              f"point to the CR, {k_push} step(s) in C before a push): still two drones in X (n=3): a concurrent commitment, one "
+              "entry by the stage-2 check before the claim of the other is known, then the other moved in while the first is inside",
+              "expect a run with two drones in X", ENC, _run(fp, fp.two_in_cr()), "sat", timeout_ms=600000, note=tag)
     if r.verdict == "sat":
         r.note += "; one counterexample trace " + modes(fp, fp.two_in_cr())
     rep.add(r, verbose)
     fq = Fleet(3, 1, 1, T, free=True, push="any", **PREMISES[3])
-    rep.add(check("F0q declared limit: a queued, uncommitted drone moved into the CR by avoidance breaks the invariant (the queue points "
-                  "are at least 3.4 m before the CR; not modelled)", "expect inv & push of a drone in Q -> not inv'", ENC,
-                  _run(fq, z3.Not(fq.inv(1))), "sat", note=tag), verbose)
+    rep.add(check("F0qe declared limit: outside the declared envelope of the P2 filter a queued, uncommitted drone moved into the CR "
+                  "by avoidance breaks the invariant (inside it the queued drones are filtered too: F0s)",
+                  "expect inv & push of a drone in Q -> not inv'", ENC, _run(fq, z3.Not(fq.inv(1))), "sat", note=tag), verbose)
     import time
     from common import CheckResult
     t0 = time.time()
     pairs = escape_forward_pairs(cfg)
-    rep.add(CheckResult("F1pa scope: the deployed escape planner is not antisymmetric along the gate axis (two drones at their hold "
-                        "points seeing each other can both be moved forward)", "exists mirrored patterns with a forward choice for both",
+    rep.add(CheckResult("F1pa scope: the deployed escape planner, without the P2 filter, is not antisymmetric along the gate axis "
+                        "(two drones at their hold points seeing each other can both be moved forward)", "exists mirrored patterns with a forward choice for both",
                         "holo_fleet/control/escape.py (exhaustive over the sector patterns)", "counterexample",
                         "counterexample" if pairs else "none", bool(pairs), round(time.time() - t0, 3),
                         note=f"{len(pairs)} mirrored patterns, e.g. {pairs[:3]}"), verbose)

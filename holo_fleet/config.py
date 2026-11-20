@@ -131,6 +131,12 @@ class GateRule:
     stack_spacing: float = 3.5
     queue_lateral_max: float = 3.5
     hold_err_m: float = 0.10
+    stage2_hold_s: float = -2.3025
+    hold_lateral_allow: float = 0.27
+    """Stage-2 hold of a committed drone before admission (gate frame s, on the axis): control/gate_safety.hold_s, the
+    nearest point where holding is P2-safe under the declared navigation error (-(cr_half_len + nav_err_m + reach of a
+    hold + slack) = -2.2025 m), minus the measured holding error ``hold_err_m``.  A derived value, kept equal to the
+    derivation by tests/test_hold_point.py."""
 
     @property
     def merge_s(self) -> float:
@@ -141,7 +147,15 @@ class GateRule:
         (a) the CR lies inside the FRONT cone (``queue_cone_deg``) of every queue point (with a vertical
             stack of queue points, ``dz_max`` > 0, the off-axis distance includes the vertical offset);
         (b) a drone left of the axis that descends to the merge point at ``merge_angle_deg`` keeps
-            ``merge_clearance`` from its right neighbour's queue point (the next in the order).
+            ``merge_clearance`` from its right neighbour's queue point (the next in the order);
+        (c) with two or more columns, a drone that holds at the stage-2 hold (``stage2_hold_s``, within
+            ``hold_lateral_allow`` of the axis: the steady deviation w_drift_max / k_track = 0.25 m of the hold loop
+            against the declared lateral drift, plus 0.02 m; the acquisition offsets are vertical) keeps ``merge_clearance`` from
+            every queue point: a queued drone and a drone held before the CR are not in each other's warning band (the
+            criterion of (b); for n = 2 the line moves from -4.18 m to -5.14 m, for n = 3 from -5.41 m to -5.50 m; n = 1
+            has no other queue point and n = 4 is unchanged);
+        (d) the queue line is never ahead of the stage-2 hold: a queued drone holds where holding is P2-safe under the
+            declared navigation error (control/gate_safety.py; n = 1 moves from -1.91 m to -2.30 m).
         ``lats``: the column laterals (default: the abreast queue of n columns)."""
         lats = tuple(lats) or self.queue_laterals(n)
         l_max = max(abs(x) for x in lats)
@@ -156,6 +170,12 @@ class GateRule:
                 continue
             d = (self.merge_clearance + ln * math.cos(a)) / math.sin(a)
             need = max(need, -self.merge_s + d)
+        if len(lats) >= 2:
+            for lq in lats:
+                dl = max(abs(lq) - self.hold_lateral_allow, 0.0)
+                if dl < self.merge_clearance:
+                    need = max(need, -self.stage2_hold_s + math.sqrt(self.merge_clearance ** 2 - dl ** 2))
+        need = max(need, -self.stage2_hold_s)
         return -need
 
     def queue_laterals(self, n: int, spacing: float = 0.0) -> Tuple[float, ...]:

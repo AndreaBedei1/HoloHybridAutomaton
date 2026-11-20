@@ -13,6 +13,7 @@ from typing import Dict, List, Optional, Tuple
 import numpy as np
 
 from holo_fleet.config import DEFAULT, FleetConfig
+from holo_fleet.control import gate_safety as gs
 from holo_fleet.control.escape import EscapeChoice, EscapePlanner
 from holo_fleet.control.formation_time import FormationTime
 from holo_fleet.mission import MissionPlan
@@ -22,8 +23,11 @@ from holo_fleet.perception.sonar_geometry import HULL_HALF, R_OUT
 
 RELOC_MARGIN_M = 0.15
 RELOC_ZONE_M = 0.4
-RELOC_PERIOD_S = 6.0
-RELOC_BACK_M = 0.6
+ACQ_PERIOD_S = 4.0
+ACQ_OFFSETS = ((0.0, -0.6), (0.0, 0.6), (0.0, -0.4), (0.0, 0.8), (0.0, 0.4), (0.0, -0.8))
+STANDOFF_MARGIN_M = 0.5
+FAILSAFE_PROBE_M = 0.3
+STANDOFF_ZONE_M = 1.5
 
 
 def _cap(v: np.ndarray, vmax_xy: float, vmax_z: float) -> np.ndarray:
@@ -81,6 +85,12 @@ class Flows:
         self.rejoin_phase = ""
         self.passing = False
         self.at_level = False
+        self.standoff = False
+        self.p2_anchor: Optional[np.ndarray] = None
+        self.hold_target: Optional[np.ndarray] = None
+        self.standoff_anchor: Optional[np.ndarray] = None
+        self.p2_station: Optional[np.ndarray] = None
+        self.standoff_since: Optional[float] = None
 
     def traffic_offset(self, obs: LocalObservation, dt: float, r_trigger: float = 8.0,
                        offset_max: float = 2.5, rate: float = 0.35, active: bool = True,
@@ -279,15 +289,27 @@ class Flows:
         return path[-1]
 
     def gate(self, obs: LocalObservation, mode: str) -> Tuple[np.ndarray, float]:
+        """Gate flow.  MUTEX_PASS (committed): along the pass path; before admission the drone does not go beyond the
+        stage-2 hold ``GateRule.stage2_hold_s`` (control/gate_safety.py: the nearest point where holding is P2-safe under
+        the declared navigation error, minus the measured holding error), and is admitted (``cr_cleared``) there with a
+        validated gate localization (loc_ok) and the stage-2 check (entry_ok).  Without a validated localization it
+        visits the acquisition offsets ``ACQ_OFFSETS`` (lateral, vertical; ACQ_PERIOD_S each) at the hold, where the side
+        sonars see the bars from farther away (tests/test_hold_point.py); with one it holds on the axis.  A committed
+        drone that is not admitted and still STANDOFF_ZONE_M behind the hold stops while a DYNAMIC echo in its FRONT
+        sector is nearer than the warning-exit band plus STANDOFF_MARGIN_M (a drone ahead of it in the corridor: the
+        follower does not enter from behind the warning band of a drone that holds before the CR; nearer to the gate an
+        unexplained bar echo could stop it out of the acquisition region).  After t_occ_max + t_clear without admission it gives up behind
+        the abort plane."""
         self.passing = self.at_level = False
         G = self.cfg.gate
         g = self.plan.gates[min(obs.gate_index, len(self.plan.gates) - 1)]
         go = obs.gate
         yaw = math.atan2(g.axis[1], g.axis[0])
         hold = False
+        self.standoff = False
         if mode == "MUTEX_PASS":
             c = self._carrot(self.pass_path(go.queue_s, go.queue_l, go.queue_dz), np.array([go.s, go.l, go.dz]))
-            s_hold = -(G.cr_half_len + float(HULL_HALF[0]) + RELOC_MARGIN_M)
+            s_hold = G.stage2_hold_s
             if go.loc_ok and go.entry_ok and go.s >= s_hold - RELOC_ZONE_M:
                 self.cr_cleared = True
             s_abort = -(G.cr_half_len + float(R_OUT) + G.nav_err_m)
@@ -302,18 +324,47 @@ class Flows:
                     self.hold_timeout = True
                     self.events.append({"t": obs.t, "type": "ENTRY_HOLD_TIMEOUT", "loc_ok": go.loc_ok,
                                         "entry_ok": go.entry_ok})
-                back = int((obs.t - self.hold_since) / RELOC_PERIOD_S) % 2 == 1
-                c = np.array([s_hold - (RELOC_BACK_M if back else 0.0), 0.0, c[2]])
+                if go.loc_ok:
+                    c = np.array([s_hold, 0.0, 0.0])
+                else:
+                    k = int((obs.t - self.hold_since) / ACQ_PERIOD_S) % len(ACQ_OFFSETS)
+                    dl, dz = ACQ_OFFSETS[k]
+                    z = float(np.clip(float(g.center[2]) + dz, self.cfg.env.z_min + 0.5, self.cfg.env.z_max - 0.5))
+                    c = np.array([s_hold, dl, z - float(g.center[2])])
                 if self.hold_timeout:
-                    c = np.array([s_abort - RELOC_MARGIN_M, 0.0, c[2]])
+                    # the retreat target is beyond the give-up plane by the margin plus the steady error of the hold loop
+                    # against the declared residual drift: with RELOC_MARGIN_M alone a drift towards the CR keeps the
+                    # drone 0.25 m short of the plane and the give-up edge is never taken.  A drone already behind the
+                    # plane (a standoff that timed out) stays where it is: the give-up edge is requested at once.
+                    back = RELOC_MARGIN_M + self.cfg.env.w_drift_max / G.k_track
+                    c = np.array([go.s, go.l, go.dz]) if go.s <= s_abort else np.array([s_abort - back, 0.0, c[2]])
                     self.abort_request = go.s <= s_abort
                 hold = True
-            self.entry_state = "ADMIT" if self.cr_cleared else ("HOLD" if hold else "")
+            if not self.cr_cleared and not self.hold_timeout and go.s < s_hold - STANDOFF_ZONE_M and self._ahead(obs):
+                # the standoff holds on the point where it began (station keeping against the drift) and is bounded like
+                # the stage-2 hold: a persistent echo ahead (a stopped drone) ends in the give-up edge, never in an
+                # endless wait that keeps the claim
+                if self.standoff_anchor is None:
+                    self.standoff_anchor, self.standoff_since = np.array([go.s, go.l, go.dz]), obs.t
+                self.standoff = True
+                c = self.standoff_anchor.copy()
+                if obs.t - self.standoff_since > G.t_occ_max + G.t_clear:
+                    self.hold_timeout = True
+                    self.events.append({"t": obs.t, "type": "ENTRY_HOLD_TIMEOUT", "loc_ok": go.loc_ok,
+                                        "entry_ok": go.entry_ok, "standoff": True})
+                    self.abort_request = go.s <= s_abort
+                hold = True
+            elif not self.hold_timeout:
+                self.standoff_anchor = self.standoff_since = None
+            self.entry_state = "ADMIT" if self.cr_cleared else ("STANDOFF" if self.standoff else ("HOLD" if hold else ""))
+            self.hold_target = np.asarray(c, float).copy() if hold else None
             tgt = g.from_gate_frame(c)
             vmax = G.v_pass
         else:
             self.cr_cleared, self.hold_since, self.entry_state, self.hold_timeout, self.past_centre = False, None, "", False, False
             self.abort_request = False
+            self.hold_target = None
+            self.standoff_anchor = self.standoff_since = None
             tgt = g.from_gate_frame([go.queue_s, go.queue_l, go.queue_dz])
             vmax = G.v_approach
         self.reloc_hold = hold
@@ -323,6 +374,45 @@ class Flows:
             if n > 1e-6:
                 v[:2] *= vmax / n
         return _cap(v, vmax, 0.25), yaw
+
+    def _ahead(self, obs: LocalObservation) -> bool:
+        """A DYNAMIC echo in the FRONT sector nearer than the warning-exit band plus STANDOFF_MARGIN_M (conservative
+        distance): a drone ahead in the corridor."""
+        lim = self.cfg.sep.d_warning_exit + STANDOFF_MARGIN_M
+        return any(tg.cls == "DYNAMIC" and "FRONT" in tg.pattern and tg.d_lower < lim for tg in obs.targets)
+
+    def mission_anchor(self, gc: Optional[gs.GateConstraint], failsafe: bool = False, probe: bool = False) -> dict:
+        """The hold law of the mission command for GateConstraint.filter_mission: anchor (gate frame), gain and vertical
+        probe amplitude - the stage-2 hold / standoff (k_track) or the failsafe hold (gain 0.5, the probe while an envelope
+        violation lasts); an empty dict when the command is not a hold."""
+        if gc is None:
+            return {}
+        if failsafe:
+            if self.hold_pos is None:
+                return {}
+            return {"anchor": np.asarray(gc.gate.to_gate_frame(self.hold_pos), float), "gain": 0.5,
+                    "amp": FAILSAFE_PROBE_M if probe else 0.0}
+        if self.hold_target is None:
+            return {}
+        return {"anchor": self.hold_target, "gain": self.cfg.gate.k_track, "amp": 0.0}
+
+    def p2_filter(self, gc: Optional[gs.GateConstraint], v: np.ndarray, anchor_kw: dict) -> Optional[gs.MissionFilter]:
+        """The P2 filter of a mission command (GateConstraint.filter_mission), the station-keeping point latched while the
+        command stays cut."""
+        if gc is None:
+            self.p2_station = None
+            return None
+        mf = gc.filter_mission(v, self.cfg.env.v_max_nominal, station=self.p2_station, **anchor_kw)
+        self.p2_station = mf.station if mf.station is not None else None
+        return mf
+
+    def gate_constraint(self, obs: LocalObservation, authorized: bool, v_err: float = 0.0) -> Optional[gs.GateConstraint]:
+        """P2 constraint of this step (control/gate_safety.py), None when authorized or out of reach of the CR; ``v_err`` the
+        error bound of the measured velocity."""
+        if not self.plan.gates or obs.gate.gate_id is None:
+            return None
+        g = self.plan.gates[min(obs.gate_index, len(self.plan.gates) - 1)]
+        return gs.constraint_for(self.cfg, g, obs.p, obs.v_world, authorized, v_err=v_err)
 
     def threats(self, obs: LocalObservation, band: float):
         env = self.cfg.env
@@ -334,17 +424,45 @@ class Flows:
             out.append((tg.pattern, req))
         return out
 
-    def separation_warning(self, obs: LocalObservation, v_mission_world: np.ndarray) -> np.ndarray:
+    @staticmethod
+    def _p2(gc: Optional[gs.GateConstraint], R: np.ndarray):
+        return None if gc is None else (lambda V: gc.margins_body(V, R))
+
+    def _hold(self, gc: Optional[gs.GateConstraint], R: np.ndarray):
+        """HOLD candidate of a gate-aware avoidance decision: station keeping on ``p2_anchor``, the gate-frame estimate
+        latched when the drone starts holding (re-latched after any other choice, cleared outside the avoidance modes and
+        without a constraint).  (body velocity, P2 margin), or None without a constraint."""
+        if gc is None:
+            self.p2_anchor = None
+            return None
+        if self.p2_anchor is None:
+            # where the drone is; along the gate axis the stage-2 hold target when the drone already holds there (its
+            # position loop keeps it within e_track of it).  Laterally and vertically never the shared point: two drones
+            # committed together converge on it and must not both station-keep there.
+            q = np.asarray(gc.q, float)
+            self.p2_anchor = q.copy()
+            if self.hold_target is not None and abs(q[0] - self.hold_target[0]) <= gc.bounds.e_track + gs.SLACK_M:
+                self.p2_anchor[0] = self.hold_target[0]
+        return R.T @ gc.hold_velocity(self.p2_anchor), gc.hold_margin(self.p2_anchor)
+
+    def _after_choice(self, ch) -> None:
+        if ch.label != "HOLD":
+            self.p2_anchor = None
+
+    def separation_warning(self, obs: LocalObservation, v_mission_world: np.ndarray,
+                           gc: Optional[gs.GateConstraint] = None) -> np.ndarray:
         sep = self.cfg.sep
         R = obs.R_wb
         v_des_b = R.T @ v_mission_world
         th = self.threats(obs, sep.d_warning_exit)
-        ch = self.escape.warning_velocity(v_des_b, th, obs.unhealthy, obs.yaw, self.cfg.env.v_max_nominal)
+        ch = self.escape.warning_velocity(v_des_b, th, obs.unhealthy, obs.yaw, self.cfg.env.v_max_nominal,
+                                          p2=self._p2(gc, R), hold=self._hold(gc, R))
+        self._after_choice(ch)
         self.last_choice = ch
         return R @ ch.v_body
 
     def collision_avoidance(self, obs: LocalObservation, current_world: np.ndarray,
-                            v_mission_world: np.ndarray) -> np.ndarray:
+                            v_mission_world: np.ndarray, gc: Optional[gs.GateConstraint] = None) -> np.ndarray:
         env, sep = self.cfg.env, self.cfg.sep
         R = obs.R_wb
         th = self.threats(obs, sep.d_ca_exit)
@@ -352,15 +470,18 @@ class Flows:
         z = obs.p[2]
         ch = self.escape.escape_velocity(th, obs.unhealthy, obs.yaw, env.v_escape, current_body=R.T @ current_world,
                                          mission_body=R.T @ v_mission_world, occupied=occupied,
-                                         depth_room=(z - env.z_min, env.z_max - z))
+                                         depth_room=(z - env.z_min, env.z_max - z), p2=self._p2(gc, R),
+                                         hold=self._hold(gc, R))
+        self._after_choice(ch)
         self.last_choice = ch
         return R @ ch.v_body
 
-    def failsafe(self, obs: LocalObservation, probe: bool = False, amp: float = 0.3, period: float = 8.0) -> np.ndarray:
+    def failsafe(self, obs: LocalObservation, probe: bool = False, amp: float = None, period: float = 8.0) -> np.ndarray:
         """Hold the position at the own failsafe layer.  With ``probe`` (an envelope violation is declared) the
         held depth oscillates by +-``amp`` (period ``period``, twice the monitor's window): the vehicle shows,
         with its own DVL, that it moves when asked to before the violation is cleared
         (controller.EnvelopeMonitor)."""
+        amp = FAILSAFE_PROBE_M if amp is None else amp
         if self.hold_pos is None:
             self.hold_pos = obs.p.copy()
             self.hold_pos[2] = float(np.clip(obs.p[2] + self.plan.failsafe_layer_dz, self.cfg.env.z_min + 0.5,
