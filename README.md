@@ -311,8 +311,11 @@ per vehicle; `formation_six` (6 vehicles) is simulated only.
     (gate_single, st_gate_pair, gate_four, line_parallel_mutex, mutex_deadlock_resolution, st_lost_committed, a stage-2
     hold with an along-axis navigation bias of -1.0, -0.5, +0.5 and +1.0 m, a vehicle held by an occupant with a third
     vehicle approaching it from behind) and the P1 set (p1_head_on, p1_close_encounter, p1_vertical_escape, p1_two_lines,
-    formation_recovery_head_current, lost_drone_rejoin). Code at `8e7ebb5`, st_gate_pair at `9b42cec` (the final queue
-    line); raw logs in the local archive `v18-gate-safety-targeted-2026-11-20`.
+    formation_recovery_head_current, lost_drone_rejoin). They ran on two development snapshots, `8e7ebb5` and `9b42cec`
+    for st_gate_pair, later squashed into the merged commit. The sha256 of every `holo_fleet` file is recorded in
+    `code_hashes_*.json` and equals the merged code except a docstring of `sim/scenarios.py` and, for `8e7ebb5`, the
+    queue allowance in `config.py`, which moves only the two-column queue line (st_gate_pair). Raw logs are in the local
+    archive `v18-gate-safety-targeted-2026-11-20`.
   - **P1 and P2:** held in every run (minimum separation between fleet vehicles 2.68 m, at most one vehicle in the CR, no
     CR entry without admission). The true clearance of a held vehicle to the CR was 1.49-1.78 m, against 0.43 m in v13
     and 0.76-0.81 m in v11 reference runs of the same scenarios.
