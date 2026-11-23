@@ -261,6 +261,24 @@ class FormationRule:
     follow_on_m: float = 0.08
     follow_off_m: float = 0.04
     a_follow: float = 0.05
+    v_catch_min: float = 0.10
+
+    def keeping_cap(self, v_plan: float) -> float:
+        """Horizontal speed cap of the formation-keeping modes at the planned reference speed ``v_plan`` [m/s].
+
+        The slot moves at up to v_plan, so a keeping cap at or below v_plan leaves no along-track catch-up authority:
+        a drone behind its slot by less than e_lost stays behind for ever (formal C1m).  The cap is v_slot_max, raised
+        to v_plan + v_catch_min when the plan is faster, never above the recovery cap (the vehicle authority)."""
+        return min(self.v_recovery_max, max(self.v_slot_max, v_plan + self.v_catch_min))
+
+    def check_clock_speed(self, v_plan: float) -> None:
+        """Operating-domain precondition of P3 (formal C4), checked when a mission plan is loaded: the planned speed
+        of the formation reference leaves the catch-up margin v_catch_min below the recovery cap (hence below the
+        keeping cap).  Raises ValueError on violation."""
+        if not v_plan + self.v_catch_min <= self.v_recovery_max + 1e-9:
+            raise ValueError(f"formation clock speed {v_plan:.3f} m/s leaves less than the catch-up margin "
+                             f"v_catch_min = {self.v_catch_min:.2f} m/s below v_recovery_max = {self.v_recovery_max:.2f} m/s "
+                             "(P3 operating domain, formal C4)")
 
     @property
     def catch_up(self) -> float:

@@ -247,7 +247,7 @@ class DroneController:
         incomplete = not obs.form.neighbors_ok or (mode not in IN_FORMATION and ftime.episode_t > 0.0
                                                    and obs.form.slot_err_norm > self.cfg.form.e_ok)
         ftime.update(t, dt, incomplete=incomplete, mutex=gate_flow, front_residual=obs.form.front_residual,
-                     keeping=mode in IN_FORMATION, behind=obs.form.behind)
+                     keeping=mode in IN_FORMATION, behind=obs.form.behind, behind_rep=obs.form.behind_rep)
         self.last_obs = obs
         ch = self.flows.last_choice
         self.last_record = {

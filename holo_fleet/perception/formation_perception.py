@@ -56,6 +56,7 @@ class FormationObs:
     required: List[int] = field(default_factory=list)
     front_residual: Optional[float] = None
     behind: Optional[float] = None
+    behind_rep: Optional[float] = None
 
 
 def same_lane_ahead(plan: MissionPlan, lane_tol: float = 1.0) -> List[int]:

@@ -14,7 +14,9 @@ rate * v_plan changes by at most ``a_wait`` per second, into and out of the redu
 step).  The reduced progress lasts at most ``t_rejoin`` of moving formation time per episode: the bound after
 which a waiting drone declares the slot vacant and continues at the planned speed (DEGRADED_FORMATION).
 ``tau`` is kept afterwards: the formation stays behind the plan by tau seconds, it does not speed up to
-recover the schedule.
+recover the schedule - except inside a planned hold of the shared clock (the rendezvous), where the reference is
+stationary and the delay is absorbed without moving the slot: tau becomes max(0, t - end of the hold), so drones
+whose delays are within the dwell leave the hold together, on schedule (``_hold_resync``, formal C3h).
 
 Re-synchronisation (B2 fixes).  ``tau`` is private, so drones that slowed in different episodes - or falsely, on a
 neighbour missed by the sonar - end with different delays: their slots, each placed by its own formation time,
@@ -28,8 +30,11 @@ largest one, as the progress consensus of coordinated path following (Ghabcheloo
 doi:10.1137/060678993), here from sensed progress, without communication; with the dead band it is a PRACTICAL
 consensus: the residual offset is bounded by the band (k_sigma * sigma_w(r), about 0.6-0.8 m at 3.5-5 m) plus the
 constant biases of the envelope, not driven to zero.  The speed stays in [v_wait, v_plan], the same range as the
-reduced progress, so the catch-up margin of a recovering drone (formal F1) is unchanged.  Without receptions (a silent channel) only the
-same-lane rules below act.
+reduced progress, so the catch-up margin of a recovering drone (formal F1) is unchanged.  While the drone keeps its slot
+the lag of the relative fixes counts too; off its slot (FORMATION_RECOVERY, avoidance, FAILSAFE) only the lag measured on
+the neighbours' reported positions (``behind_rep``), which does not depend on the own displacement: without it a pair
+whose delays differ can stay in FORMATION_RECOVERY for ever, its range residual above e_ok (formal C2m).  Without
+receptions (a silent channel) only the same-lane rules below act.
 
 Who slows down, each from its own observation only:
 
@@ -57,8 +62,11 @@ Who slows down, each from its own observation only:
     absence after the drone ahead already resumed does not fall behind it.  Out of its slot (recovery) the
     residual measures its own displacement, so only the first rule applies.
 
-  Other pairs (abreast, diagonal) only shear or stretch, which the sonar progress consensus (sigma,
-  Flows.formation) absorbs.
+  Other pairs (abreast, diagonal) only shear or stretch, which the progress consensus (sigma, Flows.formation)
+  absorbs - except, in B0, the along offset of an exactly abreast pair: its range residual sqrt(L^2 + D^2) - L has no
+  along-track component (along weight 0), so the sonar cannot drive sigma and an offset D >= sqrt((L + e_ok)^2 - L^2)
+  (1.94 m at L = 3.5 m) keeps the residual above e_ok (a declared limit of the B0 baseline; the rendezvous hold
+  re-synchronises it).
 
 In the mutex zone (gate flow) the rate returns to nominal and the episode timer is frozen: the gate protocol
 has its own timing and the clock holds at the rendezvous.  Planned holds stay as planned (v_plan = 0: nothing
@@ -83,6 +91,7 @@ class FormationTime:
         self.ahead_away = False
         self.reduced = False
         self.sync = 0.0
+        self.resync = 0.0
 
     def now(self, t: float) -> float:
         """Own formation time at mission time t."""
@@ -100,14 +109,18 @@ class FormationTime:
         return self.rate * self.plan_speed(t, dt)
 
     def update(self, t: float, dt: float, incomplete: bool, mutex: bool = False,
-               front_residual: Optional[float] = None, keeping: bool = True, behind: Optional[float] = None) -> None:
+               front_residual: Optional[float] = None, keeping: bool = True, behind: Optional[float] = None,
+               behind_rep: Optional[float] = None) -> None:
         """Advance by one control step.  ``incomplete``: an expected neighbour is missing and not vacant (own
         perception); ``mutex``: the drone follows the gate flow (mutex zone or committed); ``front_residual``: range
         residual of the neighbour directly ahead on the same lane, None when there is none or it is not seen;
         ``keeping``: the drone is in a formation-keeping mode (on its slot); ``behind``: the largest lag of a
         non-vacant neighbour behind the slot the own formation time places it at, beyond the white-noise band of the
-        fixes (FormationObs.behind), None without one."""
+        fixes (FormationObs.behind), None without one; ``behind_rep``: the same lag from the neighbours' reported
+        positions only (FormationObs.behind_rep), which does not depend on where the drone itself is: it drives the
+        re-synchronisation while the drone is off its slot (not ``keeping``)."""
         fr = self.cfg.form
+        self._hold_resync(t)
         v_plan = self.plan_speed(t, dt)
         moving = v_plan > 1e-6
         if not incomplete:
@@ -125,8 +138,9 @@ class FormationTime:
         else:
             reduced = own or self.following
         self.reduced = reduced
-        self.sync = 0.0 if (mutex or behind is None or not moving or not keeping) else min(
-            fr.k_progress * behind, max(0.0, v_plan - fr.v_wait))
+        lag = behind if keeping else behind_rep
+        self.sync = 0.0 if (mutex or lag is None or not moving) else min(
+            fr.k_progress * lag, max(0.0, v_plan - fr.v_wait))
         if not moving:
             self.rate = 1.0
         else:
@@ -136,6 +150,21 @@ class FormationTime:
             a_up = fr.a_follow if self.ahead_away else fr.a_wait
             self.rate += max(-a_down * dt / v_plan, min(a_up * dt / v_plan, target - self.rate))
         self.tau += (1.0 - self.rate) * dt
+
+    def _hold_resync(self, t: float) -> None:
+        """Rendezvous re-synchronisation: while the own formation time is inside a planned hold of the shared clock the
+        reference is stationary, so the delay tau is absorbed by the hold without moving the slot: tau becomes
+        max(0, t - end of the hold), i.e. the own formation time jumps forward to min(t, end), still inside the hold.
+        Drones whose delays are at most the dwell leave the hold together, on the planned schedule (formal C3h)."""
+        if self.clock is None or self.tau <= 0.0 or not hasattr(self.clock, "hold_end"):
+            return
+        end = self.clock.hold_end(self.now(t))
+        if end is None:
+            return
+        tau = max(0.0, t - end)
+        if tau < self.tau:
+            self.resync += self.tau - tau
+            self.tau = tau
 
     def record(self, t: float, dt: float = 0.1) -> dict:
         return {"tau": round(self.tau, 2), "v_ref": round(self.speed(t, dt), 3), "reduced": self.reduced,

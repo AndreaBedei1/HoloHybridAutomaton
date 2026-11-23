@@ -28,6 +28,14 @@ def test_formation_liveness_suite():
 
 
 @pytest.mark.slow
+def test_coupled_formation_recovery_suite():
+    import check_formation_coupled
+
+    rep = check_formation_coupled.run(verbose=False)
+    assert rep.ok, _failed(rep)
+
+
+@pytest.mark.slow
 def test_mutex_suite():
     import check_mutex
 

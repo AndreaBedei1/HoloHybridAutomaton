@@ -19,6 +19,11 @@ unrejected disturbance after the low-level integrator has converged is |w| <= w_
 
 The binding case of F1 is v_ref = v_clock (the smallest catch-up margin); a slower reference only adds margin.
 
+Scope.  The deployed law has ONE 2-norm horizontal cap (flows._cap), the keeping-mode cap FormationRule.keeping_cap and
+the private formation clocks of the drones; the per-axis ranking of F1 is not a ranking of that coupled law
+(counterexample C1x).  The coupled law, the clocks, the rendezvous and the operating domain are checked in
+check_formation_coupled.py (C1-C4); F1-F3 stay the per-axis abstraction they are.
+
 F1  far band (saturated): |e| decreases by >= eps_far per step whenever |e| >= e1  (ranking R1);
 F2  near band (linear):   |e| decreases by >= eps_near per step whenever e* <= |e| <= e1 (ranking R2);
 F3  the ball |e| <= e* is invariant (once recovered, the slot error stays recovered);

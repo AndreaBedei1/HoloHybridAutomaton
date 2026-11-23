@@ -1802,19 +1802,20 @@
   {
    "section": "6 Formation (P3)",
    "parameter": "Speed caps while following and recovering",
-   "module": "holo_fleet/config.py:FormationRule.v_slot_max, v_recovery_max",
+   "module": "holo_fleet/config.py:FormationRule.v_slot_max, v_recovery_max, v_catch_min, keeping_cap, check_clock_speed",
    "value": {
     "v_slot_max": 0.4,
-    "v_recovery_max": 0.5
+    "v_recovery_max": 0.5,
+    "v_catch_min": 0.1
    },
    "unit": "m/s",
    "verdict": "DESIGN_CHOICE",
-   "source": "design caps; v_recovery_max equals Envelope.v_max_nominal",
-   "doi_or_url": "-",
-   "derivation": "catch-up margin v_recovery_max - v_nominal = 0.2 m/s",
-   "validity": "Deliverable against head currents only up to about 0.21 m/s at 0.5 m/s (DI-27)",
+   "source": "design caps; v_recovery_max equals Envelope.v_max_nominal; v_catch_min equals the nominal keeping margin v_slot_max - v_nominal",
+   "doi_or_url": "formal/results/formation_coupled.json",
+   "derivation": "catch-up margin v_recovery_max - v_nominal = 0.2 m/s; keeping cap = min(v_recovery_max, max(v_slot_max, v_plan + v_catch_min)) so the keeping modes keep v_catch_min above the planned speed (v11: 0 at the 0.40 m/s clock of integrated_short, formal C1m); a clock with v_plan + v_catch_min > v_recovery_max is refused at plan time (formal C4); v_catch_min > w_res + s_res = 0.06 m/s",
+   "validity": "Deliverable against head currents only up to about 0.21 m/s at 0.5 m/s (DI-27); coupled 2-norm certificates C1f / C1n (check_formation_coupled.py)",
    "citation_keys": [],
-   "code_action": "none"
+   "code_action": "keeping cap raised with the plan speed; clock speed checked at plan time (P3 review 2026-11-23)"
   },
   {
    "section": "6 Formation (P3)",
