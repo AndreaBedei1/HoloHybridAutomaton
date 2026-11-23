@@ -68,6 +68,8 @@ class Flows:
         self.sigma = 0.0
         self.lam = 0.0
         self.lat_offset = np.zeros(3)
+        if plan.clock is not None:
+            cfg.form.check_clock_speed(plan.clock.v)
         self.ftime = FormationTime(plan.clock, cfg)
         self.last_choice: Optional[EscapeChoice] = None
         self.hold_pos: Optional[np.ndarray] = None
@@ -177,7 +179,7 @@ class Flows:
             v = v_al * t_hat + np.array([0.0, 0.0, fr.k_slot * float(e[2])])
         else:
             v = t_hat * v_clock + fr.k_slot * (entry - obs.p)
-        v = _cap(v, fr.v_recovery_max if recovering else fr.v_slot_max, 0.3)
+        v = _cap(v, fr.v_recovery_max if recovering else fr.keeping_cap(self.ftime.plan_speed(obs.t, dt)), 0.3)
         return v, math.atan2(t_hat[1], t_hat[0])
 
     def rejoin_entry(self, obs: LocalObservation, R_form: np.ndarray, s_ref: float) -> Optional[np.ndarray]:

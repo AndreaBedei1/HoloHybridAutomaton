@@ -25,6 +25,7 @@ import check_acoustic  # noqa: E402
 import check_determinism  # noqa: E402
 import check_fleet  # noqa: E402
 import check_formation  # noqa: E402
+import check_formation_coupled  # noqa: E402
 import check_gate_safety  # noqa: E402
 import check_mutex  # noqa: E402
 import check_observations  # noqa: E402
@@ -39,6 +40,9 @@ SUITES = [
     ("P1 inter-vehicle separation", check_separation, "formal/check_separation.py"),
     ("P2 critical-region mutual exclusion", check_mutex, "holo_fleet/ha/mutex_rule.py + formal/check_mutex.py"),
     ("P3 formation recovery (liveness, ranking functions)", check_formation, "formal/check_formation.py"),
+    ("P3 coupled recovery: 2-norm saturated law, private formation clocks, rendezvous, operating domain",
+     check_formation_coupled, "holo_fleet/control/flows.py + holo_fleet/control/formation_time.py + "
+     "holo_fleet/perception/perception.py + formal/check_formation_coupled.py"),
     ("Variant B2 range-bearing beacon (own assumptions; B0 checks unchanged)", check_acoustic,
      "perception/acoustic.py + perception/acoustic_gate.py + formal/check_acoustic.py"),
     ("Payload v2: gate status, silence, verified passage", check_status,

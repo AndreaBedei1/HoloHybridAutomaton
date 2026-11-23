@@ -1,0 +1,386 @@
+{
+  "check": "formation_coupled",
+  "all_passed": true,
+  "results": [
+    {
+      "prop": "C4 operating domain (FormationRule.check_clock_speed raises outside it): every admitted clock speed leaves the catch-up margin v_catch_min = 0.1 in the keeping and the recovery modes, the caps within the vehicle authority v_max_nominal = 0.5, and v_catch_min > w_res + s_res",
+      "formula": "v_plan + v_catch_min <= v_rec -> keeping_cap - v_plan >= v_catch_min, v_rec - v_plan >= v_catch_min, keeping_cap <= v_rec <= v_max_nominal, v_catch_min > w_res + s_res",
+      "encoding": "formal/check_formation_coupled.py (Flows.formation 2-norm cap + FormationRule.keeping_cap, FormationTime, Perception._rep_offset)",
+      "expect": "unsat",
+      "verdict": "unsat",
+      "passed": true,
+      "seconds": 0.004,
+      "counterexample": null,
+      "note": "keeping_cap = min(v_recovery_max, max(v_slot_max, v_plan + v_catch_min)), the code of Flows.formation"
+    },
+    {
+      "prop": "C4m mutation (v11): the constant keeping cap v_slot_max leaves no margin at an admitted clock (integrated_short 0.40 m/s)",
+      "formula": "exists v_plan in the domain: v_slot_max - v_plan < v_catch_min",
+      "encoding": "formal/check_formation_coupled.py (Flows.formation 2-norm cap + FormationRule.keeping_cap, FormationTime, Perception._rep_offset)",
+      "expect": "sat",
+      "verdict": "sat",
+      "passed": true,
+      "seconds": 0.001,
+      "counterexample": {
+        "v_plan": 0.4
+      },
+      "note": ""
+    },
+    {
+      "prop": "C3e one reduced-progress episode adds at most d_max t_rejoin + v d_max^2 / (2 a_wait) = 10.83 s to tau (v_plan 0.30: 3.25 m of reference offset)",
+      "formula": "inductive invariant: running: tau <= d_max E;  ended: tau + v d^2 / (2 a) <= d_max E + v d_max^2 / (2 a)",
+      "encoding": "formal/check_formation_coupled.py (Flows.formation 2-norm cap + FormationRule.keeping_cap, FormationTime, Perception._rep_offset)",
+      "expect": "unsat",
+      "verdict": "unsat",
+      "passed": true,
+      "seconds": 0.007,
+      "counterexample": null,
+      "note": "control/formation_time.py: rate ramps at a_wait / v_plan, d = 1 - rate, E the moving time of the episode (<= t_rejoin); same-lane following and the sync follow another drone's tau"
+    },
+    {
+      "prop": "C3h rendezvous hold (FormationTime._hold_resync): inside a planned hold tau' = max(0, t - end) keeps the slot still, never raises tau, contracts the difference of two drones and zeroes it when both are within the dwell",
+      "formula": "in hold -> 0 <= tau' <= tau, t - tau' in hold, |tau_i' - tau_j'| <= |tau_i - tau_j|, (t <= end -> tau_i' = tau_j' = 0)",
+      "encoding": "formal/check_formation_coupled.py (Flows.formation 2-norm cap + FormationRule.keeping_cap, FormationTime, Perception._rep_offset)",
+      "expect": "unsat",
+      "verdict": "unsat",
+      "passed": true,
+      "seconds": 0.001,
+      "counterexample": null,
+      "note": ""
+    },
+    {
+      "prop": "C3m mutation (v11): without the hold re-synchronisation two drones leave the rendezvous with the delay difference they brought",
+      "formula": "exists tau_i != tau_j in the hold: tau' = tau",
+      "encoding": "formal/check_formation_coupled.py (Flows.formation 2-norm cap + FormationRule.keeping_cap, FormationTime, Perception._rep_offset)",
+      "expect": "sat",
+      "verdict": "sat",
+      "passed": true,
+      "seconds": 0.0,
+      "counterexample": {
+        "H": 2.0,
+        "end": 0.0,
+        "t": 0.0,
+        "tau_i": 0.0,
+        "tau_j": 2.0
+      },
+      "note": ""
+    },
+    {
+      "prop": "C2a clock consensus, nominal clock (v_plan 0.30): max(0, X - B - delta) + (rho_d - rho_i)^+ decreases by >= 0.00040 m per step while X > B + delta (B = band_max + eta = 1.50 m, delta = 0.05), sigma by consensus or frozen",
+      "formula": "X > B + delta -> X' <= B + delta or R' <= R - eps",
+      "encoding": "formal/check_formation_coupled.py (Flows.formation 2-norm cap + FormationRule.keeping_cap, FormationTime, Perception._rep_offset)",
+      "expect": "unsat",
+      "verdict": "unsat",
+      "passed": true,
+      "seconds": 0.003,
+      "counterexample": null,
+      "note": "rate 0.0040 m/s (k_progress delta at most, after the rate ramp); the drone behind keeps its speed (C2j); eventual agreement |X| <= B + delta, by the symmetry i <-> j"
+    },
+    {
+      "prop": "C2b ultimate band, nominal clock: |X| <= B + 2 delta = 1.60 m is invariant (sigma by consensus or frozen)",
+      "formula": "-(B + 2 delta) <= X <= B + 2 delta -> X' within the same band",
+      "encoding": "formal/check_formation_coupled.py (Flows.formation 2-norm cap + FormationRule.keeping_cap, FormationTime, Perception._rep_offset)",
+      "expect": "unsat",
+      "verdict": "unsat",
+      "passed": true,
+      "seconds": 0.007,
+      "counterexample": null,
+      "note": "one step moves X by less than delta; above B + delta it decreases (C2a)"
+    },
+    {
+      "prop": "C2c lock exclusion, nominal clock: an abreast pair 3.5 m apart within the band has a range residual below e_ok (B + 2 delta = 1.60 m < sqrt((L + e_ok)^2 - L^2) = 1.94 m)",
+      "formula": "X^2 <= (B + 2 delta)^2 -> sqrt(L^2 + X^2) - L < e_ok",
+      "encoding": "formal/check_formation_coupled.py (Flows.formation 2-norm cap + FormationRule.keeping_cap, FormationTime, Perception._rep_offset)",
+      "expect": "unsat",
+      "verdict": "unsat",
+      "passed": true,
+      "seconds": 0.004,
+      "counterexample": null,
+      "note": "the guard self_recovered is then reachable (with C1n)"
+    },
+    {
+      "prop": "C2a clock consensus, domain edge (v_plan 0.40): max(0, X - B - delta) + (rho_d - rho_i)^+ decreases by >= 0.00040 m per step while X > B + delta (B = band_max + eta = 1.75 m, delta = 0.05), sigma by consensus or frozen",
+      "formula": "X > B + delta -> X' <= B + delta or R' <= R - eps",
+      "encoding": "formal/check_formation_coupled.py (Flows.formation 2-norm cap + FormationRule.keeping_cap, FormationTime, Perception._rep_offset)",
+      "expect": "unsat",
+      "verdict": "unsat",
+      "passed": true,
+      "seconds": 0.003,
+      "counterexample": null,
+      "note": "rate 0.0040 m/s (k_progress delta at most, after the rate ramp); the drone behind keeps its speed (C2j); eventual agreement |X| <= B + delta, by the symmetry i <-> j"
+    },
+    {
+      "prop": "C2b ultimate band, domain edge: |X| <= B + 2 delta = 1.85 m is invariant (sigma by consensus or frozen)",
+      "formula": "-(B + 2 delta) <= X <= B + 2 delta -> X' within the same band",
+      "encoding": "formal/check_formation_coupled.py (Flows.formation 2-norm cap + FormationRule.keeping_cap, FormationTime, Perception._rep_offset)",
+      "expect": "unsat",
+      "verdict": "unsat",
+      "passed": true,
+      "seconds": 0.004,
+      "counterexample": null,
+      "note": "one step moves X by less than delta; above B + delta it decreases (C2a)"
+    },
+    {
+      "prop": "C2c lock exclusion, domain edge: an abreast pair 3.5 m apart within the band has a range residual below e_ok (B + 2 delta = 1.85 m < sqrt((L + e_ok)^2 - L^2) = 1.94 m)",
+      "formula": "X^2 <= (B + 2 delta)^2 -> sqrt(L^2 + X^2) - L < e_ok",
+      "encoding": "formal/check_formation_coupled.py (Flows.formation 2-norm cap + FormationRule.keeping_cap, FormationTime, Perception._rep_offset)",
+      "expect": "unsat",
+      "verdict": "unsat",
+      "passed": true,
+      "seconds": 0.0,
+      "counterexample": null,
+      "note": "the guard self_recovered is then reachable (with C1n)"
+    },
+    {
+      "prop": "C2j the drone behind sees no lag in the region X >= 0: it does not slow down (its rate ramps back to 1 at a_wait), so only the drone ahead re-synchronises",
+      "formula": "X >= 0 -> -X - n_j - band_j <= 0",
+      "encoding": "formal/check_formation_coupled.py (Flows.formation 2-norm cap + FormationRule.keeping_cap, FormationTime, Perception._rep_offset)",
+      "expect": "unsat",
+      "verdict": "unsat",
+      "passed": true,
+      "seconds": 0.003,
+      "counterexample": null,
+      "note": ""
+    },
+    {
+      "prop": "C2l declared limit: the ranking of C2a is not a ranking when sigma only leaks (leak-only: an abreast B2 pair beyond the presence gate, its sonar residual without along part): the leak can push X up faster than the re-synchronisation pulls it down; a common ranking across the sigma regimes is open",
+      "formula": "exists a leak step with X > B + delta, R' > R - eps",
+      "encoding": "formal/check_formation_coupled.py (Flows.formation 2-norm cap + FormationRule.keeping_cap, FormationTime, Perception._rep_offset)",
+      "expect": "sat",
+      "verdict": "sat",
+      "passed": true,
+      "seconds": 0.0,
+      "counterexample": {
+        "D": 1.5535,
+        "band": 1.0,
+        "n_i": 0.5,
+        "n_sig_i": 0.0,
+        "n_sig_j": 0.0,
+        "near_i": false,
+        "near_j": true,
+        "rho_i": 0.020206666666666668,
+        "sigma_i": 0.05,
+        "sigma_j": 0.0531
+      },
+      "note": "X + |sigma_i| + |sigma_j| is non-increasing in the leak / frozen regime (C2d); the closed loop with the switching converges offline (tests/test_p3_recovery_fixes.py), not proved"
+    },
+    {
+      "prop": "C2d leak / frozen regime: X + |sigma_i| + |sigma_j| never increases, and decreases by dt v rho_i'",
+      "formula": "Phi' <= Phi - dt v rho_i'",
+      "encoding": "formal/check_formation_coupled.py (Flows.formation 2-norm cap + FormationRule.keeping_cap, FormationTime, Perception._rep_offset)",
+      "expect": "unsat",
+      "verdict": "unsat",
+      "passed": true,
+      "seconds": 0.001,
+      "counterexample": null,
+      "note": ""
+    },
+    {
+      "prop": "C2m mutation (v11, the defect): without the re-synchronisation in FORMATION_RECOVERY a pair of drones both recovering, sigma relaxed, X >= 1.94 m stays there (the residual of the abreast pair stays above e_ok: FORMATION_RECOVERY for ever)",
+      "formula": "exists a state of the lock set whose successor is in it with X' = X",
+      "encoding": "formal/check_formation_coupled.py (Flows.formation 2-norm cap + FormationRule.keeping_cap, FormationTime, Perception._rep_offset)",
+      "expect": "sat",
+      "verdict": "sat",
+      "passed": true,
+      "seconds": 0.0,
+      "counterexample": {
+        "D": -2.0,
+        "band": 0.75,
+        "n_i": 0.0,
+        "n_sig_i": 0.0,
+        "n_sig_j": 0.0,
+        "rho_i": 0.0,
+        "sigma_i": 0.0,
+        "sigma_j": 0.0
+      },
+      "note": "the set {rho_i = 0, sigma = 0, X >= 1.94 m} is closed under the v11 step; offline: delays of 8 s and more"
+    },
+    {
+      "prop": "C2s scope: a step without a fresh payload fix (no lag) lets the slowdown ramp back, the ranking increases: the premise of a fresh fix in every step (A7) is where C2a ends",
+      "formula": "exists a step without a fix: R' > R",
+      "encoding": "formal/check_formation_coupled.py (Flows.formation 2-norm cap + FormationRule.keeping_cap, FormationTime, Perception._rep_offset)",
+      "expect": "sat",
+      "verdict": "sat",
+      "passed": true,
+      "seconds": 0.003,
+      "counterexample": {
+        "D": 3.52133794682962,
+        "band": 0.5,
+        "n_i": 0.0,
+        "n_sig_i": -0.5,
+        "n_sig_j": 0.5,
+        "near_i": false,
+        "near_j": false,
+        "rho_i": 0.013234811165845649,
+        "sigma_i": -1.9876730801504487,
+        "sigma_j": -0.016433655488316535
+      },
+      "note": ""
+    },
+    {
+      "prop": "C1f far band B0, nominal clock v_plan 0.30: coupled 2-norm cap 0.5 (RECOVERY), ||w||2 <= 0.05, |lambda_dot| <= 0.000: ||e|| decreases on [1.2, 8.0] m",
+      "formula": "e_lost <= ||e|| <= 8 -> ||e'|| <= ||e|| - dt eps (all cells)",
+      "encoding": "formal/check_formation_coupled.py (Flows.formation 2-norm cap + FormationRule.keeping_cap, FormationTime, Perception._rep_offset)",
+      "expect": "unsat",
+      "verdict": "unsat",
+      "passed": true,
+      "seconds": 16.8,
+      "counterexample": null,
+      "note": "certified decrease eps = 0.1270 m/s (exact rational cells, sigma frozen beyond e_lost)"
+    },
+    {
+      "prop": "C1f far band B2, nominal clock v_plan 0.30: coupled 2-norm cap 0.5 (RECOVERY), ||w||2 <= 0.05, |lambda_dot| <= 0.200: ||e|| decreases on [1.2, 8.0] m",
+      "formula": "e_lost <= ||e|| <= 8 -> ||e'|| <= ||e|| - dt eps (all cells)",
+      "encoding": "formal/check_formation_coupled.py (Flows.formation 2-norm cap + FormationRule.keeping_cap, FormationTime, Perception._rep_offset)",
+      "expect": "unsat",
+      "verdict": "unsat",
+      "passed": true,
+      "seconds": 20.7,
+      "counterexample": null,
+      "note": "certified decrease eps = 0.0293 m/s (exact rational cells, sigma frozen beyond e_lost)"
+    },
+    {
+      "prop": "C1f far band B0, domain edge v_plan 0.40: coupled 2-norm cap 0.5 (RECOVERY), ||w||2 <= 0.05, |lambda_dot| <= 0.000: ||e|| decreases on [1.2, 8.0] m",
+      "formula": "e_lost <= ||e|| <= 8 -> ||e'|| <= ||e|| - dt eps (all cells)",
+      "encoding": "formal/check_formation_coupled.py (Flows.formation 2-norm cap + FormationRule.keeping_cap, FormationTime, Perception._rep_offset)",
+      "expect": "unsat",
+      "verdict": "unsat",
+      "passed": true,
+      "seconds": 12.9,
+      "counterexample": null,
+      "note": "certified decrease eps = 0.0313 m/s (exact rational cells, sigma frozen beyond e_lost)"
+    },
+    {
+      "prop": "C1n near band, keeping, nominal clock (cap 0.40, v_plan 0.30), residual consensus drift |sigma_dot|, |lambda_dot| <= 0.01 (A6), ||w||2 <= 0.05: ||e|| decreases on [r_in, e_lost] and the ball r_in + dt E_in < e_ok is invariant",
+      "formula": "r_in <= ||e|| <= e_lost -> ||e'|| <= ||e|| - dt eps;  ||e|| <= r_in -> ||e'|| <= r_in + dt E_in",
+      "encoding": "formal/check_formation_coupled.py (Flows.formation 2-norm cap + FormationRule.keeping_cap, FormationTime, Perception._rep_offset)",
+      "expect": "unsat",
+      "verdict": "unsat",
+      "passed": true,
+      "seconds": 2.4,
+      "counterexample": null,
+      "note": "r_in = 0.375 m, ball 0.413 m (e_ok = 0.5), eps >= 0.002 m/s on the band"
+    },
+    {
+      "prop": "C1n near band, keeping, domain edge (cap 0.50, v_plan 0.40), residual consensus drift |sigma_dot|, |lambda_dot| <= 0.01 (A6), ||w||2 <= 0.05: ||e|| decreases on [r_in, e_lost] and the ball r_in + dt E_in < e_ok is invariant",
+      "formula": "r_in <= ||e|| <= e_lost -> ||e'|| <= ||e|| - dt eps;  ||e|| <= r_in -> ||e'|| <= r_in + dt E_in",
+      "encoding": "formal/check_formation_coupled.py (Flows.formation 2-norm cap + FormationRule.keeping_cap, FormationTime, Perception._rep_offset)",
+      "expect": "unsat",
+      "verdict": "unsat",
+      "passed": true,
+      "seconds": 2.6,
+      "counterexample": null,
+      "note": "r_in = 0.375 m, ball 0.421 m (e_ok = 0.5), eps >= 0.002 m/s on the band"
+    },
+    {
+      "prop": "C1n near band, RECOVERY, nominal clock (cap 0.50, v_plan 0.30), residual consensus drift |sigma_dot|, |lambda_dot| <= 0.01 (A6), ||w||2 <= 0.05: ||e|| decreases on [r_in, e_lost] and the ball r_in + dt E_in < e_ok is invariant",
+      "formula": "r_in <= ||e|| <= e_lost -> ||e'|| <= ||e|| - dt eps;  ||e|| <= r_in -> ||e'|| <= r_in + dt E_in",
+      "encoding": "formal/check_formation_coupled.py (Flows.formation 2-norm cap + FormationRule.keeping_cap, FormationTime, Perception._rep_offset)",
+      "expect": "unsat",
+      "verdict": "unsat",
+      "passed": true,
+      "seconds": 1.6,
+      "counterexample": null,
+      "note": "r_in = 0.375 m, ball 0.413 m (e_ok = 0.5), eps >= 0.002 m/s on the band"
+    },
+    {
+      "prop": "C1n near band, RECOVERY, domain edge (cap 0.50, v_plan 0.40), residual consensus drift |sigma_dot|, |lambda_dot| <= 0.01 (A6), ||w||2 <= 0.05: ||e|| decreases on [r_in, e_lost] and the ball r_in + dt E_in < e_ok is invariant",
+      "formula": "r_in <= ||e|| <= e_lost -> ||e'|| <= ||e|| - dt eps;  ||e|| <= r_in -> ||e'|| <= r_in + dt E_in",
+      "encoding": "formal/check_formation_coupled.py (Flows.formation 2-norm cap + FormationRule.keeping_cap, FormationTime, Perception._rep_offset)",
+      "expect": "unsat",
+      "verdict": "unsat",
+      "passed": true,
+      "seconds": 2.5,
+      "counterexample": null,
+      "note": "r_in = 0.375 m, ball 0.421 m (e_ok = 0.5), eps >= 0.002 m/s on the band"
+    },
+    {
+      "prop": "C1x scope: the per-axis along ranking |e_a| of F1 (check_formation.py) is not a ranking of the deployed coupled 2-norm cap (far band, RECOVERY, nominal clock): the per-axis model is an abstraction gap",
+      "formula": "exists e, w: |e_a'| > |e_a| - dt 0.001",
+      "encoding": "formal/check_formation_coupled.py (Flows.formation 2-norm cap + FormationRule.keeping_cap, FormationTime, Perception._rep_offset)",
+      "expect": "sat",
+      "verdict": "sat",
+      "passed": true,
+      "seconds": 0.004,
+      "counterexample": {
+        "c": 0.0,
+        "ea": 2.0,
+        "el": -3.6362373715451213,
+        "n": 2.0,
+        "va": 0.2875,
+        "vl": -0.4090767042985135,
+        "vr": 0.25,
+        "wa": -0.046875,
+        "wl": 0.0
+      },
+      "note": "a large lateral error takes the 2-norm budget from the along axis; ||e|| (C1f) is the ranking of the coupled law"
+    },
+    {
+      "prop": "C1l1 declared limit: at the transient consensus bound |sigma_dot| <= 0.136 (the bound of check_formation.py) the keeping-mode near band has no decrease: a drone behind its slot with sigma moving its slot ahead stays behind (sigma is a feedback state, C2; premise A6)",
+      "formula": "exists e_a in [e_ok, e_lost]: e_a' >= e_a",
+      "encoding": "formal/check_formation_coupled.py (Flows.formation 2-norm cap + FormationRule.keeping_cap, FormationTime, Perception._rep_offset)",
+      "expect": "sat",
+      "verdict": "sat",
+      "passed": true,
+      "seconds": 0.0,
+      "counterexample": {
+        "e_a": 0.5,
+        "sigma_dot": 0.136,
+        "v_ref": 0.214,
+        "w_a": -0.05
+      },
+      "note": "B0: the sonar residual also contains the own error (sigma_dot ~ +k_progress e), a genuine positive feedback limited by the leak and the clip"
+    },
+    {
+      "prop": "C1l2 declared limit: B2 far band at the domain edge (v_plan 0.40, RECOVERY cap 0.5) with the adversarial lateral consensus |lambda_dot| <= 0.212 (A8): ||e|| need not decrease (lambda is a feedback state)",
+      "formula": "exists e, w, lambda_dot: ||e'|| >= ||e||",
+      "encoding": "formal/check_formation_coupled.py (Flows.formation 2-norm cap + FormationRule.keeping_cap, FormationTime, Perception._rep_offset)",
+      "expect": "sat",
+      "verdict": "sat",
+      "passed": true,
+      "seconds": 14.576,
+      "counterexample": {
+        "/0": "[(0.2821340273?, 2) -> 0.1410670136?,\n (307/320, 2) -> 307/640,\n else -> 0]",
+        "c": -0.1,
+        "ea": 3.375,
+        "el": 1.47615123255855,
+        "lambda_dot": 0.212,
+        "m": 3.6837002404358827,
+        "m1": 3.68408203125,
+        "n": 2.0,
+        "va": 0.4796875,
+        "vl": 0.1410670136632533,
+        "wa": -0.046875,
+        "wl": -0.013338883860342321
+      },
+      "note": "at the nominal clock the same bound is certified (C1f B2); B0 is certified at both"
+    },
+    {
+      "prop": "C1m mutation (v11 integrated_short, the defect): keeping cap v_slot_max = 0.4 at a clock of 0.4 m/s leaves no along catch-up authority: a drone behind its slot (e_ok <= e_a <= e_lost) never closes, even without disturbance",
+      "formula": "exists e_a in [e_ok, e_lost]: e_a' >= e_a",
+      "encoding": "formal/check_formation_coupled.py (Flows.formation 2-norm cap + FormationRule.keeping_cap, FormationTime, Perception._rep_offset)",
+      "expect": "sat",
+      "verdict": "sat",
+      "passed": true,
+      "seconds": 0.0,
+      "counterexample": {
+        "e_a": 0.5,
+        "sigma_dot": 0.0,
+        "v_ref": 0.4,
+        "w_a": 0.0
+      },
+      "note": "fixed by FormationRule.keeping_cap (C1n keeping, domain edge) and C4"
+    },
+    {
+      "prop": "C1z vertical channel: |e_z| decreases outside and stays inside the ball 0.122 m",
+      "formula": "|e_z| >= b -> |e_z'| < |e_z|;  |e_z| <= b -> |e_z'| <= b",
+      "encoding": "formal/check_formation_coupled.py (Flows.formation 2-norm cap + FormationRule.keeping_cap, FormationTime, Perception._rep_offset)",
+      "expect": "unsat",
+      "verdict": "unsat",
+      "passed": true,
+      "seconds": 0.001,
+      "counterexample": null,
+      "note": "the 3-D slot error of the keeping modes is within sqrt(ball_h^2 + ball_z^2) (C1n, C1z)"
+    }
+  ]
+}

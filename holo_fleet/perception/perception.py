@@ -183,6 +183,8 @@ class Perception:
         self.acoustic_displaced: List[int] = []
         self.acoustic_corr: List[int] = []
         self.acoustic_lag: Dict[int, float] = {}
+        self.acoustic_lag_rep: Dict[int, float] = {}
+        self.t_form: Optional[float] = None
         self.acoustic_ahead: List[int] = []
         self.payload_present: List[int] = []
         self.present_since: Dict[int, float] = {}
@@ -326,20 +328,26 @@ class Perception:
 
     def _rep_offset(self, f, t: float, exp_world: np.ndarray, t_hat: np.ndarray):
         """Offset of a neighbour's reported position from where the own formation time places its slot, moved to t
-        at the clock speed, and the band of that comparison (module docstring); None without a usable payload."""
+        at the clock speed, and the band of that comparison (module docstring); None without a usable payload.  The
+        clock is read at the OWN formation time, the time base of the slots (inside a planned hold the reference does
+        not move even when mission time is past the hold); the band covers a neighbour moving at any speed between
+        v_wait and the keeping cap."""
         if not f.rep_ok:
             return None
         fr, clock = self.cfg.form, self.plan.clock
         age = max(t - f.t_tx, 0.0)
-        v_clk = clock.v if (clock is not None and clock.moving(t)) else 0.0
+        tf = t if self.t_form is None else self.t_form
+        v_clk = clock.v if (clock is not None and clock.moving(tf)) else 0.0
         off = f.rep.p + v_clk * age * t_hat - exp_world
-        return off, fr.e_ok + (fr.v_slot_max - fr.v_wait) * age
+        v_hi = fr.keeping_cap(clock.v if clock is not None else 0.0)
+        return off, fr.e_ok + (v_hi - fr.v_wait) * age
 
     def acoustic_neighbours(self, t: float, slot_err: np.ndarray, R_form: np.ndarray,
                             p_own: Optional[np.ndarray] = None) -> Optional[Dict[int, np.ndarray]]:
         """Rules A-P and A-D (module docstring); returns the fresh relative positions used for the association."""
         self.acoustic_present, self.acoustic_displaced, self.acoustic_fresh = [], [], []
         self.acoustic_lag, self.acoustic_ahead, self.payload_present = {}, [], []
+        self.acoustic_lag_rep = {}
         if not self.acoustic.enabled:
             return None
         a, fr = self.cfg.acoustic, self.cfg.form
@@ -374,7 +382,7 @@ class Perception:
                 along = float(np.median([float(r[0] @ t_hat) for r in reps]))
                 rb = max(r[1] for r in reps)
                 if along < -rb:
-                    self.acoustic_lag[k] = -along - rb
+                    self.acoustic_lag[k] = self.acoustic_lag_rep[k] = -along - rb
                 if (k not in self.acoustic_ahead and not ahead
                         and all(float(np.linalg.norm(r[0])) > fr.e_lost + A_DISPLACED_MARGIN + r[1] for r in reps)):
                     self.acoustic_displaced.append(k)
@@ -455,6 +463,7 @@ class Perception:
                t_form: Optional[float] = None, v_req: Optional[np.ndarray] = None) -> LocalObservation:
         t = frame.t
         t_form = t if t_form is None else t_form
+        self.t_form = t_form
         d = frame.data
         env = self.cfg.env
         nav = self.nav.update(t, dt, d.get("Compass"), d.get("DVLSensor"), d.get("DepthSensor"), d.get("IMUSensor"),
@@ -505,9 +514,11 @@ class Perception:
         if not self.cfg.form.neighbour_adaptation:
             form.missing, form.neighbors_ok, form.front_residual = [], True, None
             form.along_corr = form.lateral_corr = 0.0
-            self.acoustic_lag = {}
+            self.acoustic_lag, self.acoustic_lag_rep = {}, {}
         lags = [v for k, v in self.acoustic_lag.items() if k not in self.vacant]
         form.behind = max(lags) if lags else None
+        lags = [v for k, v in self.acoustic_lag_rep.items() if k not in self.vacant]
+        form.behind_rep = max(lags) if lags else None
         fr = self.cfg.form
         if form.form_err < fr.e_ok:
             self.ok_since = t if self.ok_since is None else self.ok_since
