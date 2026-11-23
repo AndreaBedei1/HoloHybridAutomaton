@@ -73,6 +73,7 @@ class Flows:
         self.hold_pos: Optional[np.ndarray] = None
         self.offset = np.zeros(3)
         self.cr_cleared = False
+        self.commit_t: Optional[float] = None
         self.past_centre = False
         self.reloc_hold = False
         self.hold_since: Optional[float] = None
@@ -288,7 +289,7 @@ class Flows:
             k += 1
         return path[-1]
 
-    def gate(self, obs: LocalObservation, mode: str) -> Tuple[np.ndarray, float]:
+    def gate(self, obs: LocalObservation, mode: str, admissible: bool = True) -> Tuple[np.ndarray, float]:
         """Gate flow.  MUTEX_PASS (committed): along the pass path; before admission the drone does not go beyond the
         stage-2 hold ``GateRule.stage2_hold_s`` (control/gate_safety.py: the nearest point where holding is P2-safe under
         the declared navigation error, minus the measured holding error), and is admitted (``cr_cleared``) there with a
@@ -299,7 +300,13 @@ class Flows:
         sector is nearer than the warning-exit band plus STANDOFF_MARGIN_M (a drone ahead of it in the corridor: the
         follower does not enter from behind the warning band of a drone that holds before the CR; nearer to the gate an
         unexplained bar echo could stop it out of the acquisition region).  After t_occ_max + t_clear without admission it gives up behind
-        the abort plane."""
+        the abort plane.
+
+        Admission also needs ``admissible`` (the controller: the automaton is in MUTEX_PASS - no fault, no avoidance - and the sensors
+        are sense_ok: a drone in FAILSAFE or with a stale sonar is never admitted, its "no echo" is no evidence) and an age of the own
+        commitment of at least ``GateObs.admit_wait_s`` (B2: commit_admit_min_s with fresh reports of every other drone, plus
+        GateRule.t_cross_max when some drone is not freshly heard; formal/check_b2_comm.py).  The give-up timer of the hold starts
+        when the wait has elapsed, so a degraded admission is not given up before it is possible."""
         self.passing = self.at_level = False
         G = self.cfg.gate
         g = self.plan.gates[min(obs.gate_index, len(self.plan.gates) - 1)]
@@ -310,7 +317,11 @@ class Flows:
         if mode == "MUTEX_PASS":
             c = self._carrot(self.pass_path(go.queue_s, go.queue_l, go.queue_dz), np.array([go.s, go.l, go.dz]))
             s_hold = G.stage2_hold_s
-            if go.loc_ok and go.entry_ok and go.s >= s_hold - RELOC_ZONE_M:
+            self.commit_t = obs.t if self.commit_t is None else self.commit_t
+            wait = float(getattr(go, "admit_wait_s", 0.0))
+            eligible_t = self.commit_t + wait
+            if (admissible and go.loc_ok and go.entry_ok and go.s >= s_hold - RELOC_ZONE_M
+                    and obs.t - self.commit_t >= wait):
                 self.cr_cleared = True
             s_abort = G.cr_s_min - (float(R_OUT) + G.nav_err_m)
             self.abort_request = False
@@ -320,10 +331,10 @@ class Flows:
                 self.events.append({"t": obs.t, "type": "PAST_CENTRE", "s": round(float(go.s), 2)})
             if not self.cr_cleared and not self.past_centre and (c[0] > s_hold or self.hold_timeout):
                 self.hold_since = obs.t if self.hold_since is None else self.hold_since
-                if obs.t - self.hold_since > G.t_occ_max + G.t_clear and not self.hold_timeout:
+                if obs.t - max(self.hold_since, eligible_t) > G.t_occ_max + G.t_clear and not self.hold_timeout:
                     self.hold_timeout = True
                     self.events.append({"t": obs.t, "type": "ENTRY_HOLD_TIMEOUT", "loc_ok": go.loc_ok,
-                                        "entry_ok": go.entry_ok})
+                                        "entry_ok": go.entry_ok, "admit_wait_s": round(wait, 2), "admissible": admissible})
                 if go.loc_ok:
                     c = np.array([s_hold, 0.0, 0.0])
                 else:
@@ -362,6 +373,7 @@ class Flows:
             vmax = G.v_pass
         else:
             self.cr_cleared, self.hold_since, self.entry_state, self.hold_timeout, self.past_centre = False, None, "", False, False
+            self.commit_t = None
             self.abort_request = False
             self.hold_target = None
             self.standoff_anchor = self.standoff_since = None

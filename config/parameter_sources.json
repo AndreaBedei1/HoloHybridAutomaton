@@ -10,11 +10,11 @@
  },
  "evidence_classes": "(a) manufacturer specification; (b) peer-reviewed field or tank measurement; (c) derivation, with the formula given; (d) calibration in our own simulator; (e) assumption without empirical support.",
  "counts": {
-  "rows": 138,
+  "rows": 144,
   "SUPPORTED": 18,
   "PARTIALLY_SUPPORTED": 6,
-  "DERIVED": 40,
-  "DESIGN_CHOICE": 50,
+  "DERIVED": 43,
+  "DESIGN_CHOICE": 53,
   "STRESS_ASSUMPTION": 21,
   "CONTRADICTED": 3
  },
@@ -1653,6 +1653,48 @@
   },
   {
    "section": "5 Gate protocol (P2)",
+   "parameter": "v_cross_min (premise: an admitted drone progresses at >= v_cross_min until it has left the CR, never stopping inside it)",
+   "module": "holo_fleet/config.py:GateRule.v_cross_min; formal/check_mutex.py:V_LO; formal/check_b2_comm.py",
+   "value": 0.12,
+   "unit": "m/s",
+   "verdict": "DESIGN_CHOICE",
+   "source": "the crossing-speed premise of formal M3 (V_LO), now a configuration value; failures inside the CR are outside the scope (holo_fleet/scope.py)",
+   "doi_or_url": "formal/check_mutex.py (M3, M3f); formal/check_b2_comm.py",
+   "derivation": "-",
+   "validity": "a declared assumption, not a measurement; v_pass = 0.5 m/s nominally; M3f / the timeline model without Pi2 give the counterexamples",
+   "citation_keys": [],
+   "code_action": "none"
+  },
+  {
+   "section": "5 Gate protocol (P2)",
+   "parameter": "admit_zone_m (admission zone: estimated s >= stage2_hold_s - admit_zone_m)",
+   "module": "holo_fleet/config.py:GateRule.admit_zone_m; holo_fleet/control/flows.py:RELOC_ZONE_M",
+   "value": 0.4,
+   "unit": "m",
+   "verdict": "DESIGN_CHOICE",
+   "source": "the existing RELOC_ZONE_M of the stage-2 admission, now also in the configuration (tests/test_b2_comm_fixes.py keeps them equal)",
+   "doi_or_url": "holo_fleet/control/flows.py",
+   "derivation": "-",
+   "validity": "enters t_cross_max",
+   "citation_keys": [],
+   "code_action": "none"
+  },
+  {
+   "section": "5 Gate protocol (P2)",
+   "parameter": "t_cross_max (derived: longest time an admitted drone can still be in the CR; the degraded B2 admission wait)",
+   "module": "holo_fleet/config.py:GateRule.t_cross_max; holo_fleet/perception/gate_perception.py (admit_wait_s = commit_admit_min_s + t_cross_max when a drone is not freshly heard)",
+   "value": 37.52,
+   "unit": "s",
+   "verdict": "DERIVED",
+   "source": "(from the CR, the hold, the navigation error and the premise v_cross_min) an admitted centre is at s >= stage2_hold_s - admit_zone_m - nav_err_m and leaves the CR at s > cr_s_max",
+   "doi_or_url": "formal/check_b2_comm.py (B2C-E1, B2C-Mw: D = t_cross_max - 2 s violates P2)",
+   "derivation": "(0.55 + 2.5525 + 0.4 + 1.0) / 0.12 = 37.52 s",
+   "validity": "only in the degraded regime (some drone without a fresh report); the hold give-up timer starts when the wait has elapsed",
+   "citation_keys": [],
+   "code_action": "none"
+  },
+  {
+   "section": "5 Gate protocol (P2)",
    "parameter": "hold_lateral_allow (lateral allowance of the stage-2 hold in the queue clearance bound)",
    "module": "holo_fleet/config.py:GateRule.hold_lateral_allow, GateRule.queue_s (c)",
    "value": 0.27,
@@ -2661,7 +2703,7 @@
   },
   {
    "section": "8 Onboard acoustic envelope (`AcousticConfig`)",
-   "parameter": "t_silent_gate_s (gate silence: rule D, a drone not heard this long may be dead for the gate decisions)",
+   "parameter": "t_silent_gate_s (rule D diagnostic: a drone not heard this long, last known outside the exclusion zone, is LOGGED as possibly dead; no gate decision reads it)",
    "module": "holo_fleet/config.py:AcousticConfig.t_silent_gate_s; holo_fleet/perception/acoustic_gate.py:AcousticExit.dead; holo_fleet/perception/perception.py",
    "value": 70.0,
    "unit": "s",
@@ -2669,9 +2711,9 @@
    "source": "rule D: a drone not heard for t_silent_gate_s by a receiver that hears another drone is dead for the gate decisions (its claim included) only if last known outside the exclusion zone of the gate (holo_fleet/scope.py); otherwise it holds the gate for ever. The comment that introduced the value argued that a live drone cannot stay unheard this long on a queue link (a channel-model estimate P(silence >= 70 s) < 1e-3 per mission in an archived design note) while a dead drone has risen above the gate by then; that estimate is not recomputed here",
    "doi_or_url": "holo_fleet/perception/acoustic_gate.py; holo_fleet/scope.py; formal/check_status.py; formal/check_fleet.py; holo_fleet/referee/robustness_metrics.py; archive v13-final-v11-2026-11-18 (final validation, seeds 8000-8001), run_metrics.json -> premise_v",
    "derivation": "T_DEAD = ceil(70 / 5) = 14 steps > T_VAC = 9 (vacancy before death) and > T_RISE = 10 steps (the hull has left the queue corridor) in formal/check_fleet.py; 70 > FAIR + status_fresh_s = 37.5 s, so under the fairness premise no live drone is held dead (premise V follows); 70 > t_occ_max + t_clear = 26 s. With 1 Hz pings a 70 s silence needs about 70 consecutive lost receptions; the MEDIUM model draws losses independently per reception (bursts of 4 s), so the risk lies in correlated losses, which that model does not represent: under MEDIUM_HT P(outage >= 70 s) = (6 / 70)^1.2 = 0.052 per outage, and the sweep bursts of 60 s stay below 70 s",
-   "validity": "Premise V (no live drone declared dead) holds in all 34 runs of the final validation (premise_v.live_declared_dead = 0); longest live-sender silence there 32.2 s (38 s margin). A live drone silent for 70 s outside the zone violates premise V and can release its claim, so P2 depends on premise V; inside the zone silence never releases a claim (safe stop, S4 / S12 of formal/check_status.py). Simulator channel only; no field evidence",
+   "validity": "Since the explicit-communication review (formal/check_b2_comm.py B2C-D, B2C-Oe) silence is never evidence: rule D no longer excludes a drone nor releases its claim (a live drone with a failed transmitter could otherwise be ignored while in the CR). The value only labels the diagnostic (GateObs.silent, premise V of the robustness metrics). Cost: a drone that fails holding a claim keeps the gate closed (formal/check_fleet.py F2c). Former validity: premise V held in all 34 runs of the final validation (longest live-sender silence 32.2 s)",
    "citation_keys": [],
-   "code_action": "none",
+   "code_action": "rule D made a diagnostic (acoustic_gate.status_excluded / status_claim no longer read dead())",
    "evidence": {
     "manufacturer_or_literature": "none",
     "simulator_calibration": "final validation: premise_v.live_declared_dead = 0 in 34 / 34 runs; longest live-sender silence 32.2 s; the archived channel-model estimate (< 1e-3 per mission) is not recomputed",
@@ -2679,6 +2721,48 @@
     "engineering_design_choice": "70 s: well above the longest live silence and the 60 s sweep bursts, below the time after which a fleet stuck behind a dead claim would be unacceptable",
     "operating_assumption": "premise V: the channel never silences a live drone for 70 s at a receiver that hears another drone (correlated outages of this length are excluded)"
    }
+  },
+  {
+   "section": "8 Onboard acoustic envelope (`AcousticConfig`)",
+   "parameter": "admit_fresh_s (B2 admission: a status report of another drone is fresh when emitted at most this long ago, own clock)",
+   "module": "holo_fleet/config.py:AcousticConfig.admit_fresh_s; holo_fleet/perception/acoustic_gate.py:AcousticExit.fresh; holo_fleet/perception/gate_perception.py",
+   "value": 3.5,
+   "unit": "s",
+   "verdict": "DERIVED",
+   "source": "(from the TDMA schedule and the declared latency) with at most k = 2 consecutive losses on a link the latest report is at most (k + 1) period_s + latency_max_s old",
+   "doi_or_url": "formal/check_b2_comm.py (B2C-T, B2C-E2)",
+   "derivation": "(2 + 1) * 1.0 + 0.40 = 3.4 s <= 3.5 s",
+   "validity": "a channel with at most 2 consecutive losses per link never degrades an admission (B2C-E2); longer losses only add the degraded wait, never a release",
+   "citation_keys": [],
+   "code_action": "none"
+  },
+  {
+   "section": "8 Onboard acoustic envelope (`AcousticConfig`)",
+   "parameter": "commit_admit_min_s (B2 admission: smallest age of the own commitment at an admission)",
+   "module": "holo_fleet/config.py:AcousticConfig.commit_admit_min_s; holo_fleet/perception/gate_perception.py (admit_wait_s); holo_fleet/control/flows.py:Flows.gate",
+   "value": 4.0,
+   "unit": "s",
+   "verdict": "DERIVED",
+   "source": "(from the freshness bound) a fresh report of a drone committed T_c earlier must have been emitted after that commitment: T_c > admit_fresh_s + 2 clock_skew_s + one control step (the age of the phase a report carries)",
+   "doi_or_url": "formal/check_b2_comm.py (B2C-T, B2C-E1; B2C-Mt: T_c = T_f violates P2)",
+   "derivation": "3.5 + 2 * 0.05 + 0.1 = 3.7 s < 4.0 s",
+   "validity": "below the natural queue-to-admission-zone time (4.2 s at v_pass for n = 2): no slowdown in the nominal regime",
+   "citation_keys": [],
+   "code_action": "none"
+  },
+  {
+   "section": "8 Onboard acoustic envelope (`AcousticConfig`)",
+   "parameter": "clock_skew_s (bound of the offset between two drones' clocks dating a TDMA slot)",
+   "module": "holo_fleet/config.py:AcousticConfig.clock_skew_s; formal/check_b2_comm.py",
+   "value": "0.05",
+   "unit": "s",
+   "verdict": "DESIGN_CHOICE",
+   "source": "hardware assumption H6 (synchronised clocks): the range-equivalent clock_offset_m = 0.21 m is 0.14 ms; 0.05 s is a generous allowance for drift over a mission",
+   "doi_or_url": "formal/check_b2_comm.py",
+   "derivation": "-",
+   "validity": "enters T_c > T_f + 2 skew + dt only; simulator clocks are shared",
+   "citation_keys": [],
+   "code_action": "none"
   }
  ]
 }

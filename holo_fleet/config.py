@@ -150,6 +150,23 @@ class GateRule:
     hold + slack) = -2.4525 m), minus the measured holding error ``hold_err_m``.  A derived value, kept equal to the
     derivation by tests/test_hold_point.py."""
 
+    v_cross_min: float = 0.12
+    """Premise (formal M3, formal/check_b2_comm.py): an admitted drone progresses along the gate axis at >= v_cross_min from
+    its admission until it has left the CR, and never stops inside it (failures inside the CR are outside the scope,
+    holo_fleet/scope.py).  A declared assumption of the P2 argument, not a measurement (M3f / B2C-Lv give the
+    counterexamples without it)."""
+    admit_zone_m: float = 0.4
+    """Admission zone of the stage-2 hold: a committed drone may be admitted once its estimated s >= stage2_hold_s -
+    admit_zone_m (control/flows.py RELOC_ZONE_M, kept equal by tests/test_b2_comm_fixes.py)."""
+
+    @property
+    def t_cross_max(self) -> float:
+        """Longest time an admitted drone can still be in the CR after its admission (derived, under the premise v_cross_min):
+        its true centre is at s >= stage2_hold_s - admit_zone_m - nav_err_m when admitted and it leaves the CR at s > cr_s_max:
+        (cr_s_max - stage2_hold_s + admit_zone_m + nav_err_m) / v_cross_min = (0.55 + 2.5525 + 0.4 + 1.0) / 0.12 = 37.52 s.
+        The degraded admission wait of B2 (AcousticConfig, formal/check_b2_comm.py) is at least this long."""
+        return (self.cr_s_max - self.stage2_hold_s + self.admit_zone_m + self.nav_err_m) / self.v_cross_min
+
     @property
     def cr_half_len(self) -> float:
         """Half length of the CR along the axis (derived): (cr_s_max - cr_s_min) / 2."""
@@ -373,6 +390,20 @@ class AcousticConfig:
     dvl_sigma_body_mps: float = 0.0285
     nav_depth_err_m: float = 0.45
     dr_model_tau_s: float = 0.5
+    admit_fresh_s: float = 3.5
+    """B2 admission (formal/check_b2_comm.py): a status report of another drone is FRESH for the admission when its emission
+    (TDMA slot, own clock) is at most admit_fresh_s old.  Derived: with at most k = 2 consecutive losses on a link the latest
+    report is at most (k + 1) period_s + latency_max_s = 3.4 s old, so a channel with that loss pattern never degrades the
+    admission."""
+    commit_admit_min_s: float = 4.0
+    """B2 admission: no admission earlier than commit_admit_min_s after the own commitment (own clock).  Derived: it must exceed
+    admit_fresh_s + 2 clock_skew_s + one control step (0.1 s, the age of the phase a report carries) = 3.7 s, so that a fresh
+    report of a drone committed before me (or admitted before me) is emitted after its commitment, i.e. is a claim.  Below the
+    natural time from a queue point to the admission zone (4.2 s along the axis at v_pass for n = 2, more along the pass path): no
+    slowdown in nominal runs."""
+    clock_skew_s: float = 0.05
+    """Bound of the offset between two drones' clocks used to date a TDMA slot (synchronised clocks; hardware assumption H6:
+    the range-equivalent clock_offset_m = 0.21 m is 0.14 ms, this bound is a generous allowance for drift over a mission)."""
 
 
 @dataclass(frozen=True)

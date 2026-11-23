@@ -748,3 +748,29 @@ GATE_SAFETY_EXTRA: Dict[str, Callable[..., Scenario]] = {
 }
 VALIDATION_EXTRA.update(GATE_SAFETY_EXTRA)
 SCENARIOS.update(GATE_SAFETY_EXTRA)
+
+
+# Targeted B2 communication cases (formal/check_b2_comm.py).  Run with the beacon on (mode ACOUSTIC_RB); the channel of the run is
+# replaced by the one named here.  line_parallel_mutex: three drones abreast arrive together at G06 (simultaneous commitments).
+def _b2c(name: str, channel_name: str, title: str, desc: str, duration: float = 220.0):
+    def make(cfg: FleetConfig = DEFAULT) -> Scenario:
+        sc = line_parallel_mutex(cfg)
+        sc.name = sc.sim.name = name
+        sc.sim.duration_s = duration
+        sc.cfg_patch = dict(sc.cfg_patch, beacon=dataclasses.replace(cfg.beacon, channel=channel_name))
+        sc.title, sc.description = title, desc
+        return sc
+    make.__name__ = name
+    return make
+
+
+B2C_EXTRA: Dict[str, Callable[..., Scenario]] = {
+    "b2c_mute_transmitter": _b2c("b2c_mute_transmitter", "LOW_MUTE0",
+                                 "B2: the leftmost drone's transmitter has failed (live, silent)",
+                                 "line_parallel_mutex on the LOW channel with drone 0 never heard: its claims are lost, the others "
+                                 "use the degraded admission wait (T_c + t_cross_max after their commitment) and never exclude it."),
+    "b2c_blackout": _b2c("b2c_blackout", "BLACKOUT", "B2: total acoustic blackout",
+                         "line_parallel_mutex with every packet lost: B2 degrades to the B0 checks plus the degraded admission wait."),
+}
+VALIDATION_EXTRA.update(B2C_EXTRA)
+SCENARIOS.update(B2C_EXTRA)

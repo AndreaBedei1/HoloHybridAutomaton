@@ -1,6 +1,8 @@
 """Gate-status payload, the total failure model and the vacancy by silence: formal and randomized checks.
 
-The B2-specific checks of formal/check_acoustic.py keep covering the geometry of the fixes; these cover the gate status,
+IDEALISED (S2): the sonar view of the observer is a function of the crossing drone's true position on the axis (no navigation
+error) and a report's freshness is a scalar bound; the composition of two drones over a lossy channel with local decisions is
+formal/check_b2_comm.py.  The B2-specific checks of formal/check_acoustic.py keep covering the geometry of the fixes; these cover the gate status,
 the failure model and the vacancy by silence.  The premises are the declared ones (README.md): the gate-frame navigation error at most ``nav_err_m``, the
 speed bound of a drone, the queue tolerance, a received packet is genuine (CRC-16) and of its frame.  The freshness bound is
 a function of the queue layout.
@@ -12,9 +14,10 @@ a function of the queue layout.
   phantom exclusion of corridor echoes while the crossing drone's last report, its later packets lost, is younger than the freshness
   bound.  S2h: the crossing drone may stop anywhere before the CR.  S2m: a larger freshness.  S2b: no latch input in the band.
 * S3 evidence order: a status older than an accepted fix that places the drone possibly inside the CR never excludes it.
-* S4 silence and death: a drone that reported committed or admitted keeps its claim while silent for less than t_silent_gate_s, at a
-  receiver that hears nobody, and for ever if last heard inside the exclusion zone; silent longer, last heard outside the zone, at a
-  receiver that hears another drone it is dead: no claim, excluded (S4m: a short silence releases it).
+* S4 silence is never evidence: a drone that reported committed or admitted keeps its claim and is never excluded, whatever the
+  silence since (up to a day), where it was last heard and whether the receiver hears another drone - rule D is a diagnostic only
+  (formal/check_b2_comm.py B2C-D; S4d: rule D releasing the claim of a drone last heard outside the zone; S4m: a short silence
+  releasing it).
 * S5 text search: no acoustic or status name in the relation loop of GatePerception.update (a search, it does not see indirect paths).
 * S6 drones at abreast queue points with their tolerances are never FRONT-only targets of each other (only those points).
 * S6b on the real class, without a beacon: a FRONT-only echo anywhere in the band makes no relation and the latch is BUSY.
@@ -177,7 +180,7 @@ def evidence_order(cfg: FleetConfig, g, n_cases: int = 300, mutate: bool = False
     return {"cases": n_cases, "excluded_by_stale_status": bad}
 
 
-def silence_never_clears(cfg: FleetConfig, g, n_cases: int = 300, seed: int = 17, mutate: bool = False, mutate_b1: bool = False) -> dict:
+def silence_never_clears(cfg: FleetConfig, g, n_cases: int = 300, seed: int = 17, mutate: bool = False, mutate_d: bool = False) -> dict:
     """S4: see the module docstring."""
     rng = np.random.default_rng(seed)
     bad = 0
@@ -194,21 +197,14 @@ def silence_never_clears(cfg: FleetConfig, g, n_cases: int = 300, seed: int = 17
         far = g.from_gate_frame([-20.0, 5.0, 0.0])
         _rx(tr, p, yaw, (t - 0.5) if case != 2 else 1.5, 2, far, cfg, pl.GP_NONE)
         tr.update(t, [], p, yaw, 0.5)
-        if mutate_b1:
-            def old_dead(j, tt, ae=ae, tr=tr):
-                if not tr.silent(j, tt, cfg.acoustic.t_silent_gate_s):
-                    return False
-                fx = tr.fixes.get(j) or []
-                if not fx or ae.g is None:
-                    return True
-                f = tr.last_accepted.get(j) or fx[-1]
-                return not declared_excluded(ae.g, f.p, ae.cfg, *ae._fix_margin(f, tr.heard[j]))
-            ae.dead = old_dead
+        if mutate_d:
+            orig_d = ae.status_claim
+            ae.status_claim = lambda j, tt, o=orig_d, ae=ae: o(j, tt) and not ae.dead(j, tt)
         if mutate:
             orig = ae.status_claim
             ae.status_claim = lambda j, tt, o=orig: o(j, tt) and not tr.silent(j, tt, cfg.acoustic.status_fresh_s)
         held = 1 in ae.claims(t) and not ae.status_excluded(1, t)
-        bad += int(held if case == 1 else not held)
+        bad += int(not held)
     return {"cases": n_cases, "violations": bad}
 
 
@@ -436,11 +432,11 @@ def run(cfg: FleetConfig = B2, verbose: bool = True) -> Report:
     rep.add(CheckResult("S3m mutation: without the evidence order the stale status excludes the drone", "expect violation", ENC, "violated",
                         verdict="violated" if okm else "holds", passed=okm, note=str(rm)), verbose)
     r = silence_never_clears(cfg, g)
-    rep.add(CheckResult("S4 silence and death: a claim stands while the drone is silent for less than t_silent_gate_s, the receiver hears nobody, or it was last heard in the exclusion zone; a dead drone last heard outside it holds none",
+    rep.add(CheckResult("S4 silence is never evidence: a claim stands and the drone is never excluded whatever the silence, the place it was last heard and the receiver's hearing of others",
                         "randomized over silence durations up to a day", ENC, "holds",
                         verdict="holds" if r["violations"] == 0 else "violated", passed=r["violations"] == 0, note=str(r)), verbose)
-    rb = silence_never_clears(cfg, g, n_cases=120, mutate_b1=True)
-    rep.add(CheckResult("S4b mutation: rule D reading the zone from the pruned fix list (round 8 code) releases a claim of a hull at the gate",
+    rb = silence_never_clears(cfg, g, n_cases=120, mutate_d=True)
+    rep.add(CheckResult("S4d mutation: rule D releasing the claim of a silent drone last heard outside the exclusion zone (the former controller)",
                         "expect violation", ENC, "violated", verdict="violated" if rb["violations"] > 0 else "holds",
                         passed=rb["violations"] > 0, note=str(rb)), verbose)
     rm = silence_never_clears(cfg, g, n_cases=60, mutate=True)
