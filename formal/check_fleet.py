@@ -45,13 +45,14 @@ controller (control/gate_safety.py) edits the final command of every drone that 
 mission modes and avoidance modes alike: a command is applied only if the backup that follows it (the command for one control
 period plus the largest data age, braking at a_brake, holding with the error of the drift) keeps the true centre out of the CR
 under the declared navigation error and drift (formal/check_gate_safety.py: P2B1 per-step soundness, P2B1r the computed reach,
-P2B3 adversarial trajectories).  So, while the declared premises hold, there is no entry by avoidance and F1p, the combination of
+P2B3 adversarial trajectories), and a certified command exists at every step (formal/check_p2_recursive.py: P2R4 recursive
+availability by induction over the certificates of station keeping, P2R4l its declared limit).  So, while the declared premises hold, there is no entry by avoidance and F1p, the combination of
 claims learnt one step late with the entries of the corrected controller, reduces to F1d1: never two drones in X over the depth
 (bounded model checking from the launch, not an induction; the stage-2 check is made at the hold, at most
 (cr_s_min - stage2_hold_s + 0.4) / v_pass = 3.8 s before the entry, within one step).  Outside the declared envelope (a
 navigation error above nav_err_m, a drift above w_drift_max, an estimate jump, or a step with no P2-safe command: P2_RECOVERY or
-JOINTLY_INFEASIBLE with P2 uncertified, logged by the controller; P2B2s shows that a P2-safe command with a margin below the
-step deficit can lead there) entries by avoidance remain possible, and the counterexample stays: F1pe and F1pme (with the motion
+JOINTLY_INFEASIBLE with P2 uncertified, P2_UNCERTIFIED, logged by the controller; P2B2s shows that a command chosen on its
+one-step margin alone could lead there, P2R4l that a DVL outage onset or a position correction can) entries by avoidance remain possible, and the counterexample stays: F1pe and F1pme (with the motion
 limit) are declared limits with their trace.  Likewise F0qe, a queued drone moved into the CR (inside the envelope a queued drone
 is filtered too and F0s covers it).  F1pk (formal/check_f1p_kinematic.py, reported) gives the case positions with the deployed
 flows.

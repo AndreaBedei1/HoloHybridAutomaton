@@ -6,7 +6,9 @@ centre at -5 m depth) is used where the arena map is not needed: the constraint 
 P2B1  (proved, Z3 LRA) per-step soundness of the P2 test: with the navigation error inside (e_h, e_h, e_z) and the true
       displacement of the control interval and of the backup inside the per-axis reach [-R-, R+], a positive cr_margin puts
       the true centre outside the CR at every instant (the command of a step is applied for dt <= tau_c, the first phase of
-      its own backup, so the trajectory between two decisions is covered by the backup of the earlier one).
+      its own backup, so the trajectory between two decisions is covered by the backup of the earlier one).  The recursive
+      argument uses it for the control interval only: the terminal hold of the backup is stated around the TRUE rest point,
+      which a loop on the estimate does not realise; what follows is certified by station keeping (P2R).
 P2B1r (numeric) the deployed axis_reach is not below the exact maximum of the continuous envelope integral (piecewise
       quadratic, evaluated in closed form on a dense grid of current velocity and command); with the analytic bound of the
       trapezoidal and sampling error of REACH_STEPS points it stays inside SLACK_M.
@@ -23,12 +25,16 @@ P2B3  (numeric) adversarial trajectories: states near the CR, current velocities
       centre never enters the CR.
 P2B4  (numeric) station keeping (GateConstraint.hold_margin on a latched anchor): over every state the position loop can
       produce (deviation from the anchor within e_track on each axis, the velocity of the loop at that deviation - gain 0.5
-      or 0.6, capped at HOLD_V_MAX - plus the drift, the measured velocity within v_err), the margin equals that of the
-      anchor itself (time-invariant: no fresh drift accumulates), and it is positive at the stage-2 target.
+      or 0.6, capped at HOLD_V_MAX per axis - plus the drift), the margin equals that of the anchor itself (time-invariant:
+      no fresh drift accumulates), and it is positive at the stage-2 target; with the measured velocity within v_err the
+      RECOMPUTED margin can drop (R-c), hence the latched certificate (formal/check_p2_recursive.py).
 P2B5  (numeric, grid) the robust margin: every command the deployed warning filter, escape (with the station-keeping HOLD) or
-      filter_mission returns with a positive robust margin leaves braking one-step P2-safe from every worst-case state after
-      dt (position and velocity at the corners of an independently computed envelope, the true velocity as the next
-      backup's initial state).
+      filter_mission returns with a positive robust margin leaves station keeping on the next estimate P2-safe from every
+      worst-case state after dt (position and velocity at the corners of an independently computed envelope, the next
+      estimate at +-rho dt, the true velocity as the initial state of the braking).
+P2R*  (formal/check_p2_recursive.py) the recursive argument: closed-form braking (P2R1), the onboard-consistent lookahead
+      (P2R2), the station-keeping band (P2R3), the induction over the certificates (P2R4), the base case (P2R5); the
+      lookahead of 01cd6fa as a mutation (P2R2m).
 P2B6  (numeric) the CR column: no command called P2-safe lets a true trajectory inside the declared envelope pass under or
       over the CR (cr_s_min <= s <= cr_s_max and |l| <= cr_half_width at any depth); P2B6m mutation: with the box (column=False)
       commands called safe pass under or over it.
@@ -699,18 +705,14 @@ def station_keeping(cfg: FleetConfig) -> CheckResult:
             e = np.array(e)
             for gain in (gs.K_HOLD, cfg.gate.k_track):
                 cmd = gain * (-e)
-                nrm = float(np.linalg.norm(cmd))
-                sat = nrm > gs.HOLD_V_MAX
-                if sat:
-                    cmd = cmd * gs.HOLD_V_MAX / nrm
+                sat = bool(np.any(np.abs(cmd) > gs.HOLD_V_MAX))
+                cmd = np.clip(cmd, -gs.HOLD_V_MAX, gs.HOLD_V_MAX)
                 for d in itertools.product((-b.w, 0.0, b.w), repeat=3):
                     v_true = cmd + np.array(d)
-                    if not sat:
-                        m = float(_gc(cfg, an + e, v_true).hold_margin(an))
-                        if ref_true - m > drop_true + 1e-12:
-                            drop_true, arg = ref_true - m, (an.tolist(), np.round(e, 3).tolist(), np.round(v_true, 3).tolist())
-                    else:
-                        n_sat += 1
+                    m = float(_gc(cfg, an + e, v_true).hold_margin(an))
+                    if ref_true - m > drop_true + 1e-12:
+                        drop_true, arg = ref_true - m, (an.tolist(), np.round(e, 3).tolist(), np.round(v_true, 3).tolist())
+                    n_sat += sat
                     for me in (-ve, 0.0, ve):
                         mm = float(_gc(cfg, an + e, v_true + me, v_err=ve).hold_margin(an))
                         n += 1
@@ -736,11 +738,13 @@ def station_keeping(cfg: FleetConfig) -> CheckResult:
                             f"with the true velocity: largest drop {drop_true:.2e} m{'' if arg is None else ' at ' + str(arg)}.  "
                             f"With the measured velocity within v_err {ve:.3f} m/s (DVL 3 sigma) the braking term of hold_margin "
                             f"can exceed the anchor term at the edge of the deviation band: largest drop {drop_meas:.3f} m at "
-                            f"{arg_m}, so the onboard margin is time-invariant only up to that amount; stage-2 target margin min "
-                            f"{worst_target:.3f} m.  {n_sat // 27} deviation/gain cases saturate the loop (|k e| > the cap): "
-                            f"there the deviation bound e_track needs the drift vector below HOLD_V_MAX (the per-axis bound "
-                            f"gives sqrt(3) w = {math.sqrt(3) * b.w:.2f} m/s > {gs.HOLD_V_MAX}).  Deviation and velocity taken "
-                            f"independently (states the loop does not produce): min {box_min:.3f} m")
+                            f"{arg_m}: the margin RECOMPUTED onboard at a later step is time-invariant only up to that amount "
+                            f"(R-c: a fresh measurement inflation), which is why the certificate of station keeping is the one "
+                            f"latched when the maneuver is engaged (gate_safety.P2Certificate; P2R3, P2R4): continuing it needs "
+                            f"no re-certification; stage-2 target margin min {worst_target:.3f} m.  {n_sat // 27} "
+                            f"deviation/gain cases saturate the per-axis cap HOLD_V_MAX (> w: still restoring on every axis, "
+                            f"P2R3a; the former 2-norm cap needed the drift vector below HOLD_V_MAX).  Deviation and velocity "
+                            f"taken independently (states the loop does not produce): min {box_min:.3f} m")
 
 
 def _corners_after(u0, u, b, ve):
@@ -772,28 +776,23 @@ def _braking_ok(cfg, q, u0, u, b, ve, box):
     return phys, onboard, worst
 
 
-def robust_selection(cfg: FleetConfig) -> CheckResult:
+def returned_commands(cfg: FleetConfig, factory):
+    """Commands with a positive robust margin returned by the deployed warning filter, escape (station-keeping HOLD) and
+    filter_mission on the grid of P2B5: (q, v0, gc, who, u) with gc = factory(q, v0)."""
     env, G = cfg.env, cfg.gate
-    b = gs.P2Bounds.from_cfg(cfg)
-    ve = _v_err_fresh(cfg)
-    box = _box(cfg)
     c0 = G.cr_center_s
     pl = EscapePlanner(cfg)
     pats = sorted(pl.regions, key=lambda P: "+".join(sorted(P)))
     sets = [[(P, env.v_open)] for P in pats] + [[(P, env.v_open), (Q, env.v_open)] for P, Q in itertools.combinations(pats, 2)][::9]
     poss = [(sv, lv, dz) for sv in (c0 - 3.2, c0 - 2.7, G.stage2_hold_s, c0 - 2.0) for lv in (0.0, 1.5) for dz in (0.0, 1.6)]
     vels = [np.zeros(3), np.array([0.3, 0.0, 0.0]), np.array([-0.3, 0.0, 0.0]), np.array([0.1, 0.25, 0.1])]
-    t0 = time.time()
-    n = bad = bad_on = 0
-    first = None
-    worst = np.inf
     I3 = np.eye(3)
     mission = [np.array(v, float) for v in ((0.5, 0, 0), (0.25, 0, 0), (0.1, 0, 0), (0.35, 0.35, 0), (0.0, 0.5, 0),
                                               (0.0, 0.0, 0.25), (0.2, 0.0, -0.25), (-0.3, 0.0, 0.0), (0.0, 0.0, 0.0))]
     for q in poss:
         q = np.array(q)
         for v0 in vels:
-            gc = _gc(cfg, q, v0, v_err=ve)
+            gc = factory(q, v0)
             hold = (gc.hold_velocity(q), gc.hold_margin(q))
             outs = []
             for th in sets:
@@ -806,35 +805,72 @@ def robust_selection(cfg: FleetConfig) -> CheckResult:
                         ch = pl.escape_velocity(th, [], 0.0, env.v_escape, occupied={x for P, _ in th for x in P},
                                                 depth_room=(4.0, 3.5), p2=f, hold=hold)
                     if ch.label != "HOLD":
-                        outs.append((planner, "+".join(sorted(th[0][0])), ch.v_body))
+                        outs.append((planner, ch.v_body))
             for vm in mission:
                 mf = gc.filter_mission(vm, env.v_max_nominal)
                 if mf.station is None and mf.status == gs.FEASIBLE:
-                    outs.append(("MISSION", str(vm.tolist()), mf.v))
-            for who, what, u in outs:
-                if float(gc.margins_world(u)[0]) <= 0.0:
-                    continue
-                n += 1
-                phys, onb, w = _braking_ok(cfg, q, v0, gc.to_gate(u), b, ve, box)
-                worst = min(worst, w)
-                if not phys:
-                    bad += 1
-                    if first is None:
-                        first = {"q": q.tolist(), "v0": v0.tolist(), "who": who, "what": what, "u": np.round(u, 3).tolist(),
-                                 "worst_next_margin": round(w, 4)}
-                bad_on += not onb
+                    outs.append(("MISSION", mf.v))
+            for who, u in outs:
+                if float(gc.margins_world(u)[0]) > 0.0:
+                    yield q, v0, gc, who, u
+
+
+def _sk_next_margin(cfg, q, u0, u, b, ve, rho, box):
+    """Margin of station keeping engaged one step later on the next estimate, from every corner of the true state after dt
+    (independent: the exact pieces of upper_at, the braking to rest integrated by upper_at), the next estimate at +-rho dt
+    towards the side of the corner."""
+    Cn = _corners_after(u0, u, b, ve)
+    H = b.e_track + b.w * b.tau_c
+    err = np.array([b.e_h, b.e_h, b.e_z]) + b.slack
+    lo_cr, hi_cr = box
+    worst = np.inf
+    for sel in itertools.product((0, 1), repeat=3):
+        hi, lo = np.zeros(3), np.zeros(3)
+        for k in range(3):
+            x, v = Cn[k][sel[k]]
+            sgn = 1.0 if sel[k] == 0 else -1.0
+            q1 = q[k] + x + sgn * rho * b.dt
+            a0 = sgn * v
+            T = side_end(a0, 0.0, b)
+            X = upper_at(a0, 0.0, b, T)[1]
+            ext = max(X + rho * T, H)
+            hi[k], lo[k] = (q1 + ext, q1 - H) if sgn > 0 else (q1 + H, q1 - ext)
+        worst = min(worst, float(np.max(np.maximum(lo_cr - (hi + err), (lo - err) - hi_cr)[:2])))
+    return worst
+
+
+def robust_selection(cfg: FleetConfig) -> CheckResult:
+    from check_p2_recursive import _gc as gc2, _rho, _ve
+
+    b = gs.P2Bounds.from_cfg(cfg)
+    ve, rho = _ve(cfg), _rho(cfg)
+    box = _box(cfg)
+    t0 = time.time()
+    n = bad = 0
+    first = None
+    worst = np.inf
+    for q, v0, gc, who, u in returned_commands(cfg, lambda q, v0: gc2(cfg, q, v0, ve, rho)):
+        n += 1
+        w = _sk_next_margin(cfg, q, v0, gc.to_gate(u), b, ve, rho, box)
+        worst = min(worst, w)
+        if w <= 0.0:
+            bad += 1
+            if first is None:
+                first = {"q": q.tolist(), "v0": v0.tolist(), "who": who, "u": np.round(u, 3).tolist(),
+                         "worst_next_margin": round(w, 4)}
     ok = bad == 0 and n > 0
     return CheckResult("P2B5 robust selection: every command returned by the deployed warning filter, escape (station-keeping "
-                       "HOLD) or filter_mission with a positive robust margin leaves braking one-step P2-safe from every worst-case "
-                       "state after dt (numeric, grid)", "forall returned u with robust margin > 0, corners of the state after "
-                       "dt: one-step margin of braking > 0", ENC, "holds", verdict="holds" if ok else "violated", passed=ok,
-                       seconds=round(time.time() - t0, 1), counterexample=first,
-                       note=f"{n} returned commands ({len(sets)} threat sets x 2 planners, 9 mission commands; {len(poss)} "
-                            f"positions x {len(vels)} velocities; HOLD answers are station keeping, P2B4); worst next-step "
-                            f"braking margin {worst:.3f} m; {bad} failures from the true worst-case state.  As computed onboard "
-                            f"at the next step (velocity measured within v_err {ve:.3f} m/s and filtered with it) braking is "
-                            f"not P2-safe in {bad_on} of them: there the next step relies on station keeping (P2B4) or another "
-                            f"candidate, not on braking")
+                       "HOLD) or filter_mission with a positive robust margin leaves station keeping on the next estimate "
+                       "P2-safe from every worst-case state after dt (numeric, grid)", "forall returned u with robust margin "
+                       "> 0, corners of the state after dt and of the next estimate: SK margin from the true velocity > 0",
+                       ENC, "holds", verdict="holds" if ok else "violated", passed=ok, seconds=round(time.time() - t0, 1),
+                       counterexample=first,
+                       note=f"{n} returned commands (63 threat sets x 2 planners, 9 mission commands; 16 positions x 4 "
+                            f"velocities; HOLD answers are station keeping, P2B4 / P2R3); v_err {ve:.3f} m/s, rho {rho:.3f} "
+                            f"m/s; worst next-step SK margin {worst:.3f} m, computed independently of next_band (upper_at, "
+                            f"side_end); {bad} failures.  The certificate is handed to the next step, not recomputed there "
+                            f"(P2R2, P2R4n); the old target of this check - braking re-certified onboard at the next step - "
+                            f"is the counterexample P2R2m")
 
 
 def column(cfg: FleetConfig, n_states: int = 900, seed: int = 11):
@@ -900,6 +936,10 @@ def run(cfg: FleetConfig = DEFAULT, verbose: bool = True) -> Report:
     rep.add(adversarial(cfg), verbose)
     rep.add(station_keeping(cfg), verbose)
     rep.add(robust_selection(cfg), verbose)
+    import check_p2_recursive
+
+    for r in check_p2_recursive.run_checks(cfg):
+        rep.add(r, verbose)
     for r in column(cfg):
         rep.add(r, verbose)
     rep.add(mutations(cfg), verbose)
