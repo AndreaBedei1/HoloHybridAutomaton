@@ -44,8 +44,7 @@ CROSSING_RESTART_M = 0.6
 def inside_keepout(s: float, l: float, dz: float, G) -> bool:
     """The own gate-frame estimate is near enough to the CR that the drone may really be in it (hull ball plus the declared
     gate-frame navigation error)."""
-    m = R_OUT + G.nav_err_m
-    return abs(s) <= G.cr_half_len + m and abs(l) <= G.cr_half_width + m and abs(dz) <= G.cr_half_height + m
+    return G.in_cr(s, l, dz, margin=R_OUT + G.nav_err_m)
 
 
 def report_phase(verified: bool, in_progress: bool, committed: bool, in_keepout: bool) -> int:

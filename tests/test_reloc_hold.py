@@ -27,7 +27,7 @@ def test_no_entry_into_the_critical_region_without_a_valid_gate_localization():
     plan = SCENARIOS["lost_drone_mutex"](DEFAULT).plans[0]
     fl = Flows(plan, DEFAULT)
     s_hold = G.stage2_hold_s
-    v, _ = fl.gate(_obs(plan, -4.0, False, 0.0, l=plan.queue_lateral), "MUTEX_PASS")
+    v, _ = fl.gate(_obs(plan, G.merge_s - 2.5, False, 0.0, l=plan.queue_lateral), "MUTEX_PASS")  # on the straight part of the pass path
     assert _along(plan, v) > 0.3 and not fl.reloc_hold
     v, _ = fl.gate(_obs(plan, s_hold + 0.02, False, 1.0), "MUTEX_PASS")
     assert fl.reloc_hold and _along(plan, v) <= 0.0
@@ -82,7 +82,7 @@ def test_give_up_only_behind_the_entry_plane_and_never_once_admitted():
     plan = SCENARIOS["lost_drone_mutex"](DEFAULT).plans[0]
     s_hold = G.stage2_hold_s
     assert G.nav_err_m == DEFAULT.acoustic.nav_err_gate_m
-    s_abort = -(G.cr_half_len + R_OUT + G.nav_err_m)
+    s_abort = G.cr_s_min - (R_OUT + G.nav_err_m)
     fl = Flows(plan, DEFAULT)
     fl.gate(_obs(plan, s_hold + 0.02, False, 0.0), "MUTEX_PASS")
     t_out = G.t_occ_max + G.t_clear + 0.5
@@ -132,7 +132,7 @@ def test_a_one_step_spike_of_the_estimate_decides_nothing():
 def test_inside_the_declared_error_of_the_cr_entry_the_hold_stands():
     plan = SCENARIOS["lost_drone_mutex"](DEFAULT).plans[0]
     fl = Flows(plan, DEFAULT)
-    v, _ = fl.gate(_obs(plan, G.nav_err_m - G.cr_half_len - 0.01, False, 1.0, entry_ok=False), "MUTEX_PASS")
+    v, _ = fl.gate(_obs(plan, G.cr_s_min + G.nav_err_m - 0.01, False, 1.0, entry_ok=False), "MUTEX_PASS")
     assert fl.reloc_hold and not fl.past_centre and _along(plan, v) < 0.0
 
 

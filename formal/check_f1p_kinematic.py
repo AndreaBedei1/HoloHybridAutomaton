@@ -4,7 +4,8 @@ F1p / F1pm (formal/check_fleet.py) found two drones in the CR when two drones co
 one of them is moved into the CR by its own avoidance.  The fleet model has no positions.  This reconstruction gives it
 positions and moving drones, and runs every episode with two controllers:
 
-* V11: the validated v11 controller - the stage-2 hold at s = -(cr_half_len + hull half-length + 0.15) = -1.18 m with the
+* V11: the validated v11 controller - the stage-2 hold hull half-length + 0.15 before the CR entry plane, s = cr_s_min -
+  (0.229 + 0.15) = -1.43 m with the present CR (-1.18 m with the former symmetric CR |s| <= 0.8), with the
   RELOC back-off (the v11 Flows.gate, reproduced verbatim in FlowsV11), the v11 queue lines, no follower standoff, and the
   avoidance output of a drone that is not admitted never edited (the escape planner without ``p2``, no P2 mission filter);
 * CORRECTED: the current code - Flows.gate (stage-2 hold GateRule.stage2_hold_s, acquisition offsets, standoff), the P2
@@ -63,7 +64,7 @@ from holo_fleet.perception.nav import NavBound  # noqa: E402
 from holo_fleet.perception.sonar_geometry import HULL_HALF, MOUNTS, R_IN, R_OUT, centre_distance_lower, pattern_of_point  # noqa: E402
 
 DT = 0.1
-V11_HOLD_S = -(DEFAULT.gate.cr_half_len + float(HULL_HALF[0]) + RELOC_MARGIN_M)
+V11_HOLD_S = DEFAULT.gate.cr_s_min - (float(HULL_HALF[0]) + RELOC_MARGIN_M)
 V11_RELOC_PERIOD_S, V11_RELOC_BACK_M = 6.0, 0.6
 RESULTS = Path(__file__).resolve().parent / "results" / "f1p_kinematic.json"
 AVOID = ("SW", "CA")
@@ -71,7 +72,8 @@ FLEET = ("GATE", "TRANSIT")
 
 
 class FlowsV11(Flows):
-    """The v11 gate flow (validated controller, archive v13): stage-2 hold at -1.18 m with the RELOC back-off, no standoff."""
+    """The v11 gate flow (validated controller, archive v13): stage-2 hold V11_HOLD_S (the v11 rule, 0.379 m before the CR
+    entry plane; -1.18 m with the former CR) with the RELOC back-off, no standoff."""
 
     def _ahead(self, obs) -> bool:
         return False
@@ -88,10 +90,10 @@ class FlowsV11(Flows):
             s_hold = V11_HOLD_S
             if go.loc_ok and go.entry_ok and go.s >= s_hold - RELOC_ZONE_M:
                 self.cr_cleared = True
-            s_abort = -(G.cr_half_len + float(R_OUT) + G.nav_err_m)
+            s_abort = G.cr_s_min - (float(R_OUT) + G.nav_err_m)
             self.abort_request = False
             was = self.past_centre
-            self.past_centre = bool(go.s > G.nav_err_m - G.cr_half_len or (was and go.s > -G.cr_half_len))
+            self.past_centre = bool(go.s > G.cr_s_min + G.nav_err_m or (was and go.s > G.cr_s_min))
             if not self.cr_cleared and not self.past_centre and (c[0] > s_hold or self.hold_timeout):
                 self.hold_since = obs.t if self.hold_since is None else self.hold_since
                 if obs.t - self.hold_since > G.t_occ_max + G.t_clear and not self.hold_timeout:
@@ -130,9 +132,8 @@ def make_gate(z_centre: float = -4.3) -> GateSpec:
 
 
 def in_cr(cfg: FleetConfig, gate, p) -> bool:
-    G = cfg.gate
     s, l, dz = gate.to_gate_frame(np.asarray(p, float))
-    return abs(s) <= G.cr_half_len and abs(l) <= G.cr_half_width and abs(dz) <= G.cr_half_height
+    return cfg.gate.in_cr(s, l, dz)
 
 
 def target(pi: np.ndarray, pj: np.ndarray):

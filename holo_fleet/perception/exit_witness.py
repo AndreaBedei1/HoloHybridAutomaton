@@ -18,7 +18,7 @@ Witness conditions for an echo at range r in sector k (gate map, estimated own p
      between r - eps_far and r + eps_near, grown by the hull radius) lies ahead of the observer (s > its own s:
      the exit region is downstream of the CR, the observer upstream of it; a drone level with or behind it - a
      queue neighbour, a lost or a following drone - is never evidence), and one of them lies beyond the CR
-     (s > cr_half_len) within v_bound * (t - t_last_corridor) of it, v_bound the speed bound of one drone.
+     (s > cr_s_max) within v_bound * (t - t_last_corridor) of it, v_bound the speed bound of one drone.
 (W3) new: no obstacle echo of that sector already satisfied W1 while the occupant was still seen in the corridor
      at a range it could have reached since (tracked per sector, gate 0.5 m + v_bound * dt): a drone that had
      left before is not taken for the occupant.
@@ -58,8 +58,9 @@ class ExitWitness:
     def __init__(self, cfg: FleetConfig = DEFAULT):
         self.cfg = cfg
         G = cfg.gate
-        self.half = np.array([G.cr_half_len, G.cr_half_width, G.cr_half_height])
-        ax = [np.linspace(-h, h, _GRID) for h in self.half]
+        self.lo, self.hi = G.cr_lo(), G.cr_hi()
+        self.center, self.half = G.cr_center(), G.cr_half()
+        ax = [np.linspace(a, b, _GRID) for a, b in zip(self.lo, self.hi)]
         self.cr_pts = np.array(np.meshgrid(*ax, indexing="ij")).reshape(3, -1).T
         self.slack = float(np.linalg.norm(2.0 * self.half / (_GRID - 1))) / 2.0
         self.dirs = fibonacci_sphere(_DIRS)
@@ -87,7 +88,7 @@ class ExitWitness:
         """Largest range from the sector's sonar of a CR point inside its (widened) cone; -inf if none."""
         m, a = self._cone(g, p, yaw, sector)
         nominal = math.radians(self.cfg.perc.sonar.half_angle_deg)
-        corners = self.half * np.array([[x, y, z] for x in (-1, 1) for y in (-1, 1) for z in (-1, 1)])
+        corners = self.center + self.half * np.array([[x, y, z] for x in (-1, 1) for y in (-1, 1) for z in (-1, 1)])
         dc = corners - m
         rc = np.linalg.norm(dc, axis=1)
         if np.all(np.arccos(np.clip((dc @ a) / rc, -1.0, 1.0)) <= nominal):
@@ -118,8 +119,8 @@ class ExitWitness:
         u = self.dirs[np.arccos(np.clip(self.dirs @ a, -1.0, 1.0)) <= self._half_angle(lo)]
         for rho in (lo, 0.5 * (lo + hi), hi):
             x = m + rho * u
-            beyond = x[:, 0] + R_OUT > self.half[0]
-            gap = np.linalg.norm(x - np.clip(x, -self.half, self.half), axis=1) - R_OUT
+            beyond = x[:, 0] + R_OUT > self.hi[0]
+            gap = np.linalg.norm(x - np.clip(x, self.lo, self.hi), axis=1) - R_OUT
             if np.any(beyond & (gap <= reach)):
                 return True
         return False

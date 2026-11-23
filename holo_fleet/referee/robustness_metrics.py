@@ -187,13 +187,12 @@ def analyze_run(run_dir: Path, reference: Optional[Dict] = None, cfg=DEFAULT, pr
         G = cfg.gate
         g = sc.judged_gates[0]
         gf = np.array([[g.to_gate_frame(P[i, k]) for k in range(n)] for i in range(m)])
-        inside = (np.abs(gf[:, :, 0]) <= G.cr_half_len) & (np.abs(gf[:, :, 1]) <= G.cr_half_width) & \
-                 (np.abs(gf[:, :, 2]) <= G.cr_half_height)
+        inside = G.in_cr(gf[:, :, 0], gf[:, :, 1], gf[:, :, 2])
         p2o["holds"] = bool(inside.sum(axis=1).max() <= 1)
         passed_t = {}
         for k in healthy:
             idx = np.flatnonzero(gf[:, k, 0] > G.exit_s)
-            before = np.flatnonzero(gf[:, k, 0] < -G.cr_half_len)
+            before = np.flatnonzero(gf[:, k, 0] < G.cr_s_min)
             if idx.size and before.size and idx[idx > before[0]].size:
                 b = idx[idx > before[0]][0]
                 if inside[before[0]:b + 1, k].any():

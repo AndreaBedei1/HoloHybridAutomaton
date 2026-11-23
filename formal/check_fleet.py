@@ -48,7 +48,7 @@ under the declared navigation error and drift (formal/check_gate_safety.py: P2B1
 P2B3 adversarial trajectories).  So, while the declared premises hold, there is no entry by avoidance and F1p, the combination of
 claims learnt one step late with the entries of the corrected controller, reduces to F1d1: never two drones in X over the depth
 (bounded model checking from the launch, not an induction; the stage-2 check is made at the hold, at most
-(|stage2_hold_s| + 0.4 - cr_half_len) / v_pass = 3.8 s before the entry, within one step).  Outside the declared envelope (a
+(cr_s_min - stage2_hold_s + 0.4) / v_pass = 3.8 s before the entry, within one step).  Outside the declared envelope (a
 navigation error above nav_err_m, a drift above w_drift_max, an estimate jump, or a step with no P2-safe command: P2_RECOVERY or
 JOINTLY_INFEASIBLE with P2 uncertified, logged by the controller; P2B2s shows that a P2-safe command with a margin below the
 step deficit can lead there) entries by avoidance remain possible, and the counterexample stays: F1pe and F1pme (with the motion
@@ -235,11 +235,11 @@ def _run(fl: Fleet, prop) -> list:
 
 def push_dwell(cfg: FleetConfig, n: int, dt: float) -> tuple:
     """Motion limit of an entry by avoidance: the shortest path of a committed drone from its queue point (within queue_tol of
-    the queue line) to the CR, |queue_s(n)| - queue_tol - cr_half_len, at the highest ground speed of the Envelope (v_escape plus
+    the queue line) to the CR entry plane, cr_s_min - queue_s(n) - queue_tol, at the highest ground speed of the Envelope (v_escape plus
     the unrejected drift w_drift_max, the speed bound of the P1 proof).  Returns (seconds, steps already spent in C before a push
     can reach the CR, rounded up like every timer of the model)."""
     G, env = cfg.gate, cfg.env
-    t_min = (abs(G.queue_s(n)) - G.queue_tol - G.cr_half_len) / (env.v_escape + env.w_drift_max)
+    t_min = (G.cr_s_min - G.queue_s(n) - G.queue_tol) / (env.v_escape + env.w_drift_max)
     return t_min, max(int(math.ceil(t_min / dt - 1e-9)) - 1, 0)
 
 
@@ -369,7 +369,7 @@ def run(cfg: FleetConfig = DEFAULT, verbose: bool = True) -> Report:
                       ENC, _run(fp, fp.not_recovered()), "unsat", timeout_ms=900000, note=tag), verbose)
     fp = Fleet(3, L + K, L, T, latch_delay=1, push="none", **PREMISES[3])
     G = cfg.gate
-    t_adm = (abs(G.stage2_hold_s) + 0.4 - G.cr_half_len) / G.v_pass
+    t_adm = (G.cr_s_min - G.stage2_hold_s + 0.4) / G.v_pass
     rep.add(check("F1p corrected controller, n=3: claims learnt one step late (two drones can commit together) and entries into the "
                   "CR only through the stage-2 check, an entry by avoidance from a P2-safe state being excluded by the P2 filter "
                   "(check_gate_safety P2B1, P2B3) while the declared premises hold: never two drones in X over the depth",

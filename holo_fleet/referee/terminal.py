@@ -88,9 +88,8 @@ class TerminalMonitor:
                 self.reached[k] = t
             if self.gate is not None and self.passed[k] is None:
                 s, l, dz = self.gate.to_gate_frame(P[k])
-                self.before[k] = self.before[k] or s < -G.cr_half_len
-                if (self.before[k] and abs(s) <= G.cr_half_len and abs(l) <= G.cr_half_width
-                        and abs(dz) <= G.cr_half_height):
+                self.before[k] = self.before[k] or s < G.cr_s_min
+                if self.before[k] and G.in_cr(s, l, dz):
                     self.crossed[k] = True
                 if self.before[k] and s > G.exit_s:
                     if self.crossed[k]:

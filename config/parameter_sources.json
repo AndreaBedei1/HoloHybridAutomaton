@@ -10,10 +10,10 @@
  },
  "evidence_classes": "(a) manufacturer specification; (b) peer-reviewed field or tank measurement; (c) derivation, with the formula given; (d) calibration in our own simulator; (e) assumption without empirical support.",
  "counts": {
-  "rows": 137,
+  "rows": 138,
   "SUPPORTED": 18,
   "PARTIALLY_SUPPORTED": 6,
-  "DERIVED": 39,
+  "DERIVED": 40,
   "DESIGN_CHOICE": 50,
   "STRESS_ASSUMPTION": 21,
   "CONTRADICTED": 3
@@ -1363,10 +1363,28 @@
   },
   {
    "section": "5 Gate protocol (P2)",
-   "parameter": "Critical region (CR) half extents (length, width, height)",
-   "module": "holo_fleet/config.py:GateRule.cr_half_len, cr_half_width, cr_half_height",
+   "parameter": "Critical region (CR) along-axis planes (entry cr_s_min, exit cr_s_max)",
+   "module": "holo_fleet/config.py:GateRule.cr_s_min, cr_s_max (cr_half_len, cr_center_s, cr_lo, cr_hi, in_cr derived)",
    "value": {
+    "cr_s_min": -1.05,
+    "cr_s_max": 0.55,
     "cr_half_len": 0.8,
+    "cr_center_s": -0.25
+   },
+   "unit": "m",
+   "verdict": "DERIVED",
+   "source": "(from the gate and hull geometry, agreed with the project supervisor) the CR covers the approach immediately before the gate and the gate passage itself, not a region after the gate. The G06 bars are 0.30 m deep along the axis (holo_fleet/arena_bridge.py GATE_BAR_SECTION_M), so a hull touches the frame only while its centre is within 0.15 + R_OUT (|HULL_HALF| = 0.389 m, holo_fleet/perception/sonar_geometry.py) = 0.54 m of the gate plane, any heading",
+   "doi_or_url": "-",
+   "derivation": "cr_s_max = 0.55 >= 0.15 + 0.389 (the whole passage [-0.54, 0.54] inside); cr_s_min = cr_s_max - 1.6 = -1.05: the previous CR length (1.6 m, the symmetric |s| <= 0.8) and volume are kept, so the monitored region is not shrunk; the previous pre-gate part [-0.8, 0] is inside, only the post-passage part (0.55, 0.8] is dropped (tests/test_cr_geometry.py)",
+   "validity": "Gate frame: s along the axis towards the exit, l left, z up; the referee's P2 occupancy (GateRule.in_cr) and every onboard and formal use of the CR share this box",
+   "citation_keys": [],
+   "code_action": "none"
+  },
+  {
+   "section": "5 Gate protocol (P2)",
+   "parameter": "Critical region (CR) half extents (width, height)",
+   "module": "holo_fleet/config.py:GateRule.cr_half_width, cr_half_height",
+   "value": {
     "cr_half_width": 1.0,
     "cr_half_height": 1.0
    },
@@ -1375,7 +1393,7 @@
    "source": "protocol geometry chosen by the project; the code states no derivation. The half-width equals half of the 2.0 m opening quoted in structure_aiding.py",
    "doi_or_url": "-",
    "derivation": "none",
-   "validity": "Gate frame: s along the axis towards the exit, l left, z up",
+   "validity": "Gate frame: s along the axis towards the exit, l left, z up; the along-axis extent is in the CR planes row",
    "citation_keys": [],
    "code_action": "none"
   },
@@ -1521,7 +1539,7 @@
    "value": 3.5,
    "unit": "m",
    "verdict": "DERIVED",
-   "source": "(from formal M4g) queue points from which a sonar exit witness of every passing drone exists: the abreast queue up to 3 drones, the 2 x 2 and 3-drone stacks; beyond it (abreast 4-6, a 3-column stack) the outer drones see no exit and mission.check_gate_domain refuses the passage",
+   "source": "(from formal M4g) queue points from which a sonar exit witness of every passing drone exists: the abreast queue of 2, the 2 x 2 and 3-drone stacks; beyond it (abreast 4-6, a 3-column stack) the outer drones see no exit and mission.check_gate_domain refuses the passage. With the CR s in [-1.05, 0.55] the queue line of 3 moved 0.25 m back and the outer drones of the abreast queue of 3 (templates triangle, line3) see a passer on the axis only 0.2 s within the 10 m detection range (1.2 s before): a declared limit of B0 (M4g declared limit), whose latch falls back to the t_occ_max timeout (progress, not safety); B2-M4g n=3 gives the acoustic exit evidence there",
    "doi_or_url": "formal/results/mutex.json, formal/results/acoustic.json",
    "derivation": "measured detection range used by M4g: R_DETECT_M = 10 m (at least 29 % of captures up to 10 m, 19 % at 10-11 m, 7 % at 11-12 m; results/calibration/gate/exit_detection.json)",
    "validity": "Recent change; the audit reports do not cover the gate parameters. For variant B2, formal B2-M4g reports that with the multipath-covering envelope no acoustic exit evidence exists inside this domain: the sonar latch applies (see ACOUSTIC_CHANNEL_MODEL.md section 9)",
@@ -1594,7 +1612,7 @@
    "source": "verification horizon of a bounded model check: how long a crossing drone may stop before the CR in the model. It is not a delivery deadline of claims and is not used by any monitor since the review of 2026-11-17 (the premise C audit is ordered by events, `referee/premise_audit.py`)",
    "doi_or_url": "formal/check_status.py",
    "derivation": "none",
-   "validity": "beyond it S2hs gives the counterexample of a stop behind the bars with no claim heard",
+   "validity": "beyond it S2hs gives the counterexample of a stop behind the bars with no claim heard (n=4 outer queue point; for the n=3 side view the masked region now starts inside the CR, so a stop before the CR is always seen there)",
    "citation_keys": [],
    "code_action": "none"
   },
@@ -1623,13 +1641,13 @@
    "section": "5 Gate protocol (P2)",
    "parameter": "stage2_hold_s (stage-2 hold of a committed drone before admission, gate frame s on the axis)",
    "module": "holo_fleet/config.py:GateRule.stage2_hold_s; holo_fleet/control/gate_safety.py:hold_s; holo_fleet/control/flows.py:Flows.gate",
-   "value": -2.3025,
+   "value": -2.5525,
    "unit": "m",
    "verdict": "DERIVED",
-   "source": "(from the declared bounds) the nearest point where holding is P2-safe under the declared gate-frame navigation error, minus the measured holding error; replaces the v11 hold at -(cr_half_len + HULL_HALF[0] + 0.15) = -1.179 m, where an estimate 1 m short puts the centre at s = -0.179 m, inside the CR (formal P2Bm)",
+   "source": "(from the declared bounds) the nearest point where holding is P2-safe under the declared gate-frame navigation error, minus the measured holding error; replaces the v11 hold at -(0.8 + HULL_HALF[0] + 0.15) = -1.179 m (with the former symmetric CR |s| <= 0.8), where an estimate 1 m short puts the centre at s = -0.179 m, inside the CR (formal P2Bm)",
    "doi_or_url": "-",
-   "derivation": "hold_s = -(cr_half_len + nav_err_m + w_drift_max * tau_c + e_track + SLACK_M) = -(0.8 + 1.0 + 0.0525 + 0.30 + 0.05) = -2.2025 m; target = hold_s - hold_err_m = -2.3025 m (tests/test_hold_point.py keeps it equal to the derivation)",
-   "validity": "Holds while the navigation premise |e_h| <= nav_err_m and the drift bound w_drift_max hold; the CR occupancy is the centre definition of P2. Localization acquisition from it: bias (estimate - truth) along the axis -1.0 to +0.3 and +0.5, +0.6 acquired in the synthetic B0 scan, +0.4 and >= +0.7 not (bounded hold, then give-up): formal/results/f1p_kinematic.json, tests/test_hold_point.py",
+   "derivation": "hold_s = cr_s_min - (nav_err_m + w_drift_max * tau_c + e_track + SLACK_M) = -(1.05 + 1.0 + 0.0525 + 0.30 + 0.05) = -2.4525 m; target = hold_s - hold_err_m = -2.5525 m (tests/test_hold_point.py keeps it equal to the derivation); -2.3025 m with the former CR",
+   "validity": "Holds while the navigation premise |e_h| <= nav_err_m and the drift bound w_drift_max hold; the CR occupancy is the centre definition of P2. Localization acquisition from it (synthetic B0 scan, bar echoes only): bias (estimate - truth) along the axis -1.0 to 0.0 m and +0.2, +0.3 m acquired, +0.1 m and >= +0.4 m not (bounded hold, then give-up); with the former -2.30 m hold -1.0 to +0.3 and +0.5, +0.6 m: tests/test_hold_point.py",
    "citation_keys": [],
    "code_action": "none"
   },
@@ -1652,16 +1670,16 @@
    "parameter": "queue_s bounds (c) hold clearance and (d) queue not ahead of the hold",
    "module": "holo_fleet/config.py:GateRule.queue_s",
    "value": {
-    "n1": -2.303,
-    "n2": -5.14,
-    "n3": -5.503,
-    "n4": -6.632
+    "n1": -2.553,
+    "n2": -5.39,
+    "n3": -5.753,
+    "n4": -6.882
    },
    "unit": "m",
    "verdict": "DERIVED",
    "source": "(from the geometry) (c) a drone held at the stage-2 hold keeps merge_clearance (3.2 m, the criterion of bound (b)) from every other queue point, so a queued drone and a held drone are not in each other's warning band; (d) a queued drone holds where holding is P2-safe",
    "doi_or_url": "-",
-   "derivation": "(c) queue_s <= stage2_hold_s - sqrt(merge_clearance^2 - max(|l_q| - hold_lateral_allow, 0)^2) for each column lateral l_q when there are >= 2 columns; (d) queue_s <= stage2_hold_s. v11 lines: n1 -1.909, n2 -4.181, n3 -5.406, n4 -6.632",
+   "derivation": "(c) queue_s <= stage2_hold_s - sqrt(merge_clearance^2 - max(|l_q| - hold_lateral_allow, 0)^2) for each column lateral l_q when there are >= 2 columns; (d) queue_s <= stage2_hold_s. Every bound follows the CR entry plane cr_s_min (bound (a) is measured from it). v11 lines with the present CR: n1 -2.159, n2 -4.431, n3 -5.656, n4 -6.882 (with the former CR: n1 -1.909, n2 -4.181, n3 -5.406, n4 -6.632)",
    "validity": "Formal Q1 (deployed conservative distance >= d_warning from the hold to every queue point; the n = 3 centre point has the thinnest margin, 2.43 against 2.4) and the mutation Q1m (the v11 n = 2 line fails)",
    "citation_keys": [],
    "code_action": "none"
@@ -2634,7 +2652,7 @@
    "value": "2.5 s cap (`config.py AcousticConfig.status_fresh_s`); per plan min(2.5, t_min - latency_max_s): 2.5 s for every gate plan since the queue lines moved back (bounds (c), (d) of GateRule.queue_s; st_gate_pair had 1.946 s with the v11 line at -4.18 m)",
    "unit": "",
    "verdict": "DERIVED",
-   "source": "(from the gate geometry) t_min = (abs(queue_s) - (cr_half_len + R_OUT) - queue_tol - nav_err_m) / v_bound, the smallest time from the queue point to the CR at the speed bound",
+   "source": "(from the gate geometry) t_min = (cr_s_min - queue_s - R_OUT - queue_tol - nav_err_m) / v_bound, the smallest time from the queue point to the CR entry plane at the speed bound",
    "doi_or_url": "holo_fleet/perception/gate_perception.py; formal/check_status.py (S2, S11)",
    "derivation": "the cutoff keeps a report fresh only while the sender cannot have reached the CR since it was sent",
    "validity": "a claim is never dropped by age; distinct from the 32 s S2h horizon",

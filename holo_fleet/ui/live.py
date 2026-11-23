@@ -339,7 +339,7 @@ class DemoUI:
                 sim.draw_arrow(p, p + 3.0 * v / max(np.linalg.norm(v), 1e-6), VP_ESCAPE, 10.0, 0.12)
         G = sim.cfg.gate
         for g in scenario.judged_gates:
-            sim.draw_box(g.center, [G.cr_half_len, G.cr_half_width, G.cr_half_height], [60, 130, 230], 4.0, 0.12)
+            sim.draw_box(g.from_gate_frame(G.cr_center()), G.cr_half(), [60, 130, 230], 4.0, 0.12)
         if self._last_camera_t is None or t - self._last_camera_t >= 0.2:
             dt = 0.0 if self._last_camera_t is None else t - self._last_camera_t
             location, rotation = self._camera.update(truth.positions, dt, [g.center for g in scenario.judged_gates],

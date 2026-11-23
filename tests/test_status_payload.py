@@ -53,7 +53,7 @@ def test_a_fresh_not_engaged_report_excludes_a_drone_the_position_would_not():
     assert not ae.status_excluded(1, 1.0 + ae.status_fresh_s + 0.5)
     G = B2.gate
     from holo_fleet.perception.sonar_geometry import R_OUT
-    expect = (abs(gp.plan.queue_s) - G.cr_half_len - R_OUT - G.queue_tol - G.nav_err_m) / ae.v_bound - B2.acoustic.latency_max_s
+    expect = (G.cr_s_min - gp.plan.queue_s - R_OUT - G.queue_tol - G.nav_err_m) / ae.v_bound - B2.acoustic.latency_max_s
     assert ae.status_fresh_s <= expect + 1e-9 and ae.status_fresh_s <= B2.acoustic.status_fresh_s + 1e-9
 
 

@@ -118,7 +118,7 @@ def test_a_persistent_rear_threat_never_moves_the_true_centre_into_the_cr():
             u = float(cmd @ np.asarray(GATE.axis, float))
             v = np.array([v[0] + float(np.clip(u - v[0], -ENV.a_brake * 0.1, ENV.a_brake * 0.1)), 0.0, 0.0])
             s_true += (v[0] + ENV.w_drift_max) * 0.1
-            assert s_true < -G.cr_half_len, (avoid, k, s_true)
+            assert s_true < G.cr_s_min, (avoid, k, s_true)
 
 
 def test_an_occupant_ahead_is_escaped_backwards_jointly_feasible():
@@ -215,11 +215,11 @@ def test_an_admissible_command_leaves_braking_p2_safe_at_the_next_step():
     period later from the worst-case state (position and velocity on the envelope after dt).  A one-step margin alone
     accepts commands that ride the boundary and leave no P2-safe brake behind them."""
     b = gs.P2Bounds.from_cfg(CFG)
-    half = np.array([G.cr_half_len, G.cr_half_width, G.cr_half_height])
+    lo, hi = G.cr_lo(), G.cr_hi()
     a = np.asarray(GATE.axis, float)
     checked = 0
     near = np.arange(gs.hold_s(CFG) - 0.03, gs.hold_s(CFG) + 0.002, 0.002)  # the one-step boundary of a hold
-    for s in np.concatenate([np.arange(-3.2, -2.05, 0.02), near]):
+    for s in np.concatenate([np.arange(G.cr_center_s - 3.2, G.cr_center_s - 2.05, 0.02), near]):
         gc = _gc(float(s))
         for u in np.arange(0.0, 0.55, 0.02):
             v = u * a
@@ -228,7 +228,7 @@ def test_an_admissible_command_leaves_braking_p2_safe_at_the_next_step():
             checked += 1
             # worst case after dt towards the CR: the command reached at once, plus the drift; then a zero command
             q1 = gc.q + np.array([(u + b.w) * b.dt, 0.0, 0.0])
-            m = float(gs.cr_margin(q1, np.array([u, 0.0, 0.0]), np.zeros((1, 3)), b, half)[0])
+            m = float(gs.cr_margin(q1, np.array([u, 0.0, 0.0]), np.zeros((1, 3)), b, lo, hi)[0])
             assert m > 0.0, (s, u, m)
     assert checked > 50
 
@@ -296,9 +296,9 @@ def test_station_keeping_does_not_accumulate_the_drift_that_a_zero_command_lets_
         v = v + float(np.clip(cmd - v, -ENV.a_brake * 0.1, ENV.a_brake * 0.1))
         s += (v + w) * 0.1
         assert gc_k.hold_margin(anchor) > 0.0
-    assert s < -G.cr_half_len - G.nav_err_m
+    assert s < G.cr_s_min - G.nav_err_m
     drift_only = s0 + 600 * 0.1 * w
-    assert drift_only > -G.cr_half_len
+    assert drift_only > G.cr_s_min
 
 
 def test_the_hold_candidate_moving_faster_than_the_drift_is_rated_by_its_direction():
@@ -420,7 +420,7 @@ def test_a_cut_mission_command_becomes_station_keeping_and_the_drift_does_not_ca
         u = float(mf.v @ a)
         v = v + float(np.clip(u - v, -ENV.a_brake * 0.1, ENV.a_brake * 0.1))
         s += (v + ENV.w_drift_max) * 0.1
-        assert s < -G.cr_half_len - G.nav_err_m
+        assert s < G.cr_s_min - G.nav_err_m
     assert recov == 0 and fl.p2_station is not None
 
 
@@ -532,7 +532,7 @@ def test_the_real_step_engages_the_p2_layer_only_within_its_active_range(dist, c
     applies the command of the flows unchanged and records no constraint; at 3 m the constraint is recorded."""
     assert 3.0 < gs.ACTIVE_RANGE_M < 9.0
     ctrl = DroneController(PLAN, CFG)
-    s0 = -G.cr_half_len - dist
+    s0 = G.cr_s_min - dist
     _scripted_perception(ctrl, lambda obs, t: _place_at(obs, PLAN.queue_s if t < 0.35 else s0, [], t < 0.35, drift=0.0))
     for k in range(8):
         ctrl.step(_frame(0.1 * k), 0.1)

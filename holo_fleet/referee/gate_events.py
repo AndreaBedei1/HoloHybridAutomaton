@@ -73,8 +73,7 @@ def gate_events(t: np.ndarray, gf: np.ndarray, states: Sequence[Sequence[Dict]],
     m, n = gf.shape[0], gf.shape[1]
     healthy = list(healthy)
     dt = float(np.median(np.diff(t))) if m > 1 else 0.1
-    inside = (np.abs(gf[:, :, 0]) <= G.cr_half_len) & (np.abs(gf[:, :, 1]) <= G.cr_half_width) & \
-             (np.abs(gf[:, :, 2]) <= G.cr_half_height)
+    inside = G.in_cr(gf[:, :, 0], gf[:, :, 1], gf[:, :, 2])
 
     def gs(k, i):
         g = states[k][i].get("gate") or {}
@@ -123,7 +122,7 @@ def gate_events(t: np.ndarray, gf: np.ndarray, states: Sequence[Sequence[Dict]],
     passed, bypass, wait, dwell, entries = {}, [], {}, [], []
     gone = {}
     for k in healthy:
-        before = np.flatnonzero(gf[:, k, 0] < -G.cr_half_len)
+        before = np.flatnonzero(gf[:, k, 0] < G.cr_s_min)
         if before.size:
             beyond = np.flatnonzero((gf[:, k, 0] > G.exit_s) & (np.arange(m) > before[0]))
             if beyond.size:

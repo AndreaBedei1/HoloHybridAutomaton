@@ -71,7 +71,7 @@ def cr_bearing(pts, q_s):
     for l, dz in pts:
         son = np.array([q_s + float(MOUNTS["FRONT"][0]), l, dz])
         for a, b, c in itertools.product((-1, 1), repeat=3):
-            v = np.array([a * G.cr_half_len, b * G.cr_half_width, c * G.cr_half_height]) - son
+            v = G.cr_center() + np.array([a, b, c]) * G.cr_half() - son
             worst = max(worst, math.degrees(math.acos(v[0] / np.linalg.norm(v))))
     return round(worst + G.heading_tol_deg, 2)
 
@@ -124,7 +124,7 @@ def exit_window(pts, q_s, lanes_of):
                     k = max(1, int(np.linalg.norm(b - a) / 0.1))
                     for t in range(k):
                         cg = a + (b - a) * t / k
-                        if cg[0] <= G.cr_half_len:
+                        if cg[0] <= G.cr_s_max:
                             continue
                         c = GATE.from_gate_frame(cg)
                         dw = (b - a)[0] * GATE.axis + (b - a)[1] * left

@@ -183,7 +183,7 @@ def evaluate(sc, cfg, names, faults, t, P, states, modes, m, validation: bool = 
         g = gates[0]
         for k in healthy:
             sgf = np.array([float(g.to_gate_frame(P[i, k])[0]) for i in range(m)])
-            before = np.flatnonzero(sgf < -G.cr_half_len)
+            before = np.flatnonzero(sgf < G.cr_s_min)
             if before.size:
                 after = np.flatnonzero((sgf > G.exit_s) & (np.arange(m) > before[0]))
                 if after.size:

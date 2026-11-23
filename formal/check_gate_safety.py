@@ -30,9 +30,10 @@ P2B5  (numeric, grid) the robust margin: every command the deployed warning filt
       dt (position and velocity at the corners of an independently computed envelope, the true velocity as the next
       backup's initial state).
 P2B6  (numeric) the CR column: no command called P2-safe lets a true trajectory inside the declared envelope pass under or
-      over the CR (|s| <= cr_half_len and |l| <= cr_half_width at any depth); P2B6m mutation: with the box (column=False)
+      over the CR (cr_s_min <= s <= cr_s_max and |l| <= cr_half_width at any depth); P2B6m mutation: with the box (column=False)
       commands called safe pass under or over it.
-P2Bm  (mutation) the v11 hold point -1.179 m with the declared navigation error leaves the true centre in the CR, and the
+P2Bm  (mutation) the v11 hold rule (0.379 m before the CR entry plane: -1.179 m with the former symmetric CR, -1.429 m with
+      the present one) with the declared navigation error leaves the true centre in the CR, and the
       filter that ignores the navigation error (e_h = 0) calls safe a state whose truth is inside the CR.
 S1g   pairwise radial model (as S1 of formal/check_separation.py) with a gate-constrained drone B that only removes its
       closing component (c_B' <= max(c_B - a_brake dt, 0)) and a drone C that reacts as in S1 (c_C' <= max(c_C - a_brake dt,
@@ -85,13 +86,20 @@ V_CAP = 0.6
 GATE = GateSpec("SYNTH", np.array([0.0, 0.0, -5.0]), np.array([1.0, 0.0, 0.0]), np.array([0.0, -1.0, 0.0]), 2.0, 2.0)
 
 
-def _half(cfg):
-    G = cfg.gate
-    return np.array([G.cr_half_len, G.cr_half_width, G.cr_half_height])
+def _box(cfg):
+    """Corners (lo, hi) of the CR box in the gate frame (GateRule.cr_lo / cr_hi)."""
+    return cfg.gate.cr_lo(), cfg.gate.cr_hi()
+
+
+def _in_box(P, box, axes=3):
+    """Rows of P (k, 3) inside the CR box on the first ``axes`` axes (2: the column footprint)."""
+    lo, hi = box
+    return np.all((P[:, :axes] >= lo[:axes]) & (P[:, :axes] <= hi[:axes]), axis=1)
 
 
 def _gc(cfg, q, v0=np.zeros(3), e_h=None, v_err=0.0):
-    return gs.GateConstraint(GATE, np.asarray(q, float), np.asarray(v0, float), gs.P2Bounds.from_cfg(cfg, e_h), _half(cfg),
+    lo, hi = _box(cfg)
+    return gs.GateConstraint(GATE, np.asarray(q, float), np.asarray(v0, float), gs.P2Bounds.from_cfg(cfg, e_h), lo, hi,
                              v_err=float(v_err))
 
 
@@ -148,7 +156,8 @@ def upper_at(a0: float, a1: float, b: gs.P2Bounds, t: float):
 # ---------------------------------------------------------------------------------------------------------------- P2B1
 def separation_lemma(cfg: FleetConfig) -> CheckResult:
     b = gs.P2Bounds.from_cfg(cfg)
-    h = [exact(x) for x in _half(cfg)]
+    blo, bhi = _box(cfg)
+    lo, hi = [exact(x) for x in blo], [exact(x) for x in bhi]
     err = [exact(b.e_h), exact(b.e_h), exact(b.e_z)]
     sl = exact(b.slack)
     q = [z3.Real(f"q{k}") for k in range(3)]
@@ -159,8 +168,8 @@ def separation_lemma(cfg: FleetConfig) -> CheckResult:
     cons = []
     for k in range(3):
         cons += [e[k] <= err[k], e[k] >= -err[k], rp[k] >= 0, rm[k] >= 0, x[k] <= rp[k], x[k] >= -rm[k]]
-    sep = z3.Or([z3.Or(q[k] + rp[k] + err[k] + sl < -h[k], q[k] - rm[k] - err[k] - sl > h[k]) for k in range(3)])
-    inside = z3.And([z3.And(q[k] + e[k] + x[k] <= h[k], q[k] + e[k] + x[k] >= -h[k]) for k in range(3)])
+    sep = z3.Or([z3.Or(q[k] + rp[k] + err[k] + sl < lo[k], q[k] - rm[k] - err[k] - sl > hi[k]) for k in range(3)])
+    inside = z3.And([z3.And(q[k] + e[k] + x[k] <= hi[k], q[k] + e[k] + x[k] >= lo[k]) for k in range(3)])
     r = check("P2B1 per-step soundness of the P2 test: a positive cr_margin, the navigation error inside (e_h, e_h, e_z) and "
               "the true displacement inside the per-axis reach keep the true centre out of the CR",
               "sep_k(q, R, err, slack) & |e| <= err & -R- <= x <= R+ -> not inside_CR(q + e + x)", ENC, cons + [sep, inside],
@@ -306,7 +315,8 @@ def _profile(a0, a1, b, ts, mode, rng):
 
 def adversarial(cfg: FleetConfig, n_states: int = 1500, seed: int = 7) -> CheckResult:
     b = gs.P2Bounds.from_cfg(cfg)
-    half = _half(cfg)
+    box = _box(cfg)
+    c0 = cfg.gate.cr_center_s
     pl = EscapePlanner(cfg)
     rng = np.random.default_rng(seed)
     t0 = time.time()
@@ -316,7 +326,7 @@ def adversarial(cfg: FleetConfig, n_states: int = 1500, seed: int = 7) -> CheckR
     tested = viol = 0
     first = None
     for _ in range(n_states):
-        q = np.array([rng.uniform(-3.6, 1.6), rng.uniform(-2.6, 2.6), rng.uniform(-2.6, 2.6)])
+        q = np.array([c0 + rng.uniform(-3.6, 1.6), rng.uniform(-2.6, 2.6), rng.uniform(-2.6, 2.6)])
         v0 = rng.uniform(-0.5, 0.5, 3) * np.array([1.0, 1.0, 0.5])
         gc = _gc(cfg, q, v0)
         M = gc.margins_world(C)
@@ -331,7 +341,7 @@ def adversarial(cfg: FleetConfig, n_states: int = 1500, seed: int = 7) -> CheckR
                                                            else rng.uniform(-1, 1)) for a in range(3)])
                 P = q + e + X
                 tested += 1
-                bad = np.all(np.abs(P) <= half, axis=1)
+                bad = _in_box(P, box)
                 if bad.any():
                     viol += 1
                     if first is None:
@@ -350,21 +360,21 @@ def adversarial(cfg: FleetConfig, n_states: int = 1500, seed: int = 7) -> CheckR
 
 def mutations(cfg: FleetConfig) -> CheckResult:
     b = gs.P2Bounds.from_cfg(cfg)
-    half = _half(cfg)
-    q_old = np.array([-(cfg.gate.cr_half_len + 0.229 + 0.15), 0.0, 0.0])
+    G = cfg.gate
+    q_old = np.array([G.cr_s_min - (0.229 + 0.15), 0.0, 0.0])
     truth_old = q_old + np.array([b.e_h, 0.0, 0.0])
-    a = bool(np.all(np.abs(truth_old) <= half))
+    a = bool(G.in_cr(*truth_old))
     m_old = float(_gc(cfg, q_old).margins_world(np.zeros(3))[0])
-    q = np.array([-1.3, 0.0, 0.0])
+    q = np.array([G.cr_s_min - 0.5, 0.0, 0.0])
     m_e0 = float(_gc(cfg, q, e_h=0.0).margins_world(np.zeros(3))[0])
     truth = q + np.array([b.e_h, 0.0, 0.0])
-    c = m_e0 > 0 and bool(np.all(np.abs(truth) <= half))
+    c = m_e0 > 0 and bool(G.in_cr(*truth))
     ok = a and m_old <= 0.0 and c
     return CheckResult("P2Bm mutation: the v11 hold point with the declared navigation error, and the filter without the "
                        "navigation error, let the true centre into the CR",
                        "expect: truth(hold_v11) in CR; margin_{e_h=0}(q) > 0 with truth(q) in CR", ENC, "counterexample",
                        verdict="counterexample" if ok else "none", passed=ok,
-                       note=f"v11 hold s = {q_old[0]:.3f} m: an estimate {b.e_h} m short puts the centre at s = "
+                       note=f"v11 hold rule with the present CR s = {q_old[0]:.3f} m: an estimate {b.e_h} m short puts the centre at s = "
                             f"{truth_old[0]:.3f} m (inside: {a}); the deployed filter gives holding there margin "
                             f"{m_old:.3f} m (rejected); with e_h = 0 holding at s = {q[0]} m has margin {m_e0:.3f} m while the "
                             f"truth s = {truth[0]:.2f} m is inside")
@@ -493,7 +503,8 @@ def joint_exhaustive(cfg: FleetConfig):
     sets = [[(P, env.v_open)] for P in pats] + [[(P, 0.0)] for P in pats]
     sets += [[(P, env.v_open), (Q, env.v_open)] for P, Q in itertools.combinations(pats, 2)]
     sets += [[(P, env.v_open), (Q, 0.0)] for P, Q in itertools.combinations(pats, 2)]
-    poss = [(s, l, dz) for s in (-2.6, G.stage2_hold_s, -1.9) for l in (0.0, 1.2) for dz in (0.0, 1.3)]
+    c0 = G.cr_center_s
+    poss = [(s, l, dz) for s in (c0 - 2.6, G.stage2_hold_s, c0 - 1.9) for l in (0.0, 1.2) for dz in (0.0, 1.3)]
     vels = [np.zeros(3), np.array([0.3, 0.0, 0.0])]
     t0 = time.time()
     n = bad = mbad = cls_bad = 0
@@ -660,8 +671,10 @@ def queue_checks(cfg: FleetConfig):
                     note=f"hold s = {G.stage2_hold_s} m, {len(holds)} hold points (lateral within {G.hold_lateral_allow} m, "
                          f"flows.ACQ_OFFSETS); merge_clearance {G.merge_clearance} m, d_warning {cfg.sep.d_warning} m; "
                          + "; ".join(rows) + extra)
-    okm, rowsm = queue_geometry(cfg, queue_s={"abreast n=2": -4.181})
-    rm = CheckResult("Q1m mutation: the v11 queue line for n = 2 (-4.181 m) puts the queue points inside the clearance of the hold",
+    q_v11 = -4.181 + (G.cr_s_min + 0.8)  # the v11 queue rule for n = 2 from the present CR entry plane (-4.181 m with the former CR)
+    okm, rowsm = queue_geometry(cfg, queue_s={"abreast n=2": q_v11})
+    rm = CheckResult(f"Q1m mutation: the v11 queue line for n = 2 ({q_v11:.3f} m with the present CR entry plane) puts the queue "
+                     "points inside the clearance of the hold",
                      "expect a violation of Q1", ENC, "caught", verdict="caught" if not okm else "missed", passed=not okm,
                      note="; ".join(x for x in rowsm if x.startswith("abreast n=2")))
     return r, rm
@@ -672,8 +685,9 @@ def station_keeping(cfg: FleetConfig) -> CheckResult:
     b = gs.P2Bounds.from_cfg(cfg)
     ve = _v_err_fresh(cfg)
     t0 = time.time()
-    anchors = [np.array([cfg.gate.stage2_hold_s, 0.0, 0.0]), np.array([-2.6, 0.9, 0.0]), np.array([-2.4, 0.0, 1.8]),
-               np.array([-3.0, -1.4, -2.5]), np.array([0.0, 2.6, 0.0])]
+    c0 = cfg.gate.cr_center_s
+    anchors = [np.array([cfg.gate.stage2_hold_s, 0.0, 0.0]), np.array([c0 - 2.6, 0.9, 0.0]), np.array([c0 - 2.4, 0.0, 1.8]),
+               np.array([c0 - 3.0, -1.4, -2.5]), np.array([c0, 2.6, 0.0])]
     devs = np.linspace(-b.e_track, b.e_track, 5)
     drop_true = drop_meas = 0.0
     worst_target, n, n_sat = np.inf, 0, 0
@@ -740,7 +754,7 @@ def _corners_after(u0, u, b, ve):
     return out
 
 
-def _braking_ok(cfg, q, u0, u, b, ve, half):
+def _braking_ok(cfg, q, u0, u, b, ve, box):
     """Braking one-step P2-safe from every corner of the worst-case state after dt (v_err 0: the corner velocity is the
     true one), and as computed onboard at the next step (measured within v_err, filtered with v_err)."""
     C = _corners_after(u0, u, b, ve)
@@ -749,11 +763,11 @@ def _braking_ok(cfg, q, u0, u, b, ve, half):
     for sel in itertools.product((0, 1), repeat=3):
         x = np.array([C[k][sel[k]][0] for k in range(3)])
         v = np.array([C[k][sel[k]][1] for k in range(3)])
-        m = float(gs.cr_margin(q + x, v, np.zeros((1, 3)), b, half)[0])
+        m = float(gs.cr_margin(q + x, v, np.zeros((1, 3)), b, *box)[0])
         worst = min(worst, m)
         phys &= m > 0.0
         sgn = np.array([1.0 if sel[k] == 0 else -1.0 for k in range(3)])
-        m2 = float(gs.cr_margin(q + x, v + sgn * ve, np.zeros((1, 3)), b, half, v_err=ve)[0])
+        m2 = float(gs.cr_margin(q + x, v + sgn * ve, np.zeros((1, 3)), b, *box, v_err=ve)[0])
         onboard &= m2 > 0.0
     return phys, onboard, worst
 
@@ -762,11 +776,12 @@ def robust_selection(cfg: FleetConfig) -> CheckResult:
     env, G = cfg.env, cfg.gate
     b = gs.P2Bounds.from_cfg(cfg)
     ve = _v_err_fresh(cfg)
-    half = _half(cfg)
+    box = _box(cfg)
+    c0 = G.cr_center_s
     pl = EscapePlanner(cfg)
     pats = sorted(pl.regions, key=lambda P: "+".join(sorted(P)))
     sets = [[(P, env.v_open)] for P in pats] + [[(P, env.v_open), (Q, env.v_open)] for P, Q in itertools.combinations(pats, 2)][::9]
-    poss = [(sv, lv, dz) for sv in (-3.2, -2.7, G.stage2_hold_s, -2.0) for lv in (0.0, 1.5) for dz in (0.0, 1.6)]
+    poss = [(sv, lv, dz) for sv in (c0 - 3.2, c0 - 2.7, G.stage2_hold_s, c0 - 2.0) for lv in (0.0, 1.5) for dz in (0.0, 1.6)]
     vels = [np.zeros(3), np.array([0.3, 0.0, 0.0]), np.array([-0.3, 0.0, 0.0]), np.array([0.1, 0.25, 0.1])]
     t0 = time.time()
     n = bad = bad_on = 0
@@ -800,7 +815,7 @@ def robust_selection(cfg: FleetConfig) -> CheckResult:
                 if float(gc.margins_world(u)[0]) <= 0.0:
                     continue
                 n += 1
-                phys, onb, w = _braking_ok(cfg, q, v0, gc.to_gate(u), b, ve, half)
+                phys, onb, w = _braking_ok(cfg, q, v0, gc.to_gate(u), b, ve, box)
                 worst = min(worst, w)
                 if not phys:
                     bad += 1
@@ -824,7 +839,8 @@ def robust_selection(cfg: FleetConfig) -> CheckResult:
 
 def column(cfg: FleetConfig, n_states: int = 900, seed: int = 11):
     b = gs.P2Bounds.from_cfg(cfg)
-    half = _half(cfg)
+    box = _box(cfg)
+    c0 = cfg.gate.cr_center_s
     pl = EscapePlanner(cfg)
     rng = np.random.default_rng(seed)
     t0 = time.time()
@@ -833,16 +849,16 @@ def column(cfg: FleetConfig, n_states: int = 900, seed: int = 11):
     tested = viol = box_pass = 0
     first = None
     for _ in range(n_states):
-        q = np.array([rng.uniform(-3.4, 3.4), rng.uniform(-2.6, 2.6), rng.choice([-1, 1]) * rng.uniform(1.0, 4.0)])
+        q = np.array([c0 + rng.uniform(-3.4, 3.4), rng.uniform(-2.6, 2.6), rng.choice([-1, 1]) * rng.uniform(1.0, 4.0)])
         v0 = rng.uniform(-0.5, 0.5, 3) * np.array([1.0, 1.0, 0.5])
         gc = _gc(cfg, q, v0)
         M = gc.margins_world(C)
-        Mbox = gs.cr_margin(q, v0, C, b, half, lookahead=True, column=False)
+        Mbox = gs.cr_margin(q, v0, C, b, *box, lookahead=True, column=False)
         for k in np.flatnonzero((Mbox > 0) & (M <= 0))[:3]:
             u = C[k]
             X = np.stack([_profile(v0[a], u[a], b, ts, "rand", rng) for a in range(3)], axis=1)
             P = q + X
-            box_pass += bool(np.any((np.abs(P[:, 0]) <= half[0]) & (np.abs(P[:, 1]) <= half[1])))
+            box_pass += bool(np.any(_in_box(P, box, axes=2)))
         idx = np.flatnonzero(M > 0)
         for k in rng.choice(idx, size=min(5, idx.size), replace=False) if idx.size else []:
             u = C[k]
@@ -854,7 +870,7 @@ def column(cfg: FleetConfig, n_states: int = 900, seed: int = 11):
                              [rng.uniform(-b.e_z, b.e_z)])
                 P = q + e + X
                 tested += 1
-                inside = (np.abs(P[:, 0]) <= half[0]) & (np.abs(P[:, 1]) <= half[1])
+                inside = _in_box(P, box, axes=2)
                 if inside.any():
                     viol += 1
                     if first is None:
@@ -862,7 +878,7 @@ def column(cfg: FleetConfig, n_states: int = 900, seed: int = 11):
                                  "modes": list(modes) + [mz], "margin": round(float(M[k]), 4)}
     ok = viol == 0 and tested > 0
     r = CheckResult("P2B6 the CR column: no command called P2-safe lets a true trajectory inside the declared envelope pass under or "
-                    "over the CR (|s| <= cr_half_len, |l| <= cr_half_width at any depth; numeric)",
+                    "over the CR (cr_s_min <= s <= cr_s_max, |l| <= cr_half_width at any depth; numeric)",
                     "forall sampled (q above or below the CR, v0, u) with robust margin > 0: true (s, l) never in the CR footprint",
                     ENC, "holds", verdict="holds" if ok else "violated", passed=ok, seconds=round(time.time() - t0, 1),
                     counterexample=first,

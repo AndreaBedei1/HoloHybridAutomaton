@@ -12,6 +12,8 @@ import math
 from dataclasses import asdict, dataclass, field
 from typing import Dict, Tuple
 
+import numpy as np
+
 from holo_fleet.perception.sonar_geometry import DEFAULT_SONAR, R_IN, R_OUT, SonarModel
 
 
@@ -95,7 +97,16 @@ class PerceptionConfig:
 class GateRule:
     """P2 critical-region protocol (gate frame: s along the axis towards the exit, l left, z up).
 
-    The CR is |s| <= cr_half_len, |l| <= cr_half_width, |z| <= cr_half_height around the gate centre.
+    The CR is the box cr_s_min <= s <= cr_s_max, |l| <= cr_half_width, |z| <= cr_half_height (gate frame, origin at the
+    gate centre): it covers the approach immediately before the gate and the gate passage itself, not a region after
+    the gate.  Exit plane ``cr_s_max`` = 0.55 m: the G06 bars are 0.30 m deep along the axis
+    (arena_bridge.GATE_BAR_SECTION_M), so a hull touches the frame only while its centre is within 0.15 + R_OUT
+    (= |HULL_HALF| = 0.389 m, any heading) = 0.54 m of the gate plane; the whole passage [-0.54, 0.54] lies inside.
+    Entry plane ``cr_s_min`` = cr_s_max - 1.6 = -1.05 m: the CR keeps the length (1.6 m) and the volume of the previous
+    symmetric box |s| <= 0.8, so the monitored region is not shrunk; the previous pre-gate part [-0.8, 0] is inside the
+    new CR and only the post-passage part (0.55, 0.8] is dropped.  ``cr_half_len`` / ``cr_center_s`` are derived
+    (half length 0.8 m, centre at s = -0.25 m); ``cr_lo``/``cr_hi``/``cr_center``/``cr_half``/``in_cr`` are the box for
+    every user (referee, perception, control, formal models), so that all of them agree with the referee's P2.
     Queue points are abreast on the queue line s = queue_s(n), ``queue_spacing`` apart, so that two
     queued drones see each other in a pure LEFT/RIGHT relation; the line is far enough back that the
     whole CR lies inside every queued drone's FRONT cone (``queue_cone_deg`` + heading tolerance <
@@ -105,7 +116,8 @@ class GateRule:
     queue line, crosses the gate and veers towards its own formation lane after ``veer_s``.
     """
 
-    cr_half_len: float = 0.8
+    cr_s_min: float = -1.05
+    cr_s_max: float = 0.55
     cr_half_width: float = 1.0
     cr_half_height: float = 1.0
     queue_spacing: float = 3.5
@@ -131,16 +143,50 @@ class GateRule:
     stack_spacing: float = 3.5
     queue_lateral_max: float = 3.5
     hold_err_m: float = 0.10
-    stage2_hold_s: float = -2.3025
+    stage2_hold_s: float = -2.5525
     hold_lateral_allow: float = 0.27
     """Stage-2 hold of a committed drone before admission (gate frame s, on the axis): control/gate_safety.hold_s, the
-    nearest point where holding is P2-safe under the declared navigation error (-(cr_half_len + nav_err_m + reach of a
-    hold + slack) = -2.2025 m), minus the measured holding error ``hold_err_m``.  A derived value, kept equal to the
+    nearest point where holding is P2-safe under the declared navigation error (cr_s_min - (nav_err_m + reach of a
+    hold + slack) = -2.4525 m), minus the measured holding error ``hold_err_m``.  A derived value, kept equal to the
     derivation by tests/test_hold_point.py."""
 
     @property
+    def cr_half_len(self) -> float:
+        """Half length of the CR along the axis (derived): (cr_s_max - cr_s_min) / 2."""
+        return 0.5 * (self.cr_s_max - self.cr_s_min)
+
+    @property
+    def cr_center_s(self) -> float:
+        """Gate-frame s of the CR centre (derived): (cr_s_min + cr_s_max) / 2."""
+        return 0.5 * (self.cr_s_min + self.cr_s_max)
+
+    def cr_lo(self) -> np.ndarray:
+        """Lower corner of the CR box in the gate frame (s, l, dz)."""
+        return np.array([self.cr_s_min, -self.cr_half_width, -self.cr_half_height])
+
+    def cr_hi(self) -> np.ndarray:
+        """Upper corner of the CR box in the gate frame (s, l, dz)."""
+        return np.array([self.cr_s_max, self.cr_half_width, self.cr_half_height])
+
+    def cr_center(self) -> np.ndarray:
+        """Centre of the CR box in the gate frame (s, l, dz)."""
+        return np.array([self.cr_center_s, 0.0, 0.0])
+
+    def cr_half(self) -> np.ndarray:
+        """Half extents of the CR box (s, l, dz)."""
+        return np.array([self.cr_half_len, self.cr_half_width, self.cr_half_height])
+
+    def in_cr(self, s, l, dz, margin: float = 0.0):
+        """Is the gate-frame point (s, l, dz) inside the CR grown by ``margin`` on every side?  Vectorised (numpy
+        broadcasting); a Python bool for scalar input.  The P2 occupancy predicate of the referee."""
+        s, l, dz = np.asarray(s, float), np.asarray(l, float), np.asarray(dz, float)
+        out = ((s >= self.cr_s_min - margin) & (s <= self.cr_s_max + margin)
+               & (np.abs(l) <= self.cr_half_width + margin) & (np.abs(dz) <= self.cr_half_height + margin))
+        return bool(out) if np.ndim(out) == 0 else out
+
+    @property
     def merge_s(self) -> float:
-        return -(self.cr_half_len + self.merge_before_cr)
+        return self.cr_s_min - self.merge_before_cr
 
     def queue_s(self, n: int, dz_max: float = 0.0, lats: Tuple[float, ...] = ()) -> float:
         """Queue line, the smaller of two bounds:
@@ -152,17 +198,18 @@ class GateRule:
             ``hold_lateral_allow`` of the axis: the steady deviation w_drift_max / k_track = 0.25 m of the hold loop
             against the declared lateral drift, plus 0.02 m; the acquisition offsets are vertical) keeps ``merge_clearance`` from
             every queue point: a queued drone and a drone held before the CR are not in each other's warning band (the
-            criterion of (b); for n = 2 the line moves from -4.18 m to -5.14 m, for n = 3 from -5.41 m to -5.50 m; n = 1
+            criterion of (b); for n = 2 the line moves from -4.43 m to -5.39 m, for n = 3 from -5.66 m to -5.75 m; n = 1
             has no other queue point and n = 4 is unchanged);
         (d) the queue line is never ahead of the stage-2 hold: a queued drone holds where holding is P2-safe under the
-            declared navigation error (control/gate_safety.py; n = 1 moves from -1.91 m to -2.30 m).
+            declared navigation error (control/gate_safety.py; n = 1 moves from -2.16 m to -2.55 m).
+        Bound (a) is measured from the CR entry plane (-cr_s_min); every bound follows the CR entry plane.
         ``lats``: the column laterals (default: the abreast queue of n columns)."""
         lats = tuple(lats) or self.queue_laterals(n)
         l_max = max(abs(x) for x in lats)
-        need = self.cr_half_len + 0.24 + (l_max + self.cr_half_width) / math.tan(math.radians(self.queue_cone_deg))
+        need = -self.cr_s_min + 0.24 + (l_max + self.cr_half_width) / math.tan(math.radians(self.queue_cone_deg))
         if dz_max > 0.0:
             off = math.hypot(l_max + self.cr_half_width, dz_max + self.cr_half_height)
-            need = max(need, self.cr_half_len + 0.24 + off / math.tan(math.radians(self.queue_cone_deg)))
+            need = max(need, -self.cr_s_min + 0.24 + off / math.tan(math.radians(self.queue_cone_deg)))
         a = math.radians(self.merge_angle_deg)
         for k in range(len(lats) - 1):
             lq, ln = lats[k], lats[k + 1]

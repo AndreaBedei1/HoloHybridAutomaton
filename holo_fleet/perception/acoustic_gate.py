@@ -25,7 +25,7 @@ which a hull in or at the CR was seen; since then the corridor has been empty):
      exceeds the largest distance from the own position to the grown CR: a drone heard far enough away cannot be in
      it, and the direction of arrival, the least precise part of a fix at these ranges, is not needed.
 (A3) progress, not safety: at least one possible occupant was heard beyond the exit face (the nominal positions of
-     those fixes at s > cr_half_len + R_OUT): the occupant has passed, not backed out.
+     those fixes at s > cr_s_max + R_OUT): the occupant has passed, not backed out.
 (A4) an episode none of whose possible occupants is a drone of the plan (every other drone excluded at t_lc) gives
      the exit evidence once every other drone is also positively outside the CR now (A2): no fleet drone is in it.
 
@@ -97,7 +97,8 @@ class AcousticExit:
         self.tracker = tracker
         self.others = list(others)
         G = cfg.gate
-        self.half = np.array([G.cr_half_len, G.cr_half_width, G.cr_half_height])
+        self.lo, self.hi = G.cr_lo(), G.cr_hi()
+        self.center, self.half = G.cr_center(), G.cr_half()
         self.v_bound = speed_bound(cfg)
         self.sighting: Optional[Dict] = None
         self.veto: set = set()
@@ -224,7 +225,7 @@ class AcousticExit:
 
     def _cr_possible(self, q: np.ndarray, rho: float) -> bool:
         """Some point within rho of a sample q (gate frame) can be the centre of a hull in the CR."""
-        gap = np.linalg.norm(q - np.clip(q, -self.half, self.half), axis=1)
+        gap = np.linalg.norm(q - np.clip(q, self.lo, self.hi), axis=1)
         return bool(np.any(gap <= R_OUT + rho + self.cfg.acoustic.nav_err_gate_m))
 
     def _echo_possible(self, q: np.ndarray, rho: float) -> bool:
@@ -249,7 +250,7 @@ class AcousticExit:
         if not f.rep_ok:
             return True
         q = gate_points(g, f.rep.p[None, :])
-        gap = np.linalg.norm(q - np.clip(q, -self.half, self.half), axis=1)
+        gap = np.linalg.norm(q - np.clip(q, self.lo, self.hi), axis=1)
         return bool(gap[0] <= R_OUT + f.rep_radius(t, self.v_bound))
 
     def _could_be_occupant(self, g, f: Fix, t_lc: float) -> bool:
@@ -274,7 +275,7 @@ class AcousticExit:
         a = self.cfg.acoustic
         r_lo = f.r - box_bounds(f.r, self.cfg)[0] - a.los_excess_max_m - self.v_bound * max(t - f.t, 0.0)
         own = gate_points(g, (f.p - f.rel)[None, :])[0]
-        corners = (self.half + R_OUT) * np.array([[x, y, z] for x in (-1, 1) for y in (-1, 1) for z in (-1, 1)])
+        corners = self.center + (self.half + R_OUT) * np.array([[x, y, z] for x in (-1, 1) for y in (-1, 1) for z in (-1, 1)])
         return r_lo > float(np.max(np.linalg.norm(corners - own, axis=1))) + a.nav_err_gate_m
 
     def clear_of_cr(self, g, f: Fix, t: float) -> bool:
@@ -301,7 +302,7 @@ class AcousticExit:
         if len({f.track for f in tail}) != 1:
             return None
         if beyond:
-            s_exit = self.half[0] + R_OUT
+            s_exit = self.hi[0] + R_OUT
             ok = all(float(gate_points(g, f.p[None, :])[0][0]) > s_exit
                      or (f.rep_ok and float(gate_points(g, f.rep.p[None, :])[0][0]) - f.rep_radius(f.t, self.v_bound)
                          > s_exit) for f in tail)

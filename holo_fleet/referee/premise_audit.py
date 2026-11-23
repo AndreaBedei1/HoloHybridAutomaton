@@ -411,8 +411,7 @@ def physical_entries(t, P, states, gate, cfg, names) -> List[Dict]:
     n = len(names)
     st_t = [np.array([float(r["t"]) for r in s]) for s in states]
     gf = np.array([[gate.to_gate_frame(P[i, k]) for k in range(n)] for i in range(len(t))])
-    inside = (np.abs(gf[:, :, 0]) <= G.cr_half_len) & (np.abs(gf[:, :, 1]) <= G.cr_half_width) & \
-             (np.abs(gf[:, :, 2]) <= G.cr_half_height)
+    inside = G.in_cr(gf[:, :, 0], gf[:, :, 1], gf[:, :, 2])
     out = []
     for k in range(n):
         for i in np.flatnonzero(inside[1:, k] & ~inside[:-1, k]) + 1:
@@ -448,11 +447,10 @@ def _inside_any(t, P, gates, cfg, n) -> Optional[np.ndarray]:
     if P is None or not gates:
         return None
     G = cfg.gate
-    half = np.array([G.cr_half_len, G.cr_half_width, G.cr_half_height])
     inside = np.zeros((len(t), n), bool)
     for g in gates:
         gf = np.array([[g.to_gate_frame(P[i, k]) for k in range(n)] for i in range(len(t))])
-        inside |= np.all(np.abs(gf) <= half, axis=2)
+        inside |= G.in_cr(gf[..., 0], gf[..., 1], gf[..., 2])
     return inside
 
 

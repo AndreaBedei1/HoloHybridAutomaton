@@ -82,8 +82,8 @@ def test_no_hull_inside_the_cr_passes_w1(n):
     that W1 rejects."""
     w = ExitWitness()
     q_s = queue_line(abreast_slots(n), G)
-    half = np.array([G.cr_half_len, G.cr_half_width, G.cr_half_height])
-    grid = [np.array([a, b, c]) * half for a in np.linspace(-1, 1, 5) for b in np.linspace(-1, 1, 5) for c in np.linspace(-1, 1, 3)]
+    c0, half = G.cr_center(), G.cr_half()
+    grid = [c0 + np.array([a, b, c]) * half for a in np.linspace(-1, 1, 5) for b in np.linspace(-1, 1, 5) for c in np.linspace(-1, 1, 3)]
     for lat in (s.lateral for s in abreast_slots(n)):
         for dyaw in (-G.heading_tol_deg, 0.0, G.heading_tol_deg):
             yaw = YAW + math.radians(dyaw)

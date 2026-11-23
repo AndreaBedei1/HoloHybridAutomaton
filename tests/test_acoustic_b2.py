@@ -269,7 +269,7 @@ def test_a_multipath_episode_never_gives_an_exit_from_inside_the_cr():
     b, ae = exit_bench(cfg=B2)
     corridor(b, ae, gate_world(-0.6, 0.0))
     for _ in range(8):
-        b.ping(1, gate_world(G.cr_half_len, 0.0), err=(ac.MEDIUM.reflect_extra_m[1], 0.0, 0.0))
+        b.ping(1, gate_world(G.cr_s_max, 0.0), err=(ac.MEDIUM.reflect_extra_m[1], 0.0, 0.0))
         queued_others(b, k_occ=1)
         b.step(0.9)
         assert ae.evaluate(b.t, G06) is None
@@ -290,7 +290,7 @@ def test_deployed_envelope_gives_the_exit_by_range_once_the_drone_is_far_beyond(
         ev = ae.evaluate(b.t, G06)
         if ev is not None and got is None:
             got = float(s)
-    assert got is not None and got > G.cr_half_len + 6.0, got
+    assert got is not None and got > G.cr_s_max + 6.0, got
 
 
 def _pass(b, ae, k_occ=1, s_end=9.0, steps=12, others=True):
@@ -371,10 +371,10 @@ def test_noisy_fixes_inside_the_envelope_never_place_a_cr_hull_beyond_the_exit()
     errors at the corners of the envelope, never gives a fix whose region lies beyond the exit face."""
     b, ae = exit_bench()
     br_f = lambda r: box_bounds(r, B2)
-    half = np.array([G.cr_half_len, G.cr_half_width, G.cr_half_height])
+    c0, half = G.cr_center(), G.cr_half()
     for lat in LATS:
         p = gate_world(QS, lat)
-        for c in [np.array([a, bb, cc]) * half for a in (-1, 0, 1) for bb in (-1, 0, 1) for cc in (-1, 0, 1)]:
+        for c in [c0 + np.array([a, bb, cc]) * half for a in (-1, 0, 1) for bb in (-1, 0, 1) for cc in (-1, 0, 1)]:
             r, az, el = measure(p, YAW, gate_world(*c))
             br, ba, be = br_f(r)
             for sr in (-1, 1):
@@ -384,7 +384,7 @@ def test_noisy_fixes_inside_the_envelope_never_place_a_cr_hull_beyond_the_exit()
                         body, slack = region_samples(r + sr * br, az + sa * ba, el + se * be, B2)
                         pts = p + body @ _rot(YAW).T
                         f = Fix(slot=1, t=0.0, r=r, az=az, el=el, p=pts.mean(0), pts=pts, slack=slack, rel=pts.mean(0) - p)
-                        assert ae.s_lower(G06, f, 0.0) <= G.cr_half_len + R_OUT
+                        assert ae.s_lower(G06, f, 0.0) <= G.cr_s_max + R_OUT
 
 
 def test_gate_latch_ignores_acoustics_while_the_corridor_is_occupied():

@@ -36,12 +36,12 @@ def one(args):
             if tr is None: continue
             P = {k: np.array([float(tr[f"x{k}"]), float(tr[f"y{k}"]), float(tr[f"z{k}"])]) for k in ids}
             fi = g.to_gate_frame(P[i])
-            if fi[0] > -DEFAULT.gate.cr_half_len or (LATERAL and abs(fi[1]) < 2.0): continue
+            if fi[0] > DEFAULT.gate.cr_s_min or (LATERAL and abs(fi[1]) < 2.0): continue
             yaw = math.radians(r["nav_yaw_deg"]); R = np.array([[math.cos(yaw), -math.sin(yaw), 0], [math.sin(yaw), math.cos(yaw), 0], [0, 0, 1.0]])
             for j in ids:
                 if j == i: continue
                 sj = g.to_gate_frame(P[j])
-                if not (DEFAULT.gate.cr_half_len < sj[0] < 12.0): continue
+                if not (DEFAULT.gate.cr_s_max < sj[0] < 12.0): continue
                 for sec in sg.SECTORS:
                     son = P[i] + R @ sg.MOUNTS[sec]; d = P[j] - son; L = float(np.linalg.norm(d))
                     ang = math.degrees(math.acos(np.clip(d @ (R @ sg.AXES[sec]) / L, -1, 1)))

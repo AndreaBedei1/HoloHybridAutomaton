@@ -180,7 +180,7 @@ class Referee:
     def cr_inside(self, g: GateSpec, p: np.ndarray) -> bool:
         G = self.cfg.gate
         s, l, dz = g.to_gate_frame(p)
-        return abs(s) <= G.cr_half_len and abs(l) <= G.cr_half_width and abs(dz) <= G.cr_half_height
+        return G.in_cr(s, l, dz)
 
     def update(self, truth, modes: Sequence[str], disturbance_active: bool = False) -> Dict:
         t, P = truth.t, truth.positions

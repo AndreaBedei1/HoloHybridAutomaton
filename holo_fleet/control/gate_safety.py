@@ -1,8 +1,8 @@
 """Mutual exclusion (P2) as a constraint on the final velocity command, and its joint feasibility with separation (P1).
 
-Why.  The stage-2 hold before the critical region (CR) used to sit at s = -(cr_half_len + hull half-length + 0.15) = -1.18 m,
-0.38 m from the CR, while the declared gate-frame navigation error is ``nav_err_m`` = 1.0 m: a drone holding there on an
-estimate 1 m short of the truth has its centre inside the CR.  And no gate rule edited the avoidance output of a drone
+Why.  The stage-2 hold before the critical region (CR) used to sit at s = -(0.8 + hull half-length + 0.15) = -1.18 m (v11,
+with the former symmetric CR |s| <= 0.8), 0.38 m from the CR, while the declared gate-frame navigation error is
+``nav_err_m`` = 1.0 m: a drone holding there on an estimate 1 m short of the truth has its centre inside the CR.  And no gate rule edited the avoidance output of a drone
 that is not admitted: the separation warning filter of a drone held before the CR answers a drone behind it (a REAR
 threat) by moving FORWARD, the only directions with a guaranteed opening from a REAR sector pattern (formal F1p, F1pa).
 
@@ -10,9 +10,9 @@ What.  A drone that is not authorized to be in the CR (not committed and admitte
 COLUMN as a forbidden set for its TRUE centre: the CR of property P2 extended to every depth, so that a drone that is not
 admitted neither enters the CR nor passes under or over it (a REAR threat and a forward drift otherwise let a drone
 descend below the CR and pass forward under the frame, P2-safe by the centre definition but an unauthorized passage).
-The CR itself is the exact occupancy of property P2 (|s| <= cr_half_len, |l| <= cr_half_width,
-|dz| <= cr_half_height).  A velocity command v is P2-SAFE when the backup that follows it cannot reach the CR under the
-declared bounds:
+The CR itself is the exact occupancy of property P2 (cr_s_min <= s <= cr_s_max, |l| <= cr_half_width,
+|dz| <= cr_half_height: GateRule.in_cr; the approach and the gate passage, s in [-1.05, 0.55]).  A velocity command v is
+P2-SAFE when the backup that follows it cannot reach the CR under the declared bounds:
 
 * the command is applied for ``tau_c`` = one control period + the largest data age (dt + tau_max), the true velocity
   reaching an increase of the command at once (no acceleration bound is assumed towards the command) and losing at
@@ -50,8 +50,8 @@ scaled command, then (holding not P2-safe) a horizontal retreat of the largest m
 error bound ``v_err`` (DVL noise while fresh, the speed bound during an outage: DroneController).
 
 Hold point.  The stage-2 hold of a drone whose gate localization is not validated is the nearest point on the axis that
-is P2-safe when holding: ``hold_s`` = -(cr_half_len + nav_err_m + reach of a hold + ``SLACK_M``) = -2.20 m, the
-keep-out plane of an uncommitted drone (Flows.keepout_filter: cr_half_len + R_OUT + nav_err_m = 2.205 m).  No new
+is P2-safe when holding: ``hold_s`` = cr_s_min - (nav_err_m + reach of a hold + ``SLACK_M``) = -2.45 m, near the
+keep-out plane of an uncommitted drone (Flows.keepout_filter: s = cr_s_min - (R_OUT + nav_err_m) = -2.44 m).  No new
 premise on the error after a validated fit is introduced (the fit uncertainty is not an error bound,
 perception/nav.py), so the same point serves a localized drone that waits for the stage-2 check.
 
@@ -157,7 +157,7 @@ def hold_s(cfg: FleetConfig = DEFAULT) -> float:
     """Stage-2 hold of a drone that is not admitted: the nearest P2-safe point on the axis when holding, under the
     declared navigation error (module docstring)."""
     b = P2Bounds.from_cfg(cfg)
-    return -(cfg.gate.cr_half_len + b.e_h + hold_reach(b) + b.slack)
+    return cfg.gate.cr_s_min - (b.e_h + hold_reach(b) + b.slack)
 
 
 def _after(u0: np.ndarray, u: np.ndarray, b: P2Bounds) -> tuple:
@@ -176,11 +176,17 @@ def _after(u0: np.ndarray, u: np.ndarray, b: P2Bounds) -> tuple:
     return tuple(out)
 
 
-def cr_margin(q: np.ndarray, v0: np.ndarray, V: np.ndarray, b: P2Bounds, half: np.ndarray, lookahead: bool = False,
-              column: bool = COLUMN, v_err: float = 0.0) -> np.ndarray:
+def box_gap(lo: np.ndarray, hi: np.ndarray, cr_lo: np.ndarray, cr_hi: np.ndarray) -> np.ndarray:
+    """Per-axis signed separation of the boxes [lo, hi] and [cr_lo, cr_hi] (positive = disjoint along that axis)."""
+    return np.maximum(cr_lo - hi, lo - cr_hi)
+
+
+def cr_margin(q: np.ndarray, v0: np.ndarray, V: np.ndarray, b: P2Bounds, cr_lo: np.ndarray, cr_hi: np.ndarray,
+              lookahead: bool = False, column: bool = COLUMN, v_err: float = 0.0) -> np.ndarray:
     """Signed separation [m] between the forbidden set and the box swept by the backup of each command in V (K, 3), all in
-    the gate frame; positive = disjoint (P2-safe).  Navigation error: e_h on s and l, e_z on dz.  ``column``: the
-    forbidden set is the CR COLUMN (|s| <= cr_half_len, |l| <= cr_half_width, every depth), so that a drone that is not
+    the gate frame; positive = disjoint (P2-safe).  ``cr_lo``, ``cr_hi``: the corners of the CR box (GateRule.cr_lo /
+    cr_hi).  Navigation error: e_h on s and l, e_z on dz.  ``column``: the
+    forbidden set is the CR COLUMN (cr_s_min <= s <= cr_s_max, |l| <= cr_half_width, every depth), so that a drone that is not
     admitted can neither enter the CR nor pass under or over it; separation is then possible along s and l only.
     ``lookahead``: the robust margin, the smaller of this one-step margin and the margin of braking from the worst-case
     state one control period later (position and velocity on the envelope after dt, then the backup of a zero command):
@@ -195,7 +201,7 @@ def cr_margin(q: np.ndarray, v0: np.ndarray, V: np.ndarray, b: P2Bounds, half: n
     n_ax = 2 if column else 3
     hi = q + r[..., 0] + err + b.slack
     lo = q - r[..., 1] - err - b.slack
-    m = np.maximum(-half - hi, lo - half)[:, :n_ax].max(axis=1)
+    m = box_gap(lo, hi, cr_lo, cr_hi)[:, :n_ax].max(axis=1)
     if not lookahead:
         return m
     xp, vp, _, _ = _after(U0 + v_err, V, b)
@@ -204,7 +210,7 @@ def cr_margin(q: np.ndarray, v0: np.ndarray, V: np.ndarray, b: P2Bounds, half: n
     rm = axis_reach(-vm, np.zeros_like(vm), b)[..., 1]
     hi2 = q + xp + rp + err + b.slack
     lo2 = q - xm - rm - err - b.slack
-    m2 = np.maximum(-half - hi2, lo2 - half)[:, :n_ax].max(axis=1)
+    m2 = box_gap(lo2, hi2, cr_lo, cr_hi)[:, :n_ax].max(axis=1)
     return np.minimum(m, m2)
 
 
@@ -216,7 +222,8 @@ class GateConstraint:
     q: np.ndarray
     v0: np.ndarray
     bounds: P2Bounds
-    half: np.ndarray
+    cr_lo: np.ndarray
+    cr_hi: np.ndarray
     v_err: float = 0.0
 
     def margins_world(self, V_world: np.ndarray, robust: bool = True) -> np.ndarray:
@@ -225,7 +232,7 @@ class GateConstraint:
         a = np.asarray(self.gate.axis, float)
         left = np.array([-a[1], a[0], 0.0])
         Vg = np.stack([V @ a, V @ left, V[:, 2]], axis=1)
-        return cr_margin(self.q, self.v0, Vg, self.bounds, self.half, lookahead=robust, v_err=self.v_err)
+        return cr_margin(self.q, self.v0, Vg, self.bounds, self.cr_lo, self.cr_hi, lookahead=robust, v_err=self.v_err)
 
     def margins_body(self, V_body: np.ndarray, R_wb: np.ndarray, robust: bool = True) -> np.ndarray:
         return self.margins_world(np.atleast_2d(np.asarray(V_body, float)) @ np.asarray(R_wb, float).T, robust)
@@ -261,7 +268,7 @@ class GateConstraint:
         hi = np.maximum(self.q + r[:, 0], a + probe + b.e_track + lat) + err + b.slack
         lo = np.minimum(self.q - r[:, 1], a - probe - b.e_track - lat) - err - b.slack
         n_ax = 2 if COLUMN else 3
-        return float(np.maximum(-self.half - hi, lo - self.half)[:n_ax].max())
+        return float(box_gap(lo, hi, self.cr_lo, self.cr_hi)[:n_ax].max())
 
     def to_gate(self, v_world: np.ndarray) -> np.ndarray:
         return np.asarray(self.gate.vec_to_gate_frame(np.asarray(v_world, float)), float)
@@ -378,8 +385,8 @@ def constraint_for(cfg: FleetConfig, gate, p: np.ndarray, v_world: np.ndarray, a
         return None
     G = cfg.gate
     q = np.asarray(gate.to_gate_frame(np.asarray(p, float)), float)
-    half = np.array([G.cr_half_len, G.cr_half_width, G.cr_half_height])
-    if float(np.linalg.norm(np.maximum(np.abs(q) - half, 0.0))) > ACTIVE_RANGE_M:
+    lo, hi = G.cr_lo(), G.cr_hi()
+    if float(np.linalg.norm(np.maximum(np.maximum(lo - q, q - hi), 0.0))) > ACTIVE_RANGE_M:
         return None
     return GateConstraint(gate=gate, q=q, v0=np.asarray(gate.vec_to_gate_frame(np.asarray(v_world, float)), float),
-                          bounds=P2Bounds.from_cfg(cfg, e_h), half=half, v_err=float(v_err))
+                          bounds=P2Bounds.from_cfg(cfg, e_h), cr_lo=lo, cr_hi=hi, v_err=float(v_err))

@@ -1,7 +1,8 @@
 """Stage-2 entry admission (control/flows.py, perception/gate_perception.py): what the hold point can observe.
 
 M4h (reported, numeric grid): from the hold point before the critical region (on the gate axis, at the deployed stage-2
-hold ``GateRule.stage2_hold_s``, -2.30 m since the gate-aware correction (control/gate_safety.py; the v11 hold was -1.18 m),
+hold ``GateRule.stage2_hold_s``, -2.55 m with the CR s in [-1.05, 0.55] (control/gate_safety.py; -2.30 m with the former
+symmetric CR |s| <= 0.8; the v11 hold was -1.18 m),
 with an own lateral position error up to ``nav_err_gate_m``), which hull centres inside the CR produce, in
 the FRONT sonar, an echo that the classifier cannot explain by the mapped bars (outside the structure window grown by
 its tolerances) on a line of sight not blocked by a bar.  Such an occupant makes the stage-2 check hold the entry
@@ -63,7 +64,7 @@ def observability(cfg: FleetConfig = DEFAULT, n_s: int = 17, n_l: int = 9, n_z: 
         p = g.from_gate_frame([s_hold, e, 0.0])
         son, ax = p + R @ MOUNTS["FRONT"], R @ AXES["FRONT"]
         sw = clf.structure_window(son, ax)
-        for s in np.linspace(-G.cr_half_len, G.cr_half_len, n_s):
+        for s in np.linspace(G.cr_s_min, G.cr_s_max, n_s):
             for l in np.linspace(-G.cr_half_width, G.cr_half_width, n_l):
                 for dz in np.linspace(-G.cr_half_height, G.cr_half_height, n_z):
                     c = g.from_gate_frame([s, l, dz])

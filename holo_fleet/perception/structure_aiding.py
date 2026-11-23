@@ -23,7 +23,7 @@ it is then applied with gain ``GAIN`` to the estimate, and only if it is geometr
 
 Robust clearance and gate localization.  A fit locates the drone with an uncertainty ``u``: the radius of the set of
 near-optimal offsets (the positions the echoes cannot tell apart) plus the RMS of the matched ranges.  Before the gate
-(s <= the end of the critical region) a fit validates the localization only if the HULL (lateral half-extent
+(s <= the CR entry plane cr_s_min) a fit validates the localization only if the HULL (lateral half-extent
 ``HULL_LAT_M``, the BlueROV2 half-width plus the yaw allowance) plus ``u``, around the fitted position, lies entirely
 inside the free opening (inner half-width of the gate); a fit that places the hull beside the opening is not applied
 either, whatever its RMS: such a fit can rest on the echo of another drone taken for a bar in a side sector, and even
@@ -228,7 +228,7 @@ class StructureAiding:
         if not self.gates:
             return None
         g, (s_g, l_g, _dz) = self._gate_frame(q)
-        if s_g > -self.cfg.gate.cr_half_len:
+        if s_g > self.cfg.gate.cr_s_min:
             return None
         return float(g.inner_width / 2.0 - (abs(l_g) + HULL_LAT_M + u))
 
@@ -337,7 +337,7 @@ class StructureAiding:
             return None
         if self.gates:
             g, (s_g, _l, _dz) = self._gate_frame(p)
-            outside = s_g < -self.acq[g.gate_id] or s_g > -self.cfg.gate.cr_half_len
+            outside = s_g < -self.acq[g.gate_id] or s_g > self.cfg.gate.cr_s_min
         else:
             outside = float(np.min(np.linalg.norm(pts[:, :2] - p[:2], axis=1))) > self.acq_pts
         if outside:

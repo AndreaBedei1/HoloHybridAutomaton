@@ -82,7 +82,7 @@ class GatePerception:
 
             self.acoustic_exit = AcousticExit(cfg, acoustic, [k for k in range(len(plan.slots)) if k != plan.slot_index])
             G = cfg.gate
-            t_min = (abs(plan.queue_s) - (G.cr_half_len + R_OUT) - G.queue_tol - G.nav_err_m) / self.acoustic_exit.v_bound
+            t_min = (G.cr_s_min - plan.queue_s - R_OUT - G.queue_tol - G.nav_err_m) / self.acoustic_exit.v_bound
             self.acoustic_exit.status_fresh_s = max(0.0, min(cfg.acoustic.status_fresh_s, t_min - cfg.acoustic.latency_max_s))
         self.exit_kind = {"SONAR": 0, "ACOUSTIC": 0}
         self.idx = 0
@@ -122,10 +122,10 @@ class GatePerception:
         """Smallest and largest distance from the own FRONT sonar to a point of the CR (gate map + own pose)."""
         G = self.cfg.gate
         sonar = p + np.array([math.cos(yaw), math.sin(yaw), 0.0]) * float(MOUNTS["FRONT"][0])
-        half = np.array([G.cr_half_len, G.cr_half_width, G.cr_half_height])
+        c0, half = G.cr_center(), G.cr_half()
         q = g.to_gate_frame(sonar)
-        near = float(np.linalg.norm(q - np.clip(q, -half, half)))
-        far = float(max(np.linalg.norm(q - half * np.array([a, b, c]))
+        near = float(np.linalg.norm(q - np.clip(q, G.cr_lo(), G.cr_hi())))
+        far = float(max(np.linalg.norm(q - c0 - half * np.array([a, b, c]))
                         for a in (-1, 1) for b in (-1, 1) for c in (-1, 1)))
         return near, far
 

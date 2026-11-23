@@ -312,10 +312,10 @@ class Flows:
             s_hold = G.stage2_hold_s
             if go.loc_ok and go.entry_ok and go.s >= s_hold - RELOC_ZONE_M:
                 self.cr_cleared = True
-            s_abort = -(G.cr_half_len + float(R_OUT) + G.nav_err_m)
+            s_abort = G.cr_s_min - (float(R_OUT) + G.nav_err_m)
             self.abort_request = False
             was = self.past_centre
-            self.past_centre = bool(go.s > G.nav_err_m - G.cr_half_len or (was and go.s > -G.cr_half_len))
+            self.past_centre = bool(go.s > G.cr_s_min + G.nav_err_m or (was and go.s > G.cr_s_min))
             if self.past_centre and not was:
                 self.events.append({"t": obs.t, "type": "PAST_CENTRE", "s": round(float(go.s), 2)})
             if not self.cr_cleared and not self.past_centre and (c[0] > s_hold or self.hold_timeout):
@@ -500,10 +500,10 @@ class Flows:
         only: the output of the avoidance is not edited, and what a drone inside the box reports does not rest on this filter
         (passage.report_phase)."""
         go, G = obs.gate, self.cfg.gate
-        if go.gate_id is None or go.passed or go.s <= -(G.cr_half_len + float(R_OUT) + G.nav_err_m) - 1e-6:
+        if go.gate_id is None or go.passed or go.s <= G.cr_s_min - (float(R_OUT) + G.nav_err_m) - 1e-6:
             return v
         reach = G.cr_half_width + float(R_OUT) + G.nav_err_m
-        if abs(go.l) > reach or abs(go.dz) > G.cr_half_height + float(R_OUT) + G.nav_err_m or go.s > G.cr_half_len:
+        if abs(go.l) > reach or abs(go.dz) > G.cr_half_height + float(R_OUT) + G.nav_err_m or go.s > G.cr_s_max:
             return v
         g = self.plan.gates[min(obs.gate_index, len(self.plan.gates) - 1)]
         v = np.asarray(v, dtype=float).copy()
