@@ -66,7 +66,7 @@ ALLOWED = {"config.py", "runner.py", "sim/beacon.py", "sim/holo_env.py", "sim/ac
            "perception/payload.py", "perception/nav.py",
            "perception/structure_aiding.py",
            "control/controller.py", "referee/robustness_metrics.py", "referee/premise_audit.py", "referee/referee.py",
-           "referee/p3.py", "sim/scenarios.py"}  # scenarios.py: the channel of the b2c_* scenarios (simulator side)
+           "referee/p3.py", "referee/gate_events.py", "sim/scenarios.py"}  # scenarios.py: the channel of the b2c_* scenarios (simulator side); gate_events.py: the referee budget of the B2 admission wait
 
 
 def test_only_perception_modules_read_the_beacon():

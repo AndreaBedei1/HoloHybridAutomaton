@@ -6142,7 +6142,7 @@
           "seconds": 41.135,
           "note": "",
           "counterexample": null,
-          "kind": "proved"
+          "kind": "bounded"
         },
         {
           "prop": "S2 M3-status n=2, observer l=+1.75, freshness of a report of not engaged 2.50 s, v 0.7, offset 1.35: never both in the CR",
@@ -6153,7 +6153,7 @@
           "seconds": 10.931,
           "note": "",
           "counterexample": null,
-          "kind": "proved"
+          "kind": "bounded"
         },
         {
           "prop": "S2h M3-status n=3, observer l=+3.50, the crossing drone may stop before the CR, 32 s bound: never both in the CR",
@@ -6164,7 +6164,7 @@
           "seconds": 38.645,
           "note": "",
           "counterexample": null,
-          "kind": "proved"
+          "kind": "bounded"
         },
         {
           "prop": "S2 M3-status n=3, observer l=+3.50, freshness of a report of not engaged 2.50 s, v 0.7, offset 1.35: never both in the CR",
@@ -6175,7 +6175,7 @@
           "seconds": 7.607,
           "note": "",
           "counterexample": null,
-          "kind": "proved"
+          "kind": "bounded"
         },
         {
           "prop": "S2h M3-status n=3, observer l=+0.00, the crossing drone may stop before the CR, 32 s bound: never both in the CR",
@@ -6186,7 +6186,7 @@
           "seconds": 46.355,
           "note": "",
           "counterexample": null,
-          "kind": "proved"
+          "kind": "bounded"
         },
         {
           "prop": "S2 M3-status n=3, observer l=+0.00, freshness of a report of not engaged 2.50 s, v 0.7, offset 1.35: never both in the CR",
@@ -6197,7 +6197,7 @@
           "seconds": 6.585,
           "note": "",
           "counterexample": null,
-          "kind": "proved"
+          "kind": "bounded"
         },
         {
           "prop": "S2h M3-status n=4, observer l=+5.25, the crossing drone may stop before the CR, 32 s bound: never both in the CR",
@@ -6208,7 +6208,7 @@
           "seconds": 21.929,
           "note": "",
           "counterexample": null,
-          "kind": "proved"
+          "kind": "bounded"
         },
         {
           "prop": "S2 M3-status n=4, observer l=+5.25, freshness of a report of not engaged 2.50 s, v 0.7, offset 1.35: never both in the CR",
@@ -6219,7 +6219,7 @@
           "seconds": 4.047,
           "note": "",
           "counterexample": null,
-          "kind": "proved"
+          "kind": "bounded"
         },
         {
           "prop": "S2h M3-status n=4, observer l=+1.75, the crossing drone may stop before the CR, 32 s bound: never both in the CR",
@@ -6230,7 +6230,7 @@
           "seconds": 26.433,
           "note": "",
           "counterexample": null,
-          "kind": "proved"
+          "kind": "bounded"
         },
         {
           "prop": "S2 M3-status n=4, observer l=+1.75, freshness of a report of not engaged 2.50 s, v 0.7, offset 1.35: never both in the CR",
@@ -6241,7 +6241,7 @@
           "seconds": 8.913,
           "note": "",
           "counterexample": null,
-          "kind": "proved"
+          "kind": "bounded"
         },
         {
           "prop": "S2m mutation: a freshness of 5 s (the first design) violates P2 at the declared worst case",
@@ -17717,11 +17717,11 @@
   "all_as_expected": true,
   "kinds": {
     "proved": {
-      "count": 198,
+      "count": 188,
       "meaning": "UNSAT of a universal or inductive property (local predicate, inductive invariant, k-induction, ranking function)"
     },
     "bounded": {
-      "count": 26,
+      "count": 36,
       "meaning": "UNSAT over a bounded horizon (bounded model checking or bounded response from every state of an invariant)"
     },
     "numeric": {
