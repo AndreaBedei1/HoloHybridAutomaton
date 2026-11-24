@@ -1,4 +1,4 @@
-"""Measurement model of the one-way acoustic range-bearing beacon (variant B2), simulator side.
+"""Measurement model of the one-way acoustic range-bearing beacon (B2), simulator side.
 
 What the HoloOcean 2.3 engine computes (engine/Source/Holodeck/Sensors/Private/AcousticBeaconSensor.cpp, read
 in the patched engine source, and results/calibration/beacon_api_probe.json): for a (sender, receiver)

@@ -23,7 +23,7 @@ neighbour is accounted for at the same step - matched by its own echo, or (B2) l
 Otherwise the uncertainty is kept: the association still counts as a sighting (no new MISSING), but it neither
 brings a missing neighbour back, nor resets its timer, nor re-includes a vacant slot.
 
-Variant B2 (range-bearing beacon, perception/acoustic.py).  Identified fixes enter the perception only, and never
+The range-bearing beacon (B2, perception/acoustic.py).  Identified fixes enter the perception only, and never
 ``d_min``, ``sense_ok`` or ``has_prio``:
 * gate: a second way to an exit witness of the CR latch (perception/acoustic_gate.py);
 * association: a sonar echo is associated with a neighbour where its fix places it (formation_perception);
@@ -508,13 +508,7 @@ class Perception:
                                readings, vacant=self.vacant, acoustic=ac_rel,
                                missing={k for k, v in self.missing_state.items() if v})
         self.acoustic_residuals(t, form, R_form, nav.p, offset)
-        if not self.cfg.form.neighbour_adaptation:
-            form.missing = []
         self.track_missing(t, dt, form, in_formation, t_form)
-        if not self.cfg.form.neighbour_adaptation:
-            form.missing, form.neighbors_ok, form.front_residual = [], True, None
-            form.along_corr = form.lateral_corr = 0.0
-            self.acoustic_lag, self.acoustic_lag_rep = {}, {}
         lags = [v for k, v in self.acoustic_lag.items() if k not in self.vacant]
         form.behind = max(lags) if lags else None
         lags = [v for k, v in self.acoustic_lag_rep.items() if k not in self.vacant]

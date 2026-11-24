@@ -69,7 +69,7 @@ def _opening(ep, patterns, v_body):
     return min(sp * float(ep.guarantee(frozenset(p))[i]) for p in patterns)
 
 
-def test_the_v11_planner_answers_a_threat_from_behind_at_the_hold_by_moving_towards_the_cr():
+def test_the_unconstrained_planner_answers_a_threat_from_behind_at_the_hold_by_moving_towards_the_cr():
     """The defect: without the constraint, a drone held before the CR moves forward from a REAR threat."""
     gc = _gc(G.stage2_hold_s)
     ep = EscapePlanner(CFG)
@@ -190,13 +190,13 @@ def test_far_from_the_gate_or_admitted_there_is_no_constraint():
     assert gs.constraint_for(CFG, None, np.zeros(3), np.zeros(3), authorized=False) is None
 
 
-def test_without_a_constraint_the_planner_is_the_v11_planner_on_stored_inputs():
-    """P1 regression: the p2=None path (every drone away from the CR, and an admitted one) returns exactly what the v11
-    planner (commit 0e85d2d) returned on 300 random inputs, hysteresis included (tests/fixtures, generated once from the
-    repository history: no git needed here)."""
+def test_without_a_constraint_the_planner_is_the_reference_planner_on_stored_inputs():
+    """P1 regression: the p2=None path (every drone away from the CR, and an admitted one) returns exactly what the
+    reference planner without the P2 constraint (commit 0e85d2d) returned on 300 random inputs, hysteresis included
+    (tests/fixtures/escape_p1_reference.json, generated once from the repository history: no git needed here)."""
     import json
 
-    ref = json.loads((Path(__file__).resolve().parent / "fixtures" / "escape_v11_reference.json").read_text())
+    ref = json.loads((Path(__file__).resolve().parent / "fixtures" / "escape_p1_reference.json").read_text())
     new = EscapePlanner(CFG)
     assert len(ref["cases"]) == 300
     for c in ref["cases"]:

@@ -26,4 +26,3 @@ def test_the_emergence_scenario_delays_one_drone_with_a_head_jet():
     sc = SCENARIOS["em_delay_head"](DEFAULT)
     (jet,) = [c for c in sc.sim.current.components if c.kind == "jet"]
     assert tuple(jet.drift) == (-0.70, 0.0, 0.0) and len(sc.sim.current.components) == 1 and not sc.sim.faults
-    assert DEFAULT.form.neighbour_adaptation

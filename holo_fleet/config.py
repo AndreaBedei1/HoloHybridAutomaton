@@ -8,6 +8,7 @@ provenance of each value in config/parameter_sources.json.
 
 from __future__ import annotations
 
+import dataclasses
 import math
 from dataclasses import asdict, dataclass, field
 from typing import Dict, Tuple
@@ -263,7 +264,6 @@ class FormationRule:
     v_nominal: float = 0.30
     v_slot_max: float = 0.40
     v_recovery_max: float = 0.50
-    neighbour_adaptation: bool = True
     range_gate_m: float = 1.2
     neighbour_range_m: float = 7.5
     t_reinclude: float = 1.0
@@ -345,30 +345,36 @@ class RefereeConfig:
     t_ok_hold: float = 8.9
 
 
+COMMUNICATION_ACOUSTIC = "ACOUSTIC_RB"
+"""``BeaconConfig.mode`` of the controller: the passive one-way acoustic beacons (B2)."""
+COMMUNICATION_DISABLED = "NONE"
+"""``BeaconConfig.mode`` of the communication-disabled baseline (B0): the SAME controller, no beacon is emitted or heard."""
+
+
 @dataclass(frozen=True)
 class BeaconConfig:
-    """One-way acoustic beacon (OFF in the communication-free baseline).
+    """The passive one-way acoustic beacons of the controller (B2); ``mode = COMMUNICATION_DISABLED`` switches them off.
 
     Every drone emits, on a pre-assigned TDMA schedule of period ``period_s``, a coded ping carrying its static
-    identity and (``payload``) a short data packet with its ONBOARD position estimate and a conservative bound of
-    that estimate's error (sim/beacon.py, encode_payload).  Strictly
+    identity and a short data packet with its ONBOARD position estimate, a conservative bound of that estimate's error
+    and its gate phase (sim/beacon.py, perception/payload.py).  Strictly
     one-way broadcast: no handshake, no reply, no acknowledgement, no control decision; receivers measure range
     (one-way travel time, synchronised clocks) and direction (receiving array) themselves.  Transport: HoloOcean's AcousticBeaconSensor driven by
     sim/beacon.py, measurement model sim/acoustic_channel.py (level ``channel``, simulator side only), onboard use
-    perception/acoustic.py with the declared envelope AcousticConfig."""
+    perception/acoustic.py with the declared envelope AcousticConfig.  With the communication disabled nothing is heard:
+    silence is never evidence that a passage is safe (perception/acoustic_gate.py, formal/check_b2_comm.py)."""
 
-    mode: str = "NONE"
+    mode: str = COMMUNICATION_ACOUSTIC
     period_s: float = 1.0
     max_range_m: float = 50.0
     check_visible: bool = True
     sound_speed: float = 1500.0
     channel: str = "CLEAN"
-    payload: bool = True
     payload_bitrate_bps: float = 1000.0
 
     @property
     def enabled(self) -> bool:
-        return self.mode == "ACOUSTIC_RB"
+        return self.mode == COMMUNICATION_ACOUSTIC
 
 
 @dataclass(frozen=True)
@@ -479,7 +485,6 @@ class FleetConfig:
     acoustic: AcousticConfig = field(default_factory=AcousticConfig)
     failure: FailureModel = field(default_factory=FailureModel)
     scope: ScopeConfig = field(default_factory=ScopeConfig)
-    comms_enabled: bool = False
     traffic_rule: bool = True
 
     def to_dict(self) -> Dict:
@@ -487,3 +492,9 @@ class FleetConfig:
 
 
 DEFAULT = FleetConfig()
+
+
+def communication_disabled(cfg: FleetConfig = DEFAULT) -> FleetConfig:
+    """The communication-disabled baseline (B0) of ``cfg``: the same controller with the acoustic beacons switched off.
+    Nothing else differs (tests/test_single_controller.py)."""
+    return dataclasses.replace(cfg, beacon=dataclasses.replace(cfg.beacon, mode=COMMUNICATION_DISABLED))

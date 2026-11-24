@@ -569,8 +569,8 @@ def run(cfg: FleetConfig = DEFAULT, verbose: bool = True) -> Report:
     old = stacked_queue(cfg, fuzz, relation=_old_relation, old_decide=True)
     old_p = stacked_queue(cfg, fuzz, relation=_old_relation, old_decide=True, slots=STACK_PAIR)
     old["deadlocks"] = old["deadlocks"] if old_p["deadlocks"] else 0
-    rep.add(CheckResult("M2m mutation: the v2 rule (vertical-only pattern -> RANK, ranks unknown) deadlocks the stacked "
-                        "queue (no drone has PRIORITY)", "expect violation", "mutex_rule (v2)", "violated",
+    rep.add(CheckResult("M2m mutation: the earlier rule (vertical-only pattern -> RANK, ranks unknown) deadlocks the stacked "
+                        "queue (no drone has PRIORITY)", "expect violation", "mutex_rule (earlier rule)", "violated",
                         verdict="violated" if old["deadlocks"] else "holds", passed=old["deadlocks"] > 0,
                         note=f"{old['deadlocks']} of 15 occupancies without a leader, e.g. "
                              f"{next((o['occupied'] for o in old['occupancies'] if not o['leaders']), None)}"), verbose)

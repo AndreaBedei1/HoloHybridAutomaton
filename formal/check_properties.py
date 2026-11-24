@@ -44,9 +44,9 @@ SUITES = [
     ("P3 coupled recovery: 2-norm saturated law, private formation clocks, rendezvous, operating domain",
      check_formation_coupled, "holo_fleet/control/flows.py + holo_fleet/control/formation_time.py + "
      "holo_fleet/perception/perception.py + formal/check_formation_coupled.py"),
-    ("Variant B2 range-bearing beacon (own assumptions; B0 checks unchanged)", check_acoustic,
+    ("B2 range-bearing beacon (own assumptions; the checks of B0, the communication disabled, unchanged)", check_acoustic,
      "perception/acoustic.py + perception/acoustic_gate.py + formal/check_acoustic.py"),
-    ("Payload v2: gate status, silence, verified passage", check_status,
+    ("B2 status payload: gate status, silence, verified passage", check_status,
      "perception/payload.py + perception/acoustic_gate.py + perception/passage.py + formal/check_status.py"),
     ("Interacting automata of the fleet at the gate (composition, failures, timers, recovery)", check_fleet, "formal/check_fleet.py"),
     ("B2 explicit communication (one-way beacons, freshness, delays, losses, clocks, local decisions)", check_b2_comm,

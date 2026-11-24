@@ -1,7 +1,7 @@
 """Mutual exclusion (P2) as a constraint on the final velocity command, and its joint feasibility with separation (P1).
 
-Why.  The stage-2 hold before the critical region (CR) used to sit at s = -(0.8 + hull half-length + 0.15) = -1.18 m (v11,
-with the former symmetric CR |s| <= 0.8), 0.38 m from the CR, while the declared gate-frame navigation error is
+Why.  The stage-2 hold before the critical region (CR) used to sit at s = -(0.8 + hull half-length + 0.15) = -1.18 m
+(with the former symmetric CR |s| <= 0.8), 0.38 m from the CR, while the declared gate-frame navigation error is
 ``nav_err_m`` = 1.0 m: a drone holding there on an estimate 1 m short of the truth has its centre inside the CR.  And no gate rule edited the avoidance output of a drone
 that is not admitted: the separation warning filter of a drone held before the CR answers a drone behind it (a REAR
 threat) by moving FORWARD, the only directions with a guaranteed opening from a REAR sector pattern (formal F1p, F1pa).

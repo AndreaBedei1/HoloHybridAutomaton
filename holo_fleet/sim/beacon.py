@@ -1,9 +1,9 @@
-"""Simulator side of the variant-B2 one-way acoustic beacon: who hears whose ping, when, and what the receiver measures.
+"""Simulator side of the one-way acoustic beacon (B2): who hears whose ping, when, and what the receiver measures.
 
 Drone k pings on a fixed TDMA schedule (slot k of every period, slots aligned to simulator ticks so that the
 scheduled emission instant is exact), and every reception becomes a range-bearing measurement through the channel
 model of sim/acoustic_channel.py (noise, biases, NLOS reflections, dropouts, outages, latency).  A ping carries the
-sender's static identity and, with ``payload`` (H6, perception/payload.py), a 64-bit packet with the sender's
+sender's static identity and (H6, perception/payload.py) a 64-bit packet with the sender's
 ONBOARD position estimate, error bound and gate phase, taken from its own perception through ``payload_source`` (never
 from the simulator state).  The packet is lost on its own (``payload_loss``, a separate seeded stream) even when the
 ping is detected.  No mode, queue or control data is sent, and nobody replies.
@@ -64,14 +64,13 @@ class BeaconTransport:
         self.payload_rng = np.random.default_rng([int(seed), 5102])
         self.payload_stats = {"sent": 0, "lost": 0, "delivered": 0}
         self.is_dead = None
-        if cfg.payload:
-            from holo_fleet.perception.payload import air_time_s
+        from holo_fleet.perception.payload import air_time_s
 
-            slot_s = self.slot_ticks / ticks_per_sec
-            need = air_time_s(cfg.payload_bitrate_bps) + PING_S + cfg.max_range_m / cfg.sound_speed
-            if need > slot_s + 1e-9:
-                raise ValueError(f"B2 payload does not fit the TDMA slot: {need:.3f} s > {slot_s:.3f} s "
-                                 f"({len(self.names)} drones, period {cfg.period_s} s)")
+        slot_s = self.slot_ticks / ticks_per_sec
+        need = air_time_s(cfg.payload_bitrate_bps) + PING_S + cfg.max_range_m / cfg.sound_speed
+        if need > slot_s + 1e-9:
+            raise ValueError(f"B2 payload does not fit the TDMA slot: {need:.3f} s > {slot_s:.3f} s "
+                             f"({len(self.names)} drones, period {cfg.period_s} s)")
 
     def sensor_config(self, k: int) -> Dict:
         return {"sensor_type": "AcousticBeaconSensor", "sensor_name": SENSOR_NAME, "socket": "",
@@ -99,8 +98,8 @@ class BeaconTransport:
                 self.pending[r].append((n, t, packet))
 
     def _packet(self, k: int, t: float, tick: int):
-        """The payload of drone k's ping at t, from its onboard estimate (None without payload)."""
-        if not self.cfg.payload or self.payload_source is None:
+        """The payload of drone k's ping at t, from its onboard estimate (None without a payload source)."""
+        if self.payload_source is None:
             return None
         from holo_fleet.perception.payload import encode
 
@@ -240,7 +239,7 @@ class BeaconTransport:
                 "sound_speed_scale": round(self.channel.scale, 5),
                 "clock_offset_m": [round(float(x), 3) for x in self.channel.offset],
                 "nlos_received": int(sum(1 for x in self.rb_log if x[7])), "payload": dict(self.payload_stats),
-                "payload_bitrate_bps": self.cfg.payload_bitrate_bps if self.cfg.payload else None,
+                "payload_bitrate_bps": self.cfg.payload_bitrate_bps,
                 **_error_summary(self.rb_log)}
 
 

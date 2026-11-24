@@ -34,11 +34,11 @@ P2B5  (numeric, grid) the robust margin: every command the deployed warning filt
       estimate at +-rho dt, the true velocity as the initial state of the braking).
 P2R*  (formal/check_p2_recursive.py) the recursive argument: closed-form braking (P2R1), the onboard-consistent lookahead
       (P2R2), the station-keeping band (P2R3), the induction over the certificates (P2R4), the base case (P2R5); the
-      lookahead of 01cd6fa as a mutation (P2R2m).
+      braking lookahead (from the true worst-case state, re-certified at the next step) as a mutation (P2R2m).
 P2B6  (numeric) the CR column: no command called P2-safe lets a true trajectory inside the declared envelope pass under or
       over the CR (cr_s_min <= s <= cr_s_max and |l| <= cr_half_width at any depth); P2B6m mutation: with the box (column=False)
       commands called safe pass under or over it.
-P2Bm  (mutation) the v11 hold rule (0.379 m before the CR entry plane: -1.179 m with the former symmetric CR, -1.429 m with
+P2Bm  (mutation) the near hold rule NEAR_HOLD (0.379 m before the CR entry plane: -1.179 m with the former symmetric CR, -1.429 m with
       the present one) with the declared navigation error leaves the true centre in the CR, and the
       filter that ignores the navigation error (e_h = 0) calls safe a state whose truth is inside the CR.
 S1g   pairwise radial model (as S1 of formal/check_separation.py) with a gate-constrained drone B that only removes its
@@ -55,8 +55,8 @@ J2    (reported) the class of every single-threat pattern at the stage-2 hold.
 Q1    (numeric) queue geometry, abreast n = 2, 3, 4 and the stacked templates stack_square (gate_four) and stack_pair
       (mutex_deadlock_resolution) as mission.queue_line / queue_assignment lay them out: centre distance from every point of
       the stage-2 hold (within hold_lateral_allow of the axis, at every acquisition offset of flows.ACQ_OFFSETS) to every
-      queue point >= merge_clearance, the deployed conservative distance >= d_warning both ways.  Q1m mutation: the v11
-      queue line for n = 2.
+      queue point >= merge_clearance, the deployed conservative distance >= d_warning both ways.  Q1m mutation: the queue
+      line of the NEAR_HOLD rule for n = 2.
 M4h   (reported, formal/check_stage2.py) observability of the CR from the new stage-2 hold.
 
 Premises (declared, not proved here): the true velocity of each gate-frame axis stays inside the response envelope of
@@ -376,11 +376,11 @@ def mutations(cfg: FleetConfig) -> CheckResult:
     truth = q + np.array([b.e_h, 0.0, 0.0])
     c = m_e0 > 0 and bool(G.in_cr(*truth))
     ok = a and m_old <= 0.0 and c
-    return CheckResult("P2Bm mutation: the v11 hold point with the declared navigation error, and the filter without the "
+    return CheckResult("P2Bm mutation: the near hold point (NEAR_HOLD) with the declared navigation error, and the filter without the "
                        "navigation error, let the true centre into the CR",
-                       "expect: truth(hold_v11) in CR; margin_{e_h=0}(q) > 0 with truth(q) in CR", ENC, "counterexample",
+                       "expect: truth(hold_near) in CR; margin_{e_h=0}(q) > 0 with truth(q) in CR", ENC, "counterexample",
                        verdict="counterexample" if ok else "none", passed=ok,
-                       note=f"v11 hold rule with the present CR s = {q_old[0]:.3f} m: an estimate {b.e_h} m short puts the centre at s = "
+                       note=f"NEAR_HOLD rule with the present CR s = {q_old[0]:.3f} m: an estimate {b.e_h} m short puts the centre at s = "
                             f"{truth_old[0]:.3f} m (inside: {a}); the deployed filter gives holding there margin "
                             f"{m_old:.3f} m (rejected); with e_h = 0 holding at s = {q[0]} m has margin {m_e0:.3f} m while the "
                             f"truth s = {truth[0]:.2f} m is inside")
@@ -571,7 +571,7 @@ def joint_exhaustive(cfg: FleetConfig):
                          f"only); {bad} with an error; "
                          f"gate_safety.classify disagreed with the reference {cls_bad} times (uniform requirements); classes "
                          f"{ {k: v for k, v in counts.items() if v} }")
-    rm = CheckResult("J1m mutation: the planner without p2 (the v11 selection) is caught choosing a command that is not P2-safe while "
+    rm = CheckResult("J1m mutation: the planner without p2 (the unconstrained selection) is caught choosing a command that is not P2-safe while "
                      "a P2-safe one exists", "expect violations of (i)", ENC, "caught", verdict="caught" if mbad else "missed",
                      passed=mbad > 0, note=f"{mbad} of {n} decisions")
     return r, rm
@@ -677,9 +677,9 @@ def queue_checks(cfg: FleetConfig):
                     note=f"hold s = {G.stage2_hold_s} m, {len(holds)} hold points (lateral within {G.hold_lateral_allow} m, "
                          f"flows.ACQ_OFFSETS); merge_clearance {G.merge_clearance} m, d_warning {cfg.sep.d_warning} m; "
                          + "; ".join(rows) + extra)
-    q_v11 = -4.181 + (G.cr_s_min + 0.8)  # the v11 queue rule for n = 2 from the present CR entry plane (-4.181 m with the former CR)
-    okm, rowsm = queue_geometry(cfg, queue_s={"abreast n=2": q_v11})
-    rm = CheckResult(f"Q1m mutation: the v11 queue line for n = 2 ({q_v11:.3f} m with the present CR entry plane) puts the queue "
+    q_near = -4.181 + (G.cr_s_min + 0.8)  # the queue rule of the NEAR_HOLD hold for n = 2 from the present CR entry plane (-4.181 m with the former CR)
+    okm, rowsm = queue_geometry(cfg, queue_s={"abreast n=2": q_near})
+    rm = CheckResult(f"Q1m mutation: the NEAR_HOLD queue line for n = 2 ({q_near:.3f} m with the present CR entry plane) puts the queue "
                      "points inside the clearance of the hold",
                      "expect a violation of Q1", ENC, "caught", verdict="caught" if not okm else "missed", passed=not okm,
                      note="; ".join(x for x in rowsm if x.startswith("abreast n=2")))

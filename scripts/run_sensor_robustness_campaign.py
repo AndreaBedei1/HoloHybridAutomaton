@@ -1,12 +1,11 @@
 """Campaign runner (headless HoloOcean, resumable, optionally sharded).
 
-    python scripts/run_sensor_robustness_campaign.py --phase final --raw <root> [--dry-run]   # 448 runs, seeds 5000-5404
-    python scripts/run_sensor_robustness_campaign.py --phase validation --raw <root>          # 34 runs, seeds 8000-8001
-    python scripts/run_sensor_robustness_campaign.py --phase targeted --only lost_drone_timeout \
-        --protocols B0 B2_CLEAN --profiles CLEAN LOW-ALL --seeds 0 --raw <root>
+    python scripts/run_sensor_robustness_campaign.py --only gate_single lost_drone_mutex --protocols B0 B2_MEDIUM
+        --profiles CLEAN MEDIUM-ALL --seeds 0 1 2 --raw <root> [--dry-run] [--require-clean]
 
-Every run executes in its own Python process (holo_fleet.runner.run, no frames, no GIF) and writes a run
-directory under the raw root (default results/robustness/raw_final/, git-ignored):
+The runs are the product of --only (scenarios), --protocols, --profiles and --seeds.  Every run executes in its own Python
+process (holo_fleet.runner.run, no frames, no GIF) and writes a run directory under the raw root (default
+results/robustness/raw_final/, git-ignored):
     <protocol>/<profile>/<scenario>/s<seed>/
 followed by run_metrics.json (holo_fleet.referee.robustness_metrics: metrics + class).  A run whose
 run_metrics.json exists (and is not INVALID) is skipped, so an interrupted campaign resumes where it stopped.
@@ -14,10 +13,12 @@ Bulky per-step logs (drone_*_state.jsonl) are gzip-compressed after the analysis
 HoloOcean instance at a time (``--shard i --nshards n``: n orchestrators on disjoint slices); after every run the
 Holodeck.exe processes started by that run (and only those) are terminated if still alive.
 
-Protocols: B0 (no beacon) and B2_<channel level> (one-way acoustic beacon, sim/acoustic_channel.py); see README.md.
+Protocols: B0 (the controller with the communication disabled) and B2_<channel level> (the controller with the one-way
+acoustic beacons, sim/acoustic_channel.py; the SW-* levels are the sweep channels), see README.md.
 Profiles: CLEAN or <LEVEL>-<SCOPE> (sim/sensor_noise.py; scope ONE / SUBSET / ALL, scope_drones).  Every run ends
-on SUCCESS / FAILURE / DEADLINE (referee/terminal.py, criteria v3); the deadline is a priori, from the mission plan
-and the protocol bounds (referee/criteria.deadline_v3), the same for every protocol and cell.
+on SUCCESS / FAILURE / DEADLINE (referee/terminal.py); the deadline is a priori, from the mission plan
+and the protocol bounds (referee/criteria.deadline_v3), the same for every protocol and cell.  The campaigns that produced the
+archived results (448 runs, 34 runs) are in legacy/, with their runner.
 """
 
 from __future__ import annotations
@@ -46,17 +47,6 @@ ALL_SCENARIOS = ("p1_head_on", "p1_vertical_escape", "p1_two_lines", "p1_close_e
                  "integrated_short", "lost_drone_rejoin", "lost_drone_rejoin_front", "lost_drone_timeout", "mutex_deadlock_resolution",
                  "line_parallel_mutex", "lost_drone_mutex")
 PY = sys.executable
-# Final validation: fixed matrix, seeds not used by any earlier campaign.
-# Each entry: (protocols, profiles, scenarios); every cell runs every seed of VALIDATION_SEEDS.
-VALIDATION_SEEDS = (8000, 8001)
-VALIDATION = (
-    (("B2_MEDIUM",), ("MEDIUM-ALL",), ("p1_head_on", "formation_six", "lost_drone_rejoin", "gate_single",
-                                       "mutex_deadlock_resolution", "lost_drone_mutex", "integrated_short")),
-    (("B0",), ("LOW-ALL",), ("p1_head_on", "formation_six", "lost_drone_rejoin", "gate_single",
-                             "mutex_deadlock_resolution", "lost_drone_mutex", "integrated_short")),
-    (("B2_SW-lat0.35", "B2_SW-lat0.45"), ("LOW-ALL",), ("gate_single",)),
-    (("B2_MEDIUM",), ("MEDIUM-ALL",), ("gate_four",)),
-)
 
 
 def scope_drones(scenario: str, scope: str) -> list:
@@ -75,47 +65,13 @@ def scope_drones(scenario: str, scope: str) -> list:
     return list(table[ref_name][scope])
 
 
-def plan(phase: str, seeds, only=None, protocols=None, profiles=None):
-    """Runs (protocol, profile, scenario, seed); deadlines are a priori (criteria v3), so no run depends on another.
-    ``final``: the final campaign; ``validation``: VALIDATION; ``targeted``: --only scenarios x --protocols x --profiles."""
-    if phase == "final":
-        runs = final_matrix(seeds, only)
-    elif phase == "validation":
-        runs = [(proto, prof, sc, s) for protos, profs, scs in VALIDATION for sc in scs for prof in profs for proto in protos
-                for s in (seeds or VALIDATION_SEEDS) if not only or sc in only]
-    elif phase == "targeted":
-        if not (only and protocols and profiles):
-            raise SystemExit("--phase targeted needs --only, --protocols and --profiles")
-        runs = [(proto, prof, sc, s) for sc in only for prof in profiles for proto in protocols for s in (seeds or SEEDS)]
-    else:
-        raise SystemExit(f"unknown phase {phase}")
-    if only:
-        runs = [r for r in runs if r[2] in only]
-    if profiles:
-        runs = [r for r in runs if r[1] in profiles]
+def plan(seeds, only=None, protocols=None, profiles=None):
+    """Runs (protocol, profile, scenario, seed): --only scenarios x --protocols x --profiles x seeds (default SEEDS).  Deadlines are
+    a priori, so no run depends on another."""
+    if not (only and protocols and profiles):
+        raise SystemExit("--only, --protocols and --profiles are required")
+    runs = [(proto, prof, sc, s) for sc in only for prof in profiles for proto in protocols for s in (seeds or SEEDS)]
     return list(dict.fromkeys(runs))
-
-
-def final_matrix(seeds=None, only=None) -> list:
-    """The final campaign (448 runs, seeds 5000-5404), fixed before its first run; ``seeds`` / ``only`` filter it."""
-    from holo_fleet.sim.scenarios import STRESS_BATCH
-
-    runs = []
-    for proto, prof in (("B2_CLEAN", "CLEAN"), ("B2_LOW", "LOW-ALL"), ("B2_MEDIUM", "MEDIUM-ALL")):
-        for sc in ALL_SCENARIOS:
-            runs += [(proto, prof, sc, s) for s in (range(5000, 5006) if sc in B2_GATE_SCENARIOS else range(5000, 5003))]
-    runs += [("B2_MEDIUM", "MEDIUM-ALL", "lost_drone_mutex", s) for s in range(5100, 5140)]
-    runs += [("B2_MEDIUM", "MEDIUM-ALL", f"lost_drone_mutex_{v}", s) for v in ("rise_low", "rise_high") for s in range(5100, 5110)]
-    runs += [("B2_MEDIUM", "MEDIUM-ALL", sc, s) for sc in STRESS_BATCH for s in range(5200, 5205)]
-    runs += [(proto, "MEDIUM-ALL", sc, s) for proto in ("B0", "B2NP_MEDIUM") for sc in B2_GATE_SCENARIOS for s in range(5300, 5303)]
-    runs += [("B2_MEDIUM", f"{prof}-ALL", sc, s) for prof in ("MEDIUM_HB3", "MEDIUM_HB4") for sc in ("gate_single", "lost_drone_mutex")
-             for s in range(5400, 5405)]
-    runs += [("B2_MEDIUM_HT", "MEDIUM-ALL", sc, s) for sc in ("gate_single", "lost_drone_mutex") for s in range(5400, 5405)]
-    return [r for r in runs if (not seeds or r[3] in seeds) and (not only or r[2] in only)]
-
-
-B2_GATE_SCENARIOS = ("gate_single", "integrated_short", "mutex_deadlock_resolution", "line_parallel_mutex",
-                     "lost_drone_mutex")
 
 
 def run_dir(raw: Path, protocol: str, prof: str, sc: str, seed: int) -> Path:
@@ -147,10 +103,26 @@ def archive_attempt(d: Path, raw: Path) -> Optional[Path]:
     return archive
 
 
+def protocol_config(protocol: str):
+    """FleetConfig of a protocol: B0 is the controller with the communication disabled, B2_<channel level> the controller
+    with the one-way acoustic beacons on that channel (the SW-* sweep channels also set the beacon period)."""
+    from holo_fleet.config import DEFAULT, BeaconConfig, communication_disabled
+
+    if protocol == "B0":
+        return communication_disabled()
+    if protocol.startswith("B2_"):
+        from holo_fleet.sim.acoustic_channel import sweep_spec
+
+        chan = protocol[3:]
+        per = sweep_spec(chan).get("period_s", 1.0) if chan.startswith("SW-") else 1.0
+        return dataclasses.replace(DEFAULT, beacon=BeaconConfig(channel=chan, period_s=per))
+    raise SystemExit(f"unknown protocol {protocol}: B0 or B2_<channel level>")
+
+
 def worker(args) -> int:
     """One run, in this (fresh) process."""
     from holo_fleet import runner
-    from holo_fleet.config import DEFAULT, BeaconConfig
+    from holo_fleet.config import DEFAULT
     from holo_fleet.sim.sensor_noise import profile
 
     from holo_fleet.sim import holoocean_setup as hs
@@ -159,23 +131,7 @@ def worker(args) -> int:
         print(f"patched HoloOcean root not found ({hs.DEFAULT_PATCHED_ROOT}): refusing to run "
               "(the baseline needs the octree patch, README.md)", file=sys.stderr)
         return 4
-    base = DEFAULT
-    cfg = base
-    proto = args.protocol
-    if proto.startswith(("B2_SW-", "B2NA_")):
-        from holo_fleet.sim.acoustic_channel import sweep_spec
-
-        na = proto.startswith("B2NA_")
-        chan = proto[5:] if na else proto[3:]
-        per = sweep_spec(chan).get("period_s", 1.0) if chan.startswith("SW-") else 1.0
-        cfg = dataclasses.replace(base, beacon=BeaconConfig(mode="ACOUSTIC_RB", channel=chan, period_s=per))
-        if na:
-            cfg = dataclasses.replace(cfg, form=dataclasses.replace(cfg.form, neighbour_adaptation=False))
-    elif proto.startswith("B2_"):
-        cfg = dataclasses.replace(base, beacon=BeaconConfig(mode="ACOUSTIC_RB", channel=proto[3:]))
-    elif proto.startswith("B2NP_"):
-        cfg = dataclasses.replace(base, beacon=BeaconConfig(mode="ACOUSTIC_RB", channel=proto[5:],
-                                                            payload=False))
+    cfg = protocol_config(args.protocol)
     d = Path(args.run_dir)
     prof, _, scope = args.profile.partition("-")
     terminal = {"profile": args.profile} if args.terminal else None
@@ -469,13 +425,13 @@ def finish(d: Path, profile: str) -> dict:
 
 def main() -> int:
     ap = argparse.ArgumentParser()
-    ap.add_argument("--phase", default="final", choices=("final", "validation", "targeted"))
     ap.add_argument("--raw", default=str(RAW))
-    ap.add_argument("--seeds", type=int, nargs="*", help="final: filter of its seeds; validation: default VALIDATION_SEEDS; targeted: default SEEDS")
-    ap.add_argument("--only", nargs="*")
+    ap.add_argument("--seeds", type=int, nargs="*", help="default SEEDS")
+    ap.add_argument("--only", nargs="*", help="scenarios")
     ap.add_argument("--profiles", nargs="*", help="profile labels (e.g. CLEAN MEDIUM-ALL)")
-    ap.add_argument("--protocols", nargs="*", help="--phase targeted: protocols (e.g. B0 B2_CLEAN)")
+    ap.add_argument("--protocols", nargs="*", help="protocols (e.g. B0 B2_CLEAN)")
     ap.add_argument("--dry-run", action="store_true")
+    ap.add_argument("--require-clean", action="store_true", help="refuse to run with modified tracked files (official runs)")
     ap.add_argument("--max-runs", type=int, default=0)
     ap.add_argument("--shard", type=int, default=0)
     ap.add_argument("--nshards", type=int, default=1)
@@ -506,9 +462,9 @@ def main() -> int:
         print(f"patched HoloOcean root not found ({hs.DEFAULT_PATCHED_ROOT}): campaign not started", flush=True)
         return 4
     raw = Path(args.raw)
-    runs = plan(args.phase, args.seeds, args.only, args.protocols, args.profiles)
+    runs = plan(args.seeds, args.only, args.protocols, args.profiles)
     todo = pending(raw, runs, "")
-    print(f"phase {args.phase}: {len(runs)} runs, {len(runs) - len(todo)} done, {len(todo)} to do", flush=True)
+    print(f"{len(runs)} runs, {len(runs) - len(todo)} done, {len(todo)} to do", flush=True)
     if args.nshards > 1:
         mine = set(runs[args.shard::args.nshards])
         todo = [r for r in todo if r in mine]
@@ -528,11 +484,11 @@ def main() -> int:
 
     done = 0
     version = code_version()
-    if args.phase in ("final", "validation") and version["dirty_files"]:
-        say(f"refused: phase {args.phase} runs only from a clean commit; modified: {version['dirty_files']}")
+    if args.require_clean and version["dirty_files"]:
+        say(f"refused: --require-clean runs only from a clean commit; modified: {version['dirty_files']}")
         return 2
     build = engine_build()
-    say(f"{time.strftime('%H:%M:%S')} phase {args.phase} start: orchestrator pid {os.getpid()}, shard {args.shard}/{args.nshards}, code {version}, engine {build}")
+    say(f"{time.strftime('%H:%M:%S')} campaign start: orchestrator pid {os.getpid()}, shard {args.shard}/{args.nshards}, code {version}, engine {build}")
     for (protocol, prof, sc, seed) in todo:
         if args.max_runs and done >= args.max_runs:
             break
@@ -546,8 +502,6 @@ def main() -> int:
             say(f"{time.strftime('%H:%M:%S')} {protocol} {prof} {sc} s{seed}: already done by another orchestrator, skipped")
             continue
         from holo_fleet.config import DEFAULT
-        from holo_fleet.referee.criteria import deadline_v3
-
         from holo_fleet.referee.criteria import horizon_v5
 
         dur = horizon_v5(SCENARIOS[sc](DEFAULT), DEFAULT, prof) * float(os.environ.get("HOLO_FLEET_HORIZON_FACTOR", "1"))

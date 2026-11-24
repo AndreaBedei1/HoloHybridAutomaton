@@ -1,7 +1,7 @@
 """Stage-2 hold before the critical region (CR) under navigation error (control/flows.py Flows.gate,
 control/gate_safety.py).
 
-The v11 hold sat at s = -1.18 m, 0.38 m from the CR (the former symmetric CR |s| <= 0.8; the same rule gives -1.43 m with
+The earlier hold sat at s = -1.18 m, 0.38 m from the CR (the former symmetric CR |s| <= 0.8; the same rule gives -1.43 m with
 the present CR, s in [-1.05, 0.55]), with a declared gate-frame navigation error of 1 m: a drone held there on an
 estimate 1 m short of the truth had its centre inside the CR.  The hold is now the nearest point where
 holding is P2-safe under the declared error, minus the measured holding error, and the queue lines keep the merge
@@ -32,7 +32,7 @@ from test_structure_aiding import BARS, GATES, _R, _profiles, _world  # noqa: E4
 
 CFG = DEFAULT
 G, ENV = CFG.gate, CFG.env
-V11_HOLD = G.cr_s_min - (float(HULL_HALF[0]) + 0.15)
+NEAR_HOLD = G.cr_s_min - (float(HULL_HALF[0]) + 0.15)
 DRIFT = (ENV.w_drift_max, 0.0, 0.0)
 
 
@@ -50,7 +50,7 @@ def test_the_hold_is_the_derived_p2_safe_hold():
                      .margins_world(np.zeros(3))[0])
 
     assert margin(G.stage2_hold_s) > 0.0 and margin(gs.hold_s(CFG) + 0.01) < 0.0
-    assert margin(V11_HOLD) < -0.9
+    assert margin(NEAR_HOLD) < -0.9
     # the station-keeping certificate at rest (gate_safety.sk_band, the recursive argument) has the same band: holding on
     # the target at rest is certified with exactly the measured holding error as margin, also with the DVL error bound
     assert gs.hold_reach(b) == pytest.approx(gs.sk_hold(b), abs=1e-12)
@@ -64,8 +64,8 @@ def test_the_hold_is_the_derived_p2_safe_hold():
 @pytest.mark.parametrize("n", [1, 2, 3, 4])
 def test_the_queue_lines_keep_the_merge_clearance_from_the_hold(n):
     """Bound (d): no queue point ahead of the stage-2 hold; bound (c), two or more columns: every queue point keeps the
-    merge clearance from the hold, within the lateral allowance of the (vertical) acquisition offsets.  With the v11 hold
-    point the n = 2 line violates (c) at the stage-2 hold."""
+    merge clearance from the hold, within the lateral allowance of the (vertical) acquisition offsets.  With the near hold
+    point (NEAR_HOLD) the n = 2 line violates (c) at the stage-2 hold."""
     qs = G.queue_s(n)
     assert qs <= G.stage2_hold_s + 1e-9
     lats = G.queue_laterals(n)
@@ -74,14 +74,14 @@ def test_the_queue_lines_keep_the_merge_clearance_from_the_hold(n):
             dl = max(abs(lat) - G.hold_lateral_allow, 0.0)
             assert math.hypot(qs - G.stage2_hold_s, dl) >= G.merge_clearance - 1e-9
     if n == 2:
-        v11 = dataclasses.replace(G, stage2_hold_s=V11_HOLD)
+        near = dataclasses.replace(G, stage2_hold_s=NEAR_HOLD)
         dl = max(abs(lats[0]) - G.hold_lateral_allow, 0.0)
-        assert math.hypot(v11.queue_s(2) - G.stage2_hold_s, dl) < G.merge_clearance
+        assert math.hypot(near.queue_s(2) - G.stage2_hold_s, dl) < G.merge_clearance
 
 
 def _holder(bias, variant="CORRECTED", loc_ok=True, entry_ok=False, drift=DRIFT, horizon=40.0, trace=True):
     """One committed drone of the abreast queue of two, held by the stage-2 check, with an estimate - truth bias."""
-    cfg = CFG if variant == "CORRECTED" else K.v11_config(CFG)
+    cfg = CFG if variant == "CORRECTED" else K.near_hold_config(CFG)
     gate = K.make_gate()
     qs, lanes = cfg.gate.queue_s(2), cfg.gate.queue_laterals(2)
     b = np.asarray(bias, float)
@@ -121,7 +121,7 @@ def test_a_held_drone_never_enters_the_cr_with_lateral_drift(bs, bl, drift):
 def test_a_held_drone_with_a_drone_approaching_from_behind_never_enters_the_cr(bs):
     """Closed loop with the separation layer on: a committed drone held by the stage-2 check (navigation bias ``bs``),
     a third drone approaching it from behind along the axis (uncommitted, the deployed avoidance), drift towards the CR:
-    the held drone's TRUE centre never enters the CR (with the v11 rule the avoidance moves it in)."""
+    the held drone's TRUE centre never enters the CR (with the NEAR_HOLD rule the avoidance moves it in)."""
     gate = K.make_gate()
     qs, lanes = G.queue_s(2), G.queue_laterals(2)
     b = np.array([bs, 0.0, 0.0])
@@ -153,10 +153,10 @@ def test_a_held_drone_never_enters_the_cr_whatever_the_declared_navigation_error
         assert float(nose.min()) > -float(HULL_HALF[0]) - 1e-9
 
 
-def test_the_v11_hold_point_puts_the_true_centre_in_the_cr_with_the_declared_error():
-    """The reproduced defect: the v11 controller, held 0.379 m before the CR (V11_HOLD) on an estimate 1 m short of the
+def test_the_near_hold_point_puts_the_true_centre_in_the_cr_with_the_declared_error():
+    """The reproduced defect (mutation): the controller held 0.379 m before the CR (NEAR_HOLD) on an estimate 1 m short of the
     truth."""
-    w, a, gate = _holder((-1.0, 0.0, 0.0), variant="V11")
+    w, a, gate = _holder((-1.0, 0.0, 0.0), variant="NEAR_HOLD")
     assert w.entries and w.entries[0]["drone"] == "B" and not w.entries[0]["by_avoidance"]
     assert any(r["cr"] == ["B"] and not r["agents"]["B"]["admitted"] for r in w.rows)
 

@@ -30,7 +30,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
 from holo_fleet.arena_bridge import HORSESHOE_TRACK, load_arena_gates  # noqa: E402
-from holo_fleet.config import DEFAULT  # noqa: E402
+from holo_fleet.config import DEFAULT, communication_disabled  # noqa: E402
 from holo_fleet.sim.currents import CurrentComponent, CurrentField  # noqa: E402
 from holo_fleet.sim.holo_env import HoloFleetSim  # noqa: E402
 from holo_fleet.sim.spec import bench_spec  # noqa: E402
@@ -44,7 +44,7 @@ def run_case(name, pos, yaw, cfg, seconds, gate_ids=(), current=None):
     spec.duration_s = seconds + 1.0
     if current is not None:
         spec.current = current
-    sim = HoloFleetSim(spec, cfg, headless=True)
+    sim = HoloFleetSim(spec, communication_disabled(cfg), headless=True)
     sim.start()
     rows = []
     try:

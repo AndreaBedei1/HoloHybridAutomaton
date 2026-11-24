@@ -78,7 +78,7 @@ def test_the_audit_schedule_is_the_emission_schedule_of_the_simulator_transport(
     env = types.SimpleNamespace(_client=types.SimpleNamespace(command_center=types.SimpleNamespace(enqueue_command=lambda c: None)))
     for n in (2, 3, 4, 5, 6):
         names = [f"drone_{k}" for k in range(n)]
-        bt = BeaconTransport(names, BeaconConfig(mode="ACOUSTIC_RB", payload=False), seed=1, ticks_per_sec=pa.TICKS_PER_SEC)
+        bt = BeaconTransport(names, BeaconConfig(), seed=1, ticks_per_sec=pa.TICKS_PER_SEC)
         for tick in range(1, 4 * 30 + 1):
             bt.before_tick(env, round(tick / pa.TICKS_PER_SEC, 6))
         seen = {k: [int(round(t * pa.TICKS_PER_SEC)) for t, nm in bt.tx_log if nm == names[k]] for k in range(n)}
@@ -235,9 +235,11 @@ def test_the_logs_ending_while_the_claim_holds_is_inconclusive():
 
 
 def test_beacon_of_run_blackout_and_payload():
+    # ``payload: false`` is read from the run_config of an archived run of the payload-free ablation (no such option exists any more)
     rc = lambda **b: {"fleet_config": {"beacon": {"mode": "ACOUSTIC_RB", **b}, "acoustic": {"latency_max_s": 0.4}}}
     assert beacon_of_run(rc(channel="BLACKOUT"))["blackout"] is True
-    assert pa.link_of(beacon_of_run(rc(channel="MEDIUM", payload=False)), 3, DEFAULT) is None
+    no_payload = {"payload": False}
+    assert pa.link_of(beacon_of_run(rc(channel="MEDIUM", **no_payload)), 3, DEFAULT) is None
     assert pa.link_of(beacon_of_run(rc(channel="MEDIUM")), 3, DEFAULT).latency_s == 0.25
     st = _states(2)
     _commit(st, 0, 99, 400)

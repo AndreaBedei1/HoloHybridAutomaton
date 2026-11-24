@@ -5,7 +5,7 @@ certificates are dropped when their premises change, and an applied command with
 
 The states are the witnesses of formal/check_p2_recursive.py: 0.5 m/s along the axis 2.0 m before the CR entry plane, whose
 worst next state has no onboard-certified braking and no station keeping certified from the fresh measurement (the
-counterexample of the 01cd6fa argument, P2R2m); the stage-2 hold at the edge of its deviation band with the measured
+counterexample of the braking lookahead, P2R2m); the stage-2 hold at the edge of its deviation band with the measured
 velocity at the DVL error bound (the drop of the recomputed margin, P2B4).
 """
 
@@ -61,7 +61,7 @@ def test_a_robust_command_hands_the_next_step_a_certified_station_keeping():
 
 
 def test_the_lookahead_covers_the_next_onboard_state_that_the_braking_lookahead_missed():
-    """The 01cd6fa lookahead (braking from the true worst state, re-certified with the fresh measurement) is replaced by the
+    """The braking lookahead (braking from the true worst state, re-certified with the fresh measurement) is replaced by the
     band of station keeping on the next estimate (P2R2): positive here, and it bounds the band seen from the next state."""
     q, v0, u = np.array([-3.05, 0.0, 0.0]), np.zeros(3), np.array([0.5, 0.0, 0.0])
     dp = float(gs.next_band(v0[None, :], u[None, :], B, VE, RHO)[0][0, 0])

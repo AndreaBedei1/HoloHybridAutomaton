@@ -38,9 +38,9 @@ P2R4n  (numeric, grid of P2B5) every command returned with a positive robust mar
        the deployed next-step GateConstraint finds a certified station keeping (sk_certificate with the handed NEXT
        certificate); reported, how many of those next states rely on the handed certificate (the margin recomputed with the
        fresh measurement is not positive) and how many have no onboard-certified braking.
-P2R2m  (mutation) the lookahead of 01cd6fa (braking from the true worst-case state, re-certified at the next step with the
+P2R2m  (mutation) the braking lookahead (braking from the true worst-case state, re-certified at the next step with the
        fresh measurement) on the same grid: next states where braking is not certified onboard - the 744 / 1124
-       counterexample of the old argument, kept as a witness.
+       counterexample of that lookahead, kept as a witness.
 P2R4l  (declared limit) the induction step needs its premises at the next step: a DVL outage that begins before a
        handed certificate is used, or a position correction, can leave no certified action (P2_UNCERTIFIED, retreat).
 P2R5   (proved, Z3 QF_NRA) base case: station keeping on the estimate is certified at every state whose column separation
@@ -440,13 +440,13 @@ def availability(cfg: FleetConfig):
                     note=f"{n_cmd} returned commands, {n_next} next states (8 side corners x 3 drift / measurement corners); "
                          f"{fail} without a certified action; {need_cert} of the next states rely on the handed certificate "
                          f"(the SK margin recomputed with the fresh measurement is not positive: the R-c drop), {brake_off} "
-                         f"have no onboard-certified braking (one-step margin of a zero command, the old argument); "
+                         f"have no onboard-certified braking (one-step margin of a zero command, the braking lookahead); "
                          f"smallest handed margin {worst_inh:.3f} m")
     return r
 
 
-def old_lookahead(cfg: FleetConfig) -> CheckResult:
-    """P2R2m: the lookahead of 01cd6fa on the same grid (mutation)."""
+def braking_lookahead_mutation(cfg: FleetConfig) -> CheckResult:
+    """P2R2m: the braking lookahead on the same grid (mutation)."""
     import check_gate_safety as C
 
     b = gs.P2Bounds.from_cfg(cfg)
@@ -455,7 +455,7 @@ def old_lookahead(cfg: FleetConfig) -> CheckResult:
     t0 = time.time()
     n = bad_on = bad_phys = 0
     deficit = []
-    for q, v0, gc, who, u in C.returned_commands(cfg, lambda q, v0: _OldGC.make(cfg, q, v0, ve)):
+    for q, v0, gc, who, u in C.returned_commands(cfg, lambda q, v0: _BrakingLookaheadGC.make(cfg, q, v0, ve)):
         n += 1
         phys, onb, _w = C._braking_ok(cfg, q, v0, gc.to_gate(u), b, ve, box)
         bad_phys += not phys
@@ -471,22 +471,22 @@ def old_lookahead(cfg: FleetConfig) -> CheckResult:
             deficit.append(m)
     d = np.array(deficit) if deficit else np.zeros(1)
     caught = bad_on > 0
-    return CheckResult("P2R2m mutation: the lookahead of 01cd6fa (braking from the true worst-case state after dt, "
+    return CheckResult("P2R2m mutation: the braking lookahead (braking from the true worst-case state after dt, "
                        "re-certified at the next step with the fresh measurement) leaves next states where no braking is "
-                       "certified onboard although braking is physically safe: the counterexample of the old recursive "
+                       "certified onboard although braking is physically safe: the counterexample of that recursive "
                        "argument, kept as a witness", "expect returned commands with an onboard braking margin <= 0 at a "
                        "next-state corner", ENC, "counterexample", verdict="counterexample" if caught else "none",
                        passed=caught, seconds=round(time.time() - t0, 1),
-                       note=f"{n} commands returned by the planners with the old robust margin and the old hold_margin; "
+                       note=f"{n} commands returned by the planners with the robust margin and the hold_margin of the braking lookahead; "
                             f"{bad_on} with a next-state corner whose onboard braking (velocity measured within v_err and "
                             f"filtered with it) is not certified (744 of 4772 at a9ffa34 with the former CR), {bad_phys} "
                             f"physically unsafe; onboard deficit min {d.min():.3f} m, median {np.median(d):.3f} m.  Root cause "
-                            f"(R-a): the old lookahead took the next velocity as the true worst case vp, the onboard "
+                            f"(R-a): the braking lookahead took the next velocity as the true worst case vp, the onboard "
                             f"re-certification uses up to vp + 2 v_err and the next estimate moves by up to rho dt more")
 
 
-class _OldGC(gs.GateConstraint):
-    """GateConstraint with the robust margin and hold_margin of 01cd6fa (the mutation of P2R2m)."""
+class _BrakingLookaheadGC(gs.GateConstraint):
+    """GateConstraint with the robust margin and hold_margin of the braking lookahead (the mutation of P2R2m)."""
 
     @classmethod
     def make(cls, cfg, q, v0, ve):
@@ -619,5 +619,5 @@ def run_checks(cfg: FleetConfig):
     out.append(theorem(cfg))
     out.append(outage_limit(cfg))
     out.append(availability(cfg))
-    out.append(old_lookahead(cfg))
+    out.append(braking_lookahead_mutation(cfg))
     return out

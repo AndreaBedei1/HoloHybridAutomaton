@@ -21,12 +21,13 @@ import numpy as np
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
-from holo_fleet.config import DEFAULT  # noqa: E402
+from holo_fleet.config import DEFAULT, communication_disabled  # noqa: E402
 from holo_fleet.perception import sonar_geometry as sg  # noqa: E402
 from holo_fleet.perception.sensor_suite import SONAR_NAMES  # noqa: E402
 from holo_fleet.sim.holo_env import HoloFleetSim, TICKS_PER_SEC, agent_origin_from_pose  # noqa: E402
 from holo_fleet.sim.spec import bench_spec  # noqa: E402
 
+BENCH_CFG = communication_disabled()  # the sonar benches ran without a beacon
 OUT = ROOT / "results" / "calibration" / "sonar_bench"
 FIG = ROOT / "figures" / "calibration" / "sensor"
 RANGES = DEFAULT.perc.sonar.ranges()
@@ -91,7 +92,7 @@ def directions():
 
 def mode_coverage():
     spec = bench_spec("bench_coverage", [O, O + np.array([0, 40.0, 0])])
-    sim = HoloFleetSim(spec)
+    sim = HoloFleetSim(spec, BENCH_CFG)
     sim.start()
     obs, tgt = sim.names
     sim.pin(obs, O, (0, 0, 0))
@@ -170,7 +171,7 @@ def mode_classify():
     gyaw = math.degrees(math.atan2(g6.axis[1], g6.axis[0]))
     far = [O + np.array([-40.0, -30.0, 0]), O + np.array([-46.0, -30.0, 0])]
     spec = bench_spec("bench_classify", [O] + far, gate_ids=("G06",))
-    sim = HoloFleetSim(spec)
+    sim = HoloFleetSim(spec, BENCH_CFG)
     sim.start()
     obs, t1, t2 = sim.names
     clf = EchoClassifier(gate_bars=g6.bars)
@@ -200,7 +201,7 @@ def mode_classify():
     SB = np.array([0.0, -40.0, -292.7])
     box = ([-50.0, -90.0, -310.0], [50.0, 10.0, -260.0])
     spec = bench_spec("bench_seabed", [SB, SB + np.array([0, 25.0, 0])], env_box=box)
-    sim = HoloFleetSim(spec)
+    sim = HoloFleetSim(spec, BENCH_CFG)
     sim.start()
     obs, t1 = sim.names
     clf = EchoClassifier(gate_bars=())
@@ -231,7 +232,7 @@ def mode_perf():
             base = np.array([-12.0, 16.0, -4.3]) if with_gate else O
             pos = [base + np.array([-3.0 * (k // 3), 3.0 * (k % 3) - 3.0, 0.0]) for k in range(n)]
             spec = bench_spec(f"bench_perf_{n}", pos, gate_ids=("G06",) if with_gate else ())
-            sim = HoloFleetSim(spec)
+            sim = HoloFleetSim(spec, BENCH_CFG)
             sim.start()
             for k, nm in enumerate(sim.names):
                 sim.pin(nm, pos[k], (0, 0, 8.5 if with_gate else 0.0))
@@ -255,7 +256,7 @@ def mode_shot():
 
     spec = bench_spec("bench_shot", [O], camera_drone=0)
     spec.chase_offset = (-4.0, -3.0, 2.4)
-    sim = HoloFleetSim(spec, view_region=True)
+    sim = HoloFleetSim(spec, BENCH_CFG, view_region=True)
     sim.start()
     sim.pin(sim.names[0], O, (0, 0, 20.0))
     imgs = []

@@ -105,6 +105,7 @@ def test_runner_closes_ui_when_run_raises(tmp_path, monkeypatch):
     class FakeController:
         def __init__(self, *_args, **_kwargs):
             self.last_record, self.events = {}, []
+            self.perception = SimpleNamespace(acoustic=SimpleNamespace(set_identities=lambda *_a: None))
 
         def step(self, *_args):
             return None

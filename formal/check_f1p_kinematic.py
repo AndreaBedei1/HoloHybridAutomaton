@@ -4,10 +4,11 @@ F1p / F1pm (formal/check_fleet.py) found two drones in the CR when two drones co
 one of them is moved into the CR by its own avoidance.  The fleet model has no positions.  This reconstruction gives it
 positions and moving drones, and runs every episode with two controllers:
 
-* V11: the validated v11 controller - the stage-2 hold hull half-length + 0.15 before the CR entry plane, s = cr_s_min -
-  (0.229 + 0.15) = -1.43 m with the present CR (-1.18 m with the former symmetric CR |s| <= 0.8), with the
-  RELOC back-off (the v11 Flows.gate, reproduced verbatim in FlowsV11), the v11 queue lines, no follower standoff, and the
-  avoidance output of a drone that is not admitted never edited (the escape planner without ``p2``, no P2 mission filter);
+* NEAR_HOLD: the MUTATION that is the controller before the hold-point correction - the stage-2 hold hull half-length + 0.15
+  before the CR entry plane, s = cr_s_min - (0.229 + 0.15) = -1.43 m with the present CR (-1.18 m with the former symmetric
+  CR |s| <= 0.8), with the RELOC back-off (that Flows.gate, reproduced verbatim in FlowsNearHold), the queue lines of that
+  hold, no follower standoff, and the avoidance output of a drone that is not admitted never edited (the escape planner
+  without ``p2``, no P2 mission filter);
 * CORRECTED: the current code - Flows.gate (stage-2 hold GateRule.stage2_hold_s, acquisition offsets, standoff), the P2
   mission filter and the gate-aware warning filter / escape (control/gate_safety.py, EscapePlanner with ``p2``), in the
   order of DroneController.step.
@@ -66,16 +67,16 @@ from holo_fleet.perception.nav import NavBound  # noqa: E402
 from holo_fleet.perception.sonar_geometry import HULL_HALF, MOUNTS, R_IN, R_OUT, centre_distance_lower, pattern_of_point  # noqa: E402
 
 DT = 0.1
-V11_HOLD_S = DEFAULT.gate.cr_s_min - (float(HULL_HALF[0]) + RELOC_MARGIN_M)
-V11_RELOC_PERIOD_S, V11_RELOC_BACK_M = 6.0, 0.6
+NEAR_HOLD_S = DEFAULT.gate.cr_s_min - (float(HULL_HALF[0]) + RELOC_MARGIN_M)
+NEAR_HOLD_RELOC_PERIOD_S, NEAR_HOLD_RELOC_BACK_M = 6.0, 0.6
 RESULTS = Path(__file__).resolve().parent / "results" / "f1p_kinematic.json"
 AVOID = ("SW", "CA")
 FLEET = ("GATE", "TRANSIT")
 
 
-class FlowsV11(Flows):
-    """The v11 gate flow (validated controller, archive v13): stage-2 hold V11_HOLD_S (the v11 rule, 0.379 m before the CR
-    entry plane; -1.18 m with the former CR) with the RELOC back-off, no standoff."""
+class FlowsNearHold(Flows):
+    """The gate flow of the NEAR_HOLD mutation (the controller before the hold-point correction): stage-2 hold NEAR_HOLD_S
+    (0.379 m before the CR entry plane; -1.18 m with the former CR) with the RELOC back-off, no standoff."""
 
     def _ahead(self, obs) -> bool:
         return False
@@ -89,7 +90,7 @@ class FlowsV11(Flows):
         hold = False
         if mode == "MUTEX_PASS":
             c = self._carrot(self.pass_path(go.queue_s, go.queue_l, go.queue_dz), np.array([go.s, go.l, go.dz]))
-            s_hold = V11_HOLD_S
+            s_hold = NEAR_HOLD_S
             if go.loc_ok and go.entry_ok and go.s >= s_hold - RELOC_ZONE_M:
                 self.cr_cleared = True
             s_abort = G.cr_s_min - (float(R_OUT) + G.nav_err_m)
@@ -100,8 +101,8 @@ class FlowsV11(Flows):
                 self.hold_since = obs.t if self.hold_since is None else self.hold_since
                 if obs.t - self.hold_since > G.t_occ_max + G.t_clear and not self.hold_timeout:
                     self.hold_timeout = True
-                back = int((obs.t - self.hold_since) / V11_RELOC_PERIOD_S) % 2 == 1
-                c = np.array([s_hold - (V11_RELOC_BACK_M if back else 0.0), 0.0, c[2]])
+                back = int((obs.t - self.hold_since) / NEAR_HOLD_RELOC_PERIOD_S) % 2 == 1
+                c = np.array([s_hold - (NEAR_HOLD_RELOC_BACK_M if back else 0.0), 0.0, c[2]])
                 if self.hold_timeout:
                     c = np.array([s_abort - RELOC_MARGIN_M, 0.0, c[2]])
                     self.abort_request = go.s <= s_abort
@@ -123,9 +124,9 @@ class FlowsV11(Flows):
         return _cap(v, vmax, 0.25), yaw
 
 
-def v11_config(cfg: FleetConfig = DEFAULT) -> FleetConfig:
-    """The v11 queue lines: the queue bound (c) of the stage-2 hold evaluated at the v11 hold point."""
-    return dataclasses.replace(cfg, gate=dataclasses.replace(cfg.gate, stage2_hold_s=V11_HOLD_S))
+def near_hold_config(cfg: FleetConfig = DEFAULT) -> FleetConfig:
+    """The queue lines of the NEAR_HOLD mutation: the queue bound (c) of the stage-2 hold evaluated at its hold point."""
+    return dataclasses.replace(cfg, gate=dataclasses.replace(cfg.gate, stage2_hold_s=NEAR_HOLD_S))
 
 
 def make_gate(z_centre: float = -4.3) -> GateSpec:
@@ -177,13 +178,13 @@ class Agent:
 
 
 class World:
-    """Closed loop of a set of agents at one gate (module docstring); ``variant`` CORRECTED or V11.  ``entry_ok`` and
+    """Closed loop of a set of agents at one gate (module docstring); ``variant`` CORRECTED or NEAR_HOLD.  ``entry_ok`` and
     ``loc_ok`` fixed by the caller override the idealised stage-2 check and localization."""
 
     def __init__(self, cfg: FleetConfig, gate: GateSpec, agents: Sequence[Agent], variant: str = "CORRECTED",
                  delay: float = 0.0, drift: Sequence[float] = (0.0, 0.0, 0.0), avoidance: bool = True,
                  loc_ok: bool = True, entry_ok: Optional[bool] = None, trace: bool = False):
-        self.cfg = cfg if variant == "CORRECTED" else v11_config(cfg)
+        self.cfg = cfg if variant == "CORRECTED" else near_hold_config(cfg)
         self.gate, self.agents, self.variant = gate, list(agents), variant
         self.delay, self.drift, self.avoidance = float(delay), np.asarray(drift, float), avoidance
         self.loc_ok, self.entry_ok_fixed, self.trace = loc_ok, entry_ok, trace
@@ -205,7 +206,7 @@ class World:
         self.v_err = float(nb.k_rw)
         self.rho = self.v_err + float(nb.k_lin) * float(nb.v_bound)
         self.p2_uncertified = 0
-        cls = Flows if variant == "CORRECTED" else FlowsV11
+        cls = Flows if variant == "CORRECTED" else FlowsNearHold
         for a in self.agents:
             if a.kind in ("GATE", "TRANSIT"):
                 plan = NS(gates=[gate], slots=[NS(lateral=a.queue[1], dz=0.0, along=0.0)], slot_index=0,
@@ -428,7 +429,7 @@ def episodes() -> List[Dict]:
 
 
 def build(ep: Dict, cfg: FleetConfig, variant: str, trace: bool = False) -> World:
-    c = cfg if variant == "CORRECTED" else v11_config(cfg)
+    c = cfg if variant == "CORRECTED" else near_hold_config(cfg)
     if ep["family"] == "A_concurrent":
         gate = make_gate()
         ag = _gate_agents(c, gate, ep["n"], ep["commits"], ep["biases"])
@@ -471,7 +472,7 @@ def _low() -> None:
 
 
 def scan(workers: int = 20) -> Dict:
-    jobs = [(ep, v) for ep in episodes() for v in ("V11", "CORRECTED")]
+    jobs = [(ep, v) for ep in episodes() for v in ("NEAR_HOLD", "CORRECTED")]
     try:
         from multiprocessing import Pool
 
@@ -480,7 +481,7 @@ def scan(workers: int = 20) -> Dict:
     except (OSError, RuntimeError, ImportError):  # a pool that cannot start: the same scan, serially
         res = [run_episode(j) for j in jobs]
     summ = {}
-    for v in ("V11", "CORRECTED"):
+    for v in ("NEAR_HOLD", "CORRECTED"):
         rs = [r for r in res if r["variant"] == v]
         fam = {}
         for f in sorted({r["ep"]["family"] for r in rs}):
@@ -502,11 +503,11 @@ def scan(workers: int = 20) -> Dict:
 
 
 def _worst(res: List[Dict]) -> Optional[Dict]:
-    v11 = [r for r in res if r["variant"] == "V11" and (r["double"] or r["by_avoidance"])]
-    if not v11:
+    mut = [r for r in res if r["variant"] == "NEAR_HOLD" and (r["double"] or r["by_avoidance"])]
+    if not mut:
         return None
-    v11.sort(key=lambda r: (r["double"] is None, -r["by_avoidance"], r["dmin"]))
-    return v11[0]["ep"]
+    mut.sort(key=lambda r: (r["double"] is None, -r["by_avoidance"], r["dmin"]))
+    return mut[0]["ep"]
 
 
 def _json(o):
@@ -535,7 +536,7 @@ def main(workers: int = 20) -> Dict:
     worst = _worst(out["results"])
     traces = {}
     if worst is not None:
-        for v in ("V11", "CORRECTED"):
+        for v in ("NEAR_HOLD", "CORRECTED"):
             w = build(worst, DEFAULT, v, trace=True)
             s = w.run(90.0 if worst["family"] == "A_concurrent" else 60.0)
             traces[v] = {"summary": s, "rows": w.rows[::5]}
@@ -544,7 +545,7 @@ def main(workers: int = 20) -> Dict:
                 "double": r["double"], "dmin": r["dmin"], "p1_steps": r["p1_violation_steps"],
                 "p1_fleet_steps": r["p1_fleet_steps"], "pair_min": r["pair_min"], "joint": r["joint"],
                 "reasons": r["reasons"], "passed": r["passed"]} for r in out["results"]]
-    doc = _finite({"generated_s": round(time.time() - t0, 1), "summary": out["summary"], "worst_v11_episode": worst,
+    doc = _finite({"generated_s": round(time.time() - t0, 1), "summary": out["summary"], "worst_near_hold_episode": worst,
                    "traces": traces, "episodes": compact})
     RESULTS.parent.mkdir(parents=True, exist_ok=True)
     RESULTS.write_text(json.dumps(doc, default=_json), encoding="utf-8")
@@ -552,7 +553,7 @@ def main(workers: int = 20) -> Dict:
 
 
 def check(cfg: FleetConfig = DEFAULT):
-    """F1pk: the scan (module docstring), V11 against CORRECTED; reported, expect none in CORRECTED."""
+    """F1pk: the scan (module docstring), NEAR_HOLD against CORRECTED; reported, expect none in CORRECTED."""
     from common import CheckResult
 
     t0 = time.time()
@@ -560,11 +561,11 @@ def check(cfg: FleetConfig = DEFAULT):
     s = doc["summary"]
     c = s["CORRECTED"]
     bad = sum(f["with_entry_without_admission"] + f["with_double_occupancy"] for f in c.values())
-    note = {"V11": s["V11"], "CORRECTED": c,
-            "reading": ("V11 against CORRECTED on the same episodes; CORRECTED keeps every not-admitted centre out of the "
+    note = {"NEAR_HOLD": s["NEAR_HOLD"], "CORRECTED": c,
+            "reading": ("NEAR_HOLD against CORRECTED on the same episodes; CORRECTED keeps every not-admitted centre out of the "
                         "CR in this set" if bad == 0 else
                         "CORRECTED has entries without admission or double occupancy: see formal/results/f1p_kinematic.json")}
-    return CheckResult("F1pk reported (not a proof): kinematic reconstruction with moving drones, V11 vs CORRECTED controller, "
+    return CheckResult("F1pk reported (not a proof): kinematic reconstruction with moving drones, NEAR_HOLD mutation vs CORRECTED controller, "
                        "idealised perception and plant; concurrent commitments, delayed claims, an occupant, a held drone and a "
                        "third drone from behind, restricted corridors, navigation bias, drift",
                        "count entries of a not-admitted centre into the CR and instants with two centres in the CR (CORRECTED)",
@@ -575,4 +576,4 @@ def check(cfg: FleetConfig = DEFAULT):
 if __name__ == "__main__":
     d = main()
     print(json.dumps(d["summary"], indent=1, default=_json))
-    print("worst V11 episode:", d["worst_v11_episode"])
+    print("worst NEAR_HOLD episode:", d["worst_near_hold_episode"])

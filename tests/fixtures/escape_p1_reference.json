@@ -1,5 +1,5 @@
 {
-"source": "holo_fleet/control/escape.py at commit 0e85d2d (v11), one planner instance, inputs in order",
+"source": "holo_fleet/control/escape.py at commit 0e85d2d (the planner without a P2 constraint, kept as the reference of the P1 behaviour), one planner instance, inputs in order",
 "cases": [
 {
 "threats": [

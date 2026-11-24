@@ -70,7 +70,7 @@ def test_the_keeping_cap_leaves_a_catch_up_authority_above_the_plan_speed():
 
 @pytest.mark.parametrize("w_head", [0.0, 0.02])
 def test_a_drone_behind_its_slot_in_a_keeping_mode_catches_up_at_the_fastest_admitted_clock(w_head):
-    """integrated_short runs the clock at 0.40 m/s: with the v11 keeping cap 0.40 the drone 0.8 m behind its slot stays
+    """integrated_short runs the clock at 0.40 m/s: with the constant keeping cap 0.40 (v_slot_max = v_plan) the drone 0.8 m behind its slot stays
     0.8 m behind for ever (no head disturbance) or cycles FOLLOW / RECOVERY between 0.34 and 1.2 m (0.02 m/s)."""
     late = [(e, m) for t, e, m in _follow(0.40, 0.8, w_head) if t > 150.0]
     assert max(e for e, _m in late) < FR.e_ok

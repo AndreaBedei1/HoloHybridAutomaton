@@ -23,16 +23,16 @@ C1  per-drone ranking ||e||_2, certified by CELL DECOMPOSITION in exact rational
     F1 is NOT a ranking of the coupled law (Z3 NRA counterexample): the per-axis model is an abstraction gap, not a proof
     of the deployed law.  C1l: the near band at the transient consensus bound and the B2 far band at the domain edge with
     the adversarial lambda_dot bound have counterexamples (declared limits: sigma, lambda are feedback states, C2).
-    C1m: the v11 keeping cap v_slot_max = v_plan (integrated_short, 0.40 m/s) has no along catch-up authority (defect,
+    C1m: the constant keeping cap v_slot_max = v_plan (integrated_short, 0.40 m/s) has no along catch-up authority (defect,
     fixed by keeping_cap; tests/test_p3_recovery_fixes.py).
 C2  pairwise consensus of the private formation clocks (control/formation_time.py, perception.py _rep_offset): state
     D = v (tau_j - tau_i) (the drone behind is j), sigma_i, sigma_j, the slowdown rho_i = 1 - rate_i; X = D + sigma_i -
     sigma_j the effective along offset of the two references, B = band_max + eta.  Ranking max(0, X - B - delta) + (rho_d
     - rho_i)^+ with a positive decrease while the reported-position lag is available (premise: a fresh fix of the pair in
-    every step; C2s is the scope check).  C2m: the v11 controller, with the sync off in FORMATION_RECOVERY, keeps an
+    every step; C2s is the scope check).  C2m: the controller with the sync off in FORMATION_RECOVERY, keeps an
     abreast pair in RECOVERY for ever (counterexample; fixed by behind_rep).
 C3  growth of tau: one reduced-progress episode adds at most d_max t_rejoin + v d_max^2 / (2 a_wait) (inductive
-    invariant); the rendezvous hold re-synchronises (C3h; v11 kept the difference: C3m).
+    invariant); the rendezvous hold re-synchronises (C3h; without it the difference is kept: C3m).
 C4  operating domain (FormationRule.check_clock_speed, raising at plan time): every admitted clock speed leaves the
     catch-up margin v_catch_min in the keeping and recovery modes, above w_res + s_res.
 
@@ -326,7 +326,7 @@ def c1_witnesses(cfg: FleetConfig, v_edge) -> list:
                       va * n == V * ua2, vl * n == V * ul2, m > 0, m * m == ea * ea + el * el, m1 >= 0,
                       m1 * m1 == ea2 * ea2 + el2 * el2, m1 >= m],
                      expect="sat", note="at the nominal clock the same bound is certified (C1f B2); B0 is certified at both"))
-    out.append(check(f"C1m mutation (v11 integrated_short, the defect): keeping cap v_slot_max = {F.v_slot_max} at a clock "
+    out.append(check(f"C1m mutation (constant keeping cap, integrated_short, the defect): keeping cap v_slot_max = {F.v_slot_max} at a clock "
                      f"of {F.v_slot_max} m/s leaves no along catch-up authority: a drone behind its slot (e_ok <= e_a <= "
                      "e_lost) never closes, even without disturbance",
                      "exists e_a in [e_ok, e_lost]: e_a' >= e_a", ENC,
@@ -436,13 +436,13 @@ def c2_checks(cfg: FleetConfig) -> list:
                             sl["X"] + a_(sl["si"]) + a_(sl["sj"]) - z(DT * kl["v"]) * sl1["ri"])]))
     _km, sm, sm1, consm = c2_model(cfg, q(F.v_nominal), sync_off_slot=False, sigma_mode="leak")
     out.append(check(
-        "C2m mutation (v11, the defect): without the re-synchronisation in FORMATION_RECOVERY a pair of drones both "
+        "C2m mutation (no re-synchronisation in FORMATION_RECOVERY, the defect): without the re-synchronisation in FORMATION_RECOVERY a pair of drones both "
         f"recovering, sigma relaxed, X >= {math.sqrt(d_lock):.2f} m stays there (the residual of the abreast pair stays above "
         "e_ok: FORMATION_RECOVERY for ever)",
         "exists a state of the lock set whose successor is in it with X' = X", ENC,
         consm + [sm["si"] == 0, sm["sj"] == 0, sm["ri"] == 0, sm["X"] * sm["X"] >= z(d_lock), sm1["X"] == sm["X"],
                  sm1["ri"] == 0], expect="sat",
-        note="the set {rho_i = 0, sigma = 0, X >= 1.94 m} is closed under the v11 step; offline: delays of 8 s and more"))
+        note="the set {rho_i = 0, sigma = 0, X >= 1.94 m} is closed under the step without the re-synchronisation; offline: delays of 8 s and more"))
     kf, sf, sf1, consf = c2_model(cfg, q(F.v_nominal), fresh=False)
     rho_d = min(kf["kp"] * delta, kf["v"] - kf["vw"]) / kf["v"]
     Rf = lambda st: _pos(st["X"] - z(kf["B"] + delta)) + _pos(z(rho_d) - st["ri"])  # noqa: E731
@@ -489,7 +489,7 @@ def c3_checks(cfg: FleetConfig) -> list:
                      [H > 0, inh(tau_i), inh(tau_j),
                       z3.Not(z3.And(rs(tau_i) <= tau_i, inh(rs(tau_i)), a_(rs(tau_i) - rs(tau_j)) <= a_(tau_i - tau_j),
                                     z3.Implies(t <= end, z3.And(rs(tau_i) == 0, rs(tau_j) == 0))))]))
-    out.append(check("C3m mutation (v11): without the hold re-synchronisation two drones leave the rendezvous with the "
+    out.append(check("C3m mutation (no re-synchronisation in the hold): without the hold re-synchronisation two drones leave the rendezvous with the "
                      "delay difference they brought", "exists tau_i != tau_j in the hold: tau' = tau", ENC,
                      [H > 0, inh(tau_i), inh(tau_j), a_(tau_i - tau_j) > 1, t <= end], expect="sat"))
     return out
@@ -511,7 +511,7 @@ def c4_checks(cfg: FleetConfig) -> list:
                  dom + [z3.Not(z3.And(cap - vp >= vcat, vrec - vp >= vcat, cap <= vrec, vrec <= z(q(env.v_max_nominal)),
                                       vcat > z(W_RES + S_RES)))],
                  note="keeping_cap = min(v_recovery_max, max(v_slot_max, v_plan + v_catch_min)), the code of Flows.formation"),
-           check("C4m mutation (v11): the constant keeping cap v_slot_max leaves no margin at an admitted clock "
+           check("C4m mutation (constant keeping cap): the constant keeping cap v_slot_max leaves no margin at an admitted clock "
                  "(integrated_short 0.40 m/s)", "exists v_plan in the domain: v_slot_max - v_plan < v_catch_min", ENC,
                  dom + [vsl - vp < vcat], expect="sat")]
     return out

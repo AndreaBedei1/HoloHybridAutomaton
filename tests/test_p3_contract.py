@@ -74,7 +74,7 @@ def test_criteria_v9_degraded_formation_after_a_permanent_failure():
 
 
 def test_the_b2_medium_minus_one_metre_bias_run_is_a_late_pass():
-    """gate_hold_nav_bias_m10, B2 MEDIUM, seed 8000 (archive v19): online SUCCESS, no failed requirement, P3a of two
+    """gate_hold_nav_bias_m10, B2 MEDIUM, seed 8000 (negative navigation bias run of the legacy results): online SUCCESS, no failed requirement, P3a of two
     drones LATE (the ~217 s wait at the queue), P3b MET at 348.5 s: v8 P3_LATE, v9 PASS with the late parts recorded."""
     out = {"failed_requirements": [], "gate_nav": {}, "premise_v": {},
            "p3": {"P3a": {"drone_0": {"verdict": "LATE"}, "drone_1": {"verdict": "MET"}, "drone_2": {"verdict": "LATE"}},

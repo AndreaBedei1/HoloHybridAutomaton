@@ -7,7 +7,7 @@ from types import SimpleNamespace
 import numpy as np
 import pytest
 
-from holo_fleet.config import DEFAULT
+from holo_fleet.config import DEFAULT, communication_disabled
 from holo_fleet.control.controller import EnvelopeMonitor
 from holo_fleet.control.current_envelope import check_onboard
 from holo_fleet.control.flows import Flows
@@ -22,6 +22,7 @@ from holo_fleet.perception.targets import Target
 from holo_fleet.referee.referee import Referee
 
 FR = DEFAULT.form
+B0 = communication_disabled()  # the sonar-only logic of these tests: the same controller with the communication disabled
 DT = 0.1
 
 
@@ -133,7 +134,7 @@ def test_slot_reference_and_feed_forward_follow_the_own_formation_time():
     of the perception, the slot of the flow and the feed-forward use the same formation time."""
     plan = _plan(0)
     fl = Flows(plan, DEFAULT)
-    p = Perception(plan, DEFAULT)
+    p = Perception(plan, B0)
     fl.ftime.tau, fl.ftime.rate = 4.0, FR.v_wait / FR.v_nominal
     t = 30.0
     slot, _R, s_ref = p.slot_reference(fl.ftime.now(t), fl.sigma)
@@ -238,7 +239,7 @@ def test_progress_consensus_runs_only_near_the_own_slot():
 
 
 def test_missing_neighbour_is_declared_vacant_after_t_rejoin_and_reincluded():
-    p = Perception(_plan(0), DEFAULT)
+    p = Perception(_plan(0), B0)
     o, t = _run(p, 0.0, 5.0, {1, 2, 3})
     assert o.neighbors_ok and not p.vacant
     o, t = _run(p, t, t + FR.t_rejoin, {1, 3})
@@ -257,7 +258,7 @@ def test_missing_neighbour_is_declared_vacant_after_t_rejoin_and_reincluded():
 def test_isolated_spurious_association_does_not_end_the_wait():
     """A single echo of another neighbour that fits the missing one's range gate (once every
     1-2 s) neither ends FORMATION_WAIT_REJOIN nor resets the timer; a confirmed return does."""
-    p = Perception(_plan(0), DEFAULT)
+    p = Perception(_plan(0), B0)
     o, t = _run(p, 0.0, 3.0, {1, 2, 3})
     o, t = _run(p, t, t + 3.0, {1, 3})
     assert not o.neighbors_ok
@@ -278,12 +279,12 @@ def test_isolated_spurious_association_does_not_end_the_wait():
 
 
 def test_timers_frozen_outside_formation_keeping_and_during_planned_holds():
-    p = Perception(_plan(0), DEFAULT)
+    p = Perception(_plan(0), B0)
     _run(p, 0.0, 2.0, {1, 2, 3})
     _run(p, 2.0, 60.0, {1, 3}, in_formation=False)
     assert not p.vacant and p.missing_t.get(2, 0.0) == 0.0
     hold = FormationClock(0.0, 0.3, 0.0, holds=((3.0, 100.0),), s_end=70.0)
-    p = Perception(_plan(0, clock=hold), DEFAULT)
+    p = Perception(_plan(0, clock=hold), B0)
     _run(p, 0.0, 2.0, {1, 2, 3})
     _run(p, 2.0, 80.0, {1, 3})
     assert not p.vacant and p.missing_t[2] == pytest.approx(10.0 - 3.0, abs=0.3)
@@ -309,9 +310,9 @@ def test_a_stacked_pair_seen_from_the_side_is_confirmed_as_a_group():
     d = float(np.hypot(3.5, 1.75))
     tg = Target(pattern=frozenset({"LEFT"}), r_min=d - 0.6, d_lower=d - 0.6, age=0.0, closing_rate=0.0, cls="DYNAMIC",
                 ranges={"LEFT": d - 0.6})
-    o = check_formation(plan, DEFAULT, np.zeros(3), np.eye(3), np.eye(3), [tg], healthy, 0.0, {})
+    o = check_formation(plan, B0, np.zeros(3), np.eye(3), np.eye(3), [tg], healthy, 0.0, {})
     assert o.neighbors_ok and all(c.seen for c in o.checks) and len(o.checks) == 2
-    o = check_formation(plan, DEFAULT, np.zeros(3), np.eye(3), np.eye(3), [], healthy, 5.0, {})
+    o = check_formation(plan, B0, np.zeros(3), np.eye(3), np.eye(3), [], healthy, 5.0, {})
     assert not o.neighbors_ok and sorted(o.missing) == [0, 1]
 
 

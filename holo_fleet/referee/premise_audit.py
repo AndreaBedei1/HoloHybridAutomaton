@@ -68,6 +68,8 @@ from typing import Dict, List, Optional, Sequence
 
 import numpy as np
 
+from holo_fleet.config import COMMUNICATION_ACOUSTIC
+
 CLAIM_PHASES = {1, 2}
 CLASSES = ("SATISFIED", "CONCURRENT", "VIOLATED", "INCONCLUSIVE")
 KNOWLEDGE = ("NO_COMMIT", "BEFORE_USE", "NOT_HELD", "UNDELIVERABLE", "NOT_EMITTED", "NOT_APPLICABLE", "UNKNOWN")
@@ -362,7 +364,7 @@ def _quiet_row(states, know: str, j, i_a, i_b, open_end: bool) -> Dict:
 
 def classify(ctrl, states, geo: Geometry, link: Optional[Link], k: int, ep: tuple, j: int, m: int) -> List[Dict]:
     """Rows of the claim of commitment ``ep`` of k against drone j: one per commit edge of j from k's commit to the end of the
-    claim at j, else one row for the window.  ``link`` None: the run carries no claim (B0, B2 without payload)."""
+    claim at j, else one row for the window.  ``link`` None: the run carries no claim (B0, an archived run without payload)."""
     i0, i1 = ep
     sj = states[j]
     if sj[min(i0, m - 1)].get("mode") == "DEAD":
@@ -430,7 +432,7 @@ def physical_entries(t, P, states, gate, cfg, names) -> List[Dict]:
 
 
 def link_of(beacon: Optional[Dict], n: int, cfg, identities: Optional[Dict] = None) -> Optional[Link]:
-    """Claim transport of the run, None when no claim is carried (B0, beacon without payload, latency unknown).
+    """Claim transport of the run, None when no claim is carried (B0, an archived run without payload, latency unknown).
     ``identities``: receiver -> {pinger code (drone index) -> slot} (runner.beacon_identities)."""
     b = beacon or {}
     if not (b.get("enabled") and b.get("payload", True)) or b.get("latency_s") is None:
@@ -487,12 +489,13 @@ def audit(names, t, P, states, gates, cfg, beacon: Optional[Dict] = None, identi
 
 def beacon_of_run(rc: Dict) -> Dict:
     """Beacon facts of a run from its run_config: enabled, payload, TDMA period, the channel's minimum processing latency and
-    blackout, range, sound speed, acceptance limit."""
+    blackout, range, sound speed, acceptance limit.  ``payload`` is read from the run_config of an archived run of the payload-free
+    ablation (``false``); it is absent from every run of the single controller, which always sends the packet."""
     from holo_fleet.sim.acoustic_channel import channel
 
     fc = rc.get("fleet_config") or {}
     b = fc.get("beacon") or {}
-    enabled = b.get("mode") == "ACOUSTIC_RB"
+    enabled = b.get("mode") == COMMUNICATION_ACOUSTIC
     lat, blackout = None, False
     if enabled:
         try:

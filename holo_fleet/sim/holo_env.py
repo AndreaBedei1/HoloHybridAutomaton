@@ -58,7 +58,7 @@ class HoloFleetSim:
     stress (beam_dropout, blackout_every_s, blackout_len_s), release_s, duration_s, seed,
     camera_drone (index or None), env_box (or None); optionally ``noise`` (sim.sensor_noise.NoiseProfile:
     HoloOcean noise parameters + seeded wrapper degradation of the onboard streams, None = deployed sensors).
-    ``cfg.beacon`` enables the B2 one-way acoustic beacon (sim/beacon.py)."""
+    ``cfg.beacon`` is the B2 one-way acoustic beacon (sim/beacon.py), on unless the communication is disabled (B0)."""
 
     def __init__(self, spec, cfg: FleetConfig = DEFAULT, headless: bool = True, view_region: bool = False):
         self.spec = spec

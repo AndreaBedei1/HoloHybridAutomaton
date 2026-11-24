@@ -47,7 +47,7 @@ it: the latch and the stage-2 check see the claims d steps late.  P2 then holds 
 An entry that bypasses the stage-2 check (a committed drone moved into the CR by separation warning or collision avoidance while it
 holds; the drone keeps its claim: report_phase, S9) keeps the invariant (F0p, F2p).  With a claim learnt one step late two drones
 can be committed together (F1d1 shows the stage-2 check alone still keeps them apart), and with entries by avoidance as well the
-v11 controller had a counterexample: one drone enters by its own stage-2 check before the claim of the other is known, and the
+the controller without the P2 constraint on the avoidance output had a counterexample: one drone enters by its own stage-2 check before the claim of the other is known, and the
 other, held by that claim, is moved in by avoidance while the first is inside; it survives the motion limit of push_dwell.  The
 escape planner alone is not antisymmetric along the axis (F1pa), so nothing excluded that forward motion.  The corrected
 controller (control/gate_safety.py) edits the final command of every drone that is not admitted to the CR - committed or queued,
@@ -390,7 +390,7 @@ def run(cfg: FleetConfig = DEFAULT, verbose: bool = True) -> Report:
     fp = Fleet(3, L + K, L, T, latch_delay=1, push="committed", **PREMISES[3])
     r = check("F1pe declared limit: outside the declared envelope of the P2 filter (navigation error above nav_err_m, drift above "
               "w_drift_max, an estimate jump, no P2-safe command) a committed drone can still be moved into the CR by avoidance, and "
-              "with claims learnt one step late two drones are in X (n=3; the v11 counterexample of F1p)",
+              "with claims learnt one step late two drones are in X (n=3; the counterexample of F1p)",
               "expect a run with two drones in X", ENC, _run(fp, fp.two_in_cr()), "sat", timeout_ms=600000, note=tag)
     if r.verdict == "sat":
         r.note += "; one counterexample trace " + modes(fp, fp.two_in_cr())
