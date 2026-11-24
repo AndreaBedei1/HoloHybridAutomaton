@@ -39,7 +39,7 @@ from typing import Dict, List, Optional
 
 import numpy as np
 
-from holo_fleet.config import DEFAULT
+from holo_fleet.config import COMMUNICATION_DISABLED, DEFAULT, communication_disabled
 from holo_fleet.referee.criteria import (CRITERIA_VERSION, E_TOL_M, deadline_terms, deadline_v3, horizon_v5,
                                          profile_family,
                                          t_hold_s)
@@ -103,6 +103,8 @@ def analyze_run(run_dir: Path, reference: Optional[Dict] = None, cfg=DEFAULT, pr
         out.update({"class": "INVALID", "invalid_reason": status.get("reason") or status.get("status")})
         return out
     rc = json.loads((run_dir / "run_config.json").read_text(encoding="utf-8"))
+    if rc.get("communication") == COMMUNICATION_DISABLED:
+        cfg = communication_disabled(cfg)
     met = json.loads((run_dir / "referee_metrics.json").read_text(encoding="utf-8"))
     name, n = rc["scenario"], rc["n_drones"]
     names = [f"drone_{k}" for k in range(n)]
@@ -633,7 +635,7 @@ def premise_monitors(sc, cfg, names, faults, t, P, states, m) -> Dict:
             if r.get("mode") == "DEAD":
                 continue
             gr = r.get("gate") or {}
-            for j in gr.get("dead") or []:
+            for j in gr.get("silent") or gr.get("dead") or []:
                 nm = names[int(j)] if 0 <= int(j) < n else str(j)
                 if nm not in onset or t[i] < onset[nm]:
                     pv.append({"t": round(float(t[i]), 2), "receiver": names[k], "drone": nm})

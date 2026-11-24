@@ -283,7 +283,8 @@ class Perception:
     def _other_regions(self, t: float):
         """Where every other drone of the plan can be, from the identified measurements in the own frame (no navigation
         bound enters): a fresh accepted fix's region [(samples (n, 3), growth m)].  None when one is not accounted for:
-        a drone may be left out only if it is dead (silent) or has reported passing this gate (it is beyond it)."""
+        a drone may be left out only if it has reported passing this gate (it is beyond it): silence is never evidence (a drone not
+        heard is unknown, so an echo is not identified as structure while one exists)."""
         if not self.acoustic.enabled or not self.acoustic.slot_of:
             return None
         from holo_fleet.perception.payload import GP_PASSED
@@ -297,7 +298,7 @@ class Perception:
                 out.append((f.pts, f.slack + self.acoustic.v_bound * max(t - f.t, 0.0)))
                 continue
             st = self.acoustic.status.get(k)
-            if self.acoustic.silent(k, t, a.t_silent_gate_s) or (st is not None and st.phase == GP_PASSED and st.gate_idx == self.gp.idx % 4):
+            if st is not None and st.phase == GP_PASSED and st.gate_idx == self.gp.idx % 4:
                 continue
             return None
         return out

@@ -199,3 +199,23 @@ def test_claims_and_silence_only_delay_an_admission():
         _rx(tr, P, t_end + 0.2, 1, [-8.0, 0.0, -5.], phase=pl.GP_COMMITTED)
         o2 = gp.update(t_end + 0.3, P, 0., [], _healthy(True))
         assert not o2.entry_ok and o2.occ_busy
+
+
+def test_other_regions_never_leave_out_a_drone_for_its_silence():
+    """The map-aiding premise (Perception._other_regions): a drone not heard for far longer than t_silent_gate_s while another
+    drone is heard is unknown (None), not left out; the former rule D left it out and an echo of it could be taken for a bar."""
+    from holo_fleet.perception.perception import Perception
+    from test_status_payload import _plan, _rx_meas
+
+    plan = _plan()
+    per = Perception(plan, B2)
+    per.acoustic.set_identities({j: j for j in range(4)})
+    p = np.array([10.0, 2.0, -5.0])
+    rel = {k: np.array([4.0 * k, 0.0, 0.0]) for k in (1, 2, 3)}
+    for k in (1, 2, 3):
+        _rx_meas(per, p, 1.0, k, rel[k], p + rel[k])
+    assert per._other_regions(1.1) is not None
+    t = 1.0 + B2.acoustic.t_silent_gate_s + 30.0
+    _rx_meas(per, p, t - 0.5, 3, rel[3], p + rel[3])
+    assert per.acoustic.silent(1, t, B2.acoustic.t_silent_gate_s) and per.acoustic.silent(2, t, B2.acoustic.t_silent_gate_s)
+    assert per._other_regions(t) is None
