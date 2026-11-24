@@ -150,13 +150,18 @@ def gate_events(t: np.ndarray, gf: np.ndarray, states: Sequence[Sequence[Dict]],
     idle = all_waiting & ~inside.any(axis=1) & ~hc
     idle_viol = [(a, b) for a, b, op in _intervals(idle, t) if b - a > T_release]
     plan_by_idx = {int(p["drone"].split("_")[1]): p for p in plans}
+    # B2 admission wait (GatePerception.admit_wait_s): at most the commitment age with every report fresh plus, when a drone is not
+    # freshly heard (silence is unknown, never clearance), the longest crossing of the CR; zero without the beacon (B0)
+    from holo_fleet.config import COMMUNICATION_DISABLED
+
+    admit_wait_max = 0.0 if cfg.beacon.mode == COMMUNICATION_DISABLED else cfg.acoustic.commit_admit_min_s + G.t_cross_max
     budget, committed_viol = {}, []
     for k in healthy:
         p = plan_by_idx.get(k)
         if p is None:
             continue
         L = abs(float(p["queue_lateral"])) + G.exit_s - float(p["queue_s"])
-        budget[k] = L / G.v_pass + T_release
+        budget[k] = L / G.v_pass + T_release + admit_wait_max
         iv = _intervals(committed[:, k], t)
         if iv:
             a = iv[0][0]

@@ -5,9 +5,11 @@ latch and to the stage-2 check within the step (premise C; F1d relaxes it to d s
 nondeterministic flag.  The explicit-communication result - packets, slots, latencies, losses, freshness, clocks, decisions on the
 local state only - is formal/check_b2_comm.py; there premise C is derived from the commitment-age rule of the corrected controller
 (B2C-E1, B2C-E2).  Since that review rule D is a diagnostic only: a silent drone is never accounted for (``rule_d`` False is the
-deployed controller), so a drone that fails while committed keeps its claim for ever (F2c, a declared limit) and the recovery F2 is
-stated for failures outside the commitment.  The degraded admission wait of check_b2_comm (T_c + t_cross_max when a drone is not
-freshly heard) is not modelled: the bound K of F2 holds in the fresh-report regime only.
+deployed controller), so a drone that fails while committed keeps its claim for ever (F2c, a declared limit) and the recovery F2
+(K tight, F2t) is stated for a run with no failure.  A drone that fails anywhere outside the commitment is not accounted for either:
+the latch stays BUSY behind the echo of a survivor waiting beyond the gate, which waits for the queued one (F2d, a declared limit, safe
+stall).  The degraded admission wait of check_b2_comm (T_c + t_cross_max when a drone is not freshly heard) is not modelled: the bound
+K of F2 holds in the fresh-report regime only.
 
 The local checks (determinism, separation, the latch M3, the freshness S2, the precedence M2, the ranking functions of
 the formation) are per drone or per pair.  This model composes n drones and checks what only the composition shows:
@@ -307,6 +309,8 @@ def escape_forward_pairs(cfg: FleetConfig = DEFAULT) -> list:
 
 K_FREE = {2: 26, 3: 40, 4: 52}
 PREMISES = {2: dict(max_fail=1, fail_in_c=False), 3: dict(max_fail=1, fail_in_c=False), 4: dict(max_fail=2, fail_in_c=False)}
+# recovery theorems (F2, F2p): no failure for n = 3, 4 (a failed drone is never accounted for, F2d); n = 2 has no one to wait for
+NOFAIL = {2: PREMISES[2], 3: dict(max_fail=0), 4: dict(max_fail=0)}
 
 
 def run(cfg: FleetConfig = DEFAULT, verbose: bool = True) -> Report:
@@ -325,12 +329,14 @@ def run(cfg: FleetConfig = DEFAULT, verbose: bool = True) -> Report:
                       "inv & step -> inv'  (inv: at most one drone in C or X; bookkeeping)", ENC, _run(fl, z3.Not(fl.inv(1))),
                       "unsat", note=tag), verbose)
         K = K_FREE[n]
-        fl = Fleet(n, K, 0, T, free=True, **kw)
-        rep.add(check(f"F2 n={n} ({prem}): from any state of the invariant, with no further failure or stop, every live drone "
+        nf = NOFAIL[n]
+        prem2 = prem if n == 2 else "no failure"
+        fl = Fleet(n, K, 0, T, free=True, **nf)
+        rep.add(check(f"F2 n={n} ({prem2}): from any state of the invariant, with no further failure or stop, every live drone "
                       f"re-forms within {K} steps",
                       "inv & fairness of the fixes -> all live drones in D at K (no deadlock, no livelock)", ENC,
                       _run(fl, fl.not_recovered()), "unsat", timeout_ms=900000, note=tag), verbose)
-        fl = Fleet(n, K - 2, 0, T, free=True, **kw)
+        fl = Fleet(n, K - 2, 0, T, free=True, **nf)
         rep.add(check(f"F2t n={n}: the bound is tight (some state needs more than {K - 2} steps)", "expect a run short of D at K - 2",
                       ENC, _run(fl, fl.not_recovered()), "sat", timeout_ms=900000, note=tag), verbose)
     L, K = 12, K_FREE[3]
@@ -354,6 +360,14 @@ def run(cfg: FleetConfig = DEFAULT, verbose: bool = True) -> Report:
                   "explicit-communication review, formal/check_b2_comm.py B2C-D) and the composition stalls (n=3)",
                   "expect a run with a live drone short of D at K", ENC, _run(fm, fm.not_recovered()), "sat",
                   timeout_ms=900000, note=tag + "; the former rule D resolved it by treating 70 s of silence as death (B2C-Oe)"), verbose)
+    for n in (3, 4):
+        fd = Fleet(n, 80, 0, T, free=True, **PREMISES[n])
+        rep.add(check(f"F2d declared limit: a drone that has failed outside the commitment is never accounted for (silence is no evidence): "
+                      f"the latch stays BUSY behind the echo of a survivor waiting beyond the gate, the queued survivor waits for it and the "
+                      f"composition stalls, a safe stall (n={n}, any K: no run re-forms the formation)",
+                      "expect a run with a live drone short of D at 80 steps (the recovery K holds only without failure)", ENC,
+                      _run(fd, fd.not_recovered()), "sat", timeout_ms=900000, note=tag + "; with the former rule D the survivors left "
+                      "after 70 s of silence (B2C-Oe); the payload GP_PASSED of a drone that failed after passing is not modelled"), verbose)
     ff = Fleet(3, K, 0, T, free=True, fair=False, **PREMISES[3])
     rep.add(check("F2f scope: without the fairness of the fixes the recovery is not guaranteed (n=3)",
                   "expect a run with a live drone short of D at K", ENC, _run(ff, ff.not_recovered()), "sat",
@@ -375,7 +389,7 @@ def run(cfg: FleetConfig = DEFAULT, verbose: bool = True) -> Report:
         rep.add(check(f"F0p n={n}: with an entry into the CR that bypasses the stage-2 check (a committed drone moved by separation warning or "
                       "collision avoidance, at any step) the invariant stays inductive",
                       "inv & step (push of a drone in C to X) -> inv'", ENC, _run(fp, z3.Not(fp.inv(1))), "unsat", note=tag), verbose)
-        fp = Fleet(n, K_FREE[n], 0, T, free=True, push="committed", **PREMISES[n])
+        fp = Fleet(n, K_FREE[n], 0, T, free=True, push="committed", **NOFAIL[n])
         rep.add(check(f"F2p n={n}: the recovery within {K_FREE[n]} steps holds with those pushes", "inv & pushes & fairness -> all live drones in D at K",
                       ENC, _run(fp, fp.not_recovered()), "unsat", timeout_ms=900000, note=tag), verbose)
     fp = Fleet(3, L + K, L, T, latch_delay=1, push="none", **PREMISES[3])

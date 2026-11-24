@@ -105,7 +105,7 @@ def test_waiting_for_an_approaching_drone_is_not_an_idle_stall():
 
 def test_committed_drone_that_never_passes_is_a_stall():
     L = abs(PLANS[1]["queue_lateral"]) + G.exit_s - PLANS[1]["queue_s"]
-    t, gf, st = _trace(T=L / G.v_pass + G.t_occ_max + G.t_clear + 20.0)
+    t, gf, st = _trace(T=L / G.v_pass + G.t_occ_max + G.t_clear + DEFAULT.acoustic.commit_admit_min_s + G.t_cross_max + 20.0)
     gf[:, 1, :] = [-1.9, 0.0, 0.0]
     for i in range(len(t)):
         st[1][i]["committed"] = True
@@ -115,7 +115,7 @@ def test_committed_drone_that_never_passes_is_a_stall():
 
 def test_a_slow_committed_passage_violates_the_crossing_budget():
     L = abs(PLANS[1]["queue_lateral"]) + G.exit_s - PLANS[1]["queue_s"]
-    budget = L / G.v_pass + G.t_occ_max + G.t_clear
+    budget = L / G.v_pass + G.t_occ_max + G.t_clear + DEFAULT.acoustic.commit_admit_min_s + G.t_cross_max
     t, gf, st = _trace(T=budget + 40.0)
     gf[:, 1, :] = [-1.9, 0.0, 0.0]
     i_in, i_out = np.searchsorted(t, budget + 20.0), np.searchsorted(t, budget + 25.0)
