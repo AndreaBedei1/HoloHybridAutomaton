@@ -1646,7 +1646,7 @@
    "verdict": "DERIVED",
    "source": "(from the declared bounds) the nearest point where holding is P2-safe under the declared gate-frame navigation error, minus the measured holding error; replaces the v11 hold at -(0.8 + HULL_HALF[0] + 0.15) = -1.179 m (with the former symmetric CR |s| <= 0.8), where an estimate 1 m short puts the centre at s = -0.179 m, inside the CR (formal P2Bm)",
    "doi_or_url": "-",
-   "derivation": "hold_s = cr_s_min - (nav_err_m + w_drift_max * tau_c + e_track + SLACK_M) = -(1.05 + 1.0 + 0.0525 + 0.30 + 0.05) = -2.4525 m; target = hold_s - hold_err_m = -2.5525 m (tests/test_hold_point.py keeps it equal to the derivation); -2.3025 m with the former CR",
+   "derivation": "hold_s = cr_s_min - (nav_err_m + w_drift_max * tau_c + e_track + SLACK_M) = -(1.05 + 1.0 + 0.0525 + 0.30 + 0.05) = -2.4525 m; target = hold_s - hold_err_m = -2.5525 m (tests/test_hold_point.py keeps it equal to the derivation); -2.3025 m with the former CR The recursive P2 argument (station-keeping certificates, formal/check_p2_recursive.py) leaves it unchanged: the band of station keeping at rest is the same e_track + w_drift_max * tau_c (gate_safety.sk_hold), so holding at the target is certified with margin hold_err_m also with the DVL velocity error (tests/test_hold_point.py).",
    "validity": "Holds while the navigation premise |e_h| <= nav_err_m and the drift bound w_drift_max hold; the CR occupancy is the centre definition of P2. Localization acquisition from it (synthetic B0 scan, bar echoes only): bias (estimate - truth) along the axis -1.0 to 0.0 m and +0.2, +0.3 m acquired, +0.1 m and >= +0.4 m not (bounded hold, then give-up); with the former -2.30 m hold -1.0 to +0.3 and +0.5, +0.6 m: tests/test_hold_point.py",
    "citation_keys": [],
    "code_action": "none"
@@ -1686,22 +1686,24 @@
   },
   {
    "section": "5 Gate protocol (P2)",
-   "parameter": "P2 filter backup bounds (tau_c, e_track, K_HOLD, SLACK_M, v_err)",
-   "module": "holo_fleet/control/gate_safety.py:P2Bounds, K_HOLD, SLACK_M",
+   "parameter": "P2 filter backup bounds (tau_c, e_track, K_HOLD, HOLD_V_MAX, SLACK_M, v_err, rho)",
+   "module": "holo_fleet/control/gate_safety.py:P2Bounds, K_HOLD, HOLD_V_MAX, SLACK_M, GateConstraint; holo_fleet/control/controller.py:DroneController.step (v_err, rho)",
    "value": {
     "tau_c": 0.35,
     "e_track": 0.3,
     "K_HOLD": 0.5,
     "HOLD_V_MAX": 0.27,
     "SLACK_M": 0.05,
-    "e_z": 1.0
+    "e_z": 1.0,
+    "v_err_fresh": 0.098,
+    "rho_fresh": 0.142
    },
-   "unit": "s; m; 1/s; m/s; m; m",
+   "unit": "s; m; 1/s; m/s; m; m; m/s; m/s",
    "verdict": "DERIVED",
-   "source": "(from FleetConfig) tau_c = Envelope.dt + Envelope.tau_max (one control period and the largest data age); e_track = w_drift_max / K_HOLD, the steady deviation of a first-order position loop against the declared residual drift, K_HOLD the smallest hold gain of the flows; the vertical error is taken equal to nav_err_m (more than the depth envelope); v_err = the DVL 3-sigma velocity noise while the DVL is fresh, the speed bound during an outage",
+   "source": "(from FleetConfig) tau_c = Envelope.dt + Envelope.tau_max (one control period and the largest data age); e_track = w_drift_max / K_HOLD, the steady deviation of a first-order position loop against the declared residual drift, K_HOLD the smallest hold gain of the flows; the vertical error is taken equal to nav_err_m (more than the depth envelope); v_err = the DVL 3-sigma velocity noise while the DVL is fresh, the speed bound during an outage; rho = v_err + k_lin v_bound (NavBound: the measured velocity error plus the compass and DVL scale term at the speed bound), the bound of the drift of the estimate relative to the truth used by the station-keeping certificates; HOLD_V_MAX caps the station-keeping command on each gate-frame axis (> w_drift_max: every axis stays restoring)",
    "doi_or_url": "-",
-   "derivation": "backup of a command: applied for tau_c (an increase reached at once, a decrease at >= a_brake), braking at a_brake, then station keeping with deviation <= e_track; drift w_drift_max in any direction; robust margin = min(one-step margin, margin of braking after dt from the worst-case state)",
-   "validity": "An abstraction of the vehicle: a first-order hold loop and the declared a_brake / w_drift_max (formal P2B1, P2B1r, P2B3 numeric soundness; P2B2s: strict invariance of the one-step margin fails, hence the robust margin and the latched station keeping)",
+   "derivation": "backup of a command: applied for tau_c (an increase reached at once, a decrease at >= a_brake), braking at a_brake, then station keeping with deviation <= e_track; drift w_drift_max in any direction; the one-step margin certifies the control interval.  Station keeping on an anchor fixed in estimate coordinates: band max(q + X + rho T, anchor + e_track + w tau_c) per side, X = a0+^2 / (2 a_brake) + w T, T = max(tau_c, a0+ / a_brake) (closed form), plus nav_err_m and SLACK_M; latched when engaged (P2Certificate).  Robust margin = min(one-step margin, SK margin of station keeping on the NEXT estimate from every state after dt, the next estimate within rho dt of the true displacement): a positive robust margin hands the next step a certificate (onboard-consistent, no re-certification with the next measurement)",
+   "validity": "An abstraction of the vehicle: the declared a_brake / w_drift_max envelope and premise H of the hold loop (formal P2B1, P2B1r, P2B3 numeric soundness; P2B2s: strict invariance of the one-step margin fails; P2R1-P2R5 in formal/check_p2_recursive.py: closed-form reach, onboard-consistent lookahead, latched station-keeping band and the induction over the certificates proved in Z3, the selection rule numeric; P2R4l declared limit: a DVL outage onset or a position correction between a command and the next step).  v_err (DVL 3 sigma) does not include the compass / scale term k_lin |v| (<= 0.044 m/s at v_bound); rho does",
    "citation_keys": [],
    "code_action": "none"
   },

@@ -51,6 +51,14 @@ def test_the_hold_is_the_derived_p2_safe_hold():
 
     assert margin(G.stage2_hold_s) > 0.0 and margin(gs.hold_s(CFG) + 0.01) < 0.0
     assert margin(V11_HOLD) < -0.9
+    # the station-keeping certificate at rest (gate_safety.sk_band, the recursive argument) has the same band: holding on
+    # the target at rest is certified with exactly the measured holding error as margin, also with the DVL error bound
+    assert gs.hold_reach(b) == pytest.approx(gs.sk_hold(b), abs=1e-12)
+    from holo_fleet.perception.nav import NavBound
+
+    for v_err in (0.0, float(NavBound(CFG).k_rw)):
+        gc = gs.constraint_for(CFG, gate, gate.from_gate_frame([G.stage2_hold_s, 0.0, 0.0]), np.zeros(3), False, v_err=v_err)
+        assert gc.hold_margin(gc.q) == pytest.approx(G.hold_err_m, abs=1e-9)
 
 
 @pytest.mark.parametrize("n", [1, 2, 3, 4])

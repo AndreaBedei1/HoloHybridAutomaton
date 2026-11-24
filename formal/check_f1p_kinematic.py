@@ -31,11 +31,11 @@ commits) or another centre is in the CR (an occupant always seen); loc_ok always
 whatever the bias: the worst case for P2, the estimate is wrong and admitted); commit times scripted, not produced by the
 commit guard; the plant - a velocity loop changing by at most a_brake per second, plus a constant residual drift; the
 navigation estimate = truth + a constant bias, the measured velocity = true ground velocity (the P2 envelope adds the
-DVL noise bound of a fresh DVL, NavBound.k_rw); no current estimate in the
+DVL noise bound of a fresh DVL, NavBound.k_rw, and the drift bound of the estimate k_rw + k_lin v_bound); no current estimate in the
 escape; no gate bars (no structure filter).  Counted per episode: entries of a true centre into the CR without the stage-2
 admission (committed and cr_cleared), those within 3 s of an avoidance mode (moved in by avoidance), instants with two
 fleet centres in the CR (a non-reacting vehicle is outside the fleet: its own passages through the CR are counted apart),
-the smallest centre distance of each pair and P1 violations (d < d_safe; between two reacting fleet drones, and with the
+the steps whose applied command carries no P2 certificate (Flows.p2_certify; gate_safety), the smallest centre distance of each pair and P1 violations (d < d_safe; between two reacting fleet drones, and with the
 non-reacting vehicle), and the joint-feasibility classes of the gate-aware decisions (CORRECTED).  Evidence over a finite set of episodes only.
 """
 
@@ -199,7 +199,10 @@ class World:
         self.p2_filtered = 0
         self.p2_recovery = 0
         self.commit_seen: Dict[str, float] = {}
-        self.v_err = float(NavBound(self.cfg).k_rw)
+        nb = NavBound(self.cfg)
+        self.v_err = float(nb.k_rw)
+        self.rho = self.v_err + float(nb.k_lin) * float(nb.v_bound)
+        self.p2_uncertified = 0
         cls = Flows if variant == "CORRECTED" else FlowsV11
         for a in self.agents:
             if a.kind in ("GATE", "TRANSIT"):
@@ -274,8 +277,8 @@ class World:
             v_mis = np.zeros(3) if n < 0.2 else d / n * min(a.speed, 0.6 * n)
         if not a.committed:
             v_mis = fl.keepout_filter(obs, v_mis)
-        gc = (fl.gate_constraint(obs, authorized=a.committed and fl.cr_cleared, v_err=self.v_err)
-              if self.variant == "CORRECTED" else None)
+        gc = (fl.gate_constraint(obs, authorized=a.committed and fl.cr_cleared, v_err=self.v_err,
+                                  rho=self.rho) if self.variant == "CORRECTED" else None)
         mf = (fl.p2_filter(gc, v_mis, fl.mission_anchor(gc) if a.kind == "GATE" and not a.done else {})
               if self.variant == "CORRECTED" else None)
         if mf is not None:
@@ -298,6 +301,10 @@ class World:
             v = v_mis
         if m in AVOID:
             a.avoid_t = self.t
+        if self.variant == "CORRECTED" and a.flows is not None:
+            loops = [fl.mission_anchor(gc) if a.kind == "GATE" and not a.done else {}]
+            if fl.p2_certify(gc, v, loops) is None and gc is not None:
+                self.p2_uncertified += 1
         ch = fl.last_choice
         joint = ch.joint if (m in AVOID and ch is not None) else None
         if joint is not None:
@@ -376,7 +383,7 @@ class World:
                 "double": self.double, "dmin": round(self.dmin, 3), "p1_violation_steps": self.p1_viol,
                 "p1_fleet_steps": self.p1_fleet, "pair_min": dict(self.pair_min), "non_fleet_in_cr_steps": self.non_fleet_in_cr,
                 "joint": dict(self.joint), "reasons": dict(self.reasons), "p2_filtered": self.p2_filtered,
-                "p2_recovery": self.p2_recovery, "passed": [a.name for a in self.agents if a.done],
+                "p2_recovery": self.p2_recovery, "p2_uncertified": self.p2_uncertified, "passed": [a.name for a in self.agents if a.done],
                 "gave_up": sum(a.gave_up for a in self.agents), "t_end": round(self.t, 1)}
 
 
@@ -486,7 +493,8 @@ def scan(workers: int = 20) -> Dict:
                       "min_centre_distance_m": round(min(r["dmin"] for r in rf), 2),
                       "joint_steps": {s: sum(r["joint"].get(s, 0) for r in rf) for s in gs.STATUSES},
                       "p2_filtered_steps": sum(r["p2_filtered"] for r in rf),
-                      "p2_recovery_steps": sum(r["p2_recovery"] for r in rf)}
+                      "p2_recovery_steps": sum(r["p2_recovery"] for r in rf),
+                      "p2_uncertified_steps": sum(r["p2_uncertified"] for r in rf)}
         summ[v] = fam
     return {"summary": summ, "results": res}
 
