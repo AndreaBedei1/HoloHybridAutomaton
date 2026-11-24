@@ -22,6 +22,9 @@ the declared measurement envelope config.AcousticConfig) and add nothing to, and
 * B2-S structural: no module that decides separation, collision avoidance or precedence reads an acoustic fix;
   the latch reads them through acoustic_gate.AcousticExit; exit evaluation requires the FRONT corridor empty.
   Positive occupancy is queried independently to veto commitment, releases and admission.
+
+Geometry of single fixes only: no check here composes two drones' decisions over a lossy channel.  The explicit-communication model
+(packets, slots, latencies, losses, freshness, clocks, decisions on the local state only) is formal/check_b2_comm.py.
 """
 
 from __future__ import annotations

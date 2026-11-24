@@ -62,6 +62,11 @@ M5  Progress of the queue (argument + spec): for every occupancy in scope some q
     pattern (UP and DOWN at once), counted in every run.  Not covered: a drone that stops for good
     inside the approach zone (a permanent fault there) blocks the drones on its right.
 
+IDEALISED (M3, M4): the observer sits exactly at its queue point and the crossing drone exactly on the axis (no navigation
+error); its sonar view is a function of the crossing drone's TRUE position - the observation channel, not knowledge - and no
+acoustic report is modelled.  Explicit communication and the local decisions of both drones: formal/check_b2_comm.py (whose B2C-G1
+shows that from the stage-2 hold, under the declared navigation error, no part of the CR is certain in the FRONT sonar).
+
 Scope: one critical region at a time, n <= 6 drones in the abreast queue (n = 6 needs the queue
 line 9.1 m back).  Not proved: the sonar sees a crossing drone in its corridor (sensing
 assumption, measured), a committed drone does not stop inside the CR for t_occ_max.
@@ -92,7 +97,7 @@ ENC = "holo_fleet/ha/mutex_rule.py (shared relation) + formal/check_mutex.py"
 AXIS = {"F": 0.0, "L": 90.0, "B": 180.0, "R": -90.0}
 HALF = 60.0
 HOLD_ERR = DEFAULT.gate.hold_err_m
-V_LO = 0.12
+V_LO = DEFAULT.gate.v_cross_min  # the declared crossing-speed premise (config.GateRule.v_cross_min)
 
 
 class _Z:

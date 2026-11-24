@@ -186,7 +186,7 @@ class DroneController:
         if gate_flow:
             gmode = mode.value if mode in (Mode.MUTEX_APPROACH, Mode.MUTEX_YIELD, Mode.MUTEX_PASS) else (
                 "MUTEX_PASS" if self.ha.committed else "MUTEX_APPROACH")
-            v_mis, yaw_d = self.flows.gate(obs, gmode)
+            v_mis, yaw_d = self.flows.gate(obs, gmode, admissible=(mode == Mode.MUTEX_PASS and obs.sense_ok))
         else:
             v_mis, yaw_d = self.flows.formation(obs, dt, recovering=(mode == Mode.FORMATION_RECOVERY),
                                                 traffic=(mode != Mode.FAILSAFE_HOLD_OR_RETREAT))
@@ -283,6 +283,7 @@ class DroneController:
                      "rank_used": obs.gate.rank_used,
                      "loc_ok": obs.gate.loc_ok, "reloc_hold": self.flows.reloc_hold,
                      "entry_ok": obs.gate.entry_ok, "entry": self.flows.entry_state or None, "dead": obs.gate.dead,
+                     "silent": obs.gate.silent, "admit_wait_s": round(obs.gate.admit_wait_s, 2),
                      "rule_d": ({str(j): v for j, v in self.perception.gp.acoustic_exit.rule_d.items()}
                                 if self.perception.gp.acoustic_exit is not None and self.perception.gp.acoustic_exit.rule_d else None),
                      "silence": self.perception.gp.acoustic_exit.silence(t) if self.perception.gp.acoustic_exit is not None else None,

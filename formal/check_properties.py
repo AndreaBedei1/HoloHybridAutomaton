@@ -22,6 +22,7 @@ sys.path.insert(0, str(HERE))
 sys.path.insert(0, str(HERE.parent))
 
 import check_acoustic  # noqa: E402
+import check_b2_comm  # noqa: E402
 import check_determinism  # noqa: E402
 import check_fleet  # noqa: E402
 import check_formation  # noqa: E402
@@ -48,6 +49,8 @@ SUITES = [
     ("Payload v2: gate status, silence, verified passage", check_status,
      "perception/payload.py + perception/acoustic_gate.py + perception/passage.py + formal/check_status.py"),
     ("Interacting automata of the fleet at the gate (composition, failures, timers, recovery)", check_fleet, "formal/check_fleet.py"),
+    ("B2 explicit communication (one-way beacons, freshness, delays, losses, clocks, local decisions)", check_b2_comm,
+     "perception/gate_perception.py + perception/acoustic_gate.py + control/flows.py + formal/check_b2_comm.py"),
     ("Gate-aware joint safety (P2 as a constraint on the final command, P1 x P2 feasibility)", check_gate_safety,
      "holo_fleet/control/gate_safety.py + holo_fleet/control/escape.py + formal/check_gate_safety.py + formal/check_stage2.py"),
 ]
@@ -64,7 +67,7 @@ KINDS = {
     "reported": "quantity reported, not guaranteed",
 }
 _BOUNDED = {"P1": r"^(S1[ad]|S4) ", "P2": r"^M3h? ", "Payload": r"^S2h? ", "P3": r"^F6 ", "Interacting": r"^(F2p?|F1d\d+n?|F1p) ",
-            "Gate-aware": r"^S1ga "}
+            "Gate-aware": r"^S1ga ", "B2 explicit": r"^B2C-S1 "}
 
 
 def kind(title: str, check: dict) -> str:

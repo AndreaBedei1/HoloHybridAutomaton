@@ -1,5 +1,14 @@
 """Bounded model checking of the interacting automata of the fleet at the gate (Z3).
 
+IDEALISED KNOWLEDGE.  This composition reads the other drones' modes directly: a claim and an occupant of the CR are known to the
+latch and to the stage-2 check within the step (premise C; F1d relaxes it to d steps), and a live drone's fix is "fresh" by a
+nondeterministic flag.  The explicit-communication result - packets, slots, latencies, losses, freshness, clocks, decisions on the
+local state only - is formal/check_b2_comm.py; there premise C is derived from the commitment-age rule of the corrected controller
+(B2C-E1, B2C-E2).  Since that review rule D is a diagnostic only: a silent drone is never accounted for (``rule_d`` False is the
+deployed controller), so a drone that fails while committed keeps its claim for ever (F2c, a declared limit) and the recovery F2 is
+stated for failures outside the commitment.  The degraded admission wait of check_b2_comm (T_c + t_cross_max when a drone is not
+freshly heard) is not modelled: the bound K of F2 holds in the fresh-report regime only.
+
 The local checks (determinism, separation, the latch M3, the freshness S2, the precedence M2, the ranking functions of
 the formation) are per drone or per pair.  This model composes n drones and checks what only the composition shows:
 P2 across the fleet, the absence of a deadlock between the drones that passed and those that queue, the timers, the
@@ -13,8 +22,8 @@ Assumed from the local checks, not re-proved here: the latch of a queued drone i
 (speed floor inside the CR, M3); the leftmost queued drone present has the priority (M2), a dead hull at its queue point
 counting as present until it has risen (T_RISE).  Modelled here:
   * the latch keeps BUSY while an echo stays in the corridor (a drone waiting at B, or a hull that died there and has not
-    risen yet) unless every other drone is accounted for at that receiver: a live drone by a fresh fix, a dead drone only by
-    rule D (not heard for t_silent_gate_s), never without it;
+    risen yet) unless every other drone is accounted for at that receiver: a live drone by a fresh fix, a dead drone never (the former
+    rule D accounted for it after t_silent_gate_s: ``rule_d`` True, kept as the former controller);
   * a live drone's fix is fresh at a receiver nondeterministically, with the fairness premise that within every FAIR steps
     there is one step at which every live drone is fresh at every receiver (premise V and the channel model);
   * the stage-2 hold gives up after T_HOLD steps (t_occ_max + t_clear) and the drone queues again;
@@ -102,7 +111,7 @@ def timers(cfg: FleetConfig = DEFAULT, dt: float = 5.0) -> dict:
 
 
 class Fleet:
-    def __init__(self, n: int, depth: int, L: int, T: dict, rule_d: bool = True, fair: bool = True, latch_claims: bool = True,
+    def __init__(self, n: int, depth: int, L: int, T: dict, rule_d: bool = False, fair: bool = True, latch_claims: bool = True,
                  free: bool = False, max_fail: int = None, fail_in_c: bool = True, hull_clears: bool = True, latch_delay: int = 0,
                  stage2_claims: bool = True, precedence: bool = True, push: str = "none", push_min_ct: int = 0):
         """free: the first state is any state of the invariant (inv), not the launch; L: failures and stops only before step L;
@@ -297,7 +306,7 @@ def escape_forward_pairs(cfg: FleetConfig = DEFAULT) -> list:
 
 
 K_FREE = {2: 26, 3: 40, 4: 52}
-PREMISES = {2: dict(max_fail=1, fail_in_c=False), 3: dict(max_fail=1), 4: dict(max_fail=2)}
+PREMISES = {2: dict(max_fail=1, fail_in_c=False), 3: dict(max_fail=1, fail_in_c=False), 4: dict(max_fail=2, fail_in_c=False)}
 
 
 def run(cfg: FleetConfig = DEFAULT, verbose: bool = True) -> Report:
@@ -307,7 +316,7 @@ def run(cfg: FleetConfig = DEFAULT, verbose: bool = True) -> Report:
            f"steps")
     for n in (2, 3, 4):
         kw = PREMISES[n]
-        prem = ("at most one failure, none while committed" if n == 2 else f"at most {kw['max_fail']} failure(s), also while committed")
+        prem = f"at most {kw['max_fail']} failure(s), none while committed"
         fl = Fleet(n, 0, 0, T, **kw)
         rep.add(check(f"F0i n={n}: the launch satisfies the invariant", "init -> inv", ENC, _run(fl, z3.Not(fl.inv(0))), "unsat",
                       note=tag), verbose)
@@ -340,10 +349,11 @@ def run(cfg: FleetConfig = DEFAULT, verbose: bool = True) -> Report:
     rep.add(check("F2s4 declared limit: without premise H (a hull floating above the queue keeps counting as a queued drone) the "
                   "survivors yield to it for ever (med12)", "expect a run short of D at 60 steps", ENC, _run(fh, fh.not_recovered()),
                   "sat", timeout_ms=900000, note=tag), verbose)
-    fm = Fleet(3, K, 0, T, free=True, rule_d=False, **PREMISES[3])
-    rep.add(check("F2m mutation: without rule D a dead drone is never accounted for and the composition deadlocks (n=3)",
+    fm = Fleet(3, K, 0, T, free=True, max_fail=1, fail_in_c=True)
+    rep.add(check("F2c declared limit: a drone that fails while committed keeps its claim for ever (silence is no evidence since the "
+                  "explicit-communication review, formal/check_b2_comm.py B2C-D) and the composition stalls (n=3)",
                   "expect a run with a live drone short of D at K", ENC, _run(fm, fm.not_recovered()), "sat",
-                  timeout_ms=900000, note=tag), verbose)
+                  timeout_ms=900000, note=tag + "; the former rule D resolved it by treating 70 s of silence as death (B2C-Oe)"), verbose)
     ff = Fleet(3, K, 0, T, free=True, fair=False, **PREMISES[3])
     rep.add(check("F2f scope: without the fairness of the fixes the recovery is not guaranteed (n=3)",
                   "expect a run with a live drone short of D at K", ENC, _run(ff, ff.not_recovered()), "sat",

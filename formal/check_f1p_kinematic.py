@@ -24,6 +24,8 @@ speed) - with a restricted corridor (static hulls beside the hold; the gate 0.9 
 are penalised), a navigation bias of the held drone (estimate - truth along the axis, -1.0 to +0.5 m) and a residual drift
 towards the CR.
 
+The claim knowledge (``delay`` s after the TRUE commitment) is idealised: the explicit channel and the local decisions are
+formal/check_b2_comm.py, whose commitment-age rule makes a fresh report of an earlier commitment a claim (B2C-E1).
 Idealised here (explicitly, not deployed): perception - targets from the TRUE relative positions (sonar_geometry
 pattern_of_point and centre_distance_lower: no noise, no missed echo, no stale or unhealthy sector), every heading along
 the gate axis; the stage-2 check - entry_ok false while a claim of another committed drone is known (``delay`` s after it
