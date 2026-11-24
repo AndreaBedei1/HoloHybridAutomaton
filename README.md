@@ -163,7 +163,7 @@ planner (`tests/test_b2_isolation.py`). Controllers never read ground truth (`te
 
 ## 5. Guarantees
 
-`formal/results/SUMMARY.json`: 402 checks, all with the expected verdict: 198 proved, 26 bounded, 50 numeric, 58 mutation, 26 witness,
+`formal/results/SUMMARY.json`: 402 checks, all with the expected verdict: 188 proved, 36 bounded, 50 numeric, 58 mutation, 26 witness,
 14 scope, 11 reported, 19 declared limits (11 suites, about 40 min; formula, verdict and counterexample per check in `SUMMARY.csv`).
 Only `proved` (UNSAT of a universal or inductive property) and `bounded` (UNSAT over a horizon) support a guarantee; `numeric`
 checks enumerate or sample the deployed code; mutation, witness, scope and limit counterexamples are never evidence of safety.
@@ -188,8 +188,7 @@ priority (H1-H3), gate entry, give-up and hazard rules (G1-G3), exact readable g
   per link (B2C-E2, B2C-E2k), concurrent commitment, stationary vehicle, failed transmitter, third-vehicle reports (B2C-Ea, Eb, Ee,
   E3); silence never excludes (B2C-D); soundness of the P2 test (P2B1); braking reach and station-keeping band (P2R1-P2R3d); base
   case and recursive availability of a certified command, the selection rule taken as an axiom (P2R5, P2R4).
-- Bounded: occupancy latch, 42 s (M3, M3h); status freshness, 32 s (S2, S2h, bounded model checks that `SUMMARY.json` counts as
-  proved); claims learnt 1 or 2 steps late (F1d1, F1d2; F1d3 shows the bound tight), combined with P2 filter entries (F1p); step
+- Bounded: occupancy latch, 42 s (M3, M3h); status freshness, 32 s (S2, S2h); claims learnt 1 or 2 steps late (F1d1, F1d2; F1d3 shows the bound tight), combined with P2 filter entries (F1p); step
   model of 100 s with at most 2 consecutive losses (B2C-S1).
 - Numeric: queue and exit-observability geometry (M4a-M4g, Q1); reach never under-estimated, error below 3e-4 m (P2B1r); no P2-safe
   command enters the CR in 21,850 adversarial trajectories (P2B3) or passes under or over it (P2B6); station keeping and robust
@@ -217,9 +216,12 @@ priority (H1-H3), gate entry, give-up and hazard rules (G1-G3), exact readable g
   (a hull floating above the queue). The bounds F2 do not model the degraded admission wait.
 - **False vacancy.** A live vehicle with a mute transmitter is declared vacant after `t_silent_s` = 45 s. In the targeted run
   `b2c_mute_transmitter` the class is `P3_FAILURE` only for the requirement "no false vacancy"; P1, P2 and the P3 contract held.
-- **Liveness cost.** A vehicle not freshly heard delays every admission to 41.52 s after the commitment. In three targeted runs
-  (`b2c_blackout`, `lost_drone_mutex`, `b2c_mute_transmitter`) commitment to passage took 54 to 64 s (raw logs), above the earlier
-  referee budget (`gate_bounded_response_pre_budget_update` false); the B2 budget now includes `commit_admit_min_s` + `t_cross_max`.
+- **Liveness cost.** A vehicle not freshly heard delays every admission to 41.52 s after the commitment. In the targeted runs
+  `lost_drone_mutex` and `b2c_mute_transmitter` commitment to passage took 54 to 64 s (raw logs), above the earlier referee budget
+  (`gate_bounded_response_pre_budget_update` false); the B2 budget now includes `commit_admit_min_s` + `t_cross_max`. In `b2c_blackout`
+  vehicle 1 gave up its stage-2 entry twice because no localization could be validated while the others were unknown (the map-aiding
+  identification is withheld), and passed 205.7 s after its commitment against a budget of 86 s (`gate_bounded_response` false);
+  the class is PASS and P1, P2 hold, the cost is time.
   A vehicle without a validated gate localization is never admitted.
 - **B0, 3 vehicles.** M4g: in abreast, triangle and line layouts of 3 vehicles a queued vehicle may get no sonar exit witness of a
   passing vehicle (detection range); the latch then falls back to `t_occ_max`.
@@ -236,9 +238,11 @@ priority (H1-H3), gate entry, give-up and hazard rules (G1-G3), exact readable g
 ## 7. Evidence
 
 **Targeted HoloOcean validation** (`results/targeted_validation/summary.json|csv`, criteria v9): 12 runs, seed 0, one run per
-configuration, code commit `ecd18ee`. P1 and P2 hold in every run. Not repeated since: the referee crossing budget
-(`referee/gate_events.py`, `referee/robustness_metrics.py`) and the rule that a vehicle not heard is never left out of the map-aiding
-identity premise (`perception/perception.py`, `perception/structure_aiding.py`).
+configuration. Seven runs are at code commit `ecd18ee`. The five with a silent or lost vehicle (`lost_drone_mutex`, `lost_drone_timeout`,
+`lost_drone_rejoin`, `b2c_blackout`, `b2c_mute_transmitter`) were repeated at `a62c9b3` after the rule that a vehicle not heard is never
+left out of the map-aiding identity premise (`perception/perception.py`, `perception/structure_aiding.py`); that rule only acts when a
+vehicle stays unheard for 70 s or more. P1 and P2 hold in every run. The referee crossing budget (`referee/gate_events.py`) was updated
+after the runs and the table is re-derived with it.
 
 | Scenario | Protocol, noise | Class | P1 | P2 | Min. sep. (m) | Notes |
 |---|---|---|---|---|---|---|
@@ -246,14 +250,14 @@ identity premise (`perception/perception.py`, `perception/structure_aiding.py`).
 | line_parallel_mutex | B2_CLEAN, CLEAN | PASS | PASS | PASS | 2.91 | gate at 80.9 s |
 | mutex_deadlock_resolution | B2_CLEAN, CLEAN | PASS | PASS | PASS | 3.39 | stacked queue |
 | integrated_short | B2_CLEAN, CLEAN | PASS | PASS | PASS | 3.17 | survey, gate, re-form |
-| lost_drone_mutex | B2_CLEAN, CLEAN | PASS | PASS | PASS | 3.41 | permanent failure before the gate |
-| lost_drone_timeout | B2_CLEAN, CLEAN | PASS | PASS | n/a | 3.26 | degraded formation |
-| lost_drone_rejoin | B2_CLEAN, CLEAN | PASS | PASS | n/a | 2.97 | 1 failsafe entry (envelope) |
+| lost_drone_mutex | B2_CLEAN, CLEAN | PASS | PASS | PASS | 3.45 | permanent failure before the gate, gate at 160.6 s |
+| lost_drone_timeout | B2_CLEAN, CLEAN | PASS | PASS | n/a | 3.45 | degraded formation |
+| lost_drone_rejoin | B2_CLEAN, CLEAN | PASS | PASS | n/a | 2.86 | 1 failsafe entry (envelope) |
 | formation_recovery_head_current | B2_CLEAN, CLEAN | PASS | PASS | n/a | 3.44 | 1 failsafe entry (envelope) |
-| b2c_blackout | B2_BLACKOUT, CLEAN | PASS | PASS | PASS | 3.16 | every packet lost, gate at 186.8 s |
+| b2c_blackout | B2_BLACKOUT, CLEAN | PASS | PASS | PASS | 3.20 | every packet lost, gate at 369.5 s (186.8 s before the map-aiding rule), see section 6 |
 | gate_single | B2_CLEAN, MEDIUM-ALL | PASS | PASS | PASS | 3.02 | 9 `P2_UNCERTIFIED`, 21 failsafe entries |
 | gate_single | B2_CLEAN, HIGH-ALL | PREMISE_VIOLATED | PASS | PASS | 3.25 | sensor-fault failsafe, no passage |
-| b2c_mute_transmitter | B2_LOW_MUTE0, CLEAN | P3_FAILURE | PASS | PASS | 2.77 | "no false vacancy" missed; P3 contract met, recovery at 220.6 s |
+| b2c_mute_transmitter | B2_LOW_MUTE0, CLEAN | P3_FAILURE | PASS | PASS | 2.77 | "no false vacancy" missed; P3 contract met, recovery at 222.6 s |
 
 One seed per configuration: observations, not a statistical bound. Raw run directories are kept outside the repository (local archive).
 
@@ -261,9 +265,7 @@ One seed per configuration: observations, not a statistical bound. Raw run direc
 0 entries into the CR without admission and 0 double occupancy; the mutation with the earlier hold point and no P2 filter has 126
 episodes with an entry without admission. P1 is violated in 24 of 144 episodes, all against a non-reacting third vehicle.
 
-**Unit tests** (one pytest process per file, `-m "not holoocean"`, 54 files): 686 passed, 1 failed, 1 deselected (needs the engine).
-The failure is `tests/test_b2_isolation.py::test_only_perception_modules_read_the_beacon`: its allow-list of modules that read the
-beacon configuration lacks `holo_fleet/referee/gate_events.py`, which reads `cfg.beacon.mode` and `cfg.acoustic` for the crossing budget.
+**Unit tests** (one pytest process per file, 54 files): 687 passed, 0 failed.
 
 ## 8. Reproducibility
 

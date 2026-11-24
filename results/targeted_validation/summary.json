@@ -1,5 +1,7 @@
 {
  "criteria": "v9",
+ "note_budget": "gate_crossing_budget_s of the B2 runs includes the B2 admission wait of 41.5 s (commit_admit_min_s + t_cross_max): the referee budget was updated after the runs (holo_fleet/referee/gate_events.py); the pre-update flag is kept per run",
+ "note_rerun": "Rows with code_sha a62c9b3 (lost_drone_mutex, lost_drone_timeout, lost_drone_rejoin, b2c_blackout, b2c_mute_transmitter) are reruns of the B2 runs on the review fix (Perception._other_regions: silence no longer leaves a drone out of the map-aiding premise; referee budget follows the protocol of the run); each carries previous_run = the ecd18ee run it replaces.  The other 7 rows keep code_sha ecd18ee: the changed code only matters when a drone stays unheard for t_silent_gate_s = 70 s or more.",
  "runs": [
   {
    "run": "runs_root/runs/B0/CLEAN/line_parallel_mutex/s0",
@@ -89,7 +91,7 @@
    "gate_bounded_response_pre_budget_update": true
   },
   {
-   "run": "runs_root/runs/B2_BLACKOUT/CLEAN/b2c_blackout/s0",
+   "run": "rerun_a62c9b3/runs_root/runs/B2_BLACKOUT/CLEAN/b2c_blackout/s0",
    "scenario": "b2c_blackout",
    "protocol": "B2_BLACKOUT",
    "profile": "CLEAN",
@@ -98,23 +100,23 @@
    "class": "PASS",
    "class_v8": "PASS",
    "terminal_outcome": "SUCCESS",
-   "t_end_s": 240.1,
+   "t_end_s": 422.8,
    "terminal_reason": "every required outcome reached",
    "terminal_missing": [],
    "deadline_a_priori_s": 256.4,
-   "horizon_s": 240.1,
+   "horizon_s": 422.8,
    "P1": "PASS",
-   "min_separation_m": 3.161,
+   "min_separation_m": 3.196,
    "collisions": 0,
    "P2": "PASS",
    "P2_max_occupancy": 1,
-   "gate_completion_s": 186.8,
+   "gate_completion_s": 369.5,
    "gate_passed_t": {
-    "drone_0": 57.899421,
-    "drone_1": 115.99884,
-    "drone_2": 186.798132
+    "drone_0": 71.199288,
+    "drone_1": 294.097059,
+    "drone_2": 369.496305
    },
-   "queue_wait_max_s": 132.0,
+   "queue_wait_max_s": 310.6,
    "P2_events": null,
    "P3_contract": "MET",
    "P3_eventual_recovered": true,
@@ -123,16 +125,16 @@
    "P3_absent_at_end": [],
    "P3_eventual": true,
    "vacancy_declared_t": [],
-   "time_to_formation_recovery_s": 226.2,
+   "time_to_formation_recovery_s": 408.9,
    "p3b_recovery_after_start_s": 44.3,
    "p3_late": [],
-   "final_formation_error_m": 0.0425,
+   "final_formation_error_m": 0.0619,
    "p3b": {
     "verdict": "MET",
-    "start": 186.8,
-    "recovered": 231.1,
+    "start": 369.5,
+    "recovered": 413.8,
     "late_recovered": null,
-    "deadline": 357.78
+    "deadline": 541.02
    },
    "P2_UNCERTIFIED_events": 0,
    "P2_UNCERTIFIED_first_t": [],
@@ -146,22 +148,29 @@
     "relocalization_hold"
    ],
    "premise_c_counts": {
-    "SATISFIED": 3,
+    "SATISFIED": 5,
     "CONCURRENT": 0,
     "VIOLATED": 0,
     "INCONCLUSIVE": 0
    },
    "false_releases": 0,
-   "wall_s": 502.2,
+   "wall_s": 749.7,
    "exit_code": 0,
    "attempt": 1,
    "engine_listen_ports": [
-    40949
+    36311
    ],
-   "engine_slot": "slot0",
-   "gate_bounded_response": true,
-   "gate_wait_max_s": 132.0,
-   "gate_committed_stalls_s": [],
+   "engine_slot": "slot1",
+   "gate_bounded_response": false,
+   "gate_wait_max_s": 310.6,
+   "gate_committed_stalls_s": [
+    [
+     1,
+     88.4,
+     294.1,
+     205.7
+    ]
+   ],
    "gate_crossing_budget_s": {
     "0": 93.0,
     "1": 86.0,
@@ -172,9 +181,16 @@
     0,
     0
    ],
-   "code_sha": "ecd18eeb2b483c058153e0cc8a0188ffae7549cd",
-   "gate_bounded_response_pre_budget_update": false,
-   "gate_budget_includes_admit_wait_s": 41.5
+   "code_sha": "a62c9b38196a3cb48baa22762b54bac019ba26c2",
+   "recorded_head_sha": "a62c9b38196a3cb48baa22762b54bac019ba26c2",
+   "gate_bounded_response_pre_budget_update": null,
+   "gate_budget_includes_admit_wait_s": 41.5,
+   "previous_run": {
+    "class": "PASS",
+    "gate_completion_s": 186.8,
+    "time_to_formation_recovery_s": 226.2,
+    "vacancy_declared_t": []
+   }
   },
   {
    "run": "runs_root/runs/B2_CLEAN/CLEAN/formation_recovery_head_current/s0",
@@ -424,7 +440,7 @@
    "gate_budget_includes_admit_wait_s": 41.5
   },
   {
-   "run": "runs_root/runs/B2_CLEAN/CLEAN/lost_drone_mutex/s0",
+   "run": "rerun_a62c9b3/runs_root/runs/B2_CLEAN/CLEAN/lost_drone_mutex/s0",
    "scenario": "lost_drone_mutex",
    "protocol": "B2_CLEAN",
    "profile": "CLEAN",
@@ -433,22 +449,22 @@
    "class": "PASS",
    "class_v8": "PASS",
    "terminal_outcome": "SUCCESS",
-   "t_end_s": 190.4,
+   "t_end_s": 212.0,
    "terminal_reason": "every required outcome reached",
    "terminal_missing": [],
    "deadline_a_priori_s": 228.9,
-   "horizon_s": 190.4,
+   "horizon_s": 212.0,
    "P1": "PASS",
-   "min_separation_m": 3.412,
+   "min_separation_m": 3.454,
    "collisions": 0,
    "P2": "PASS",
    "P2_max_occupancy": 1,
-   "gate_completion_s": 147.6,
+   "gate_completion_s": 160.6,
    "gate_passed_t": {
-    "drone_1": 76.299237,
-    "drone_2": 147.598524
+    "drone_1": 88.599114,
+    "drone_2": 160.598394
    },
-   "queue_wait_max_s": 71.2,
+   "queue_wait_max_s": 83.7,
    "P2_events": null,
    "P3_contract": "MET",
    "P3_eventual_recovered": false,
@@ -462,15 +478,15 @@
     46.199538
    ],
    "time_to_formation_recovery_s": null,
-   "p3b_recovery_after_start_s": 32.5,
+   "p3b_recovery_after_start_s": 42.4,
    "p3_late": [],
-   "final_formation_error_m": 26.1603,
+   "final_formation_error_m": 27.5664,
    "p3b": {
     "verdict": "MET",
-    "start": 147.6,
-    "recovered": 180.1,
+    "start": 160.6,
+    "recovered": 203.0,
     "late_recovered": null,
-    "deadline": 224.48
+    "deadline": 249.81
    },
    "P2_UNCERTIFIED_events": 0,
    "P2_UNCERTIFIED_first_t": [],
@@ -489,15 +505,15 @@
     "INCONCLUSIVE": 0
    },
    "false_releases": 0,
-   "wall_s": 312.6,
+   "wall_s": 304.5,
    "exit_code": 0,
    "attempt": 1,
    "engine_listen_ports": [
-    40951
+    38258
    ],
    "engine_slot": "slot0",
    "gate_bounded_response": true,
-   "gate_wait_max_s": 71.2,
+   "gate_wait_max_s": 83.7,
    "gate_committed_stalls_s": [],
    "gate_crossing_budget_s": {
     "1": 86.0,
@@ -508,12 +524,21 @@
     0,
     0
    ],
-   "code_sha": "ecd18eeb2b483c058153e0cc8a0188ffae7549cd",
-   "gate_bounded_response_pre_budget_update": false,
-   "gate_budget_includes_admit_wait_s": 41.5
+   "code_sha": "a62c9b38196a3cb48baa22762b54bac019ba26c2",
+   "recorded_head_sha": "a62c9b38196a3cb48baa22762b54bac019ba26c2",
+   "gate_bounded_response_pre_budget_update": null,
+   "gate_budget_includes_admit_wait_s": 41.5,
+   "previous_run": {
+    "class": "PASS",
+    "gate_completion_s": 147.6,
+    "time_to_formation_recovery_s": null,
+    "vacancy_declared_t": [
+     46.199538
+    ]
+   }
   },
   {
-   "run": "runs_root/runs/B2_CLEAN/CLEAN/lost_drone_rejoin/s0",
+   "run": "rerun_a62c9b3/runs_root/runs/B2_CLEAN/CLEAN/lost_drone_rejoin/s0",
    "scenario": "lost_drone_rejoin",
    "protocol": "B2_CLEAN",
    "profile": "CLEAN",
@@ -528,7 +553,7 @@
    "deadline_a_priori_s": 140.9,
    "horizon_s": 102.1,
    "P1": "PASS",
-   "min_separation_m": 2.971,
+   "min_separation_m": 2.855,
    "collisions": 0,
    "P2": "N/A (no gate)",
    "P2_max_occupancy": null,
@@ -544,25 +569,27 @@
    "P3_eventual": true,
    "vacancy_declared_t": [],
    "time_to_formation_recovery_s": 17.0,
-   "p3b_recovery_after_start_s": 13.9,
+   "p3b_recovery_after_start_s": 13.8,
    "p3_late": [],
-   "final_formation_error_m": 0.0639,
+   "final_formation_error_m": 0.0698,
    "p3b": {
     "verdict": "MET",
     "start": 15.0,
-    "recovered": 28.9,
+    "recovered": 28.8,
     "late_recovered": null,
-    "deadline": 56.15
+    "deadline": 56.07
    },
    "P2_UNCERTIFIED_events": 0,
    "P2_UNCERTIFIED_first_t": [],
    "FAILSAFE_entries": 1,
-   "FAILSAFE_time_healthy_s": 7.6,
+   "FAILSAFE_time_healthy_s": 7.5,
    "FAILSAFE_reasons": [
     "envelope_violation"
    ],
    "failed_requirements": [],
-   "cause_tags": [],
+   "cause_tags": [
+    "false_reoccupation"
+   ],
    "premise_c_counts": {
     "SATISFIED": 0,
     "CONCURRENT": 0,
@@ -570,23 +597,30 @@
     "INCONCLUSIVE": 0
    },
    "false_releases": null,
-   "wall_s": 161.9,
+   "wall_s": 122.3,
    "exit_code": 0,
    "attempt": 1,
    "engine_listen_ports": [
-    33360
+    36931
    ],
-   "engine_slot": "slot1",
+   "engine_slot": "slot0",
    "gate_bounded_response": null,
    "gate_wait_max_s": null,
    "gate_committed_stalls_s": [],
    "gate_crossing_budget_s": null,
    "gate_unsafe_events_E2_E3_E4": null,
-   "code_sha": "ecd18eeb2b483c058153e0cc8a0188ffae7549cd",
-   "gate_bounded_response_pre_budget_update": null
+   "code_sha": "a62c9b38196a3cb48baa22762b54bac019ba26c2",
+   "recorded_head_sha": "544ae16644f8acec9920c8888c741e7a55e60be1",
+   "gate_bounded_response_pre_budget_update": null,
+   "previous_run": {
+    "class": "PASS",
+    "gate_completion_s": null,
+    "time_to_formation_recovery_s": 17.0,
+    "vacancy_declared_t": []
+   }
   },
   {
-   "run": "runs_root/runs/B2_CLEAN/CLEAN/lost_drone_timeout/s0",
+   "run": "rerun_a62c9b3/runs_root/runs/B2_CLEAN/CLEAN/lost_drone_timeout/s0",
    "scenario": "lost_drone_timeout",
    "protocol": "B2_CLEAN",
    "profile": "CLEAN",
@@ -601,7 +635,7 @@
    "deadline_a_priori_s": 155.9,
    "horizon_s": 102.1,
    "P1": "PASS",
-   "min_separation_m": 3.263,
+   "min_separation_m": 3.451,
    "collisions": 0,
    "P2": "N/A (no gate)",
    "P2_max_occupancy": null,
@@ -623,13 +657,13 @@
    "time_to_formation_recovery_s": null,
    "p3b_recovery_after_start_s": 0.1,
    "p3_late": [],
-   "final_formation_error_m": 19.0818,
+   "final_formation_error_m": 19.0635,
    "p3b": {
     "verdict": "MET",
     "start": 80.0,
     "recovered": 80.1,
     "late_recovered": null,
-    "deadline": 94.08
+    "deadline": 94.2
    },
    "P2_UNCERTIFIED_events": 0,
    "P2_UNCERTIFIED_first_t": [],
@@ -637,9 +671,7 @@
    "FAILSAFE_time_healthy_s": 0.0,
    "FAILSAFE_reasons": [],
    "failed_requirements": [],
-   "cause_tags": [
-    "false_reoccupation"
-   ],
+   "cause_tags": [],
    "premise_c_counts": {
     "SATISFIED": 0,
     "CONCURRENT": 0,
@@ -647,11 +679,11 @@
     "INCONCLUSIVE": 0
    },
    "false_releases": null,
-   "wall_s": 200.0,
+   "wall_s": 158.1,
    "exit_code": 0,
    "attempt": 1,
    "engine_listen_ports": [
-    39681
+    37479
    ],
    "engine_slot": "slot1",
    "gate_bounded_response": null,
@@ -659,8 +691,17 @@
    "gate_committed_stalls_s": [],
    "gate_crossing_budget_s": null,
    "gate_unsafe_events_E2_E3_E4": null,
-   "code_sha": "ecd18eeb2b483c058153e0cc8a0188ffae7549cd",
-   "gate_bounded_response_pre_budget_update": null
+   "code_sha": "a62c9b38196a3cb48baa22762b54bac019ba26c2",
+   "recorded_head_sha": "a62c9b38196a3cb48baa22762b54bac019ba26c2",
+   "gate_bounded_response_pre_budget_update": null,
+   "previous_run": {
+    "class": "PASS",
+    "gate_completion_s": null,
+    "time_to_formation_recovery_s": null,
+    "vacancy_declared_t": [
+     52.599474
+    ]
+   }
   },
   {
    "run": "runs_root/runs/B2_CLEAN/CLEAN/mutex_deadlock_resolution/s0",
@@ -950,7 +991,7 @@
    "gate_budget_includes_admit_wait_s": 41.5
   },
   {
-   "run": "runs_root/runs/B2_LOW_MUTE0/CLEAN/b2c_mute_transmitter/s0",
+   "run": "rerun_a62c9b3/runs_root/runs/B2_LOW_MUTE0/CLEAN/b2c_mute_transmitter/s0",
    "scenario": "b2c_mute_transmitter",
    "protocol": "B2_LOW_MUTE0",
    "profile": "CLEAN",
@@ -971,13 +1012,13 @@
    "collisions": 0,
    "P2": "PASS",
    "P2_max_occupancy": 1,
-   "gate_completion_s": 181.7,
+   "gate_completion_s": 183.5,
    "gate_passed_t": {
-    "drone_0": 25.199748,
-    "drone_1": 106.498935,
-    "drone_2": 181.698183
+    "drone_0": 37.799622,
+    "drone_1": 111.498885,
+    "drone_2": 183.498165
    },
-   "queue_wait_max_s": 122.5,
+   "queue_wait_max_s": 127.5,
    "P2_events": null,
    "P3_contract": "MET",
    "P3_eventual_recovered": true,
@@ -986,16 +1027,16 @@
    "P3_absent_at_end": [],
    "P3_eventual": true,
    "vacancy_declared_t": [],
-   "time_to_formation_recovery_s": 220.6,
-   "p3b_recovery_after_start_s": 43.8,
+   "time_to_formation_recovery_s": 222.6,
+   "p3b_recovery_after_start_s": 44.0,
    "p3_late": [],
-   "final_formation_error_m": 0.0776,
+   "final_formation_error_m": 0.0918,
    "p3b": {
     "verdict": "MET",
-    "start": 181.7,
-    "recovered": 225.5,
+    "start": 183.5,
+    "recovered": 227.5,
     "late_recovered": null,
-    "deadline": 366.23
+    "deadline": 369.89
    },
    "P2_UNCERTIFIED_events": 0,
    "P2_UNCERTIFIED_first_t": [],
@@ -1016,15 +1057,15 @@
     "INCONCLUSIVE": 0
    },
    "false_releases": 0,
-   "wall_s": 1252.8,
+   "wall_s": 1086.5,
    "exit_code": 0,
    "attempt": 1,
    "engine_listen_ports": [
-    40270
+    38299
    ],
-   "engine_slot": "slot1",
+   "engine_slot": "slot0",
    "gate_bounded_response": true,
-   "gate_wait_max_s": 122.5,
+   "gate_wait_max_s": 127.5,
    "gate_committed_stalls_s": [],
    "gate_crossing_budget_s": {
     "0": 93.0,
@@ -1036,10 +1077,16 @@
     0,
     0
    ],
-   "code_sha": "ecd18eeb2b483c058153e0cc8a0188ffae7549cd",
-   "gate_bounded_response_pre_budget_update": false,
-   "gate_budget_includes_admit_wait_s": 41.5
+   "code_sha": "a62c9b38196a3cb48baa22762b54bac019ba26c2",
+   "recorded_head_sha": "a62c9b38196a3cb48baa22762b54bac019ba26c2",
+   "gate_bounded_response_pre_budget_update": null,
+   "gate_budget_includes_admit_wait_s": 41.5,
+   "previous_run": {
+    "class": "P3_FAILURE",
+    "gate_completion_s": 181.7,
+    "time_to_formation_recovery_s": 220.6,
+    "vacancy_declared_t": []
+   }
   }
- ],
- "note_budget": "gate_crossing_budget_s of the B2 runs includes the B2 admission wait of 41.5 s (commit_admit_min_s + t_cross_max): the referee budget was updated after the runs (holo_fleet/referee/gate_events.py); the pre-update flag is kept per run"
+ ]
 }
