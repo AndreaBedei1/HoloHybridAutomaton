@@ -144,3 +144,46 @@ def test_a_certificate_issued_with_outage_reserve_survives_a_dvl_outage():
     assert cert is not None
     stale = _gc(q, ve=float(NB.v_bound), rho=reserve, t=1.0 + B.dt)
     assert np.array_equal(stale.cert_anchor(cert), q)
+
+
+def test_failed_outage_reserve_preserves_the_nominal_handover():
+    plan = SCENARIOS["lost_drone_mutex"](CFG).plans[0]
+    ctrl = DroneController(plan, CFG)
+    q, v0, u = np.array([-2.8, 0.0, 0.0]), np.zeros(3), np.array([0.5, 0.0, 0.0])
+    ctrl.flows.p2_cert = _gc(q, v0).next_certificate(u)
+    q1, vm1 = _worst_next(q, v0, u)
+    next_gc = _gc(q1, vm1, t=1.1)
+    reserve = 2 * float(NB.v_bound) + float(NB.k_lin) * float(NB.v_bound)
+
+    ctrl._p2_certify_step(1.1, ctrl.ha.mode, next_gc, np.zeros(3), (), False, reserve)
+
+    assert ctrl.gate_safety["cert"] is not None
+    assert ctrl.gate_safety["cert"]["kind"] == gs.SK
+    assert not any(e["type"] == "P2_UNCERTIFIED" for e in ctrl.events)
+
+
+def test_a_continued_hold_keeps_its_earlier_end_of_braking():
+    anchor = np.array([-2.4, 0.0, 0.0])
+    initial = _gc(anchor, v0=(0.29, 0.0, 0.0)).sk_certificate(anchor)
+    assert initial is not None
+    nominal = _gc(anchor, t=1.5)
+    assert nominal.hold_margin(anchor) > initial.margin
+    ongoing = nominal.certify(np.zeros(3), [anchor], cert=initial)
+    reserve = 2 * float(NB.v_bound) + float(NB.k_lin) * float(NB.v_bound)
+    outage = _gc(anchor, t=1.8, ve=float(NB.v_bound), rho=reserve)
+
+    assert outage.hold_margin(anchor) <= 0.0
+    assert outage.certified_hold(anchor, ongoing) > 0.0
+
+
+def test_a_hold_loop_can_use_a_narrower_fresh_band():
+    anchor = np.array([-2.4, 0.0, 0.0])
+    initial = _gc(anchor + [0.0, 1.0, 0.0]).sk_certificate(anchor)
+    assert initial is not None and not gs.latchable(initial.dev, G.k_track, G.v_pass)
+    nominal = _gc(anchor, t=4.0)
+    loop = {"anchor": anchor, "gain": G.k_track, "cap": G.v_pass}
+
+    fresh = nominal.certify(np.zeros(3), loops=[loop], cert=initial)
+
+    assert fresh is not None and fresh.kind == gs.SK
+    assert gs.latchable(fresh.dev, G.k_track, G.v_pass)

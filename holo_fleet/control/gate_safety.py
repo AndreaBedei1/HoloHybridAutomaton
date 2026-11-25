@@ -418,19 +418,25 @@ class GateConstraint:
         return m
 
     def sk_certificate(self, anchor: np.ndarray, cert: Optional[P2Certificate] = None,
-                       amp: float = 0.0) -> Optional[P2Certificate]:
+                       amp: float = 0.0, *, gain: float = K_HOLD,
+                       cap: Optional[float] = None) -> Optional[P2Certificate]:
         """Certificate of station keeping on ``anchor`` from this step: the valid certificate covering it (latched: a
-        continuation needs no re-certification; a NEXT one becomes an SK one on the present estimate) or one from the
-        present state, whichever has the larger positive margin; None when neither is positive."""
+        NEXT one becomes an SK one on the present estimate) or one from the present state. Keep an applicable old proof
+        when its braking ends no later, even if a fresh proof gives a larger margin. None when neither margin is positive."""
         a = np.asarray(anchor, float)
         m, dev, T = self._sk(a, amp)
         old = None
         if self._applies(cert, a) and cert.margin > 0.0:
             old = cert if cert.kind == SK else P2Certificate(SK, cert.margin, self.t, cert.rho, cert.t_end, cert.gate,
                                                                self.q.copy(), cert.dev)
-        if m > 0.0 and (old is None or m > old.margin):
-            return P2Certificate(SK, m, self.t, self.rho_eff, self.t + T, getattr(self.gate, "gate_id", None), a.copy(), dev)
-        return old
+        if m <= 0.0:
+            return old
+        if old is not None:
+            earlier = old.t_end <= self.t + T and (self.t > old.t_end + 1e-9 or old.rho >= self.rho_eff)
+            keep_old = earlier or old.margin >= m
+            if not latchable(dev, gain, cap) or (keep_old and latchable(old.dev, gain, cap)):
+                return old
+        return P2Certificate(SK, m, self.t, self.rho_eff, self.t + T, getattr(self.gate, "gate_id", None), a.copy(), dev)
 
     def next_certificate(self, v_world: np.ndarray) -> Optional[P2Certificate]:
         """Certificate (kind NEXT) a command with a positive robust margin hands to the next step; None otherwise."""
@@ -462,8 +468,9 @@ class GateConstraint:
                 continue
             gain, amp = float(kw.get("gain", K_HOLD)), float(kw.get("amp", 0.0))
             if self.is_hold_loop(v, a, gain, amp):
-                c = self.sk_certificate(a, cert, amp)
-                if c is not None and latchable(c.dev, gain, kw.get("cap")):
+                cap = kw.get("cap")
+                c = self.sk_certificate(a, cert, amp, gain=gain, cap=cap)
+                if c is not None and latchable(c.dev, gain, cap):
                     return c
         return self.next_certificate(v)
 
@@ -505,7 +512,7 @@ class GateConstraint:
         if m > 0.0:
             return MissionFilter(v, m, FEASIBLE, False, "")
         if anchor is not None and self.is_hold_loop(v, anchor, gain, amp):
-            c = self.sk_certificate(anchor, cert, amp)
+            c = self.sk_certificate(anchor, cert, amp, gain=gain, cap=cap)
             if c is not None:
                 if latchable(c.dev, gain, cap):
                     return MissionFilter(v, c.margin, FEASIBLE, False, "station keeping on the hold point")

@@ -407,7 +407,10 @@ class DroneController:
         this does not happen while the declared bounds hold after a certified start."""
         cert = None
         if gc is not None and outage_rho is not None and outage_rho > gc.rho_eff:
+            previous = self.flows.p2_cert
             cert = self.flows.p2_certify(replace(gc, rho=outage_rho), v, loops)
+            if cert is None:
+                self.flows.p2_cert = previous
         if cert is None:
             cert = self.flows.p2_certify(gc, v, loops)
         if gc is None:

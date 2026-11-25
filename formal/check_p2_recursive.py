@@ -25,7 +25,8 @@ P2R3   (proved, Z3) the station-keeping band is invariant: P2R3a q-loop, any per
        [K_HOLD, 1/dt] capped at >= HOLD_V_MAX per axis, any band half widths >= e_track (sampled loop, residual |w|);
        P2R3b the 2-norm capped laws of the flows stay unsaturated inside a latchable band (gate_safety.latchable); P2R3c
        p-loop, the per-axis capped law of hold_velocity on the truth with |e| <= E: band half widths >= E + e_track; P2R3d
-       the true centre stays out of the column during the braking and the loop when the SK margin is positive.
+       the true centre stays out of the column during the braking and the loop when the SK margin is positive. P2R3e
+       retaining a compatible SK proof whose braking ends no later and whose drift coverage dominates preserves validity.
 P2R3n  (numeric) sampled closed loop of station keeping with the latency (data age tau_max, period dt), the velocity lag of
        the envelope, adversarial drift and estimate error inside the premises, from the next states of P2R4n and from the
        stage-2 hold: the true centre never enters the CR column (checks the latency allowance of premise H).
@@ -259,6 +260,16 @@ def loop_lemmas(cfg: FleetConfig):
                      "(true displacement <= X, P2R1x) and in the loop (estimate inside the band, P2R3a / P2R3b, truth within "
                      "E of it)", "cr_lo - (max(q0 + X + rho T, a + H) + E + slack) > 0 -> p(t) < cr_lo", ENC, cons, "unsat",
                      note="separation along one axis towards its + side (s or l, either side by mirroring), as P2B1"))
+    now, use_t, old_end, new_end, old_rho, new_rho, use_rho = z3.Reals("now use_t old_end new_end old_rho new_rho use_rho")
+    time_tol, rho_tol = exact(1e-9), exact(1e-12)
+    cons = [use_t >= now, old_end <= new_end, z3.Or(now > old_end + time_tol, old_rho >= new_rho),
+            z3.Or(use_t > new_end + time_tol, use_rho <= new_rho + rho_tol),
+            use_t <= old_end + time_tol, use_rho > old_rho + rho_tol]
+    out.append(check("P2R3e retaining an eligible station-keeping proof with an earlier end of braking preserves its "
+                     "drift-regime validity when the older reserve dominates or its braking has ended",
+                     "old_brake_ends_no_later & (old_finished | old_rho >= new_rho) & new_valid -> old_valid",
+                     ENC, cons, "unsat", note="Same gate and hold law on the same horizontal anchor, positive margins, "
+                     "and no position correction. The formula uses the tolerances of GateConstraint.cert_valid."))
     out.append(loop_numeric(cfg))
     return out
 
