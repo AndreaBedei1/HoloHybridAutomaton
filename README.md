@@ -304,14 +304,22 @@ a common reference for the fleet, or recovery in the presence of sustained safet
 
 ## 7. Evidence
 
-**Current targeted HoloOcean validation.** In `results/conditional_validation.json`, `line_parallel_mutex` (CLEAN)
-and `integrated_short` (MEDIUM-ALL, B2 MEDIUM), seed 0, both ended in SUCCESS and passed the sampled referee criteria.
-Minimum centre distances were 2.877 and 3.197 m; maximum CR occupancy was one, with zero observed premature admissions.
-Formation recovery was observed at 86.2 and 159.0 s. The MEDIUM trace contains uncertified P2 steps and unobserved or
-insufficient P1 margins, so those intervals remain outside the runtime certificate. A separate fault-injection probe
-forced two commitments at the same step (0.9 s), then ran the deployed controller. At 110 s, peak occupancy was one and
-there were no premature admissions. Only one vehicle entered and formation recovery remained open at the end of the window.
-Raw traces, the fault-injection harness and per-file hashes are retained.
+**Current targeted HoloOcean validation.** The three mission runs below ended in SUCCESS. Each had a maximum CR occupancy
+of one and zero observed premature admissions.
+
+| Scenario | Sensor and channel | Seed | Min. centre distance (m) | Formation recovered at (s) |
+|---|---|---:|---:|---:|
+| `line_parallel_mutex` | CLEAN | 0 | 2.995 | 93.9 |
+| `integrated_short` | MEDIUM-ALL, B2 MEDIUM | 0 | 2.823 | 468.8 |
+| `integrated_short` | MEDIUM-ALL, B2 MEDIUM | 1 | 3.272 | 110.9 |
+
+These are sampled results. The MEDIUM traces logged 48 and one `P2_UNCERTIFIED` events respectively, and both contain
+missing or insufficient P1 margins. Seed 0
+spent substantially longer around the gate during repeated localization attempts and safety interventions.
+The separate fault-injection probe forced two commitments at the same step (0.9 s). It observed a minimum separation
+of 2.776 m and no premature admissions. No vehicle entered the CR within its 110 s window and recovery remained open.
+`results/conditional_validation.json` records the controller and monitor revisions, scenario seeds, isolated ports and raw
+file hashes, including the reproducible fault-injection probe. The preceding runs remain in the archive and in Git history.
 
 **Previous targeted HoloOcean validation** (`legacy/results/pre_conditional_targeted/summary.json|csv`, criteria v9): 12 runs, seed 0, one run per
 configuration. Seven runs are at code commit `ecd18ee`. The five with a silent or lost vehicle (`lost_drone_mutex`, `lost_drone_timeout`,

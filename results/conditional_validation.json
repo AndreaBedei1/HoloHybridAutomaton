@@ -1,112 +1,219 @@
 {
-  "controller_commit": "37577690948fcb3751d8f2267b6bbcae7e827063",
-  "validation": "Two targeted HoloOcean runs; observed outcomes, not formal guarantees.",
+  "controller_commit": "10ceff9580da523ab14e3a2fac185b3a8a20d0ae",
+  "final_p1_monitor_commit": "815e6a5baf7af212351b13f9c5cd6bfb04bacbcf",
+  "validation": "Sampled outcomes from three targeted runs and one controlled fault injection.",
+  "previous_manifest_commit": "4f77a44",
   "runs": [
     {
       "scenario": "line_parallel_mutex",
       "sensor_profile": "CLEAN",
-      "seed": 0,
       "channel": "CLEAN",
+      "seed": 0,
+      "raw_archive_path": "final-native/line_parallel_mutex",
       "engine_ports": [
-        36427
+        35271
       ],
       "terminal": "SUCCESS",
       "criteria_class": "PASS",
+      "observation_horizon_s": 160.1,
       "P1_observed": true,
-      "min_separation_m": 2.877,
+      "min_separation_m": 2.995,
       "P2_observed": true,
-      "P3_observed": true,
-      "recovery_s": [
-        86.2
-      ],
-      "P1_interval_records": {
-        "UNOBSERVED": 355,
-        "INTERVAL_CONDITIONAL": 4630,
-        "MOTION_OUTSIDE": 61
-      },
-      "artifact_sha256": {
-        "drone_0_state.jsonl": "ec867cf5530f37621115c56a8311ea04802c1ca202fb0cfce9426b7414c964b1",
-        "drone_1_state.jsonl": "68ed0f23db167ec0602b110edcababe8e21c27316b05eb2c15fe69f82eb4e6eb",
-        "drone_2_state.jsonl": "b03393e9e719e3d11351cc308ed150cdc52aac807436c16782db4684069e3b79",
-        "events.jsonl": "d9ad1276b688d9e67ec19d350d746a21f1c3c29cecc5fb2a72b173356608e1db",
-        "perf.json": "1c80ca71b71d402a3f1e520a7153fc0611f4fb465ada773074eb32302f0f5f41",
-        "referee_metrics.json": "61aa20759f40a909b18a98541c05799e36e39371e968d8eaf0dfde2bc72de2fa",
-        "referee_timeseries.csv": "ff70bace69994f7506643f294ebba3f966f29524cf3b21a6e7b04fe97973bb50",
-        "run_config.json": "071a85741c41fd5b1ce3e3596d984b2ceb84db20c5f2d57f226ee04f0a936e03",
-        "run_status.json": "019c75ab3f89fd47d6f9b690432f6c37dbd61c882e100136e77d889ab26961ef",
-        "summary.csv": "f4242d7d3ddf4042bc8f54870669a6f0c85424441e5c1da480a309b7fd96b535"
-      },
-      "beacon": {
-        "receptions": 963,
-        "expected_receptions": 1052,
-        "latency_max_ms": 109.18,
-        "longest_absence_s": 5.0
-      },
       "P2_max_occupancy": 1,
       "P2_premature_admissions": 0,
       "P2_uncertified_events": 0,
+      "P3_observed": true,
+      "recovery_s": [
+        93.9
+      ],
+      "P1_interval_records": {
+        "UNOBSERVED": 333,
+        "INTERVAL_CONDITIONAL": 4677,
+        "MOTION_OUTSIDE": 36
+      },
       "commit_times_s": [
         1.599984,
-        25.299747,
-        58.599414
-      ]
+        34.299657,
+        64.599354
+      ],
+      "beacon": {
+        "receptions": 968,
+        "expected_receptions": 1052,
+        "latency_max_ms": 109.17,
+        "longest_absence_s": 5.0
+      },
+      "artifact_sha256": {
+        "drone_0_state.jsonl": "9f1876d9e2a85a33fbe9f1200f89384bf651143d712c32f14ca57f1b75fbcef8",
+        "drone_1_state.jsonl": "16c438e967e885d965312ecf9d02988902100a826b9463b1b1f50421300edb3f",
+        "drone_2_state.jsonl": "867813ab91dddd7665c17ae7b1c5f7601be1b4dabadfff771cd360e17b0221db",
+        "events.jsonl": "137c5e5d9c2c8ecd46e5ce774f59d5db4b9d59405a3ed8966c7a0f1af07ee496",
+        "perf.json": "fc55a5d430ad78131c56afd3c47327563e8ce81bc548c0ae4b8bcab6e16e9ceb",
+        "referee_metrics.json": "7abfe8aff6226fa636d3a0cb23b056c0b7f9b778767ddb1324e99f84c451bea1",
+        "referee_timeseries.csv": "bff6b88037d6065efcb39f599c54105c791d676ae18f1a6a10be1f286f388798",
+        "run_config.json": "b669efabe8884caf44a5461b68d6a3349837c44478255b296a259fae21e8f986",
+        "run_status.json": "019c75ab3f89fd47d6f9b690432f6c37dbd61c882e100136e77d889ab26961ef",
+        "summary.csv": "ec2579cbfb183381287d77cb2e694d2ebddd99cd920b275f232ed1785074870c"
+      }
     },
     {
       "scenario": "integrated_short",
       "sensor_profile": "MEDIUM-ALL",
-      "seed": 0,
       "channel": "MEDIUM",
+      "seed": 0,
+      "raw_archive_path": "final-native/integrated_short",
       "engine_ports": [
-        34328
+        36258
       ],
       "terminal": "SUCCESS",
       "criteria_class": "PASS",
+      "observation_horizon_s": 477.8,
       "P1_observed": true,
-      "min_separation_m": 3.197,
+      "min_separation_m": 2.823,
       "P2_observed": true,
-      "P3_observed": true,
-      "recovery_s": [
-        159.0
-      ],
-      "P1_interval_records": {
-        "UNOBSERVED": 420,
-        "INTERVAL_CONDITIONAL": 4777,
-        "MOTION_OUTSIDE": 42,
-        "MOTION_UNOBSERVED": 18,
-        "NO_MARGIN": 26
-      },
-      "artifact_sha256": {
-        "drone_0_state.jsonl": "3818c8bc903b864f624cb8fabf6c6d3c870007ce4436e0fc70d95cfae112c0c3",
-        "drone_1_state.jsonl": "51a48c9943a6316e45da963b8a4795c0fb80f66bfa7e3b08e1a621bd593c79c1",
-        "drone_2_state.jsonl": "ded779bf2d39cae95545ae707b6cb14d4627d52ff5c29c664c178526606e020e",
-        "events.jsonl": "ef7888fbddc6a7a083611b6e0f1dd494397c4d99a1a5a50a31bc4d9241e88739",
-        "perf.json": "a1430d513bd9d505070a90dc6d526d2a3abc9ac81416c4220783fd4abe7a4505",
-        "referee_metrics.json": "47ade34a377dcb806fa70054da1ae318231e071067abf9f02f8b646ef0ae6151",
-        "referee_timeseries.csv": "675583d5a728fe73ac58259766978913ff7a569820d928bc5f888bd353a294b3",
-        "run_config.json": "0c018095898e5b7b101b3984097982071922903f45a33c238468a8048088e7c6",
-        "run_status.json": "019c75ab3f89fd47d6f9b690432f6c37dbd61c882e100136e77d889ab26961ef",
-        "summary.csv": "4a098a9d98a7ae28b454c545bbf005c2620b64f9fea14af8fb7773b6b5186b2f"
-      },
-      "beacon": {
-        "receptions": 770,
-        "expected_receptions": 1100,
-        "latency_max_ms": 261.18,
-        "longest_absence_s": 8.0
-      },
       "P2_max_occupancy": 1,
       "P2_premature_admissions": 0,
-      "P2_uncertified_events": 5,
+      "P2_uncertified_events": 48,
+      "P3_observed": true,
+      "recovery_s": [
+        468.8
+      ],
+      "P1_interval_records": {
+        "UNOBSERVED": 1502,
+        "INTERVAL_CONDITIONAL": 12866,
+        "NO_MARGIN": 52,
+        "MOTION_OUTSIDE": 114,
+        "MOTION_UNOBSERVED": 43
+      },
       "commit_times_s": [
-        15.599844,
-        55.399446,
-        82.099179
-      ]
+        15.799842,
+        71.99928,
+        148.198518,
+        243.797562,
+        304.696953,
+        362.396376,
+        389.096109
+      ],
+      "beacon": {
+        "receptions": 1977,
+        "expected_receptions": 2958,
+        "latency_max_ms": 269.81,
+        "longest_absence_s": 14.0
+      },
+      "artifact_sha256": {
+        "drone_0_state.jsonl": "bfef8f9493673a4e2e077ddd551cf11cf73f100c85e581b8be4ffc69ab248438",
+        "drone_1_state.jsonl": "65008d1f7614273007572427c1bdbfbeb38d76a9c68281e79d263a6ef976dccb",
+        "drone_2_state.jsonl": "8236aba1da35df619561c301d7a53802783bbcad272d55bb63144dd84dce01d1",
+        "events.jsonl": "0b16deacf234bacc3afadc61f11a40d5e2d2e565929f46687606fbbda468347a",
+        "perf.json": "518f4a565b4c08aa27d71a822da60849100d0cda540ea7d845fefa4ffc603f52",
+        "referee_metrics.json": "0ca19d0f8a2b51766955f820779127a4a18b90ca2ce591873292c93716f162d4",
+        "referee_timeseries.csv": "89a043c39757718166afe09ec788222503034dbb164ebbb847ab9d844a6fcb46",
+        "run_config.json": "9ad190f0fca16053e4a91cb74ecf77746c28becb9b3a0d27b89babb4b4616ce7",
+        "run_status.json": "019c75ab3f89fd47d6f9b690432f6c37dbd61c882e100136e77d889ab26961ef",
+        "summary.csv": "1ce8d060f153fc942c78fdba8af5700cbee9583a76b3a3f034c178a955898f98"
+      }
+    },
+    {
+      "scenario": "integrated_short",
+      "sensor_profile": "MEDIUM-ALL",
+      "channel": "MEDIUM",
+      "seed": 1,
+      "raw_archive_path": "final-medium-seed1/integrated_short",
+      "engine_ports": [
+        38527
+      ],
+      "terminal": "SUCCESS",
+      "criteria_class": "PASS",
+      "observation_horizon_s": 144.6,
+      "P1_observed": true,
+      "min_separation_m": 3.272,
+      "P2_observed": true,
+      "P2_max_occupancy": 1,
+      "P2_premature_admissions": 0,
+      "P2_uncertified_events": 1,
+      "P3_observed": true,
+      "recovery_s": [
+        110.9
+      ],
+      "P1_interval_records": {
+        "UNOBSERVED": 345,
+        "INTERVAL_CONDITIONAL": 4153,
+        "MOTION_UNOBSERVED": 15,
+        "MOTION_OUTSIDE": 53,
+        "NO_MARGIN": 15
+      },
+      "commit_times_s": [
+        16.199838,
+        48.399516,
+        73.099269
+      ],
+      "beacon": {
+        "receptions": 661,
+        "expected_receptions": 960,
+        "latency_max_ms": 259.42,
+        "longest_absence_s": 7.0
+      },
+      "artifact_sha256": {
+        "drone_0_state.jsonl": "9d22c1f9d841336af9f6c1258aa0ca1e339237d1d06e26e481d96488a0003976",
+        "drone_1_state.jsonl": "4c1d904a5bd26855d2d7010f7945da6a4b113c89f9fb013c83f2390ad5c469fd",
+        "drone_2_state.jsonl": "d28120582f1e3434f97255590e68e2dd5a1bdece873380573f8eaac3449ad090",
+        "events.jsonl": "5eb5d5f0257541b06a24f679fbf40aa41c948715321c0c325799c267a3e14fbd",
+        "perf.json": "89f7d2c045c8b91a97bee06cc77e8eba53e40ac117b057c70d8b18bd28cc2158",
+        "referee_metrics.json": "17a74c9732ab434b9a69382008f00cb93d80e1e4c1c10088e896b5fee024ff6d",
+        "referee_timeseries.csv": "765056591b40dc720f441aa8f4fa28a9248a1bba793a1f05e899b454c07c6134",
+        "run_config.json": "aec12c30b4c7028f263a1c55a4236974cc1ae311495303fb96f511149db863ec",
+        "run_status.json": "019c75ab3f89fd47d6f9b690432f6c37dbd61c882e100136e77d889ab26961ef",
+        "summary.csv": "e71707f761bc74e6e927b950fba433d5bb4ef1aca9a0d28d052deb1646efac1c"
+      },
+      "p1_monitor_commit": "815e6a5baf7af212351b13f9c5cd6bfb04bacbcf"
     }
   ],
   "stress_runs": [
     {
       "scenario": "line_parallel_mutex",
-      "condition": "Force two concurrent commitment states once, then run the deployed controller.",
+      "sensor_profile": "CLEAN",
+      "channel": "CLEAN",
+      "seed": 0,
+      "raw_archive_path": "final-stress/line3_simultaneous_commit",
+      "engine_ports": [
+        36880
+      ],
+      "terminal": "CENSORED",
+      "criteria_class": "CENSORED",
+      "observation_horizon_s": 110.0,
+      "P1_observed": true,
+      "min_separation_m": 2.776,
+      "P2_observed": true,
+      "P2_max_occupancy": 0,
+      "P2_premature_admissions": 0,
+      "P2_uncertified_events": 0,
+      "P3_observed": false,
+      "recovery_s": [],
+      "P1_interval_records": {
+        "UNOBSERVED": 11,
+        "INTERVAL_CONDITIONAL": 3234,
+        "MOTION_OUTSIDE": 55
+      },
+      "commit_times_s": [
+        102.798972
+      ],
+      "beacon": {
+        "receptions": 683,
+        "expected_receptions": 704,
+        "latency_max_ms": 104.71,
+        "longest_absence_s": 2.0
+      },
+      "artifact_sha256": {
+        "drone_0_state.jsonl": "dfccc27a3cb168eec4fbc2ffdd275a8266b7ba7d01b99f2672afe84539a97521",
+        "drone_1_state.jsonl": "afdde4e08789b11ea826f60e062c53276b70d3d0dd41b3aea8fab4a250aeec7a",
+        "drone_2_state.jsonl": "fc549dc8874000eb3c7fe52cbd48d12c4fe9c1a928e273d0acdc607ec670e111",
+        "events.jsonl": "30a6252c68a27c51dc1156d3b12639d6dfe29dd737261db8d18373b1dd2c9b72",
+        "perf.json": "b4827978719044fb629a909ea034b16fbc4ee45ea2f451f4c54e740e283d8e11",
+        "referee_metrics.json": "d5673e21afc12f7db5e0b72bb5aeddb74c21fcb74384055fbb261af800423507",
+        "referee_timeseries.csv": "fc9185edba9e8290976053b80fc3b3a10dc799406914b77d1a3151a13cfe0ca8",
+        "run_config.json": "fdf925187d8aaaa66d9ae1ac3b9527075c81e6c18d47268d8605ad8fb1fc3cf2",
+        "run_status.json": "019c75ab3f89fd47d6f9b690432f6c37dbd61c882e100136e77d889ab26961ef",
+        "summary.csv": "d527992f5703f83e39192b98f4ee4de1b1dba3c64d8bce8ad93f2b9ba7a51d43"
+      },
       "injections": [
         {
           "drone": "drone_0",
@@ -117,34 +224,10 @@
           "t": 0.899991
         }
       ],
-      "engine_ports": [
-        37277
-      ],
-      "observation_horizon_s": 110,
-      "P1_min_separation_m": 2.749,
-      "P2_max_occupancy": {
-        "G06": 1
-      },
-      "P2_premature_admissions": 0,
       "P2_entry_order": {
-        "G06": [
-          "drone_0"
-        ]
+        "G06": []
       },
-      "P3_recovered_within_window": false,
-      "artifact_sha256": {
-        "drone_0_state.jsonl": "87cece1ab2b1f750f3aa5176081ece222279a4c7589297c5773f0b732c1db181",
-        "drone_1_state.jsonl": "01152c9c6ee98270b4f2b5d13643052cbac65a18a091c44191de438f797eb49d",
-        "drone_2_state.jsonl": "e3742e40cf499ccbf50f36d5021a3ccf9fde3f294f92d780906c290c543252e4",
-        "events.jsonl": "31d28527ef67a2a42fa0de4771fee74fe73634c814c0c7fa88039e8032ef2f7e",
-        "perf.json": "aaaf03d117c71fa79d908b2791e6c56c0da16ac867d094a2655470421b2f8cc6",
-        "referee_metrics.json": "d2a686c266bfae85f91f404449ae6484a8cf57f2701267e30bf19dbe30475fc9",
-        "referee_timeseries.csv": "257735cf8507ba0828855d21b5102737194bbf0fcaaf094866db27bc83113cdb",
-        "run_config.json": "b96447188ec6ae466c5024d2d8c86ad71b35089340d5f62a82b9d149e7061f4d",
-        "run_status.json": "019c75ab3f89fd47d6f9b690432f6c37dbd61c882e100136e77d889ab26961ef",
-        "summary.csv": "a64dd6e7288193776213448f21101a348fd7b9326e79250e9717aeffc77b8ac9"
-      },
-      "probe_sha256": "6f3e1b90677c710d7348a1183ce87aaefef96521c5eaff9e0564469ac93f222c"
+      "probe_sha256": "50c4a7f786e582e30febbe556ecc49d047fe2aeedb1fbea45bdde2f08c5aaecf"
     }
   ]
 }
