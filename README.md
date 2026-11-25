@@ -55,6 +55,16 @@ runtime limits. A valid timestamp alone does not establish the error bound or de
 | Pressure depth | CLEAN noise scale 0.02 m, with 0.45 m depth allowance in the navigation budget. A lost pressure stream widens the vertical position bound. |
 | B2 passive acoustic | TDMA period 1 s, admission latency bound 0.40 s and admission-clock skew bound 0.05 s. The finite-loss result assumes at most two successive losses per link for the fresh branch. Range and bearing errors have separate envelopes. |
 
+For scale, the Water Linked A50 datasheet gives 4–15 Hz adaptive sampling and ±1.01% long-term accuracy for the standard unit.
+Water tracking gives velocity relative to the water column, so the ground-speed premise requires valid bottom tracking or a
+separately bounded current correction. [DVL datasheet](https://waterlinked.com/datasheets/dvl-a50),
+[water tracking documentation](https://docs.waterlinked.com/dvl/water-tracking/)
+
+The simulated cone coverage belongs to the specified mounts and HoloOcean configuration. For comparison, the Blue Robotics Ping
+has a 25° beam width and tracks targets partly by echo strength and history. A hardware coverage claim requires evidence on the
+installed sonar array and its detection conditions. [Ping technical manual](https://bluerobotics.com/learn/ping-sonar-technical-guide/),
+[HoloOcean sonar model](https://www.cs.cmu.edu/~kaess/pub/Potokar22iros.html)
+
 ## 2. Layout
 
 ```
@@ -114,11 +124,13 @@ python scripts/run_tests.py <out dir> [workers]         # complete formal suite 
 python formal/check_properties.py [--quick]             # formal checks only; results/ (complete) or results_quick/ (development)
 python scripts/run_demo.py --list                       # scenarios with duration and title
 python scripts/run_demo.py --scenario lost_drone_rejoin [--headless] [--profile MEDIUM --seed 1] [--b2 OFF|CLEAN|LOW|MEDIUM|BLACKOUT]
+python -m scripts.validate_simultaneous_commitment <raw dir> --slots <shared slot registry>
 python scripts/run_sensor_robustness_campaign.py --only gate_single --protocols B0 B2_MEDIUM --profiles CLEAN MEDIUM-ALL \
     --seeds 0 1 --raw <raw dir> [--dry-run] [--require-clean] [--shard i --nshards n]
 ```
 
-The test runner writes a log for every subprocess and exits nonzero on an unexpected verdict or a failed test. Development mode
+The simultaneous-commitment probe uses the shared engine slot registry and should be run with `HOLO_FLEET_ENGINE_SLOTS=2` and
+one free slot. The test runner writes a log for every subprocess and exits nonzero on an unexpected verdict or a failed test. Development mode
 runs the automaton, observation, basic formation and B2 communication checks (the B2 step model runs in complete mode).
 It also runs the unmarked Python tests. Complete mode runs the longer navigation and gate regressions, all 11 formal suites,
 and preserves expected counterexamples in the formal report. The patched-engine smoke test is opt-in via `HOLO_FLEET_ENGINE_TESTS=1`
