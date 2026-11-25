@@ -67,7 +67,7 @@ tests/        unit, integration and isolation tests
 scripts/      demos, campaign runner, test runner, engine slots and isolation probe, legacy index check, archive builder
 calibration/  simulator probes behind the measured parameters (outputs in results/calibration/)
 config/       parameter_sources.json (source, class, validity of each parameter), scope_drones.json
-results/      calibration/, targeted_validation/ (summary.json, summary.csv)
+results/      calibration/, conditional_validation.json
 legacy/       moved material of earlier variants and campaigns, INDEX.json (sha256 per item)
 patches/ figures/ references.bib   HoloOcean sonar patch and build script; diagrams; citation keys
 ```
@@ -187,8 +187,9 @@ planner (`tests/test_b2_isolation.py`). Controllers never read ground truth (`te
 ## 5. Guarantees
 
 The full-run baseline at `e3e31f0` (`legacy/results/pre_conditional_formal/SUMMARY.json`) records 402 checks, all with the expected verdict: 188 proved, 36 bounded, 50 numeric, 58 mutation, 26 witness,
-14 scope, 11 reported, 19 declared limits (11 suites, about 40 min; formula, verdict and counterexample per check in `SUMMARY.csv`). The current complete runner has 392 checks: D1 and D2
-already imply the ten former O4 assertions, one per mode. O5 still checks the runtime monitor on inconsistent observations.
+14 scope, 11 reported, 19 declared limits (11 suites, about 40 min). The current complete runner has 395 checks in 11 suites.
+D1 and D2 already imply the ten former O4 assertions, one per mode. O5 still checks the runtime monitor on inconsistent observations.
+The current formulae, classifications and expected counterexamples are in `formal/results/SUMMARY.json` and `SUMMARY.csv`.
 Only `proved` (UNSAT of a universal or inductive property) and `bounded` (UNSAT over a horizon) support a guarantee; `numeric`
 checks enumerate or sample the deployed code; mutation, witness, scope and limit counterexamples are never evidence of safety.
 Every guarantee is conditional on section 1.
@@ -272,7 +273,7 @@ a common reference for the fleet, or recovery in the presence of sustained safet
 - **P3.** C1l1 (near band at the transient consensus bound), C1l2 (B2 far band at the clock-speed edge with adversarial lateral
   consensus), C2l (leak-only consensus of an abreast B2 pair) have no ranking. C1x: the per-axis ranking F1 is not a ranking of
   the deployed coupled law; C1f and C1n cover it.
-- **Not covered by any proof.** Failures inside the exclusion zone, the continuous geometry inside the CR (M4h: 0.40 of it is observable
+- **Not covered by any proof.** Failures inside the exclusion zone, the continuous geometry inside the CR (M4h: 0.51 of the sampled grid is observable
   from the hold), the real hold loop (first-order abstraction), field conditions. Every result is on HoloOcean models.
 
 ## 7. Evidence
