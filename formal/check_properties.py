@@ -131,7 +131,7 @@ def main(argv=None) -> int:
             "title": title, "encoding": enc, "seconds": round(time.time() - t0, 1), "all_passed": ok,
             "checks": [{"prop": r.prop, "formula": r.formula, "expect": r.expect, "verdict": r.verdict,
                         "as_expected": r.passed, "seconds": r.seconds, "note": r.note,
-                        "counterexample": r.counterexample if (r.expect == "sat" or not r.passed) else None}
+                        "counterexample": r.counterexample}
                        for r in rep.results],
         })
     for su in summary["suites"]:

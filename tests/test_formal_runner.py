@@ -1,5 +1,7 @@
 """The development run must leave validation evidence and skipped proofs intact."""
 
+import json
+
 from formal import check_properties as formal
 from common import CheckResult, Report
 
@@ -13,7 +15,8 @@ def test_quick_formal_run_uses_only_fast_checks_and_keeps_full_results(monkeypat
         def run(self, **kwargs):
             self.calls.append(kwargs)
             report = Report(self.name)
-            report.add(CheckResult(self.name, "", "", "unsat", "unsat", True), verbose=False)
+            report.add(CheckResult(self.name, "", "", "counterexample", "counterexample", True,
+                                   counterexample={"witness": 1}), verbose=False)
             return report
 
     quick = Suite("fast")
@@ -42,6 +45,8 @@ def test_quick_formal_run_uses_only_fast_checks_and_keeps_full_results(monkeypat
     assert slow.calls == [{"verbose": True}]
     assert comm.calls[-1] == {"verbose": True}
     assert (full / "slow.json").is_file()
+    summary = json.loads((full / "SUMMARY.json").read_text(encoding="utf-8"))
+    assert summary["suites"][1]["checks"][0]["counterexample"] == {"witness": 1}
 
 def test_combined_runner_returns_failure_if_formal_verification_fails(monkeypatch, tmp_path):
     import subprocess
