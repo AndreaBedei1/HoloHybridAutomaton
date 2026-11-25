@@ -274,6 +274,15 @@ episodes with an entry without admission. P1 is violated in 24 of 144 episodes, 
 
 **Baseline unit tests** (commit `e3e31f0`, one pytest process per file): 687 passed, 1 skipped, 0 failed. The development and complete runners above execute each formal suite at most once.
 
+**P1 braking and hold pilot.** One isolated CLEAN OpenWater session measured positive and negative surge, sway and heave,
+in calm water and with an axial following current (effective drift 0.60 m/s horizontal and 0.25 m/s vertical). After switching
+from motion to active hold on the dead-reckoning position, the largest observed absolute excursions over 40 s were 0.115,
+0.118 and 0.069 m by axis. With a diagnostic +0.02 m/s surge DVL bias, the corresponding ground-truth position changed by -0.747 m
+while the dead-reckoning position changed by +0.001 m. A constant velocity bias can therefore defeat a hold on dead reckoning
+even when the estimate remains near its anchor. These are finite, sampled observations at the IMU socket.
+Run `python calibration/calibrate_p1_hold.py --out <dir>` and see `results/calibration/p1_stop_hold.json`.
+The archived raw trace has SHA-256 `68e3073f2b5974f46dc7c0b8f84cc767423e2d081d2c15d246bede248f7266f6`.
+
 ## 8. Reproducibility
 
 Archived campaigns and their analysis scripts, historical result sets and earlier controller variants are indexed in
