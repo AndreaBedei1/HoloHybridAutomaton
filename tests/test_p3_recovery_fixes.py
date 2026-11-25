@@ -138,7 +138,7 @@ def test_a_pair_with_different_delays_leaves_formation_recovery(dtau, gate):
     assert fls[0].ftime.tau > 0.25 * dtau and fls[1].ftime.tau == pytest.approx(dtau)
 
 
-def test_the_reported_lag_drives_the_resynchronisation_only_off_the_slot():
+def test_off_slot_resynchronisation_uses_reported_lag_without_relative_echo():
     ft = FormationTime(FormationClock(0.0, FR.v_nominal, 0.0), DEFAULT)
     for i in range(300):
         ft.update(10.0 + DT * i, DT, incomplete=False, keeping=False, behind=5.0, behind_rep=None)
@@ -146,6 +146,15 @@ def test_the_reported_lag_drives_the_resynchronisation_only_off_the_slot():
     for i in range(300):
         ft.update(40.0 + DT * i, DT, incomplete=False, keeping=False, behind=None, behind_rep=2.0)
     assert ft.sync == pytest.approx(min(FR.k_progress * 2.0, FR.v_nominal - FR.v_wait)) and ft.tau > 0.0
+
+
+def test_keeping_clock_uses_fresh_report_when_relative_echo_is_unavailable():
+    ft = FormationTime(FormationClock(0.0, FR.v_nominal, 0.0), DEFAULT)
+    ft.episode_t = FR.t_rejoin
+    ft.update(30.0, DT, incomplete=True, behind=None, behind_rep=2.0)
+    assert ft.sync > 0.0 and ft.rate < 1.0
+    ft.update(30.0 + DT, DT, incomplete=True, behind=None, behind_rep=None)
+    assert ft.sync == 0.0
 
 
 def _hold_clock():
