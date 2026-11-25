@@ -10,7 +10,7 @@ perception and automaton.
   O2  each invariant excludes observations admitted by all the others (none is redundant or vacuous);
   O3  non-vacuity: in every mode, every outgoing edge is enabled on some consistent observation, so the
       proofs over the domain are not proofs about an empty or truncated set;
-  O4  (A) consistent observation -> exactly one outgoing edge enabled, in every mode;
+  The shared-domain uniqueness obligation is covered by D1 and D2 in check_determinism.py.
   O5  runtime monitor: for ANY observation, the monitored one (sense_ok := sense_ok & consistent)
       enables exactly one edge, and an inconsistent one only the fault edge to
       FAILSAFE_HOLD_OR_RETREAT (no new mode);
@@ -98,10 +98,6 @@ def run(cfg=DEFAULT, verbose=True) -> Report:
         rep.add(all_sat(f"O3 non-vacuity [{src.value}]: every edge enabled on some consistent observation",
                         "for each edge e: exists consistent obs with guard(e)",
                         [(e.name, [legal, g]) for e, g in gs], note=f"{len(gs)} edges"), verbose)
-    for src in MODES:
-        gs = [g for _, g in [(e, e.guard(o, Z3L)) for e in edges[src]]]
-        rep.add(check(f"O4 consistent observation -> exactly one edge [{src.value}]",
-                      "invariants -> exactly one outgoing guard enabled", ENC, [legal, not_exactly_one(gs)]), verbose)
     m = Monitored(o, legal)
     bad = []
     for src in MODES:

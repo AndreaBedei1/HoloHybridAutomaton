@@ -478,10 +478,8 @@ def test_silence_never_discards_a_corridor_echo_a_fresh_report_may():
         echo = Target(frozenset({"FRONT"}), 4.4, 4.4, 0., 0., "UNKNOWN")
         gp.update(t, P, 0., [echo], {})
         o = gp.update(t + 0.1, P, 0., [echo], {})
-        if silent:
-            assert not gp.phantom and o.occ_busy
-        else:
-            assert gp.phantom and not o.occ_busy
+        assert gp.acoustic_exit.status_excluded(1, t + 0.1) == (not silent)
+        assert gp.phantom == (not silent) and o.occ_busy == silent
 
 
 def test_no_relation_implies_latch_input_in_the_whole_front_only_band():
@@ -529,14 +527,6 @@ def test_a_drone_back_in_the_box_of_the_gate_it_passed_claims_that_gate():
     v.idx, v.gate, v.admitted, v.verified = 0, GATE, True, True
     assert gate_report(v, GateObs(gate_id=None), np.array([0.0, 0.0, -5.0]), False, 1, B2.gate) == (0, pl.GP_COMMITTED)
     assert gate_report(v, GateObs(gate_id=None), np.array([6.0, 0.0, -5.0]), False, 1, B2.gate) == (0, pl.GP_PASSED)
-
-
-def test_silence_excludes_nobody_from_the_gate():
-    tr, gp = _observer(P, others=(1,))
-    gp.update(0.5, P, 0., [], {})
-    _rx(tr, P, 1.0, 1, [-5.4, 3.5, -5.], bound=9.0, phase=pl.GP_NONE)
-    assert gp.acoustic_exit.status_excluded(1, 1.1)
-    assert not gp.acoustic_exit.status_excluded(1, 1.0 + B2.acoustic.t_silent_gate_s + 9.0)
 
 
 def test_the_lateral_residual_stands_down_during_a_giveway():

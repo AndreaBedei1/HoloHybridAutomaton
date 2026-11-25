@@ -73,6 +73,7 @@ def test_lateral_drift_at_the_gate_is_corrected():
     assert aid.applied_m <= MAX_CORR_M
 
 
+@pytest.mark.slow
 def test_the_lateral_drift_is_removed_during_the_approach_before_the_bars():
     """Closed loop: the drone keeps its estimate on the centre line while it advances through the passage; its true
     lateral offset is the navigation error.  It is corrected before the drone reaches the gate plane, and no
@@ -265,6 +266,7 @@ def test_a_longitudinal_error_is_corrected():
     assert np.linalg.norm(p[:2] - p_true[:2]) < 0.15, (p - p_true, aid.last)
 
 
+@pytest.mark.slow
 def test_another_drone_ahead_does_not_move_a_correct_estimate():
     """The previous drone in the opening or just beyond it, seen in FRONT at the ranges of the bars or in between:
     the estimate (= truth) is never moved by more than the consistency band."""

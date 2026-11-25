@@ -91,14 +91,20 @@ TraceLog port 1985 is reserved so that the engine listens elsewhere, and an unve
 `python scripts/verify_engine_isolation.py --out <dir>` checks with two engines that each client receives its own sensor.
 
 ```bash
-python -m pytest -q -m "not slow and not holoocean"     # unit tests, no engine
-python scripts/run_tests.py <out dir> [workers]         # the formal suite, then one pytest process per test file, below-normal priority
-python formal/check_properties.py [--quick]             # every Z3 suite -> formal/results/SUMMARY.{json,csv}; about 40 min
+python scripts/run_tests.py <out dir> --quick           # development tests and formal checks, no engine
+python scripts/run_tests.py <out dir> [workers]         # complete formal suite and all Python tests under their configured skip conditions
+python formal/check_properties.py [--quick]             # formal checks only; results/ (complete) or results_quick/ (development)
 python scripts/run_demo.py --list                       # scenarios with duration and title
 python scripts/run_demo.py --scenario lost_drone_rejoin [--headless] [--profile MEDIUM --seed 1] [--b2 OFF|CLEAN|LOW|MEDIUM|BLACKOUT]
 python scripts/run_sensor_robustness_campaign.py --only gate_single --protocols B0 B2_MEDIUM --profiles CLEAN MEDIUM-ALL \
     --seeds 0 1 --raw <raw dir> [--dry-run] [--require-clean] [--shard i --nshards n]
 ```
+
+The test runner writes a log for every subprocess and exits nonzero on an unexpected verdict or a failed test. Development mode
+runs the automaton, observation, basic formation and B2 communication checks (the B2 step model runs in complete mode).
+It also runs the unmarked Python tests. Complete mode runs the longer navigation and gate regressions, all 11 formal suites,
+and preserves expected counterexamples in the formal report. The patched-engine smoke test is opt-in via `HOLO_FLEET_ENGINE_TESTS=1`
+on a host prepared with isolated engine roots and ports.
 
 `--b2 OFF` runs B0. HoloFleetViewer shows the fleet from above with P1/P2/P3 status and the automaton of the vehicle chosen with
 `--select K`; it keeps every step (arrow keys, `PgUp`/`PgDn`, `Home`/`End`, `Space`). The campaign runner starts every run in its own
@@ -163,14 +169,15 @@ planner (`tests/test_b2_isolation.py`). Controllers never read ground truth (`te
 
 ## 5. Guarantees
 
-`formal/results/SUMMARY.json`: 402 checks, all with the expected verdict: 188 proved, 36 bounded, 50 numeric, 58 mutation, 26 witness,
-14 scope, 11 reported, 19 declared limits (11 suites, about 40 min; formula, verdict and counterexample per check in `SUMMARY.csv`).
+The full-run baseline at `e3e31f0` (`formal/results/SUMMARY.json`) records 402 checks, all with the expected verdict: 188 proved, 36 bounded, 50 numeric, 58 mutation, 26 witness,
+14 scope, 11 reported, 19 declared limits (11 suites, about 40 min; formula, verdict and counterexample per check in `SUMMARY.csv`). The current complete runner has 392 checks: D1 and D2
+already imply the ten former O4 assertions, one per mode. O5 still checks the runtime monitor on inconsistent observations.
 Only `proved` (UNSAT of a universal or inductive property) and `bounded` (UNSAT over a horizon) support a guarantee; `numeric`
 checks enumerate or sample the deployed code; mutation, witness, scope and limit counterexamples are never evidence of safety.
 Every guarantee is conditional on section 1.
 
 **Automaton**, proved for every legal observation and mode: determinism and completeness (D1, D2), failsafe, collision and warning
-priority (H1-H3), gate entry, give-up and hazard rules (G1-G3), exact readable guards (L1), one edge per observation (O4, O5).
+priority (H1-H3), gate entry, give-up and hazard rules (G1-G3), exact readable guards (L1), one edge per monitored observation (O5).
 
 **P1.**
 - Proved: `G(d >= d_safe)` for all time by k-induction, k = 13 (S1b); triangle lemma, of three vehicles at most one sees the other
@@ -265,7 +272,7 @@ One seed per configuration: observations, not a statistical bound. Raw run direc
 0 entries into the CR without admission and 0 double occupancy; the mutation with the earlier hold point and no P2 filter has 126
 episodes with an entry without admission. P1 is violated in 24 of 144 episodes, all against a non-reacting third vehicle.
 
-**Unit tests** (one pytest process per file, 54 files): 687 passed, 0 failed.
+**Baseline unit tests** (commit `e3e31f0`, one pytest process per file): 687 passed, 1 skipped, 0 failed. The development and complete runners above execute each formal suite at most once.
 
 ## 8. Reproducibility
 

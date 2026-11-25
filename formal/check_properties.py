@@ -1,7 +1,7 @@
 """Run every formal check and write formal/results/SUMMARY.json and SUMMARY.csv (one row per check).
 
     python formal/check_properties.py            # all suites
-    python formal/check_properties.py --quick    # skip the slowest suite (P1: triangle lemma, ~60 s)
+    python formal/check_properties.py --quick    # development checks -> formal/results_quick/
 
 Exit status 0 iff every check returned its expected verdict.  An expected verdict is not a proof of safety: every check
 carries a ``kind`` (see KINDS) and only the kinds "proved" and "bounded" support a guarantee; an expected counterexample of kind
@@ -56,6 +56,9 @@ SUITES = [
 ]
 
 
+QUICK_SUITES = {check_determinism, check_observations, check_formation, check_b2_comm}
+
+
 KINDS = {
     "proved": "UNSAT of a universal or inductive property (local predicate, inductive invariant, k-induction, ranking function)",
     "bounded": "UNSAT over a bounded horizon (bounded model checking or bounded response from every state of an invariant)",
@@ -88,13 +91,13 @@ def kind(title: str, check: dict) -> str:
     return "witness"
 
 
-def write_csv(summary: dict) -> None:
+def write_csv(summary: dict, directory: Path) -> None:
     """One row per check: suite, encoding, property, formula, expected and returned verdict, pass, seconds, note,
     counterexample (expected SAT checks and failures; the same as SUMMARY.json)."""
     import csv
 
     cols = ["suite", "encoding", "kind", "prop", "formula", "expect", "verdict", "as_expected", "seconds", "note", "counterexample"]
-    with open(RESULTS_DIR / "SUMMARY.csv", "w", newline="", encoding="utf-8") as f:
+    with open(directory / "SUMMARY.csv", "w", newline="", encoding="utf-8") as f:
         w = csv.writer(f)
         w.writerow(cols)
         for s in summary["suites"]:
@@ -106,18 +109,22 @@ def write_csv(summary: dict) -> None:
 
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser(description=__doc__)
-    ap.add_argument("--quick", action="store_true")
+    ap.add_argument("--quick", action="store_true", help="run development checks in a separate results directory")
     args = ap.parse_args(argv)
+    directory = RESULTS_DIR.with_name("results_quick") if args.quick else RESULTS_DIR
     summary = {"started": time.strftime("%Y-%m-%d %H:%M:%S"), "suites": []}
     all_ok = True
     for title, mod, enc in SUITES:
-        if args.quick and mod is check_separation:
+        if args.quick and mod not in QUICK_SUITES:
             print(f"== {title}: skipped (--quick)")
             continue
         print(f"== {title}")
         t0 = time.time()
-        rep = mod.run(verbose=True)
-        rep.save()
+        if args.quick and mod is check_b2_comm:
+            rep = mod.run(verbose=True, step=False)
+        else:
+            rep = mod.run(verbose=True)
+        rep.save(directory)
         ok = rep.ok
         all_ok &= ok
         summary["suites"].append({
@@ -135,10 +142,10 @@ def main(argv=None) -> int:
     summary["kinds"] = {k: {"count": counts[k], "meaning": v} for k, v in KINDS.items()}
     summary["open_limits"] = [c["prop"] for su in summary["suites"] for c in su["checks"] if c["kind"] == "limit"]
     summary["unexpected"] = [c["prop"] for su in summary["suites"] for c in su["checks"] if not c["as_expected"]]
-    RESULTS_DIR.mkdir(parents=True, exist_ok=True)
-    (RESULTS_DIR / "SUMMARY.json").write_text(json.dumps(summary, indent=2, default=str))
-    write_csv(summary)
-    print(f"\nOVERALL: {'PASS' if all_ok else 'FAIL'} -> {RESULTS_DIR / 'SUMMARY.json'}, {RESULTS_DIR / 'SUMMARY.csv'}")
+    directory.mkdir(parents=True, exist_ok=True)
+    (directory / "SUMMARY.json").write_text(json.dumps(summary, indent=2, default=str))
+    write_csv(summary, directory)
+    print(f"\nOVERALL: {'PASS' if all_ok else 'FAIL'} -> {directory / 'SUMMARY.json'}, {directory / 'SUMMARY.csv'}")
     return 0 if all_ok else 1
 
 

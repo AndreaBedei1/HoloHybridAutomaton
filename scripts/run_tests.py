@@ -1,32 +1,51 @@
-"""Unit suite, one pytest process per file at below-normal priority: python scripts/run_tests.py <out dir> [workers]; then the formal suite."""
-import subprocess, sys, time
+"""Run formal verification and one pytest process per test file at below-normal priority."""
+
+import argparse
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
+import subprocess
+import sys
+import time
 
 ROOT = Path(__file__).resolve().parents[1]
-out = Path(sys.argv[1]); out.mkdir(parents=True, exist_ok=True)
-N = int(sys.argv[2]) if len(sys.argv) > 2 else 20
-BN = 0x00004000
+BN = getattr(subprocess, "BELOW_NORMAL_PRIORITY_CLASS", 0)
 
 
-def run(f):
-    t0 = time.time()
-    p = subprocess.run([sys.executable, "-m", "pytest", str(f), "-q", "-p", "no:cacheprovider", "--tb=short"], cwd=ROOT, stdin=subprocess.DEVNULL,
-                       stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, creationflags=BN)
-    (out / (f.stem + ".txt")).write_text(p.stdout, encoding="utf-8")
-    last = [l for l in p.stdout.splitlines() if l.strip()][-1:] or ["?"]
-    return f.name, p.returncode, round(time.time() - t0, 1), last[0]
+def main(argv=None):
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("out", type=Path, help="directory for subprocess logs")
+    parser.add_argument("workers", type=int, nargs="?", default=20)
+    parser.add_argument("--quick", action="store_true", help="use the development suites")
+    args = parser.parse_args(argv)
+    if args.workers < 1:
+        parser.error("workers must be positive")
+    args.out.mkdir(parents=True, exist_ok=True)
+
+    def run(command):
+        return subprocess.run([sys.executable, *command], cwd=ROOT, stdin=subprocess.DEVNULL,
+                              stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, creationflags=BN)
+
+    def run_test(path):
+        start = time.monotonic()
+        markers = ["-m", "not slow and not holoocean"] if args.quick else []
+        result = run(["-m", "pytest", str(path), "-q", "-p", "no:cacheprovider", "--tb=short", *markers])
+        (args.out / (path.stem + ".txt")).write_text(result.stdout, encoding="utf-8")
+        last = result.stdout.rstrip().splitlines()
+        return path.name, result.returncode, time.monotonic() - start, last[-1] if last else "(no output)"
+
+    formal = run(["formal/check_properties.py", *(["--quick"] if args.quick else [])])
+    (args.out / "formal.txt").write_text(formal.stdout, encoding="utf-8")
+    files = sorted((ROOT / "tests").glob("test_*.py"))
+    with ThreadPoolExecutor(args.workers) as workers:
+        results = list(workers.map(run_test, files))
+    failed = [r for r in results if r[1] != 0]
+    lines = [f"{name:48s} rc {code} {elapsed:7.1f}s {last}" for name, code, elapsed, last in results]
+    footer = [f"FILES {len(results)} FAILED {len(failed)}",
+              f"FORMAL rc {formal.returncode}: " + " | ".join(formal.stdout.splitlines()[-2:])]
+    (args.out / "summary.txt").write_text("\n".join(lines + footer) + "\n", encoding="utf-8")
+    print("\n".join([line for line, result in zip(lines, results) if result[1] != 0] + footer))
+    return int(bool(failed or formal.returncode or not results))
 
 
-p = subprocess.run([sys.executable, "formal/check_properties.py"], cwd=ROOT, stdin=subprocess.DEVNULL, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, creationflags=BN)
-(out / "formal.txt").write_text(p.stdout, encoding="utf-8")
-formal_line = f"FORMAL rc {p.returncode}: " + " | ".join(p.stdout.splitlines()[-2:])
-files = sorted((ROOT / "tests").glob("test_*.py"))
-with ThreadPoolExecutor(N) as ex:
-    res = list(ex.map(run, files))
-bad = [r for r in res if r[1] != 0]
-lines = [f"{r[0]:48s} rc {r[1]} {r[2]:7.1f}s {r[3]}" for r in res]
-lines.append(f"FILES {len(res)} FAILED {len(bad)}")
-lines.append(formal_line)
-(out / "summary.txt").write_text("\n".join(lines), encoding="utf-8")
-print("\n".join(l for l in lines if " rc 0 " not in l))
+if __name__ == "__main__":
+    raise SystemExit(main())

@@ -346,6 +346,23 @@
    "git_blob": "826489d24a10998a4f277fb9a76bc01b0eb7b9c9",
    "bytes": 29460,
    "successor_at_original_path": true
+  },
+  {
+   "original_path": "tests/test_formal_quick.py",
+   "new_path": "legacy/tests/test_formal_quick.py",
+   "what": "duplicate formal pytest wrapper",
+   "covers": [
+    "formal_runner_baseline"
+   ],
+   "description": "Pytest wrapper that reran five formal suites and inspected a saved summary. The complete formal runner retains those obligations. Reproduce the wrapper at the baseline commit.",
+   "related_tags": [],
+   "related_commits": [
+    "e3e31f0d25d3d4f28ab97bcf929cb8ffba6db868"
+   ],
+   "last_commit_at_original_path": "e3e31f0",
+   "sha256": "25da3416e7f889063d0478fd05290658fd98680c3b58595186746f739b7cf115",
+   "git_blob": "c5f419cbc2257e2f4ba5f3b1eed06510eba8f751",
+   "bytes": 1498
   }
  ]
 }

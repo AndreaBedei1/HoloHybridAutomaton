@@ -110,6 +110,7 @@ def test_the_lateral_allowance_of_the_queue_bound_covers_the_lateral_deviation_o
         assert max(held) <= ENV.w_drift_max / G.k_track + 0.02 <= G.hold_lateral_allow + 1e-9
 
 
+@pytest.mark.slow
 @pytest.mark.parametrize("drift", DRIFTS[1:])
 @pytest.mark.parametrize("bs,bl", [(-1.0, 0.0), (-0.8, 0.6), (0.5, 0.0)])
 def test_a_held_drone_never_enters_the_cr_with_lateral_drift(bs, bl, drift):
@@ -117,6 +118,7 @@ def test_a_held_drone_never_enters_the_cr_with_lateral_drift(bs, bl, drift):
     assert not w.entries and not any(r["cr"] for r in w.rows)
 
 
+@pytest.mark.slow
 @pytest.mark.parametrize("bs", [-1.0, -0.5, 0.5, 1.0])
 def test_a_held_drone_with_a_drone_approaching_from_behind_never_enters_the_cr(bs):
     """Closed loop with the separation layer on: a committed drone held by the stage-2 check (navigation bias ``bs``),
@@ -135,6 +137,7 @@ def test_a_held_drone_with_a_drone_approaching_from_behind_never_enters_the_cr(b
     assert not [e for e in w.entries if e["drone"] == "B"] and w.double is None
 
 
+@pytest.mark.slow
 @pytest.mark.parametrize("bs,bl", BIASES)
 def test_a_held_drone_never_enters_the_cr_whatever_the_declared_navigation_error(bs, bl):
     """Estimate - truth (bs along the axis, bl lateral, norm <= nav_err_m), residual drift towards the CR, avoidance
