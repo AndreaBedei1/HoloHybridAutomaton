@@ -32,8 +32,13 @@ the controller logs which property it can no longer certify.
 - Navigation error at most `nav_err_m` = 1.0 m per axis in the gate frame; depth -9.0 to -1.5 m; braking at least 0.5 m/s^2;
   nominal speed at most 0.5 m/s. Acoustic envelope: the MEDIUM channel at 3 sigma (`AcousticConfig`), latency at most 0.40 s,
   clock skew at most 0.05 s, TDMA period 1 s.
-- Sensor noise profiles CLEAN, LOW, MEDIUM. HIGH is a stress profile outside the domain (section 7: sensor-fault failsafe,
-  no passage, P1 and P2 held).
+- The receiver validates capture time and numeric integrity before use. Maximum onboard ages are 0.25 s for sonar and IMU,
+  0.20 s for compass and depth, and 0.35 s for DVL health. The DVL velocity-loop freshness is stricter at 0.15 s. The sensor
+  rates are 10 Hz (sonar, DVL) and 30 Hz (IMU, compass, depth). Missing or invalid data cannot refresh a measurement.
+- CLEAN, LOW, MEDIUM and HIGH are simulation profiles. MEDIUM's Gaussian jitter and independent fades do not impose hard
+  bounds on range error or consecutive misses. The formal operating domain requires the independently declared range-error,
+  tilt, capture and actuator premises at use. See the sensor-specific sources and bias budget in `config/parameter_sources.json`.
+  HIGH is a stress profile.
 - Permanent failures only outside the exclusion zone of the gate (`holo_fleet/scope.py`) and never inside the CR: one failure
   for 2 vehicles (none while committed), at most n - 2 for n >= 3.
 
