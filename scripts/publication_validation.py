@@ -27,14 +27,16 @@ def digest(path):
     return h.hexdigest()
 
 
-def validate_isolation(path):
+def validate_isolation(path, workers=2):
+    """The isolation record must show ``workers`` live engines, each with its own client, root and non-default ports."""
     proof = load(path)
     rows = proof["instances"]
-    if (not proof["all_passed"] or len(rows) != 2 or not all(r["checks_passed"] for r in rows)
-            or len({r["client_uuid"] for r in rows}) != 2 or len({r["root"] for r in rows}) != 2
+    ports = [p for r in rows for p in r["listen_ports"]]
+    if (not proof["all_passed"] or len(rows) != workers or not all(r["checks_passed"] for r in rows)
+            or len({r["client_uuid"] for r in rows}) != workers or len({r["root"] for r in rows}) != workers
             or not all(r["listen_ports"] and 1985 not in r["listen_ports"] for r in rows)
-            or set(rows[0]["listen_ports"]) & set(rows[1]["listen_ports"])):
-        raise ValueError("two-engine isolation check failed")
+            or len(ports) != len(set(ports))):
+        raise ValueError(f"{workers}-engine isolation check failed")
 
 
 def execute(raw, matrix, workers):
@@ -165,7 +167,7 @@ def main():
     parser.add_argument("--raw", type=Path, required=True)
     parser.add_argument("--out", type=Path, required=True)
     parser.add_argument("--run", action="store_true")
-    parser.add_argument("--workers", choices=(1, 2), type=int, default=1)
+    parser.add_argument("--workers", choices=(1, 2, 3, 4), type=int, default=1)
     parser.add_argument("--isolation-record", type=Path)
     args = parser.parse_args()
     matrix = load(MATRIX)
@@ -174,10 +176,10 @@ def main():
 
         if not os.environ.get("HOLO_FLEET_SLOT_REGISTRY"):
             parser.error("set HOLO_FLEET_SLOT_REGISTRY to the shared engine slot registry")
-        if args.workers == 2:
+        if args.workers > 1:
             if args.isolation_record is None:
-                parser.error("two workers need a completed two-engine isolation record")
-            validate_isolation(args.isolation_record)
+                parser.error("several workers need a completed isolation record with as many engines")
+            validate_isolation(args.isolation_record, args.workers)
         os.environ["HOLO_FLEET_ENGINE_SLOTS"] = str(args.workers)
         execute(args.raw.resolve(), matrix, args.workers)
     result = summarize(args.raw, matrix)
