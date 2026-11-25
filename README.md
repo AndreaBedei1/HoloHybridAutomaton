@@ -166,9 +166,10 @@ The stage-2 hold stays at `s = -2.5525 m`, retaining the sonar acquisition geome
 
 **P2 filter** (`control/gate_safety.py`). It edits the final velocity command of every vehicle not admitted to the CR and within 8 m
 of it (mission and avoidance modes). A command is applied only if its backup cannot bring the true centre into the CR column
-(the CR at every depth): the command for 0.35 s (control period plus largest data age), braking at 0.5 m/s^2, then station keeping
+(the CR at every depth): the command for 0.35 s (control period plus largest data age), modelled braking at 0.5 m/s^2, then station keeping
 with hold error `w_drift_max` / `k_hold` = 0.30 m, drift 0.15 m/s in any direction, true position within `nav_err_m` of the estimate
-on every axis. Selection uses a robust margin with an onboard-consistent lookahead (next estimate, velocity within its measurement
+on every axis. The braking rate is a premise of this reach abstraction. The axis trials report finite excursions,
+so a uniform braking transient for field hardware remains open. Selection uses a robust margin with an onboard-consistent lookahead (next estimate, velocity within its measurement
 bound), and the applied command hands a latched certificate to the next step; certificates are dropped on a position correction, a
 new gate or a larger drift bound (DVL outage). With no certified command the controller logs `P2_UNCERTIFIED` and retreats
 (`P2_RECOVERY`). In avoidance modes each decision is classified `JOINTLY_FEASIBLE`, `UNCERTAIN` or `JOINTLY_INFEASIBLE` and logged.
@@ -198,7 +199,15 @@ priority (H1-H3), gate entry, give-up and hazard rules (G1-G3), exact readable g
 **P1.** S5 certifies a continuous control interval conditional on a sound nearest-centre range bound and independently valid
 ground-speed caps for both vehicles. The runner records the interval margin on the final setpoint and actuator command after
 all gate filters. Empty or unhealthy sonar observations give no coverage. The older radial-motion model below has its own premises.
-Its induction result does not by itself certify the deployed closed loop or an indefinitely maintained hold.
+A proof for the complete deployed closed loop and indefinite relative hold remains open.
+
+The nearest-pair geometry is independent of the formation. For closest centres A and B with separation d, a third centre C
+satisfies `dist(C, AB)^2 >= 3 d^2 / 4`, by expanding the squared distance to a convex combination of A and B. At d >= 1 m,
+the clearance 0.866 m exceeds the sum of the 0.389 m hull radius and 0.30 m sonar offset. A third hull cannot block that
+direct ray in the ball model. The mounted cones give central-ray coverage in the conservative 3.0–11.7 m band, before
+accounting for fades and the echo classifier. A healthy stream may still miss the relevant echo. A fixed graph of adjacent
+slots is unsafe during reconfiguration: in line3 the centre drone can move 3.5 m forward while the outer drones approach
+each other to 0.8 m, with both adjacent distances remaining at least 3.5 m.
 
 - Proved in the radial abstraction: `G(d >= d_safe)` for all time by k-induction, k = 13 (S1b); triangle lemma, of three vehicles at most one sees the other
   two more than 90 deg apart (S3); a gate-constrained vehicle that may only stop with a partner that opens (S1gb, k = 15).
