@@ -98,16 +98,10 @@ class PerceptionConfig:
 class GateRule:
     """P2 critical-region protocol (gate frame: s along the axis towards the exit, l left, z up).
 
-    The CR is the box cr_s_min <= s <= cr_s_max, |l| <= cr_half_width, |z| <= cr_half_height (gate frame, origin at the
-    gate centre): it covers the approach immediately before the gate and the gate passage itself, not a region after
-    the gate.  Exit plane ``cr_s_max`` = 0.55 m: the G06 bars are 0.30 m deep along the axis
-    (arena_bridge.GATE_BAR_SECTION_M), so a hull touches the frame only while its centre is within 0.15 + R_OUT
-    (= |HULL_HALF| = 0.389 m, any heading) = 0.54 m of the gate plane; the whole passage [-0.54, 0.54] lies inside.
-    Entry plane ``cr_s_min`` = cr_s_max - 1.6 = -1.05 m: the CR keeps the length (1.6 m) and the volume of the previous
-    symmetric box |s| <= 0.8, so the monitored region is not shrunk; the previous pre-gate part [-0.8, 0] is inside the
-    new CR and only the post-passage part (0.55, 0.8] is dropped.  ``cr_half_len`` / ``cr_center_s`` are derived
-    (half length 0.8 m, centre at s = -0.25 m); ``cr_lo``/``cr_hi``/``cr_center``/``cr_half``/``in_cr`` are the box for
-    every user (referee, perception, control, formal models), so that all of them agree with the referee's P2.
+    The monitored CR covers the approach from -0.8 m through the gate plane at 0 m.
+    The independent physical clearance plane is at +0.55 m: 0.15 m bar half depth plus
+    the 0.389 m hull circumscribed radius, rounded up. Occupancy sensing and admission
+    reserve the approach and passage through that clearance plane.
     Queue points are abreast on the queue line s = queue_s(n), ``queue_spacing`` apart, so that two
     queued drones see each other in a pure LEFT/RIGHT relation; the line is far enough back that the
     whole CR lies inside every queued drone's FRONT cone (``queue_cone_deg`` + heading tolerance <
@@ -117,8 +111,9 @@ class GateRule:
     queue line, crosses the gate and veers towards its own formation lane after ``veer_s``.
     """
 
-    cr_s_min: float = -1.05
-    cr_s_max: float = 0.55
+    cr_s_min: float = -0.8
+    cr_s_max: float = 0.0
+    passage_clear_s: float = 0.55
     cr_half_width: float = 1.0
     cr_half_height: float = 1.0
     queue_spacing: float = 3.5
@@ -144,11 +139,11 @@ class GateRule:
     stack_spacing: float = 3.5
     queue_lateral_max: float = 3.5
     hold_err_m: float = 0.10
-    stage2_hold_s: float = -2.5525
+    stage2_hold_s: float = -2.3025
     hold_lateral_allow: float = 0.27
     """Stage-2 hold of a committed drone before admission (gate frame s, on the axis): control/gate_safety.hold_s, the
     nearest point where holding is P2-safe under the declared navigation error (cr_s_min - (nav_err_m + reach of a
-    hold + slack) = -2.4525 m), minus the measured holding error ``hold_err_m``.  A derived value, kept equal to the
+    hold + slack) = -2.2025 m), minus the measured holding error ``hold_err_m``.  A derived value, kept equal to the
     derivation by tests/test_hold_point.py."""
 
     v_cross_min: float = 0.12
@@ -162,11 +157,12 @@ class GateRule:
 
     @property
     def t_cross_max(self) -> float:
-        """Longest time an admitted drone can still be in the CR after its admission (derived, under the premise v_cross_min):
-        its true centre is at s >= stage2_hold_s - admit_zone_m - nav_err_m when admitted and it leaves the CR at s > cr_s_max:
-        (cr_s_max - stage2_hold_s + admit_zone_m + nav_err_m) / v_cross_min = (0.55 + 2.5525 + 0.4 + 1.0) / 0.12 = 37.52 s.
-        The degraded admission wait of B2 (AcousticConfig, formal/check_b2_comm.py) is at least this long."""
-        return (self.cr_s_max - self.stage2_hold_s + self.admit_zone_m + self.nav_err_m) / self.v_cross_min
+        """Progress-based time from the earliest admission to physical clearance."""
+        return (self.passage_clear_s - self.stage2_hold_s + self.admit_zone_m + self.nav_err_m) / self.v_cross_min
+
+    def passage_hi(self) -> np.ndarray:
+        """Upper corner of the physical occupancy envelope used by admission sensing."""
+        return np.array([self.passage_clear_s, self.cr_half_width, self.cr_half_height])
 
     @property
     def cr_half_len(self) -> float:

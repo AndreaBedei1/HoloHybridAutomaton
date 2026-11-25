@@ -40,7 +40,7 @@ def test_the_hold_is_the_derived_p2_safe_hold():
     b = gs.P2Bounds.from_cfg(CFG)
     assert b.e_track == pytest.approx(ENV.w_drift_max / 0.5) and b.tau_c == pytest.approx(ENV.dt + ENV.tau_max)
     boundary = G.cr_s_min - (G.nav_err_m + ENV.w_drift_max * b.tau_c + b.e_track + gs.SLACK_M)
-    assert boundary == pytest.approx(-(1.05 + 1.0 + 0.0525 + 0.30 + 0.05), abs=1e-9)
+    assert boundary == pytest.approx(-(0.8 + 1.0 + 0.0525 + 0.30 + 0.05), abs=1e-9)
     assert gs.hold_s(CFG) == pytest.approx(boundary, abs=1e-6)
     assert G.stage2_hold_s == pytest.approx(gs.hold_s(CFG) - G.hold_err_m, abs=1e-6)
     gate = K.make_gate()

@@ -128,25 +128,23 @@ priority order and all guards are evaluated at runtime as a determinism monitor.
 (`d_min` < 1.7 m, exit 2.0 m), separation warning (< 2.4 m, exit 2.7 m), mutex modes, formation recovery, formation keeping.
 `d_min` is a sonar-only lower bound of the pair distance; the escape planner picks 3-D directions with a guaranteed opening speed.
 
-**Geometry.** The CR is the approach before the gate plus the passage. Gate frame: s along the axis, l left, z up. `GateRule`:
-s in [-1.05, 0.55] m (length 1.6 m), |l| <= 1.0 m, |z| <= 1.0 m (the opening of G06 is 2.0 m x 2.0 m). The exit plane is the bar
-depth 0.30 m (half 0.15 m) plus the hull circumscribed radius `R_OUT` = 0.39 m, 0.54 m, rounded to 0.55 m. Stage-2 hold
-`stage2_hold_s` = -2.5525 m: `cr_s_min` - (`nav_err_m` + 0.3525 m reach of a hold + 0.05 m slack) = -2.4525 m, minus the measured
-hold error 0.10 m. Abreast queue lines (`GateRule.queue_s`): -2.55 m (n = 1), -5.39 m (2), -5.75 m (3); stacked 2 x 2: -5.76 m (Q1).
+**Geometry.** Gate frame: s along the axis, l left, z up. The monitored CR is `-0.8 <= s <= 0.0 m`
+with `|l| <= 1.0 m` and `|z| <= 1.0 m` at G06. Admission sensing reserves the passage through
+`s = +0.55 m` separately: the 0.15 m bar half depth plus the 0.389 m hull radius, rounded up.
+The derived stage-2 hold is `s = -2.3025 m`, including 0.10 m measured holding error. Queue lines follow `GateRule.queue_s` and the supported layouts in Q1.
 
 **Gate protocol.**
 1. *Precedence.* A vehicle waits at its queue point. Its relation to each neighbour comes from the sonar sector pattern only
    (`ha/mutex_rule.py`): the leftmost queued vehicle present has priority, after `t_clear` = 1.0 s.
 2. *Occupancy latch.* BUSY on an unexplained FRONT echo in the CR range or on a claim (B2); EXITING on an exit witness (sonar, or
-   acoustic with the corridor empty); FREE `t_clear` later, or after `t_occ_max` = 25 s without corridor echoes (fallback; it
-   assumes an occupant crosses the CR at `v_cross_min` = 0.12 m/s or more).
+   acoustic with the corridor empty); FREE `t_clear` later with the corridor still clear. A timeout alone cannot release a BUSY latch.
 3. *Commit* (edge `commit`): calm (no fault, no separation hazard), at the queue point, sonar priority, latch free.
 4. *Admission.* The committed vehicle follows the pass path to the stage-2 hold and enters the CR only when the automaton is in
    `MUTEX_PASS` with healthy sensors, the gate localization is validated, the stage-2 check holds (no unexplained corridor echo for
    3 captures with the FRONT sonar healthy, no claim, no vehicle heard or known inside), the estimated s is at least
    `stage2_hold_s` - 0.4 m, and the commitment is at least `admit_wait_s` old. B2: `commit_admit_min_s` = 4.0 s if every other
    vehicle of the plan was heard fresh (report emitted at most `admit_fresh_s` = 3.5 s ago), else `commit_admit_min_s` +
-   `t_cross_max` = 41.52 s, with `t_cross_max` = (0.55 + 2.5525 + 0.4 + 1.0) / 0.12 = 37.52 s. B0: 0. Silence is never evidence: a
+   `t_cross_max` = 39.44 s, with `t_cross_max` = (0.55 + 2.3025 + 0.4 + 1.0) / 0.12 = 35.44 s. B0: 0. Silence is never evidence: a
    vehicle not heard is unknown, a claim (COMMITTED or ADMITTED report) stands until its sender reports otherwise, a silent vehicle
    is never excluded as a possible occupant.
 5. *Give-up.* Without admission, 26 s (`t_occ_max` + `t_clear`) after the wait ends, the vehicle retreats behind the abort plane and
@@ -224,7 +222,7 @@ Its induction result does not by itself certify the deployed closed loop or an i
 - **Mutually unheard pair.** After 41 or more consecutive losses in both directions between two vehicles (B2C-Es) both admissions
   degrade and P2 rests on the B0 mechanisms only, precedence and latch (B2C-EL, B2C-S1b); the stage-2 sonar is not certified (B2C-G1).
 - **P2 filter envelope.** P2R4l: a DVL outage that begins, or a position correction, between steps after a certificate is handed can
-  leave no certified action; P2R4 takes the selection rule as an axiom, checked numerically (J1, P2R4n). The MEDIUM-ALL run of
+  leave no certified action. The controller attempts to reserve the worst-case DVL outage drift when handing over a certificate. Position corrections still invalidate it. P2R4 takes the selection rule as an axiom, checked numerically (J1, P2R4n). The MEDIUM-ALL run of
   `gate_single` logged 9 `P2_UNCERTIFIED` events and 21 failsafe entries, with P1 and P2 holding. F1pe, F1pme, F0qe: with a navigation
   error, drift or estimate jump outside the envelope an entry by avoidance is possible and two vehicles can be in the CR.
 - **Permanent failure.** Silence is not evidence, so a dead vehicle is never accounted for and survivors can stall safely: F2c (failure
@@ -232,7 +230,7 @@ Its induction result does not by itself certify the deployed closed loop or an i
   (a hull floating above the queue). The bounds F2 do not model the degraded admission wait.
 - **False vacancy.** A live vehicle with a mute transmitter is declared vacant after `t_silent_s` = 45 s. In the targeted run
   `b2c_mute_transmitter` the class is `P3_FAILURE` only for the requirement "no false vacancy"; P1, P2 and the P3 contract held.
-- **Liveness cost.** A vehicle not freshly heard delays every admission to 41.52 s after the commitment. In the targeted runs
+- **Liveness cost.** A vehicle not freshly heard triggers the degraded admission wait. In the targeted runs
   `lost_drone_mutex` and `b2c_mute_transmitter` commitment to passage took 54 to 64 s (raw logs), above the earlier referee budget
   (`gate_bounded_response_pre_budget_update` false); the B2 budget now includes `commit_admit_min_s` + `t_cross_max`. In `b2c_blackout`
   vehicle 1 gave up its stage-2 entry twice because no localization could be validated while the others were unknown (the map-aiding
@@ -240,7 +238,7 @@ Its induction result does not by itself certify the deployed closed loop or an i
   the class is PASS and P1, P2 hold, the cost is time.
   A vehicle without a validated gate localization is never admitted.
 - **B0, 3 vehicles.** M4g: in abreast, triangle and line layouts of 3 vehicles a queued vehicle may get no sonar exit witness of a
-  passing vehicle (detection range); the latch then falls back to `t_occ_max`.
+  passing vehicle (detection range); the latch can stay BUSY without a positive exit witness.
 - **P1.** Proved pairwise; several neighbours rest on the triangle lemma and the two-threat escape (S2c), not on a fleet model.
   S1gm: two vehicles that can only stop (each gate-constrained, neither opens) close below `d_safe` within 15 s; queue geometry (Q1)
   and standoff are meant to keep this unreachable, shown in simulation, not proved. A stacked column on the axis

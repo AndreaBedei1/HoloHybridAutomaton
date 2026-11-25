@@ -37,7 +37,7 @@ def obstruction_box(g, cfg: FleetConfig = DEFAULT) -> tuple:
     """Corners (lo, hi) in the gate frame (s, l, dz) of the box holding the critical region (GateRule.cr_lo / cr_hi) and
     the frame of gate g, grown by R_OUT: the obstruction volume O."""
     G = cfg.gate
-    lo, hi = G.cr_lo(), G.cr_hi()
+    lo, hi = G.cr_lo(), G.passage_hi()
     for b in getattr(g, "bars", ()):
         for sg in itertools.product((-1.0, 1.0), repeat=3):
             c = np.asarray(g.to_gate_frame(b.center + b.axes @ (np.array(sg) * b.half)), float)

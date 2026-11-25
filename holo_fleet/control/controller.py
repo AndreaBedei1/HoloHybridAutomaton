@@ -7,6 +7,7 @@ IMU, compass, depth) and its mission plan.  ``uses_ground_truth`` is checked by 
 from __future__ import annotations
 
 import math
+from dataclasses import replace
 from typing import Any, Dict, List, Optional
 
 import numpy as np
@@ -197,12 +198,12 @@ class DroneController:
 
         nb = self.perception.nav_bound
         fresh = t - self.perception.nav.state.t_dvl <= NavBound.DVL_STALE_S
-        # error of the measured velocity in the P2 envelope: the DVL noise (3 sigma) while it is fresh, the speed bound
-        # during an outage
-        v_err = float(nb.k_rw) if fresh else float(nb.v_bound)
-        # drift bound of the estimate relative to the truth (the station-keeping certificates of gate_safety): the error
-        # of the measured velocity it integrates plus the compass and DVL scale term of NavBound at the speed bound
-        rho = v_err + float(nb.k_lin) * float(nb.v_bound)
+        speed_bound = float(nb.v_bound)
+        estimated_speed = max(abs(float(component)) for component in obs.v_world)
+        scale_error = float(nb.k_lin) * speed_bound
+        outage_rho = speed_bound + max(speed_bound, estimated_speed) + scale_error
+        v_err = float(nb.k_rw) if fresh else speed_bound + estimated_speed
+        rho = v_err + scale_error if fresh else outage_rho
         gc = self.flows.gate_constraint(obs, authorized=self.ha.committed and self.flows.cr_cleared, v_err=v_err, rho=rho)
         cert_reset = self._p2_correction()
         mission_filter = self.flows.p2_filter(gc, v_mis, self.flows.mission_anchor(gc) if gate_flow else {})
@@ -236,7 +237,7 @@ class DroneController:
         loops = [self.flows.mission_anchor(gc) if gate_flow else {}]
         if mode == Mode.FAILSAFE_HOLD_OR_RETREAT:
             loops.append(self.flows.mission_anchor(gc, failsafe=True, probe=not self.envmon.ok))
-        self._p2_certify_step(t, mode, gc, v, loops, cert_reset)
+        self._p2_certify_step(t, mode, gc, v, loops, cert_reset, outage_rho)
         from holo_fleet.perception.nav import NavBound
         dvl_fresh = t - self.perception.nav.state.t_dvl <= NavBound.DVL_STALE_S
         cmd = self.ll.command(self.perception.nav.state, v, yaw_d, authority, dt, dvl_fresh=dvl_fresh)
@@ -387,12 +388,17 @@ class DroneController:
             self.flows.p2_cert = None
         return jumped
 
-    def _p2_certify_step(self, t: float, mode: Mode, gc, v: np.ndarray, loops, cert_reset: bool) -> None:
+    def _p2_certify_step(self, t: float, mode: Mode, gc, v: np.ndarray, loops, cert_reset: bool,
+                         outage_rho: Optional[float] = None) -> None:
         """The certificate the applied command hands to the next step (Flows.p2_certify, gate_safety.GateConstraint.certify),
         recorded with the step.  An applied command that carries none - the certified set was empty or nothing certified
         was chosen - is logged as P2_UNCERTIFIED (on a change); the recursive argument of gate_safety (formal P2R4) says
         this does not happen while the declared bounds hold after a certified start."""
-        cert = self.flows.p2_certify(gc, v, loops)
+        cert = None
+        if gc is not None and outage_rho is not None and outage_rho > gc.rho_eff:
+            cert = self.flows.p2_certify(replace(gc, rho=outage_rho), v, loops)
+        if cert is None:
+            cert = self.flows.p2_certify(gc, v, loops)
         if gc is None:
             self._p2_cert_key = None
             return

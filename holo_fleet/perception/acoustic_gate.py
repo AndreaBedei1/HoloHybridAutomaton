@@ -25,7 +25,7 @@ which a hull in or at the CR was seen; since then the corridor has been empty):
      exceeds the largest distance from the own position to the grown CR: a drone heard far enough away cannot be in
      it, and the direction of arrival, the least precise part of a fix at these ranges, is not needed.
 (A3) progress, not safety: at least one possible occupant was heard beyond the exit face (the nominal positions of
-     those fixes at s > cr_s_max + R_OUT): the occupant has passed, not backed out.
+     those fixes at s > passage_clear_s + R_OUT): the occupant has passed, not backed out.
 (A4) an episode none of whose possible occupants is a drone of the plan (every other drone excluded at t_lc) gives
      the exit evidence once every other drone is also positively outside the CR now (A2): no fleet drone is in it.
 
@@ -96,8 +96,8 @@ class AcousticExit:
         self.tracker = tracker
         self.others = list(others)
         G = cfg.gate
-        self.lo, self.hi = G.cr_lo(), G.cr_hi()
-        self.center, self.half = G.cr_center(), G.cr_half()
+        self.lo, self.hi = G.cr_lo(), G.passage_hi()
+        self.center, self.half = (self.lo + self.hi) / 2, (self.hi - self.lo) / 2
         self.v_bound = speed_bound(cfg)
         self.sighting: Optional[Dict] = None
         self.veto: set = set()

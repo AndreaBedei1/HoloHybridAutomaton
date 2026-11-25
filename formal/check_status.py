@@ -111,7 +111,7 @@ def positive_occupancy(cfg: FleetConfig, g, n_cases: int = 300, seed: int = 11, 
     return {"cases": n_cases, "violations": bad}
 
 
-def m3_status_model(cfg, geo, view, t_status, v_hi, e0, steps=320, hold=False, band_latch=True):
+def m3_status_model(cfg, geo, view, t_status, v_hi, e0, steps=320, hold=False, band_latch=True, timeout=False):
     """The timed latch abstraction of M3 extended with the phantom rule of the gate-status payload: B ignores the corridor echoes of A
     while A's last report (before A commits, the later packets being lost) is younger than t_status; the FRONT-only corridor
     echoes make no relation at all."""
@@ -146,7 +146,7 @@ def m3_status_model(cfg, geo, view, t_status, v_hi, e0, steps=320, hold=False, b
         C.append(beyond[k] == z3.And(seen[k], sA[k] > b_s))
     for k in range(steps):
         C.append(since[k + 1] == z3.If(corr[k + 1], 0, since[k] + 1))
-        C.append(busy[k + 1] == z3.If(corr[k + 1], True, z3.If(z3.And(busy[k], z3.Or(beyond[k + 1], since[k + 1] > t_occ)), False, busy[k])))
+        C.append(busy[k + 1] == z3.If(corr[k + 1], True, z3.If(z3.And(busy[k], z3.Or(beyond[k + 1], z3.And(timeout, since[k + 1] > t_occ))), False, busy[k])))
         C.append(quiet[k + 1] == z3.If(z3.Or(corr[k + 1], busy[k + 1]), 0, quiet[k] + 1))
         wait = z3.And(seen[k + 1], sA[k + 1] <= b_s, z3.Not(no_rel(sA[k + 1])))
         C.append(prio[k + 1] == z3.If(wait, 0, prio[k] + 1))
@@ -247,7 +247,7 @@ def passage_soundness(cfg: FleetConfig, g, n_cases: int = 2000, seed: int = 19) 
     DVL scale errors and outages; a drone blocked in the CR never verifies."""
     rng = np.random.default_rng(seed)
     G, bad, blocked_bad = cfg.gate, 0, 0
-    s_lim = G.cr_s_max + R_OUT
+    s_lim = G.passage_clear_s + R_OUT
     dt = 0.1
     for _ in range(n_cases):
         v = PassageVerifier(cfg)
@@ -289,7 +289,7 @@ def sender_rule(cfg: FleetConfig, n_cases: int = 20000, seed: int = 23, margin_c
 
     rng = np.random.default_rng(seed)
     G = cfg.gate if not margin_cut else dataclasses.replace(cfg.gate, nav_err_m=cfg.gate.nav_err_m - margin_cut)
-    lo, hi = cfg.gate.cr_lo(), cfg.gate.cr_hi()
+    lo, hi = cfg.gate.cr_lo(), cfg.gate.passage_hi()
     outside = 0
     for _ in range(n_cases):
         q = rng.uniform(lo, hi)
@@ -414,8 +414,8 @@ def run(cfg: FleetConfig = B2, verbose: bool = True) -> Report:
     side3 = max(geo3["views"], key=lambda w: w["queue_l"])
     geo4 = cm.geometry(cfg, 4)
     side = max(geo4["views"], key=lambda w: w["queue_l"])
-    rep.add(check("S2hs scope: beyond the 32 s bound a drone stopped behind the bars before the CR, with no claim heard, is released by the t_occ_max fallback", "expect counterexample (claims S1, S4 cover it when heard)", ENC,
-                  m3_status_model(cfg, geo4, side, 1.0, 0.70, 1.35, steps=420, hold=True), expect="sat", timeout_ms=900000,
+    rep.add(check("S2hs mutation: beyond the 32 s bound a drone stopped behind the bars before the CR, with no claim heard, is released by the t_occ_max fallback", "expect counterexample (claims S1, S4 cover it when heard)", ENC,
+                  m3_status_model(cfg, geo4, side, 1.0, 0.70, 1.35, steps=420, hold=True, timeout=True), expect="sat", timeout_ms=900000,
                   note=f"n=4, outer queue point l={side['queue_l']:+.2f} (masked from s = {side['mask_from_s']:.2f}, before the CR entry "
                        f"{cfg.gate.cr_s_min}).  Retargeted from the n=3 side view: there the masked region now starts at s = "
                        f"{side3['mask_from_s']:.2f}, inside the CR, so a drone stopped before the CR is always seen"), verbose)
