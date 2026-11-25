@@ -1,10 +1,10 @@
 {
-  "started": "2026-11-24 19:50:49",
+  "started": "2026-11-24 21:27:16",
   "suites": [
     {
       "title": "Local determinism & priority hierarchy",
       "encoding": "holo_fleet/ha/spec.py",
-      "seconds": 0.5,
+      "seconds": 0.8,
       "all_passed": true,
       "checks": [
         {
@@ -13,7 +13,7 @@
           "expect": "unsat",
           "verdict": "unsat",
           "as_expected": true,
-          "seconds": 0.004,
+          "seconds": 0.002,
           "note": "",
           "counterexample": null,
           "kind": "proved"
@@ -24,7 +24,7 @@
           "expect": "unsat",
           "verdict": "unsat",
           "as_expected": true,
-          "seconds": 0.001,
+          "seconds": 0.002,
           "note": "",
           "counterexample": null,
           "kind": "proved"
@@ -35,7 +35,7 @@
           "expect": "unsat",
           "verdict": "unsat",
           "as_expected": true,
-          "seconds": 0.001,
+          "seconds": 0.0,
           "note": "",
           "counterexample": null,
           "kind": "proved"
@@ -46,7 +46,7 @@
           "expect": "unsat",
           "verdict": "unsat",
           "as_expected": true,
-          "seconds": 0.004,
+          "seconds": 0.0,
           "note": "",
           "counterexample": null,
           "kind": "proved"
@@ -68,7 +68,7 @@
           "expect": "unsat",
           "verdict": "unsat",
           "as_expected": true,
-          "seconds": 0.001,
+          "seconds": 0.0,
           "note": "",
           "counterexample": null,
           "kind": "proved"
@@ -90,7 +90,7 @@
           "expect": "unsat",
           "verdict": "unsat",
           "as_expected": true,
-          "seconds": 0.001,
+          "seconds": 0.0,
           "note": "",
           "counterexample": null,
           "kind": "proved"
@@ -112,7 +112,7 @@
           "expect": "unsat",
           "verdict": "unsat",
           "as_expected": true,
-          "seconds": 0.001,
+          "seconds": 0.002,
           "note": "",
           "counterexample": null,
           "kind": "proved"
@@ -134,7 +134,7 @@
           "expect": "unsat",
           "verdict": "unsat",
           "as_expected": true,
-          "seconds": 0.001,
+          "seconds": 0.0,
           "note": "",
           "counterexample": null,
           "kind": "proved"
@@ -145,7 +145,7 @@
           "expect": "unsat",
           "verdict": "unsat",
           "as_expected": true,
-          "seconds": 0.002,
+          "seconds": 0.0,
           "note": "",
           "counterexample": null,
           "kind": "proved"
@@ -156,7 +156,7 @@
           "expect": "unsat",
           "verdict": "unsat",
           "as_expected": true,
-          "seconds": 0.001,
+          "seconds": 0.002,
           "note": "",
           "counterexample": null,
           "kind": "proved"
@@ -167,7 +167,7 @@
           "expect": "unsat",
           "verdict": "unsat",
           "as_expected": true,
-          "seconds": 0.001,
+          "seconds": 0.0,
           "note": "",
           "counterexample": null,
           "kind": "proved"
@@ -178,7 +178,7 @@
           "expect": "unsat",
           "verdict": "unsat",
           "as_expected": true,
-          "seconds": 0.004,
+          "seconds": 0.002,
           "note": "",
           "counterexample": null,
           "kind": "proved"
@@ -189,7 +189,7 @@
           "expect": "unsat",
           "verdict": "unsat",
           "as_expected": true,
-          "seconds": 0.001,
+          "seconds": 0.0,
           "note": "",
           "counterexample": null,
           "kind": "proved"
@@ -200,7 +200,7 @@
           "expect": "unsat",
           "verdict": "unsat",
           "as_expected": true,
-          "seconds": 0.001,
+          "seconds": 0.002,
           "note": "",
           "counterexample": null,
           "kind": "proved"
@@ -211,7 +211,7 @@
           "expect": "unsat",
           "verdict": "unsat",
           "as_expected": true,
-          "seconds": 0.001,
+          "seconds": 0.0,
           "note": "",
           "counterexample": null,
           "kind": "proved"
@@ -222,7 +222,7 @@
           "expect": "unsat",
           "verdict": "unsat",
           "as_expected": true,
-          "seconds": 0.002,
+          "seconds": 0.0,
           "note": "",
           "counterexample": null,
           "kind": "proved"
@@ -233,7 +233,7 @@
           "expect": "unsat",
           "verdict": "unsat",
           "as_expected": true,
-          "seconds": 0.001,
+          "seconds": 0.0,
           "note": "",
           "counterexample": null,
           "kind": "proved"
@@ -255,7 +255,7 @@
           "expect": "unsat",
           "verdict": "unsat",
           "as_expected": true,
-          "seconds": 0.001,
+          "seconds": 0.002,
           "note": "",
           "counterexample": null,
           "kind": "proved"
@@ -266,7 +266,7 @@
           "expect": "unsat",
           "verdict": "unsat",
           "as_expected": true,
-          "seconds": 0.001,
+          "seconds": 0.0,
           "note": "",
           "counterexample": null,
           "kind": "proved"
@@ -277,7 +277,7 @@
           "expect": "unsat",
           "verdict": "unsat",
           "as_expected": true,
-          "seconds": 0.002,
+          "seconds": 0.0,
           "note": "",
           "counterexample": null,
           "kind": "proved"
@@ -288,7 +288,7 @@
           "expect": "unsat",
           "verdict": "unsat",
           "as_expected": true,
-          "seconds": 0.001,
+          "seconds": 0.0,
           "note": "",
           "counterexample": null,
           "kind": "proved"
@@ -310,7 +310,7 @@
           "expect": "unsat",
           "verdict": "unsat",
           "as_expected": true,
-          "seconds": 0.002,
+          "seconds": 0.0,
           "note": "",
           "counterexample": null,
           "kind": "proved"
@@ -321,7 +321,7 @@
           "expect": "unsat",
           "verdict": "unsat",
           "as_expected": true,
-          "seconds": 0.0,
+          "seconds": 0.002,
           "note": "",
           "counterexample": null,
           "kind": "proved"
@@ -354,7 +354,7 @@
           "expect": "unsat",
           "verdict": "unsat",
           "as_expected": true,
-          "seconds": 0.0,
+          "seconds": 0.002,
           "note": "",
           "counterexample": null,
           "kind": "proved"
@@ -365,7 +365,7 @@
           "expect": "unsat",
           "verdict": "unsat",
           "as_expected": true,
-          "seconds": 0.003,
+          "seconds": 0.0,
           "note": "",
           "counterexample": null,
           "kind": "proved"
@@ -376,7 +376,7 @@
           "expect": "unsat",
           "verdict": "unsat",
           "as_expected": true,
-          "seconds": 0.001,
+          "seconds": 0.0,
           "note": "",
           "counterexample": null,
           "kind": "proved"
@@ -409,7 +409,7 @@
           "expect": "unsat",
           "verdict": "unsat",
           "as_expected": true,
-          "seconds": 0.003,
+          "seconds": 0.0,
           "note": "",
           "counterexample": null,
           "kind": "proved"
@@ -420,7 +420,7 @@
           "expect": "unsat",
           "verdict": "unsat",
           "as_expected": true,
-          "seconds": 0.001,
+          "seconds": 0.0,
           "note": "",
           "counterexample": null,
           "kind": "proved"
@@ -453,7 +453,7 @@
           "expect": "unsat",
           "verdict": "unsat",
           "as_expected": true,
-          "seconds": 0.001,
+          "seconds": 0.0,
           "note": "",
           "counterexample": null,
           "kind": "proved"
@@ -464,7 +464,7 @@
           "expect": "unsat",
           "verdict": "unsat",
           "as_expected": true,
-          "seconds": 0.001,
+          "seconds": 0.002,
           "note": "",
           "counterexample": null,
           "kind": "proved"
@@ -475,7 +475,7 @@
           "expect": "unsat",
           "verdict": "unsat",
           "as_expected": true,
-          "seconds": 0.001,
+          "seconds": 0.002,
           "note": "",
           "counterexample": null,
           "kind": "proved"
@@ -486,7 +486,7 @@
           "expect": "unsat",
           "verdict": "unsat",
           "as_expected": true,
-          "seconds": 0.002,
+          "seconds": 0.0,
           "note": "",
           "counterexample": null,
           "kind": "proved"
@@ -508,7 +508,7 @@
           "expect": "unsat",
           "verdict": "unsat",
           "as_expected": true,
-          "seconds": 0.002,
+          "seconds": 0.0,
           "note": "",
           "counterexample": null,
           "kind": "proved"
@@ -519,7 +519,7 @@
           "expect": "unsat",
           "verdict": "unsat",
           "as_expected": true,
-          "seconds": 0.001,
+          "seconds": 0.002,
           "note": "",
           "counterexample": null,
           "kind": "proved"
@@ -530,7 +530,7 @@
           "expect": "unsat",
           "verdict": "unsat",
           "as_expected": true,
-          "seconds": 0.0,
+          "seconds": 0.002,
           "note": "",
           "counterexample": null,
           "kind": "proved"
@@ -541,7 +541,7 @@
           "expect": "unsat",
           "verdict": "unsat",
           "as_expected": true,
-          "seconds": 0.002,
+          "seconds": 0.0,
           "note": "",
           "counterexample": null,
           "kind": "proved"
@@ -552,7 +552,7 @@
           "expect": "unsat",
           "verdict": "unsat",
           "as_expected": true,
-          "seconds": 0.002,
+          "seconds": 0.0,
           "note": "",
           "counterexample": null,
           "kind": "proved"
@@ -563,7 +563,7 @@
           "expect": "unsat",
           "verdict": "unsat",
           "as_expected": true,
-          "seconds": 0.002,
+          "seconds": 0.0,
           "note": "",
           "counterexample": null,
           "kind": "proved"
@@ -574,7 +574,7 @@
           "expect": "unsat",
           "verdict": "unsat",
           "as_expected": true,
-          "seconds": 0.001,
+          "seconds": 0.0,
           "note": "",
           "counterexample": null,
           "kind": "proved"
@@ -585,7 +585,7 @@
           "expect": "unsat",
           "verdict": "unsat",
           "as_expected": true,
-          "seconds": 0.001,
+          "seconds": 0.003,
           "note": "",
           "counterexample": null,
           "kind": "proved"
@@ -607,7 +607,7 @@
           "expect": "unsat",
           "verdict": "unsat",
           "as_expected": true,
-          "seconds": 0.001,
+          "seconds": 0.0,
           "note": "",
           "counterexample": null,
           "kind": "proved"
@@ -618,7 +618,7 @@
           "expect": "unsat",
           "verdict": "unsat",
           "as_expected": true,
-          "seconds": 0.0,
+          "seconds": 0.002,
           "note": "",
           "counterexample": null,
           "kind": "proved"
@@ -629,7 +629,7 @@
           "expect": "unsat",
           "verdict": "unsat",
           "as_expected": true,
-          "seconds": 0.001,
+          "seconds": 0.0,
           "note": "",
           "counterexample": null,
           "kind": "proved"
@@ -640,7 +640,7 @@
           "expect": "unsat",
           "verdict": "unsat",
           "as_expected": true,
-          "seconds": 0.001,
+          "seconds": 0.0,
           "note": "",
           "counterexample": null,
           "kind": "proved"
@@ -651,7 +651,7 @@
           "expect": "unsat",
           "verdict": "unsat",
           "as_expected": true,
-          "seconds": 0.001,
+          "seconds": 0.003,
           "note": "",
           "counterexample": null,
           "kind": "proved"
@@ -662,7 +662,7 @@
           "expect": "unsat",
           "verdict": "unsat",
           "as_expected": true,
-          "seconds": 0.002,
+          "seconds": 0.001,
           "note": "",
           "counterexample": null,
           "kind": "proved"
@@ -673,7 +673,7 @@
           "expect": "unsat",
           "verdict": "unsat",
           "as_expected": true,
-          "seconds": 0.002,
+          "seconds": 0.001,
           "note": "",
           "counterexample": null,
           "kind": "proved"
@@ -684,7 +684,7 @@
           "expect": "unsat",
           "verdict": "unsat",
           "as_expected": true,
-          "seconds": 0.0,
+          "seconds": 0.001,
           "note": "",
           "counterexample": null,
           "kind": "proved"
@@ -706,7 +706,7 @@
           "expect": "unsat",
           "verdict": "unsat",
           "as_expected": true,
-          "seconds": 0.0,
+          "seconds": 0.001,
           "note": "",
           "counterexample": null,
           "kind": "proved"
@@ -728,7 +728,7 @@
           "expect": "unsat",
           "verdict": "unsat",
           "as_expected": true,
-          "seconds": 0.0,
+          "seconds": 0.001,
           "note": "",
           "counterexample": null,
           "kind": "proved"
@@ -739,7 +739,7 @@
           "expect": "unsat",
           "verdict": "unsat",
           "as_expected": true,
-          "seconds": 0.002,
+          "seconds": 0.001,
           "note": "",
           "counterexample": null,
           "kind": "proved"
@@ -827,7 +827,7 @@
           "expect": "unsat",
           "verdict": "unsat",
           "as_expected": true,
-          "seconds": 0.0,
+          "seconds": 0.002,
           "note": "",
           "counterexample": null,
           "kind": "proved"
@@ -838,7 +838,7 @@
           "expect": "unsat",
           "verdict": "unsat",
           "as_expected": true,
-          "seconds": 0.0,
+          "seconds": 0.001,
           "note": "",
           "counterexample": null,
           "kind": "proved"
@@ -849,7 +849,7 @@
           "expect": "unsat",
           "verdict": "unsat",
           "as_expected": true,
-          "seconds": 0.002,
+          "seconds": 0.001,
           "note": "",
           "counterexample": null,
           "kind": "proved"
@@ -871,7 +871,7 @@
           "expect": "unsat",
           "verdict": "unsat",
           "as_expected": true,
-          "seconds": 0.001,
+          "seconds": 0.0,
           "note": "",
           "counterexample": null,
           "kind": "proved"
@@ -893,7 +893,7 @@
           "expect": "unsat",
           "verdict": "unsat",
           "as_expected": true,
-          "seconds": 0.0,
+          "seconds": 0.001,
           "note": "",
           "counterexample": null,
           "kind": "proved"
@@ -904,7 +904,7 @@
           "expect": "unsat",
           "verdict": "unsat",
           "as_expected": true,
-          "seconds": 0.002,
+          "seconds": 0.001,
           "note": "",
           "counterexample": null,
           "kind": "proved"
@@ -915,7 +915,7 @@
           "expect": "unsat",
           "verdict": "unsat",
           "as_expected": true,
-          "seconds": 0.001,
+          "seconds": 0.0,
           "note": "",
           "counterexample": null,
           "kind": "proved"
@@ -926,7 +926,7 @@
           "expect": "unsat",
           "verdict": "unsat",
           "as_expected": true,
-          "seconds": 0.001,
+          "seconds": 0.002,
           "note": "",
           "counterexample": null,
           "kind": "proved"
@@ -948,7 +948,7 @@
           "expect": "unsat",
           "verdict": "unsat",
           "as_expected": true,
-          "seconds": 0.001,
+          "seconds": 0.002,
           "note": "",
           "counterexample": null,
           "kind": "proved"
@@ -959,7 +959,7 @@
           "expect": "unsat",
           "verdict": "unsat",
           "as_expected": true,
-          "seconds": 0.001,
+          "seconds": 0.0,
           "note": "",
           "counterexample": null,
           "kind": "proved"
@@ -981,7 +981,7 @@
           "expect": "unsat",
           "verdict": "unsat",
           "as_expected": true,
-          "seconds": 0.0,
+          "seconds": 0.002,
           "note": "",
           "counterexample": null,
           "kind": "proved"
@@ -992,7 +992,7 @@
           "expect": "unsat",
           "verdict": "unsat",
           "as_expected": true,
-          "seconds": 0.002,
+          "seconds": 0.0,
           "note": "",
           "counterexample": null,
           "kind": "proved"
@@ -1003,7 +1003,7 @@
           "expect": "unsat",
           "verdict": "unsat",
           "as_expected": true,
-          "seconds": 0.001,
+          "seconds": 0.0,
           "note": "",
           "counterexample": null,
           "kind": "proved"
@@ -1014,7 +1014,7 @@
           "expect": "unsat",
           "verdict": "unsat",
           "as_expected": true,
-          "seconds": 0.001,
+          "seconds": 0.0,
           "note": "",
           "counterexample": null,
           "kind": "proved"
@@ -1025,7 +1025,7 @@
           "expect": "unsat",
           "verdict": "unsat",
           "as_expected": true,
-          "seconds": 0.001,
+          "seconds": 0.002,
           "note": "",
           "counterexample": null,
           "kind": "proved"
@@ -1036,7 +1036,7 @@
           "expect": "unsat",
           "verdict": "unsat",
           "as_expected": true,
-          "seconds": 0.001,
+          "seconds": 0.0,
           "note": "",
           "counterexample": null,
           "kind": "proved"
@@ -1047,7 +1047,7 @@
           "expect": "unsat",
           "verdict": "unsat",
           "as_expected": true,
-          "seconds": 0.002,
+          "seconds": 0.0,
           "note": "",
           "counterexample": null,
           "kind": "proved"
@@ -1080,7 +1080,7 @@
           "expect": "unsat",
           "verdict": "unsat",
           "as_expected": true,
-          "seconds": 0.001,
+          "seconds": 0.0,
           "note": "",
           "counterexample": null,
           "kind": "proved"
@@ -1091,7 +1091,7 @@
           "expect": "unsat",
           "verdict": "unsat",
           "as_expected": true,
-          "seconds": 0.001,
+          "seconds": 0.002,
           "note": "",
           "counterexample": null,
           "kind": "proved"
@@ -1102,7 +1102,7 @@
           "expect": "unsat",
           "verdict": "unsat",
           "as_expected": true,
-          "seconds": 0.001,
+          "seconds": 0.002,
           "note": "",
           "counterexample": null,
           "kind": "proved"
@@ -1113,7 +1113,7 @@
           "expect": "sat",
           "verdict": "sat",
           "as_expected": true,
-          "seconds": 0.001,
+          "seconds": 0.0,
           "note": "",
           "counterexample": {
             "at_queue": true,
@@ -1137,7 +1137,7 @@
           "expect": "sat",
           "verdict": "sat",
           "as_expected": true,
-          "seconds": 0.001,
+          "seconds": 0.0,
           "note": "",
           "counterexample": {
             "at_queue": false,
@@ -1183,7 +1183,7 @@
           "expect": "sat",
           "verdict": "sat",
           "as_expected": true,
-          "seconds": 0.002,
+          "seconds": 0.0,
           "note": "",
           "counterexample": {
             "at_queue": false,
@@ -1208,7 +1208,7 @@
     {
       "title": "Observation consistency (perception -> automaton interface)",
       "encoding": "holo_fleet/ha/observation_invariants.py + holo_fleet/ha/spec.py",
-      "seconds": 1.1,
+      "seconds": 1.0,
       "all_passed": true,
       "checks": [
         {
@@ -1238,7 +1238,7 @@
           "expect": "sat",
           "verdict": "sat",
           "as_expected": true,
-          "seconds": 0.001,
+          "seconds": 0.0,
           "note": "excludes: negative errors or durations; distances beyond the sentinel",
           "counterexample": {
             "at_queue": false,
@@ -1259,7 +1259,7 @@
           "expect": "sat",
           "verdict": "sat",
           "as_expected": true,
-          "seconds": 0.001,
+          "seconds": 0.0,
           "note": "excludes: has_prio & !at_queue: a drone away from its queue point believing it may commit (the commit guard also requires at_queue, so this state would be a latent defect, not a commit)",
           "counterexample": {
             "at_queue": false,
@@ -1298,7 +1298,7 @@
           "expect": "sat",
           "verdict": "sat",
           "as_expected": true,
-          "seconds": 0.001,
+          "seconds": 0.0,
           "note": "excludes: passed & mutex_zone: approach/yield/commit and pass_done would both describe the same gate",
           "counterexample": {
             "at_queue": false,
@@ -1318,7 +1318,7 @@
           "expect": "sat",
           "verdict": "sat",
           "as_expected": true,
-          "seconds": 0.001,
+          "seconds": 0.0,
           "note": "excludes: t_ok > 0 with form_err >= e_ok (a stale 'ok for t seconds' counter)",
           "counterexample": {
             "at_queue": false,
@@ -1339,7 +1339,7 @@
           "expect": "sat",
           "verdict": "sat",
           "as_expected": true,
-          "seconds": 0.001,
+          "seconds": 0.0,
           "note": "excludes: entry_abort for an uncommitted drone (an abort edge that could not fire) or after the gate was passed",
           "counterexample": {
             "at_queue": false,
@@ -1360,7 +1360,7 @@
           "expect": "sat",
           "verdict": "sat",
           "as_expected": true,
-          "seconds": 0.05,
+          "seconds": 0.018,
           "note": "13 edges",
           "counterexample": null,
           "kind": "witness"
@@ -1371,7 +1371,7 @@
           "expect": "sat",
           "verdict": "sat",
           "as_expected": true,
-          "seconds": 0.024,
+          "seconds": 0.02,
           "note": "13 edges",
           "counterexample": null,
           "kind": "witness"
@@ -1382,7 +1382,7 @@
           "expect": "sat",
           "verdict": "sat",
           "as_expected": true,
-          "seconds": 0.03,
+          "seconds": 0.028,
           "note": "13 edges",
           "counterexample": null,
           "kind": "witness"
@@ -1393,7 +1393,7 @@
           "expect": "sat",
           "verdict": "sat",
           "as_expected": true,
-          "seconds": 0.038,
+          "seconds": 0.02,
           "note": "13 edges",
           "counterexample": null,
           "kind": "witness"
@@ -1404,7 +1404,7 @@
           "expect": "sat",
           "verdict": "sat",
           "as_expected": true,
-          "seconds": 0.027,
+          "seconds": 0.029,
           "note": "13 edges",
           "counterexample": null,
           "kind": "witness"
@@ -1415,7 +1415,7 @@
           "expect": "sat",
           "verdict": "sat",
           "as_expected": true,
-          "seconds": 0.036,
+          "seconds": 0.029,
           "note": "13 edges",
           "counterexample": null,
           "kind": "witness"
@@ -1426,7 +1426,7 @@
           "expect": "sat",
           "verdict": "sat",
           "as_expected": true,
-          "seconds": 0.061,
+          "seconds": 0.058,
           "note": "13 edges",
           "counterexample": null,
           "kind": "witness"
@@ -1437,7 +1437,7 @@
           "expect": "sat",
           "verdict": "sat",
           "as_expected": true,
-          "seconds": 0.043,
+          "seconds": 0.056,
           "note": "13 edges",
           "counterexample": null,
           "kind": "witness"
@@ -1448,7 +1448,7 @@
           "expect": "sat",
           "verdict": "sat",
           "as_expected": true,
-          "seconds": 0.051,
+          "seconds": 0.049,
           "note": "13 edges",
           "counterexample": null,
           "kind": "witness"
@@ -1459,7 +1459,7 @@
           "expect": "sat",
           "verdict": "sat",
           "as_expected": true,
-          "seconds": 0.041,
+          "seconds": 0.053,
           "note": "13 edges",
           "counterexample": null,
           "kind": "witness"
@@ -1470,7 +1470,7 @@
           "expect": "unsat",
           "verdict": "unsat",
           "as_expected": true,
-          "seconds": 0.001,
+          "seconds": 0.002,
           "note": "",
           "counterexample": null,
           "kind": "proved"
@@ -1481,7 +1481,7 @@
           "expect": "unsat",
           "verdict": "unsat",
           "as_expected": true,
-          "seconds": 0.001,
+          "seconds": 0.0,
           "note": "",
           "counterexample": null,
           "kind": "proved"
@@ -1492,7 +1492,7 @@
           "expect": "unsat",
           "verdict": "unsat",
           "as_expected": true,
-          "seconds": 0.001,
+          "seconds": 0.002,
           "note": "",
           "counterexample": null,
           "kind": "proved"
@@ -1503,7 +1503,7 @@
           "expect": "unsat",
           "verdict": "unsat",
           "as_expected": true,
-          "seconds": 0.001,
+          "seconds": 0.002,
           "note": "",
           "counterexample": null,
           "kind": "proved"
@@ -1514,7 +1514,7 @@
           "expect": "unsat",
           "verdict": "unsat",
           "as_expected": true,
-          "seconds": 0.001,
+          "seconds": 0.002,
           "note": "",
           "counterexample": null,
           "kind": "proved"
@@ -1525,7 +1525,7 @@
           "expect": "unsat",
           "verdict": "unsat",
           "as_expected": true,
-          "seconds": 0.002,
+          "seconds": 0.0,
           "note": "",
           "counterexample": null,
           "kind": "proved"
@@ -1536,7 +1536,7 @@
           "expect": "unsat",
           "verdict": "unsat",
           "as_expected": true,
-          "seconds": 0.001,
+          "seconds": 0.002,
           "note": "",
           "counterexample": null,
           "kind": "proved"
@@ -1547,7 +1547,7 @@
           "expect": "unsat",
           "verdict": "unsat",
           "as_expected": true,
-          "seconds": 0.001,
+          "seconds": 0.002,
           "note": "",
           "counterexample": null,
           "kind": "proved"
@@ -1558,7 +1558,7 @@
           "expect": "unsat",
           "verdict": "unsat",
           "as_expected": true,
-          "seconds": 0.001,
+          "seconds": 0.002,
           "note": "",
           "counterexample": null,
           "kind": "proved"
@@ -1569,7 +1569,7 @@
           "expect": "unsat",
           "verdict": "unsat",
           "as_expected": true,
-          "seconds": 0.001,
+          "seconds": 0.0,
           "note": "",
           "counterexample": null,
           "kind": "proved"
@@ -1580,7 +1580,7 @@
           "expect": "unsat",
           "verdict": "unsat",
           "as_expected": true,
-          "seconds": 0.002,
+          "seconds": 0.003,
           "note": "",
           "counterexample": null,
           "kind": "proved"
@@ -1591,7 +1591,7 @@
           "expect": "unsat",
           "verdict": "unsat",
           "as_expected": true,
-          "seconds": 0.002,
+          "seconds": 0.0,
           "note": "",
           "counterexample": null,
           "kind": "proved"
@@ -1602,7 +1602,7 @@
           "expect": "sat",
           "verdict": "sat",
           "as_expected": true,
-          "seconds": 0.001,
+          "seconds": 0.002,
           "note": "",
           "counterexample": {
             "at_queue": true,
@@ -1638,7 +1638,7 @@
           "expect": "sat",
           "verdict": "sat",
           "as_expected": true,
-          "seconds": 0.002,
+          "seconds": 0.001,
           "note": "",
           "counterexample": {
             "at_queue": true,
@@ -1663,7 +1663,7 @@
     {
       "title": "P1 inter-vehicle separation",
       "encoding": "formal/check_separation.py",
-      "seconds": 190.1,
+      "seconds": 165.5,
       "all_passed": true,
       "checks": [
         {
@@ -1672,7 +1672,7 @@
           "expect": "holds",
           "verdict": "holds",
           "as_expected": true,
-          "seconds": 50.9,
+          "seconds": 43.7,
           "note": "34991 scenes, hull tilt <= distance_bound.MAX_REL_TILT_DEG; single hull, 1-8 m: min(d - d_hat) 0.096, p50 0.43; single hull near the cube corners, 1-3 m: min(d - d_hat) 0.232, p50 0.82; single hull near the cube edges, 1-4 m: min(d - d_hat) 0.186, p50 0.78; near field, 0.7-1.6 m: min(d - d_hat) 0.576, p50 0.80; 2-3 hulls, 1-6 m: min(d - d_hat) 0.111, p50 0.78; 2-3 hulls at cube edges, 1.5-4 m: min(d - d_hat) 0.234, p50 0.83; square-formation neighbours 90 deg apart, 2.5-4.5 m: min(d - d_hat) 0.241, p50 0.52; square-formation neighbours, extreme range errors: min(d - d_hat) 0.205, p50 0.58; worst case (narrowest boundary, +eps_far): corners 0.7-3 m: min(d - d_hat) 0.209, p50 0.70; worst case: edges 0.7-4 m: min(d - d_hat) 0.164, p50 0.70; worst case: square neighbours: min(d - d_hat) 0.204, p50 0.39",
           "counterexample": null,
           "kind": "numeric"
@@ -1694,7 +1694,7 @@
           "expect": "unsat",
           "verdict": "unsat",
           "as_expected": true,
-          "seconds": 2.566,
+          "seconds": 2.026,
           "note": "",
           "counterexample": null,
           "kind": "bounded"
@@ -1705,7 +1705,7 @@
           "expect": "unsat",
           "verdict": "unsat",
           "as_expected": true,
-          "seconds": 0.008,
+          "seconds": 0.007,
           "note": "",
           "counterexample": null,
           "kind": "proved"
@@ -1727,7 +1727,7 @@
           "expect": "sat",
           "verdict": "sat",
           "as_expected": true,
-          "seconds": 0.039,
+          "seconds": 0.033,
           "note": "",
           "counterexample": {
             "c_0": 0.04752563476562498,
@@ -1861,7 +1861,7 @@
           "expect": "sat",
           "verdict": "sat",
           "as_expected": true,
-          "seconds": 0.217,
+          "seconds": 0.17,
           "note": "",
           "counterexample": {
             "c_0": 1.2,
@@ -1995,7 +1995,7 @@
           "expect": "unsat",
           "verdict": "unsat",
           "as_expected": true,
-          "seconds": 3.755,
+          "seconds": 3.039,
           "note": "",
           "counterexample": null,
           "kind": "bounded"
@@ -2061,7 +2061,7 @@
           "expect": "unsat",
           "verdict": "unsat",
           "as_expected": true,
-          "seconds": 50.184,
+          "seconds": 50.15,
           "note": "nonlinear real arithmetic: about 50 s alone, longer under load",
           "counterexample": null,
           "kind": "proved"
@@ -2072,7 +2072,7 @@
           "expect": "unsat",
           "verdict": "unsat",
           "as_expected": true,
-          "seconds": 0.01,
+          "seconds": 0.008,
           "note": "d_blackout = 2.34 m",
           "counterexample": null,
           "kind": "bounded"
@@ -2082,7 +2082,7 @@
     {
       "title": "P2 critical-region mutual exclusion",
       "encoding": "holo_fleet/ha/mutex_rule.py + formal/check_mutex.py",
-      "seconds": 706.8,
+      "seconds": 521.1,
       "all_passed": true,
       "checks": [
         {
@@ -2091,7 +2091,7 @@
           "expect": "unsat",
           "verdict": "unsat",
           "as_expected": true,
-          "seconds": 0.015,
+          "seconds": 0.014,
           "note": "",
           "counterexample": null,
           "kind": "proved"
@@ -2102,7 +2102,7 @@
           "expect": "sat",
           "verdict": "sat",
           "as_expected": true,
-          "seconds": 0.009,
+          "seconds": 0.006,
           "note": "",
           "counterexample": {
             "ad_iB": 128.0,
@@ -2148,7 +2148,7 @@
           "expect": "sat",
           "verdict": "sat",
           "as_expected": true,
-          "seconds": 0.02,
+          "seconds": 0.009,
           "note": "",
           "counterexample": {
             "ad_iB": 101.75,
@@ -2194,7 +2194,7 @@
           "expect": "unsat",
           "verdict": "unsat",
           "as_expected": true,
-          "seconds": 0.017,
+          "seconds": 0.008,
           "note": "queue line s = -5.39 m, adjacent bearing deviation <= 20.0 deg; no deadlock (a leader exists) and no double priority",
           "counterexample": null,
           "kind": "proved"
@@ -2205,7 +2205,7 @@
           "expect": "unsat",
           "verdict": "unsat",
           "as_expected": true,
-          "seconds": 0.063,
+          "seconds": 0.054,
           "note": "queue line s = -5.75 m, adjacent bearing deviation <= 20.0 deg; no deadlock (a leader exists) and no double priority",
           "counterexample": null,
           "kind": "proved"
@@ -2216,7 +2216,7 @@
           "expect": "unsat",
           "verdict": "unsat",
           "as_expected": true,
-          "seconds": 0.214,
+          "seconds": 0.181,
           "note": "queue line s = -6.88 m, adjacent bearing deviation <= 20.0 deg; no deadlock (a leader exists) and no double priority",
           "counterexample": null,
           "kind": "proved"
@@ -2227,7 +2227,7 @@
           "expect": "unsat",
           "verdict": "unsat",
           "as_expected": true,
-          "seconds": 0.607,
+          "seconds": 0.463,
           "note": "queue line s = -8.24 m, adjacent bearing deviation <= 20.0 deg; no deadlock (a leader exists) and no double priority",
           "counterexample": null,
           "kind": "proved"
@@ -2238,7 +2238,7 @@
           "expect": "unsat",
           "verdict": "unsat",
           "as_expected": true,
-          "seconds": 1.333,
+          "seconds": 0.932,
           "note": "queue line s = -9.77 m, adjacent bearing deviation <= 20.0 deg; no deadlock (a leader exists) and no double priority",
           "counterexample": null,
           "kind": "proved"
@@ -2249,7 +2249,7 @@
           "expect": "sat",
           "verdict": "sat",
           "as_expected": true,
-          "seconds": 0.211,
+          "seconds": 0.149,
           "note": "gap 10.5 m > queue bracket 7.5 m: the two drones do not count each other",
           "counterexample": {
             "ad_q4_0_1_B": 110.03624346792648,
@@ -2707,7 +2707,7 @@
           "expect": "unsat",
           "verdict": "unsat",
           "as_expected": true,
-          "seconds": 18.992,
+          "seconds": 14.816,
           "note": "masked s in (-0.4500000000000002, 1.8449999999999998), beyond s > 1.4000000000000004, B needs >= 86 steps to the CR, A crosses at >= 0.12 m/s",
           "counterexample": null,
           "kind": "bounded"
@@ -2718,7 +2718,7 @@
           "expect": "unsat",
           "verdict": "unsat",
           "as_expected": true,
-          "seconds": 98.653,
+          "seconds": 73.642,
           "note": "band from s -2.775, FRONT-only s (-1.2000000000000002, 6.0)",
           "counterexample": null,
           "kind": "bounded"
@@ -2729,7 +2729,7 @@
           "expect": "unsat",
           "verdict": "unsat",
           "as_expected": true,
-          "seconds": 8.137,
+          "seconds": 5.993,
           "note": "masked s in (-0.8799999999999999, 2.2200000000000006), beyond s > 1.67, B needs >= 94 steps to the CR, A crosses at >= 0.12 m/s",
           "counterexample": null,
           "kind": "bounded"
@@ -2740,7 +2740,7 @@
           "expect": "unsat",
           "verdict": "unsat",
           "as_expected": true,
-          "seconds": 40.715,
+          "seconds": 26.53,
           "note": "band from s -3.8, FRONT-only s (2.3499999999999996, 6.0)",
           "counterexample": null,
           "kind": "bounded"
@@ -2751,7 +2751,7 @@
           "expect": "unsat",
           "verdict": "unsat",
           "as_expected": true,
-          "seconds": 8.795,
+          "seconds": 6.424,
           "note": "masked s in (-0.0649999999999995, 1.4100000000000001), beyond s > 1.085, B needs >= 94 steps to the CR, A crosses at >= 0.12 m/s",
           "counterexample": null,
           "kind": "bounded"
@@ -2762,7 +2762,7 @@
           "expect": "unsat",
           "verdict": "unsat",
           "as_expected": true,
-          "seconds": 80.227,
+          "seconds": 53.136,
           "note": "band from s -2.265, FRONT-only s (-5.0, 6.0)",
           "counterexample": null,
           "kind": "bounded"
@@ -2773,7 +2773,7 @@
           "expect": "unsat",
           "verdict": "unsat",
           "as_expected": true,
-          "seconds": 6.686,
+          "seconds": 4.664,
           "note": "masked s in (-1.125, 2.4250000000000007), beyond s > 1.8150000000000004, B needs >= 116 steps to the CR, A crosses at >= 0.12 m/s",
           "counterexample": null,
           "kind": "bounded"
@@ -2784,7 +2784,7 @@
           "expect": "unsat",
           "verdict": "unsat",
           "as_expected": true,
-          "seconds": 27.287,
+          "seconds": 17.182,
           "note": "band from s -4.165, FRONT-only s (5.15, 6.0)",
           "counterexample": null,
           "kind": "bounded"
@@ -2795,7 +2795,7 @@
           "expect": "unsat",
           "verdict": "unsat",
           "as_expected": true,
-          "seconds": 7.292,
+          "seconds": 6.02,
           "note": "masked s in (-0.3799999999999999, 1.7000000000000002), beyond s > 1.3049999999999997, B needs >= 116 steps to the CR, A crosses at >= 0.12 m/s",
           "counterexample": null,
           "kind": "bounded"
@@ -2806,7 +2806,7 @@
           "expect": "unsat",
           "verdict": "unsat",
           "as_expected": true,
-          "seconds": 31.484,
+          "seconds": 23.396,
           "note": "band from s -2.58, FRONT-only s (-2.6999999999999997, 6.0)",
           "counterexample": null,
           "kind": "bounded"
@@ -2817,7 +2817,7 @@
           "expect": "sat",
           "verdict": "sat",
           "as_expected": true,
-          "seconds": 4.686,
+          "seconds": 3.898,
           "note": "n=3, observer at l=+3.50, masked s in (-0.8799999999999999, 2.2200000000000006).  Retargeted from the n=2 view (l=+1.75, masked from s = -0.45): with the CR s in [-1.05, 0.55] that view no longer catches the mutation, its counterexample needed the occupant in the former post-gate part (0.55, 0.8] when the follower reached the CR",
           "counterexample": {
             "beyond_0": false,
@@ -3229,7 +3229,7 @@
           "expect": "sat",
           "verdict": "sat",
           "as_expected": true,
-          "seconds": 3.429,
+          "seconds": 2.746,
           "note": "n=4, observer at l=+5.25, masked s in (-1.125, 2.4250000000000007).  Retargeted from the n=2 view (l=+1.75, masked from s = -0.45): with the CR s in [-1.05, 0.55] that view no longer catches the mutation, its counterexample needed the occupant in the former post-gate part (0.55, 0.8] when the follower reached the CR",
           "counterexample": {
             "beyond_0": false,
@@ -3641,7 +3641,7 @@
           "expect": "sat",
           "verdict": "sat",
           "as_expected": true,
-          "seconds": 6.447,
+          "seconds": 4.717,
           "note": "n=3, centre queue point",
           "counterexample": {
             "beyond_0": false,
@@ -4053,7 +4053,7 @@
           "expect": "sat",
           "verdict": "sat",
           "as_expected": true,
-          "seconds": 171.802,
+          "seconds": 115.696,
           "note": "n=4, outer queue point l=+5.25 (masked from s = -1.12, before the CR entry -1.05), 54 s BMC (48 s for the n=3 view: from the n=4 line B needs 116 steps to the CR, and 48 s leaves no counterexample there).  Retargeted from the n=3 side view: there the masked region now starts at s = -0.88, inside the CR, so a drone stopped before the CR is always seen",
           "counterexample": {
             "beyond_0": false,
@@ -4465,7 +4465,7 @@
           "expect": "sat",
           "verdict": "sat",
           "as_expected": true,
-          "seconds": 18.081,
+          "seconds": 15.748,
           "note": "n=2, observer at l=+1.75, 70 s BMC; outside the P2 guarantee (B0), B2 keeps the CR busy while the occupant is heard inside (acoustic_gate.heard_inside)",
           "counterexample": {
             "beyond_0": false,
@@ -4876,7 +4876,7 @@
     {
       "title": "P3 formation recovery (liveness, ranking functions)",
       "encoding": "formal/check_formation.py",
-      "seconds": 3.6,
+      "seconds": 3.1,
       "all_passed": true,
       "checks": [
         {
@@ -4907,7 +4907,7 @@
           "expect": "unsat",
           "verdict": "unsat",
           "as_expected": true,
-          "seconds": 0.012,
+          "seconds": 0.009,
           "note": "e* = 0.439 m (A4 needs the onboard form_err below e_ok = 0.5 m)",
           "counterexample": null,
           "kind": "proved"
@@ -4940,7 +4940,7 @@
           "expect": "unsat",
           "verdict": "unsat",
           "as_expected": true,
-          "seconds": 0.013,
+          "seconds": 0.012,
           "note": "e* = 0.355 m (A4 needs the onboard form_err below e_ok = 0.5 m)",
           "counterexample": null,
           "kind": "proved"
@@ -4951,7 +4951,7 @@
           "expect": "unsat",
           "verdict": "unsat",
           "as_expected": true,
-          "seconds": 0.012,
+          "seconds": 0.01,
           "note": "",
           "counterexample": null,
           "kind": "proved"
@@ -4962,7 +4962,7 @@
           "expect": "unsat",
           "verdict": "unsat",
           "as_expected": true,
-          "seconds": 0.012,
+          "seconds": 0.009,
           "note": "",
           "counterexample": null,
           "kind": "proved"
@@ -4973,7 +4973,7 @@
           "expect": "unsat",
           "verdict": "unsat",
           "as_expected": true,
-          "seconds": 0.011,
+          "seconds": 0.008,
           "note": "",
           "counterexample": null,
           "kind": "proved"
@@ -4984,7 +4984,7 @@
           "expect": "unsat",
           "verdict": "unsat",
           "as_expected": true,
-          "seconds": 0.009,
+          "seconds": 0.007,
           "note": "",
           "counterexample": null,
           "kind": "proved"
@@ -4995,7 +4995,7 @@
           "expect": "unsat",
           "verdict": "unsat",
           "as_expected": true,
-          "seconds": 0.01,
+          "seconds": 0.008,
           "note": "",
           "counterexample": null,
           "kind": "proved"
@@ -5006,7 +5006,7 @@
           "expect": "unsat",
           "verdict": "unsat",
           "as_expected": true,
-          "seconds": 0.011,
+          "seconds": 0.007,
           "note": "",
           "counterexample": null,
           "kind": "proved"
@@ -5039,7 +5039,7 @@
           "expect": "unsat",
           "verdict": "unsat",
           "as_expected": true,
-          "seconds": 0.038,
+          "seconds": 0.03,
           "note": "perception.track_missing (timer, latch) + spec guards; frozen steps (planned holds, drone not on its slot) do not count, A5; with the B2 gate-delay hold the bound is F6g",
           "counterexample": null,
           "kind": "bounded"
@@ -5088,7 +5088,7 @@
           "expect": "sat",
           "verdict": "sat",
           "as_expected": true,
-          "seconds": 0.106,
+          "seconds": 0.087,
           "note": "the earlier automaton kept a drone with a missing neighbour in FORMATION_RECOVERY indefinitely",
           "counterexample": {
             "at_queue_w0": false,
@@ -5500,7 +5500,7 @@
           "expect": "unsat",
           "verdict": "unsat",
           "as_expected": true,
-          "seconds": 0.02,
+          "seconds": 0.019,
           "note": "head current admitted at V; xs: one-axis through-water speed at the nominal authority",
           "counterexample": null,
           "kind": "proved"
@@ -5511,7 +5511,7 @@
           "expect": "sat",
           "verdict": "sat",
           "as_expected": true,
-          "seconds": 0.014,
+          "seconds": 0.01,
           "note": "a head current the drone can hold at v_clock but not overcome during a recovery",
           "counterexample": {
             "h": 0.25,
@@ -5525,7 +5525,7 @@
           "expect": "sat",
           "verdict": "sat",
           "as_expected": true,
-          "seconds": 0.013,
+          "seconds": 0.009,
           "note": "the old isotropic current bound",
           "counterexample": {
             "h": 0.5,
@@ -5569,7 +5569,7 @@
     {
       "title": "P3 coupled recovery: 2-norm saturated law, private formation clocks, rendezvous, operating domain",
       "encoding": "holo_fleet/control/flows.py + holo_fleet/control/formation_time.py + holo_fleet/perception/perception.py + formal/check_formation_coupled.py",
-      "seconds": 96.5,
+      "seconds": 94.6,
       "all_passed": true,
       "checks": [
         {
@@ -5578,7 +5578,7 @@
           "expect": "unsat",
           "verdict": "unsat",
           "as_expected": true,
-          "seconds": 0.011,
+          "seconds": 0.01,
           "note": "keeping_cap = min(v_recovery_max, max(v_slot_max, v_plan + v_catch_min)), the code of Flows.formation",
           "counterexample": null,
           "kind": "proved"
@@ -5589,7 +5589,7 @@
           "expect": "sat",
           "verdict": "sat",
           "as_expected": true,
-          "seconds": 0.004,
+          "seconds": 0.003,
           "note": "",
           "counterexample": {
             "v_plan": 0.4
@@ -5613,7 +5613,7 @@
           "expect": "unsat",
           "verdict": "unsat",
           "as_expected": true,
-          "seconds": 0.012,
+          "seconds": 0.008,
           "note": "",
           "counterexample": null,
           "kind": "proved"
@@ -5641,7 +5641,7 @@
           "expect": "unsat",
           "verdict": "unsat",
           "as_expected": true,
-          "seconds": 0.014,
+          "seconds": 0.013,
           "note": "rate 0.0040 m/s (k_progress delta at most, after the rate ramp); the drone behind keeps its speed (C2j); eventual agreement |X| <= B + delta, by the symmetry i <-> j",
           "counterexample": null,
           "kind": "proved"
@@ -5652,7 +5652,7 @@
           "expect": "unsat",
           "verdict": "unsat",
           "as_expected": true,
-          "seconds": 0.015,
+          "seconds": 0.012,
           "note": "one step moves X by less than delta; above B + delta it decreases (C2a)",
           "counterexample": null,
           "kind": "proved"
@@ -5674,7 +5674,7 @@
           "expect": "unsat",
           "verdict": "unsat",
           "as_expected": true,
-          "seconds": 0.014,
+          "seconds": 0.013,
           "note": "rate 0.0040 m/s (k_progress delta at most, after the rate ramp); the drone behind keeps its speed (C2j); eventual agreement |X| <= B + delta, by the symmetry i <-> j",
           "counterexample": null,
           "kind": "proved"
@@ -5685,7 +5685,7 @@
           "expect": "unsat",
           "verdict": "unsat",
           "as_expected": true,
-          "seconds": 0.012,
+          "seconds": 0.011,
           "note": "one step moves X by less than delta; above B + delta it decreases (C2a)",
           "counterexample": null,
           "kind": "proved"
@@ -5707,7 +5707,7 @@
           "expect": "unsat",
           "verdict": "unsat",
           "as_expected": true,
-          "seconds": 0.009,
+          "seconds": 0.008,
           "note": "",
           "counterexample": null,
           "kind": "proved"
@@ -5718,7 +5718,7 @@
           "expect": "sat",
           "verdict": "sat",
           "as_expected": true,
-          "seconds": 0.01,
+          "seconds": 0.012,
           "note": "X + |sigma_i| + |sigma_j| is non-increasing in the leak / frozen regime (C2d); the closed loop with the switching converges offline (tests/test_p3_recovery_fixes.py), not proved",
           "counterexample": {
             "D": 1.6778947368421053,
@@ -5740,7 +5740,7 @@
           "expect": "unsat",
           "verdict": "unsat",
           "as_expected": true,
-          "seconds": 0.009,
+          "seconds": 0.008,
           "note": "",
           "counterexample": null,
           "kind": "proved"
@@ -5751,7 +5751,7 @@
           "expect": "sat",
           "verdict": "sat",
           "as_expected": true,
-          "seconds": 0.027,
+          "seconds": 0.023,
           "note": "the set {rho_i = 0, sigma = 0, X >= 1.94 m} is closed under the step without the re-synchronisation; offline: delays of 8 s and more",
           "counterexample": {
             "D": -2.0,
@@ -5771,7 +5771,7 @@
           "expect": "sat",
           "verdict": "sat",
           "as_expected": true,
-          "seconds": 0.015,
+          "seconds": 0.012,
           "note": "",
           "counterexample": {
             "D": 1.5511434280639431,
@@ -5793,7 +5793,7 @@
           "expect": "unsat",
           "verdict": "unsat",
           "as_expected": true,
-          "seconds": 15.9,
+          "seconds": 15.4,
           "note": "certified decrease eps = 0.1270 m/s (exact rational cells, sigma frozen beyond e_lost)",
           "counterexample": null,
           "kind": "proved"
@@ -5804,7 +5804,7 @@
           "expect": "unsat",
           "verdict": "unsat",
           "as_expected": true,
-          "seconds": 18.6,
+          "seconds": 18.2,
           "note": "certified decrease eps = 0.0293 m/s (exact rational cells, sigma frozen beyond e_lost)",
           "counterexample": null,
           "kind": "proved"
@@ -5815,7 +5815,7 @@
           "expect": "unsat",
           "verdict": "unsat",
           "as_expected": true,
-          "seconds": 12.4,
+          "seconds": 11.8,
           "note": "certified decrease eps = 0.0313 m/s (exact rational cells, sigma frozen beyond e_lost)",
           "counterexample": null,
           "kind": "proved"
@@ -5837,7 +5837,7 @@
           "expect": "unsat",
           "verdict": "unsat",
           "as_expected": true,
-          "seconds": 2.5,
+          "seconds": 2.4,
           "note": "r_in = 0.375 m, ball 0.421 m (e_ok = 0.5), eps >= 0.002 m/s on the band",
           "counterexample": null,
           "kind": "proved"
@@ -5848,7 +5848,7 @@
           "expect": "unsat",
           "verdict": "unsat",
           "as_expected": true,
-          "seconds": 1.5,
+          "seconds": 1.4,
           "note": "r_in = 0.375 m, ball 0.413 m (e_ok = 0.5), eps >= 0.002 m/s on the band",
           "counterexample": null,
           "kind": "proved"
@@ -5870,7 +5870,7 @@
           "expect": "sat",
           "verdict": "sat",
           "as_expected": true,
-          "seconds": 0.028,
+          "seconds": 0.025,
           "note": "a large lateral error takes the 2-norm budget from the along axis; ||e|| (C1f) is the ranking of the coupled law",
           "counterexample": {
             "c": 0.0,
@@ -5891,7 +5891,7 @@
           "expect": "sat",
           "verdict": "sat",
           "as_expected": true,
-          "seconds": 0.009,
+          "seconds": 0.008,
           "note": "B0: the sonar residual also contains the own error (sigma_dot ~ +k_progress e), a genuine positive feedback limited by the leak and the clip",
           "counterexample": {
             "e_a": 0.5,
@@ -5907,7 +5907,7 @@
           "expect": "sat",
           "verdict": "sat",
           "as_expected": true,
-          "seconds": 40.595,
+          "seconds": 40.529,
           "note": "at the nominal clock the same bound is certified (C1f B2); B0 is certified at both",
           "counterexample": {
             "/0": "[(0.2821340273?, 2) -> 0.1410670136?,\n (307/320, 2) -> 307/640,\n else -> 0]",
@@ -5947,7 +5947,7 @@
           "expect": "unsat",
           "verdict": "unsat",
           "as_expected": true,
-          "seconds": 0.01,
+          "seconds": 0.009,
           "note": "the 3-D slot error of the keeping modes is within sqrt(ball_h^2 + ball_z^2) (C1n, C1z)",
           "counterexample": null,
           "kind": "proved"
@@ -5957,7 +5957,7 @@
     {
       "title": "B2 range-bearing beacon (own assumptions; the checks of B0, the communication disabled, unchanged)",
       "encoding": "perception/acoustic.py + perception/acoustic_gate.py + formal/check_acoustic.py",
-      "seconds": 64.3,
+      "seconds": 59.5,
       "all_passed": true,
       "checks": [
         {
@@ -6108,7 +6108,7 @@
     {
       "title": "B2 status payload: gate status, silence, verified passage",
       "encoding": "perception/payload.py + perception/acoustic_gate.py + perception/passage.py + formal/check_status.py",
-      "seconds": 382.4,
+      "seconds": 315.7,
       "all_passed": true,
       "checks": [
         {
@@ -6139,7 +6139,7 @@
           "expect": "unsat",
           "verdict": "unsat",
           "as_expected": true,
-          "seconds": 41.135,
+          "seconds": 33.141,
           "note": "",
           "counterexample": null,
           "kind": "bounded"
@@ -6150,7 +6150,7 @@
           "expect": "unsat",
           "verdict": "unsat",
           "as_expected": true,
-          "seconds": 10.931,
+          "seconds": 9.219,
           "note": "",
           "counterexample": null,
           "kind": "bounded"
@@ -6161,7 +6161,7 @@
           "expect": "unsat",
           "verdict": "unsat",
           "as_expected": true,
-          "seconds": 38.645,
+          "seconds": 28.374,
           "note": "",
           "counterexample": null,
           "kind": "bounded"
@@ -6172,7 +6172,7 @@
           "expect": "unsat",
           "verdict": "unsat",
           "as_expected": true,
-          "seconds": 7.607,
+          "seconds": 6.648,
           "note": "",
           "counterexample": null,
           "kind": "bounded"
@@ -6183,7 +6183,7 @@
           "expect": "unsat",
           "verdict": "unsat",
           "as_expected": true,
-          "seconds": 46.355,
+          "seconds": 36.195,
           "note": "",
           "counterexample": null,
           "kind": "bounded"
@@ -6194,7 +6194,7 @@
           "expect": "unsat",
           "verdict": "unsat",
           "as_expected": true,
-          "seconds": 6.585,
+          "seconds": 6.128,
           "note": "",
           "counterexample": null,
           "kind": "bounded"
@@ -6205,7 +6205,7 @@
           "expect": "unsat",
           "verdict": "unsat",
           "as_expected": true,
-          "seconds": 21.929,
+          "seconds": 19.304,
           "note": "",
           "counterexample": null,
           "kind": "bounded"
@@ -6216,7 +6216,7 @@
           "expect": "unsat",
           "verdict": "unsat",
           "as_expected": true,
-          "seconds": 4.047,
+          "seconds": 3.822,
           "note": "",
           "counterexample": null,
           "kind": "bounded"
@@ -6227,7 +6227,7 @@
           "expect": "unsat",
           "verdict": "unsat",
           "as_expected": true,
-          "seconds": 26.433,
+          "seconds": 20.06,
           "note": "",
           "counterexample": null,
           "kind": "bounded"
@@ -6238,7 +6238,7 @@
           "expect": "unsat",
           "verdict": "unsat",
           "as_expected": true,
-          "seconds": 8.913,
+          "seconds": 7.4,
           "note": "",
           "counterexample": null,
           "kind": "bounded"
@@ -6249,7 +6249,7 @@
           "expect": "sat",
           "verdict": "sat",
           "as_expected": true,
-          "seconds": 3.341,
+          "seconds": 2.667,
           "note": "",
           "counterexample": {
             "beyond_0": false,
@@ -6661,7 +6661,7 @@
           "expect": "sat",
           "verdict": "sat",
           "as_expected": true,
-          "seconds": 66.86,
+          "seconds": 52.604,
           "note": "n=4, outer queue point l=+5.25 (masked from s = -1.12, before the CR entry -1.05).  Retargeted from the n=3 side view: there the masked region now starts at s = -0.88, inside the CR, so a drone stopped before the CR is always seen",
           "counterexample": {
             "beyond_0": false,
@@ -7073,7 +7073,7 @@
           "expect": "sat",
           "verdict": "sat",
           "as_expected": true,
-          "seconds": 3.68,
+          "seconds": 3.067,
           "note": "",
           "counterexample": {
             "beyond_0": false,
@@ -7671,7 +7671,7 @@
     {
       "title": "Interacting automata of the fleet at the gate (composition, failures, timers, recovery)",
       "encoding": "formal/check_fleet.py",
-      "seconds": 615.9,
+      "seconds": 534.7,
       "all_passed": true,
       "checks": [
         {
@@ -7680,7 +7680,7 @@
           "expect": "unsat",
           "verdict": "unsat",
           "as_expected": true,
-          "seconds": 0.004,
+          "seconds": 0.002,
           "note": "DT 5 s, T_DEAD 14, T_VAC 9, T_HOLD 6, T_RISE 10, FAIR 7 steps",
           "counterexample": null,
           "kind": "proved"
@@ -7691,7 +7691,7 @@
           "expect": "unsat",
           "verdict": "unsat",
           "as_expected": true,
-          "seconds": 0.035,
+          "seconds": 0.029,
           "note": "DT 5 s, T_DEAD 14, T_VAC 9, T_HOLD 6, T_RISE 10, FAIR 7 steps",
           "counterexample": null,
           "kind": "proved"
@@ -7702,7 +7702,7 @@
           "expect": "unsat",
           "verdict": "unsat",
           "as_expected": true,
-          "seconds": 0.382,
+          "seconds": 0.307,
           "note": "DT 5 s, T_DEAD 14, T_VAC 9, T_HOLD 6, T_RISE 10, FAIR 7 steps",
           "counterexample": null,
           "kind": "bounded"
@@ -7713,7 +7713,7 @@
           "expect": "sat",
           "verdict": "sat",
           "as_expected": true,
-          "seconds": 0.382,
+          "seconds": 0.293,
           "note": "DT 5 s, T_DEAD 14, T_VAC 9, T_HOLD 6, T_RISE 10, FAIR 7 steps",
           "counterexample": {
             "accab_0": true,
@@ -8123,7 +8123,7 @@
           "expect": "unsat",
           "verdict": "unsat",
           "as_expected": true,
-          "seconds": 0.003,
+          "seconds": 0.004,
           "note": "DT 5 s, T_DEAD 14, T_VAC 9, T_HOLD 6, T_RISE 10, FAIR 7 steps",
           "counterexample": null,
           "kind": "proved"
@@ -8134,7 +8134,7 @@
           "expect": "unsat",
           "verdict": "unsat",
           "as_expected": true,
-          "seconds": 0.053,
+          "seconds": 0.035,
           "note": "DT 5 s, T_DEAD 14, T_VAC 9, T_HOLD 6, T_RISE 10, FAIR 7 steps",
           "counterexample": null,
           "kind": "proved"
@@ -8145,7 +8145,7 @@
           "expect": "unsat",
           "verdict": "unsat",
           "as_expected": true,
-          "seconds": 12.636,
+          "seconds": 8.905,
           "note": "DT 5 s, T_DEAD 14, T_VAC 9, T_HOLD 6, T_RISE 10, FAIR 7 steps",
           "counterexample": null,
           "kind": "bounded"
@@ -8156,7 +8156,7 @@
           "expect": "sat",
           "verdict": "sat",
           "as_expected": true,
-          "seconds": 10.701,
+          "seconds": 7.404,
           "note": "DT 5 s, T_DEAD 14, T_VAC 9, T_HOLD 6, T_RISE 10, FAIR 7 steps",
           "counterexample": {
             "accab_0": false,
@@ -8568,7 +8568,7 @@
           "expect": "unsat",
           "verdict": "unsat",
           "as_expected": true,
-          "seconds": 0.005,
+          "seconds": 0.004,
           "note": "DT 5 s, T_DEAD 14, T_VAC 9, T_HOLD 6, T_RISE 10, FAIR 7 steps",
           "counterexample": null,
           "kind": "proved"
@@ -8579,7 +8579,7 @@
           "expect": "unsat",
           "verdict": "unsat",
           "as_expected": true,
-          "seconds": 0.071,
+          "seconds": 0.055,
           "note": "DT 5 s, T_DEAD 14, T_VAC 9, T_HOLD 6, T_RISE 10, FAIR 7 steps",
           "counterexample": null,
           "kind": "proved"
@@ -8590,7 +8590,7 @@
           "expect": "unsat",
           "verdict": "unsat",
           "as_expected": true,
-          "seconds": 52.027,
+          "seconds": 38.049,
           "note": "DT 5 s, T_DEAD 14, T_VAC 9, T_HOLD 6, T_RISE 10, FAIR 7 steps",
           "counterexample": null,
           "kind": "bounded"
@@ -8601,7 +8601,7 @@
           "expect": "sat",
           "verdict": "sat",
           "as_expected": true,
-          "seconds": 55.625,
+          "seconds": 39.366,
           "note": "DT 5 s, T_DEAD 14, T_VAC 9, T_HOLD 6, T_RISE 10, FAIR 7 steps",
           "counterexample": {
             "accab_0": false,
@@ -9013,7 +9013,7 @@
           "expect": "sat",
           "verdict": "sat",
           "as_expected": true,
-          "seconds": 6.333,
+          "seconds": 5.405,
           "note": "DT 5 s, T_DEAD 14, T_VAC 9, T_HOLD 6, T_RISE 10, FAIR 7 steps",
           "counterexample": {
             "accab_0": true,
@@ -9425,7 +9425,7 @@
           "expect": "sat",
           "verdict": "sat",
           "as_expected": true,
-          "seconds": 0.763,
+          "seconds": 0.667,
           "note": "DT 5 s, T_DEAD 14, T_VAC 9, T_HOLD 6, T_RISE 10, FAIR 7 steps",
           "counterexample": {
             "accab_0": false,
@@ -9837,7 +9837,7 @@
           "expect": "sat",
           "verdict": "sat",
           "as_expected": true,
-          "seconds": 7.213,
+          "seconds": 6.681,
           "note": "DT 5 s, T_DEAD 14, T_VAC 9, T_HOLD 6, T_RISE 10, FAIR 7 steps",
           "counterexample": {
             "accab_0": true,
@@ -10249,7 +10249,7 @@
           "expect": "sat",
           "verdict": "sat",
           "as_expected": true,
-          "seconds": 11.711,
+          "seconds": 10.929,
           "note": "DT 5 s, T_DEAD 14, T_VAC 9, T_HOLD 6, T_RISE 10, FAIR 7 steps",
           "counterexample": {
             "accab_0": false,
@@ -10661,7 +10661,7 @@
           "expect": "sat",
           "verdict": "sat",
           "as_expected": true,
-          "seconds": 4.37,
+          "seconds": 3.691,
           "note": "DT 5 s, T_DEAD 14, T_VAC 9, T_HOLD 6, T_RISE 10, FAIR 7 steps; the former rule D resolved it by treating 70 s of silence as death (B2C-Oe)",
           "counterexample": {
             "accab_0": false,
@@ -11073,7 +11073,7 @@
           "expect": "sat",
           "verdict": "sat",
           "as_expected": true,
-          "seconds": 34.782,
+          "seconds": 29.854,
           "note": "DT 5 s, T_DEAD 14, T_VAC 9, T_HOLD 6, T_RISE 10, FAIR 7 steps; with the former rule D the survivors left after 70 s of silence (B2C-Oe); the payload GP_PASSED of a drone that failed after passing is not modelled",
           "counterexample": {
             "accab_0": false,
@@ -11485,7 +11485,7 @@
           "expect": "sat",
           "verdict": "sat",
           "as_expected": true,
-          "seconds": 70.347,
+          "seconds": 63.785,
           "note": "DT 5 s, T_DEAD 14, T_VAC 9, T_HOLD 6, T_RISE 10, FAIR 7 steps; with the former rule D the survivors left after 70 s of silence (B2C-Oe); the payload GP_PASSED of a drone that failed after passing is not modelled",
           "counterexample": {
             "accab_0": false,
@@ -11897,7 +11897,7 @@
           "expect": "sat",
           "verdict": "sat",
           "as_expected": true,
-          "seconds": 4.473,
+          "seconds": 3.999,
           "note": "DT 5 s, T_DEAD 14, T_VAC 9, T_HOLD 6, T_RISE 10, FAIR 7 steps",
           "counterexample": {
             "accab_0": true,
@@ -12309,7 +12309,7 @@
           "expect": "unsat",
           "verdict": "unsat",
           "as_expected": true,
-          "seconds": 19.72,
+          "seconds": 16.678,
           "note": "DT 5 s, T_DEAD 14, T_VAC 9, T_HOLD 6, T_RISE 10, FAIR 7 steps",
           "counterexample": null,
           "kind": "bounded"
@@ -12320,7 +12320,7 @@
           "expect": "unsat",
           "verdict": "unsat",
           "as_expected": true,
-          "seconds": 20.397,
+          "seconds": 18.446,
           "note": "DT 5 s, T_DEAD 14, T_VAC 9, T_HOLD 6, T_RISE 10, FAIR 7 steps",
           "counterexample": null,
           "kind": "bounded"
@@ -12331,7 +12331,7 @@
           "expect": "sat",
           "verdict": "sat",
           "as_expected": true,
-          "seconds": 4.428,
+          "seconds": 3.955,
           "note": "DT 5 s, T_DEAD 14, T_VAC 9, T_HOLD 6, T_RISE 10, FAIR 7 steps",
           "counterexample": {
             "accab_0": false,
@@ -12743,7 +12743,7 @@
           "expect": "unsat",
           "verdict": "unsat",
           "as_expected": true,
-          "seconds": 15.423,
+          "seconds": 13.415,
           "note": "DT 5 s, T_DEAD 14, T_VAC 9, T_HOLD 6, T_RISE 10, FAIR 7 steps",
           "counterexample": null,
           "kind": "bounded"
@@ -12754,7 +12754,7 @@
           "expect": "sat",
           "verdict": "sat",
           "as_expected": true,
-          "seconds": 2.695,
+          "seconds": 2.327,
           "note": "DT 5 s, T_DEAD 14, T_VAC 9, T_HOLD 6, T_RISE 10, FAIR 7 steps",
           "counterexample": {
             "accab_0": true,
@@ -13166,7 +13166,7 @@
           "expect": "sat",
           "verdict": "sat",
           "as_expected": true,
-          "seconds": 5.463,
+          "seconds": 4.261,
           "note": "DT 5 s, T_DEAD 14, T_VAC 9, T_HOLD 6, T_RISE 10, FAIR 7 steps",
           "counterexample": {
             "accab_0": false,
@@ -13578,7 +13578,7 @@
           "expect": "sat",
           "verdict": "sat",
           "as_expected": true,
-          "seconds": 4.155,
+          "seconds": 3.455,
           "note": "DT 5 s, T_DEAD 14, T_VAC 9, T_HOLD 6, T_RISE 10, FAIR 7 steps",
           "counterexample": {
             "accab_0": false,
@@ -14001,7 +14001,7 @@
           "expect": "unsat",
           "verdict": "unsat",
           "as_expected": true,
-          "seconds": 0.377,
+          "seconds": 0.353,
           "note": "DT 5 s, T_DEAD 14, T_VAC 9, T_HOLD 6, T_RISE 10, FAIR 7 steps",
           "counterexample": null,
           "kind": "bounded"
@@ -14012,7 +14012,7 @@
           "expect": "unsat",
           "verdict": "unsat",
           "as_expected": true,
-          "seconds": 0.047,
+          "seconds": 0.044,
           "note": "DT 5 s, T_DEAD 14, T_VAC 9, T_HOLD 6, T_RISE 10, FAIR 7 steps",
           "counterexample": null,
           "kind": "proved"
@@ -14023,7 +14023,7 @@
           "expect": "unsat",
           "verdict": "unsat",
           "as_expected": true,
-          "seconds": 14.553,
+          "seconds": 12.432,
           "note": "DT 5 s, T_DEAD 14, T_VAC 9, T_HOLD 6, T_RISE 10, FAIR 7 steps",
           "counterexample": null,
           "kind": "bounded"
@@ -14034,7 +14034,7 @@
           "expect": "unsat",
           "verdict": "unsat",
           "as_expected": true,
-          "seconds": 0.064,
+          "seconds": 0.06,
           "note": "DT 5 s, T_DEAD 14, T_VAC 9, T_HOLD 6, T_RISE 10, FAIR 7 steps",
           "counterexample": null,
           "kind": "proved"
@@ -14045,7 +14045,7 @@
           "expect": "unsat",
           "verdict": "unsat",
           "as_expected": true,
-          "seconds": 46.628,
+          "seconds": 41.325,
           "note": "DT 5 s, T_DEAD 14, T_VAC 9, T_HOLD 6, T_RISE 10, FAIR 7 steps",
           "counterexample": null,
           "kind": "bounded"
@@ -14056,7 +14056,7 @@
           "expect": "unsat",
           "verdict": "unsat",
           "as_expected": true,
-          "seconds": 19.539,
+          "seconds": 17.276,
           "note": "DT 5 s, T_DEAD 14, T_VAC 9, T_HOLD 6, T_RISE 10, FAIR 7 steps; the same composition as F1d1; admission at the stage-2 hold at most 3.8 s before the entry (< DT)",
           "counterexample": null,
           "kind": "bounded"
@@ -14067,7 +14067,7 @@
           "expect": "sat",
           "verdict": "sat",
           "as_expected": true,
-          "seconds": 1.85,
+          "seconds": 1.783,
           "note": "DT 5 s, T_DEAD 14, T_VAC 9, T_HOLD 6, T_RISE 10, FAIR 7 steps; one counterexample trace a: AFFFFF | b: AAQCXX | c: AAAQCX; entries by avoidance (step, drone): [(3, 'b'), (4, 'c')]",
           "counterexample": {
             "accab_0": true,
@@ -14479,7 +14479,7 @@
           "expect": "sat",
           "verdict": "sat",
           "as_expected": true,
-          "seconds": 1.624,
+          "seconds": 1.62,
           "note": "DT 5 s, T_DEAD 14, T_VAC 9, T_HOLD 6, T_RISE 10, FAIR 7 steps; one counterexample trace a: AFFFFFFFF | b: AAQCCCCCX | c: AAQQCCXXX; entries by avoidance (step, drone): [(5, 'c'), (7, 'b')]",
           "counterexample": {
             "accab_0": true,
@@ -14891,7 +14891,7 @@
           "expect": "sat",
           "verdict": "sat",
           "as_expected": true,
-          "seconds": 0.045,
+          "seconds": 0.041,
           "note": "DT 5 s, T_DEAD 14, T_VAC 9, T_HOLD 6, T_RISE 10, FAIR 7 steps",
           "counterexample": {
             "accab_0": true,
@@ -14955,7 +14955,7 @@
           "expect": "counterexample",
           "verdict": "counterexample",
           "as_expected": true,
-          "seconds": 0.54,
+          "seconds": 0.534,
           "note": "8 mirrored patterns, e.g. [['UP'], ['RIGHT', 'UP'], ['LEFT', 'UP']]",
           "counterexample": null,
           "kind": "scope"
@@ -14966,7 +14966,7 @@
           "expect": "none",
           "verdict": "none",
           "as_expected": true,
-          "seconds": 133.4,
+          "seconds": 127.4,
           "note": "{\"NEAR_HOLD\": {\"A_concurrent\": {\"episodes\": 168, \"with_entry_without_admission\": 84, \"with_entry_by_avoidance\": 78, \"with_double_occupancy\": 0, \"with_p1_violation\": 0, \"with_p1_violation_between_fleet_drones\": 0, \"with_non_reacting_vehicle_in_cr\": 0, \"min_centre_distance_m\": 2.61, \"joint_steps\": {\"NOT_CONSTRAINED\": 0, \"JOINTLY_FEASIBLE\": 0, \"UNCERTAIN\": 0, \"JOINTLY_INFEASIBLE\": 0}, \"p2_filtered_steps\": 0, \"p2_recovery_steps\": 0, \"p2_uncertified_steps\": 0}, \"B_occupant_holder_third\": {\"episodes\": 144, \"with_entry_without_admission\": 42, \"with_entry_by_avoidance\": 4, \"with_double_occupancy\": 0, \"with_p1_violation\": 24, \"with_p1_violation_between_fleet_drones\": 0, \"with_non_reacting_vehicle_in_cr\": 48, \"min_centre_distance_m\": 0.01, \"joint_steps\": {\"NOT_CONSTRAINED\": 0, \"JOINTLY_FEASIBLE\": 0, \"UNCERTAIN\": 0, \"JOINTLY_INFEASIBLE\": 0}, \"p2_filtered_steps\": 0, \"p2_recovery_steps\": 0, \"p2_uncertified_steps\": 0}}, \"CORRECTED\": {\"A_concurrent\": {\"episodes\": 168, \"with_entry_without_admission\": 0, \"with_entry_by_avoidance\": 0, \"with_double_occupancy\": 0, \"with_p1_violation\": 0, \"with_p1_violation_between_fleet_drones\": 0, \"with_non_reacting_vehicle_in_cr\": 0, \"min_centre_distance_m\": 2.66, \"joint_steps\": {\"NOT_CONSTRAINED\": 0, \"JOINTLY_FEASIBLE\": 114732, \"UNCERTAIN\": 19660, \"JOINTLY_INFEASIBLE\": 1125}, \"p2_filtered_steps\": 104484, \"p2_recovery_steps\": 0, \"p2_uncertified_steps\": 0}, \"B_occupant_holder_third\": {\"episodes\": 144, \"with_entry_without_admission\": 0, \"with_entry_by_avoidance\": 0, \"with_double_occupancy\": 0, \"with_p1_violation\": 24, \"with_p1_violation_between_fleet_drones\": 0, \"with_non_reacting_vehicle_in_cr\": 48, \"min_centre_distance_m\": 0.01, \"joint_steps\": {\"NOT_CONSTRAINED\": 0, \"JOINTLY_FEASIBLE\": 40936, \"UNCERTAIN\": 13960, \"JOINTLY_INFEASIBLE\": 105}, \"p2_filtered_steps\": 19096, \"p2_recovery_steps\": 0, \"p2_uncertified_steps\": 0}}, \"reading\": \"NEAR_HOLD against CORRECTED on the same episodes; CORRECTED keeps every not-admitted centre out of the CR in this set\"}",
           "counterexample": null,
           "kind": "reported"
@@ -14977,7 +14977,7 @@
           "expect": "sat",
           "verdict": "sat",
           "as_expected": true,
-          "seconds": 2.751,
+          "seconds": 2.608,
           "note": "DT 5 s, T_DEAD 14, T_VAC 9, T_HOLD 6, T_RISE 10, FAIR 7 steps",
           "counterexample": {
             "accab_0": true,
@@ -15388,7 +15388,7 @@
     {
       "title": "B2 explicit communication (one-way beacons, freshness, delays, losses, clocks, local decisions)",
       "encoding": "perception/gate_perception.py + perception/acoustic_gate.py + control/flows.py + formal/check_b2_comm.py",
-      "seconds": 74.1,
+      "seconds": 74.5,
       "all_passed": true,
       "checks": [
         {
@@ -15419,7 +15419,7 @@
           "expect": "unsat",
           "verdict": "unsat",
           "as_expected": true,
-          "seconds": 0.016,
+          "seconds": 0.015,
           "note": "every loss pattern, latency, TDMA slot and clock offset; sonar free (not used); T_f = 3.5 s, T_c = 4.0 s, D = t_cross_max = 37.52 s, P = 1.0 s, latency [0.1, 0.4] s, skew 0.05 s",
           "counterexample": null,
           "kind": "proved"
@@ -15430,7 +15430,7 @@
           "expect": "unsat",
           "verdict": "unsat",
           "as_expected": true,
-          "seconds": 0.02,
+          "seconds": 0.018,
           "note": "the latest report is then at most 3 P + latency_max old",
           "counterexample": null,
           "kind": "proved"
@@ -15441,7 +15441,7 @@
           "expect": "unsat",
           "verdict": "unsat",
           "as_expected": true,
-          "seconds": 0.015,
+          "seconds": 0.016,
           "note": "k_max = ceil((T_c + D - latency_max - dt) / P) - 2 (the largest k with (k + 1) P + latency_max + dt < T_c + D): a mutually degraded pair has both commitments older than T_c + D, so the latest report is a claim",
           "counterexample": null,
           "kind": "proved"
@@ -15452,7 +15452,7 @@
           "expect": "unsat",
           "verdict": "unsat",
           "as_expected": true,
-          "seconds": 0.018,
+          "seconds": 0.016,
           "note": "",
           "counterexample": null,
           "kind": "proved"
@@ -15463,7 +15463,7 @@
           "expect": "unsat",
           "verdict": "unsat",
           "as_expected": true,
-          "seconds": 0.014,
+          "seconds": 0.012,
           "note": "",
           "counterexample": null,
           "kind": "proved"
@@ -15485,7 +15485,7 @@
           "expect": "unsat",
           "verdict": "unsat",
           "as_expected": true,
-          "seconds": 0.018,
+          "seconds": 0.019,
           "note": "",
           "counterexample": null,
           "kind": "proved"
@@ -15507,7 +15507,7 @@
           "expect": "unsat",
           "verdict": "unsat",
           "as_expected": true,
-          "seconds": 0.017,
+          "seconds": 0.018,
           "note": "",
           "counterexample": null,
           "kind": "proved"
@@ -15518,7 +15518,7 @@
           "expect": "sat",
           "verdict": "sat",
           "as_expected": true,
-          "seconds": 0.021,
+          "seconds": 0.023,
           "note": "B0 then: queue precedence and occupancy latch (formal/check_mutex.py M2/M3, idealised positions); the stage-2 sonar is not certified (B2C-G1)",
           "counterexample": {
             "Lf_commit_age": 41.52083333333333,
@@ -15557,7 +15557,7 @@
           "expect": "sat",
           "verdict": "sat",
           "as_expected": true,
-          "seconds": 0.021,
+          "seconds": 0.019,
           "note": "",
           "counterexample": {
             "Lf_commit_age": 41.52083333333333,
@@ -15611,7 +15611,7 @@
           "expect": "sat",
           "verdict": "sat",
           "as_expected": true,
-          "seconds": 0.015,
+          "seconds": 0.016,
           "note": "",
           "counterexample": {
             "Lf_commit_age": 2.981688143155506,
@@ -15695,7 +15695,7 @@
           "expect": "sat",
           "verdict": "sat",
           "as_expected": true,
-          "seconds": 0.022,
+          "seconds": 0.02,
           "note": "",
           "counterexample": {
             "Lf_commit_age": 2.981688143155506,
@@ -15735,7 +15735,7 @@
           "expect": "sat",
           "verdict": "sat",
           "as_expected": true,
-          "seconds": 0.023,
+          "seconds": 0.022,
           "note": "",
           "counterexample": {
             "Lf_commit_age": 71.8316881431555,
@@ -15796,7 +15796,7 @@
           "expect": "sat",
           "verdict": "sat",
           "as_expected": true,
-          "seconds": 0.017,
+          "seconds": 0.016,
           "note": "",
           "counterexample": {
             "Lf_commit_age": 3.5,
@@ -15837,7 +15837,7 @@
           "expect": "sat",
           "verdict": "sat",
           "as_expected": true,
-          "seconds": 0.02,
+          "seconds": 0.016,
           "note": "",
           "counterexample": {
             "Lf_commit_age": 4.0,
@@ -15920,7 +15920,7 @@
           "expect": "sat",
           "verdict": "sat",
           "as_expected": true,
-          "seconds": 0.017,
+          "seconds": 0.016,
           "note": "",
           "counterexample": {
             "Lf_commit_age": 41.52083333333333,
@@ -15960,7 +15960,7 @@
           "expect": "unsat",
           "verdict": "unsat",
           "as_expected": true,
-          "seconds": 0.005,
+          "seconds": 0.007,
           "note": "",
           "counterexample": null,
           "kind": "proved"
@@ -16007,7 +16007,7 @@
           "expect": "unsat",
           "verdict": "unsat",
           "as_expected": true,
-          "seconds": 0.001,
+          "seconds": 0.0,
           "note": "",
           "counterexample": null,
           "kind": "proved"
@@ -16058,7 +16058,7 @@
           "expect": "unsat",
           "verdict": "unsat",
           "as_expected": true,
-          "seconds": 64.699,
+          "seconds": 65.287,
           "note": "BMC from the queue (both uncommitted, nothing received)",
           "counterexample": null,
           "kind": "bounded"
@@ -16069,7 +16069,7 @@
           "expect": "sat",
           "verdict": "sat",
           "as_expected": true,
-          "seconds": 1.655,
+          "seconds": 1.607,
           "note": "",
           "counterexample": {
             "L0_busy_0": false,
@@ -16481,7 +16481,7 @@
           "expect": "sat",
           "verdict": "sat",
           "as_expected": true,
-          "seconds": 2.804,
+          "seconds": 2.724,
           "note": "",
           "counterexample": {
             "L0_busy_0": false,
@@ -16914,7 +16914,7 @@
     {
       "title": "Gate-aware joint safety (P2 as a constraint on the final command, P1 x P2 feasibility)",
       "encoding": "holo_fleet/control/gate_safety.py + holo_fleet/control/escape.py + formal/check_gate_safety.py + formal/check_stage2.py",
-      "seconds": 282.3,
+      "seconds": 275.3,
       "all_passed": true,
       "checks": [
         {
@@ -16923,7 +16923,7 @@
           "expect": "unsat",
           "verdict": "unsat",
           "as_expected": true,
-          "seconds": 0.01,
+          "seconds": 0.011,
           "note": "e_h 1.0 m, e_z 1.0 m, slack 0.05 m; the command of a step is applied for dt = 0.1 s <= tau_c = 0.35 s, inside the first phase of its own backup",
           "counterexample": null,
           "kind": "proved"
@@ -16945,7 +16945,7 @@
           "expect": "holds",
           "verdict": "holds",
           "as_expected": true,
-          "seconds": 0.14,
+          "seconds": 0.13,
           "note": "7442 cases, |u| <= 0.6 m/s, dt 0.1 s; worst Delta 0.179 m at (u0, u, side) (-0.6, -0.6, '+') (a fast motion away from that side: the envelope lets it stop at once at the next step); worst Delta when neither the velocity nor the command points away 0.029 m, with |u0|, |u| <= 0.3 m/s 0.104 m; Delta of a hold 0.029 m (drift w dt + change of the navigation error 0.0136 m per step from the NavBound coefficients).  This describes the ONE-STEP margin (cr_margin without lookahead); the deployed selection uses the robust margin (P2B5) and the anchored station keeping (P2B4)",
           "counterexample": null,
           "kind": "numeric"
@@ -16967,7 +16967,7 @@
           "expect": "holds",
           "verdict": "holds",
           "as_expected": true,
-          "seconds": 8.3,
+          "seconds": 8.0,
           "note": "21850 trajectories (1500 states near the CR, up to 5 P2-safe candidate commands each, 8 extreme per-axis combinations at the error corners + 2 random), sampled every 10 ms; 0 entered the CR",
           "counterexample": null,
           "kind": "numeric"
@@ -16978,7 +16978,7 @@
           "expect": "holds",
           "verdict": "holds",
           "as_expected": true,
-          "seconds": 6.8,
+          "seconds": 6.6,
           "note": "101250 loop states, 5 anchors (stage-2 target, beside, above, below, beyond the gate), gains 0.5 / 0.6, cap 0.27 m/s, drift +-0.15 per axis; exact invariance with the true velocity: largest drop 0.00e+00 m.  With the measured velocity within v_err 0.098 m/s (DVL 3 sigma) the braking term of hold_margin can exceed the anchor term at the edge of the deviation band: largest drop 0.083 m at ([-2.5525, 0.0, 0.0], [0.3, -0.3, -0.3], [0.098, 0.098, 0.098]): the margin RECOMPUTED onboard at a later step is time-invariant only up to that amount (R-c: a fresh measurement inflation), which is why the certificate of station keeping is the one latched when the maneuver is engaged (gate_safety.P2Certificate; P2R3, P2R4): continuing it needs no re-certification; stage-2 target margin min 0.017 m.  0 deviation/gain cases saturate the per-axis cap HOLD_V_MAX (> w: still restoring on every axis, P2R3a; the former 2-norm cap needed the drift vector below HOLD_V_MAX).  Deviation and velocity taken independently (states the loop does not produce): min -0.165 m",
           "counterexample": null,
           "kind": "numeric"
@@ -16989,7 +16989,7 @@
           "expect": "holds",
           "verdict": "holds",
           "as_expected": true,
-          "seconds": 33.9,
+          "seconds": 32.4,
           "note": "4948 returned commands (63 threat sets x 2 planners, 9 mission commands; 16 positions x 4 velocities; HOLD answers are station keeping, P2B4 / P2R3); v_err 0.098 m/s, rho 0.142 m/s; worst next-step SK margin 0.053 m, computed independently of next_band (upper_at, side_end); 0 failures.  The certificate is handed to the next step, not recomputed there (P2R2, P2R4n); the old target of this check - braking re-certified onboard at the next step - is the counterexample P2R2m",
           "counterexample": null,
           "kind": "numeric"
@@ -17011,7 +17011,7 @@
           "expect": "unsat",
           "verdict": "unsat",
           "as_expected": true,
-          "seconds": 0.02,
+          "seconds": 0.022,
           "note": "x(t) the integral of the envelope in closed form (piecewise quadratic): the running maximum is the end value (integrand >= w > 0)",
           "counterexample": null,
           "kind": "proved"
@@ -17033,7 +17033,7 @@
           "expect": "unsat",
           "verdict": "unsat",
           "as_expected": true,
-          "seconds": 0.027,
+          "seconds": 0.029,
           "note": "for all reals q, x, xp, v1, vp and every rho >= 0; H = e_track + w tau_c = 0.3525 m; the - side is the + side of the mirrored axis.  With the CR separation of P2R3d it gives: robust margin > 0 at step k -> station keeping on the next estimate certified at k + 1 (kind NEXT), with no use of the next measurement (the 2 v_err inflation of a re-certification is not needed)",
           "counterexample": null,
           "kind": "proved"
@@ -17044,7 +17044,7 @@
           "expect": "sat",
           "verdict": "sat",
           "as_expected": true,
-          "seconds": 0.024,
+          "seconds": 0.023,
           "note": "",
           "counterexample": {
             "dq": 0.1,
@@ -17074,7 +17074,7 @@
           "expect": "unsat",
           "verdict": "unsat",
           "as_expected": true,
-          "seconds": 0.019,
+          "seconds": 0.016,
           "note": "K_HOLD 0.5, HOLD_V_MAX 0.27 > w 0.15, dt 0.1; covers hold_velocity (gain K_HOLD, per-axis cap) and the unsaturated loops of the flows (gain k_track 0.6); the band of sk_band has half widths >= e_track + w tau_c (the latency allowance: premise H, P2R3n); base case: the loop starts inside the band by construction (q + X + rho T, P2R1)",
           "counterexample": null,
           "kind": "proved"
@@ -17085,7 +17085,7 @@
           "expect": "unsat",
           "verdict": "unsat",
           "as_expected": true,
-          "seconds": 0.019,
+          "seconds": 0.018,
           "note": "the stage-2 hold / standoff (k_track, v_pass) and the failsafe hold (0.5, 0.25 m/s) of Flows; a loop that is not latchable is replaced by hold_velocity on its anchor (filter_mission)",
           "counterexample": null,
           "kind": "proved"
@@ -17096,7 +17096,7 @@
           "expect": "unsat",
           "verdict": "unsat",
           "as_expected": true,
-          "seconds": 0.007,
+          "seconds": 0.008,
           "note": "the band of hold_margin in true coordinates is max(p_s - a, E + e_track) + the latency allowance: the deployed band (+ rho T) contains it, so the per-axis capped law is certified under either reading of premise H; a 2-norm cap is not (an axis with a small deviation may lose its restoring component when the estimate deviation is large)",
           "counterexample": null,
           "kind": "proved"
@@ -17107,7 +17107,7 @@
           "expect": "unsat",
           "verdict": "unsat",
           "as_expected": true,
-          "seconds": 0.03,
+          "seconds": 0.027,
           "note": "separation along one axis towards its + side (s or l, either side by mirroring), as P2B1",
           "counterexample": null,
           "kind": "proved"
@@ -17129,7 +17129,7 @@
           "expect": "unsat",
           "verdict": "unsat",
           "as_expected": true,
-          "seconds": 0.017,
+          "seconds": 0.018,
           "note": "v_err 0.098 m/s, rho 0.142 m/s.  Activation (reported): the constraint becomes active within ACTIVE_RANGE_M = 8.0 m of the CR box (3-D) and was inactive one step earlier, so at activation the distance is >= 7.92 m; the depth envelope of the arena (-9.0 to -1.5 m) bounds the vertical offset from the CR box by 5.5 m, so the larger of the s / l separations is >= 4.03 m (>= D_base): the base case holds on entering the range.  During a DVL outage (v_err = v_bound) D_base = 5.51 m (not covered at activation).  A gate that becomes the current one while the drone is already inside the range (consecutive gates nearer than the range) is outside this base case",
           "counterexample": null,
           "kind": "proved"
@@ -17162,7 +17162,7 @@
           "expect": "holds",
           "verdict": "holds",
           "as_expected": true,
-          "seconds": 77.6,
+          "seconds": 76.2,
           "note": "4948 returned commands, 118752 next states (8 side corners x 3 drift / measurement corners); 0 without a certified action; 64 of the next states rely on the handed certificate (the SK margin recomputed with the fresh measurement is not positive: the R-c drop), 5824 have no onboard-certified braking (one-step margin of a zero command, the braking lookahead); smallest handed margin 0.003 m",
           "counterexample": null,
           "kind": "numeric"
@@ -17173,7 +17173,7 @@
           "expect": "counterexample",
           "verdict": "counterexample",
           "as_expected": true,
-          "seconds": 73.6,
+          "seconds": 71.0,
           "note": "4772 commands returned by the planners with the robust margin and the hold_margin of the braking lookahead; 744 with a next-state corner whose onboard braking (velocity measured within v_err and filtered with it) is not certified (744 of 4772 at a9ffa34 with the former CR), 0 physically unsafe; onboard deficit min -0.114 m, median -0.009 m.  Root cause (R-a): the braking lookahead took the next velocity as the true worst case vp, the onboard re-certification uses up to vp + 2 v_err and the next estimate moves by up to rho dt more",
           "counterexample": null,
           "kind": "mutation"
@@ -17184,7 +17184,7 @@
           "expect": "holds",
           "verdict": "holds",
           "as_expected": true,
-          "seconds": 7.6,
+          "seconds": 7.4,
           "note": "10200 trajectories from 900 states 1-4 m above or below the CR centre (extreme s, l profiles at the error corners and random ones, any vertical profile); 0 reached the column",
           "counterexample": null,
           "kind": "numeric"
@@ -17217,7 +17217,7 @@
           "expect": "unsat",
           "verdict": "unsat",
           "as_expected": true,
-          "seconds": 22.655,
+          "seconds": 22.409,
           "note": "d_warning 2.4 m, d_safe 1.0 m, a_brake 0.5 m/s^2 each, v_open 0.2, w_rel 0.15 m/s, per-drone speed <= v_escape 0.55, sum <= v_escape + v_max_nominal, dt 0.1 s",
           "counterexample": null,
           "kind": "bounded"
@@ -17228,7 +17228,7 @@
           "expect": "unsat",
           "verdict": "unsat",
           "as_expected": true,
-          "seconds": 0.114,
+          "seconds": 0.111,
           "note": "d_warning 2.4 m, d_safe 1.0 m, a_brake 0.5 m/s^2 each, v_open 0.2, w_rel 0.15 m/s, per-drone speed <= v_escape 0.55, sum <= v_escape + v_max_nominal, dt 0.1 s",
           "counterexample": null,
           "kind": "proved"
@@ -17239,7 +17239,7 @@
           "expect": "sat",
           "verdict": "sat",
           "as_expected": true,
-          "seconds": 5.564,
+          "seconds": 5.493,
           "note": "d_warning 2.4 m, d_safe 1.0 m, a_brake 0.5 m/s^2 each, v_open 0.2, w_rel 0.15 m/s, per-drone speed <= v_escape 0.55, sum <= v_escape + v_max_nominal, dt 0.1 s",
           "counterexample": {
             "cb_0": 0.0475,
@@ -17651,7 +17651,7 @@
           "expect": "holds",
           "verdict": "holds",
           "as_expected": true,
-          "seconds": 37.5,
+          "seconds": 37.2,
           "note": "25272 decisions (702 threat sets: 26 patterns alone and every pair, with opening v_open or 0; 12 gate-frame positions around the stage-2 hold; 2 current velocities; the escape with opening v_open only); 0 with an error; gate_safety.classify disagreed with the reference 0 times (uniform requirements); classes {'JOINTLY_FEASIBLE': 2820, 'UNCERTAIN': 9816, 'JOINTLY_INFEASIBLE': 12636}",
           "counterexample": null,
           "kind": "numeric"
