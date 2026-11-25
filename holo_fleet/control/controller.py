@@ -25,7 +25,7 @@ from holo_fleet.ha.spec import IN_FORMATION, Mode
 from holo_fleet.mission import MissionPlan
 from holo_fleet.perception.frame import SensorFrame
 from holo_fleet.perception.passage import PassageVerifier, gate_report
-from holo_fleet.perception.sonar_geometry import HULL_HALF
+from holo_fleet.perception.sonar_geometry import HULL_HALF, R_OUT
 from holo_fleet.perception.perception import LocalObservation, Perception
 
 AVOIDANCE = (Mode.SEPARATION_WARNING, Mode.COLLISION_AVOIDANCE)
@@ -158,7 +158,13 @@ class DroneController:
             self.events.append({**e, "mode": self.ha.mode.value})
         self.perception.events.clear()
         obs.ab.committed = self.ha.committed
-        obs.ab.entry_abort = bool(self.flows.abort_request and self.ha.committed and obs.ab.mutex_zone
+        concede = False
+        if (obs.gate.concede_to is not None and self.ha.committed and obs.ab.mutex_zone and not obs.ab.passed
+                and not self.flows.cr_cleared and not self.flows.past_centre and not self.passage.in_progress):
+            G = self.cfg.gate
+            nav_err = max(G.nav_err_m, self.perception.nav_bound.value)
+            concede = obs.gate.s < min(G.stage2_hold_s - G.admit_zone_m, G.cr_s_min - R_OUT - nav_err)
+        obs.ab.entry_abort = bool((self.flows.abort_request or concede) and self.ha.committed and obs.ab.mutex_zone
                                   and not obs.ab.passed)
         bad = observation_violations(obs.ab, self.cfg)
         self.obs_consistent = not bad
@@ -180,6 +186,9 @@ class DroneController:
                                 "from": rec.source, "to": rec.target,
                                 "gate": obs.gate.gate_id, "gate_decision": obs.gate.decision,
                                 "relations": obs.gate.relations})
+            if concede and rec.decision == "ABORT_PASS":
+                self.events.append({"t": t, "type": "COMMITMENT_CONCEDED", "gate": obs.gate.gate_id,
+                                    "peer_slot": obs.gate.concede_to})
         if rec.decision == "EXITED" or (obs.gate.passed and not self.ha.committed and obs.gate.gate_id is not None):
             self.perception.gp.advance()
         if prev == Mode.FAILSAFE_HOLD_OR_RETREAT and mode != prev:

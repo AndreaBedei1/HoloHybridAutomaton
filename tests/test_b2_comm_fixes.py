@@ -131,6 +131,74 @@ def _frame(t):
     return SensorFrame(t, data, {k: t for k in data})
 
 
+def _committed_line_pair(cfg=B2, reverse_slots=False):
+    plans = SCENARIOS["line_parallel_mutex"](cfg).plans
+    if reverse_slots:
+        permutation = (1, 0, 2)
+        slots = [plans[0].slots[k] for k in permutation]
+        plans = [dataclasses.replace(p, slots=slots, slot_index=permutation.index(p.slot_index)) for p in plans]
+    pair = [DroneController(p, cfg) for p in plans[:2]]
+    for ctl in pair:
+        ctl.perception.acoustic.set_identities({k: k for k in range(len(plans))})
+        ctl.step(_frame(0.0), 0.1)
+        ctl.ha.committed, ctl.ha.mode = True, Mode.MUTEX_PASS
+    return pair
+
+
+def _hear_gate_phase(receiver, sender, t, phase, gate_idx=0):
+    _rx(receiver.perception.acoustic, receiver.perception.nav.state.p, t, sender.plan.slot_index,
+        sender.perception.nav.state.p, gate_idx=gate_idx, phase=phase)
+
+
+@pytest.mark.parametrize("reverse_slots", [False, True])
+def test_simultaneous_commitment_concedes_to_the_left_then_requires_its_withdrawal(reverse_slots):
+    first, second = _committed_line_pair(reverse_slots=reverse_slots)
+    _hear_gate_phase(first, second, 1.0, pl.GP_COMMITTED)
+    _hear_gate_phase(second, first, 1.0, pl.GP_COMMITTED)
+    first.step(_frame(1.0), 0.1)
+    second.step(_frame(1.0), 0.1)
+    assert first.last_obs.gate.decision == second.last_obs.gate.decision == "PRIORITY"
+    assert first.ha.committed and not first.flows.cr_cleared and not first.last_obs.gate.entry_ok
+    assert second.ha.mode == Mode.MUTEX_APPROACH and not second.ha.committed
+    assert second.perception.tx_phase == pl.GP_NONE and not second.flows.cr_cleared
+    event = next(e for e in second.events if e["type"] == "COMMITMENT_CONCEDED")
+    assert event["peer_slot"] == first.plan.slot_index
+
+    t = 1.0 + A.admit_fresh_s + 1.0
+    first.step(_frame(t), 0.1)
+    assert not first.last_obs.gate.entry_ok and first.last_obs.gate.occ_busy
+    _hear_gate_phase(first, second, t + 0.1, second.perception.tx_phase)
+    first.step(_frame(t + 0.1), 0.1)
+    assert first.last_obs.gate.entry_ok and first.last_obs.gate.occ_state == "EXITING"
+
+
+@pytest.mark.parametrize("case", ["stale", "another_gate", "admitted_peer", "stage2", "admitted", "nav_invalid", "fault", "disabled"])
+def test_concession_requires_current_competition_and_a_safe_unadmitted_state(case):
+    from holo_fleet.config import communication_disabled
+
+    first, second = _committed_line_pair(communication_disabled(B2) if case == "disabled" else B2)
+    t = 1.0 + A.admit_fresh_s + 1.0 if case == "stale" else 1.0
+    phase = pl.GP_ADMITTED if case == "admitted_peer" else pl.GP_COMMITTED
+    _hear_gate_phase(second, first, 1.0, phase, gate_idx=int(case == "another_gate"))
+    if case in ("stage2", "admitted"):
+        g = second.plan.gates[0]
+        p = np.asarray(g.from_gate_frame([G.stage2_hold_s, 0.0, 0.0]), float)
+        second.perception.nav.state.p = p
+        if case == "admitted":
+            second.flows.cr_cleared = True
+            second.passage.admit(0, g, p)
+            second.perception.nav.state.p = second.plan.launch_position.copy()
+    if case == "nav_invalid":
+        second.perception.nav_bound.invalid = True
+    frame = _frame(t)
+    if case == "fault":
+        del frame.data[sonar_sensor_name("FRONT")]
+    second.step(frame, 0.1)
+    assert second.ha.committed
+    if case == "fault":
+        assert second.ha.mode == Mode.FAILSAFE_HOLD_OR_RETREAT
+
+
 def test_a_committed_drone_in_failsafe_is_never_admitted():
     """The latent defect: a committed drone runs the gate flow as MUTEX_PASS in every mode; in FAILSAFE (a stale sensor) its stage-2
     check would see no echo.  The controller passes admissible = MUTEX_PASS and sense_ok."""
