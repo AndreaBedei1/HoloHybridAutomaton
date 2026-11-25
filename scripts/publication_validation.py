@@ -47,10 +47,15 @@ def execute(raw, matrix, workers):
                    "--retries", "0", "--require-clean"]
             if case.get("inject"):
                 cmd.append("--inject-commitments")
-            subprocess.run(cmd, cwd=ROOT, check=True)
+            # A failed case is recorded (its rows stay MISSING or invalid in the summary); the lane goes on.
+            code = subprocess.run(cmd, cwd=ROOT).returncode
+            if code:
+                failures.append({"case": case["id"], "shard": shard, "exit": code})
 
+    failures = []
     with ThreadPoolExecutor(max_workers=workers) as pool:
         list(pool.map(lane, range(workers)))
+    (raw / "lane_failures.json").write_text(json.dumps(failures, indent=1) + "\n", encoding="utf-8")
 
 
 def run_record(raw, case, protocol, seed):
