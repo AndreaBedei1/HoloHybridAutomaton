@@ -1,0 +1,1625 @@
+{
+  "profile": "CLEAN",
+  "listeners": [
+    35568
+  ],
+  "cases": {
+    "line3": {
+      "observer": [
+        0.0,
+        -23.5,
+        -8.0
+      ],
+      "middle": [
+        0.0,
+        -20.0,
+        -8.0
+      ],
+      "far": [
+        0.0,
+        -16.5,
+        -8.0
+      ],
+      "captures": [
+        {
+          "FRONT": {
+            "near": null,
+            "far": null
+          },
+          "REAR": {
+            "near": null,
+            "far": null
+          },
+          "LEFT": {
+            "near": 2.925,
+            "far": null
+          },
+          "RIGHT": {
+            "near": null,
+            "far": null
+          },
+          "UP": {
+            "near": null,
+            "far": null
+          },
+          "DOWN": {
+            "near": null,
+            "far": null
+          }
+        },
+        {
+          "FRONT": {
+            "near": null,
+            "far": null
+          },
+          "REAR": {
+            "near": null,
+            "far": null
+          },
+          "LEFT": {
+            "near": 2.925,
+            "far": null
+          },
+          "RIGHT": {
+            "near": null,
+            "far": null
+          },
+          "UP": {
+            "near": null,
+            "far": null
+          },
+          "DOWN": {
+            "near": null,
+            "far": null
+          }
+        },
+        {
+          "FRONT": {
+            "near": null,
+            "far": null
+          },
+          "REAR": {
+            "near": null,
+            "far": null
+          },
+          "LEFT": {
+            "near": 2.925,
+            "far": null
+          },
+          "RIGHT": {
+            "near": null,
+            "far": null
+          },
+          "UP": {
+            "near": null,
+            "far": null
+          },
+          "DOWN": {
+            "near": null,
+            "far": null
+          }
+        },
+        {
+          "FRONT": {
+            "near": null,
+            "far": null
+          },
+          "REAR": {
+            "near": null,
+            "far": null
+          },
+          "LEFT": {
+            "near": 2.925,
+            "far": null
+          },
+          "RIGHT": {
+            "near": null,
+            "far": null
+          },
+          "UP": {
+            "near": null,
+            "far": null
+          },
+          "DOWN": {
+            "near": null,
+            "far": null
+          }
+        },
+        {
+          "FRONT": {
+            "near": null,
+            "far": null
+          },
+          "REAR": {
+            "near": null,
+            "far": null
+          },
+          "LEFT": {
+            "near": 2.925,
+            "far": null
+          },
+          "RIGHT": {
+            "near": null,
+            "far": null
+          },
+          "UP": {
+            "near": null,
+            "far": null
+          },
+          "DOWN": {
+            "near": null,
+            "far": null
+          }
+        },
+        {
+          "FRONT": {
+            "near": null,
+            "far": null
+          },
+          "REAR": {
+            "near": null,
+            "far": null
+          },
+          "LEFT": {
+            "near": 2.925,
+            "far": null
+          },
+          "RIGHT": {
+            "near": null,
+            "far": null
+          },
+          "UP": {
+            "near": null,
+            "far": null
+          },
+          "DOWN": {
+            "near": null,
+            "far": null
+          }
+        },
+        {
+          "FRONT": {
+            "near": null,
+            "far": null
+          },
+          "REAR": {
+            "near": null,
+            "far": null
+          },
+          "LEFT": {
+            "near": 2.925,
+            "far": null
+          },
+          "RIGHT": {
+            "near": null,
+            "far": null
+          },
+          "UP": {
+            "near": null,
+            "far": null
+          },
+          "DOWN": {
+            "near": null,
+            "far": null
+          }
+        },
+        {
+          "FRONT": {
+            "near": null,
+            "far": null
+          },
+          "REAR": {
+            "near": null,
+            "far": null
+          },
+          "LEFT": {
+            "near": 2.925,
+            "far": null
+          },
+          "RIGHT": {
+            "near": null,
+            "far": null
+          },
+          "UP": {
+            "near": null,
+            "far": null
+          },
+          "DOWN": {
+            "near": null,
+            "far": null
+          }
+        },
+        {
+          "FRONT": {
+            "near": null,
+            "far": null
+          },
+          "REAR": {
+            "near": null,
+            "far": null
+          },
+          "LEFT": {
+            "near": 2.925,
+            "far": null
+          },
+          "RIGHT": {
+            "near": null,
+            "far": null
+          },
+          "UP": {
+            "near": null,
+            "far": null
+          },
+          "DOWN": {
+            "near": null,
+            "far": null
+          }
+        },
+        {
+          "FRONT": {
+            "near": null,
+            "far": null
+          },
+          "REAR": {
+            "near": null,
+            "far": null
+          },
+          "LEFT": {
+            "near": 2.925,
+            "far": null
+          },
+          "RIGHT": {
+            "near": null,
+            "far": null
+          },
+          "UP": {
+            "near": null,
+            "far": null
+          },
+          "DOWN": {
+            "near": null,
+            "far": null
+          }
+        },
+        {
+          "FRONT": {
+            "near": null,
+            "far": null
+          },
+          "REAR": {
+            "near": null,
+            "far": null
+          },
+          "LEFT": {
+            "near": 2.925,
+            "far": null
+          },
+          "RIGHT": {
+            "near": null,
+            "far": null
+          },
+          "UP": {
+            "near": null,
+            "far": null
+          },
+          "DOWN": {
+            "near": null,
+            "far": null
+          }
+        },
+        {
+          "FRONT": {
+            "near": null,
+            "far": null
+          },
+          "REAR": {
+            "near": null,
+            "far": null
+          },
+          "LEFT": {
+            "near": 2.925,
+            "far": null
+          },
+          "RIGHT": {
+            "near": null,
+            "far": null
+          },
+          "UP": {
+            "near": null,
+            "far": null
+          },
+          "DOWN": {
+            "near": null,
+            "far": null
+          }
+        },
+        {
+          "FRONT": {
+            "near": null,
+            "far": null
+          },
+          "REAR": {
+            "near": null,
+            "far": null
+          },
+          "LEFT": {
+            "near": 2.925,
+            "far": null
+          },
+          "RIGHT": {
+            "near": null,
+            "far": null
+          },
+          "UP": {
+            "near": null,
+            "far": null
+          },
+          "DOWN": {
+            "near": null,
+            "far": null
+          }
+        },
+        {
+          "FRONT": {
+            "near": null,
+            "far": null
+          },
+          "REAR": {
+            "near": null,
+            "far": null
+          },
+          "LEFT": {
+            "near": 2.925,
+            "far": null
+          },
+          "RIGHT": {
+            "near": null,
+            "far": null
+          },
+          "UP": {
+            "near": null,
+            "far": null
+          },
+          "DOWN": {
+            "near": null,
+            "far": null
+          }
+        },
+        {
+          "FRONT": {
+            "near": null,
+            "far": null
+          },
+          "REAR": {
+            "near": null,
+            "far": null
+          },
+          "LEFT": {
+            "near": 2.925,
+            "far": null
+          },
+          "RIGHT": {
+            "near": null,
+            "far": null
+          },
+          "UP": {
+            "near": null,
+            "far": null
+          },
+          "DOWN": {
+            "near": null,
+            "far": null
+          }
+        },
+        {
+          "FRONT": {
+            "near": null,
+            "far": null
+          },
+          "REAR": {
+            "near": null,
+            "far": null
+          },
+          "LEFT": {
+            "near": 2.925,
+            "far": null
+          },
+          "RIGHT": {
+            "near": null,
+            "far": null
+          },
+          "UP": {
+            "near": null,
+            "far": null
+          },
+          "DOWN": {
+            "near": null,
+            "far": null
+          }
+        },
+        {
+          "FRONT": {
+            "near": null,
+            "far": null
+          },
+          "REAR": {
+            "near": null,
+            "far": null
+          },
+          "LEFT": {
+            "near": 2.925,
+            "far": null
+          },
+          "RIGHT": {
+            "near": null,
+            "far": null
+          },
+          "UP": {
+            "near": null,
+            "far": null
+          },
+          "DOWN": {
+            "near": null,
+            "far": null
+          }
+        },
+        {
+          "FRONT": {
+            "near": null,
+            "far": null
+          },
+          "REAR": {
+            "near": null,
+            "far": null
+          },
+          "LEFT": {
+            "near": 2.925,
+            "far": null
+          },
+          "RIGHT": {
+            "near": null,
+            "far": null
+          },
+          "UP": {
+            "near": null,
+            "far": null
+          },
+          "DOWN": {
+            "near": null,
+            "far": null
+          }
+        },
+        {
+          "FRONT": {
+            "near": null,
+            "far": null
+          },
+          "REAR": {
+            "near": null,
+            "far": null
+          },
+          "LEFT": {
+            "near": 2.925,
+            "far": null
+          },
+          "RIGHT": {
+            "near": null,
+            "far": null
+          },
+          "UP": {
+            "near": null,
+            "far": null
+          },
+          "DOWN": {
+            "near": null,
+            "far": null
+          }
+        },
+        {
+          "FRONT": {
+            "near": null,
+            "far": null
+          },
+          "REAR": {
+            "near": null,
+            "far": null
+          },
+          "LEFT": {
+            "near": 2.925,
+            "far": null
+          },
+          "RIGHT": {
+            "near": null,
+            "far": null
+          },
+          "UP": {
+            "near": null,
+            "far": null
+          },
+          "DOWN": {
+            "near": null,
+            "far": null
+          }
+        }
+      ]
+    },
+    "closer_behind_middle": {
+      "observer": [
+        0.0,
+        -23.5,
+        -8.0
+      ],
+      "middle": [
+        0.0,
+        -20.0,
+        -8.0
+      ],
+      "far": [
+        0.0,
+        -17.0,
+        -8.0
+      ],
+      "captures": [
+        {
+          "FRONT": {
+            "near": null,
+            "far": null
+          },
+          "REAR": {
+            "near": null,
+            "far": null
+          },
+          "LEFT": {
+            "near": 2.925,
+            "far": null
+          },
+          "RIGHT": {
+            "near": null,
+            "far": null
+          },
+          "UP": {
+            "near": null,
+            "far": null
+          },
+          "DOWN": {
+            "near": null,
+            "far": null
+          }
+        },
+        {
+          "FRONT": {
+            "near": null,
+            "far": null
+          },
+          "REAR": {
+            "near": null,
+            "far": null
+          },
+          "LEFT": {
+            "near": 2.925,
+            "far": null
+          },
+          "RIGHT": {
+            "near": null,
+            "far": null
+          },
+          "UP": {
+            "near": null,
+            "far": null
+          },
+          "DOWN": {
+            "near": null,
+            "far": null
+          }
+        },
+        {
+          "FRONT": {
+            "near": null,
+            "far": null
+          },
+          "REAR": {
+            "near": null,
+            "far": null
+          },
+          "LEFT": {
+            "near": 2.925,
+            "far": null
+          },
+          "RIGHT": {
+            "near": null,
+            "far": null
+          },
+          "UP": {
+            "near": null,
+            "far": null
+          },
+          "DOWN": {
+            "near": null,
+            "far": null
+          }
+        },
+        {
+          "FRONT": {
+            "near": null,
+            "far": null
+          },
+          "REAR": {
+            "near": null,
+            "far": null
+          },
+          "LEFT": {
+            "near": 2.925,
+            "far": null
+          },
+          "RIGHT": {
+            "near": null,
+            "far": null
+          },
+          "UP": {
+            "near": null,
+            "far": null
+          },
+          "DOWN": {
+            "near": null,
+            "far": null
+          }
+        },
+        {
+          "FRONT": {
+            "near": null,
+            "far": null
+          },
+          "REAR": {
+            "near": null,
+            "far": null
+          },
+          "LEFT": {
+            "near": 2.925,
+            "far": null
+          },
+          "RIGHT": {
+            "near": null,
+            "far": null
+          },
+          "UP": {
+            "near": null,
+            "far": null
+          },
+          "DOWN": {
+            "near": null,
+            "far": null
+          }
+        },
+        {
+          "FRONT": {
+            "near": null,
+            "far": null
+          },
+          "REAR": {
+            "near": null,
+            "far": null
+          },
+          "LEFT": {
+            "near": 2.925,
+            "far": null
+          },
+          "RIGHT": {
+            "near": null,
+            "far": null
+          },
+          "UP": {
+            "near": null,
+            "far": null
+          },
+          "DOWN": {
+            "near": null,
+            "far": null
+          }
+        },
+        {
+          "FRONT": {
+            "near": null,
+            "far": null
+          },
+          "REAR": {
+            "near": null,
+            "far": null
+          },
+          "LEFT": {
+            "near": 2.925,
+            "far": null
+          },
+          "RIGHT": {
+            "near": null,
+            "far": null
+          },
+          "UP": {
+            "near": null,
+            "far": null
+          },
+          "DOWN": {
+            "near": null,
+            "far": null
+          }
+        },
+        {
+          "FRONT": {
+            "near": null,
+            "far": null
+          },
+          "REAR": {
+            "near": null,
+            "far": null
+          },
+          "LEFT": {
+            "near": 2.925,
+            "far": null
+          },
+          "RIGHT": {
+            "near": null,
+            "far": null
+          },
+          "UP": {
+            "near": null,
+            "far": null
+          },
+          "DOWN": {
+            "near": null,
+            "far": null
+          }
+        },
+        {
+          "FRONT": {
+            "near": null,
+            "far": null
+          },
+          "REAR": {
+            "near": null,
+            "far": null
+          },
+          "LEFT": {
+            "near": 2.925,
+            "far": null
+          },
+          "RIGHT": {
+            "near": null,
+            "far": null
+          },
+          "UP": {
+            "near": null,
+            "far": null
+          },
+          "DOWN": {
+            "near": null,
+            "far": null
+          }
+        },
+        {
+          "FRONT": {
+            "near": null,
+            "far": null
+          },
+          "REAR": {
+            "near": null,
+            "far": null
+          },
+          "LEFT": {
+            "near": 2.925,
+            "far": null
+          },
+          "RIGHT": {
+            "near": null,
+            "far": null
+          },
+          "UP": {
+            "near": null,
+            "far": null
+          },
+          "DOWN": {
+            "near": null,
+            "far": null
+          }
+        },
+        {
+          "FRONT": {
+            "near": null,
+            "far": null
+          },
+          "REAR": {
+            "near": null,
+            "far": null
+          },
+          "LEFT": {
+            "near": 2.925,
+            "far": null
+          },
+          "RIGHT": {
+            "near": null,
+            "far": null
+          },
+          "UP": {
+            "near": null,
+            "far": null
+          },
+          "DOWN": {
+            "near": null,
+            "far": null
+          }
+        },
+        {
+          "FRONT": {
+            "near": null,
+            "far": null
+          },
+          "REAR": {
+            "near": null,
+            "far": null
+          },
+          "LEFT": {
+            "near": 2.925,
+            "far": null
+          },
+          "RIGHT": {
+            "near": null,
+            "far": null
+          },
+          "UP": {
+            "near": null,
+            "far": null
+          },
+          "DOWN": {
+            "near": null,
+            "far": null
+          }
+        },
+        {
+          "FRONT": {
+            "near": null,
+            "far": null
+          },
+          "REAR": {
+            "near": null,
+            "far": null
+          },
+          "LEFT": {
+            "near": 2.925,
+            "far": null
+          },
+          "RIGHT": {
+            "near": null,
+            "far": null
+          },
+          "UP": {
+            "near": null,
+            "far": null
+          },
+          "DOWN": {
+            "near": null,
+            "far": null
+          }
+        },
+        {
+          "FRONT": {
+            "near": null,
+            "far": null
+          },
+          "REAR": {
+            "near": null,
+            "far": null
+          },
+          "LEFT": {
+            "near": 2.925,
+            "far": null
+          },
+          "RIGHT": {
+            "near": null,
+            "far": null
+          },
+          "UP": {
+            "near": null,
+            "far": null
+          },
+          "DOWN": {
+            "near": null,
+            "far": null
+          }
+        },
+        {
+          "FRONT": {
+            "near": null,
+            "far": null
+          },
+          "REAR": {
+            "near": null,
+            "far": null
+          },
+          "LEFT": {
+            "near": 2.925,
+            "far": null
+          },
+          "RIGHT": {
+            "near": null,
+            "far": null
+          },
+          "UP": {
+            "near": null,
+            "far": null
+          },
+          "DOWN": {
+            "near": null,
+            "far": null
+          }
+        },
+        {
+          "FRONT": {
+            "near": null,
+            "far": null
+          },
+          "REAR": {
+            "near": null,
+            "far": null
+          },
+          "LEFT": {
+            "near": 2.925,
+            "far": null
+          },
+          "RIGHT": {
+            "near": null,
+            "far": null
+          },
+          "UP": {
+            "near": null,
+            "far": null
+          },
+          "DOWN": {
+            "near": null,
+            "far": null
+          }
+        },
+        {
+          "FRONT": {
+            "near": null,
+            "far": null
+          },
+          "REAR": {
+            "near": null,
+            "far": null
+          },
+          "LEFT": {
+            "near": 2.925,
+            "far": null
+          },
+          "RIGHT": {
+            "near": null,
+            "far": null
+          },
+          "UP": {
+            "near": null,
+            "far": null
+          },
+          "DOWN": {
+            "near": null,
+            "far": null
+          }
+        },
+        {
+          "FRONT": {
+            "near": null,
+            "far": null
+          },
+          "REAR": {
+            "near": null,
+            "far": null
+          },
+          "LEFT": {
+            "near": 2.925,
+            "far": null
+          },
+          "RIGHT": {
+            "near": null,
+            "far": null
+          },
+          "UP": {
+            "near": null,
+            "far": null
+          },
+          "DOWN": {
+            "near": null,
+            "far": null
+          }
+        },
+        {
+          "FRONT": {
+            "near": null,
+            "far": null
+          },
+          "REAR": {
+            "near": null,
+            "far": null
+          },
+          "LEFT": {
+            "near": 2.925,
+            "far": null
+          },
+          "RIGHT": {
+            "near": null,
+            "far": null
+          },
+          "UP": {
+            "near": null,
+            "far": null
+          },
+          "DOWN": {
+            "near": null,
+            "far": null
+          }
+        },
+        {
+          "FRONT": {
+            "near": null,
+            "far": null
+          },
+          "REAR": {
+            "near": null,
+            "far": null
+          },
+          "LEFT": {
+            "near": 2.925,
+            "far": null
+          },
+          "RIGHT": {
+            "near": null,
+            "far": null
+          },
+          "UP": {
+            "near": null,
+            "far": null
+          },
+          "DOWN": {
+            "near": null,
+            "far": null
+          }
+        }
+      ]
+    },
+    "middle_out_of_range": {
+      "observer": [
+        0.0,
+        -23.5,
+        -8.0
+      ],
+      "middle": [
+        20.0,
+        -20.0,
+        -8.0
+      ],
+      "far": [
+        0.0,
+        -16.5,
+        -8.0
+      ],
+      "captures": [
+        {
+          "FRONT": {
+            "near": null,
+            "far": null
+          },
+          "REAR": {
+            "near": null,
+            "far": null
+          },
+          "LEFT": {
+            "near": null,
+            "far": 6.424999999999999
+          },
+          "RIGHT": {
+            "near": null,
+            "far": null
+          },
+          "UP": {
+            "near": null,
+            "far": null
+          },
+          "DOWN": {
+            "near": null,
+            "far": null
+          }
+        },
+        {
+          "FRONT": {
+            "near": null,
+            "far": null
+          },
+          "REAR": {
+            "near": null,
+            "far": null
+          },
+          "LEFT": {
+            "near": null,
+            "far": 6.424999999999999
+          },
+          "RIGHT": {
+            "near": null,
+            "far": null
+          },
+          "UP": {
+            "near": null,
+            "far": null
+          },
+          "DOWN": {
+            "near": null,
+            "far": null
+          }
+        },
+        {
+          "FRONT": {
+            "near": null,
+            "far": null
+          },
+          "REAR": {
+            "near": null,
+            "far": null
+          },
+          "LEFT": {
+            "near": null,
+            "far": 6.424999999999999
+          },
+          "RIGHT": {
+            "near": null,
+            "far": null
+          },
+          "UP": {
+            "near": null,
+            "far": null
+          },
+          "DOWN": {
+            "near": null,
+            "far": null
+          }
+        },
+        {
+          "FRONT": {
+            "near": null,
+            "far": null
+          },
+          "REAR": {
+            "near": null,
+            "far": null
+          },
+          "LEFT": {
+            "near": null,
+            "far": 6.424999999999999
+          },
+          "RIGHT": {
+            "near": null,
+            "far": null
+          },
+          "UP": {
+            "near": null,
+            "far": null
+          },
+          "DOWN": {
+            "near": null,
+            "far": null
+          }
+        },
+        {
+          "FRONT": {
+            "near": null,
+            "far": null
+          },
+          "REAR": {
+            "near": null,
+            "far": null
+          },
+          "LEFT": {
+            "near": null,
+            "far": 6.424999999999999
+          },
+          "RIGHT": {
+            "near": null,
+            "far": null
+          },
+          "UP": {
+            "near": null,
+            "far": null
+          },
+          "DOWN": {
+            "near": null,
+            "far": null
+          }
+        },
+        {
+          "FRONT": {
+            "near": null,
+            "far": null
+          },
+          "REAR": {
+            "near": null,
+            "far": null
+          },
+          "LEFT": {
+            "near": null,
+            "far": 6.424999999999999
+          },
+          "RIGHT": {
+            "near": null,
+            "far": null
+          },
+          "UP": {
+            "near": null,
+            "far": null
+          },
+          "DOWN": {
+            "near": null,
+            "far": null
+          }
+        },
+        {
+          "FRONT": {
+            "near": null,
+            "far": null
+          },
+          "REAR": {
+            "near": null,
+            "far": null
+          },
+          "LEFT": {
+            "near": null,
+            "far": 6.424999999999999
+          },
+          "RIGHT": {
+            "near": null,
+            "far": null
+          },
+          "UP": {
+            "near": null,
+            "far": null
+          },
+          "DOWN": {
+            "near": null,
+            "far": null
+          }
+        },
+        {
+          "FRONT": {
+            "near": null,
+            "far": null
+          },
+          "REAR": {
+            "near": null,
+            "far": null
+          },
+          "LEFT": {
+            "near": null,
+            "far": 6.424999999999999
+          },
+          "RIGHT": {
+            "near": null,
+            "far": null
+          },
+          "UP": {
+            "near": null,
+            "far": null
+          },
+          "DOWN": {
+            "near": null,
+            "far": null
+          }
+        },
+        {
+          "FRONT": {
+            "near": null,
+            "far": null
+          },
+          "REAR": {
+            "near": null,
+            "far": null
+          },
+          "LEFT": {
+            "near": null,
+            "far": 6.424999999999999
+          },
+          "RIGHT": {
+            "near": null,
+            "far": null
+          },
+          "UP": {
+            "near": null,
+            "far": null
+          },
+          "DOWN": {
+            "near": null,
+            "far": null
+          }
+        },
+        {
+          "FRONT": {
+            "near": null,
+            "far": null
+          },
+          "REAR": {
+            "near": null,
+            "far": null
+          },
+          "LEFT": {
+            "near": null,
+            "far": 6.424999999999999
+          },
+          "RIGHT": {
+            "near": null,
+            "far": null
+          },
+          "UP": {
+            "near": null,
+            "far": null
+          },
+          "DOWN": {
+            "near": null,
+            "far": null
+          }
+        },
+        {
+          "FRONT": {
+            "near": null,
+            "far": null
+          },
+          "REAR": {
+            "near": null,
+            "far": null
+          },
+          "LEFT": {
+            "near": null,
+            "far": 6.424999999999999
+          },
+          "RIGHT": {
+            "near": null,
+            "far": null
+          },
+          "UP": {
+            "near": null,
+            "far": null
+          },
+          "DOWN": {
+            "near": null,
+            "far": null
+          }
+        },
+        {
+          "FRONT": {
+            "near": null,
+            "far": null
+          },
+          "REAR": {
+            "near": null,
+            "far": null
+          },
+          "LEFT": {
+            "near": null,
+            "far": 6.424999999999999
+          },
+          "RIGHT": {
+            "near": null,
+            "far": null
+          },
+          "UP": {
+            "near": null,
+            "far": null
+          },
+          "DOWN": {
+            "near": null,
+            "far": null
+          }
+        },
+        {
+          "FRONT": {
+            "near": null,
+            "far": null
+          },
+          "REAR": {
+            "near": null,
+            "far": null
+          },
+          "LEFT": {
+            "near": null,
+            "far": 6.424999999999999
+          },
+          "RIGHT": {
+            "near": null,
+            "far": null
+          },
+          "UP": {
+            "near": null,
+            "far": null
+          },
+          "DOWN": {
+            "near": null,
+            "far": null
+          }
+        },
+        {
+          "FRONT": {
+            "near": null,
+            "far": null
+          },
+          "REAR": {
+            "near": null,
+            "far": null
+          },
+          "LEFT": {
+            "near": null,
+            "far": 6.424999999999999
+          },
+          "RIGHT": {
+            "near": null,
+            "far": null
+          },
+          "UP": {
+            "near": null,
+            "far": null
+          },
+          "DOWN": {
+            "near": null,
+            "far": null
+          }
+        },
+        {
+          "FRONT": {
+            "near": null,
+            "far": null
+          },
+          "REAR": {
+            "near": null,
+            "far": null
+          },
+          "LEFT": {
+            "near": null,
+            "far": 6.424999999999999
+          },
+          "RIGHT": {
+            "near": null,
+            "far": null
+          },
+          "UP": {
+            "near": null,
+            "far": null
+          },
+          "DOWN": {
+            "near": null,
+            "far": null
+          }
+        },
+        {
+          "FRONT": {
+            "near": null,
+            "far": null
+          },
+          "REAR": {
+            "near": null,
+            "far": null
+          },
+          "LEFT": {
+            "near": null,
+            "far": 6.424999999999999
+          },
+          "RIGHT": {
+            "near": null,
+            "far": null
+          },
+          "UP": {
+            "near": null,
+            "far": null
+          },
+          "DOWN": {
+            "near": null,
+            "far": null
+          }
+        },
+        {
+          "FRONT": {
+            "near": null,
+            "far": null
+          },
+          "REAR": {
+            "near": null,
+            "far": null
+          },
+          "LEFT": {
+            "near": null,
+            "far": 6.424999999999999
+          },
+          "RIGHT": {
+            "near": null,
+            "far": null
+          },
+          "UP": {
+            "near": null,
+            "far": null
+          },
+          "DOWN": {
+            "near": null,
+            "far": null
+          }
+        },
+        {
+          "FRONT": {
+            "near": null,
+            "far": null
+          },
+          "REAR": {
+            "near": null,
+            "far": null
+          },
+          "LEFT": {
+            "near": null,
+            "far": 6.424999999999999
+          },
+          "RIGHT": {
+            "near": null,
+            "far": null
+          },
+          "UP": {
+            "near": null,
+            "far": null
+          },
+          "DOWN": {
+            "near": null,
+            "far": null
+          }
+        },
+        {
+          "FRONT": {
+            "near": null,
+            "far": null
+          },
+          "REAR": {
+            "near": null,
+            "far": null
+          },
+          "LEFT": {
+            "near": null,
+            "far": 6.424999999999999
+          },
+          "RIGHT": {
+            "near": null,
+            "far": null
+          },
+          "UP": {
+            "near": null,
+            "far": null
+          },
+          "DOWN": {
+            "near": null,
+            "far": null
+          }
+        },
+        {
+          "FRONT": {
+            "near": null,
+            "far": null
+          },
+          "REAR": {
+            "near": null,
+            "far": null
+          },
+          "LEFT": {
+            "near": null,
+            "far": 6.424999999999999
+          },
+          "RIGHT": {
+            "near": null,
+            "far": null
+          },
+          "UP": {
+            "near": null,
+            "far": null
+          },
+          "DOWN": {
+            "near": null,
+            "far": null
+          }
+        }
+      ]
+    }
+  }
+}

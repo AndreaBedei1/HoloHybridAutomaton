@@ -227,6 +227,9 @@ A chain can cover non-adjacent pairs if associated, time-aligned relative observ
 same oriented axis. Summing the positive lower bounds gives a lower bound on the endpoint projection, hence on its distance.
 The bound must allow tracking error and relative displacement until the next observation. A slot label or an unlabeled sonar
 range supplies no signed projection. The current six beams do not establish that premise through turns, avoidance and recovery.
+In the CLEAN line3 occlusion probe, the lateral sonar saw the nearer neighbour in 20/20 captures. The farther neighbour at
+6.5 or 7 m returned 0/20 echoes behind it, and 20/20 at 7 m when the middle drone was moved out of the beam. See
+`results/calibration/line3_sonar_occlusion.json` and `calibration/probe_line3_occlusion.py`.
 
 - Proved in the radial abstraction: `G(d >= d_safe)` for all time by k-induction, k = 13 (S1b); triangle lemma, of three vehicles at most one sees the other
   two more than 90 deg apart (S3); a gate-constrained vehicle that may only stop with a partner that opens (S1gb, k = 15).
