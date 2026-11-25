@@ -433,7 +433,7 @@ class GateConstraint:
             return old
         if old is not None:
             earlier = old.t_end <= self.t + T and (self.t > old.t_end + 1e-9 or old.rho >= self.rho_eff)
-            keep_old = earlier or old.margin >= m
+            keep_old = earlier
             if not latchable(dev, gain, cap) or (keep_old and latchable(old.dev, gain, cap)):
                 return old
         return P2Certificate(SK, m, self.t, self.rho_eff, self.t + T, getattr(self.gate, "gate_id", None), a.copy(), dev)

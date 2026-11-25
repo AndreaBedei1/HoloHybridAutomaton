@@ -187,3 +187,17 @@ def test_a_hold_loop_can_use_a_narrower_fresh_band():
 
     assert fresh is not None and fresh.kind == gs.SK
     assert gs.latchable(fresh.dev, G.k_track, G.v_pass)
+
+
+def test_a_larger_older_margin_with_a_later_end_of_braking_does_not_displace_a_fresh_proof():
+    """Reviewer case: an older SK proof with a slightly larger margin but a later end of braking must not be kept over a
+    valid fresh proof; a DVL outage before the old braking ends would invalidate it while the fresh one stays valid."""
+    anchor = np.array([-3.2, 0.0, 0.0])
+    old = _gc(anchor, v0=(0.30, 0.0, 0.0), t=1.0).sk_certificate(anchor)
+    q = anchor + [0.08, 0.0, 0.0]
+    gc = _gc(q, v0=(0.24, 0.0, 0.0), t=1.1)
+    fresh = gc.sk_certificate(anchor)
+    assert old is not None and fresh is not None
+    assert old.margin >= fresh.margin and old.t_end > fresh.t_end
+    kept = gc.sk_certificate(anchor, old)
+    assert kept is not old and kept.t_end == fresh.t_end
