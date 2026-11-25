@@ -428,6 +428,14 @@ def run(cfg: FleetConfig = DEFAULT, verbose: bool = True, n_poses: int = 35000) 
     rep.add(check(f"S4 blackout <= {T_b}s starting at d >= {d_blackout} m keeps d >= d_safe",
                   "FAILSAFE hold with unrejected drift w_rel", ENC, cons,
                   note=f"d_blackout = {d_blackout} m"), verbose)
+    from holo_fleet.control.separation import swept_margin
+
+    distance, lower, own, peer, interval, elapsed, actual = z3.Reals("distance lower own peer interval elapsed actual")
+    positive = swept_margin(lower, own, peer, z3.RealVal(str(sep.d_safe)), interval) > 0
+    rep.add(check("S5 strict separation throughout a certified interval",
+                  "lower <= d(0), speed bounds and positive swept margin -> d(u) > d_safe for 0 <= u <= dt",
+                  ENC, [distance >= lower, own >= 0, peer >= 0, 0 <= elapsed, elapsed <= interval,
+                        actual >= distance - (own + peer) * elapsed, positive, actual <= sep.d_safe]), verbose)
     return rep
 
 

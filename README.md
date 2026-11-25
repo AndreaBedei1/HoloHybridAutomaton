@@ -12,7 +12,7 @@ One local hybrid automaton per vehicle (10 modes, prioritised guards, `holo_flee
 sonars, DVL, IMU, compass, depth sensor, the mission plan shared before the dive and the acoustic receptions. There is no
 leader and no request, reply or command between vehicles.
 
-- **P1, separation:** the centre distance of every pair stays at least `d_safe` = 1.0 m.
+- **P1, separation:** the centre distance of every pair stays strictly above `d_safe` = 1.0 m.
 - **P2, mutual exclusion:** at most one vehicle in the critical region (CR) of a gate, and only after admission.
 - **P3, eventual formation recovery:** after a loss the formation is recovered; after an admissible permanent failure the
   healthy vehicles recover the degraded formation, with the lost slots vacant and no false vacancy.
@@ -179,8 +179,12 @@ Every guarantee is conditional on section 1.
 **Automaton**, proved for every legal observation and mode: determinism and completeness (D1, D2), failsafe, collision and warning
 priority (H1-H3), gate entry, give-up and hazard rules (G1-G3), exact readable guards (L1), one edge per monitored observation (O5).
 
-**P1.**
-- Proved: `G(d >= d_safe)` for all time by k-induction, k = 13 (S1b); triangle lemma, of three vehicles at most one sees the other
+**P1.** S5 certifies a continuous control interval conditional on a sound nearest-centre range bound and independently valid
+ground-speed caps for both vehicles. The runner records the interval margin on the final setpoint and actuator command after
+all gate filters. Empty or unhealthy sonar observations give no coverage. The older radial-motion model below has its own premises.
+Its induction result does not by itself certify the deployed closed loop or an indefinitely maintained hold.
+
+- Proved in the radial abstraction: `G(d >= d_safe)` for all time by k-induction, k = 13 (S1b); triangle lemma, of three vehicles at most one sees the other
   two more than 90 deg apart (S3); a gate-constrained vehicle that may only stop with a partner that opens (S1gb, k = 15).
 - Bounded: start-up window 4 s (S1a); calibrated deceleration 0.743 m/s^2 (S1d); sonar blackout of 0.8 s from 2.34 m (S4);
   gate-constrained pair, 6 s (S1ga).

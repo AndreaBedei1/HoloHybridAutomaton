@@ -17,6 +17,7 @@ from holo_fleet.control import gate_safety as gs
 from holo_fleet.control.current_envelope import CurrentCheck, Persistence, check_onboard
 from holo_fleet.control.flows import Flows
 from holo_fleet.control.lowlevel import AUTHORITY, LowLevelController
+from holo_fleet.control.separation import interval_record
 from holo_fleet.ha.automaton import LocalHybridAutomaton
 from holo_fleet.ha.observation_invariants import violated as observation_violations
 from holo_fleet.ha.spec import IN_FORMATION, Mode
@@ -239,6 +240,8 @@ class DroneController:
         from holo_fleet.perception.nav import NavBound
         dvl_fresh = t - self.perception.nav.state.t_dvl <= NavBound.DVL_STALE_S
         cmd = self.ll.command(self.perception.nav.state, v, yaw_d, authority, dt, dvl_fresh=dvl_fresh)
+        thrust = thruster_command(cmd["surge"], cmd["sway"], cmd["heave"], cmd["yaw"], self.cfg.plant.thruster_limit)
+        p1 = interval_record(obs, frame, v, thrust, dt, self.cfg)
         judged = mode not in AVOIDANCE
         check = check_onboard(self.ll.current_estimate(), v, self.cfg, AUTHORITY[authority]) if judged else None
         was_ok = self.envmon.ok
@@ -267,7 +270,7 @@ class DroneController:
             "v_cmd": np.round(v, 3).tolist(), "giveway": self.flows.giveway,
             "offset": np.round(self.flows.offset, 2).tolist(), "d_min": round(obs.d_min, 3) if obs.d_min < 1e8 else None,
             "sense_ok": obs.sense_ok, "env_ok": self.envmon.ok, "v_mis": np.round(v_mis, 3).tolist(),
-            "envelope": self.envmon.record(),
+            "envelope": self.envmon.record(), "p1_interval": p1,
             "sectors": {s: {"echoes": [(round(e.r0, 2), e.cls) for e in rd.echoes[:4]],
                             "age": round(min(rd.age, 9.99), 2), "healthy": rd.healthy,
                             "blind_from": None if rd.blind_from is None else round(rd.blind_from, 2)}
@@ -313,7 +316,7 @@ class DroneController:
             "obs_consistent": self.obs_consistent, "observation_violations": self.observation_violations,
             "saturated": self.ll.saturated,
         }
-        return thruster_command(cmd["surge"], cmd["sway"], cmd["heave"], cmd["yaw"], self.cfg.plant.thruster_limit)
+        return thrust
 
     def _gate_safety_step(self, t: float, mode: Mode, gc, mission_filter, v_pre: np.ndarray, v: np.ndarray,
                           obs: Optional[LocalObservation] = None) -> None:
