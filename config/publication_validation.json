@@ -1,0 +1,12 @@
+{
+  "seeds": [0, 1, 2],
+  "cases": [
+    {"id": "encounter", "scenario": "p1_two_lines", "profile": "CLEAN", "b2": "B2_CLEAN", "duration_s": 70},
+    {"id": "formation", "scenario": "formation_recovery_head_current", "profile": "CLEAN", "b2": "B2_CLEAN", "duration_s": 100},
+    {"id": "gate", "scenario": "line_parallel_mutex", "profile": "CLEAN", "b2": "B2_CLEAN", "duration_s": 185},
+    {"id": "simultaneous-clean", "scenario": "line_parallel_mutex", "profile": "CLEAN", "b2": "B2_CLEAN", "duration_s": 220, "inject": true},
+    {"id": "simultaneous-medium", "scenario": "line_parallel_mutex", "profile": "MEDIUM-ALL", "b2": "B2_MEDIUM", "duration_s": 220, "inject": true},
+    {"id": "dvl-interruption", "scenario": "line_parallel_mutex", "profile": "ISO_dvl_dropout", "b2": "B2_CLEAN", "duration_s": 185},
+    {"id": "integrated", "scenario": "integrated_short", "profile": "MEDIUM-ALL", "b2": "B2_MEDIUM", "duration_s": 540}
+  ]
+}

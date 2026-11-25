@@ -27,6 +27,7 @@ import argparse
 import dataclasses
 import gzip
 import json
+import math
 import os
 import shutil
 import subprocess
@@ -134,16 +135,24 @@ def worker(args) -> int:
     cfg = protocol_config(args.protocol)
     d = Path(args.run_dir)
     prof, _, scope = args.profile.partition("-")
-    terminal = {"profile": args.profile} if args.terminal else None
+    terminal = {"profile": args.profile} if args.terminal and args.duration_s is None else None
     factor = float(os.environ.get("HOLO_FLEET_HORIZON_FACTOR", "1"))
     if terminal is not None and factor != 1.0:
         from holo_fleet.referee.criteria import horizon_v5
         from holo_fleet.sim.scenarios import SCENARIOS
 
         terminal["deadline_s"] = round(factor * horizon_v5(SCENARIOS[args.scenario](DEFAULT), DEFAULT, args.profile), 1)
-    runner.run(args.scenario, d.parent, headless=True, run_id=d.name, frame_every_s=float("inf"), cfg=cfg,
-               noise=profile(prof), seed=args.seed, noise_drones=scope_drones(args.scenario, scope) if scope else None,
-               terminal=terminal)
+    original = runner.DroneController
+    if args.inject_commitments:
+        from scripts.validate_simultaneous_commitment import ConcurrentCommitment
+
+        runner.DroneController = ConcurrentCommitment
+    try:
+        runner.run(args.scenario, d.parent, headless=True, run_id=d.name, frame_every_s=float("inf"), cfg=cfg,
+                   noise=profile(prof), seed=args.seed, noise_drones=scope_drones(args.scenario, scope) if scope else None,
+                   terminal=terminal, duration=args.duration_s)
+    finally:
+        runner.DroneController = original
     return 0
 
 
@@ -409,10 +418,10 @@ def engine_info(d: Path) -> dict:
         return None
 
 
-def finish(d: Path, profile: str) -> dict:
+def finish(d: Path, profile: str, full_window: bool = False) -> dict:
     from holo_fleet.referee.robustness_metrics import analyze_run
 
-    res = analyze_run(d, profile=profile)
+    res = analyze_run(d, profile=profile, full_window=full_window)
     for f in d.glob("drone_*_state.jsonl"):
         with open(f, "rb") as src, gzip.open(str(f) + ".gz", "wb", compresslevel=6) as dst:
             shutil.copyfileobj(src, dst)
@@ -449,8 +458,14 @@ def main() -> int:
     ap.add_argument("--protocol", default="B0")
     ap.add_argument("--run-dir")
     ap.add_argument("--terminal", action="store_true", help="end on SUCCESS / FAILURE / DEADLINE (referee/terminal.py)")
+    ap.add_argument("--duration-s", type=float, help="run for this fixed observation window instead of stopping early")
+    ap.add_argument("--inject-commitments", action="store_true", help="inject the two concurrent line3 commitments")
     ap.add_argument("--allow-unpatched", action="store_true", help="development smoke only, never for results")
     args = ap.parse_args()
+    if args.duration_s is not None and (not math.isfinite(args.duration_s) or args.duration_s <= 0):
+        ap.error("--duration-s must be positive and finite")
+    if args.inject_commitments and ({args.scenario} if args.worker else set(args.only or ())) != {"line_parallel_mutex"}:
+        ap.error("--inject-commitments requires line_parallel_mutex")
     if args.worker:
         return worker(args)
 
@@ -504,7 +519,8 @@ def main() -> int:
         from holo_fleet.config import DEFAULT
         from holo_fleet.referee.criteria import horizon_v5
 
-        dur = horizon_v5(SCENARIOS[sc](DEFAULT), DEFAULT, prof) * float(os.environ.get("HOLO_FLEET_HORIZON_FACTOR", "1"))
+        dur = args.duration_s or (horizon_v5(SCENARIOS[sc](DEFAULT), DEFAULT, prof)
+                                 * float(os.environ.get("HOLO_FLEET_HORIZON_FACTOR", "1")))
         res, attempt = None, 0
         while attempt <= args.retries:
             attempt += 1
@@ -517,7 +533,13 @@ def main() -> int:
             t0 = time.time()
             seen: dict = {}
             cmd = [PY, str(Path(__file__).resolve()), "--worker", "--scenario", sc, "--profile", prof, "--seed",
-                   str(seed), "--protocol", protocol, "--run-dir", str(d)] + (["--allow-unpatched"] if args.allow_unpatched else [])                 + ["--terminal"]
+                   str(seed), "--protocol", protocol, "--run-dir", str(d), "--terminal"]
+            if args.allow_unpatched:
+                cmd.append("--allow-unpatched")
+            if args.duration_s is not None:
+                cmd.extend(("--duration-s", str(args.duration_s)))
+            if args.inject_commitments:
+                cmd.append("--inject-commitments")
             with open(d.parent / f"{d.name}_worker.log", "w", encoding="utf-8") as wl:
                 proc = subprocess.Popen(cmd, stdout=wl, stderr=subprocess.STDOUT, cwd=str(ROOT),
                                         env={**os.environ, "PYTHONUNBUFFERED": "1", "HOLO_FLEET_SLOT_WAIT_S": os.environ.get("HOLO_FLEET_SLOT_WAIT_S", "900")})
@@ -529,9 +551,11 @@ def main() -> int:
                 code = watch(proc, d, dur, args, seen)
             killed = reap(proc.pid, before, seen["worker_created"], seen.get("engine_records", {}).values())
             wall = round(time.time() - t0, 1)
-            res = finish(d, prof) if (d / "run_status.json").exists() else {"class": "INVALID", "invalid_reason": "no run dir"}
+            res = (finish(d, prof, full_window=args.duration_s is not None) if (d / "run_status.json").exists()
+                   else {"class": "INVALID", "invalid_reason": "no run dir"})
             res.update({"protocol": protocol, "profile": prof, "scenario": sc, "seed": seed, "exit_code": code,
                         "wall_s": wall, "attempt": attempt, "reaped_holodeck": killed, "host_load_at_start": host,
+                        "fixed_duration_s": args.duration_s, "injected_commitments": args.inject_commitments,
                         "code_version": version, "engine_build": build, "config_sha256": config_hash(d),
                         "process": {"orchestrator_pid": os.getpid(), "shard": [args.shard, args.nshards], "worker_pid": proc.pid,
                                     "holodeck_pids": sorted(seen.get("holodeck_pids", ())),

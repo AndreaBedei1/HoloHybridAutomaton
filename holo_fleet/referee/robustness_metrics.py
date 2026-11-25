@@ -85,7 +85,8 @@ def _queued(gs: Dict) -> bool:
     return gs.get("at_queue") in (True, "True", "true")
 
 
-def analyze_run(run_dir: Path, reference: Optional[Dict] = None, cfg=DEFAULT, profile: Optional[str] = None) -> Dict:
+def analyze_run(run_dir: Path, reference: Optional[Dict] = None, cfg=DEFAULT, profile: Optional[str] = None,
+                full_window: bool = False) -> Dict:
     """Metrics and class of one run.  ``reference`` is accepted for compatibility and unused (the requirements are a-priori)."""
     from holo_fleet.referee.referee import Referee
     from holo_fleet.sim.scenarios import SCENARIOS
@@ -136,7 +137,7 @@ def analyze_run(run_dir: Path, reference: Optional[Dict] = None, cfg=DEFAULT, pr
     logged = (met.get("run") or {}).get("terminal")
     edges = (met.get("P1_separation") or {}).get("collision_sensor_edges") or []
     term, mon, ref3 = replay_terminal(sc, cfg, names, t, P, states, modes, profile, logged=logged, edges=edges)
-    if term.get("t_end") is not None and m:
+    if term.get("t_end") is not None and m and not full_window:
         m = max(1, min(m, int(np.searchsorted(t, float(term["t_end"]) + 1e-6))))
         t, P, modes, rows = t[:m], P[:m], modes[:m], rows[:m]
         states = [st[:m] for st in states]

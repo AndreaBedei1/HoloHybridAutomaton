@@ -106,6 +106,8 @@ def run(name: str, out_root: Path, headless: bool = True, run_id: Optional[str] 
         duration = float(terminal.get("deadline_s") or horizon_v5(sc, cfg, terminal.get("profile")))
         sc.sim.duration_s = duration
         duration += float(terminal.get("linger_s") or 0.0)
+    elif duration is not None:
+        sc.sim.duration_s = duration
     run_id = run_id or name
     out = Path(out_root) / run_id
     out.mkdir(parents=True, exist_ok=True)

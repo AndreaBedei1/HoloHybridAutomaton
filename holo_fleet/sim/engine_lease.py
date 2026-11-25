@@ -12,7 +12,7 @@ import errno
 
 import psutil
 
-SLOTS = Path(__file__).resolve().parents[2] / "results/.holo_slots"
+SLOTS = Path(os.environ.get("HOLO_FLEET_SLOT_REGISTRY") or Path(__file__).resolve().parents[2] / "results/.holo_slots")
 
 
 @contextmanager
