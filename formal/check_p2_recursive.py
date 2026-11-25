@@ -69,7 +69,7 @@ def _rho(cfg: FleetConfig, fresh: bool = True) -> float:
     from holo_fleet.perception.nav import NavBound
 
     nb = NavBound(cfg)
-    return (float(nb.k_rw) if fresh else float(nb.v_bound)) + float(nb.k_lin) * float(nb.v_bound)
+    return (float(nb.k_rw) if fresh else 2 * float(nb.v_bound)) + float(nb.k_lin) * float(nb.v_bound)
 
 
 def _ve(cfg: FleetConfig, fresh: bool = True) -> float:
@@ -533,7 +533,7 @@ def _d_base(cfg: FleetConfig, fresh: bool) -> float:
 
     b = gs.P2Bounds.from_cfg(cfg)
     ve, rho = _ve(cfg, fresh), _rho(cfg, fresh)
-    a0 = float(NavBound(cfg).v_bound) + ve
+    a0 = (float(NavBound(cfg).v_bound) if fresh else 0.0) + ve
     T = max(b.tau_c, a0 / b.a_brake)
     X = a0 * a0 / (2 * b.a_brake) + b.w * T
     return b.e_h + b.slack + max(X + rho * T, b.e_track + b.w * b.tau_c)
@@ -578,14 +578,15 @@ def outage_limit(cfg: FleetConfig) -> CheckResult:
     b = gs.P2Bounds.from_cfg(cfg)
     ve, rho = _ve(cfg), _rho(cfg)
     ve_o, rho_o = _ve(cfg, False), _rho(cfg, False)
-    q, v0, u = np.array([-3.05, 0.0, 0.0]), np.zeros(3), np.array([0.5, 0.0, 0.0])
+    q, v0, u = np.array([cfg.gate.cr_s_min - 2.0, 0.0, 0.0]), np.zeros(3), np.array([0.5, 0.0, 0.0])
     gc = _gc(cfg, q, v0, ve, rho, t=1.0)
-    cert = gc.certify(u, (), (), None)
+    reserved = _gc(cfg, q, v0, ve, rho_o, t=1.0).certify(u, (), (), None)
+    cert = reserved or gc.certify(u, (), (), None)
     import check_gate_safety as C
 
     x, v = C._corners_after(v0, u, b, ve)[0][0]
     q1 = q + np.array([x + rho * b.dt, 0.0, 0.0])
-    out = _gc(cfg, q1, np.array([v + ve, 0.0, 0.0]), ve_o, rho_o, t=1.0 + b.dt)
+    out = _gc(cfg, q1, np.zeros(3), ve_o, rho_o, t=1.0 + b.dt)
     fresh = _gc(cfg, q1, np.array([v + ve, 0.0, 0.0]), ve, rho, t=1.0 + b.dt)
     f_out = out.filter_mission(np.zeros(3), env.v_max_nominal, cert=cert)
     f_corr = fresh.filter_mission(np.zeros(3), env.v_max_nominal, cert=None)
@@ -606,8 +607,8 @@ def outage_limit(cfg: FleetConfig) -> CheckResult:
                             f"(0.5 m/s along the axis, 2.0 m before the CR entry plane), worst next state: with the handed "
                             f"certificate station keeping is certified ({f_ok.status}), without it (correction) or with the "
                             f"outage bounds the filter retreats ({f_corr.status}, {f_out.status}).  Not resolved: the next "
-                            f"measurement regime cannot be anticipated without making every command certify the outage "
-                            f"bounds; tests/test_gate_aware_avoidance.py keeps the outage-at-the-hold retreat")
+                            f"measurement regime cannot be anticipated when the stronger reserve is unavailable for the applied command; "
+                            f"the test preserves the counterexample at the certificate boundary")
 
 
 def run_checks(cfg: FleetConfig):
