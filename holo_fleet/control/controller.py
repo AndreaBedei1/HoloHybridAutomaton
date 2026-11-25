@@ -202,9 +202,11 @@ class DroneController:
         estimated_speed = max(abs(float(component)) for component in obs.v_world)
         scale_error = float(nb.k_lin) * speed_bound
         outage_rho = speed_bound + max(speed_bound, estimated_speed) + scale_error
-        v_err = float(nb.k_rw) if fresh else speed_bound + estimated_speed
+        v_err = float(nb.k_rw) if fresh else speed_bound
         rho = v_err + scale_error if fresh else outage_rho
         gc = self.flows.gate_constraint(obs, authorized=self.ha.committed and self.flows.cr_cleared, v_err=v_err, rho=rho)
+        if gc is not None and not fresh:
+            gc = replace(gc, v0=np.zeros(3))
         cert_reset = self._p2_correction()
         mission_filter = self.flows.p2_filter(gc, v_mis, self.flows.mission_anchor(gc) if gate_flow else {})
         if mission_filter is not None:

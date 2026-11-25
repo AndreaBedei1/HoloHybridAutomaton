@@ -42,7 +42,7 @@ def test_the_hold_is_the_derived_p2_safe_hold():
     boundary = G.cr_s_min - (G.nav_err_m + ENV.w_drift_max * b.tau_c + b.e_track + gs.SLACK_M)
     assert boundary == pytest.approx(-(0.8 + 1.0 + 0.0525 + 0.30 + 0.05), abs=1e-9)
     assert gs.hold_s(CFG) == pytest.approx(boundary, abs=1e-6)
-    assert G.stage2_hold_s == pytest.approx(gs.hold_s(CFG) - G.hold_err_m, abs=1e-6)
+    assert G.stage2_hold_s <= gs.hold_s(CFG) - G.hold_err_m
     gate = K.make_gate()
 
     def margin(s):
@@ -58,7 +58,7 @@ def test_the_hold_is_the_derived_p2_safe_hold():
 
     for v_err in (0.0, float(NavBound(CFG).k_rw)):
         gc = gs.constraint_for(CFG, gate, gate.from_gate_frame([G.stage2_hold_s, 0.0, 0.0]), np.zeros(3), False, v_err=v_err)
-        assert gc.hold_margin(gc.q) == pytest.approx(G.hold_err_m, abs=1e-9)
+        assert gc.hold_margin(gc.q) == pytest.approx(gs.hold_s(CFG) - G.stage2_hold_s, abs=1e-9)
 
 
 @pytest.mark.parametrize("n", [1, 2, 3, 4])

@@ -96,5 +96,5 @@ def test_perception_covers_physical_passage_and_control_uses_cr():
 def test_the_hold_follows_the_entry_plane():
     assert gs.hold_s(DEFAULT) == pytest.approx(G.cr_s_min - (G.nav_err_m + gs.hold_reach(gs.P2Bounds.from_cfg(DEFAULT))
                                                              + gs.SLACK_M))
-    assert G.stage2_hold_s == pytest.approx(-2.3025, abs=1e-6)
+    assert G.stage2_hold_s == pytest.approx(-2.5525, abs=1e-6)
     assert G.merge_s == pytest.approx(G.cr_s_min - G.merge_before_cr)

@@ -131,7 +131,7 @@ priority order and all guards are evaluated at runtime as a determinism monitor.
 **Geometry.** Gate frame: s along the axis, l left, z up. The monitored CR is `-0.8 <= s <= 0.0 m`
 with `|l| <= 1.0 m` and `|z| <= 1.0 m` at G06. Admission sensing reserves the passage through
 `s = +0.55 m` separately: the 0.15 m bar half depth plus the 0.389 m hull radius, rounded up.
-The derived stage-2 hold is `s = -2.3025 m`, including 0.10 m measured holding error. Queue lines follow `GateRule.queue_s` and the supported layouts in Q1.
+The stage-2 hold stays at `s = -2.5525 m`, retaining the sonar acquisition geometry and a 0.25 m reserve. Queue lines follow `GateRule.queue_s` and the supported layouts in Q1.
 
 **Gate protocol.**
 1. *Precedence.* A vehicle waits at its queue point. Its relation to each neighbour comes from the sonar sector pattern only
@@ -144,7 +144,7 @@ The derived stage-2 hold is `s = -2.3025 m`, including 0.10 m measured holding e
    3 captures with the FRONT sonar healthy, no claim, no vehicle heard or known inside), the estimated s is at least
    `stage2_hold_s` - 0.4 m, and the commitment is at least `admit_wait_s` old. B2: `commit_admit_min_s` = 4.0 s if every other
    vehicle of the plan was heard fresh (report emitted at most `admit_fresh_s` = 3.5 s ago), else `commit_admit_min_s` +
-   `t_cross_max` = 39.44 s, with `t_cross_max` = (0.55 + 2.3025 + 0.4 + 1.0) / 0.12 = 35.44 s. B0: 0. Silence is never evidence: a
+   `t_cross_max` = 41.52 s, with `t_cross_max` = (0.55 + 2.5525 + 0.4 + 1.0) / 0.12 = 37.52 s. B0: 0. Silence is never evidence: a
    vehicle not heard is unknown, a claim (COMMITTED or ADMITTED report) stands until its sender reports otherwise, a silent vehicle
    is never excluded as a possible occupant.
 5. *Give-up.* Without admission, 26 s (`t_occ_max` + `t_clear`) after the wait ends, the vehicle retreats behind the abort plane and

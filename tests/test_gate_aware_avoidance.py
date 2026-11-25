@@ -313,15 +313,16 @@ def test_a_drone_converging_on_the_hold_point_does_not_anchor_its_station_keepin
     """Two drones committed together converge on the one hold point: each station-keeps where it is, not on the shared
     point (anchoring both there made them close on each other, formal/check_f1p_kinematic); a drone already holding at
     the point (within e_track) keeps it as its anchor."""
+    hold_s = gs.hold_s(CFG) - G.hold_err_m
     fl = Flows(PLAN, CFG)
-    fl.hold_target = np.array([G.stage2_hold_s, 0.0, 0.0])
-    far = _gc(G.stage2_hold_s - 0.5, 1.1)
+    fl.hold_target = np.array([hold_s, 0.0, 0.0])
+    far = _gc(hold_s - 0.5, 1.1)
     fl._hold(far, R)
     assert np.allclose(fl.p2_anchor, far.q)
     fl.p2_anchor = None
-    near = _gc(G.stage2_hold_s + 0.2, 0.6)
+    near = _gc(hold_s + 0.2, 0.6)
     fl._hold(near, R)
-    assert fl.p2_anchor[0] == pytest.approx(G.stage2_hold_s) and fl.p2_anchor[1] == pytest.approx(near.q[1])
+    assert fl.p2_anchor[0] == pytest.approx(hold_s) and fl.p2_anchor[1] == pytest.approx(near.q[1])
     assert near.hold_margin(fl.p2_anchor) > 0.0 and float(near.margins_world(np.zeros(3))[0]) <= 0.0
     assert float(np.linalg.norm(near.hold_velocity(fl.p2_anchor))) <= ENV.w_drift_max + 1e-9
 
@@ -365,8 +366,9 @@ def test_degraded_only_when_an_unhealthy_sector_changes_a_threat_guarantee():
 
 
 def test_the_mission_filter_accepts_station_keeping_only_for_the_hold_loop_itself():
-    gc = _gc(G.stage2_hold_s + 0.2)
-    anchor = np.array([G.stage2_hold_s, 0.0, 0.0])
+    hold_s = gs.hold_s(CFG) - G.hold_err_m
+    gc = _gc(hold_s + 0.2)
+    anchor = np.array([hold_s, 0.0, 0.0])
     loop = gc.from_gate(G.k_track * (anchor - gc.q))
     assert float(gc.margins_world(loop)[0]) <= 0.0
     f = gc.filter_mission(loop, ENV.v_max_nominal, anchor=anchor, gain=G.k_track)
@@ -476,9 +478,10 @@ def test_the_real_step_keeps_a_held_drone_out_of_the_cr_against_a_threat_from_be
     """Committed, not admitted, at the stage-2 hold, a REAR threat in the warning band and a forward drift: every applied
     velocity request of DroneController.step has a positive P2 margin, never moves towards the CR beyond a creep, and the
     record reports the joint-feasibility class (fails if step() stops calling the gate-safety layer)."""
+    hold_s = gs.hold_s(CFG) - G.hold_err_m
     ctrl = DroneController(PLAN, CFG)
     rear = _target({"REAR"}, 2.0)
-    _scripted_perception(ctrl, lambda obs, t: _place_at(obs, PLAN.queue_s if t < 0.35 else G.stage2_hold_s,
+    _scripted_perception(ctrl, lambda obs, t: _place_at(obs, PLAN.queue_s if t < 0.35 else hold_s,
                                                         [] if t < 0.35 else [rear], t < 0.35))
     for k in range(4):
         ctrl.step(_frame(0.1 * k), 0.1)
@@ -499,6 +502,7 @@ def test_the_real_step_keeps_a_held_drone_out_of_the_cr_against_a_threat_from_be
 def test_the_real_step_in_failsafe_holds_on_the_failsafe_anchor_with_the_outage_velocity_error():
     """A DVL outage at the hold: sense_ok fails and the automaton holds (FAILSAFE); the P2 filter is given the failsafe hold
     law (mission_anchor with failsafe=True) and the velocity error of an outage (the speed bound of NavBound)."""
+    hold_s = gs.hold_s(CFG) - G.hold_err_m
     ctrl = DroneController(PLAN, CFG)
     calls = []
     real_anchor = ctrl.flows.mission_anchor
@@ -508,7 +512,7 @@ def test_the_real_step_in_failsafe_holds_on_the_failsafe_anchor_with_the_outage_
         return real_anchor(gc, failsafe=failsafe, probe=probe)
 
     ctrl.flows.mission_anchor = spy
-    _scripted_perception(ctrl, lambda obs, t: _place_at(obs, PLAN.queue_s if t < 0.35 else G.stage2_hold_s, [], t < 0.35))
+    _scripted_perception(ctrl, lambda obs, t: _place_at(obs, PLAN.queue_s if t < 0.35 else hold_s, [], t < 0.35))
     for k in range(4):
         ctrl.step(_frame(0.1 * k), 0.1)
     assert ctrl.ha.committed

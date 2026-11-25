@@ -139,12 +139,12 @@ class GateRule:
     stack_spacing: float = 3.5
     queue_lateral_max: float = 3.5
     hold_err_m: float = 0.10
-    stage2_hold_s: float = -2.3025
+    stage2_hold_s: float = -2.5525
     hold_lateral_allow: float = 0.27
     """Stage-2 hold of a committed drone before admission (gate frame s, on the axis): control/gate_safety.hold_s, the
     nearest point where holding is P2-safe under the declared navigation error (cr_s_min - (nav_err_m + reach of a
-    hold + slack) = -2.2025 m), minus the measured holding error ``hold_err_m``.  A derived value, kept equal to the
-    derivation by tests/test_hold_point.py."""
+    hold + slack) = -2.2025 m), minus the measured holding error and a 0.25 m reserve preserving the calibrated acoustic
+    acquisition position."""
 
     v_cross_min: float = 0.12
     """Premise (formal M3, formal/check_b2_comm.py): an admitted drone progresses along the gate axis at >= v_cross_min from
