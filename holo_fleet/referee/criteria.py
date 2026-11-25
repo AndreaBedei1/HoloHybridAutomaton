@@ -86,6 +86,8 @@ def profile_family(profile: Optional[str]) -> str:
     """CLEAN / LOW / MEDIUM / HIGH ... from a sensor-profile name such as MEDIUM-SUBSET (None: CLEAN)."""
     if not profile or profile.upper().startswith("CLEAN"):
         return "CLEAN"
+    if profile.upper().startswith("ISO_"):
+        return "ISO_" + profile[4:].lower()  # one isolated factor (sensor_noise.isolated), factor names are lower case
     return profile.upper().split("-")[0]
 
 

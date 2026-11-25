@@ -211,3 +211,14 @@ def test_online_and_offline_monitors_share_t_nom():
 def test_the_horizon_is_three_times_the_a_priori_deadline():
     sc = SCENARIOS["gate_single"](DEFAULT)
     assert criteria.horizon_v5(sc, DEFAULT, "CLEAN") == pytest.approx(3.0 * criteria.deadline_v3(sc, DEFAULT, "CLEAN"), abs=0.1)
+
+
+def test_isolated_profiles_have_a_failsafe_allowance():
+    """Regression: ISO_<factor> profiles crashed the referee (KeyError) because the family was upper-cased."""
+    from holo_fleet.referee.criteria import failsafe_allowance_s, profile_family
+
+    assert profile_family("ISO_sonar_blackout") == "ISO_sonar_blackout"
+    assert failsafe_allowance_s("ISO_sonar_blackout", 70.0) > 0.0
+    assert failsafe_allowance_s("ISO_dvl_dropout", 185.0) > 0.0
+    assert failsafe_allowance_s("ISO_sonar_range", 185.0) == 0.0
+    assert profile_family("MEDIUM-ALL") == "MEDIUM"
