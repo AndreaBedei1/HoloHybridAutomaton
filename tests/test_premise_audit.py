@@ -66,8 +66,9 @@ def _rows(st, beacon=B2, P=None, k=None, j=None, ids=None):
     return [p for p in r["pairs"] if (k is None or p["claimant"] == f"d{k}") and (j is None or p["drone"] == f"d{j}")]
 
 
-def test_the_audit_schedule_is_the_emission_schedule_of_the_simulator_transport():
+def test_the_audit_schedule_is_the_emission_schedule_of_the_simulator_transport(monkeypatch):
     # sim/beacon.BeaconTransport.before_tick driven over 4 periods: every emission tick of every drone is predicted by Link
+    import sys
     import types
 
     from holo_fleet.config import BeaconConfig
@@ -75,13 +76,18 @@ def test_the_audit_schedule_is_the_emission_schedule_of_the_simulator_transport(
     from holo_fleet.sim.beacon import BeaconTransport
 
     assert holo_env.TICKS_PER_SEC == pa.TICKS_PER_SEC
-    env = types.SimpleNamespace(_client=types.SimpleNamespace(command_center=types.SimpleNamespace(enqueue_command=lambda c: None)))
+    monkeypatch.setitem(sys.modules, "holoocean.command",
+                        types.SimpleNamespace(SendAcousticMessageCommand=lambda *args: args))
+    commands = []
+    env = types.SimpleNamespace(_client=types.SimpleNamespace(command_center=types.SimpleNamespace(enqueue_command=commands.append)))
     for n in (2, 3, 4, 5, 6):
+        commands.clear()
         names = [f"drone_{k}" for k in range(n)]
         bt = BeaconTransport(names, BeaconConfig(), seed=1, ticks_per_sec=pa.TICKS_PER_SEC)
         for tick in range(1, 4 * 30 + 1):
             bt.before_tick(env, round(tick / pa.TICKS_PER_SEC, 6))
         seen = {k: [int(round(t * pa.TICKS_PER_SEC)) for t, nm in bt.tx_log if nm == names[k]] for k in range(n)}
+        assert len(commands) == len(bt.tx_log) * (n - 1)
         link = Link(n=n)
         for k in range(n):
             pred, tk = [], 0
