@@ -4,7 +4,7 @@ import dataclasses
 
 import numpy as np
 
-from holo_fleet.config import DEFAULT
+from holo_fleet.config import DEFAULT, communication_disabled
 from holo_fleet.perception.acoustic import AcousticTracker
 from holo_fleet.perception.sensor_suite import DEPLOYED_NOISE, onboard_sensor_configs
 from holo_fleet.sim.sensor_noise import CLEAN, FACTORS, HIGH, LOW, MEDIUM, heading_biases, isolated, plan_windows, profile
@@ -54,9 +54,9 @@ def test_seeded_effects_are_reproducible():
     assert not heading_biases(CLEAN, 3, 0).any()
 
 
-def test_acoustic_beacon_is_off_by_default_and_ignored_by_the_baseline():
-    assert not DEFAULT.beacon.enabled
-    off = AcousticTracker(DEFAULT)
+def test_acoustic_beacon_is_on_by_default_and_ignored_when_the_communication_is_disabled():
+    assert DEFAULT.beacon.enabled
+    off = AcousticTracker(communication_disabled())
     off.set_identities({1: 1})
     assert off.update(1.0, ((1, 0.95, 3.0, 0.0, 0.0),), np.zeros(3), 0.0) == []
 
@@ -69,7 +69,7 @@ def test_campaign_plan_sizes():
                                                   "run_sensor_robustness_campaign.py")
     camp = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(camp)
-    runs = camp.plan("targeted", (0, 1), only=["gate_single"], protocols=["B2_LOW"], profiles=["LOW-ALL"])
+    runs = camp.plan((0, 1), only=["gate_single"], protocols=["B2_LOW"], profiles=["LOW-ALL"])
     assert runs == [("B2_LOW", "LOW-ALL", "gate_single", 0), ("B2_LOW", "LOW-ALL", "gate_single", 1)]
-    final = camp.plan("final", (0, 1, 2))
-    assert len(set(final)) == len(final)
+    both = camp.plan(None, only=["gate_single", "lost_drone_mutex"], protocols=["B0", "B2_MEDIUM"], profiles=["CLEAN"])
+    assert len(both) == len(set(both)) == 2 * 2 * len(camp.SEEDS)

@@ -22,9 +22,11 @@ sys.path.insert(0, str(HERE))
 sys.path.insert(0, str(HERE.parent))
 
 import check_acoustic  # noqa: E402
+import check_b2_comm  # noqa: E402
 import check_determinism  # noqa: E402
 import check_fleet  # noqa: E402
 import check_formation  # noqa: E402
+import check_formation_coupled  # noqa: E402
 import check_gate_safety  # noqa: E402
 import check_mutex  # noqa: E402
 import check_observations  # noqa: E402
@@ -39,11 +41,16 @@ SUITES = [
     ("P1 inter-vehicle separation", check_separation, "formal/check_separation.py"),
     ("P2 critical-region mutual exclusion", check_mutex, "holo_fleet/ha/mutex_rule.py + formal/check_mutex.py"),
     ("P3 formation recovery (liveness, ranking functions)", check_formation, "formal/check_formation.py"),
-    ("Variant B2 range-bearing beacon (own assumptions; B0 checks unchanged)", check_acoustic,
+    ("P3 coupled recovery: 2-norm saturated law, private formation clocks, rendezvous, operating domain",
+     check_formation_coupled, "holo_fleet/control/flows.py + holo_fleet/control/formation_time.py + "
+     "holo_fleet/perception/perception.py + formal/check_formation_coupled.py"),
+    ("B2 range-bearing beacon (own assumptions; the checks of B0, the communication disabled, unchanged)", check_acoustic,
      "perception/acoustic.py + perception/acoustic_gate.py + formal/check_acoustic.py"),
-    ("Payload v2: gate status, silence, verified passage", check_status,
+    ("B2 status payload: gate status, silence, verified passage", check_status,
      "perception/payload.py + perception/acoustic_gate.py + perception/passage.py + formal/check_status.py"),
     ("Interacting automata of the fleet at the gate (composition, failures, timers, recovery)", check_fleet, "formal/check_fleet.py"),
+    ("B2 explicit communication (one-way beacons, freshness, delays, losses, clocks, local decisions)", check_b2_comm,
+     "perception/gate_perception.py + perception/acoustic_gate.py + control/flows.py + formal/check_b2_comm.py"),
     ("Gate-aware joint safety (P2 as a constraint on the final command, P1 x P2 feasibility)", check_gate_safety,
      "holo_fleet/control/gate_safety.py + holo_fleet/control/escape.py + formal/check_gate_safety.py + formal/check_stage2.py"),
 ]
@@ -59,8 +66,8 @@ KINDS = {
     "witness": "expected satisfiable query: non-vacuity, tightness of a bound, independence of the invariants",
     "reported": "quantity reported, not guaranteed",
 }
-_BOUNDED = {"P1": r"^(S1[ad]|S4) ", "P2": r"^M3h? ", "Payload": r"^S2h? ", "P3": r"^F6 ", "Interacting": r"^(F2p?|F1d\d+n?|F1p) ",
-            "Gate-aware": r"^S1ga "}
+_BOUNDED = {"P1": r"^(S1[ad]|S4) ", "P2": r"^M3h? ", "B2 status payload": r"^S2h? ", "P3": r"^F6 ", "Interacting": r"^(F2p?|F1d\d+n?|F1p) ",
+            "Gate-aware": r"^S1ga ", "B2 explicit": r"^B2C-S1 "}
 
 
 def kind(title: str, check: dict) -> str:

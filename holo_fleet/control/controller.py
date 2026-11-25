@@ -142,6 +142,8 @@ class DroneController:
         self.gate_safety: Dict[str, Any] = {}
         self._joint_key: Optional[tuple] = None
         self._p2_key: Optional[tuple] = None
+        self._p2_cert_key: Optional[tuple] = None
+        self._p2_aid: Optional[float] = None
 
     def step(self, frame: SensorFrame, dt: float) -> np.ndarray:
         t = frame.t
@@ -184,7 +186,7 @@ class DroneController:
         if gate_flow:
             gmode = mode.value if mode in (Mode.MUTEX_APPROACH, Mode.MUTEX_YIELD, Mode.MUTEX_PASS) else (
                 "MUTEX_PASS" if self.ha.committed else "MUTEX_APPROACH")
-            v_mis, yaw_d = self.flows.gate(obs, gmode)
+            v_mis, yaw_d = self.flows.gate(obs, gmode, admissible=(mode == Mode.MUTEX_PASS and obs.sense_ok))
         else:
             v_mis, yaw_d = self.flows.formation(obs, dt, recovering=(mode == Mode.FORMATION_RECOVERY),
                                                 traffic=(mode != Mode.FAILSAFE_HOLD_OR_RETREAT))
@@ -197,7 +199,11 @@ class DroneController:
         # error of the measured velocity in the P2 envelope: the DVL noise (3 sigma) while it is fresh, the speed bound
         # during an outage
         v_err = float(nb.k_rw) if fresh else float(nb.v_bound)
-        gc = self.flows.gate_constraint(obs, authorized=self.ha.committed and self.flows.cr_cleared, v_err=v_err)
+        # drift bound of the estimate relative to the truth (the station-keeping certificates of gate_safety): the error
+        # of the measured velocity it integrates plus the compass and DVL scale term of NavBound at the speed bound
+        rho = v_err + float(nb.k_lin) * float(nb.v_bound)
+        gc = self.flows.gate_constraint(obs, authorized=self.ha.committed and self.flows.cr_cleared, v_err=v_err, rho=rho)
+        cert_reset = self._p2_correction()
         mission_filter = self.flows.p2_filter(gc, v_mis, self.flows.mission_anchor(gc) if gate_flow else {})
         if mission_filter is not None:
             v_mis = mission_filter.v
@@ -226,6 +232,10 @@ class DroneController:
         self._gate_safety_step(t, mode, gc, mission_filter, v_pre, v, obs)
         if self.gate_safety.get("guard"):
             v = self.gate_safety.pop("_v_guard")
+        loops = [self.flows.mission_anchor(gc) if gate_flow else {}]
+        if mode == Mode.FAILSAFE_HOLD_OR_RETREAT:
+            loops.append(self.flows.mission_anchor(gc, failsafe=True, probe=not self.envmon.ok))
+        self._p2_certify_step(t, mode, gc, v, loops, cert_reset)
         from holo_fleet.perception.nav import NavBound
         dvl_fresh = t - self.perception.nav.state.t_dvl <= NavBound.DVL_STALE_S
         cmd = self.ll.command(self.perception.nav.state, v, yaw_d, authority, dt, dvl_fresh=dvl_fresh)
@@ -247,7 +257,7 @@ class DroneController:
         incomplete = not obs.form.neighbors_ok or (mode not in IN_FORMATION and ftime.episode_t > 0.0
                                                    and obs.form.slot_err_norm > self.cfg.form.e_ok)
         ftime.update(t, dt, incomplete=incomplete, mutex=gate_flow, front_residual=obs.form.front_residual,
-                     keeping=mode in IN_FORMATION, behind=obs.form.behind)
+                     keeping=mode in IN_FORMATION, behind=obs.form.behind, behind_rep=obs.form.behind_rep)
         self.last_obs = obs
         ch = self.flows.last_choice
         self.last_record = {
@@ -273,6 +283,7 @@ class DroneController:
                      "rank_used": obs.gate.rank_used,
                      "loc_ok": obs.gate.loc_ok, "reloc_hold": self.flows.reloc_hold,
                      "entry_ok": obs.gate.entry_ok, "entry": self.flows.entry_state or None, "dead": obs.gate.dead,
+                     "silent": obs.gate.silent, "admit_wait_s": round(obs.gate.admit_wait_s, 2),
                      "rule_d": ({str(j): v for j, v in self.perception.gp.acoustic_exit.rule_d.items()}
                                 if self.perception.gp.acoustic_exit is not None and self.perception.gp.acoustic_exit.rule_d else None),
                      "silence": self.perception.gp.acoustic_exit.silence(t) if self.perception.gp.acoustic_exit is not None else None,
@@ -332,7 +343,7 @@ class DroneController:
             rec["mission"] = {"status": mission_filter.status, "reason": mission_filter.reason,
                               "margin": round(mission_filter.margin, 3)}
         if changed and m < m_pre and m <= 0.0:
-            fix = gc.filter_mission(v, self.cfg.env.v_max_nominal)
+            fix = gc.filter_mission(v, self.cfg.env.v_max_nominal, station=self.flows.p2_station, cert=self.flows.p2_cert)
             v_fix, conflict = fix.v, False
             if obs is not None:
                 v_s = self.flows.structure_filter(obs, fix.v)
@@ -362,6 +373,35 @@ class DroneController:
             self.events.append({"t": t, "type": "P2_FILTER", "mode": mode.value, **rec["mission"]})
         self._p2_key = p2_key
         self.gate_safety = rec
+
+    def _p2_correction(self) -> bool:
+        """A position correction of the estimate since the previous step (NavBound sums every applied correction): the
+        estimate jumped, so the P2 certificates, statements about the continuous estimate, are dropped (gate_safety)."""
+        aid = float(self.perception.nav_bound.aid)
+        jumped = self._p2_aid is not None and aid != self._p2_aid
+        self._p2_aid = aid
+        if jumped:
+            self.flows.p2_cert = None
+        return jumped
+
+    def _p2_certify_step(self, t: float, mode: Mode, gc, v: np.ndarray, loops, cert_reset: bool) -> None:
+        """The certificate the applied command hands to the next step (Flows.p2_certify, gate_safety.GateConstraint.certify),
+        recorded with the step.  An applied command that carries none - the certified set was empty or nothing certified
+        was chosen - is logged as P2_UNCERTIFIED (on a change); the recursive argument of gate_safety (formal P2R4) says
+        this does not happen while the declared bounds hold after a certified start."""
+        cert = self.flows.p2_certify(gc, v, loops)
+        if gc is None:
+            self._p2_cert_key = None
+            return
+        self.gate_safety["cert"] = None if cert is None else cert.record()
+        if cert_reset:
+            self.gate_safety["cert_reset"] = "position correction"
+        key = None if cert is not None else ("uncertified", cert_reset)
+        if key is not None and key != self._p2_cert_key:
+            self.events.append({"t": t, "type": "P2_UNCERTIFIED", "mode": mode.value, "q": np.round(gc.q, 2).tolist(),
+                                "v_cmd": np.round(np.asarray(v, float), 3).tolist(),
+                                "margin": self.gate_safety.get("margin"), "after_correction": cert_reset})
+        self._p2_cert_key = key
 
     def _apply_crossing(self, t: float, gate, p_est) -> None:
         """A detected crossing is a direct measurement of the position in the opening: the estimate is corrected to it (the

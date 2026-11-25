@@ -34,7 +34,7 @@ from holo_fleet.arena_bridge import HORSESHOE_TRACK, load_arena_gates  # noqa: E
 from holo_fleet.config import DEFAULT  # noqa: E402
 
 G = DEFAULT.gate
-HALF = np.array([G.cr_half_len, G.cr_half_width, G.cr_half_height])
+
 
 
 def _gate(gid="G06"):
@@ -106,7 +106,7 @@ def analyze(d: Path, g) -> dict:
             gr = r.get("gate") or {}
             i = int(np.clip(np.searchsorted(t, tk), 0, len(t) - 1))
             q = g.to_gate_frame(P[i, k])
-            inside = bool(np.all(np.abs(q) <= HALF))
+            inside = bool(G.in_cr(*q))
             admitted = bool(r.get("committed")) and gr.get("entry") == "ADMIT"
             if inside and not admitted:
                 unauth.append((k, round(tk, 1)))
@@ -132,7 +132,7 @@ def analyze(d: Path, g) -> dict:
                 "cr_entries_without_admission_drones": [f"drone_{k}" for k in first],
                 "cr_entries_without_admission_first_t": {f"drone_{k}": min(tt for kk, tt in unauth if kk == k) for k in first},
                 "hold_true_s_max": None if hold_s_true_max < -1e8 else round(hold_s_true_max, 3),
-                "hold_clearance_to_cr_m": None if hold_s_true_max < -1e8 else round(-G.cr_half_len - hold_s_true_max, 3),
+                "hold_clearance_to_cr_m": None if hold_s_true_max < -1e8 else round(G.cr_s_min - hold_s_true_max, 3),
                 "hold_nav_err_s_m": None if not hold_err else {"min": round(min(hold_err), 3), "max": round(max(hold_err), 3),
                                                                "mean": round(float(np.mean(hold_err)), 3)},
                 "events": dict(ev), "joint_safety_events": dict(joint_ev), "joint_safety_steps": dict(joint_steps),

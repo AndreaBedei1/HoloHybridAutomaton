@@ -28,7 +28,9 @@ M3  Occupancy latch (Z3, bounded model checking of a timed abstraction, 30 s): d
     confirmation, is blind to A while the gate bars mask it, latches BUSY on a corridor echo,
     needs an echo beyond the CR (EXITING) and t_clear without corridor echoes to turn FREE, and
     commits only with PRIORITY held for t_clear and FREE.  Property: never A and B both in the CR.
-    M3m: a belief without the latch (FREE as soon as nothing is seen) must give a counterexample.
+    M3m: a belief without the latch (FREE as soon as nothing is seen) must give a counterexample (outer queue points of
+    n = 3 and n = 4; the n = 2 view no longer catches it with the CR s in [-1.05, 0.55], its counterexample needed the
+    occupant in the former post-gate part (0.55, 0.8]).
     M3f: the scope of the t_occ_max fallback - an occupant that stops inside the CR (a fault, crossing speed 0) is
     released by it (counterexample expected): M3 assumes a healthy crossing at >= V_LO.
 M4  Geometry of the queue (numeric, n = 2..6, exact config values): (a) the CR lies inside the
@@ -60,6 +62,11 @@ M5  Progress of the queue (argument + spec): for every occupancy in scope some q
     pattern (UP and DOWN at once), counted in every run.  Not covered: a drone that stops for good
     inside the approach zone (a permanent fault there) blocks the drones on its right.
 
+IDEALISED (M3, M4): the observer sits exactly at its queue point and the crossing drone exactly on the axis (no navigation
+error); its sonar view is a function of the crossing drone's TRUE position - the observation channel, not knowledge - and no
+acoustic report is modelled.  Explicit communication and the local decisions of both drones: formal/check_b2_comm.py (whose B2C-G1
+shows that from the stage-2 hold, under the declared navigation error, no part of the CR is certain in the FRONT sonar).
+
 Scope: one critical region at a time, n <= 6 drones in the abreast queue (n = 6 needs the queue
 line 9.1 m back).  Not proved: the sonar sees a crossing drone in its corridor (sensing
 assumption, measured), a committed drone does not stop inside the CR for t_occ_max.
@@ -90,7 +97,7 @@ ENC = "holo_fleet/ha/mutex_rule.py (shared relation) + formal/check_mutex.py"
 AXIS = {"F": 0.0, "L": 90.0, "B": 180.0, "R": -90.0}
 HALF = 60.0
 HOLD_ERR = DEFAULT.gate.hold_err_m
-V_LO = 0.12
+V_LO = DEFAULT.gate.v_cross_min  # the declared crossing-speed premise (config.GateRule.v_cross_min)
 
 
 class _Z:
@@ -252,7 +259,7 @@ def stacked_queue(cfg: FleetConfig, fuzz: float, relation=mutex_rule.relation, o
     for p in pts:
         son = p + np.array([float(MOUNTS["FRONT"][0]), 0.0, 0.0])
         for a, b, c in itertools.product((-1, 1), repeat=3):
-            v = np.array([a * G.cr_half_len, b * G.cr_half_width, c * G.cr_half_height]) - son
+            v = G.cr_center() + np.array([a, b, c]) * G.cr_half() - son
             worst = max(worst, math.degrees(math.acos(v[0] / np.linalg.norm(v))))
     out["cr_bearing_max_deg"] = round(worst + G.heading_tol_deg, 2)
     clear = 99.0
@@ -286,7 +293,7 @@ def geometry(cfg: FleetConfig, n: int, queue_line=None) -> dict:
         sx = q_s + float(MOUNTS["FRONT"][0])
         for a in (-1, 1):
             for b in (-1, 1):
-                cs, cl = a * G.cr_half_len, b * G.cr_half_width
+                cs, cl = G.cr_center_s + a * G.cr_half_len, b * G.cr_half_width
                 worst = max(worst, abs(math.degrees(math.atan2(cl - l, cs - sx))))
     out["cr_bearing_max_deg"] = round(worst + G.heading_tol_deg, 2)
     a = math.radians(G.merge_angle_deg)
@@ -307,10 +314,10 @@ def geometry(cfg: FleetConfig, n: int, queue_line=None) -> dict:
     rows = []
     for l in lats:
         son = np.array([q_s + float(MOUNTS["FRONT"][0]), l, 0.0])
-        half = np.array([G.cr_half_len, G.cr_half_width, G.cr_half_height])
+        c0, half = G.cr_center(), G.cr_half()
         q = son
-        near = float(np.linalg.norm(q - np.clip(q, -half, half)))
-        far = max(float(np.linalg.norm(q - half * np.array([x, y, z]))) for x in (-1, 1) for y in (-1, 1) for z in (-1, 1))
+        near = float(np.linalg.norm(q - np.clip(q, G.cr_lo(), G.cr_hi())))
+        far = max(float(np.linalg.norm(q - c0 - half * np.array([x, y, z]))) for x in (-1, 1) for y in (-1, 1) for z in (-1, 1))
         lo_corr, hi_corr = near - R_OUT - env.eps_range_far, far + env.eps_range_near
         bar_pts = gate_frame_points()
         rb = [float(np.linalg.norm(p - son)) for p in bar_pts if
@@ -320,7 +327,7 @@ def geometry(cfg: FleetConfig, n: int, queue_line=None) -> dict:
         rng_A = np.array([math.hypot(s - son[0], l) for s in ss]) - 0.29
         corr = (rng_A >= lo_corr) & (rng_A <= hi_corr)
         masked = (rng_A >= m_lo) & (rng_A <= m_hi)
-        seen_corr = corr & ~masked & (ss < 0.8)
+        seen_corr = corr & ~masked & (ss < G.cr_s_max)
         first_mask = float(ss[np.argmax(masked)]) if masked.any() else None
         exposure = float(seen_corr[ss < (first_mask if first_mask is not None else 9)].sum() * (ss[1] - ss[0]))
         after = ss[(ss > (first_mask or -9)) & ~masked]
@@ -347,11 +354,15 @@ def geometry(cfg: FleetConfig, n: int, queue_line=None) -> dict:
     out["min_exposure_s"] = round(min(r["exposure_m"] for r in rows) / G.v_pass, 2)
     out["unmask_before_beyond"] = all(r["visible_again_s"] is None or r["beyond_s"] is None or r["visible_again_s"] <= r["beyond_s"] + 1e-9
                                       for r in rows)
-    out["mask_inside_cr_or_after"] = all(r["mask_from_s"] is None or r["mask_from_s"] >= -G.cr_half_len - 0.3 for r in rows)
+    out["mask_inside_cr_or_after"] = all(r["mask_from_s"] is None or r["mask_from_s"] >= G.cr_s_min - 0.3 for r in rows)
     return out
 
 
 R_DETECT_M = 10.0
+VISIBLE_AGAIN_MAX_S = 2.8  # M4e: absolute gate-frame bound of the end of the masking interval (bars' geometry), not the CR
+# exit plane: no deployed threshold uses it (the latch abstraction of M3 takes the computed interval itself, the exit
+# witness its own W1/W2 geometry and t_occ_max); it was written cr_half_len + 2 m with the former symmetric CR
+B0_EXIT_LIMIT = ("abreast n=3", "template triangle (n=3, gate scenarios)", "template line3 (n=3, gate scenarios)")
 
 
 def _segment_hits_box(a, b, box) -> bool:
@@ -410,7 +421,7 @@ def exit_observability(cfg: FleetConfig, n: int = 0, step: float = 0.1, slots=No
                 pts += [(a + (b - a) * i / k, b - a) for i in range(k)]
             seen = []
             for cg, dirg in pts:
-                if cg[0] <= G.cr_half_len:
+                if cg[0] <= G.cr_s_max:
                     continue
                 c = g.from_gate_frame(cg)
                 dw = dirg[0] * g.axis + dirg[1] * left
@@ -460,7 +471,7 @@ def latch_bmc(cfg: FleetConfig, geo: dict, steps: int = 420, latch: bool = True,
     fo_lo, fo_hi = view["front_only_s"] if view.get("front_only_s") else (99.0, -99.0)
     no_rel = lambda x: z3.And(x >= band_lo, x <= b_s, x >= fo_lo, x <= fo_hi)
     in_band = lambda x: z3.And(x >= band_lo, x < s_corr_lo, x >= fo_lo, x <= fo_hi)
-    reach = int(math.floor((abs(geo["queue_s"]) - G.cr_half_len) / v_hi / dt))
+    reach = int(math.floor((G.cr_s_min - geo["queue_s"]) / v_hi / dt))
     sA = [z3.Real(f"sA_{k}") for k in range(steps + 1)]
     seen = [z3.Bool(f"seen_{k}") for k in range(steps + 1)]
     corr = [z3.Bool(f"corr_{k}") for k in range(steps + 1)]
@@ -472,7 +483,7 @@ def latch_bmc(cfg: FleetConfig, geo: dict, steps: int = 420, latch: bool = True,
     commit = [z3.Bool(f"commit_{k}") for k in range(steps + 1)]
     cons = [sA[0] == geo["queue_s"], z3.Not(busy[0]), quiet[0] == tc, prio[0] == 0, z3.Not(commit[0]), since[0] == 0]
     for k in range(steps):
-        floor = z3.If(sA[k] >= -G.cr_half_len, v_lo, 0.0) if hold else v_lo
+        floor = z3.If(sA[k] >= G.cr_s_min, v_lo, 0.0) if hold else v_lo
         cons.append(z3.And(sA[k + 1] - sA[k] >= floor * dt, sA[k + 1] - sA[k] <= v_hi * dt))
     for k in range(steps + 1):
         vis = z3.Or(sA[k] < m_lo_s, sA[k] > m_hi_s)
@@ -499,7 +510,7 @@ def latch_bmc(cfg: FleetConfig, geo: dict, steps: int = 420, latch: bool = True,
     for c in range(steps + 1):
         for k in range(c + reach, steps + 1):
             viol.append(z3.And(commit[c], z3.Not(commit[c - 1]) if c > 0 else z3.BoolVal(True),
-                               sA[k] >= -G.cr_half_len, sA[k] <= G.cr_half_len))
+                               sA[k] >= G.cr_s_min, sA[k] <= G.cr_s_max))
     cons.append(z3.Or(*viol) if viol else z3.BoolVal(False))
     return cons, {"view": view["queue_l"], "mask_s": (m_lo_s, m_hi_s), "beyond_s": b_s, "reach_steps": reach}
 
@@ -558,8 +569,8 @@ def run(cfg: FleetConfig = DEFAULT, verbose: bool = True) -> Report:
     old = stacked_queue(cfg, fuzz, relation=_old_relation, old_decide=True)
     old_p = stacked_queue(cfg, fuzz, relation=_old_relation, old_decide=True, slots=STACK_PAIR)
     old["deadlocks"] = old["deadlocks"] if old_p["deadlocks"] else 0
-    rep.add(CheckResult("M2m mutation: the v2 rule (vertical-only pattern -> RANK, ranks unknown) deadlocks the stacked "
-                        "queue (no drone has PRIORITY)", "expect violation", "mutex_rule (v2)", "violated",
+    rep.add(CheckResult("M2m mutation: the earlier rule (vertical-only pattern -> RANK, ranks unknown) deadlocks the stacked "
+                        "queue (no drone has PRIORITY)", "expect violation", "mutex_rule (earlier rule)", "violated",
                         verdict="violated" if old["deadlocks"] else "holds", passed=old["deadlocks"] > 0,
                         note=f"{old['deadlocks']} of 15 occupancies without a leader, e.g. "
                              f"{next((o['occupied'] for o in old['occupancies'] if not o['leaders']), None)}"), verbose)
@@ -590,14 +601,19 @@ def run(cfg: FleetConfig = DEFAULT, verbose: bool = True) -> Report:
                         "exposure / v_pass >= 0.3 s", "perception/gate_perception.py", "holds",
                         verdict="holds" if ok_d else "violated", passed=ok_d,
                         note="; ".join(f"n={n}: {g['min_exposure_s']} s" for n, g in geos.items())), verbose)
-    ok_e = all(v["mask_from_s"] is None or (v["visible_again_s"] is not None and v["visible_again_s"] <= G.cr_half_len + 2.0
+    ok_e = all(v["mask_from_s"] is None or (v["visible_again_s"] is not None and v["visible_again_s"] <= VISIBLE_AGAIN_MAX_S
                                              and v["corridor_from_s"] is not None and v["corridor_from_s"] < v["mask_from_s"])
                for g in geos.values() for v in g["views"])
     span = max((v["visible_again_s"] or 0) - (v["mask_from_s"] or 0) for g in geos.values() for v in g["views"])
+    vis_max = max((v["visible_again_s"] or -9.0) for g in geos.values() for v in g["views"])
     rep.add(CheckResult("M4e masking interval is bounded and starts after the corridor is entered",
-                        "corridor_from < mask_from and visible_again <= cr_half_len + 2 m", "perception", "holds",
-                        verdict="holds" if ok_e else "violated", passed=ok_e,
-                        note=f"masked span <= {span:.2f} m along the axis"), verbose)
+                        f"corridor_from < mask_from and visible_again <= {VISIBLE_AGAIN_MAX_S} m (absolute gate-frame s)",
+                        "perception", "holds", verdict="holds" if ok_e else "violated", passed=ok_e,
+                        note=f"masked span <= {span:.2f} m along the axis; visible again by s <= {vis_max:.2f} m.  The bound "
+                             f"{VISIBLE_AGAIN_MAX_S} m is an absolute premise of the bars' geometry (formerly written "
+                             f"cr_half_len + 2 m = 2.8 m with the symmetric CR); no deployed threshold is relative to it or to "
+                             f"the CR exit plane (relative to the exit plane, cr_s_max + 2 = {G.cr_s_max + 2.0:.2f} m, the n=6 "
+                             f"outer view, outside the planner's domain, would exceed it)"), verbose)
     rows, ok_f, scope = [], True, []
     for n in range(2, 7):
         q_s, lats = queue_points(G, n, cfg.perc)
@@ -642,6 +658,24 @@ def run(cfg: FleetConfig = DEFAULT, verbose: bool = True) -> Report:
         worst = min(res, key=lambda x: x["window_s"])
         blind = sorted({f"l={x['observer_l']:+.2f} dz={x['observer_dz']:+.2f}" for x in res if x["window_s"] < 0.3})
         ok_g = not blind
+        note = (f"min {worst['window_s']:.1f} s (observer l={worst['observer_l']:+.2f}, dz={worst['observer_dz']:+.2f}, passer "
+                f"lane {worst['passer_lane']:+.2f}, first at s={worst['first_s']}, {worst['first_sector']} {worst['first_range']} m)"
+                + (f"; no witness within {R_DETECT_M} m for the observers at {', '.join(blind)}" if blind else ""))
+        if accepted and label in B0_EXIT_LIMIT:
+            rep.add(CheckResult(f"M4g declared limit (B0), {label}: beyond the CR some queued drone gets no sonar exit witness "
+                                "of a passing drone for >= 3 captures (measured detection range); the latch then falls back to "
+                                "the t_occ_max timeout", "expect a queued observer with a window below 0.3 s",
+                                "perception/exit_witness.py + mission.check_gate_domain", "violated",
+                                verdict="holds" if ok_g else "violated", passed=not ok_g,
+                                note=note + ".  A regression of the CR s in [-1.05, 0.55]: the queue line moved 0.25 m back "
+                                            "(-5.50 -> -5.75 m), so the outer observers see the passer on the axis only "
+                                            "near the 10 m detection range (with the former CR: 1.2 s, first at s=3.9, FRONT "
+                                            "9.49 m).  Consequence in B0: the occupancy latch of these observers releases by "
+                                            "the t_occ_max timeout, a progress loss, not a safety one (M3 covers the "
+                                            "timeout under the healthy-crossing premise).  B2, the official controller: the "
+                                            "acoustic exit evidence covers the same queue points (formal/check_acoustic.py "
+                                            "B2-M4g n=3, abreast lanes)"), verbose)
+            continue
         head = f"M4g exit observable, {label}" if accepted else f"M4g domain boundary, {label}: refused by the planner"
         rep.add(CheckResult(head + (": beyond the CR every passing drone gives every queued drone an exit witness (any "
                                     "sector, bars' occlusion, measured detection range) for >= 3 captures" if accepted else
@@ -651,11 +685,7 @@ def run(cfg: FleetConfig = DEFAULT, verbose: bool = True) -> Report:
                             "outside the validated domain: no obligation; reported",
                             "perception/exit_witness.py + mission.check_gate_domain",
                             "holds" if accepted else ("violated" if blind else "holds"),
-                            verdict="holds" if ok_g else "violated", passed=ok_g if accepted else True,
-                            note=(f"min {worst['window_s']:.1f} s (observer l={worst['observer_l']:+.2f}, "
-                                  f"dz={worst['observer_dz']:+.2f}, passer lane {worst['passer_lane']:+.2f}, first at "
-                                  f"s={worst['first_s']}, {worst['first_sector']} {worst['first_range']} m)")
-                                 + (f"; no witness within {R_DETECT_M} m for the observers at {', '.join(blind)}" if blind else "")),
+                            verdict="holds" if ok_g else "violated", passed=ok_g if accepted else True, note=note),
                 verbose)
     qa_st = queue_assignment(STACK_2X2, G)
     lats_st = tuple(sorted({l for l, _dz in qa_st}, reverse=True))
@@ -685,19 +715,29 @@ def run(cfg: FleetConfig = DEFAULT, verbose: bool = True) -> Report:
             rep.add(check(f"M3h occupancy latch, n={n}, observer at l={view['queue_l']:+.2f}: the crossing drone may stop anywhere before the CR, 42 s bound: never both in the CR",
                           "as M3, the speed floor applying only inside the CR", ENC, cons, timeout_ms=900000, note=f"band from s {view['band_from_s']}, FRONT-only s {view['front_only_s']}"), verbose)
     worst = max(geos[2]["views"], key=lambda v: v["queue_l"])
-    cons, _ = latch_bmc(cfg, geos[2], latch=False, view=worst)
-    rep.add(check("M3m mutation: belief without latch (FREE when nothing is seen) must violate P2",
-                  "expect counterexample", ENC, cons, expect="sat",
-                  note=f"n=2, observer at l={worst['queue_l']:+.2f}"), verbose)
+    for n_m in (3, 4):
+        outer = max(geos[n_m]["views"], key=lambda v: v["queue_l"])
+        cons, info = latch_bmc(cfg, geos[n_m], latch=False, view=outer)
+        rep.add(check(f"M3m mutation: belief without latch (FREE when nothing is seen) must violate P2 (n={n_m}, outer queue point)",
+                      "expect counterexample", ENC, cons, expect="sat",
+                      note=f"n={n_m}, observer at l={outer['queue_l']:+.2f}, masked s in {info['mask_s']}.  Retargeted from the n=2 "
+                           f"view (l={worst['queue_l']:+.2f}, masked from s = {worst['mask_from_s']:.2f}): with the CR s in "
+                           f"[{G.cr_s_min}, {G.cr_s_max}] that view no longer catches the mutation, its counterexample needed "
+                           f"the occupant in the former post-gate part (0.55, 0.8] when the follower reached the CR"), verbose)
     centre = min(geos[3]["views"], key=lambda v: abs(v["queue_l"]))
     cons, _ = latch_bmc(cfg, geos[3], view=centre, band_latch=False, hold=True)
     rep.add(check("M3b mutation: a FRONT-only echo nearer than the corridor makes neither a relation nor a latch input (round 2, F1): must violate P2",
                   "expect counterexample", ENC, cons, expect="sat", note="n=3, centre queue point"), verbose)
     side3 = max(geos[3]["views"], key=lambda v: v["queue_l"])
-    cons, _ = latch_bmc(cfg, geos[3], view=side3, hold=True, steps=480)
+    side4 = max(geos[4]["views"], key=lambda v: v["queue_l"])
+    cons, info4 = latch_bmc(cfg, geos[4], view=side4, hold=True, steps=540)
     rep.add(check("M3hs scope: beyond the 42 s bound a drone stopped behind the bars before the CR is released by the t_occ_max fallback",
                   "expect counterexample: the stop before the CR is bounded by the give-up of the code (26 s), not modelled; B2 claims cover it when heard", ENC, cons, expect="sat", timeout_ms=900000,
-                  note="n=3, side queue point, 48 s BMC"), verbose)
+                  note=f"n=4, outer queue point l={side4['queue_l']:+.2f} (masked from s = {side4['mask_from_s']:.2f}, before the CR "
+                       f"entry {G.cr_s_min}), 54 s BMC (48 s for the n=3 view: from the n=4 line B needs {info4['reach_steps']} "
+                       f"steps to the CR, and 48 s leaves no counterexample there).  Retargeted from the n=3 side view: there the "
+                       f"masked region now starts at s = {side3['mask_from_s']:.2f}, inside the CR, so a drone stopped before the CR "
+                       f"is always seen"), verbose)
     cons, info = latch_bmc(cfg, geos[2], view=worst, v_lo=0.0, steps=700)
     rep.add(check("M3f scope: an occupant that stops inside the CR (fault) is released by the t_occ_max fallback",
                   "expect counterexample: crossing speed >= V_LO is an assumption of M3", ENC, cons, expect="sat",

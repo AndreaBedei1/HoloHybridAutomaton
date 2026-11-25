@@ -303,8 +303,7 @@ class FleetView:
         for g in self.sc.judged_gates:
             G = self.G
             inside = {self.names[k] for k in range(self.n)
-                      if (lambda q: abs(q[0]) <= G.cr_half_len and abs(q[1]) <= G.cr_half_width and abs(q[2]) <= G.cr_half_height)(
-                          g.to_gate_frame(self.P[k]))}
+                      if G.in_cr(*g.to_gate_frame(self.P[k]))}
             for nm in sorted(inside - self.inside_prev):
                 if nm not in self.entered:
                     self.entered.append(nm)
@@ -426,7 +425,8 @@ class FleetView:
             band = [g.from_gate_frame([a, b, 0.0]) for a, b in ((q_s - G.approach_len, -half_w), (G.exit_s, -half_w),
                                                                  (G.exit_s, half_w), (q_s - G.approach_len, half_w))]
             cv2.fillPoly(img, [np.array([self.px(p) for p in band], np.int32)], _bgr(ZONE_FILL), cv2.LINE_AA)
-            cr = [g.from_gate_frame([a * G.cr_half_len, b * G.cr_half_width, 0.0]) for a, b in ((-1, -1), (1, -1), (1, 1), (-1, 1))]
+            cr = [g.from_gate_frame([a, b * G.cr_half_width, 0.0])
+                  for a, b in ((G.cr_s_min, -1), (G.cr_s_max, -1), (G.cr_s_max, 1), (G.cr_s_min, 1))]
             cv2.fillPoly(img, [np.array([self.px(p) for p in cr], np.int32)], _bgr(CR_FILL), cv2.LINE_AA)
             cv2.polylines(img, [np.array([self.px(p) for p in cr], np.int32)], True, _bgr(_rgb("#7ea6d8")), 1, cv2.LINE_AA)
             for b in g.bars:

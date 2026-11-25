@@ -9,7 +9,7 @@
     python scripts/run_demo.py --scenario lost_drone_rejoin --save --overwrite --media   # ... with GIF / frames
     python scripts/run_demo.py --scenario lost_drone_rejoin --profile MEDIUM --seed 1    # noisy sensors (live)
     python scripts/run_demo.py --scenario lost_drone_rejoin --profile MEDIUM --b2 MEDIUM  # B2 on the MEDIUM channel
-    python scripts/run_demo.py --scenario lost_drone_rejoin --b2 OFF                      # B0: no beacon
+    python scripts/run_demo.py --scenario lost_drone_rejoin --b2 OFF                      # B0: the same controller, communication disabled
 
 Two windows: the HoloOcean viewport (the onboard belief is drawn on it: nearest echo per sonar
 sector coloured by class - grey structure, brown seabed, red possible vehicle, amber unknown - and
@@ -36,7 +36,7 @@ extends as the run goes on.
 
 ``--profile`` runs with a sensor-noise profile of the robustness campaign (sim/sensor_noise.py) and ``--seed``
 fixes its seeded effects.  A demo runs B2, the one-way acoustic beacon, on the CLEAN channel by default; ``--b2 LEVEL``
-chooses another channel level (sim/acoustic_channel.py) and ``--b2 OFF`` runs B0 (no beacon).  Runs with a profile or
+chooses another channel level (sim/acoustic_channel.py) and ``--b2 OFF`` runs B0, the same controller with the communication disabled.  Runs with a profile or
 another level are not reference demos: they are saved only with ``--out``.
 """
 
@@ -56,7 +56,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
-from holo_fleet.config import DEFAULT, BeaconConfig  # noqa: E402
+from holo_fleet.config import DEFAULT, BeaconConfig, communication_disabled  # noqa: E402
 from holo_fleet.referee.criteria import nominal_end_s  # noqa: E402
 from holo_fleet.runner import print_summary, run  # noqa: E402
 from holo_fleet.sim.scenarios import SCENARIOS  # noqa: E402
@@ -123,9 +123,7 @@ def _run_scenario(a, stage: Path) -> str:
             return json.loads((stage / a.scenario / "run_status.json").read_text(encoding="utf-8"))["status"]
         except (OSError, ValueError, KeyError):
             return "INCOMPLETE"
-    cfg = DEFAULT
-    if a.b2 != "OFF":
-        cfg = dataclasses.replace(DEFAULT, beacon=BeaconConfig(mode="ACOUSTIC_RB", channel=a.b2))
+    cfg = communication_disabled() if a.b2 == "OFF" else dataclasses.replace(DEFAULT, beacon=BeaconConfig(channel=a.b2))
     noise = None
     if a.profile:
         from holo_fleet.sim.sensor_noise import profile
@@ -176,7 +174,7 @@ def main(argv=None) -> int:
                     help="sensor-noise profile of the robustness campaign (default: the deployed sensors)")
     ap.add_argument("--seed", type=int, default=None, help="seed of the noise profile's effects")
     ap.add_argument("--b2", choices=("OFF", "CLEAN", "LOW", "MEDIUM", "BLACKOUT"), default="CLEAN",
-                    help="B2 one-way acoustic beacon on this channel level (default CLEAN); OFF: B0, no beacon")
+                    help="B2 one-way acoustic beacon on this channel level (default CLEAN); OFF: B0, the communication disabled")
     a = ap.parse_args(argv)
     if a.list or not a.scenario:
         print("scenarios (one seed each):")

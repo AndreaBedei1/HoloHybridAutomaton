@@ -47,7 +47,7 @@ from typing import Callable, Dict, List, Optional, Sequence, Tuple
 import numpy as np
 
 from holo_fleet.arena_bridge import HORSESHOE_TRACK, load_arena_gates
-from holo_fleet.config import DEFAULT, FleetConfig
+from holo_fleet.config import COMMUNICATION_ACOUSTIC, COMMUNICATION_DISABLED, DEFAULT, FleetConfig
 from holo_fleet.formations import TEMPLATES, FormationTemplate
 from holo_fleet.mission import (FormationClock, GateSpec, MissionPlan, Path, Slot, check_gate_domain, queue_assignment,
                                 queue_line, queue_order)
@@ -130,7 +130,7 @@ def p1_head_on(cfg: FleetConfig = DEFAULT) -> Scenario:
     sim = _sim("p1_head_on", plans, spawns, yaws, 30.0, camera=0)
     sim.chase_offset, sim.side_offset = (-6.0, 0.0, 2.2), (8.0, 9.0, 1.5)
     return Scenario("p1_head_on", "P1 head-on encounter",
-                    "Two drones on the same line, 12 m apart, closing at 0.64 m/s. No current, no communication.",
+                    "Two drones on the same line, 12 m apart, closing at 0.64 m/s. No current.",
                     sim, plans, None, plans[0].path, [], formation_enabled=False,
                     focus="FRONT echo closing -> both give way to the right (sector rule), pass port to port; "
                           "warning filter as safety net; P1 distance >= d_safe")
@@ -183,7 +183,7 @@ def p1_close_encounter(cfg: FleetConfig = DEFAULT) -> Scenario:
     sim.chase_offset, sim.side_offset = (-6.0, 0.0, 2.2), (6.0, -6.0, 6.0)
     return Scenario("p1_close_encounter", "P1 close encounter: right-angle crossing",
                     "Two drones on perpendicular legs, 7.5 m from the crossing point, arrive there together "
-                    "(closing 0.42 m/s). Fleet drones only, traffic rule ON, no current, no communication.",
+                    "(closing 0.42 m/s). Fleet drones only, traffic rule ON, no current.",
                     sim, plans, None, plans[0].path, [], formation_enabled=False,
                     focus="conservative onboard distance below d_warning -> SEPARATION_WARNING; true pair distance "
                           "against d_warning / d_ca / d_safe; collision avoidance only if the bound fell below d_ca")
@@ -339,7 +339,7 @@ def lost_drone_rejoin_front(cfg: FleetConfig = DEFAULT) -> Scenario:
                      "the rear-left drone is on its lane, between it and its slot.",
                      f"its neighbours miss it and slow the formation "
                      f"to {fr.v_wait:.2f} m/s; it catches up from behind and passes the rear-left drone "
-                     f"{fr.pass_dz_m:.1f} m below it, rising to its slot only past it; FOLLOW again, no communication",
+                     f"{fr.pass_dz_m:.1f} m below it, rising to its slot only past it; FOLLOW again",
                      cfg, faulty=0)
     sc.automaton_drone = 2
     return sc
@@ -393,7 +393,7 @@ def gate_single(cfg: FleetConfig = DEFAULT) -> Scenario:
                          title="P2: one at a time through arena gate G06",
                          desc="3 drones in triangle reach Marine Race Arena gate G06 (only this gate spawned, 2.0 x 2.0 m "
                               "opening), queue abreast, pass one at a time (left first, sector rule), re-form beyond "
-                              "the gate. No communication.",
+                              "the gate.",
                          focus="queue relations from sector patterns, CR occupancy belief, occupancy <= 1, entry order")
 
 
@@ -415,7 +415,7 @@ def integrated_short(cfg: FleetConfig = DEFAULT) -> Scenario:
                          title="Integrated: survey, cross-current at the gate, one at a time, re-form",
                          desc=f"3 drones (triangle) survey towards gate G06; a {w:.2f} m/s cross-current builds up while "
                               "they approach and queue (onboard current estimate, no ground truth); they pass the "
-                              "1.5 m opening one at a time and re-form beyond it. No communication.",
+                              "1.5 m opening one at a time and re-form beyond it.",
                          focus="P1 throughout, current estimate, P2 at the gate under cross-current, P3 re-formation")
 
 
@@ -424,8 +424,8 @@ def mutex_deadlock_resolution(cfg: FleetConfig = DEFAULT) -> Scenario:
                          title="Mutex: stacked queue, left first then top first",
                          desc="3 drones - an upper and a lower drone on the left lane, one on the right lane - reach gate "
                               "G06 and queue with the left pair stacked. The stacked pair sees each other only in UP/DOWN: "
-                              "the v2 rule resolved that with a static rank it could not apply (both waited, and the right "
-                              "drone waited for them: deadlock); now the upper one goes first. No communication.",
+                              "the earlier rule resolved that with a static rank it could not apply (both waited, and the right "
+                              "drone waited for them: deadlock); now the upper one goes first.",
                          focus="queue order left-top, left-bottom, right from sector patterns; static rank never used; "
                                "occupancy <= 1")
 
@@ -434,7 +434,7 @@ def line_parallel_mutex(cfg: FleetConfig = DEFAULT) -> Scenario:
     return _gate_mission("line_parallel_mutex", "line3", 75.0, CurrentField(), cfg,
                          title="Mutex: a line abreast reaches the gate side by side",
                          desc="3 drones abreast arrive together at gate G06: perfect parity. The tie is broken by the "
-                              "sector rule alone - left first - without any static rank. No communication.",
+                              "sector rule alone - left first - without any static rank.",
                          focus="simultaneous arrival, abreast queue, left-first order, CR occupancy <= 1")
 
 
@@ -446,7 +446,7 @@ def lost_drone_mutex(cfg: FleetConfig = DEFAULT) -> Scenario:
                        desc="3 drones abreast survey towards gate G06; the left drone fails completely (no propulsion, no "
                             "electronics, no transmitter) at t = 1 s and rises. The other two miss it, queue at their own queue points (the left "
                             "one stays vacant) and pass one at a time: the middle drone, now the leftmost present, goes "
-                            "first. No communication.",
+                            "first.",
                        focus="missing neighbour (FORMATION_WAIT_REJOIN; timer frozen in the mutex modes and during the "
                              "rendezvous hold), queue order relative to the drones present, occupancy <= 1")
     sc.sim.faults = ({"drone": "drone_0", "type": "TOTAL_FAILURE", "t_on": 1.0, "t_off": None},)
@@ -661,9 +661,8 @@ STACK_AXIS = FormationTemplate("stack_axis", (Slot(0.0, 0.0, 1.75), Slot(0.0, 0.
                                "two drones stacked on the gate axis (one column: the upper queues and passes first)", 3.2)
 REAR_BEHIND_M = 2.2
 OCCUPANT_S = -0.45  # entry side of the CR: outside the structure window of the FRONT sonar (formal M4h), seen by the stage-2 check
-REAR_T_COMMIT_S = {"v12": 0.5, "v11": 0.6}  # the occupant reaches the CR 3 s later: 2 s after the first commitment of
-# gate_rear_approach_cal (B2 CLEAN, seed 8000; v11: commitment 1.6 s, admission 5.8 s; v12: commitment 1.5 s, admission
-# 10.5 s), per controller version
+REAR_T_COMMIT_S = 0.5  # the occupant reaches the CR 3 s later: 2 s after the first commitment of
+# gate_rear_approach_cal (B2 CLEAN, seed 8000: commitment 1.5 s, admission 10.5 s)
 
 
 def gate_rear_approach(cfg: FleetConfig = DEFAULT) -> Scenario:
@@ -671,13 +670,12 @@ def gate_rear_approach(cfg: FleetConfig = DEFAULT) -> Scenario:
     approaches along the axis).  Right after it commits, a scripted vehicle
     (non-cooperative, no controller) enters the CR from the exit side and stays there, so the committed drone holds before
     the CR; a second scripted vehicle then closes on the holding drone from behind along the axis at 0.5 m/s and stops
-    REAR_BEHIND_M behind the stage-2 hold of the controller version (the occupant stays at s = OCCUPANT_S, inside the CR
+    REAR_BEHIND_M behind the stage-2 hold of the controller (the occupant stays at s = OCCUPANT_S, inside the CR
     on its entry side, where the FRONT sonar of a holding drone sees it outside the structure window: a silent vehicle
     masked by the bars is outside the stage-2 premise, formal M4h), so the held drone has a vehicle in front (the occupant) and one behind while the CR is occupied.  The holding
     drone must not answer the rear vehicle by moving into the occupied CR.  Both vehicles leave; the drones are admitted
     and pass.  The commitment time (REAR_T_COMMIT_S) comes from a calibration run without the vehicles
-    (gate_rear_approach_cal), one per controller version (the stage-2 hold of the version: GateRule.stage2_hold_s, or the
-    hold of the v11 controller)."""
+    (gate_rear_approach_cal); the stage-2 hold is GateRule.stage2_hold_s."""
     sc = _gate_mission("gate_rear_approach", "stack_axis", 150.0, CurrentField(), cfg, template=STACK_AXIS)
     sc.title = "Held before an occupied CR, a vehicle closing from behind"
     sc.description = ("Two drones stacked on the axis reach G06; right after the upper one commits a scripted vehicle occupies the CR; a "
@@ -685,10 +683,8 @@ def gate_rear_approach(cfg: FleetConfig = DEFAULT) -> Scenario:
     sc.focus = ("no forward escape into the occupied CR (P2 constraint), joint-feasibility class of the avoidance decisions, "
                 "P1 to the rear vehicle, admission after the CR clears")
     g = sc.judged_gates[0]
-    G = cfg.gate
-    v12 = hasattr(G, "stage2_hold_s")
-    s_hold = float(G.stage2_hold_s) if v12 else -(G.cr_half_len + 0.229 + 0.15)
-    t0 = REAR_T_COMMIT_S["v12" if v12 else "v11"]
+    s_hold = float(cfg.gate.stage2_hold_s)
+    t0 = REAR_T_COMMIT_S
     W = lambda t, s, l=0.0, dz=0.0: [float(t)] + [float(v) for v in g.from_gate_frame([s, l, dz])]
     occupant = [W(0.0, 9.0, 7.0), W(t0, 9.0, 7.0), W(t0 + 3.0, OCCUPANT_S, 0.0), W(t0 + 45.0, OCCUPANT_S, 0.0),
                 W(t0 + 49.0, 1.8, 0.0), W(t0 + 57.0, 1.8, 7.0), W(600.0, 1.8, 7.0)]
@@ -705,17 +701,17 @@ def gate_rear_approach(cfg: FleetConfig = DEFAULT) -> Scenario:
 def gate_rear_approach_unloc(cfg: FleetConfig = DEFAULT) -> Scenario:
     """gate_rear_approach with the CR EMPTY: the upper drone holds before the CR because its gate localization is not
     validated (every drone starts with a +1.0 m along-axis navigation error, the B0 acquisition limit of the stage-2 hold),
-    and the scripted vehicle closes on it from behind along the axis and stops 1.6 m (centre) behind the hold of the
-    version, inside its collision-avoidance band, while it is held.  A drone that is not admitted must not escape forward
+    and the scripted vehicle closes on it from behind along the axis and stops 1.6 m (centre) behind the hold,
+    inside its collision-avoidance band, while it is held.  A drone that is not admitted must not escape forward
     into the CR (the P2 constraint of the avoidance); P1 to the rear vehicle and the timeout/retreat of the hold are
-    observed.  Run in B0, the communication-free baseline: in B2 the along-axis correction can validate the localization."""
+    observed.  Run with the communication disabled (B0), set by ``cfg_patch``: with the beacons the along-axis correction
+    can validate the localization."""
     sc = gate_rear_approach(cfg)
     sc.name = sc.sim.name = "gate_rear_approach_unloc"
+    sc.cfg_patch = dict(sc.cfg_patch, beacon=dataclasses.replace(cfg.beacon, mode=COMMUNICATION_DISABLED))
     g = sc.judged_gates[0]
-    G = cfg.gate
-    v12 = hasattr(G, "stage2_hold_s")
-    s_hold = float(G.stage2_hold_s) if v12 else -(G.cr_half_len + 0.229 + 0.15)
-    t0 = REAR_T_COMMIT_S["v12" if v12 else "v11"]
+    s_hold = float(cfg.gate.stage2_hold_s)
+    t0 = REAR_T_COMMIT_S
     W = lambda t, s, l=0.0, dz=0.0: [float(t)] + [float(v) for v in g.from_gate_frame([s, l, dz])]
     s_stop = s_hold - 1.6
     rear = [W(0.0, s_stop - 12.0, -8.0), W(t0 + 1.0, s_stop - 12.0, -8.0), W(t0 + 9.0, s_stop - 8.0, 0.0),
@@ -748,3 +744,29 @@ GATE_SAFETY_EXTRA: Dict[str, Callable[..., Scenario]] = {
 }
 VALIDATION_EXTRA.update(GATE_SAFETY_EXTRA)
 SCENARIOS.update(GATE_SAFETY_EXTRA)
+
+
+# Targeted B2 communication cases (formal/check_b2_comm.py).  Always run with the beacon on; the channel of the run is
+# replaced by the one named here.  line_parallel_mutex: three drones abreast arrive together at G06 (simultaneous commitments).
+def _b2c(name: str, channel_name: str, title: str, desc: str, duration: float = 220.0):
+    def make(cfg: FleetConfig = DEFAULT) -> Scenario:
+        sc = line_parallel_mutex(cfg)
+        sc.name = sc.sim.name = name
+        sc.sim.duration_s = duration
+        sc.cfg_patch = dict(sc.cfg_patch, beacon=dataclasses.replace(cfg.beacon, mode=COMMUNICATION_ACOUSTIC, channel=channel_name))
+        sc.title, sc.description = title, desc
+        return sc
+    make.__name__ = name
+    return make
+
+
+B2C_EXTRA: Dict[str, Callable[..., Scenario]] = {
+    "b2c_mute_transmitter": _b2c("b2c_mute_transmitter", "LOW_MUTE0",
+                                 "B2: the leftmost drone's transmitter has failed (live, silent)",
+                                 "line_parallel_mutex on the LOW channel with drone 0 never heard: its claims are lost, the others "
+                                 "use the degraded admission wait (T_c + t_cross_max after their commitment) and never exclude it."),
+    "b2c_blackout": _b2c("b2c_blackout", "BLACKOUT", "B2: total acoustic blackout",
+                         "line_parallel_mutex with every packet lost: B2 degrades to the B0 checks plus the degraded admission wait."),
+}
+VALIDATION_EXTRA.update(B2C_EXTRA)
+SCENARIOS.update(B2C_EXTRA)

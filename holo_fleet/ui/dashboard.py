@@ -289,7 +289,8 @@ def scenario_meta(sc, cfg, names) -> Dict:
             hull = cv2.convexHull((corners[:, :2] * 1000).astype(np.float32)).reshape(-1, 2) / 1000.0
             bar_polys.append([q for q in hull])
             gate_pts += list(corners)
-        cr = [g.from_gate_frame([a * G.cr_half_len, b * G.cr_half_width, 0.0])[:2] for a, b in ((-1, -1), (1, -1), (1, 1), (-1, 1))]
+        cr = [g.from_gate_frame([a, b * G.cr_half_width, 0.0])[:2]
+              for a, b in ((G.cr_s_min, -1), (G.cr_s_max, -1), (G.cr_s_max, 1), (G.cr_s_min, 1))]
         cr_polys.append(cr)
     return {"scenario": sc.name, "title": sc.title, "focus": sc.focus, "duration": sc.duration_s, "names": list(names),
             "path": sc.path.waypoints, "gate_pts": np.array(gate_pts) if gate_pts else None, "bar_polys": bar_polys,

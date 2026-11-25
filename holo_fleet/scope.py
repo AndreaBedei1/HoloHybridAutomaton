@@ -33,15 +33,22 @@ from holo_fleet.config import DEFAULT, FleetConfig
 from holo_fleet.perception.sonar_geometry import R_OUT
 
 
-def obstruction_half(g, cfg: FleetConfig = DEFAULT) -> np.ndarray:
-    """Half extents (s, l, dz) of the box holding the critical region and the frame of gate g, grown by R_OUT."""
+def obstruction_box(g, cfg: FleetConfig = DEFAULT) -> tuple:
+    """Corners (lo, hi) in the gate frame (s, l, dz) of the box holding the critical region (GateRule.cr_lo / cr_hi) and
+    the frame of gate g, grown by R_OUT: the obstruction volume O."""
     G = cfg.gate
-    half = np.array([G.cr_half_len, G.cr_half_width, G.cr_half_height])
+    lo, hi = G.cr_lo(), G.cr_hi()
     for b in getattr(g, "bars", ()):
         for sg in itertools.product((-1.0, 1.0), repeat=3):
-            c = np.abs(np.asarray(g.to_gate_frame(b.center + b.axes @ (np.array(sg) * b.half)), float))
-            half = np.maximum(half, c)
-    return half + R_OUT
+            c = np.asarray(g.to_gate_frame(b.center + b.axes @ (np.array(sg) * b.half)), float)
+            lo, hi = np.minimum(lo, c), np.maximum(hi, c)
+    return lo - R_OUT, hi + R_OUT
+
+
+def obstruction_half(g, cfg: FleetConfig = DEFAULT) -> np.ndarray:
+    """Half extents (s, l, dz) of the smallest box centred on gate g that holds the obstruction volume O (obstruction_box)."""
+    lo, hi = obstruction_box(g, cfg)
+    return np.maximum(-lo, hi)
 
 
 def failure_excluded(g, p, w_h: float, w_down: float = 0.0, cfg: FleetConfig = DEFAULT, margin: float = 0.0,
@@ -49,12 +56,12 @@ def failure_excluded(g, p, w_h: float, w_down: float = 0.0, cfg: FleetConfig = D
     """A permanent failure with the hull centre at p (world), known within ``margin`` metres horizontally and ``margin_z`` vertically, is inside the exclusion zone E of
     gate g for a current bounded by w_h (horizontal) and w_down (downward) (module docstring)."""
     S = cfg.scope
-    h = obstruction_half(g, cfg)
-    if S.v_rise_min_mps - w_down <= 0.0 or float(g.center[2]) + h[2] >= S.surface_z_m:
+    lo, hi = obstruction_box(g, cfg)
+    if S.v_rise_min_mps - w_down <= 0.0 or float(g.center[2]) + hi[2] >= S.surface_z_m:
         return True
     s, l, dz = (float(v) for v in g.to_gate_frame(np.asarray(p, float)))
-    d_h = math.hypot(max(abs(s) - h[0], 0.0), max(abs(l) - h[1], 0.0)) - margin
-    h0 = h[2] - dz + margin_z
+    d_h = math.hypot(max(lo[0] - s, s - hi[0], 0.0), max(lo[1] - l, l - hi[1], 0.0)) - margin
+    h0 = hi[2] - dz + margin_z
     t_star = max(0.0, (h0 + S.coast_v_m + S.v_rise_min_mps * S.rise_lag_s) / (S.v_rise_min_mps - w_down))
     return d_h <= S.coast_h_m + S.drift_factor * w_h * t_star
 

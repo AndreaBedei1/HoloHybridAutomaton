@@ -100,5 +100,5 @@ def test_queue_geometry_is_far_enough_back():
     for n in range(2, 7):
         q, lats = G.queue_s(n), G.queue_laterals(n)
         l_max = max(abs(x) for x in lats)
-        bearing = math.degrees(math.atan2(l_max + G.cr_half_width, -q - 0.24 - G.cr_half_len))
+        bearing = math.degrees(math.atan2(l_max + G.cr_half_width, -q - 0.24 + G.cr_s_min))
         assert bearing + G.heading_tol_deg + 5.0 <= 60.0 + 1e-9, n

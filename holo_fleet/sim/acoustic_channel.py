@@ -1,4 +1,4 @@
-"""Measurement model of the one-way acoustic range-bearing beacon (variant B2), simulator side.
+"""Measurement model of the one-way acoustic range-bearing beacon (B2), simulator side.
 
 What the HoloOcean 2.3 engine computes (engine/Source/Holodeck/Sensors/Private/AcousticBeaconSensor.cpp, read
 in the patched engine source, and results/calibration/beacon_api_probe.json): for a (sender, receiver)
@@ -93,6 +93,9 @@ class AcousticChannel:
     link_off_alpha: float = 1.2
     jitter_s: float = 0.0
     asym_loss: float = 0.0
+    mute_sender: int = -1
+    """Index of a drone whose TRANSMITTER has failed (its packets are never delivered; it keeps flying and receiving): the silent
+    but live drone of formal/check_b2_comm.py (B2C-Ee); -1 none."""
 
     def as_dict(self) -> Dict:
         return asdict(self)
@@ -109,7 +112,8 @@ MEDIUM = AcousticChannel(name="MEDIUM", sigma_range_m=0.15, sound_speed_err=0.01
                          doa_bias_deg=3.0, los_outlier=0.03, payload_loss=0.15)
 MEDIUM_HT = replace(MEDIUM, name="MEDIUM_HT", link_on_mean_s=120.0)
 BLACKOUT = AcousticChannel(name="BLACKOUT", blackout=True)
-CHANNELS: Dict[str, AcousticChannel] = {c.name: c for c in (CLEAN, LOW, MEDIUM, MEDIUM_HT, BLACKOUT)}
+LOW_MUTE0 = replace(LOW, name="LOW_MUTE0", mute_sender=0)
+CHANNELS: Dict[str, AcousticChannel] = {c.name: c for c in (CLEAN, LOW, MEDIUM, MEDIUM_HT, BLACKOUT, LOW_MUTE0)}
 
 
 SWEEP_KEYS = {"per": "period_s", "lat": "latency_s", "jit": "jitter_s", "loss": "dropout", "burst": "outage_len_s",
@@ -197,7 +201,7 @@ class ChannelModel:
         return extra
 
     def in_outage(self, t: float, sender: int = -1, receiver: int = -1) -> bool:
-        return (any(a <= t < b for a, b in self.outages)
+        return (sender == self.ch.mute_sender >= 0 or any(a <= t < b for a, b in self.outages)
                 or any(a <= t < b for a, b in self.link_off.get((sender, receiver), ())))
 
     def measure(self, t: float, sender: int, receiver: int, buf: np.ndarray) -> Optional[Tuple[float, float, float, bool]]:

@@ -1,5 +1,16 @@
 """Bounded model checking of the interacting automata of the fleet at the gate (Z3).
 
+IDEALISED KNOWLEDGE.  This composition reads the other drones' modes directly: a claim and an occupant of the CR are known to the
+latch and to the stage-2 check within the step (premise C; F1d relaxes it to d steps), and a live drone's fix is "fresh" by a
+nondeterministic flag.  The explicit-communication result - packets, slots, latencies, losses, freshness, clocks, decisions on the
+local state only - is formal/check_b2_comm.py; there premise C is derived from the commitment-age rule of the corrected controller
+(B2C-E1, B2C-E2).  Since that review rule D is a diagnostic only: a silent drone is never accounted for (``rule_d`` False is the
+deployed controller), so a drone that fails while committed keeps its claim for ever (F2c, a declared limit) and the recovery F2
+(K tight, F2t) is stated for a run with no failure.  A drone that fails anywhere outside the commitment is not accounted for either:
+the latch stays BUSY behind the echo of a survivor waiting beyond the gate, which waits for the queued one (F2d, a declared limit, safe
+stall).  The degraded admission wait of check_b2_comm (T_c + t_cross_max when a drone is not freshly heard) is not modelled: the bound
+K of F2 holds in the fresh-report regime only.
+
 The local checks (determinism, separation, the latch M3, the freshness S2, the precedence M2, the ranking functions of
 the formation) are per drone or per pair.  This model composes n drones and checks what only the composition shows:
 P2 across the fleet, the absence of a deadlock between the drones that passed and those that queue, the timers, the
@@ -13,8 +24,8 @@ Assumed from the local checks, not re-proved here: the latch of a queued drone i
 (speed floor inside the CR, M3); the leftmost queued drone present has the priority (M2), a dead hull at its queue point
 counting as present until it has risen (T_RISE).  Modelled here:
   * the latch keeps BUSY while an echo stays in the corridor (a drone waiting at B, or a hull that died there and has not
-    risen yet) unless every other drone is accounted for at that receiver: a live drone by a fresh fix, a dead drone only by
-    rule D (not heard for t_silent_gate_s), never without it;
+    risen yet) unless every other drone is accounted for at that receiver: a live drone by a fresh fix, a dead drone never (the former
+    rule D accounted for it after t_silent_gate_s: ``rule_d`` True, kept as the former controller);
   * a live drone's fix is fresh at a receiver nondeterministically, with the fairness premise that within every FAIR steps
     there is one step at which every live drone is fresh at every receiver (premise V and the channel model);
   * the stage-2 hold gives up after T_HOLD steps (t_occ_max + t_clear) and the drone queues again;
@@ -38,20 +49,21 @@ it: the latch and the stage-2 check see the claims d steps late.  P2 then holds 
 An entry that bypasses the stage-2 check (a committed drone moved into the CR by separation warning or collision avoidance while it
 holds; the drone keeps its claim: report_phase, S9) keeps the invariant (F0p, F2p).  With a claim learnt one step late two drones
 can be committed together (F1d1 shows the stage-2 check alone still keeps them apart), and with entries by avoidance as well the
-v11 controller had a counterexample: one drone enters by its own stage-2 check before the claim of the other is known, and the
+the controller without the P2 constraint on the avoidance output had a counterexample: one drone enters by its own stage-2 check before the claim of the other is known, and the
 other, held by that claim, is moved in by avoidance while the first is inside; it survives the motion limit of push_dwell.  The
 escape planner alone is not antisymmetric along the axis (F1pa), so nothing excluded that forward motion.  The corrected
 controller (control/gate_safety.py) edits the final command of every drone that is not admitted to the CR - committed or queued,
 mission modes and avoidance modes alike: a command is applied only if the backup that follows it (the command for one control
 period plus the largest data age, braking at a_brake, holding with the error of the drift) keeps the true centre out of the CR
 under the declared navigation error and drift (formal/check_gate_safety.py: P2B1 per-step soundness, P2B1r the computed reach,
-P2B3 adversarial trajectories).  So, while the declared premises hold, there is no entry by avoidance and F1p, the combination of
+P2B3 adversarial trajectories), and a certified command exists at every step (formal/check_p2_recursive.py: P2R4 recursive
+availability by induction over the certificates of station keeping, P2R4l its declared limit).  So, while the declared premises hold, there is no entry by avoidance and F1p, the combination of
 claims learnt one step late with the entries of the corrected controller, reduces to F1d1: never two drones in X over the depth
 (bounded model checking from the launch, not an induction; the stage-2 check is made at the hold, at most
-(|stage2_hold_s| + 0.4 - cr_half_len) / v_pass = 3.8 s before the entry, within one step).  Outside the declared envelope (a
+(cr_s_min - stage2_hold_s + 0.4) / v_pass = 3.8 s before the entry, within one step).  Outside the declared envelope (a
 navigation error above nav_err_m, a drift above w_drift_max, an estimate jump, or a step with no P2-safe command: P2_RECOVERY or
-JOINTLY_INFEASIBLE with P2 uncertified, logged by the controller; P2B2s shows that a P2-safe command with a margin below the
-step deficit can lead there) entries by avoidance remain possible, and the counterexample stays: F1pe and F1pme (with the motion
+JOINTLY_INFEASIBLE with P2 uncertified, P2_UNCERTIFIED, logged by the controller; P2B2s shows that a command chosen on its
+one-step margin alone could lead there, P2R4l that a DVL outage onset or a position correction can) entries by avoidance remain possible, and the counterexample stays: F1pe and F1pme (with the motion
 limit) are declared limits with their trace.  Likewise F0qe, a queued drone moved into the CR (inside the envelope a queued drone
 is filtered too and F0s covers it).  F1pk (formal/check_f1p_kinematic.py, reported) gives the case positions with the deployed
 flows.
@@ -101,7 +113,7 @@ def timers(cfg: FleetConfig = DEFAULT, dt: float = 5.0) -> dict:
 
 
 class Fleet:
-    def __init__(self, n: int, depth: int, L: int, T: dict, rule_d: bool = True, fair: bool = True, latch_claims: bool = True,
+    def __init__(self, n: int, depth: int, L: int, T: dict, rule_d: bool = False, fair: bool = True, latch_claims: bool = True,
                  free: bool = False, max_fail: int = None, fail_in_c: bool = True, hull_clears: bool = True, latch_delay: int = 0,
                  stage2_claims: bool = True, precedence: bool = True, push: str = "none", push_min_ct: int = 0):
         """free: the first state is any state of the invariant (inv), not the launch; L: failures and stops only before step L;
@@ -235,11 +247,11 @@ def _run(fl: Fleet, prop) -> list:
 
 def push_dwell(cfg: FleetConfig, n: int, dt: float) -> tuple:
     """Motion limit of an entry by avoidance: the shortest path of a committed drone from its queue point (within queue_tol of
-    the queue line) to the CR, |queue_s(n)| - queue_tol - cr_half_len, at the highest ground speed of the Envelope (v_escape plus
+    the queue line) to the CR entry plane, cr_s_min - queue_s(n) - queue_tol, at the highest ground speed of the Envelope (v_escape plus
     the unrejected drift w_drift_max, the speed bound of the P1 proof).  Returns (seconds, steps already spent in C before a push
     can reach the CR, rounded up like every timer of the model)."""
     G, env = cfg.gate, cfg.env
-    t_min = (abs(G.queue_s(n)) - G.queue_tol - G.cr_half_len) / (env.v_escape + env.w_drift_max)
+    t_min = (G.cr_s_min - G.queue_s(n) - G.queue_tol) / (env.v_escape + env.w_drift_max)
     return t_min, max(int(math.ceil(t_min / dt - 1e-9)) - 1, 0)
 
 
@@ -296,7 +308,9 @@ def escape_forward_pairs(cfg: FleetConfig = DEFAULT) -> list:
 
 
 K_FREE = {2: 26, 3: 40, 4: 52}
-PREMISES = {2: dict(max_fail=1, fail_in_c=False), 3: dict(max_fail=1), 4: dict(max_fail=2)}
+PREMISES = {2: dict(max_fail=1, fail_in_c=False), 3: dict(max_fail=1, fail_in_c=False), 4: dict(max_fail=2, fail_in_c=False)}
+# recovery theorems (F2, F2p): no failure for n = 3, 4 (a failed drone is never accounted for, F2d); n = 2 has no one to wait for
+NOFAIL = {2: PREMISES[2], 3: dict(max_fail=0), 4: dict(max_fail=0)}
 
 
 def run(cfg: FleetConfig = DEFAULT, verbose: bool = True) -> Report:
@@ -306,7 +320,7 @@ def run(cfg: FleetConfig = DEFAULT, verbose: bool = True) -> Report:
            f"steps")
     for n in (2, 3, 4):
         kw = PREMISES[n]
-        prem = ("at most one failure, none while committed" if n == 2 else f"at most {kw['max_fail']} failure(s), also while committed")
+        prem = f"at most {kw['max_fail']} failure(s), none while committed"
         fl = Fleet(n, 0, 0, T, **kw)
         rep.add(check(f"F0i n={n}: the launch satisfies the invariant", "init -> inv", ENC, _run(fl, z3.Not(fl.inv(0))), "unsat",
                       note=tag), verbose)
@@ -315,12 +329,14 @@ def run(cfg: FleetConfig = DEFAULT, verbose: bool = True) -> Report:
                       "inv & step -> inv'  (inv: at most one drone in C or X; bookkeeping)", ENC, _run(fl, z3.Not(fl.inv(1))),
                       "unsat", note=tag), verbose)
         K = K_FREE[n]
-        fl = Fleet(n, K, 0, T, free=True, **kw)
-        rep.add(check(f"F2 n={n} ({prem}): from any state of the invariant, with no further failure or stop, every live drone "
+        nf = NOFAIL[n]
+        prem2 = prem if n == 2 else "no failure"
+        fl = Fleet(n, K, 0, T, free=True, **nf)
+        rep.add(check(f"F2 n={n} ({prem2}): from any state of the invariant, with no further failure or stop, every live drone "
                       f"re-forms within {K} steps",
                       "inv & fairness of the fixes -> all live drones in D at K (no deadlock, no livelock)", ENC,
                       _run(fl, fl.not_recovered()), "unsat", timeout_ms=900000, note=tag), verbose)
-        fl = Fleet(n, K - 2, 0, T, free=True, **kw)
+        fl = Fleet(n, K - 2, 0, T, free=True, **nf)
         rep.add(check(f"F2t n={n}: the bound is tight (some state needs more than {K - 2} steps)", "expect a run short of D at K - 2",
                       ENC, _run(fl, fl.not_recovered()), "sat", timeout_ms=900000, note=tag), verbose)
     L, K = 12, K_FREE[3]
@@ -339,10 +355,19 @@ def run(cfg: FleetConfig = DEFAULT, verbose: bool = True) -> Report:
     rep.add(check("F2s4 declared limit: without premise H (a hull floating above the queue keeps counting as a queued drone) the "
                   "survivors yield to it for ever (med12)", "expect a run short of D at 60 steps", ENC, _run(fh, fh.not_recovered()),
                   "sat", timeout_ms=900000, note=tag), verbose)
-    fm = Fleet(3, K, 0, T, free=True, rule_d=False, **PREMISES[3])
-    rep.add(check("F2m mutation: without rule D a dead drone is never accounted for and the composition deadlocks (n=3)",
+    fm = Fleet(3, K, 0, T, free=True, max_fail=1, fail_in_c=True)
+    rep.add(check("F2c declared limit: a drone that fails while committed keeps its claim for ever (silence is no evidence since the "
+                  "explicit-communication review, formal/check_b2_comm.py B2C-D) and the composition stalls (n=3)",
                   "expect a run with a live drone short of D at K", ENC, _run(fm, fm.not_recovered()), "sat",
-                  timeout_ms=900000, note=tag), verbose)
+                  timeout_ms=900000, note=tag + "; the former rule D resolved it by treating 70 s of silence as death (B2C-Oe)"), verbose)
+    for n in (3, 4):
+        fd = Fleet(n, 80, 0, T, free=True, **PREMISES[n])
+        rep.add(check(f"F2d declared limit: a drone that has failed outside the commitment is never accounted for (silence is no evidence): "
+                      f"the latch stays BUSY behind the echo of a survivor waiting beyond the gate, the queued survivor waits for it and the "
+                      f"composition stalls, a safe stall (n={n}, any K: no run re-forms the formation)",
+                      "expect a run with a live drone short of D at 80 steps (the recovery K holds only without failure)", ENC,
+                      _run(fd, fd.not_recovered()), "sat", timeout_ms=900000, note=tag + "; with the former rule D the survivors left "
+                      "after 70 s of silence (B2C-Oe); the payload GP_PASSED of a drone that failed after passing is not modelled"), verbose)
     ff = Fleet(3, K, 0, T, free=True, fair=False, **PREMISES[3])
     rep.add(check("F2f scope: without the fairness of the fixes the recovery is not guaranteed (n=3)",
                   "expect a run with a live drone short of D at K", ENC, _run(ff, ff.not_recovered()), "sat",
@@ -364,12 +389,12 @@ def run(cfg: FleetConfig = DEFAULT, verbose: bool = True) -> Report:
         rep.add(check(f"F0p n={n}: with an entry into the CR that bypasses the stage-2 check (a committed drone moved by separation warning or "
                       "collision avoidance, at any step) the invariant stays inductive",
                       "inv & step (push of a drone in C to X) -> inv'", ENC, _run(fp, z3.Not(fp.inv(1))), "unsat", note=tag), verbose)
-        fp = Fleet(n, K_FREE[n], 0, T, free=True, push="committed", **PREMISES[n])
+        fp = Fleet(n, K_FREE[n], 0, T, free=True, push="committed", **NOFAIL[n])
         rep.add(check(f"F2p n={n}: the recovery within {K_FREE[n]} steps holds with those pushes", "inv & pushes & fairness -> all live drones in D at K",
                       ENC, _run(fp, fp.not_recovered()), "unsat", timeout_ms=900000, note=tag), verbose)
     fp = Fleet(3, L + K, L, T, latch_delay=1, push="none", **PREMISES[3])
     G = cfg.gate
-    t_adm = (abs(G.stage2_hold_s) + 0.4 - G.cr_half_len) / G.v_pass
+    t_adm = (G.cr_s_min - G.stage2_hold_s + 0.4) / G.v_pass
     rep.add(check("F1p corrected controller, n=3: claims learnt one step late (two drones can commit together) and entries into the "
                   "CR only through the stage-2 check, an entry by avoidance from a P2-safe state being excluded by the P2 filter "
                   "(check_gate_safety P2B1, P2B3) while the declared premises hold: never two drones in X over the depth",
@@ -379,7 +404,7 @@ def run(cfg: FleetConfig = DEFAULT, verbose: bool = True) -> Report:
     fp = Fleet(3, L + K, L, T, latch_delay=1, push="committed", **PREMISES[3])
     r = check("F1pe declared limit: outside the declared envelope of the P2 filter (navigation error above nav_err_m, drift above "
               "w_drift_max, an estimate jump, no P2-safe command) a committed drone can still be moved into the CR by avoidance, and "
-              "with claims learnt one step late two drones are in X (n=3; the v11 counterexample of F1p)",
+              "with claims learnt one step late two drones are in X (n=3; the counterexample of F1p)",
               "expect a run with two drones in X", ENC, _run(fp, fp.two_in_cr()), "sat", timeout_ms=600000, note=tag)
     if r.verdict == "sat":
         r.note += "; one counterexample trace " + modes(fp, fp.two_in_cr())

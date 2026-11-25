@@ -25,7 +25,7 @@ which a hull in or at the CR was seen; since then the corridor has been empty):
      exceeds the largest distance from the own position to the grown CR: a drone heard far enough away cannot be in
      it, and the direction of arrival, the least precise part of a fix at these ranges, is not needed.
 (A3) progress, not safety: at least one possible occupant was heard beyond the exit face (the nominal positions of
-     those fixes at s > cr_half_len + R_OUT): the occupant has passed, not backed out.
+     those fixes at s > cr_s_max + R_OUT): the occupant has passed, not backed out.
 (A4) an episode none of whose possible occupants is a drone of the plan (every other drone excluded at t_lc) gives
      the exit evidence once every other drone is also positively outside the CR now (A2): no fleet drone is in it.
 
@@ -40,17 +40,16 @@ independent navigation estimate.  An inconsistent or missing payload leaves the 
 
 Gate phase (perception/payload.py).  A drone reports its own phase with this gate.  It is used only to exclude
 it as a possible occupant, or as positive occupancy, never to give precedence.  GP_COMMITTED / GP_ADMITTED of another drone
-hold the latch BUSY until the drone reports otherwise or is dead (below).  A drone inside the keep-out box reports a claim whatever its history (passage.report_phase), so a drone carried into
+hold the latch BUSY until the drone reports otherwise (never released by silence, below).  A drone inside the keep-out box reports a claim whatever its history (passage.report_phase), so a drone carried into
 the CR uncommitted, or back after a passage, does not report that it is not there.  GP_NONE or a phase of another gate excludes a
 drone while the report is younger than ``status_fresh_s``, a bound below the smallest time from its queue point to the CR at
-the speed bound (GatePerception computes it per plan); GP_PASSED excludes it for good.  A silence shorter than ``t_silent_gate_s``
-excludes nobody and releases no claim.  A drone not heard for ``t_silent_gate_s`` by a receiver that hears another drone is dead for
-the gate decisions (``dead``) only if its last known position, grown by its uncertainty, is outside the exclusion zone of the gate for
-the current declared for the mission (holo_fleet/scope.py): from there its hull rises above the gate before it can reach it, so it is
-never in or at the CR, and it is excluded from every gate decision, its claim included.  Otherwise it keeps holding the gate, for ever:
-a failure inside the zone is outside the scope, and this safe stop is its only treatment.  Premise V: the channel never silences a
-live drone so long.  A receiver that hears nobody declares no one dead (it cannot tell its own deafness from the others' death): in a
-fleet of two, or for the last survivor, a dead drone that held a claim keeps the gate closed.
+the speed bound (GatePerception computes it per plan); GP_PASSED excludes it for good.  Silence is never evidence: a drone that is not
+heard is UNKNOWN, a claim it reported holds the gate for ever (until the drone itself reports otherwise), and it is never excluded as a
+possible occupant, nor is its echo discarded (formal/check_b2_comm.py, B2C-D).  Rule D survives only as a diagnostic (``dead``: not heard
+for ``t_silent_gate_s`` by a receiver that hears another drone, last known outside the exclusion zone of the gate, holo_fleet/scope.py):
+it is logged (GateObs.silent, premise V of the robustness metrics) and changes no decision.  Without it a dead claimant keeps the gate
+closed (a safe stall); with it a live drone whose transmitter failed could be ignored while it is in the CR.
+The B2 admission (GatePerception.admit_wait_s) uses fresh positive reports only: ``all_fresh``.
 
 A positive corridor echo is discarded as no fleet drone (``no_fleet_drone``) only on evidence about every other drone that is
 fresh: silence, or an old report of any kind, never discards one.
@@ -97,7 +96,8 @@ class AcousticExit:
         self.tracker = tracker
         self.others = list(others)
         G = cfg.gate
-        self.half = np.array([G.cr_half_len, G.cr_half_width, G.cr_half_height])
+        self.lo, self.hi = G.cr_lo(), G.cr_hi()
+        self.center, self.half = G.cr_center(), G.cr_half()
         self.v_bound = speed_bound(cfg)
         self.sighting: Optional[Dict] = None
         self.veto: set = set()
@@ -149,10 +149,8 @@ class AcousticExit:
 
     def status_excluded(self, j: int, t: float, fresh_only: bool = False) -> bool:
         """Drone j cannot be an occupant of the current gate's CR, by what it reports about itself (module docstring): a fresh
-        report of another gate or of not engaged, or a report of having passed (``fresh_only``: only if fresh); or it is dead.  A shorter
-        silence never excludes a drone."""
-        if self.dead(j, t):
-            return True
+        report of another gate or of not engaged, or a report of having passed (``fresh_only``: only if fresh).  Silence, however long,
+        never excludes a drone (rule D is a diagnostic only)."""
         st = self.tracker.status.get(j)
         if st is None:
             return False
@@ -169,11 +167,19 @@ class AcousticExit:
         return st.phase == GP_NONE and fresh
 
     def status_claim(self, j: int, t: float) -> bool:
-        """Drone j holds the gate by what it reports: committed or admitted to this gate.  A silent drone keeps its claim until it
-        is dead (a committed drone's hold point is before the CR only in its own estimated frame)."""
+        """Drone j holds the gate by what it reports: committed or admitted to this gate.  The claim persists, whatever the
+        silence since, until j itself reports otherwise (formal/check_b2_comm.py: a claim can only delay an admission)."""
         st = self.tracker.status.get(j)
-        return (st is not None and st.gate_idx == self.gate_idx and st.phase in (GP_COMMITTED, GP_ADMITTED)
-                and not self.dead(j, t))
+        return st is not None and st.gate_idx == self.gate_idx and st.phase in (GP_COMMITTED, GP_ADMITTED)
+
+    def fresh(self, j: int, t: float) -> bool:
+        """A status report of j emitted at most ``admit_fresh_s`` ago (own clock, TDMA emission instant) is held."""
+        st = self.tracker.status.get(j)
+        return st is not None and t - st.t_tx <= self.cfg.acoustic.admit_fresh_s
+
+    def all_fresh(self, t: float) -> bool:
+        """A fresh report of EVERY other drone of the plan is held (B2 admission without the degraded wait)."""
+        return all(self.fresh(j, t) for j in self.others)
 
     def claims(self, t: float) -> set:
         return {j for j in self.others if self.status_claim(j, t)}
@@ -184,9 +190,8 @@ class AcousticExit:
         return [round(t - tr.heard.get(j, t if tr.t_start is None else tr.t_start), 1) for j in self.others]
 
     def dead(self, j: int, t: float) -> bool:
-        """Not heard for ``t_silent_gate_s`` by this receiver while it hears another drone, and last known outside the exclusion
-        zone of the gate (module docstring).  A drone never heard failed at its launch, outside every zone (a premise of the plan,
-        tests/test_scope.py)."""
+        """DIAGNOSTIC ONLY (rule D, module docstring): not heard for ``t_silent_gate_s`` by this receiver while it hears another drone,
+        and last known outside the exclusion zone of the gate.  No gate decision reads it: silence is unknown, never evidence."""
         if not self.tracker.silent(j, t, self.cfg.acoustic.t_silent_gate_s):
             return False
         if j not in self.tracker.heard:
@@ -224,7 +229,7 @@ class AcousticExit:
 
     def _cr_possible(self, q: np.ndarray, rho: float) -> bool:
         """Some point within rho of a sample q (gate frame) can be the centre of a hull in the CR."""
-        gap = np.linalg.norm(q - np.clip(q, -self.half, self.half), axis=1)
+        gap = np.linalg.norm(q - np.clip(q, self.lo, self.hi), axis=1)
         return bool(np.any(gap <= R_OUT + rho + self.cfg.acoustic.nav_err_gate_m))
 
     def _echo_possible(self, q: np.ndarray, rho: float) -> bool:
@@ -249,7 +254,7 @@ class AcousticExit:
         if not f.rep_ok:
             return True
         q = gate_points(g, f.rep.p[None, :])
-        gap = np.linalg.norm(q - np.clip(q, -self.half, self.half), axis=1)
+        gap = np.linalg.norm(q - np.clip(q, self.lo, self.hi), axis=1)
         return bool(gap[0] <= R_OUT + f.rep_radius(t, self.v_bound))
 
     def _could_be_occupant(self, g, f: Fix, t_lc: float) -> bool:
@@ -274,7 +279,7 @@ class AcousticExit:
         a = self.cfg.acoustic
         r_lo = f.r - box_bounds(f.r, self.cfg)[0] - a.los_excess_max_m - self.v_bound * max(t - f.t, 0.0)
         own = gate_points(g, (f.p - f.rel)[None, :])[0]
-        corners = (self.half + R_OUT) * np.array([[x, y, z] for x in (-1, 1) for y in (-1, 1) for z in (-1, 1)])
+        corners = self.center + (self.half + R_OUT) * np.array([[x, y, z] for x in (-1, 1) for y in (-1, 1) for z in (-1, 1)])
         return r_lo > float(np.max(np.linalg.norm(corners - own, axis=1))) + a.nav_err_gate_m
 
     def clear_of_cr(self, g, f: Fix, t: float) -> bool:
@@ -301,7 +306,7 @@ class AcousticExit:
         if len({f.track for f in tail}) != 1:
             return None
         if beyond:
-            s_exit = self.half[0] + R_OUT
+            s_exit = self.hi[0] + R_OUT
             ok = all(float(gate_points(g, f.p[None, :])[0][0]) > s_exit
                      or (f.rep_ok and float(gate_points(g, f.rep.p[None, :])[0][0]) - f.rep_radius(f.t, self.v_bound)
                          > s_exit) for f in tail)

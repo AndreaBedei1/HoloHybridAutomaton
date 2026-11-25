@@ -68,6 +68,8 @@ from typing import Dict, List, Optional, Sequence
 
 import numpy as np
 
+from holo_fleet.config import COMMUNICATION_ACOUSTIC
+
 CLAIM_PHASES = {1, 2}
 CLASSES = ("SATISFIED", "CONCURRENT", "VIOLATED", "INCONCLUSIVE")
 KNOWLEDGE = ("NO_COMMIT", "BEFORE_USE", "NOT_HELD", "UNDELIVERABLE", "NOT_EMITTED", "NOT_APPLICABLE", "UNKNOWN")
@@ -362,7 +364,7 @@ def _quiet_row(states, know: str, j, i_a, i_b, open_end: bool) -> Dict:
 
 def classify(ctrl, states, geo: Geometry, link: Optional[Link], k: int, ep: tuple, j: int, m: int) -> List[Dict]:
     """Rows of the claim of commitment ``ep`` of k against drone j: one per commit edge of j from k's commit to the end of the
-    claim at j, else one row for the window.  ``link`` None: the run carries no claim (B0, B2 without payload)."""
+    claim at j, else one row for the window.  ``link`` None: the run carries no claim (B0, an archived run without payload)."""
     i0, i1 = ep
     sj = states[j]
     if sj[min(i0, m - 1)].get("mode") == "DEAD":
@@ -411,8 +413,7 @@ def physical_entries(t, P, states, gate, cfg, names) -> List[Dict]:
     n = len(names)
     st_t = [np.array([float(r["t"]) for r in s]) for s in states]
     gf = np.array([[gate.to_gate_frame(P[i, k]) for k in range(n)] for i in range(len(t))])
-    inside = (np.abs(gf[:, :, 0]) <= G.cr_half_len) & (np.abs(gf[:, :, 1]) <= G.cr_half_width) & \
-             (np.abs(gf[:, :, 2]) <= G.cr_half_height)
+    inside = G.in_cr(gf[:, :, 0], gf[:, :, 1], gf[:, :, 2])
     out = []
     for k in range(n):
         for i in np.flatnonzero(inside[1:, k] & ~inside[:-1, k]) + 1:
@@ -431,7 +432,7 @@ def physical_entries(t, P, states, gate, cfg, names) -> List[Dict]:
 
 
 def link_of(beacon: Optional[Dict], n: int, cfg, identities: Optional[Dict] = None) -> Optional[Link]:
-    """Claim transport of the run, None when no claim is carried (B0, beacon without payload, latency unknown).
+    """Claim transport of the run, None when no claim is carried (B0, an archived run without payload, latency unknown).
     ``identities``: receiver -> {pinger code (drone index) -> slot} (runner.beacon_identities)."""
     b = beacon or {}
     if not (b.get("enabled") and b.get("payload", True)) or b.get("latency_s") is None:
@@ -448,11 +449,10 @@ def _inside_any(t, P, gates, cfg, n) -> Optional[np.ndarray]:
     if P is None or not gates:
         return None
     G = cfg.gate
-    half = np.array([G.cr_half_len, G.cr_half_width, G.cr_half_height])
     inside = np.zeros((len(t), n), bool)
     for g in gates:
         gf = np.array([[g.to_gate_frame(P[i, k]) for k in range(n)] for i in range(len(t))])
-        inside |= np.all(np.abs(gf) <= half, axis=2)
+        inside |= G.in_cr(gf[..., 0], gf[..., 1], gf[..., 2])
     return inside
 
 
@@ -489,12 +489,13 @@ def audit(names, t, P, states, gates, cfg, beacon: Optional[Dict] = None, identi
 
 def beacon_of_run(rc: Dict) -> Dict:
     """Beacon facts of a run from its run_config: enabled, payload, TDMA period, the channel's minimum processing latency and
-    blackout, range, sound speed, acceptance limit."""
+    blackout, range, sound speed, acceptance limit.  ``payload`` is read from the run_config of an archived run of the payload-free
+    ablation (``false``); it is absent from every run of the single controller, which always sends the packet."""
     from holo_fleet.sim.acoustic_channel import channel
 
     fc = rc.get("fleet_config") or {}
     b = fc.get("beacon") or {}
-    enabled = b.get("mode") == "ACOUSTIC_RB"
+    enabled = b.get("mode") == COMMUNICATION_ACOUSTIC
     lat, blackout = None, False
     if enabled:
         try:

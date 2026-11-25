@@ -4,7 +4,7 @@ Writes results/<run_id>/: run_config.json, events.jsonl, drone_<k>_state.jsonl,
 referee_timeseries.csv, referee_metrics.json, sensor_audit.json, summary.csv, perf.json and (optionally)
 camera / fleet-view frames for GIFs.  A run that does not reach its end writes ``status: INCOMPLETE``.
 ``noise`` (sim.sensor_noise.NoiseProfile) degrades the onboard sensors, ``seed`` overrides the scenario seed
-(every seeded simulator-side effect); ``cfg.beacon`` enables the one-way acoustic beacon.
+(every seeded simulator-side effect); the one-way acoustic beacon is on unless ``cfg`` is ``communication_disabled``.
 """
 
 from __future__ import annotations
@@ -162,7 +162,7 @@ def run(name: str, out_root: Path, headless: bool = True, run_id: Optional[str] 
                                                            "profile": terminal.get("profile")},
                 "heading_bias_deg": [round(float(b), 2) for b in getattr(sim, "heading_bias", ())],
                 "disturbance_windows": sc.disturbance_windows, "stress": sc.sim.stress.__dict__,
-                "setup": sim.setup_report, "comms_enabled": cfg.comms_enabled, "fleet_config": cfg.to_dict(),
+                "setup": sim.setup_report, "communication": cfg.beacon.mode, "fleet_config": cfg.to_dict(),
                 "plans": [{"drone": p.drone_id, "slot": p.slot_index, "queue_lateral": p.queue_lateral,
                            "queue_dz": p.queue_dz, "queue_s": round(p.queue_s, 3),
                            "static_rank": p.static_rank, "launch": np.round(p.launch_position, 3).tolist()}
@@ -292,9 +292,9 @@ def run(name: str, out_root: Path, headless: bool = True, run_id: Optional[str] 
     beacon = None if getattr(sim, "beacon", None) is None else sim.beacon.summary()
     metrics["run"] = {**status, "scenario": name, "sim_time_s": round(sim.t, 2), "determinism_violations": det,
                       "observation_consistency_violations": obs_inc,
-                      "comms_enabled": cfg.comms_enabled, "inter_agent_messages": 0 if beacon is None else beacon["transmissions"],
+                      "communication": cfg.beacon.mode, "inter_agent_messages": 0 if beacon is None else beacon["transmissions"],
                       "message_content": "none" if beacon is None else
-                          "static identity only (one-way ping; receiver-side OWTT range + array bearing)",
+                          "static identity and the sender's own status packet (one-way ping; receiver-side OWTT range + array bearing)",
                       "acoustic_exit_witnesses": sum(c.perception.gp.exit_kind["ACOUSTIC"] for c in ctrls.values()),
                       "sonar_exit_witnesses": sum(c.perception.gp.exit_kind["SONAR"] for c in ctrls.values()),
                       "acoustic_tracker": ({k: sum(c.perception.acoustic.stats.get(k, 0) for c in ctrls.values())
@@ -396,7 +396,7 @@ def print_summary(name: str, m: Dict, assumptions: Optional[str] = None) -> str:
     det = sum((m["run"].get("determinism_violations") or {}).values())
     inc = m["run"].get("observation_consistency_violations")
     comm = (f"{m['run']['inter_agent_messages']} messages" if not m["run"].get("beacon") else
-            f"{m['run']['inter_agent_messages']} one-way identity pings (no payload, no reply)")
+            f"{m['run']['inter_agent_messages']} one-way pings with the sender's own status packet (no reply)")
     lines += ["COLLISIONS", str(coll), "", "COMMUNICATION", comm, "",
               f"AUTOMATON DETERMINISM VIOLATIONS: {det}",
               f"OBSERVATION CONSISTENCY VIOLATIONS: {'n/a' if inc is None else sum(inc.values())}", "",

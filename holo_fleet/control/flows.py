@@ -27,6 +27,7 @@ ACQ_PERIOD_S = 4.0
 ACQ_OFFSETS = ((0.0, -0.6), (0.0, 0.6), (0.0, -0.4), (0.0, 0.8), (0.0, 0.4), (0.0, -0.8))
 STANDOFF_MARGIN_M = 0.5
 FAILSAFE_PROBE_M = 0.3
+FAILSAFE_CAP_H = 0.25
 STANDOFF_ZONE_M = 1.5
 
 
@@ -68,11 +69,14 @@ class Flows:
         self.sigma = 0.0
         self.lam = 0.0
         self.lat_offset = np.zeros(3)
+        if plan.clock is not None:
+            cfg.form.check_clock_speed(plan.clock.v)
         self.ftime = FormationTime(plan.clock, cfg)
         self.last_choice: Optional[EscapeChoice] = None
         self.hold_pos: Optional[np.ndarray] = None
         self.offset = np.zeros(3)
         self.cr_cleared = False
+        self.commit_t: Optional[float] = None
         self.past_centre = False
         self.reloc_hold = False
         self.hold_since: Optional[float] = None
@@ -90,6 +94,7 @@ class Flows:
         self.hold_target: Optional[np.ndarray] = None
         self.standoff_anchor: Optional[np.ndarray] = None
         self.p2_station: Optional[np.ndarray] = None
+        self.p2_cert: Optional[gs.P2Certificate] = None
         self.standoff_since: Optional[float] = None
 
     def traffic_offset(self, obs: LocalObservation, dt: float, r_trigger: float = 8.0,
@@ -177,7 +182,7 @@ class Flows:
             v = v_al * t_hat + np.array([0.0, 0.0, fr.k_slot * float(e[2])])
         else:
             v = t_hat * v_clock + fr.k_slot * (entry - obs.p)
-        v = _cap(v, fr.v_recovery_max if recovering else fr.v_slot_max, 0.3)
+        v = _cap(v, fr.v_recovery_max if recovering else fr.keeping_cap(self.ftime.plan_speed(obs.t, dt)), 0.3)
         return v, math.atan2(t_hat[1], t_hat[0])
 
     def rejoin_entry(self, obs: LocalObservation, R_form: np.ndarray, s_ref: float) -> Optional[np.ndarray]:
@@ -288,7 +293,7 @@ class Flows:
             k += 1
         return path[-1]
 
-    def gate(self, obs: LocalObservation, mode: str) -> Tuple[np.ndarray, float]:
+    def gate(self, obs: LocalObservation, mode: str, admissible: bool = True) -> Tuple[np.ndarray, float]:
         """Gate flow.  MUTEX_PASS (committed): along the pass path; before admission the drone does not go beyond the
         stage-2 hold ``GateRule.stage2_hold_s`` (control/gate_safety.py: the nearest point where holding is P2-safe under
         the declared navigation error, minus the measured holding error), and is admitted (``cr_cleared``) there with a
@@ -299,7 +304,13 @@ class Flows:
         sector is nearer than the warning-exit band plus STANDOFF_MARGIN_M (a drone ahead of it in the corridor: the
         follower does not enter from behind the warning band of a drone that holds before the CR; nearer to the gate an
         unexplained bar echo could stop it out of the acquisition region).  After t_occ_max + t_clear without admission it gives up behind
-        the abort plane."""
+        the abort plane.
+
+        Admission also needs ``admissible`` (the controller: the automaton is in MUTEX_PASS - no fault, no avoidance - and the sensors
+        are sense_ok: a drone in FAILSAFE or with a stale sonar is never admitted, its "no echo" is no evidence) and an age of the own
+        commitment of at least ``GateObs.admit_wait_s`` (B2: commit_admit_min_s with fresh reports of every other drone, plus
+        GateRule.t_cross_max when some drone is not freshly heard; formal/check_b2_comm.py).  The give-up timer of the hold starts
+        when the wait has elapsed, so a degraded admission is not given up before it is possible."""
         self.passing = self.at_level = False
         G = self.cfg.gate
         g = self.plan.gates[min(obs.gate_index, len(self.plan.gates) - 1)]
@@ -310,20 +321,24 @@ class Flows:
         if mode == "MUTEX_PASS":
             c = self._carrot(self.pass_path(go.queue_s, go.queue_l, go.queue_dz), np.array([go.s, go.l, go.dz]))
             s_hold = G.stage2_hold_s
-            if go.loc_ok and go.entry_ok and go.s >= s_hold - RELOC_ZONE_M:
+            self.commit_t = obs.t if self.commit_t is None else self.commit_t
+            wait = float(getattr(go, "admit_wait_s", 0.0))
+            eligible_t = self.commit_t + wait
+            if (admissible and go.loc_ok and go.entry_ok and go.s >= s_hold - RELOC_ZONE_M
+                    and obs.t - self.commit_t >= wait):
                 self.cr_cleared = True
-            s_abort = -(G.cr_half_len + float(R_OUT) + G.nav_err_m)
+            s_abort = G.cr_s_min - (float(R_OUT) + G.nav_err_m)
             self.abort_request = False
             was = self.past_centre
-            self.past_centre = bool(go.s > G.nav_err_m - G.cr_half_len or (was and go.s > -G.cr_half_len))
+            self.past_centre = bool(go.s > G.cr_s_min + G.nav_err_m or (was and go.s > G.cr_s_min))
             if self.past_centre and not was:
                 self.events.append({"t": obs.t, "type": "PAST_CENTRE", "s": round(float(go.s), 2)})
             if not self.cr_cleared and not self.past_centre and (c[0] > s_hold or self.hold_timeout):
                 self.hold_since = obs.t if self.hold_since is None else self.hold_since
-                if obs.t - self.hold_since > G.t_occ_max + G.t_clear and not self.hold_timeout:
+                if obs.t - max(self.hold_since, eligible_t) > G.t_occ_max + G.t_clear and not self.hold_timeout:
                     self.hold_timeout = True
                     self.events.append({"t": obs.t, "type": "ENTRY_HOLD_TIMEOUT", "loc_ok": go.loc_ok,
-                                        "entry_ok": go.entry_ok})
+                                        "entry_ok": go.entry_ok, "admit_wait_s": round(wait, 2), "admissible": admissible})
                 if go.loc_ok:
                     c = np.array([s_hold, 0.0, 0.0])
                 else:
@@ -362,6 +377,7 @@ class Flows:
             vmax = G.v_pass
         else:
             self.cr_cleared, self.hold_since, self.entry_state, self.hold_timeout, self.past_centre = False, None, "", False, False
+            self.commit_t = None
             self.abort_request = False
             self.hold_target = None
             self.standoff_anchor = self.standoff_since = None
@@ -382,19 +398,20 @@ class Flows:
         return any(tg.cls == "DYNAMIC" and "FRONT" in tg.pattern and tg.d_lower < lim for tg in obs.targets)
 
     def mission_anchor(self, gc: Optional[gs.GateConstraint], failsafe: bool = False, probe: bool = False) -> dict:
-        """The hold law of the mission command for GateConstraint.filter_mission: anchor (gate frame), gain and vertical
-        probe amplitude - the stage-2 hold / standoff (k_track) or the failsafe hold (gain 0.5, the probe while an envelope
-        violation lasts); an empty dict when the command is not a hold."""
+        """The hold law of the mission command for GateConstraint.filter_mission: anchor (gate frame), gain, vertical
+        probe amplitude and the 2-norm cap of its horizontal command - the stage-2 hold / standoff (k_track, capped at
+        v_pass by Flows.gate) or the failsafe hold (gain 0.5, capped at 0.25 m/s by Flows.failsafe, the probe while an
+        envelope violation lasts); an empty dict when the command is not a hold."""
         if gc is None:
             return {}
         if failsafe:
             if self.hold_pos is None:
                 return {}
             return {"anchor": np.asarray(gc.gate.to_gate_frame(self.hold_pos), float), "gain": 0.5,
-                    "amp": FAILSAFE_PROBE_M if probe else 0.0}
+                    "amp": FAILSAFE_PROBE_M if probe else 0.0, "cap": FAILSAFE_CAP_H}
         if self.hold_target is None:
             return {}
-        return {"anchor": self.hold_target, "gain": self.cfg.gate.k_track, "amp": 0.0}
+        return {"anchor": self.hold_target, "gain": self.cfg.gate.k_track, "amp": 0.0, "cap": self.cfg.gate.v_pass}
 
     def p2_filter(self, gc: Optional[gs.GateConstraint], v: np.ndarray, anchor_kw: dict) -> Optional[gs.MissionFilter]:
         """The P2 filter of a mission command (GateConstraint.filter_mission), the station-keeping point latched while the
@@ -402,17 +419,31 @@ class Flows:
         if gc is None:
             self.p2_station = None
             return None
-        mf = gc.filter_mission(v, self.cfg.env.v_max_nominal, station=self.p2_station, **anchor_kw)
+        mf = gc.filter_mission(v, self.cfg.env.v_max_nominal, station=self.p2_station, cert=self.p2_cert, **anchor_kw)
         self.p2_station = mf.station if mf.station is not None else None
         return mf
 
-    def gate_constraint(self, obs: LocalObservation, authorized: bool, v_err: float = 0.0) -> Optional[gs.GateConstraint]:
+    def gate_constraint(self, obs: LocalObservation, authorized: bool, v_err: float = 0.0,
+                        rho: Optional[float] = None) -> Optional[gs.GateConstraint]:
         """P2 constraint of this step (control/gate_safety.py), None when authorized or out of reach of the CR; ``v_err`` the
-        error bound of the measured velocity."""
+        error bound of the measured velocity, ``rho`` that of the drift of the estimate (GateConstraint)."""
         if not self.plan.gates or obs.gate.gate_id is None:
             return None
         g = self.plan.gates[min(obs.gate_index, len(self.plan.gates) - 1)]
-        return gs.constraint_for(self.cfg, g, obs.p, obs.v_world, authorized, v_err=v_err)
+        return gs.constraint_for(self.cfg, g, obs.p, obs.v_world, authorized, v_err=v_err, rho=rho, t=float(obs.t))
+
+    def p2_certify(self, gc: Optional[gs.GateConstraint], v: np.ndarray, loops=()) -> Optional[gs.P2Certificate]:
+        """The certificate the applied command ``v`` (world) hands to the next step (GateConstraint.certify): station
+        keeping on the latched points (the certificate's own anchor, the mission cut, the avoidance HOLD), the hold loops
+        ``loops`` (mission_anchor dicts) or a robust command.  Stored in ``p2_cert``; None without a constraint or when the
+        command is not certified."""
+        if gc is None:
+            self.p2_cert = None
+            return None
+        prev = self.p2_cert
+        anchors = [gc.cert_anchor(prev), self.p2_station, self.p2_anchor]
+        self.p2_cert = gc.certify(v, anchors, loops, prev)
+        return self.p2_cert
 
     def threats(self, obs: LocalObservation, band: float):
         env = self.cfg.env
@@ -438,12 +469,18 @@ class Flows:
         if self.p2_anchor is None:
             # where the drone is; along the gate axis the stage-2 hold target when the drone already holds there (its
             # position loop keeps it within e_track of it).  Laterally and vertically never the shared point: two drones
-            # committed together converge on it and must not both station-keep there.
+            # committed together converge on it and must not both station-keep there.  When that point is not certified
+            # from the present state, the anchor of the valid certificate the previous command handed over (the latched
+            # station keeping it continues, or the present estimate): the recursive argument of gate_safety.
             q = np.asarray(gc.q, float)
-            self.p2_anchor = q.copy()
+            a = q.copy()
             if self.hold_target is not None and abs(q[0] - self.hold_target[0]) <= gc.bounds.e_track + gs.SLACK_M:
-                self.p2_anchor[0] = self.hold_target[0]
-        return R.T @ gc.hold_velocity(self.p2_anchor), gc.hold_margin(self.p2_anchor)
+                a[0] = self.hold_target[0]
+            ca = gc.cert_anchor(self.p2_cert)
+            if ca is not None and gc.hold_margin(a) <= 0.0:
+                a = ca
+            self.p2_anchor = a
+        return R.T @ gc.hold_velocity(self.p2_anchor), gc.certified_hold(self.p2_anchor, self.p2_cert)
 
     def _after_choice(self, ch) -> None:
         if ch.label != "HOLD":
@@ -489,7 +526,7 @@ class Flows:
         target = self.hold_pos.copy()
         if probe:
             target[2] += amp * math.sin(2.0 * math.pi * obs.t / period)
-        return _cap(0.5 * (target - obs.p), 0.25, 0.2)
+        return _cap(0.5 * (target - obs.p), FAILSAFE_CAP_H, 0.2)
 
     def clear_failsafe(self) -> None:
         self.hold_pos = None
@@ -500,10 +537,10 @@ class Flows:
         only: the output of the avoidance is not edited, and what a drone inside the box reports does not rest on this filter
         (passage.report_phase)."""
         go, G = obs.gate, self.cfg.gate
-        if go.gate_id is None or go.passed or go.s <= -(G.cr_half_len + float(R_OUT) + G.nav_err_m) - 1e-6:
+        if go.gate_id is None or go.passed or go.s <= G.cr_s_min - (float(R_OUT) + G.nav_err_m) - 1e-6:
             return v
         reach = G.cr_half_width + float(R_OUT) + G.nav_err_m
-        if abs(go.l) > reach or abs(go.dz) > G.cr_half_height + float(R_OUT) + G.nav_err_m or go.s > G.cr_half_len:
+        if abs(go.l) > reach or abs(go.dz) > G.cr_half_height + float(R_OUT) + G.nav_err_m or go.s > G.cr_s_max:
             return v
         g = self.plan.gates[min(obs.gate_index, len(self.plan.gates) - 1)]
         v = np.asarray(v, dtype=float).copy()

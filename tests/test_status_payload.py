@@ -53,7 +53,7 @@ def test_a_fresh_not_engaged_report_excludes_a_drone_the_position_would_not():
     assert not ae.status_excluded(1, 1.0 + ae.status_fresh_s + 0.5)
     G = B2.gate
     from holo_fleet.perception.sonar_geometry import R_OUT
-    expect = (abs(gp.plan.queue_s) - G.cr_half_len - R_OUT - G.queue_tol - G.nav_err_m) / ae.v_bound - B2.acoustic.latency_max_s
+    expect = (G.cr_s_min - gp.plan.queue_s - R_OUT - G.queue_tol - G.nav_err_m) / ae.v_bound - B2.acoustic.latency_max_s
     assert ae.status_fresh_s <= expect + 1e-9 and ae.status_fresh_s <= B2.acoustic.status_fresh_s + 1e-9
 
 
@@ -96,8 +96,9 @@ def test_a_receiver_that_hears_nobody_declares_no_one_dead():
     assert not ae.dead(1, t) and ae.claims(t) == {1} and not ae.status_excluded(1, t)
 
 
-def test_a_drone_never_heard_is_dead_once_silent_since_the_receiver_started():
-    """A failure before the first reception: the drone is in the plan, so its silence runs from the start of the receiver."""
+def test_a_drone_never_heard_is_diagnosed_silent_but_never_excluded():
+    """A failure before the first reception: the drone is in the plan, so its silence runs from the start of the receiver.  Rule D
+    is a diagnostic only (formal/check_b2_comm.py, B2C-D): the silent drone stays a possible occupant, never excluded."""
     tr, gp = _observer(P, others=(1, 2))
     ae = gp.acoustic_exit
     _rx(tr, P, 1.0, 1, [-5.4, -3.5, -5.], phase=pl.GP_NONE)
@@ -106,13 +107,13 @@ def test_a_drone_never_heard_is_dead_once_silent_since_the_receiver_started():
     assert not ae.dead(2, t)
     t = 1.0 + B2.acoustic.t_silent_gate_s + 1.0
     tr.heard[1] = t - 1.0
-    assert ae.dead(2, t) and ae.status_excluded(2, t)
+    assert ae.dead(2, t) and not ae.status_excluded(2, t)
     assert ae.silence(t) == [1.0, round(t - 1.0, 1)]
     tr.heard[1] = 1.0
     assert not ae.dead(2, t)
 
 
-def test_a_drone_silent_after_not_engaged_is_excluded_only_once_dead():
+def test_a_drone_silent_after_not_engaged_is_never_excluded_by_its_silence():
     tr, gp = _observer(P, others=(1, 2))
     ae = gp.acoustic_exit
     _rx(tr, P, 1.0, 1, [-5.4, -3.5, -5.], phase=pl.GP_NONE)
@@ -121,7 +122,7 @@ def test_a_drone_silent_after_not_engaged_is_excluded_only_once_dead():
     assert not ae.status_excluded(1, t) and ae.claims(t) == set()
     t = 1.0 + B2.acoustic.t_silent_gate_s + 1.0
     tr.heard[2] = t - 1.0
-    assert ae.status_excluded(1, t)
+    assert ae.dead(1, t) and not ae.status_excluded(1, t)
 
 
 def test_a_deaf_receiver_declares_no_one_silent():

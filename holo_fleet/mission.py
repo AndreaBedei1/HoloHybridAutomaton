@@ -139,6 +139,26 @@ class FormationClock:
     def moving(self, t: float, dt: float = 0.1) -> bool:
         return self.s(t + dt) > self.s(t) + 1e-9
 
+    def hold_end(self, t: float) -> Optional[float]:
+        """End (clock time) of the planned hold that contains clock time t, or None when t is not inside a planned
+        hold (the reference moves, or it has stopped for good at s_end)."""
+        tau = max(0.0, t - self.t_start)
+        events = sorted([(h, 1, d) for h, d in self.holds] + [(a, 0, b) for a, b in self.jumps])
+        s, t_cur = self.s0, 0.0
+        for at, kind, par in events:
+            if at < s - 1e-9:
+                continue
+            t_reach = t_cur + (at - s) / max(self.v, 1e-9)
+            if tau < t_reach:
+                return None
+            if kind == 1:
+                if tau <= t_reach + par:
+                    return self.t_start + t_reach + par if at < self.s_end else None
+                s, t_cur = at, t_reach + par
+            else:
+                s, t_cur = par, t_reach
+        return None
+
 
 @dataclass
 class MissionPlan:

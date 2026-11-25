@@ -24,6 +24,13 @@
   B2 adds positive acoustic occupancy to BUSY and vetoes release/admission while a drone is heard possibly inside
   (the complete declared region, perception/acoustic_gate.py). Acoustic exit evidence is evaluated only with the
   corridor empty. Without receptions the sonar outage-mode latch remains.
+* the stage-2 entry check ``entry_ok``: no unexplained corridor echo for ENTRY_QUIET_CAPTURES captures WITH the FRONT sector
+  healthy over that window (a FRONT outage is never quiet: no echo is evidence only from a working sensor), no claim and no
+  drone heard or last known inside;
+* the B2 admission wait ``admit_wait_s`` (formal/check_b2_comm.py): the smallest age of the own commitment at which the drone
+  may be admitted - ``commit_admit_min_s`` when a FRESH report (age <= ``admit_fresh_s``) of every other drone of the plan is
+  held, ``commit_admit_min_s + GateRule.t_cross_max`` otherwise (silence is unknown, never clearance); 0 without the beacon
+  (B0) or without other drones.
 """
 
 from __future__ import annotations
@@ -70,6 +77,9 @@ class GateObs:
     loc_ok: bool = False
     entry_ok: bool = True
     dead: List[int] = field(default_factory=list)
+    silent: List[int] = field(default_factory=list)
+    admit_wait_s: float = 0.0
+    comm_fresh: bool = True
 
 
 class GatePerception:
@@ -82,13 +92,14 @@ class GatePerception:
 
             self.acoustic_exit = AcousticExit(cfg, acoustic, [k for k in range(len(plan.slots)) if k != plan.slot_index])
             G = cfg.gate
-            t_min = (abs(plan.queue_s) - (G.cr_half_len + R_OUT) - G.queue_tol - G.nav_err_m) / self.acoustic_exit.v_bound
+            t_min = (G.cr_s_min - plan.queue_s - R_OUT - G.queue_tol - G.nav_err_m) / self.acoustic_exit.v_bound
             self.acoustic_exit.status_fresh_s = max(0.0, min(cfg.acoustic.status_fresh_s, t_min - cfg.acoustic.latency_max_s))
         self.exit_kind = {"SONAR": 0, "ACOUSTIC": 0}
         self.idx = 0
         self.prio_since: Optional[float] = None
         self.occ_state = "FREE"
         self.last_corridor_t = -1e9
+        self.last_blind_t = -1e9
         self.suspects: set = set()
         self.phantom, self.phantoms = False, 0
         self.phantom_events: list = []
@@ -122,10 +133,10 @@ class GatePerception:
         """Smallest and largest distance from the own FRONT sonar to a point of the CR (gate map + own pose)."""
         G = self.cfg.gate
         sonar = p + np.array([math.cos(yaw), math.sin(yaw), 0.0]) * float(MOUNTS["FRONT"][0])
-        half = np.array([G.cr_half_len, G.cr_half_width, G.cr_half_height])
+        c0, half = G.cr_center(), G.cr_half()
         q = g.to_gate_frame(sonar)
-        near = float(np.linalg.norm(q - np.clip(q, -half, half)))
-        far = float(max(np.linalg.norm(q - half * np.array([a, b, c]))
+        near = float(np.linalg.norm(q - np.clip(q, G.cr_lo(), G.cr_hi())))
+        far = float(max(np.linalg.norm(q - c0 - half * np.array([a, b, c]))
                         for a in (-1, 1) for b in (-1, 1) for c in (-1, 1)))
         return near, far
 
@@ -240,7 +251,17 @@ class GatePerception:
         o.occ_state = self.occ_state
         o.occ_busy = self.occ_state != "FREE"
         o.occ_timeouts = self.occ_timeouts
-        quiet = t - self.last_corridor_t > ENTRY_QUIET_CAPTURES / self.cfg.perc.sonar.hz
+        front = readings.get("FRONT")
+        if front is None or not front.healthy:
+            self.last_blind_t = t
+        quiet = t - max(self.last_corridor_t, self.last_blind_t) > ENTRY_QUIET_CAPTURES / self.cfg.perc.sonar.hz
         o.entry_ok = bool(quiet and not heard and not known_inside)
-        o.dead = sorted(j for j in self.acoustic_exit.others if self.acoustic_exit.dead(j, t)) if self.acoustic_exit is not None else []
+        o.dead = []
+        if self.acoustic_exit is not None:
+            ae = self.acoustic_exit
+            o.silent = sorted(j for j in ae.others if ae.dead(j, t))
+            o.comm_fresh = ae.all_fresh(t)
+            if ae.others:
+                a = self.cfg.acoustic
+                o.admit_wait_s = a.commit_admit_min_s + (0.0 if o.comm_fresh else G.t_cross_max)
         return o

@@ -1,4 +1,4 @@
-"""Variant B2 (range-bearing beacon): channel model, onboard fixes, acoustic exit evidence, formation rules."""
+"""B2 (range-bearing beacon): channel model, onboard fixes, acoustic exit evidence, formation rules."""
 
 import dataclasses
 import math
@@ -7,7 +7,7 @@ import numpy as np
 import pytest
 
 from holo_fleet.arena_bridge import HORSESHOE_TRACK, load_arena_gates
-from holo_fleet.config import DEFAULT, BeaconConfig
+from holo_fleet.config import DEFAULT, BeaconConfig, communication_disabled
 from holo_fleet.mission import MissionPlan, Path, Slot, abreast_slots, queue_line
 from holo_fleet.perception.acoustic import AcousticTracker, box_bounds, region_samples
 from holo_fleet.perception.acoustic_gate import AcousticExit, gate_points
@@ -17,6 +17,7 @@ from holo_fleet.perception.targets import Target
 from holo_fleet.sim import acoustic_channel as ac
 
 B2 = dataclasses.replace(DEFAULT, beacon=BeaconConfig(mode="ACOUSTIC_RB"))
+B0 = communication_disabled()  # the same controller with the communication disabled
 DEFAULT_ACOUSTIC_FRESH = DEFAULT.acoustic.fresh_s
 B2_LOGIC = dataclasses.replace(B2, acoustic=dataclasses.replace(B2.acoustic, los_excess_max_m=0.0))
 G = B2.gate
@@ -269,7 +270,7 @@ def test_a_multipath_episode_never_gives_an_exit_from_inside_the_cr():
     b, ae = exit_bench(cfg=B2)
     corridor(b, ae, gate_world(-0.6, 0.0))
     for _ in range(8):
-        b.ping(1, gate_world(G.cr_half_len, 0.0), err=(ac.MEDIUM.reflect_extra_m[1], 0.0, 0.0))
+        b.ping(1, gate_world(G.cr_s_max, 0.0), err=(ac.MEDIUM.reflect_extra_m[1], 0.0, 0.0))
         queued_others(b, k_occ=1)
         b.step(0.9)
         assert ae.evaluate(b.t, G06) is None
@@ -290,7 +291,7 @@ def test_deployed_envelope_gives_the_exit_by_range_once_the_drone_is_far_beyond(
         ev = ae.evaluate(b.t, G06)
         if ev is not None and got is None:
             got = float(s)
-    assert got is not None and got > G.cr_half_len + 6.0, got
+    assert got is not None and got > G.cr_s_max + 6.0, got
 
 
 def _pass(b, ae, k_occ=1, s_end=9.0, steps=12, others=True):
@@ -371,10 +372,10 @@ def test_noisy_fixes_inside_the_envelope_never_place_a_cr_hull_beyond_the_exit()
     errors at the corners of the envelope, never gives a fix whose region lies beyond the exit face."""
     b, ae = exit_bench()
     br_f = lambda r: box_bounds(r, B2)
-    half = np.array([G.cr_half_len, G.cr_half_width, G.cr_half_height])
+    c0, half = G.cr_center(), G.cr_half()
     for lat in LATS:
         p = gate_world(QS, lat)
-        for c in [np.array([a, bb, cc]) * half for a in (-1, 0, 1) for bb in (-1, 0, 1) for cc in (-1, 0, 1)]:
+        for c in [c0 + np.array([a, bb, cc]) * half for a in (-1, 0, 1) for bb in (-1, 0, 1) for cc in (-1, 0, 1)]:
             r, az, el = measure(p, YAW, gate_world(*c))
             br, ba, be = br_f(r)
             for sr in (-1, 1):
@@ -384,7 +385,7 @@ def test_noisy_fixes_inside_the_envelope_never_place_a_cr_hull_beyond_the_exit()
                         body, slack = region_samples(r + sr * br, az + sa * ba, el + se * be, B2)
                         pts = p + body @ _rot(YAW).T
                         f = Fix(slot=1, t=0.0, r=r, az=az, el=el, p=pts.mean(0), pts=pts, slack=slack, rel=pts.mean(0) - p)
-                        assert ae.s_lower(G06, f, 0.0) <= G.cr_half_len + R_OUT
+                        assert ae.s_lower(G06, f, 0.0) <= G.cr_s_max + R_OUT
 
 
 def test_gate_latch_ignores_acoustics_while_the_corridor_is_occupied():
@@ -422,7 +423,7 @@ def test_b0_gate_perception_has_no_acoustic_path():
     plan = MissionPlan(drone_id="d", slot_index=0, slots=[Slot(0, 0, 0)], path=Path(np.array([[-20.0, 0], [20.0, 0]]), 0.0),
                        gates=[G06], structures=[G06], launch_position=gate_world(QS, 0.0),
                        launch_yaw_deg=math.degrees(YAW), static_rank=0, s_end=40.0, queue_lateral=0.0, queue_s=QS)
-    assert GatePerception(plan, DEFAULT, acoustic=AcousticTracker(DEFAULT)).acoustic_exit is None
+    assert GatePerception(plan, B0, acoustic=AcousticTracker(B0)).acoustic_exit is None
 
 
 def test_gate_points_matches_the_gate_frame():
@@ -480,7 +481,7 @@ def _every(period, slots=(1, 2, 3)):
 
 
 def test_heard_where_expected_a_sonar_occluded_neighbour_is_not_missing():
-    _c, b0, _ = _run_form(DEFAULT, _every(1.0))
+    _c, b0, _ = _run_form(B0, _every(1.0))
     _c, b2, _ = _run_form(B2, _every(1.0))
     assert set(b0) == {1, 2, 3} and all(v == pytest.approx(NEIGHBOUR_MEMORY_S + DT) for v in b0.values())
     assert b2 == {}
@@ -493,7 +494,7 @@ def test_one_lost_ping_does_not_make_a_heard_neighbour_missing():
 
 
 def test_a_silent_channel_is_the_baseline():
-    assert _run_form(B2, lambda t: ())[1] == _run_form(DEFAULT, lambda t: ())[1]
+    assert _run_form(B2, lambda t: ())[1] == _run_form(B0, lambda t: ())[1]
 
 
 def test_presence_never_confirms_a_missing_neighbour_back():
@@ -539,7 +540,7 @@ def test_a_neighbour_certainly_behind_slows_the_own_formation_time():
     assert lag is not None and 0.0 < lag < 8.0
     assert c.flows.ftime.sync == pytest.approx(min(DEFAULT.form.k_progress * lag,
                                              DEFAULT.form.v_nominal - DEFAULT.form.v_wait), abs=1e-6)
-    c0, _f, _r = _run_form(DEFAULT, _every(1.0), offset=off, steps=40)
+    c0, _f, _r = _run_form(B0, _every(1.0), offset=off, steps=40)
     assert c0.perception.acoustic_lag == {} and c0.flows.ftime.sync == 0.0
 
 
@@ -563,7 +564,7 @@ def test_the_along_track_offset_of_a_neighbour_feeds_the_progress_consensus():
     c, _first, recs = _run_form(B2, _every(1.0), offset=off, steps=30)
     assert recs[-1]["form"]["acoustic_corr"] == [1, 2, 3]
     assert c.flows.sigma > 0.0
-    c0, _f, _r = _run_form(DEFAULT, _every(1.0), offset=off, steps=30)
+    c0, _f, _r = _run_form(B0, _every(1.0), offset=off, steps=30)
     assert c0.flows.sigma == 0.0
 
 
@@ -584,7 +585,7 @@ def _square_rear():
 def test_an_identified_neighbour_far_from_its_slot_is_not_seen_at_it():
     plan, rear, healthy, echo, check_formation = _square_rear()
     far = np.array([-8.5, 0.0, 0.0])
-    b0 = check_formation(plan, DEFAULT, np.zeros(3), np.eye(3), np.eye(3), [echo(8.5)], healthy)
+    b0 = check_formation(plan, B0, np.zeros(3), np.eye(3), np.eye(3), [echo(8.5)], healthy)
     b2 = check_formation(plan, B2, np.zeros(3), np.eye(3), np.eye(3), [echo(8.5)], healthy, acoustic={rear: far})
     c0, c2 = (next(c for c in o.checks if c.slot == rear) for o in (b0, b2))
     assert not c0.seen and not c2.seen

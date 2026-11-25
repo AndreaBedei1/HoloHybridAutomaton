@@ -1,8 +1,9 @@
 """Stage-2 hold before the critical region (CR) under navigation error (control/flows.py Flows.gate,
 control/gate_safety.py).
 
-The v11 hold sat at s = -1.18 m, 0.38 m from the CR, with a declared gate-frame navigation error of 1 m: a drone held
-there on an estimate 1 m short of the truth had its centre inside the CR.  The hold is now the nearest point where
+The earlier hold sat at s = -1.18 m, 0.38 m from the CR (the former symmetric CR |s| <= 0.8; the same rule gives -1.43 m with
+the present CR, s in [-1.05, 0.55]), with a declared gate-frame navigation error of 1 m: a drone held there on an
+estimate 1 m short of the truth had its centre inside the CR.  The hold is now the nearest point where
 holding is P2-safe under the declared error, minus the measured holding error, and the queue lines keep the merge
 clearance from it.  The closed loops use formal/check_f1p_kinematic.World: the deployed Flows.gate, keep-out and P2
 filters in the order of DroneController.step, a velocity loop limited by a_brake and the declared residual drift towards
@@ -31,14 +32,15 @@ from test_structure_aiding import BARS, GATES, _R, _profiles, _world  # noqa: E4
 
 CFG = DEFAULT
 G, ENV = CFG.gate, CFG.env
-V11_HOLD = -(G.cr_half_len + float(HULL_HALF[0]) + 0.15)
+NEAR_HOLD = G.cr_s_min - (float(HULL_HALF[0]) + 0.15)
 DRIFT = (ENV.w_drift_max, 0.0, 0.0)
 
 
 def test_the_hold_is_the_derived_p2_safe_hold():
     b = gs.P2Bounds.from_cfg(CFG)
     assert b.e_track == pytest.approx(ENV.w_drift_max / 0.5) and b.tau_c == pytest.approx(ENV.dt + ENV.tau_max)
-    boundary = -(G.cr_half_len + G.nav_err_m + ENV.w_drift_max * b.tau_c + b.e_track + gs.SLACK_M)
+    boundary = G.cr_s_min - (G.nav_err_m + ENV.w_drift_max * b.tau_c + b.e_track + gs.SLACK_M)
+    assert boundary == pytest.approx(-(1.05 + 1.0 + 0.0525 + 0.30 + 0.05), abs=1e-9)
     assert gs.hold_s(CFG) == pytest.approx(boundary, abs=1e-6)
     assert G.stage2_hold_s == pytest.approx(gs.hold_s(CFG) - G.hold_err_m, abs=1e-6)
     gate = K.make_gate()
@@ -48,14 +50,22 @@ def test_the_hold_is_the_derived_p2_safe_hold():
                      .margins_world(np.zeros(3))[0])
 
     assert margin(G.stage2_hold_s) > 0.0 and margin(gs.hold_s(CFG) + 0.01) < 0.0
-    assert margin(V11_HOLD) < -0.9
+    assert margin(NEAR_HOLD) < -0.9
+    # the station-keeping certificate at rest (gate_safety.sk_band, the recursive argument) has the same band: holding on
+    # the target at rest is certified with exactly the measured holding error as margin, also with the DVL error bound
+    assert gs.hold_reach(b) == pytest.approx(gs.sk_hold(b), abs=1e-12)
+    from holo_fleet.perception.nav import NavBound
+
+    for v_err in (0.0, float(NavBound(CFG).k_rw)):
+        gc = gs.constraint_for(CFG, gate, gate.from_gate_frame([G.stage2_hold_s, 0.0, 0.0]), np.zeros(3), False, v_err=v_err)
+        assert gc.hold_margin(gc.q) == pytest.approx(G.hold_err_m, abs=1e-9)
 
 
 @pytest.mark.parametrize("n", [1, 2, 3, 4])
 def test_the_queue_lines_keep_the_merge_clearance_from_the_hold(n):
     """Bound (d): no queue point ahead of the stage-2 hold; bound (c), two or more columns: every queue point keeps the
-    merge clearance from the hold, within the lateral allowance of the (vertical) acquisition offsets.  With the v11 hold
-    point the n = 2 line violates (c) at the stage-2 hold."""
+    merge clearance from the hold, within the lateral allowance of the (vertical) acquisition offsets.  With the near hold
+    point (NEAR_HOLD) the n = 2 line violates (c) at the stage-2 hold."""
     qs = G.queue_s(n)
     assert qs <= G.stage2_hold_s + 1e-9
     lats = G.queue_laterals(n)
@@ -64,14 +74,14 @@ def test_the_queue_lines_keep_the_merge_clearance_from_the_hold(n):
             dl = max(abs(lat) - G.hold_lateral_allow, 0.0)
             assert math.hypot(qs - G.stage2_hold_s, dl) >= G.merge_clearance - 1e-9
     if n == 2:
-        v11 = dataclasses.replace(G, stage2_hold_s=V11_HOLD)
+        near = dataclasses.replace(G, stage2_hold_s=NEAR_HOLD)
         dl = max(abs(lats[0]) - G.hold_lateral_allow, 0.0)
-        assert math.hypot(v11.queue_s(2) - G.stage2_hold_s, dl) < G.merge_clearance
+        assert math.hypot(near.queue_s(2) - G.stage2_hold_s, dl) < G.merge_clearance
 
 
 def _holder(bias, variant="CORRECTED", loc_ok=True, entry_ok=False, drift=DRIFT, horizon=40.0, trace=True):
     """One committed drone of the abreast queue of two, held by the stage-2 check, with an estimate - truth bias."""
-    cfg = CFG if variant == "CORRECTED" else K.v11_config(CFG)
+    cfg = CFG if variant == "CORRECTED" else K.near_hold_config(CFG)
     gate = K.make_gate()
     qs, lanes = cfg.gate.queue_s(2), cfg.gate.queue_laterals(2)
     b = np.asarray(bias, float)
@@ -111,7 +121,7 @@ def test_a_held_drone_never_enters_the_cr_with_lateral_drift(bs, bl, drift):
 def test_a_held_drone_with_a_drone_approaching_from_behind_never_enters_the_cr(bs):
     """Closed loop with the separation layer on: a committed drone held by the stage-2 check (navigation bias ``bs``),
     a third drone approaching it from behind along the axis (uncommitted, the deployed avoidance), drift towards the CR:
-    the held drone's TRUE centre never enters the CR (with the v11 rule the avoidance moves it in)."""
+    the held drone's TRUE centre never enters the CR (with the NEAR_HOLD rule the avoidance moves it in)."""
     gate = K.make_gate()
     qs, lanes = G.queue_s(2), G.queue_laterals(2)
     b = np.array([bs, 0.0, 0.0])
@@ -135,17 +145,18 @@ def test_a_held_drone_never_enters_the_cr_whatever_the_declared_navigation_error
     log = [(r["t"], r["agents"]["B"]["est"], r["agents"]["B"]["true"], r["agents"]["B"]["v_cmd"], r["agents"]["B"]["admitted"],
             r["agents"]["B"]["entry"], r["cr"]) for r in w.rows]
     s_true = np.array([float(gate.to_gate_frame(np.asarray(x[2]))[0]) for x in log])
-    nose = -G.cr_half_len - (s_true + float(HULL_HALF[0]))
+    nose = G.cr_s_min - (s_true + float(HULL_HALF[0]))
     assert not any(x[4] for x in log)
-    assert float(s_true.max()) < -G.cr_half_len
+    assert float(s_true.max()) < G.cr_s_min
     assert {x[5] for x in log} >= {"HOLD"}
     if bs <= 0.0:
         assert float(nose.min()) > -float(HULL_HALF[0]) - 1e-9
 
 
-def test_the_v11_hold_point_puts_the_true_centre_in_the_cr_with_the_declared_error():
-    """The reproduced defect: the v11 controller, held at -1.18 m on an estimate 1 m short of the truth."""
-    w, a, gate = _holder((-1.0, 0.0, 0.0), variant="V11")
+def test_the_near_hold_point_puts_the_true_centre_in_the_cr_with_the_declared_error():
+    """The reproduced defect (mutation): the controller held 0.379 m before the CR (NEAR_HOLD) on an estimate 1 m short of the
+    truth."""
+    w, a, gate = _holder((-1.0, 0.0, 0.0), variant="NEAR_HOLD")
     assert w.entries and w.entries[0]["drone"] == "B" and not w.entries[0]["by_avoidance"]
     assert any(r["cr"] == ["B"] and not r["agents"]["B"]["admitted"] for r in w.rows)
 
@@ -174,26 +185,35 @@ def test_the_acquisition_pattern_fits_in_the_bounded_hold():
         assert abs(dl) <= G.hold_lateral_allow and abs(dz) <= G.cr_half_height
 
 
-@pytest.mark.parametrize("bias", [-1.0, -0.7, -0.5, -0.3, 0.0, 0.2, 0.3, 0.5, 0.6])
+@pytest.mark.parametrize("bias", [-1.0, -0.7, -0.5, -0.3, -0.1, 0.0, 0.2, 0.3])
 def test_the_localization_is_acquired_at_the_hold(bias):
     """The vertical acquisition offsets (depth is measured directly, so they need no lateral room): validated
-    localization from the stage-2 hold with the estimate up to 1 m behind the truth and up to 0.6 m ahead of it."""
+    localization from the stage-2 hold (-2.55 m) with the estimate up to 1 m behind the truth and at +0.2, +0.3 m ahead
+    of it (synthetic B0 scan, bar echoes only)."""
     assert _acquired(bias) is not None
 
 
-@pytest.mark.parametrize("bs,bl,offset", [(-0.5, -0.3, 0), (-0.5, 0.3, 0), (-0.5, 0.6, 1), (0.0, -0.3, 0), (0.0, -0.6, 0),
-                                           (0.0, 0.6, 0), (0.3, -0.3, 0), (0.3, 0.3, 0), (0.3, -0.6, 0), (0.5, -0.3, 3),
-                                           (0.5, 0.3, 3), (0.5, 0.6, 3)])
+@pytest.mark.parametrize("bias", [0.1, 0.4, 0.5, 0.6, 0.7, 1.0])
+def test_the_localization_is_not_acquired_at_the_hold(bias):
+    """The B0 acquisition gap of the stage-2 hold at -2.55 m (the hold of the CR s in [-1.05, 0.55], 0.25 m farther from
+    the frame than the -2.30 m hold of the former symmetric CR, which acquired at +0.5, +0.6 m too): not at +0.1 m, and
+    not from +0.4 m (the truth about 3 m or more from the gate plane).  A progress limit, not a safety one."""
+    assert _acquired(bias) is None
+
+
+@pytest.mark.parametrize("bs,bl,offset", [(-0.5, -0.3, 0), (-0.5, 0.3, 0), (-0.5, 0.6, None), (0.0, -0.3, 3), (0.0, -0.6, None),
+                                           (0.0, 0.6, None), (0.3, -0.3, 1), (0.3, 0.3, 1), (0.3, -0.6, 1), (0.5, -0.3, None),
+                                           (0.5, 0.3, None), (0.5, 0.6, None)])
 def test_the_localization_is_acquired_with_a_lateral_error_and_by_which_offset(bs, bl, offset):
     """Along-axis and lateral estimate errors within the 1 m norm: the acquisition offset (index in ACQ_OFFSETS) that
-    first validates the localization."""
+    first validates the localization, None where the synthetic B0 scan does not acquire it."""
     assert bs * bs + bl * bl <= G.nav_err_m ** 2 + 1e-9
     assert _acquired(bs, bl) == offset
 
 
 def test_beyond_the_acquisition_boundary_the_hold_is_bounded_and_ends_in_the_give_up():
-    """The documented outcome where the localization is not acquired (B0, estimate 0.7 m or more ahead of the truth:
-    the truth farther than 3.0 m from the gate plane, the side sonars do not see the bars; advancing without a validated
+    """The documented outcome where the localization is not acquired (B0, estimate 0.4 m or more ahead of the truth:
+    the truth about 3 m or more from the gate plane, the side sonars do not see the bars; advancing without a validated
     localization is not P2-safe): the drone holds at most t_occ_max + t_clear, logs ENTRY_HOLD_TIMEOUT, requests the
     give-up behind the plane and never enters the CR.  A P2 / progress conflict, not a deadlock."""
     w, a, gate = _holder((1.0, 0.0, 0.0), loc_ok=False, entry_ok=True, horizon=45.0)
@@ -218,7 +238,7 @@ def test_without_localization_the_hold_times_out_and_retreats_behind_the_give_up
     hold_start = next(r["t"] for r in w.rows if r["agents"]["B"]["entry"] == "HOLD")
     assert ev[0]["t"] - hold_start == pytest.approx(G.t_occ_max + G.t_clear, abs=0.3)
     assert a.gave_up >= 1 and not w.entries and not any(r["agents"]["B"]["admitted"] for r in w.rows)
-    s_abort = -(G.cr_half_len + float(R_OUT) + G.nav_err_m)
+    s_abort = G.cr_s_min - (float(R_OUT) + G.nav_err_m)
     assert G.stage2_hold_s < s_abort
     lat = {tuple(np.round(r["agents"]["B"]["est"][1:], 1)) for r in w.rows if r["agents"]["B"]["entry"] == "HOLD"}
     assert len(lat) >= 3

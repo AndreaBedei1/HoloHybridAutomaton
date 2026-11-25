@@ -39,7 +39,7 @@ from typing import Dict, List, Optional
 
 import numpy as np
 
-from holo_fleet.config import DEFAULT
+from holo_fleet.config import COMMUNICATION_DISABLED, DEFAULT, communication_disabled
 from holo_fleet.referee.criteria import (CRITERIA_VERSION, E_TOL_M, deadline_terms, deadline_v3, horizon_v5,
                                          profile_family,
                                          t_hold_s)
@@ -103,6 +103,8 @@ def analyze_run(run_dir: Path, reference: Optional[Dict] = None, cfg=DEFAULT, pr
         out.update({"class": "INVALID", "invalid_reason": status.get("reason") or status.get("status")})
         return out
     rc = json.loads((run_dir / "run_config.json").read_text(encoding="utf-8"))
+    if rc.get("communication") == COMMUNICATION_DISABLED:
+        cfg = communication_disabled(cfg)
     met = json.loads((run_dir / "referee_metrics.json").read_text(encoding="utf-8"))
     name, n = rc["scenario"], rc["n_drones"]
     names = [f"drone_{k}" for k in range(n)]
@@ -187,13 +189,12 @@ def analyze_run(run_dir: Path, reference: Optional[Dict] = None, cfg=DEFAULT, pr
         G = cfg.gate
         g = sc.judged_gates[0]
         gf = np.array([[g.to_gate_frame(P[i, k]) for k in range(n)] for i in range(m)])
-        inside = (np.abs(gf[:, :, 0]) <= G.cr_half_len) & (np.abs(gf[:, :, 1]) <= G.cr_half_width) & \
-                 (np.abs(gf[:, :, 2]) <= G.cr_half_height)
+        inside = G.in_cr(gf[:, :, 0], gf[:, :, 1], gf[:, :, 2])
         p2o["holds"] = bool(inside.sum(axis=1).max() <= 1)
         passed_t = {}
         for k in healthy:
             idx = np.flatnonzero(gf[:, k, 0] > G.exit_s)
-            before = np.flatnonzero(gf[:, k, 0] < -G.cr_half_len)
+            before = np.flatnonzero(gf[:, k, 0] < G.cr_s_min)
             if idx.size and before.size and idx[idx > before[0]].size:
                 b = idx[idx > before[0]][0]
                 if inside[before[0]:b + 1, k].any():
@@ -634,7 +635,7 @@ def premise_monitors(sc, cfg, names, faults, t, P, states, m) -> Dict:
             if r.get("mode") == "DEAD":
                 continue
             gr = r.get("gate") or {}
-            for j in gr.get("dead") or []:
+            for j in gr.get("silent") or gr.get("dead") or []:
                 nm = names[int(j)] if 0 <= int(j) < n else str(j)
                 if nm not in onset or t[i] < onset[nm]:
                     pv.append({"t": round(float(t[i]), 2), "receiver": names[k], "drone": nm})

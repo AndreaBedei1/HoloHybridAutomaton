@@ -19,6 +19,11 @@ unrejected disturbance after the low-level integrator has converged is |w| <= w_
 
 The binding case of F1 is v_ref = v_clock (the smallest catch-up margin); a slower reference only adds margin.
 
+Scope.  The deployed law has ONE 2-norm horizontal cap (flows._cap), the keeping-mode cap FormationRule.keeping_cap and
+the private formation clocks of the drones; the per-axis ranking of F1 is not a ranking of that coupled law
+(counterexample C1x).  The coupled law, the clocks, the rendezvous and the operating domain are checked in
+check_formation_coupled.py (C1-C4); F1-F3 stay the per-axis abstraction they are.
+
 F1  far band (saturated): |e| decreases by >= eps_far per step whenever |e| >= e1  (ranking R1);
 F2  near band (linear):   |e| decreases by >= eps_near per step whenever e* <= |e| <= e1 (ranking R2);
 F3  the ball |e| <= e* is invariant (once recovered, the slot error stays recovered);
@@ -149,7 +154,7 @@ def head_envelope_checks(cfg: FleetConfig, p) -> list:
         check("Fm3 mutation: envelope at the survey speed only -> the catch-up margin of F1 can vanish",
               "expect counterexample", ENC, base + [g(vc + h) <= A, no_margin], expect="sat",
               note="a head current the drone can hold at v_clock but not overcome during a recovery"),
-        check("Em1 mutation: the v1-v2 scalar bound |w| <= 0.6 m/s admits head currents with which the survey speed "
+        check("Em1 mutation: the earlier scalar bound |w| <= 0.6 m/s admits head currents with which the survey speed "
               "is not deliverable", "expect counterexample", ENC, base + [g(vc + h) > A], expect="sat",
               note="the old isotropic current bound"),
     ]
@@ -243,9 +248,9 @@ def waiting_checks(cfg: FleetConfig) -> list:
                      "expect counterexample", ENC, [h >= 0, hm == h + DT, tau1 == tau, tau >= 0, tau < T,
                                                      z3.Not(tau1 > tau)], expect="sat"))
     cons, waiting, n = waiting_bmc(cfg, timeout=False)
-    out.append(check("Fm4 mutation: no timeout (v2 baseline) -> the drone may wait for ever (still waiting after N steps)",
+    out.append(check("Fm4 mutation: no timeout (the earlier automaton) -> the drone may wait for ever (still waiting after N steps)",
                      "expect counterexample", ENC, cons + [waiting[-1]], expect="sat",
-                     note="the v2 automaton kept a drone with a missing neighbour in FORMATION_RECOVERY indefinitely"))
+                     note="the earlier automaton kept a drone with a missing neighbour in FORMATION_RECOVERY indefinitely"))
     return out
 
 

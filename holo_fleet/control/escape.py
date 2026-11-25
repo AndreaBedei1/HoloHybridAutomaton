@@ -222,7 +222,9 @@ class EscapePlanner:
     @staticmethod
     def _rated(V: np.ndarray, p2, hold) -> Tuple[np.ndarray, np.ndarray]:
         """Candidates and their P2 margins.  With ``hold`` the last candidate (HOLD) is station keeping: its velocity is
-        the position-loop command and its margin the station-keeping margin (gate_safety.GateConstraint.hold_margin);
+        the position-loop command and its margin the CERTIFIED station-keeping margin (Flows._hold:
+        gate_safety.GateConstraint.certified_hold - the margin from the present state or the latched certificate of that
+        anchor, so that a held drone keeps a certified candidate at every step, formal P2R4);
         its worst-case opening stays 0, station keeping being the non-closing behaviour of lemma S1g (the residual drift
         is the w_rel of the pairwise model)."""
         V = V.copy()

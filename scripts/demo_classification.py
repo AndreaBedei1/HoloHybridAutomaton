@@ -25,7 +25,7 @@ import numpy as np
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
-from holo_fleet.config import DEFAULT  # noqa: E402
+from holo_fleet.config import DEFAULT, communication_disabled  # noqa: E402
 from holo_fleet.perception import sonar_geometry as sg  # noqa: E402
 from holo_fleet.perception.sonar_processing import EchoClassifier, dvl_altitude  # noqa: E402
 from holo_fleet.sim.holo_env import HoloFleetSim, agent_origin_from_pose  # noqa: E402
@@ -191,7 +191,7 @@ def run_classification_demo(out_root: Path, headless: bool = True, show: bool = 
     far = obs_pos + 14.0 * left
     spec = bench_spec("demo_classification", [obs_pos, far], yaws=[gyaw, gyaw], gate_ids=("G06",), camera_drone=0)
     spec.chase_offset = (-3.5, -2.5, 1.4)
-    sim = HoloFleetSim(spec, headless=headless)
+    sim = HoloFleetSim(spec, communication_disabled(), headless=headless)
     sim.start()
     o, tg = sim.names
     clf = EchoClassifier(gate_bars=g6.bars)
@@ -237,7 +237,7 @@ def run_classification_demo(out_root: Path, headless: bool = True, show: bool = 
     box = ([-50.0, -90.0, -310.0], [50.0, 10.0, -260.0])
     spec = bench_spec("demo_seabed", [SB, SB + np.array([25.0, 0, 12.0])], env_box=box, camera_drone=0)
     spec.chase_offset = (-3.5, -2.5, 1.0)
-    sim = HoloFleetSim(spec, headless=headless)
+    sim = HoloFleetSim(spec, communication_disabled(), headless=headless)
     sim.start()
     o, tg = sim.names
     clf = EchoClassifier(gate_bars=())

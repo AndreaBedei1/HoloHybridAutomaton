@@ -51,7 +51,7 @@ def _trial_block(args):
     G = cfg.gate
     g = load_arena_gates(HORSESHOE_TRACK, ["G06"])[0]
     yaw = math.atan2(g.axis[1], g.axis[0])
-    half = np.array([G.cr_half_len, G.cr_half_width, G.cr_half_height])
+    lo, hi = G.cr_lo(), G.cr_hi()
     rng = np.random.default_rng([seed, 99])
     ch = ac.channel(level)
     out = {"trials": 0, "receptions": 0, "nlos": 0, "accepted_nlos": 0, "false_outside": 0, "false_beyond": 0,
@@ -67,7 +67,7 @@ def _trial_block(args):
         tr = AcousticTracker(cfg)
         tr.set_identities({1: 1})
         ae = AcousticExit(cfg, tr, [1])
-        c = rng.uniform(-1, 1, 3) * half
+        c = rng.uniform(lo, hi)
         vel = rng.normal(0, 1, 3)
         vel *= rng.uniform(0, 0.69) / max(np.linalg.norm(vel), 1e-9)
         blocked = rng.random() < 0.5
@@ -76,7 +76,7 @@ def _trial_block(args):
         out["trials"] += 1
         for k in range(6):
             t_tx = float(k)
-            c = np.clip(c + vel * 1.0, -half, half)
+            c = np.clip(c + vel * 1.0, lo, hi)
             w = g.from_gate_frame(c)
             d = w - p
             cy, sy = math.cos(yaw), math.sin(yaw)

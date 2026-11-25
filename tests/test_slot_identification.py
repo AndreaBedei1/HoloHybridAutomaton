@@ -2,7 +2,7 @@
 
 import numpy as np
 
-from holo_fleet.config import DEFAULT
+from holo_fleet.config import DEFAULT, communication_disabled
 from holo_fleet.formations import TEMPLATES
 from holo_fleet.mission import FormationClock, MissionPlan, Path
 from holo_fleet.perception.formation_perception import HULL_MID, check_formation, estimate_centre_distance
@@ -11,6 +11,7 @@ from holo_fleet.perception.sonar_geometry import MOUNTS, SECTORS, far_field_patt
 from holo_fleet.perception.targets import Target
 
 FR = DEFAULT.form
+B0 = communication_disabled()  # the sonar-only logic of these tests: the same controller with the communication disabled
 DT = 0.1
 HEALTHY = {s: True for s in SECTORS}
 AT = {0: (3.5, 3.5, 0.0), 1: (3.5, 0.0, 0.0), 2: (0.0, 3.5, 0.0)}
@@ -38,7 +39,7 @@ def _targets(rels):
 
 
 def _observe(p, t, rels, acoustic=None):
-    return check_formation(p.plan, DEFAULT, np.zeros(3), np.eye(3), np.eye(3), _targets(rels), HEALTHY, t,
+    return check_formation(p.plan, B0, np.zeros(3), np.eye(3), np.eye(3), _targets(rels), HEALTHY, t,
                            p.neighbour_seen, vacant=p.vacant, acoustic=acoustic,
                            missing={k for k, v in p.missing_state.items() if v})
 
@@ -59,7 +60,7 @@ def _check(o, slot):
 
 
 def _lost_and_vacant():
-    p = Perception(_plan(3), DEFAULT)
+    p = Perception(_plan(3), B0)
     _o, t = _run(p, 0.0, 3.0, [AT[0], AT[1], AT[2]])
     _o, t = _run(p, t, t + FR.t_rejoin + 3.0, [AT[0], AT[1]])
     assert 2 in p.vacant
@@ -67,7 +68,7 @@ def _lost_and_vacant():
 
 
 def test_the_scene_is_the_diagnosed_one():
-    o = _observe(Perception(_plan(3), DEFAULT), 0.0, [DISPLACED_0, AT[1]])
+    o = _observe(Perception(_plan(3), B0), 0.0, [DISPLACED_0, AT[1]])
     assert _check(o, 2).seen and abs(_check(o, 2).residual) <= 0.5 * FR.range_gate_m and not _check(o, 0).seen
 
 
@@ -81,7 +82,7 @@ def test_a_displaced_neighbour_at_a_vacant_slot_does_not_reoccupy_it():
 
 
 def test_a_displaced_neighbour_does_not_reset_the_timer_of_a_lost_one():
-    p = Perception(_plan(3), DEFAULT)
+    p = Perception(_plan(3), B0)
     _o, t = _run(p, 0.0, 3.0, [AT[0], AT[1], AT[2]])
     _o, t = _run(p, t, t + 5.0, [AT[0], AT[1]])
     tau = p.missing_t[2]
@@ -90,20 +91,20 @@ def test_a_displaced_neighbour_does_not_reset_the_timer_of_a_lost_one():
 
 
 def test_an_echo_explains_a_present_neighbour_before_a_missing_one():
-    p = Perception(_plan(0), DEFAULT)
+    p = Perception(_plan(0), B0)
     tg = _targets([(-4.12, -0.6, 0.0)])
     u2, u3 = np.array([-1.0, 0.0, 0.0]), np.array([-1.0, -1.0, 0.0]) / np.sqrt(2.0)
     r = tg[0].ranges["REAR"]
     assert abs(estimate_centre_distance(r, "REAR", u2) - 3.5) < abs(estimate_centre_distance(r, "REAR", u3) - 4.95)
-    by_res = check_formation(p.plan, DEFAULT, np.zeros(3), np.eye(3), np.eye(3), tg, HEALTHY, 0.0, {})
+    by_res = check_formation(p.plan, B0, np.zeros(3), np.eye(3), np.eye(3), tg, HEALTHY, 0.0, {})
     assert _check(by_res, 2).seen and not _check(by_res, 3).seen
-    o = check_formation(p.plan, DEFAULT, np.zeros(3), np.eye(3), np.eye(3), _targets([(-4.12, -0.6, 0.0)]), HEALTHY,
+    o = check_formation(p.plan, B0, np.zeros(3), np.eye(3), np.eye(3), _targets([(-4.12, -0.6, 0.0)]), HEALTHY,
                         0.0, {}, missing={2})
     assert _check(o, 3).seen and not _check(o, 2).seen
 
 
 def test_b2_the_echo_of_a_heard_drone_is_not_associated_with_an_unheard_slot():
-    p = Perception(_plan(3), DEFAULT)
+    p = Perception(_plan(3), B0)
     heard = {0: np.array(DISPLACED_0), 1: np.array(AT[1])}
     o = _observe(p, 0.0, [DISPLACED_0, AT[1]], acoustic=heard)
     assert not _check(o, 2).seen and not _check(o, 0).seen

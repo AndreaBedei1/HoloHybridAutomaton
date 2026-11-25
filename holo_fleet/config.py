@@ -8,9 +8,12 @@ provenance of each value in config/parameter_sources.json.
 
 from __future__ import annotations
 
+import dataclasses
 import math
 from dataclasses import asdict, dataclass, field
 from typing import Dict, Tuple
+
+import numpy as np
 
 from holo_fleet.perception.sonar_geometry import DEFAULT_SONAR, R_IN, R_OUT, SonarModel
 
@@ -95,7 +98,16 @@ class PerceptionConfig:
 class GateRule:
     """P2 critical-region protocol (gate frame: s along the axis towards the exit, l left, z up).
 
-    The CR is |s| <= cr_half_len, |l| <= cr_half_width, |z| <= cr_half_height around the gate centre.
+    The CR is the box cr_s_min <= s <= cr_s_max, |l| <= cr_half_width, |z| <= cr_half_height (gate frame, origin at the
+    gate centre): it covers the approach immediately before the gate and the gate passage itself, not a region after
+    the gate.  Exit plane ``cr_s_max`` = 0.55 m: the G06 bars are 0.30 m deep along the axis
+    (arena_bridge.GATE_BAR_SECTION_M), so a hull touches the frame only while its centre is within 0.15 + R_OUT
+    (= |HULL_HALF| = 0.389 m, any heading) = 0.54 m of the gate plane; the whole passage [-0.54, 0.54] lies inside.
+    Entry plane ``cr_s_min`` = cr_s_max - 1.6 = -1.05 m: the CR keeps the length (1.6 m) and the volume of the previous
+    symmetric box |s| <= 0.8, so the monitored region is not shrunk; the previous pre-gate part [-0.8, 0] is inside the
+    new CR and only the post-passage part (0.55, 0.8] is dropped.  ``cr_half_len`` / ``cr_center_s`` are derived
+    (half length 0.8 m, centre at s = -0.25 m); ``cr_lo``/``cr_hi``/``cr_center``/``cr_half``/``in_cr`` are the box for
+    every user (referee, perception, control, formal models), so that all of them agree with the referee's P2.
     Queue points are abreast on the queue line s = queue_s(n), ``queue_spacing`` apart, so that two
     queued drones see each other in a pure LEFT/RIGHT relation; the line is far enough back that the
     whole CR lies inside every queued drone's FRONT cone (``queue_cone_deg`` + heading tolerance <
@@ -105,7 +117,8 @@ class GateRule:
     queue line, crosses the gate and veers towards its own formation lane after ``veer_s``.
     """
 
-    cr_half_len: float = 0.8
+    cr_s_min: float = -1.05
+    cr_s_max: float = 0.55
     cr_half_width: float = 1.0
     cr_half_height: float = 1.0
     queue_spacing: float = 3.5
@@ -131,16 +144,67 @@ class GateRule:
     stack_spacing: float = 3.5
     queue_lateral_max: float = 3.5
     hold_err_m: float = 0.10
-    stage2_hold_s: float = -2.3025
+    stage2_hold_s: float = -2.5525
     hold_lateral_allow: float = 0.27
     """Stage-2 hold of a committed drone before admission (gate frame s, on the axis): control/gate_safety.hold_s, the
-    nearest point where holding is P2-safe under the declared navigation error (-(cr_half_len + nav_err_m + reach of a
-    hold + slack) = -2.2025 m), minus the measured holding error ``hold_err_m``.  A derived value, kept equal to the
+    nearest point where holding is P2-safe under the declared navigation error (cr_s_min - (nav_err_m + reach of a
+    hold + slack) = -2.4525 m), minus the measured holding error ``hold_err_m``.  A derived value, kept equal to the
     derivation by tests/test_hold_point.py."""
+
+    v_cross_min: float = 0.12
+    """Premise (formal M3, formal/check_b2_comm.py): an admitted drone progresses along the gate axis at >= v_cross_min from
+    its admission until it has left the CR, and never stops inside it (failures inside the CR are outside the scope,
+    holo_fleet/scope.py).  A declared assumption of the P2 argument, not a measurement (M3f / B2C-Lv give the
+    counterexamples without it)."""
+    admit_zone_m: float = 0.4
+    """Admission zone of the stage-2 hold: a committed drone may be admitted once its estimated s >= stage2_hold_s -
+    admit_zone_m (control/flows.py RELOC_ZONE_M, kept equal by tests/test_b2_comm_fixes.py)."""
+
+    @property
+    def t_cross_max(self) -> float:
+        """Longest time an admitted drone can still be in the CR after its admission (derived, under the premise v_cross_min):
+        its true centre is at s >= stage2_hold_s - admit_zone_m - nav_err_m when admitted and it leaves the CR at s > cr_s_max:
+        (cr_s_max - stage2_hold_s + admit_zone_m + nav_err_m) / v_cross_min = (0.55 + 2.5525 + 0.4 + 1.0) / 0.12 = 37.52 s.
+        The degraded admission wait of B2 (AcousticConfig, formal/check_b2_comm.py) is at least this long."""
+        return (self.cr_s_max - self.stage2_hold_s + self.admit_zone_m + self.nav_err_m) / self.v_cross_min
+
+    @property
+    def cr_half_len(self) -> float:
+        """Half length of the CR along the axis (derived): (cr_s_max - cr_s_min) / 2."""
+        return 0.5 * (self.cr_s_max - self.cr_s_min)
+
+    @property
+    def cr_center_s(self) -> float:
+        """Gate-frame s of the CR centre (derived): (cr_s_min + cr_s_max) / 2."""
+        return 0.5 * (self.cr_s_min + self.cr_s_max)
+
+    def cr_lo(self) -> np.ndarray:
+        """Lower corner of the CR box in the gate frame (s, l, dz)."""
+        return np.array([self.cr_s_min, -self.cr_half_width, -self.cr_half_height])
+
+    def cr_hi(self) -> np.ndarray:
+        """Upper corner of the CR box in the gate frame (s, l, dz)."""
+        return np.array([self.cr_s_max, self.cr_half_width, self.cr_half_height])
+
+    def cr_center(self) -> np.ndarray:
+        """Centre of the CR box in the gate frame (s, l, dz)."""
+        return np.array([self.cr_center_s, 0.0, 0.0])
+
+    def cr_half(self) -> np.ndarray:
+        """Half extents of the CR box (s, l, dz)."""
+        return np.array([self.cr_half_len, self.cr_half_width, self.cr_half_height])
+
+    def in_cr(self, s, l, dz, margin: float = 0.0):
+        """Is the gate-frame point (s, l, dz) inside the CR grown by ``margin`` on every side?  Vectorised (numpy
+        broadcasting); a Python bool for scalar input.  The P2 occupancy predicate of the referee."""
+        s, l, dz = np.asarray(s, float), np.asarray(l, float), np.asarray(dz, float)
+        out = ((s >= self.cr_s_min - margin) & (s <= self.cr_s_max + margin)
+               & (np.abs(l) <= self.cr_half_width + margin) & (np.abs(dz) <= self.cr_half_height + margin))
+        return bool(out) if np.ndim(out) == 0 else out
 
     @property
     def merge_s(self) -> float:
-        return -(self.cr_half_len + self.merge_before_cr)
+        return self.cr_s_min - self.merge_before_cr
 
     def queue_s(self, n: int, dz_max: float = 0.0, lats: Tuple[float, ...] = ()) -> float:
         """Queue line, the smaller of two bounds:
@@ -152,17 +216,18 @@ class GateRule:
             ``hold_lateral_allow`` of the axis: the steady deviation w_drift_max / k_track = 0.25 m of the hold loop
             against the declared lateral drift, plus 0.02 m; the acquisition offsets are vertical) keeps ``merge_clearance`` from
             every queue point: a queued drone and a drone held before the CR are not in each other's warning band (the
-            criterion of (b); for n = 2 the line moves from -4.18 m to -5.14 m, for n = 3 from -5.41 m to -5.50 m; n = 1
+            criterion of (b); for n = 2 the line moves from -4.43 m to -5.39 m, for n = 3 from -5.66 m to -5.75 m; n = 1
             has no other queue point and n = 4 is unchanged);
         (d) the queue line is never ahead of the stage-2 hold: a queued drone holds where holding is P2-safe under the
-            declared navigation error (control/gate_safety.py; n = 1 moves from -1.91 m to -2.30 m).
+            declared navigation error (control/gate_safety.py; n = 1 moves from -2.16 m to -2.55 m).
+        Bound (a) is measured from the CR entry plane (-cr_s_min); every bound follows the CR entry plane.
         ``lats``: the column laterals (default: the abreast queue of n columns)."""
         lats = tuple(lats) or self.queue_laterals(n)
         l_max = max(abs(x) for x in lats)
-        need = self.cr_half_len + 0.24 + (l_max + self.cr_half_width) / math.tan(math.radians(self.queue_cone_deg))
+        need = -self.cr_s_min + 0.24 + (l_max + self.cr_half_width) / math.tan(math.radians(self.queue_cone_deg))
         if dz_max > 0.0:
             off = math.hypot(l_max + self.cr_half_width, dz_max + self.cr_half_height)
-            need = max(need, self.cr_half_len + 0.24 + off / math.tan(math.radians(self.queue_cone_deg)))
+            need = max(need, -self.cr_s_min + 0.24 + off / math.tan(math.radians(self.queue_cone_deg)))
         a = math.radians(self.merge_angle_deg)
         for k in range(len(lats) - 1):
             lq, ln = lats[k], lats[k + 1]
@@ -199,7 +264,6 @@ class FormationRule:
     v_nominal: float = 0.30
     v_slot_max: float = 0.40
     v_recovery_max: float = 0.50
-    neighbour_adaptation: bool = True
     range_gate_m: float = 1.2
     neighbour_range_m: float = 7.5
     t_reinclude: float = 1.0
@@ -214,6 +278,24 @@ class FormationRule:
     follow_on_m: float = 0.08
     follow_off_m: float = 0.04
     a_follow: float = 0.05
+    v_catch_min: float = 0.10
+
+    def keeping_cap(self, v_plan: float) -> float:
+        """Horizontal speed cap of the formation-keeping modes at the planned reference speed ``v_plan`` [m/s].
+
+        The slot moves at up to v_plan, so a keeping cap at or below v_plan leaves no along-track catch-up authority:
+        a drone behind its slot by less than e_lost stays behind for ever (formal C1m).  The cap is v_slot_max, raised
+        to v_plan + v_catch_min when the plan is faster, never above the recovery cap (the vehicle authority)."""
+        return min(self.v_recovery_max, max(self.v_slot_max, v_plan + self.v_catch_min))
+
+    def check_clock_speed(self, v_plan: float) -> None:
+        """Operating-domain precondition of P3 (formal C4), checked when a mission plan is loaded: the planned speed
+        of the formation reference leaves the catch-up margin v_catch_min below the recovery cap (hence below the
+        keeping cap).  Raises ValueError on violation."""
+        if not v_plan + self.v_catch_min <= self.v_recovery_max + 1e-9:
+            raise ValueError(f"formation clock speed {v_plan:.3f} m/s leaves less than the catch-up margin "
+                             f"v_catch_min = {self.v_catch_min:.2f} m/s below v_recovery_max = {self.v_recovery_max:.2f} m/s "
+                             "(P3 operating domain, formal C4)")
 
     @property
     def catch_up(self) -> float:
@@ -263,30 +345,36 @@ class RefereeConfig:
     t_ok_hold: float = 8.9
 
 
+COMMUNICATION_ACOUSTIC = "ACOUSTIC_RB"
+"""``BeaconConfig.mode`` of the controller: the passive one-way acoustic beacons (B2)."""
+COMMUNICATION_DISABLED = "NONE"
+"""``BeaconConfig.mode`` of the communication-disabled baseline (B0): the SAME controller, no beacon is emitted or heard."""
+
+
 @dataclass(frozen=True)
 class BeaconConfig:
-    """One-way acoustic beacon (OFF in the communication-free baseline).
+    """The passive one-way acoustic beacons of the controller (B2); ``mode = COMMUNICATION_DISABLED`` switches them off.
 
     Every drone emits, on a pre-assigned TDMA schedule of period ``period_s``, a coded ping carrying its static
-    identity and (``payload``) a short data packet with its ONBOARD position estimate and a conservative bound of
-    that estimate's error (sim/beacon.py, encode_payload).  Strictly
+    identity and a short data packet with its ONBOARD position estimate, a conservative bound of that estimate's error
+    and its gate phase (sim/beacon.py, perception/payload.py).  Strictly
     one-way broadcast: no handshake, no reply, no acknowledgement, no control decision; receivers measure range
     (one-way travel time, synchronised clocks) and direction (receiving array) themselves.  Transport: HoloOcean's AcousticBeaconSensor driven by
     sim/beacon.py, measurement model sim/acoustic_channel.py (level ``channel``, simulator side only), onboard use
-    perception/acoustic.py with the declared envelope AcousticConfig."""
+    perception/acoustic.py with the declared envelope AcousticConfig.  With the communication disabled nothing is heard:
+    silence is never evidence that a passage is safe (perception/acoustic_gate.py, formal/check_b2_comm.py)."""
 
-    mode: str = "NONE"
+    mode: str = COMMUNICATION_ACOUSTIC
     period_s: float = 1.0
     max_range_m: float = 50.0
     check_visible: bool = True
     sound_speed: float = 1500.0
     channel: str = "CLEAN"
-    payload: bool = True
     payload_bitrate_bps: float = 1000.0
 
     @property
     def enabled(self) -> bool:
-        return self.mode == "ACOUSTIC_RB"
+        return self.mode == COMMUNICATION_ACOUSTIC
 
 
 @dataclass(frozen=True)
@@ -326,6 +414,20 @@ class AcousticConfig:
     dvl_sigma_body_mps: float = 0.0285
     nav_depth_err_m: float = 0.45
     dr_model_tau_s: float = 0.5
+    admit_fresh_s: float = 3.5
+    """B2 admission (formal/check_b2_comm.py): a status report of another drone is FRESH for the admission when its emission
+    (TDMA slot, own clock) is at most admit_fresh_s old.  Derived: with at most k = 2 consecutive losses on a link the latest
+    report is at most (k + 1) period_s + latency_max_s = 3.4 s old, so a channel with that loss pattern never degrades the
+    admission."""
+    commit_admit_min_s: float = 4.0
+    """B2 admission: no admission earlier than commit_admit_min_s after the own commitment (own clock).  Derived: it must exceed
+    admit_fresh_s + 2 clock_skew_s + one control step (0.1 s, the age of the phase a report carries) = 3.7 s, so that a fresh
+    report of a drone committed before me (or admitted before me) is emitted after its commitment, i.e. is a claim.  Below the
+    natural time from a queue point to the admission zone (4.2 s along the axis at v_pass for n = 2, more along the pass path): no
+    slowdown in nominal runs."""
+    clock_skew_s: float = 0.05
+    """Bound of the offset between two drones' clocks used to date a TDMA slot (synchronised clocks; hardware assumption H6:
+    the range-equivalent clock_offset_m = 0.21 m is 0.14 ms, this bound is a generous allowance for drift over a mission)."""
 
 
 @dataclass(frozen=True)
@@ -383,7 +485,6 @@ class FleetConfig:
     acoustic: AcousticConfig = field(default_factory=AcousticConfig)
     failure: FailureModel = field(default_factory=FailureModel)
     scope: ScopeConfig = field(default_factory=ScopeConfig)
-    comms_enabled: bool = False
     traffic_rule: bool = True
 
     def to_dict(self) -> Dict:
@@ -391,3 +492,9 @@ class FleetConfig:
 
 
 DEFAULT = FleetConfig()
+
+
+def communication_disabled(cfg: FleetConfig = DEFAULT) -> FleetConfig:
+    """The communication-disabled baseline (B0) of ``cfg``: the same controller with the acoustic beacons switched off.
+    Nothing else differs (tests/test_single_controller.py)."""
+    return dataclasses.replace(cfg, beacon=dataclasses.replace(cfg.beacon, mode=COMMUNICATION_DISABLED))

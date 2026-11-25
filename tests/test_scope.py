@@ -78,9 +78,10 @@ def _receiver(w_h=0.0):
     return tr, ae, _rx, P
 
 
-def test_rule_d_releases_a_silent_claim_only_outside_the_zone():
-    """A drone that reported admitted and fell silent: dead after t_silent_gate_s if last heard far from the gate, never if last heard
-    where its hull could reach the gate (in the CR; or 6 m before it in a 0.3 m/s current)."""
+def test_rule_d_diagnoses_a_silent_claimant_outside_the_zone_but_never_releases_its_claim():
+    """A drone that reported admitted and fell silent: rule D diagnoses it dead after t_silent_gate_s if last heard far from the gate,
+    never if last heard where its hull could reach the gate (in the CR; or 6 m before it in a 0.3 m/s current).  The diagnosis changes
+    no decision: the claim holds in every case (silence is unknown, formal/check_b2_comm.py B2C-D)."""
     from holo_fleet.config import DEFAULT as D
     for q, w_h, released in (([-14.0, 0.0, -5.], 0.0, True), ([0.0, 0.0, -5.], 0.0, False), ([-6.5, 0.0, -5.], 0.3, False)):
         tr, ae, _rx, P = _receiver(w_h)
@@ -88,7 +89,7 @@ def test_rule_d_releases_a_silent_claim_only_outside_the_zone():
         t = 1.0 + D.acoustic.t_silent_gate_s + 5.0
         for tt in np.arange(2.0, t, 1.0):
             _rx(tr, P, float(tt), 2, [-20.0, 6.0, -5.], phase=pl.GP_NONE)
-        assert ae.dead(1, t) == released and (ae.claims(t) == set()) == released, (q, w_h)
+        assert ae.dead(1, t) == released and ae.claims(t) == {1} and not ae.status_excluded(1, t), (q, w_h)
         assert ae.rule_d[1]["released"] == released and ae.rule_d[1]["fix_age_s"] > 70.0
 
 

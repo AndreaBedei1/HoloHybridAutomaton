@@ -23,7 +23,7 @@ it is then applied with gain ``GAIN`` to the estimate, and only if it is geometr
 
 Robust clearance and gate localization.  A fit locates the drone with an uncertainty ``u``: the radius of the set of
 near-optimal offsets (the positions the echoes cannot tell apart) plus the RMS of the matched ranges.  Before the gate
-(s <= the end of the critical region) a fit validates the localization only if the HULL (lateral half-extent
+(s <= the CR entry plane cr_s_min) a fit validates the localization only if the HULL (lateral half-extent
 ``HULL_LAT_M``, the BlueROV2 half-width plus the yaw allowance) plus ``u``, around the fitted position, lies entirely
 inside the free opening (inner half-width of the gate); a fit that places the hull beside the opening is not applied
 either, whatever its RMS: such a fit can rest on the echo of another drone taken for a bar in a side sector, and even
@@ -61,7 +61,7 @@ On the axis of the gate only the FRONT sector sees the frame until about 2.2 m, 
 unexplained, the separation layer stops the drone at the band, and the side sectors never see the bars: a deadlock of the perception.  With the same identity premise (every other drone excluded as the source of that echo) a single FRONT echo may
 correct the ALONG-AXIS estimate only, uniquely and consistently over CONSIST_N captures, by at most MAX_CORR_M in total until a validated fit.  It
 never moves the lateral estimate and never validates the localization.  Identification is by elimination only: any single echo within the correction range is adopted, and is then
-labelled STRUCTURE by the classifier.  A hull not accounted for by the premise (a drone silent for t_silent_gate_s) can therefore be taken for a bar.  It relies on the wide FRONT sonar: a
+labelled STRUCTURE by the classifier.  A hull not accounted for (a drone not heard, which is never excluded) can therefore be taken for a bar, so the identification is withheld while one exists.  It relies on the wide FRONT sonar: a
 25 deg beam would not see the bars from the axis at this range.
 The same deadlock occurs beside the opening, on the diagonal lane of a committed drone: two sectors match the bars, so a
 2-D fit exists, but it places the hull beside the opening (never validated) and is not identified when another drone can
@@ -228,7 +228,7 @@ class StructureAiding:
         if not self.gates:
             return None
         g, (s_g, l_g, _dz) = self._gate_frame(q)
-        if s_g > -self.cfg.gate.cr_half_len:
+        if s_g > self.cfg.gate.cr_s_min:
             return None
         return float(g.inner_width / 2.0 - (abs(l_g) + HULL_LAT_M + u))
 
@@ -337,7 +337,7 @@ class StructureAiding:
             return None
         if self.gates:
             g, (s_g, _l, _dz) = self._gate_frame(p)
-            outside = s_g < -self.acq[g.gate_id] or s_g > -self.cfg.gate.cr_half_len
+            outside = s_g < -self.acq[g.gate_id] or s_g > self.cfg.gate.cr_s_min
         else:
             outside = float(np.min(np.linalg.norm(pts[:, :2] - p[:2], axis=1))) > self.acq_pts
         if outside:

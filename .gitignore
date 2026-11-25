@@ -25,4 +25,7 @@ analysis/
 results/gate_safety_v1/runs*/
 results/gate_safety_v1/superseded/
 results/gate_safety_v2_negbias/runs*/
+legacy/results/gate_safety_v1/runs*/
+legacy/results/gate_safety_v1/superseded/
+legacy/results/gate_safety_v2_negbias/runs*/
 scratch/

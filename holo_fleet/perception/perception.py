@@ -23,7 +23,7 @@ neighbour is accounted for at the same step - matched by its own echo, or (B2) l
 Otherwise the uncertainty is kept: the association still counts as a sighting (no new MISSING), but it neither
 brings a missing neighbour back, nor resets its timer, nor re-includes a vacant slot.
 
-Variant B2 (range-bearing beacon, perception/acoustic.py).  Identified fixes enter the perception only, and never
+The range-bearing beacon (B2, perception/acoustic.py).  Identified fixes enter the perception only, and never
 ``d_min``, ``sense_ok`` or ``has_prio``:
 * gate: a second way to an exit witness of the CR latch (perception/acoustic_gate.py);
 * association: a sonar echo is associated with a neighbour where its fix places it (formation_perception);
@@ -183,6 +183,8 @@ class Perception:
         self.acoustic_displaced: List[int] = []
         self.acoustic_corr: List[int] = []
         self.acoustic_lag: Dict[int, float] = {}
+        self.acoustic_lag_rep: Dict[int, float] = {}
+        self.t_form: Optional[float] = None
         self.acoustic_ahead: List[int] = []
         self.payload_present: List[int] = []
         self.present_since: Dict[int, float] = {}
@@ -281,7 +283,8 @@ class Perception:
     def _other_regions(self, t: float):
         """Where every other drone of the plan can be, from the identified measurements in the own frame (no navigation
         bound enters): a fresh accepted fix's region [(samples (n, 3), growth m)].  None when one is not accounted for:
-        a drone may be left out only if it is dead (silent) or has reported passing this gate (it is beyond it)."""
+        a drone may be left out only if it has reported passing this gate (it is beyond it): silence is never evidence (a drone not
+        heard is unknown, so an echo is not identified as structure while one exists)."""
         if not self.acoustic.enabled or not self.acoustic.slot_of:
             return None
         from holo_fleet.perception.payload import GP_PASSED
@@ -295,7 +298,7 @@ class Perception:
                 out.append((f.pts, f.slack + self.acoustic.v_bound * max(t - f.t, 0.0)))
                 continue
             st = self.acoustic.status.get(k)
-            if self.acoustic.silent(k, t, a.t_silent_gate_s) or (st is not None and st.phase == GP_PASSED and st.gate_idx == self.gp.idx % 4):
+            if st is not None and st.phase == GP_PASSED and st.gate_idx == self.gp.idx % 4:
                 continue
             return None
         return out
@@ -326,20 +329,26 @@ class Perception:
 
     def _rep_offset(self, f, t: float, exp_world: np.ndarray, t_hat: np.ndarray):
         """Offset of a neighbour's reported position from where the own formation time places its slot, moved to t
-        at the clock speed, and the band of that comparison (module docstring); None without a usable payload."""
+        at the clock speed, and the band of that comparison (module docstring); None without a usable payload.  The
+        clock is read at the OWN formation time, the time base of the slots (inside a planned hold the reference does
+        not move even when mission time is past the hold); the band covers a neighbour moving at any speed between
+        v_wait and the keeping cap."""
         if not f.rep_ok:
             return None
         fr, clock = self.cfg.form, self.plan.clock
         age = max(t - f.t_tx, 0.0)
-        v_clk = clock.v if (clock is not None and clock.moving(t)) else 0.0
+        tf = t if self.t_form is None else self.t_form
+        v_clk = clock.v if (clock is not None and clock.moving(tf)) else 0.0
         off = f.rep.p + v_clk * age * t_hat - exp_world
-        return off, fr.e_ok + (fr.v_slot_max - fr.v_wait) * age
+        v_hi = fr.keeping_cap(clock.v if clock is not None else 0.0)
+        return off, fr.e_ok + (v_hi - fr.v_wait) * age
 
     def acoustic_neighbours(self, t: float, slot_err: np.ndarray, R_form: np.ndarray,
                             p_own: Optional[np.ndarray] = None) -> Optional[Dict[int, np.ndarray]]:
         """Rules A-P and A-D (module docstring); returns the fresh relative positions used for the association."""
         self.acoustic_present, self.acoustic_displaced, self.acoustic_fresh = [], [], []
         self.acoustic_lag, self.acoustic_ahead, self.payload_present = {}, [], []
+        self.acoustic_lag_rep = {}
         if not self.acoustic.enabled:
             return None
         a, fr = self.cfg.acoustic, self.cfg.form
@@ -374,7 +383,7 @@ class Perception:
                 along = float(np.median([float(r[0] @ t_hat) for r in reps]))
                 rb = max(r[1] for r in reps)
                 if along < -rb:
-                    self.acoustic_lag[k] = -along - rb
+                    self.acoustic_lag[k] = self.acoustic_lag_rep[k] = -along - rb
                 if (k not in self.acoustic_ahead and not ahead
                         and all(float(np.linalg.norm(r[0])) > fr.e_lost + A_DISPLACED_MARGIN + r[1] for r in reps)):
                     self.acoustic_displaced.append(k)
@@ -455,6 +464,7 @@ class Perception:
                t_form: Optional[float] = None, v_req: Optional[np.ndarray] = None) -> LocalObservation:
         t = frame.t
         t_form = t if t_form is None else t_form
+        self.t_form = t_form
         d = frame.data
         env = self.cfg.env
         nav = self.nav.update(t, dt, d.get("Compass"), d.get("DVLSensor"), d.get("DepthSensor"), d.get("IMUSensor"),
@@ -499,15 +509,11 @@ class Perception:
                                readings, vacant=self.vacant, acoustic=ac_rel,
                                missing={k for k, v in self.missing_state.items() if v})
         self.acoustic_residuals(t, form, R_form, nav.p, offset)
-        if not self.cfg.form.neighbour_adaptation:
-            form.missing = []
         self.track_missing(t, dt, form, in_formation, t_form)
-        if not self.cfg.form.neighbour_adaptation:
-            form.missing, form.neighbors_ok, form.front_residual = [], True, None
-            form.along_corr = form.lateral_corr = 0.0
-            self.acoustic_lag = {}
         lags = [v for k, v in self.acoustic_lag.items() if k not in self.vacant]
         form.behind = max(lags) if lags else None
+        lags = [v for k, v in self.acoustic_lag_rep.items() if k not in self.vacant]
+        form.behind_rep = max(lags) if lags else None
         fr = self.cfg.form
         if form.form_err < fr.e_ok:
             self.ok_since = t if self.ok_since is None else self.ok_since

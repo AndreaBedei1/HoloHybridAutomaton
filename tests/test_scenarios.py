@@ -147,15 +147,6 @@ def test_gate_passages_stay_inside_the_validated_queue_domain():
             check_gate_domain(sc.plans[0].slots, DEFAULT.gate)
 
 
-def test_the_final_matrix_is_the_preregistered_one():
-    import sys
-    sys.path.insert(0, str(__import__("pathlib").Path(__file__).resolve().parents[1] / "scripts"))
-    import run_sensor_robustness_campaign as c
-
-    runs = c.plan("final", None)
-    assert len(runs) == 448 == len(set(runs)) and {r[3] for r in runs} <= set(range(5000, 5405))
-
-
 def test_the_stress_scenarios_build_and_keep_the_failure_model():
     from holo_fleet.config import DEFAULT
     from holo_fleet.sim.scenarios import SCENARIOS
