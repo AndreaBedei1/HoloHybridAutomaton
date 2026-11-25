@@ -222,6 +222,11 @@ accounting for fades and the echo classifier. A healthy stream may still miss th
 slots is unsafe during reconfiguration: in line3 the centre drone can move 3.5 m forward while the outer drones approach
 each other to 0.8 m, with both adjacent distances remaining at least 3.5 m.
 
+A chain can cover non-adjacent pairs if associated, time-aligned relative observations bound each signed projection along the
+same oriented axis. Summing the positive lower bounds gives a lower bound on the endpoint projection, hence on its distance.
+The bound must allow tracking error and relative displacement until the next observation. A slot label or an unlabeled sonar
+range supplies no signed projection. The current six beams do not establish that premise through turns, avoidance and recovery.
+
 - Proved in the radial abstraction: `G(d >= d_safe)` for all time by k-induction, k = 13 (S1b); triangle lemma, of three vehicles at most one sees the other
   two more than 90 deg apart (S3); a gate-constrained vehicle that may only stop with a partner that opens (S1gb, k = 15).
 - Bounded: start-up window 4 s (S1a); calibrated deceleration 0.743 m/s^2 (S1d); sonar blackout of 0.8 s from 2.34 m (S4);
