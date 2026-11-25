@@ -314,9 +314,10 @@ def geometry(cfg: FleetConfig, n: int, queue_line=None) -> dict:
     rows = []
     for l in lats:
         son = np.array([q_s + float(MOUNTS["FRONT"][0]), l, 0.0])
-        c0, half = G.cr_center(), G.cr_half()
+        lo_g, hi_g = G.cr_lo(), G.passage_hi()
+        c0, half = (lo_g + hi_g) / 2, (hi_g - lo_g) / 2
         q = son
-        near = float(np.linalg.norm(q - np.clip(q, G.cr_lo(), G.cr_hi())))
+        near = float(np.linalg.norm(q - np.clip(q, lo_g, hi_g)))
         far = max(float(np.linalg.norm(q - c0 - half * np.array([x, y, z]))) for x in (-1, 1) for y in (-1, 1) for z in (-1, 1))
         lo_corr, hi_corr = near - R_OUT - env.eps_range_far, far + env.eps_range_near
         bar_pts = gate_frame_points()
@@ -327,7 +328,7 @@ def geometry(cfg: FleetConfig, n: int, queue_line=None) -> dict:
         rng_A = np.array([math.hypot(s - son[0], l) for s in ss]) - 0.29
         corr = (rng_A >= lo_corr) & (rng_A <= hi_corr)
         masked = (rng_A >= m_lo) & (rng_A <= m_hi)
-        seen_corr = corr & ~masked & (ss < G.cr_s_max)
+        seen_corr = corr & ~masked & (ss < G.passage_clear_s)
         first_mask = float(ss[np.argmax(masked)]) if masked.any() else None
         exposure = float(seen_corr[ss < (first_mask if first_mask is not None else 9)].sum() * (ss[1] - ss[0]))
         after = ss[(ss > (first_mask or -9)) & ~masked]
@@ -421,7 +422,7 @@ def exit_observability(cfg: FleetConfig, n: int = 0, step: float = 0.1, slots=No
                 pts += [(a + (b - a) * i / k, b - a) for i in range(k)]
             seen = []
             for cg, dirg in pts:
-                if cg[0] <= G.cr_s_max:
+                if cg[0] <= G.passage_clear_s:
                     continue
                 c = g.from_gate_frame(cg)
                 dw = dirg[0] * g.axis + dirg[1] * left
@@ -455,8 +456,8 @@ def exit_observability(cfg: FleetConfig, n: int = 0, step: float = 0.1, slots=No
 
 
 def latch_bmc(cfg: FleetConfig, geo: dict, steps: int = 420, latch: bool = True, v_lo: float = V_LO, view=None,
-              band_latch: bool = True, hold: bool = False):
-    """A crosses on the axis; B (queue view ``view``) decides with the deployed belief logic (incl. t_occ_max)."""
+              band_latch: bool = True, hold: bool = False, timeout: bool = False):
+    """A crosses on the axis; B (queue view ``view``) decides with the deployed belief logic (timeout=True retains the former release for mutations)."""
     G = cfg.gate
     dt = 0.1
     tc = int(round(G.t_clear / dt))
@@ -497,7 +498,7 @@ def latch_bmc(cfg: FleetConfig, geo: dict, steps: int = 420, latch: bool = True,
     for k in range(steps):
         cons.append(since[k + 1] == z3.If(corr[k + 1], 0, since[k] + 1))
         if latch:
-            nb = z3.If(corr[k + 1], True, z3.If(z3.And(busy[k], z3.Or(beyond[k + 1], since[k + 1] > t_occ)), False, busy[k]))
+            nb = z3.If(corr[k + 1], True, z3.If(z3.And(busy[k], z3.Or(beyond[k + 1], z3.And(timeout, since[k + 1] > t_occ))), False, busy[k]))
         else:
             nb = corr[k + 1]
         cons.append(busy[k + 1] == nb)
@@ -506,12 +507,11 @@ def latch_bmc(cfg: FleetConfig, geo: dict, steps: int = 420, latch: bool = True,
         cons.append(prio[k + 1] == z3.If(wait, 0, prio[k] + 1))
         free = z3.And(z3.Not(busy[k + 1]), quiet[k + 1] >= tc)
         cons.append(commit[k + 1] == z3.Or(commit[k], z3.And(prio[k + 1] >= tc, free)))
-    viol = []
-    for c in range(steps + 1):
-        for k in range(c + reach, steps + 1):
-            viol.append(z3.And(commit[c], z3.Not(commit[c - 1]) if c > 0 else z3.BoolVal(True),
-                               sA[k] >= G.cr_s_min, sA[k] <= G.cr_s_max))
-    cons.append(z3.Or(*viol) if viol else z3.BoolVal(False))
+    # Once committed, the first commitment is at or before k - reach iff commit[k - reach].
+    cons.append(z3.Or(*[
+        z3.And(commit[k - reach], sA[k] >= G.cr_s_min, sA[k] <= G.passage_clear_s)
+        for k in range(reach, steps + 1)
+    ]))
     return cons, {"view": view["queue_l"], "mask_s": (m_lo_s, m_hi_s), "beyond_s": b_s, "reach_steps": reach}
 
 
@@ -707,12 +707,12 @@ def run(cfg: FleetConfig = DEFAULT, verbose: bool = True) -> Report:
             if view["queue_l"] < -1e-6 and any(abs(v["queue_l"] + view["queue_l"]) < 1e-6 for v in geos[n]["views"]):
                 continue
             cons, info = latch_bmc(cfg, geos[n], view=view)
-            rep.add(check(f"M3 occupancy latch, n={n}, observer at l={view['queue_l']:+.2f}: never both in the CR (42 s BMC)",
-                          "latch + persistence + exit + t_clear + t_occ_max -> not(A in CR and B in CR)", ENC, cons,
+            rep.add(check(f"M3 occupancy latch, n={n}, observer at l={view['queue_l']:+.2f}: no admission before physical clearance (42 s BMC)",
+                          "latch + persistence + exit + t_clear -> not(A occupies passage and B reaches CR)", ENC, cons,
                           note=f"masked s in {info['mask_s']}, beyond s > {info['beyond_s']}, B needs >= {info['reach_steps']} "
                                f"steps to the CR, A crosses at >= {V_LO} m/s"), verbose)
             cons, info = latch_bmc(cfg, geos[n], view=view, hold=True)
-            rep.add(check(f"M3h occupancy latch, n={n}, observer at l={view['queue_l']:+.2f}: the crossing drone may stop anywhere before the CR, 42 s bound: never both in the CR",
+            rep.add(check(f"M3h occupancy latch, n={n}, observer at l={view['queue_l']:+.2f}: the crossing drone may stop anywhere before the CR, 42 s bound: no admission before physical clearance",
                           "as M3, the speed floor applying only inside the CR", ENC, cons, timeout_ms=900000, note=f"band from s {view['band_from_s']}, FRONT-only s {view['front_only_s']}"), verbose)
     worst = max(geos[2]["views"], key=lambda v: v["queue_l"])
     for n_m in (3, 4):
@@ -730,16 +730,16 @@ def run(cfg: FleetConfig = DEFAULT, verbose: bool = True) -> Report:
                   "expect counterexample", ENC, cons, expect="sat", note="n=3, centre queue point"), verbose)
     side3 = max(geos[3]["views"], key=lambda v: v["queue_l"])
     side4 = max(geos[4]["views"], key=lambda v: v["queue_l"])
-    cons, info4 = latch_bmc(cfg, geos[4], view=side4, hold=True, steps=540)
-    rep.add(check("M3hs scope: beyond the 42 s bound a drone stopped behind the bars before the CR is released by the t_occ_max fallback",
+    cons, info4 = latch_bmc(cfg, geos[4], view=side4, hold=True, steps=540, timeout=True)
+    rep.add(check("M3hs mutation: beyond the 42 s bound a drone stopped behind the bars before the CR is released by the t_occ_max fallback",
                   "expect counterexample: the stop before the CR is bounded by the give-up of the code (26 s), not modelled; B2 claims cover it when heard", ENC, cons, expect="sat", timeout_ms=900000,
                   note=f"n=4, outer queue point l={side4['queue_l']:+.2f} (masked from s = {side4['mask_from_s']:.2f}, before the CR "
                        f"entry {G.cr_s_min}), 54 s BMC (48 s for the n=3 view: from the n=4 line B needs {info4['reach_steps']} "
                        f"steps to the CR, and 48 s leaves no counterexample there).  Retargeted from the n=3 side view: there the "
                        f"masked region now starts at s = {side3['mask_from_s']:.2f}, inside the CR, so a drone stopped before the CR "
                        f"is always seen"), verbose)
-    cons, info = latch_bmc(cfg, geos[2], view=worst, v_lo=0.0, steps=700)
-    rep.add(check("M3f scope: an occupant that stops inside the CR (fault) is released by the t_occ_max fallback",
+    cons, info = latch_bmc(cfg, geos[2], view=worst, v_lo=0.0, steps=700, timeout=True)
+    rep.add(check("M3f mutation: an occupant that stops inside the CR (fault) is released by the t_occ_max fallback",
                   "expect counterexample: crossing speed >= V_LO is an assumption of M3", ENC, cons, expect="sat",
                   note=f"n=2, observer at l={worst['queue_l']:+.2f}, 70 s BMC; outside the P2 guarantee (B0), "
                        "B2 keeps the CR busy while the occupant is heard inside (acoustic_gate.heard_inside)"), verbose)

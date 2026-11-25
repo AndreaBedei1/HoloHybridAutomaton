@@ -174,7 +174,7 @@ def analyze_run(run_dir: Path, reference: Optional[Dict] = None, cfg=DEFAULT, pr
     dmin_t = np.array([min(float(np.linalg.norm(P[i, a] - P[i, b])) for a in range(n) for b in range(a + 1, n))
                        for i in range(m)]) if n > 1 and m else np.array([np.inf])
     t_nom = term.get("t_nom") or 0.0
-    out["P1"] = {"holds": bool(dmin_t.min() >= cfg.sep.d_safe), "min_true_separation_m": round(float(dmin_t.min()), 3),
+    out["P1"] = {"holds": bool(dmin_t.min() > cfg.sep.d_safe), "min_true_separation_m": round(float(dmin_t.min()), 3),
                  "min_true_separation_t_nom_m": round(float(dmin_t[t <= t_nom].min()), 3) if (t <= t_nom).any() else None,
                  "intruder_min_m": intr.get("min_distance"), "collisions": contacts,
                  "dead_hull_contacts": len(p1.get("dead_drone_contacts") or []),

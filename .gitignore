@@ -11,6 +11,7 @@ results/dev/
 results/logs/
 calibration/out/
 formal/results_*.log
+formal/results_quick/
 figures/gifs/
 
 # local material outside the code base

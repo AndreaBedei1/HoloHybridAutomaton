@@ -41,7 +41,7 @@ def _worst_next(q, v0, u):
 
 
 def test_a_robust_command_hands_the_next_step_a_certified_station_keeping():
-    q, v0, u = np.array([-3.05, 0.0, 0.0]), np.zeros(3), np.array([0.5, 0.0, 0.0])
+    q, v0, u = np.array([G.cr_s_min - 2.0, 0.0, 0.0]), np.zeros(3), np.array([0.5, 0.0, 0.0])
     gc = _gc(q, v0)
     kept = gc.filter_mission(u, ENV.v_max_nominal)
     assert not kept.modified and kept.margin > 0.0
@@ -63,7 +63,7 @@ def test_a_robust_command_hands_the_next_step_a_certified_station_keeping():
 def test_the_lookahead_covers_the_next_onboard_state_that_the_braking_lookahead_missed():
     """The braking lookahead (braking from the true worst state, re-certified with the fresh measurement) is replaced by the
     band of station keeping on the next estimate (P2R2): positive here, and it bounds the band seen from the next state."""
-    q, v0, u = np.array([-3.05, 0.0, 0.0]), np.zeros(3), np.array([0.5, 0.0, 0.0])
+    q, v0, u = np.array([G.cr_s_min - 2.0, 0.0, 0.0]), np.zeros(3), np.array([0.5, 0.0, 0.0])
     dp = float(gs.next_band(v0[None, :], u[None, :], B, VE, RHO)[0][0, 0])
     q1, vm1 = _worst_next(q, v0, u)
     X, T = gs.brake_reach(vm1[0] - VE, B)
@@ -75,7 +75,7 @@ def test_a_latched_station_keeping_is_not_cut_by_a_recomputed_drop():
     """R-c: at the edge of its band (0.3 m towards the CR, the loop cancelling the drift, the measured velocity +v_err) the
     margin recomputed from the fresh measurement is not positive; the certificate latched when the hold was engaged keeps
     the stage-2 hold loop (P2R3)."""
-    a = np.array([G.stage2_hold_s, 0.0, 0.0])
+    a = np.array([gs.hold_s(CFG) - G.hold_err_m, 0.0, 0.0])
     g0 = _gc(a, (0.0, 0.0, 0.0), t=1.0)
     cert = g0.sk_certificate(a)
     assert cert is not None and cert.kind == gs.SK and cert.margin > 0.0
@@ -135,3 +135,12 @@ def test_the_controller_drops_the_certificates_on_a_position_correction_and_logs
     assert len(ev) == 1 and ev[0]["after_correction"] and ctrl.gate_safety["cert"] is None
     ctrl._p2_certify_step(2.1, ctrl.ha.mode, inside, np.zeros(3), [{}], True)
     assert len([e for e in ctrl.events if e["type"] == "P2_UNCERTIFIED"]) == 1
+
+def test_a_certificate_issued_with_outage_reserve_survives_a_dvl_outage():
+    q = np.array([G.cr_s_min - 4.0, 0.0, 0.0])
+    reserve = 2 * float(NB.v_bound) + float(NB.k_lin) * float(NB.v_bound)
+    fresh = _gc(q, rho=reserve, t=1.0)
+    cert = fresh.next_certificate(np.zeros(3))
+    assert cert is not None
+    stale = _gc(q, ve=float(NB.v_bound), rho=reserve, t=1.0 + B.dt)
+    assert np.array_equal(stale.cert_anchor(cert), q)

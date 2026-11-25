@@ -133,9 +133,10 @@ class GatePerception:
         """Smallest and largest distance from the own FRONT sonar to a point of the CR (gate map + own pose)."""
         G = self.cfg.gate
         sonar = p + np.array([math.cos(yaw), math.sin(yaw), 0.0]) * float(MOUNTS["FRONT"][0])
-        c0, half = G.cr_center(), G.cr_half()
+        lo, hi = G.cr_lo(), G.passage_hi()
+        c0, half = (lo + hi) / 2, (hi - lo) / 2
         q = g.to_gate_frame(sonar)
-        near = float(np.linalg.norm(q - np.clip(q, G.cr_lo(), G.cr_hi())))
+        near = float(np.linalg.norm(q - np.clip(q, lo, hi)))
         far = float(max(np.linalg.norm(q - c0 - half * np.array([a, b, c]))
                         for a in (-1, 1) for b in (-1, 1) for c in (-1, 1)))
         return near, far
@@ -235,11 +236,6 @@ class GatePerception:
             if witness is not None and not corridor:
                 self.occ_state, self.exit_seen_t, self.exit_witness = "EXITING", t, witness
                 self.exit_kind["ACOUSTIC" if witness.get("sector") == "ACOUSTIC" else "SONAR"] += 1
-            elif (t - max(self.last_corridor_t, self.busy_since) > G.t_occ_max and not heard
-                  and self.last_corridor_t >= self.busy_since
-                  and not (self.acoustic_exit is not None and self.acoustic_exit.last_known_inside(t, g))):
-                self.occ_state, self.exit_witness = "FREE", None
-                self.occ_timeouts += 1
         if (self.occ_state == "EXITING" and not corridor and not heard and not known_inside
                 and t - max(self.exit_seen_t, self.last_corridor_t) >= G.t_clear):
             self.occ_state = "FREE"

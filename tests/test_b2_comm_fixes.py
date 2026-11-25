@@ -36,7 +36,7 @@ def _plan():
 
 def test_the_derived_parameters_match_their_derivation():
     assert G.admit_zone_m == RELOC_ZONE_M
-    assert G.t_cross_max == pytest.approx((G.cr_s_max - G.stage2_hold_s + RELOC_ZONE_M + G.nav_err_m) / G.v_cross_min)
+    assert G.t_cross_max == pytest.approx((G.passage_clear_s - G.stage2_hold_s + RELOC_ZONE_M + G.nav_err_m) / G.v_cross_min)
     assert A.commit_admit_min_s > A.admit_fresh_s + 2 * A.clock_skew_s + 0.1
     assert A.admit_fresh_s >= 3 * B2.beacon.period_s + A.latency_max_s
 

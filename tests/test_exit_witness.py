@@ -105,7 +105,7 @@ def test_absence_of_echoes_never_releases_the_latch():
     o, t = run(gp, [[]] * int((G.t_occ_max - 0.5) / 0.1), t0=t)
     assert o.occ_state == "BUSY" and o.occ_timeouts == 0
     o, t = run(gp, [[]] * 10, t0=t)
-    assert o.occ_state == "FREE" and o.occ_timeouts == 1
+    assert o.occ_state == "BUSY" and o.occ_timeouts == 0
 
 
 def test_an_echo_that_a_hull_in_the_cr_can_produce_is_no_witness():

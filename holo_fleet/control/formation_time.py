@@ -138,7 +138,7 @@ class FormationTime:
         else:
             reduced = own or self.following
         self.reduced = reduced
-        lag = behind if keeping else behind_rep
+        lag = behind if keeping and behind is not None else behind_rep
         self.sync = 0.0 if (mutex or lag is None or not moving) else min(
             fr.k_progress * lag, max(0.0, v_plan - fr.v_wait))
         if not moving:

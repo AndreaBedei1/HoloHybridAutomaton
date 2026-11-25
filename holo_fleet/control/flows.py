@@ -540,7 +540,7 @@ class Flows:
         if go.gate_id is None or go.passed or go.s <= G.cr_s_min - (float(R_OUT) + G.nav_err_m) - 1e-6:
             return v
         reach = G.cr_half_width + float(R_OUT) + G.nav_err_m
-        if abs(go.l) > reach or abs(go.dz) > G.cr_half_height + float(R_OUT) + G.nav_err_m or go.s > G.cr_s_max:
+        if abs(go.l) > reach or abs(go.dz) > G.cr_half_height + float(R_OUT) + G.nav_err_m or go.s > G.passage_clear_s:
             return v
         g = self.plan.gates[min(obs.gate_index, len(self.plan.gates) - 1)]
         v = np.asarray(v, dtype=float).copy()

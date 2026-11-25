@@ -107,13 +107,14 @@ def decision_soundness(cfg: FleetConfig, g) -> dict:
     G = cfg.gate
     tr = AcousticTracker(cfg)
     ae = AcousticExit(cfg, tr, [1])
-    c0, half = G.cr_center(), G.cr_half()
+    lo, hi = G.cr_lo(), G.passage_hi()
+    c0, half = (lo + hi) / 2, (hi - lo) / 2
     grid = [c0 + np.array([a, b, c]) * half for a in np.linspace(-1, 1, 5) for b in np.linspace(-1, 1, 5)
             for c in np.linspace(-1, 1, 3)]
     yaw0 = math.atan2(g.axis[1], g.axis[0])
     out = {"cases": 0, "exit_passed": 0, "outside_passed": 0, "range_clear_passed": 0, "excluded": 0,
            "worst_s_lower_margin": -1e9}
-    s_exit = G.cr_s_max + R_OUT
+    s_exit = G.passage_clear_s + R_OUT
     for n in range(2, 7):
         q_s, lats = queue_points(G, n, cfg.perc)
         for lat in lats:
@@ -169,7 +170,7 @@ def exit_observability(cfg: FleetConfig, g, n: int, ds: float = 0.05) -> list:
     yaw = math.atan2(g.axis[1], g.axis[0])
     q_s, lats = queue_points(G, n, cfg.perc)
     tr = AcousticTracker(cfg)
-    s_exit = G.cr_s_max + R_OUT
+    s_exit = G.passage_clear_s + R_OUT
     rows = []
     bars = list(g.bars)
     for li in lats:
@@ -186,7 +187,7 @@ def exit_observability(cfg: FleetConfig, g, n: int, ds: float = 0.05) -> list:
                 pts += [u + (v - u) * i / k for i in range(k)]
             pts.append(path[-1])
             dist = np.concatenate([[0.0], np.cumsum(np.linalg.norm(np.diff(np.array(pts), axis=0), axis=1))])
-            i_out = next(i for i, x in enumerate(pts) if x[0] > G.cr_s_max)
+            i_out = next(i for i, x in enumerate(pts) if x[0] > G.passage_clear_s)
             tt = (dist - dist[i_out]) / G.v_pass
             ae = AcousticExit(cfg, tr, [1])
             c_lc = g.from_gate_frame(pts[i_out])

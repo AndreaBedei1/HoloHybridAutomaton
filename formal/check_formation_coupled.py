@@ -443,6 +443,18 @@ def c2_checks(cfg: FleetConfig) -> list:
         consm + [sm["si"] == 0, sm["sj"] == 0, sm["ri"] == 0, sm["X"] * sm["X"] >= z(d_lock), sm1["X"] == sm["X"],
                  sm1["ri"] == 0], expect="sat",
         note="the set {rho_i = 0, sigma = 0, X >= 1.94 m} is closed under the step without the re-synchronisation; offline: delays of 8 s and more"))
+    for fresh in (False, True):
+        kw, w0, w1, cw = c2_model(cfg, q(F.v_nominal), fresh=fresh)
+        D = lambda w: w["X"] - w["si"] + w["sj"]  # noqa: E731
+        decrement = DT * kw["v"] * min(kw["h"], kw["kp"] * delta / kw["v"],
+                                       (kw["v"] - kw["vw"]) / kw["v"]) if fresh else Fr(0)
+        out.append(check(
+            f"C2w pair clock gap with {'a usable report' if fresh else 'a missing report'} outside the lag band",
+            "X > B + delta -> D' <= D - decrement, D = X - sigma_i + sigma_j", ENC,
+            cw + [w0["X"] > z(kw["B"] + delta), D(w1) > D(w0) - z(decrement)],
+            note="fixed ahead/behind role in the pair model; repeated usable reports force entrance into the lag band "
+                 "because D stays bounded below while X stays outside it. This does not prove the switched in-band dynamics."))
+
     kf, sf, sf1, consf = c2_model(cfg, q(F.v_nominal), fresh=False)
     rho_d = min(kf["kp"] * delta, kf["v"] - kf["vw"]) / kf["v"]
     Rf = lambda st: _pos(st["X"] - z(kf["B"] + delta)) + _pos(z(rho_d) - st["ri"])  # noqa: E731

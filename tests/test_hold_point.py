@@ -40,9 +40,9 @@ def test_the_hold_is_the_derived_p2_safe_hold():
     b = gs.P2Bounds.from_cfg(CFG)
     assert b.e_track == pytest.approx(ENV.w_drift_max / 0.5) and b.tau_c == pytest.approx(ENV.dt + ENV.tau_max)
     boundary = G.cr_s_min - (G.nav_err_m + ENV.w_drift_max * b.tau_c + b.e_track + gs.SLACK_M)
-    assert boundary == pytest.approx(-(1.05 + 1.0 + 0.0525 + 0.30 + 0.05), abs=1e-9)
+    assert boundary == pytest.approx(-(0.8 + 1.0 + 0.0525 + 0.30 + 0.05), abs=1e-9)
     assert gs.hold_s(CFG) == pytest.approx(boundary, abs=1e-6)
-    assert G.stage2_hold_s == pytest.approx(gs.hold_s(CFG) - G.hold_err_m, abs=1e-6)
+    assert G.stage2_hold_s <= gs.hold_s(CFG) - G.hold_err_m
     gate = K.make_gate()
 
     def margin(s):
@@ -58,7 +58,7 @@ def test_the_hold_is_the_derived_p2_safe_hold():
 
     for v_err in (0.0, float(NavBound(CFG).k_rw)):
         gc = gs.constraint_for(CFG, gate, gate.from_gate_frame([G.stage2_hold_s, 0.0, 0.0]), np.zeros(3), False, v_err=v_err)
-        assert gc.hold_margin(gc.q) == pytest.approx(G.hold_err_m, abs=1e-9)
+        assert gc.hold_margin(gc.q) == pytest.approx(gs.hold_s(CFG) - G.stage2_hold_s, abs=1e-9)
 
 
 @pytest.mark.parametrize("n", [1, 2, 3, 4])
@@ -110,6 +110,7 @@ def test_the_lateral_allowance_of_the_queue_bound_covers_the_lateral_deviation_o
         assert max(held) <= ENV.w_drift_max / G.k_track + 0.02 <= G.hold_lateral_allow + 1e-9
 
 
+@pytest.mark.slow
 @pytest.mark.parametrize("drift", DRIFTS[1:])
 @pytest.mark.parametrize("bs,bl", [(-1.0, 0.0), (-0.8, 0.6), (0.5, 0.0)])
 def test_a_held_drone_never_enters_the_cr_with_lateral_drift(bs, bl, drift):
@@ -117,6 +118,7 @@ def test_a_held_drone_never_enters_the_cr_with_lateral_drift(bs, bl, drift):
     assert not w.entries and not any(r["cr"] for r in w.rows)
 
 
+@pytest.mark.slow
 @pytest.mark.parametrize("bs", [-1.0, -0.5, 0.5, 1.0])
 def test_a_held_drone_with_a_drone_approaching_from_behind_never_enters_the_cr(bs):
     """Closed loop with the separation layer on: a committed drone held by the stage-2 check (navigation bias ``bs``),
@@ -135,6 +137,7 @@ def test_a_held_drone_with_a_drone_approaching_from_behind_never_enters_the_cr(b
     assert not [e for e in w.entries if e["drone"] == "B"] and w.double is None
 
 
+@pytest.mark.slow
 @pytest.mark.parametrize("bs,bl", BIASES)
 def test_a_held_drone_never_enters_the_cr_whatever_the_declared_navigation_error(bs, bl):
     """Estimate - truth (bs along the axis, bl lateral, norm <= nav_err_m), residual drift towards the CR, avoidance

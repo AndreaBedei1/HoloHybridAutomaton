@@ -467,19 +467,23 @@ class Perception:
         self.t_form = t_form
         d = frame.data
         env = self.cfg.env
-        nav = self.nav.update(t, dt, d.get("Compass"), d.get("DVLSensor"), d.get("DepthSensor"), d.get("IMUSensor"),
-                              stamps=frame.stamp, v_req=v_req, model_tau=self.cfg.acoustic.dr_model_tau_s,
-                              stale_s=NavBound.DVL_STALE_S)
-        self.att.update(d.get("IMUSensor"))
+        compass = frame.sample("Compass", 0.20, 2)
+        dvl = frame.sample("DVLSensor", 0.35, 3)
+        depth = frame.sample("DepthSensor", 0.20, 1)
+        imu = frame.sample("IMUSensor", env.tau_max, 6)
+        nav = self.nav.update(t, dt, compass, dvl, depth, imu, stamps=frame.stamp, v_req=v_req,
+                              model_tau=self.cfg.acoustic.dr_model_tau_s, stale_s=NavBound.DVL_STALE_S)
+        self.att.update(imu)
         roll, pitch = (self.att.roll, self.att.pitch) if self.use_attitude else (0.0, 0.0)
         R_wb = rot_world_body(roll, pitch, nav.yaw)
-        altitude = dvl_altitude(d.get("DVLSensor"))
+        altitude = dvl_altitude(dvl)
         seabed_z = None if altitude is None else float(nav.p[2] - 0.15 - altitude)
         profiles, ages = {}, {}
         for s in SECTORS:
             key = sonar_sensor_name(s)
-            profiles[s] = d.get(key)
-            ages[s] = frame.age(key) if key in d else 1e9
+            profile = frame.sample(key, env.tau_max, self.cfg.perc.sonar.bins)
+            profiles[s] = profile if profile is not None and profile.shape == (self.cfg.perc.sonar.bins,) else None
+            ages[s] = frame.age(key)
         self.nav_bound.update(t, dt, nav, model=v_req is not None)
         corr = self.aiding.update(nav.p, R_wb, profiles, ages, env.tau_max, t=t, others=self._other_regions(t))
         if corr is not None:
@@ -491,8 +495,7 @@ class Perception:
         targets = build_targets(t, readings, tracks, self.cfg, held=self.echo_hold.update(t, readings))
         d_min = min([tg.d_lower for tg in targets], default=1e9)
         unhealthy = [s for s in SECTORS if not readings[s].healthy]
-        sense_ok = (not unhealthy and frame.fresh("DVLSensor", 0.35) and frame.fresh("Compass", 0.2)
-                    and frame.fresh("DepthSensor", 0.2))
+        sense_ok = not unhealthy and dvl is not None and compass is not None and depth is not None
         gate = self.gp.update(t, nav.p, nav.yaw, targets, readings)
         gate.loc_ok = self.aiding.valid(t)
         slot, R_form, _s_ref = self.slot_reference(t_form, sigma)

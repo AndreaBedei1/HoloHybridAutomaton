@@ -80,7 +80,9 @@ def gate_events(t: np.ndarray, gf: np.ndarray, states: Sequence[Sequence[Dict]],
         return g if g.get("id") == gate_id else {}
 
     committed = np.array([[bool(states[k][i].get("committed")) and bool(gs(k, i)) for k in range(n)] for i in range(m)])
-    in_dec = np.vstack([inside[:1], inside[:-1]]) if m else inside
+    occupied = ((gf[:, :, 0] >= G.cr_s_min) & (gf[:, :, 0] <= G.passage_clear_s)
+                & (np.abs(gf[:, :, 1]) <= G.cr_half_width) & (np.abs(gf[:, :, 2]) <= G.cr_half_height))
+    in_dec = np.vstack([occupied[:1], occupied[:-1]]) if m else occupied
     other_in = np.array([[in_dec[i, :].sum() - int(in_dec[i, k]) > 0 for k in range(n)] for i in range(m)])
     e1 = {"queued_s": 0.0, "false_free_s": 0.0, "false_busy_s": 0.0}
     e2 = {"SONAR": 0, "ACOUSTIC": 0, "TIMEOUT": 0}

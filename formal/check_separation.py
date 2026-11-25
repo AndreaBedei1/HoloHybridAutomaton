@@ -396,17 +396,22 @@ def run(cfg: FleetConfig = DEFAULT, verbose: bool = True, n_poses: int = 35000) 
                         verdict="violated" if worst_rev < env.g_min else "holds", passed=worst_rev < env.g_min,
                         note=f"worst opening of the fixed reverse escape {worst_rev:.2f}"), verbose)
     rep.tables = {"escape_single_threat": rows}
-    Pz = [[z3.Real(f"p{i}{a}") for a in "xyz"] for i in range(3)]
-    dot = lambda a, b: sum(x * y for x, y in zip(a, b))  # noqa: E731
-    sub = lambda a, b: [x - y for x, y in zip(a, b)]  # noqa: E731
-    dsafe2 = sep.d_safe ** 2
-    sep_c = [dot(sub(Pz[i], Pz[j]), sub(Pz[i], Pz[j])) >= dsafe2 for i, j in ((0, 1), (0, 2), (1, 2))]
-    obtuse = lambda i, j, k: dot(sub(Pz[j], Pz[i]), sub(Pz[k], Pz[i])) <= 0  # noqa: E731
-    rep.add(check("S3 at most one vertex angle >= 90 deg (pairwise d >= d_safe)",
-                  "d_ij >= d_safe -> not(angle_i >= 90 and angle_j >= 90)", ENC,
-                  sep_c + [z3.Or(z3.And(obtuse(0, 1, 2), obtuse(1, 0, 2)), z3.And(obtuse(0, 1, 2), obtuse(2, 0, 1)),
-                                 z3.And(obtuse(1, 0, 2), obtuse(2, 0, 1)))], timeout_ms=900000,
-                  note="nonlinear real arithmetic: about 50 s alone, longer under load"), verbose)
+    # Translate A to the origin. By symmetry it suffices to rule out two non-acute angles at A and B.
+    ab = [z3.Real(f"ab_{axis}") for axis in "xyz"]
+    ac = [z3.Real(f"ac_{axis}") for axis in "xyz"]
+    at_a = sum(u * v for u, v in zip(ab, ac))
+    at_b = sum(u * (u - v) for u, v in zip(ab, ac))  # both rays reversed in the dot product
+    side_sq = sum(u * u for u in ab)
+    identity = z3.simplify(at_a + at_b - side_sq, som=True).eq(z3.RealVal(0))
+    a, b = z3.Reals("angle_dot_a angle_dot_b")
+    triangle = check("S3 at most one vertex angle >= 90 deg (pairwise d >= d_safe)",
+                     "d_ij >= d_safe -> not(angle_i >= 90 and angle_j >= 90)", ENC,
+                     [a <= 0, b <= 0, a + b >= sep.d_safe ** 2],
+                     note="the two angle dot products sum to |AB|^2 (checked by polynomial normalization)")
+    triangle.passed = triangle.passed and identity
+    if not identity:
+        triangle.verdict = "identity_failed"
+    rep.add(triangle, verbose)
     T_b = 0.8
     Kb = int(round((T_b + env.tau_max) / p["dt"])) + 10
     d, c, dh = radial_vars(Kb)
@@ -423,6 +428,14 @@ def run(cfg: FleetConfig = DEFAULT, verbose: bool = True, n_poses: int = 35000) 
     rep.add(check(f"S4 blackout <= {T_b}s starting at d >= {d_blackout} m keeps d >= d_safe",
                   "FAILSAFE hold with unrejected drift w_rel", ENC, cons,
                   note=f"d_blackout = {d_blackout} m"), verbose)
+    from holo_fleet.control.separation import swept_margin
+
+    distance, lower, own, peer, interval, elapsed, actual = z3.Reals("distance lower own peer interval elapsed actual")
+    positive = swept_margin(lower, own, peer, z3.RealVal(str(sep.d_safe)), interval) > 0
+    rep.add(check("S5 strict separation throughout a certified interval",
+                  "lower <= d(0), speed bounds and positive swept margin -> d(u) > d_safe for 0 <= u <= dt",
+                  ENC, [distance >= lower, own >= 0, peer >= 0, 0 <= elapsed, elapsed <= interval,
+                        actual >= distance - (own + peer) * elapsed, positive, actual <= sep.d_safe]), verbose)
     return rep
 
 

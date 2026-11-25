@@ -164,9 +164,9 @@ class Report:
                 print("       counterexample: " + format_counterexample(r.counterexample))
         return r
 
-    def save(self) -> Path:
-        RESULTS_DIR.mkdir(parents=True, exist_ok=True)
-        path = RESULTS_DIR / f"{self.name}.json"
+    def save(self, directory: Path = RESULTS_DIR) -> Path:
+        directory.mkdir(parents=True, exist_ok=True)
+        path = directory / f"{self.name}.json"
         payload = {"check": self.name, "all_passed": all(r.passed for r in self.results),
                    "results": [r.__dict__ for r in self.results]}
         path.write_text(json.dumps(payload, indent=2, default=str))

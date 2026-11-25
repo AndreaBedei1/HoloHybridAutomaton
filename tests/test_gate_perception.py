@@ -80,8 +80,8 @@ def test_drone_between_queue_and_cr_is_a_wait_not_an_occupancy():
     assert o.decision == "WAIT" and o.occ_state == "FREE"
 
 
-def test_timeout_is_counted():
+def test_elapsed_time_without_exit_evidence_keeps_the_latch_busy():
     gp = perception()
     _, t = run(gp, [[tg({"FRONT"}, 4.6)]] * 3)
     o, t = run(gp, [[]] * int(G.t_occ_max / 0.1 + 5), t0=t)
-    assert o.occ_state == "FREE" and o.occ_timeouts == 1
+    assert o.occ_state == "BUSY" and o.occ_timeouts == 0

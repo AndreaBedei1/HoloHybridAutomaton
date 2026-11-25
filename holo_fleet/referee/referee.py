@@ -3,7 +3,7 @@
 The referee is the ONLY component that reads simulator ground truth.  It is fed by the runner and
 never returns anything to a controller.  It judges, on agent-origin (hull-centre) positions:
 
-* P1  G(forall i != j: d_ij >= d_safe)          - minimum distance per pair, violations, contacts;
+* P1  G(forall i != j: d_ij > d_safe)          - minimum distance per pair, violations, contacts;
 * P2  G(sum_i inside_CR_i <= 1)                  - occupancy of every critical region, entry order;
 * P3  G(formation_lost -> F formation_recovered) - episodes of formation loss with their recovery
   times.  A finite run cannot falsify a liveness property: an episode still open at the end of a
@@ -191,7 +191,7 @@ class Referee:
             row[f"d_{i}_{j}"] = round(d, 4)
             if d < self.min_d[(i, j)]:
                 self.min_d[(i, j)], self.min_d_t[(i, j)] = d, t
-            if d < sep.d_safe:
+            if d <= sep.d_safe:
                 self.p1_violations.append({"t": t, "pair": [self.names[i], self.names[j]], "d": round(d, 3)})
             if d < sep.d_collision:
                 self.contacts.append({"t": t, "pair": [self.names[i], self.names[j]], "d": round(d, 3)})
@@ -298,7 +298,7 @@ class Referee:
                 else round(e.recovery_after_perturbation, 2),
                 "modes_at_loss": e.modes_at_loss} for e in self.episodes]
         return {
-            "P1_separation": {"formula": "G(forall i!=j: d_ij >= d_safe)", "d_safe": sep.d_safe,
+            "P1_separation": {"formula": "G(forall i!=j: d_ij > d_safe)", "d_safe": sep.d_safe,
                               "min_distance": None if dmin is None else round(dmin, 3),
                               "min_per_pair": {f"{self.names[i]}-{self.names[j]}": {"d": round(d, 3), "t": self.min_d_t[(i, j)]}
                                                for (i, j), d in self.min_d.items()},
