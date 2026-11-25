@@ -1,0 +1,11 @@
+# Safety, liveness and validation plan
+
+The reference is `6121f7032ad5d74c3a4827f202a1ad44302d7b08`. At audit, local and remote main identify the same tree. The baseline has 395 formal checks, 691 essential tests and no GitHub Actions workflow. The archived MEDIUM traces log 48 and one P2 certificate-loss events, respectively. The 110 s simultaneous-commitment probe is censored with zero crossings.
+
+1. Audit the archived losses and the two commitment traces against the commands, gate-frame bounds, acoustic reports and ground-truth referee. Retain all negative evidence. Use independent reviews for sensing, the protocol and recovery.
+2. Strengthen P1 using onboard evidence and explicitly carried uncertainty. Exercise loss, ambiguity, occlusion, nonadjacent pairs and competing avoidance commands. Prove any propagation bound separately from the premises needed to apply it. Judge the final command.
+3. Address demonstrated P2 certificate losses and conflicting commitment where feasible. Preserve admission guards, BUSY release by positive evidence, and complete physical passage clearance. Preserve safety even when progress assumptions fail.
+4. Measure where P3 time is spent before changing recovery. Prove only the conditional statements supported by the implementation. Test safety-priority interruptions and distinguish gate waiting from formation convergence.
+5. Add a simulator-free CI workflow and run the complete local formal catalogue. Preserve each check's classification and expected counterexamples.
+6. Verify two-engine isolation before scheduling simulations. Compare B0 and B2 with predetermined seeds 0, 1 and 2, paired configurations and fixed observation rules. Use the integrated, formation disturbance, close encounter and gate scenarios for overlap between requirements. Add dedicated simultaneous commitments and DVL interruption. Preserve all planned result rows, failures, censoring, hashes and exact configurations.
+7. Have independent reviewers challenge proof premises, protocol and trace interpretation. Record their findings in the technical report and publish the feature branch. Merge only after actual GitHub CI and the relevant acceptance evidence support release.
