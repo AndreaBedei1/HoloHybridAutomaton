@@ -507,12 +507,11 @@ def latch_bmc(cfg: FleetConfig, geo: dict, steps: int = 420, latch: bool = True,
         cons.append(prio[k + 1] == z3.If(wait, 0, prio[k] + 1))
         free = z3.And(z3.Not(busy[k + 1]), quiet[k + 1] >= tc)
         cons.append(commit[k + 1] == z3.Or(commit[k], z3.And(prio[k + 1] >= tc, free)))
-    viol = []
-    for c in range(steps + 1):
-        for k in range(c + reach, steps + 1):
-            viol.append(z3.And(commit[c], z3.Not(commit[c - 1]) if c > 0 else z3.BoolVal(True),
-                               sA[k] >= G.cr_s_min, sA[k] <= G.cr_s_max))
-    cons.append(z3.Or(*viol) if viol else z3.BoolVal(False))
+    # Once committed, the first commitment is at or before k - reach iff commit[k - reach].
+    cons.append(z3.Or(*[
+        z3.And(commit[k - reach], sA[k] >= G.cr_s_min, sA[k] <= G.passage_clear_s)
+        for k in range(reach, steps + 1)
+    ]))
     return cons, {"view": view["queue_l"], "mask_s": (m_lo_s, m_hi_s), "beyond_s": b_s, "reach_steps": reach}
 
 
@@ -708,12 +707,12 @@ def run(cfg: FleetConfig = DEFAULT, verbose: bool = True) -> Report:
             if view["queue_l"] < -1e-6 and any(abs(v["queue_l"] + view["queue_l"]) < 1e-6 for v in geos[n]["views"]):
                 continue
             cons, info = latch_bmc(cfg, geos[n], view=view)
-            rep.add(check(f"M3 occupancy latch, n={n}, observer at l={view['queue_l']:+.2f}: never both in the CR (42 s BMC)",
-                          "latch + persistence + exit + t_clear -> not(A in CR and B in CR)", ENC, cons,
+            rep.add(check(f"M3 occupancy latch, n={n}, observer at l={view['queue_l']:+.2f}: no admission before physical clearance (42 s BMC)",
+                          "latch + persistence + exit + t_clear -> not(A occupies passage and B reaches CR)", ENC, cons,
                           note=f"masked s in {info['mask_s']}, beyond s > {info['beyond_s']}, B needs >= {info['reach_steps']} "
                                f"steps to the CR, A crosses at >= {V_LO} m/s"), verbose)
             cons, info = latch_bmc(cfg, geos[n], view=view, hold=True)
-            rep.add(check(f"M3h occupancy latch, n={n}, observer at l={view['queue_l']:+.2f}: the crossing drone may stop anywhere before the CR, 42 s bound: never both in the CR",
+            rep.add(check(f"M3h occupancy latch, n={n}, observer at l={view['queue_l']:+.2f}: the crossing drone may stop anywhere before the CR, 42 s bound: no admission before physical clearance",
                           "as M3, the speed floor applying only inside the CR", ENC, cons, timeout_ms=900000, note=f"band from s {view['band_from_s']}, FRONT-only s {view['front_only_s']}"), verbose)
     worst = max(geos[2]["views"], key=lambda v: v["queue_l"])
     for n_m in (3, 4):

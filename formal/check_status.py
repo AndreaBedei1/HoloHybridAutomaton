@@ -151,11 +151,11 @@ def m3_status_model(cfg, geo, view, t_status, v_hi, e0, steps=320, hold=False, b
         wait = z3.And(seen[k + 1], sA[k + 1] <= b_s, z3.Not(no_rel(sA[k + 1])))
         C.append(prio[k + 1] == z3.If(wait, 0, prio[k] + 1))
         C.append(commit[k + 1] == z3.Or(commit[k], z3.And(prio[k + 1] >= tc, z3.Not(busy[k + 1]), quiet[k + 1] >= tc)))
-    viol = []
-    for c in range(steps + 1):
-        for k in range(c + reach, steps + 1):
-            viol.append(z3.And(commit[c], z3.Not(commit[c - 1]) if c > 0 else z3.BoolVal(True), sA[k] >= G.cr_s_min, sA[k] <= G.cr_s_max))
-    C.append(z3.Or(*viol))
+    # Once committed, the first commitment is at or before k - reach iff commit[k - reach].
+    C.append(z3.Or(*[
+        z3.And(commit[k - reach], sA[k] >= G.cr_s_min, sA[k] <= G.passage_clear_s)
+        for k in range(reach, steps + 1)
+    ]))
     return C
 
 
@@ -402,9 +402,9 @@ def run(cfg: FleetConfig = B2, verbose: bool = True) -> Report:
             if view["corridor_from_s"] is None or view["mask_from_s"] is None or view["visible_again_s"] is None or view["beyond_s"] is None:
                 continue
             ts = min(cfg.acoustic.status_fresh_s, (cfg.gate.cr_s_min - geo["queue_s"] - R_OUT - cfg.gate.queue_tol - cfg.gate.nav_err_m) / v_hi - cfg.acoustic.latency_max_s)
-            rep.add(check(f"S2h M3-status n={n}, observer l={view['queue_l']:+.2f}, the crossing drone may stop before the CR, 32 s bound: never both in the CR",
+            rep.add(check(f"S2h M3-status n={n}, observer l={view['queue_l']:+.2f}, the crossing drone may stop before the CR, 32 s bound: no admission before physical clearance",
                           "as S2, the speed floor applying only inside the CR", ENC, m3_status_model(cfg, geo, view, ts, v_hi, e0, hold=True), timeout_ms=180000), verbose)
-            rep.add(check(f"S2 M3-status n={n}, observer l={view['queue_l']:+.2f}, freshness of a report of not engaged {ts:.2f} s, v {v_hi}, offset {e0}: never both in the CR",
+            rep.add(check(f"S2 M3-status n={n}, observer l={view['queue_l']:+.2f}, freshness of a report of not engaged {ts:.2f} s, v {v_hi}, offset {e0}: no admission before physical clearance",
                           "latch + status phantom (last report younger than freshness) + FRONT-only no relation -> not(A in CR and B commits)",
                           ENC, m3_status_model(cfg, geo, view, ts, v_hi, e0), timeout_ms=180000), verbose)
     geo3 = cm.geometry(cfg, 3)
