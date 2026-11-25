@@ -74,6 +74,7 @@ class Flows:
             cfg.form.check_clock_speed(plan.clock.v)
         self.ftime = FormationTime(plan.clock, cfg)
         self.last_choice: Optional[EscapeChoice] = None
+        self.association_fallback = False
         self.hold_pos: Optional[np.ndarray] = None
         self.offset = np.zeros(3)
         self.cr_cleared = False
@@ -446,15 +447,17 @@ class Flows:
         self.p2_cert = gc.certify(v, anchors, loops, prev)
         return self.p2_cert
 
-    def threats(self, obs: LocalObservation, band: float):
+    def threats(self, obs: LocalObservation, band: float, widen: bool = True):
+        """(pattern, required opening) of every obstacle target closer than ``band``.  With ``widen`` a target seen by
+        several sectors also yields every sub-pattern of them: range agreement does not identify which sectors saw the
+        same hull.  Without it, the measured association only (``tg.pattern``)."""
         env = self.cfg.env
         out = {}
         for tg in obs.targets:
             if tg.cls not in OBSTACLE_CLASSES or tg.d_lower >= band:
                 continue
             req = env.v_open if tg.d_lower < self.cfg.sep.d_warning else 0.0
-            # Range agreement does not identify which sectors saw the same hull.
-            ranges = getattr(tg, "ranges", {})
+            ranges = getattr(tg, "ranges", {}) if widen else {}
             if len(ranges) > 1:
                 members = sorted(ranges)
                 patterns = (frozenset(group) for n in range(1, len(members) + 1) for group in combinations(members, n))
@@ -491,6 +494,26 @@ class Flows:
             self.p2_anchor = a
         return R.T @ gc.hold_velocity(self.p2_anchor), gc.certified_hold(self.p2_anchor, self.p2_cert)
 
+    def _robust_choice(self, obs: LocalObservation, band: float, plan) -> EscapeChoice:
+        """Avoidance choice, preferring robustness to the sector-association ambiguity.  First the widened hypotheses
+        (threats with ``widen``): a feasible choice opens every association of the echoes.  When none exists and the
+        measured association differs, the choice that is feasible for the measured association: a HOLD gives no opening
+        against a closing peer under any association.  Recorded in ``association_fallback``; the P1 interval certificate
+        does not depend on the direction and is unchanged.  Otherwise the widened (infeasible) choice."""
+        wide = self.threats(obs, band)
+        ch = plan(wide)
+        self.association_fallback = False
+        if ch.feasible:
+            return ch
+        measured = self.threats(obs, band, widen=False)
+        if set(measured) == set(wide):
+            return ch
+        alt = plan(measured)
+        if alt.feasible:
+            self.association_fallback = True
+            return alt
+        return ch
+
     def _after_choice(self, ch) -> None:
         if ch.label != "HOLD":
             self.p2_anchor = None
@@ -500,9 +523,8 @@ class Flows:
         sep = self.cfg.sep
         R = obs.R_wb
         v_des_b = R.T @ v_mission_world
-        th = self.threats(obs, sep.d_warning_exit)
-        ch = self.escape.warning_velocity(v_des_b, th, obs.unhealthy, obs.yaw, self.cfg.env.v_max_nominal,
-                                          p2=self._p2(gc, R), hold=self._hold(gc, R))
+        ch = self._robust_choice(obs, sep.d_warning_exit, lambda th: self.escape.warning_velocity(
+            v_des_b, th, obs.unhealthy, obs.yaw, self.cfg.env.v_max_nominal, p2=self._p2(gc, R), hold=self._hold(gc, R)))
         self._after_choice(ch)
         self.last_choice = ch
         return R @ ch.v_body
@@ -511,13 +533,12 @@ class Flows:
                             v_mission_world: np.ndarray, gc: Optional[gs.GateConstraint] = None) -> np.ndarray:
         env, sep = self.cfg.env, self.cfg.sep
         R = obs.R_wb
-        th = self.threats(obs, sep.d_ca_exit)
         occupied = {s for tg in obs.targets if tg.r_min < 4.0 for s in tg.pattern}
         z = obs.p[2]
-        ch = self.escape.escape_velocity(th, obs.unhealthy, obs.yaw, env.v_escape, current_body=R.T @ current_world,
-                                         mission_body=R.T @ v_mission_world, occupied=occupied,
-                                         depth_room=(z - env.z_min, env.z_max - z), p2=self._p2(gc, R),
-                                         hold=self._hold(gc, R))
+        ch = self._robust_choice(obs, sep.d_ca_exit, lambda th: self.escape.escape_velocity(
+            th, obs.unhealthy, obs.yaw, env.v_escape, current_body=R.T @ current_world,
+            mission_body=R.T @ v_mission_world, occupied=occupied, depth_room=(z - env.z_min, env.z_max - z),
+            p2=self._p2(gc, R), hold=self._hold(gc, R)))
         self._after_choice(ch)
         self.last_choice = ch
         return R @ ch.v_body

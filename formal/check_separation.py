@@ -84,12 +84,16 @@ def interval_checks(cfg: FleetConfig = DEFAULT):
                 ENC, [*motion, elapsed <= interval, positive, actual <= safe])
 
     partial = z3.Real("partial")
-    carried = propagate_lower(lower, closing, elapsed)
+    cap_p = exact(speed_bound(cfg))
+    carried = propagate_lower(lower, 2 * cap_p, elapsed)
     retained = z3.If(partial < carried, partial, carried)
     yield check("S5a propagation preserves a per-pair lower bound through sonar loss",
-                "L <= d(0), physical relative speed <= V, t >= 0 -> min(L - V*t, partial) <= d(t)",
-                ENC, [*motion, z3.Or(actual < carried, actual < retained)],
-                note="Apply to every pair covered by the original observation. Each step still requires its own strict swept margin.")
+                "L <= d(0), true speeds own, peer <= speed_bound, t >= 0 -> min(partial, L - 2*speed_bound*t) <= d(t)",
+                ENC, [*motion, own <= cap_p, peer <= cap_p, actual < retained],
+                note="As deployed (separation.interval_record): the propagation uses the declared cap 2*speed_bound, the "
+                     "true speeds are free below it. The minimum with any partial sonar value is sound because the carried "
+                     "term is; the partial value itself is not claimed sound. The speed premise of the peer is not checked "
+                     "onboard. Each step still requires its own strict swept margin.")
 
     dt = exact(cfg.env.dt)
     cap = exact(speed_bound(cfg))
