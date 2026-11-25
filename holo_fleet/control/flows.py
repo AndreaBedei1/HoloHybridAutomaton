@@ -498,8 +498,12 @@ class Flows:
         """Avoidance choice, preferring robustness to the sector-association ambiguity.  First the widened hypotheses
         (threats with ``widen``): a feasible choice opens every association of the echoes.  When none exists and the
         measured association differs, the choice that is feasible for the measured association: a HOLD gives no opening
-        against a closing peer under any association.  Recorded in ``association_fallback``; the P1 interval certificate
-        does not depend on the direction and is unchanged.  Otherwise the widened (infeasible) choice."""
+        against a closing peer under any association.  Also when the widened choice is a HOLD (no motion is non-closing
+        for every hypothesis: two peers in adjacent sectors) and the measured choice is a motion that opens every
+        measured association, below the full share: holding never raises the distance bound above the exit threshold, so
+        two drones holding each other in the warning band never leave it (v25 gate runs).  That decision keeps its
+        P1-uncertified joint class.  Recorded in ``association_fallback``; the P1 interval certificate does not depend
+        on the direction and is unchanged.  Otherwise the widened (infeasible) choice."""
         wide = self.threats(obs, band)
         ch = plan(wide)
         self.association_fallback = False
@@ -509,7 +513,7 @@ class Flows:
         if set(measured) == set(wide):
             return ch
         alt = plan(measured)
-        if alt.feasible:
+        if alt.feasible or (ch.label == "HOLD" and alt.label != "HOLD" and alt.guarantee > 0.0):
             self.association_fallback = True
             return alt
         return ch

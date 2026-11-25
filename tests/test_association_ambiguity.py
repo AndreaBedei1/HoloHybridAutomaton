@@ -78,3 +78,37 @@ def test_no_feasible_association_keeps_the_infeasible_widened_choice():
     obs = _obs([_target({s: 0.9}, 0.9) for s in sides])
     fl.collision_avoidance(obs, np.zeros(3), np.zeros(3))
     assert not fl.last_choice.feasible and not fl.association_fallback
+
+
+def _stalled_drone_0():
+    """Drone 0 of the v25 gate run B2_CLEAN s0 at t = 30 s: a diagonal peer seen by REAR and RIGHT and a second RIGHT
+    echo, all inside d_warning (d_lower 2.24 m)."""
+    return _obs([_target({"REAR": 2.82, "RIGHT": 2.87}, 2.24), _target({"RIGHT": 2.87}, 2.24)])
+
+
+def test_no_robust_opening_moves_on_a_measured_opening_instead_of_holding_forever():
+    """The widened hypotheses leave no non-closing motion (HOLD, every step: the drones of that run never left
+    SEPARATION_WARNING).  A direction that opens every measured association, below the full share, is taken: the
+    separation grows and the warning can end.  The joint decision stays without a full P1 share."""
+    fl = Flows(PLAN, CFG)
+    obs = _stalled_drone_0()
+    wide = fl.threats(obs, CFG.sep.d_warning_exit)
+    worst = np.min([fl.escape.guarantee(p, []) for p, _ in wide], axis=0)
+    assert not np.any(worst > 0.0), "precondition: nothing opens every widened hypothesis"
+    v = fl.separation_warning(obs, np.array([0.3, 0.0, 0.0]))
+    assert np.linalg.norm(v) > 0.1 and fl.last_choice.label != "HOLD"
+    assert not fl.last_choice.feasible and fl.association_fallback
+    k = int(np.argmax(fl.escape.cands @ fl.last_choice.direction))
+    for pattern, _ in fl.threats(obs, CFG.sep.d_warning_exit, widen=False):
+        assert fl.escape.guarantee(pattern, [])[k] > 0.0, f"opens the measured {sorted(pattern)}"
+
+
+def test_hold_is_kept_when_the_measured_association_has_no_opening_either():
+    """Drone 1 of the same run: FRONT+LEFT and RIGHT peers; no direction opens both measured patterns, HOLD stays."""
+    fl = Flows(PLAN, CFG)
+    obs = _obs([_target({"FRONT": 2.82, "LEFT": 2.82}, 2.33), _target({"RIGHT": 2.92}, 2.33)])
+    measured = fl.threats(obs, CFG.sep.d_warning_exit, widen=False)
+    g = np.min([fl.escape.guarantee(p, []) for p, _ in measured], axis=0)
+    v = fl.separation_warning(obs, np.zeros(3))
+    if not np.any(g > 0.0):
+        assert fl.last_choice.label == "HOLD" and np.linalg.norm(v) < 1e-9 and not fl.association_fallback
