@@ -38,6 +38,9 @@ S3  Triangle lemma (Z3, nonlinear): with all pairwise distances >= d_safe at mos
     drones sees the other two more than 90 deg apart.
 S4  Blackout lemma (Z3): a sonar blackout of <= T_b s starting at d >= d_blackout keeps d >= d_safe
     (FAILSAFE holds position; unrejected drift w_rel).
+S5  Strict one-interval separation and preservation of a propagated lower bound (Z3). The
+    interval chain requires a positive margin at every step. The expected counterexample permits
+    sustained closure within the caps, exhausting the margin after a single certified interval.
 
 NOT proved here (assumptions, measured on the CLEAN reference runs, external archive): the sonar detects a BlueROV2
 anywhere in its 60 deg cone within range (probe F), both drones of a pair detect each other (six
@@ -57,13 +60,51 @@ import time
 import numpy as np
 import z3
 
-from common import CheckResult, Report, check  # noqa: E402
+from common import CheckResult, Report, check, exact  # noqa: E402
 
 from holo_fleet.config import DEFAULT, FleetConfig
 from holo_fleet.control.escape import EscapePlanner, direction_label
 from holo_fleet.perception import sonar_geometry as sg
 
 ENC = "formal/check_separation.py"
+
+
+def interval_checks(cfg: FleetConfig = DEFAULT):
+    from holo_fleet.control.separation import propagate_lower, swept_margin
+    from holo_fleet.perception.exit_witness import speed_bound
+
+    safe = exact(cfg.sep.d_safe)
+    distance, lower, own, peer, interval, elapsed, actual = z3.Reals("distance lower own peer interval elapsed actual")
+    closing = own + peer
+    motion = [distance >= lower, own >= 0, peer >= 0, elapsed >= 0,
+              actual >= distance - closing * elapsed]
+    positive = swept_margin(lower, own, peer, safe, interval) > 0
+    yield check("S5 strict separation throughout a certified interval",
+                "lower <= d(0), speed bounds and positive swept margin -> d(u) > d_safe for 0 <= u <= dt",
+                ENC, [*motion, elapsed <= interval, positive, actual <= safe])
+
+    partial = z3.Real("partial")
+    carried = propagate_lower(lower, closing, elapsed)
+    retained = z3.If(partial < carried, partial, carried)
+    yield check("S5a propagation preserves a per-pair lower bound through sonar loss",
+                "L <= d(0), physical relative speed <= V, t >= 0 -> min(L - V*t, partial) <= d(t)",
+                ENC, [*motion, z3.Or(actual < carried, actual < retained)],
+                note="Apply to every pair covered by the original observation. Each step still requires its own strict swept margin.")
+
+    dt = exact(cfg.env.dt)
+    cap = exact(speed_bound(cfg))
+    later = z3.Real("later")
+    yield check("S5b declared limit: one certified interval need not leave a second positive margin",
+                "two peers close at the declared speed caps with no new usable observation",
+                ENC, [swept_margin(distance, cap, cap, safe, dt) > 0,
+                      later == propagate_lower(distance, 2 * cap, 2 * dt), later <= safe], expect="sat")
+
+    along = z3.Real("along")
+    opening = exact(cfg.env.v_open)
+    yield check("S5c opposed threat bearings prevent a simultaneous positive opening contribution",
+                "min(-v·u, -v·(-u)) <= 0 for any own command v",
+                ENC, [along >= opening, -along >= opening],
+                note="Position hold requests zero opening. It supplies no guarantee against a closing peer or sustained drift.")
 
 
 def _hull_points(n=12):
@@ -428,14 +469,8 @@ def run(cfg: FleetConfig = DEFAULT, verbose: bool = True, n_poses: int = 35000) 
     rep.add(check(f"S4 blackout <= {T_b}s starting at d >= {d_blackout} m keeps d >= d_safe",
                   "FAILSAFE hold with unrejected drift w_rel", ENC, cons,
                   note=f"d_blackout = {d_blackout} m"), verbose)
-    from holo_fleet.control.separation import swept_margin
-
-    distance, lower, own, peer, interval, elapsed, actual = z3.Reals("distance lower own peer interval elapsed actual")
-    positive = swept_margin(lower, own, peer, z3.RealVal(str(sep.d_safe)), interval) > 0
-    rep.add(check("S5 strict separation throughout a certified interval",
-                  "lower <= d(0), speed bounds and positive swept margin -> d(u) > d_safe for 0 <= u <= dt",
-                  ENC, [distance >= lower, own >= 0, peer >= 0, 0 <= elapsed, elapsed <= interval,
-                        actual >= distance - (own + peer) * elapsed, positive, actual <= sep.d_safe]), verbose)
+    for result in interval_checks(cfg):
+        rep.add(result, verbose)
     return rep
 
 

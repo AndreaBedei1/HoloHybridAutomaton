@@ -20,6 +20,11 @@ EST = check_separation.deployed_bound(DEFAULT)
 EPS, VC = DEFAULT.env.eps_range_far, DEFAULT.perc.v_close_staleness
 
 
+def test_p1_interval_lemmas_and_expected_recursive_counterexample():
+    verdicts = {row.prop.split()[0]: row.verdict for row in check_separation.interval_checks()}
+    assert verdicts == {"S5": "unsat", "S5a": "unsat", "S5b": "sat", "S5c": "unsat"}
+
+
 @pytest.mark.parametrize("kind,n_hulls,dist,errors,boundary", [
     ("single", (1, 1), (1.0, 8.0), "random", "random"),
     ("corner", (1, 2), (0.7, 3.0), "far", "narrow"),

@@ -253,7 +253,7 @@ class DroneController:
         dvl_fresh = t - self.perception.nav.state.t_dvl <= NavBound.DVL_STALE_S
         cmd = self.ll.command(self.perception.nav.state, v, yaw_d, authority, dt, dvl_fresh=dvl_fresh)
         thrust = thruster_command(cmd["surge"], cmd["sway"], cmd["heave"], cmd["yaw"], self.cfg.plant.thruster_limit)
-        p1 = interval_record(obs, frame, v, thrust, dt, self.cfg)
+        p1 = interval_record(obs, frame, v, thrust, dt, self.cfg, previous=self.last_record.get("p1_interval"))
         judged = mode not in AVOIDANCE
         check = check_onboard(self.ll.current_estimate(), v, self.cfg, AUTHORITY[authority]) if judged else None
         was_ok = self.envmon.ok

@@ -107,7 +107,8 @@ class EchoClassifier:
         cosh = np.cos(np.radians(self.model.half_angle_deg))
         d = fibonacci_sphere(cone_samples * 4)
         self.cone_dirs = d[d[:, 0] >= cosh]
-        self.history: Dict[str, Deque[List[float]]] = {s: deque(maxlen=3) for s in SECTORS}
+        self.history: Dict[str, Deque[Tuple[Optional[float], List[float]]]] = {
+            s: deque(maxlen=3) for s in SECTORS}
 
     @staticmethod
     def _sector_frame(sector: str, R_world_body: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
@@ -157,7 +158,8 @@ class EchoClassifier:
         return rmin if rmin <= self.model.range_max else None
 
     def classify(self, profiles: Dict[str, Optional[np.ndarray]], ages: Dict[str, float], own_pos: np.ndarray,
-                 R_world_body: np.ndarray, seabed_z: Optional[float], tau_healthy: float = 0.25) -> Dict[str, SectorReading]:
+                 R_world_body: np.ndarray, seabed_z: Optional[float], tau_healthy: float = 0.25,
+                 capture_times: Optional[Dict[str, float]] = None) -> Dict[str, SectorReading]:
         pc = self.cfg.perc
         out = {}
         for s in SECTORS:
@@ -194,10 +196,11 @@ class EchoClassifier:
                     e.cls, e.why = DYNAMIC, "unexplained compact echo"
                 rd.echoes.append(e)
             out[s] = rd
-        self._confirm(out)
+        self._confirm(out, capture_times, tau_healthy)
         return out
 
-    def _confirm(self, readings: Dict[str, SectorReading]) -> None:
+    def _confirm(self, readings: Dict[str, SectorReading], capture_times: Optional[Dict[str, float]],
+                 max_age: float) -> None:
         """An unexplained echo (DYNAMIC or UNKNOWN) needs an unexplained echo within 0.5 m in >= confirm_captures
         of the last 3 captures (this one included); otherwise it is UNCONFIRMED."""
         need = self.cfg.perc.confirm_captures
@@ -206,11 +209,15 @@ class EchoClassifier:
                 continue
             cand = [e.r0 for e in rd.echoes if e.cls in OBSTACLE_CLASSES]
             hist = self.history[s]
-            hist.append(cand)
+            stamp = None if capture_times is None else capture_times.get(s)
+            if stamp is None or not hist or hist[-1][0] is None or stamp > hist[-1][0]:
+                hist.append((stamp, cand))
+            recent = [returns for time, returns in hist
+                      if stamp is None or (time is not None and 0.0 <= stamp - time <= max_age + 1e-9)]
             for e in rd.echoes:
                 if e.cls not in OBSTACLE_CLASSES:
                     continue
-                hits = sum(any(abs(r - e.r0) <= 0.5 for r in past) for past in hist)
+                hits = sum(any(abs(r - e.r0) <= 0.5 for r in past) for past in recent)
                 if hits < need:
                     e.cls, e.why = UNCONFIRMED, f"{e.cls.lower()} echo not yet confirmed ({e.why})"
 

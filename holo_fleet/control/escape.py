@@ -132,6 +132,9 @@ class EscapePlanner:
             return EscapeChoice(np.zeros(3), np.zeros(3), 1.0, True, "HOLD")
         g = np.array([self.guarantee(P, unhealthy) for P, _ in threats])
         worst = g.min(axis=0)
+        if not np.any(worst > 0.0):
+            self.last_ca = None
+            return EscapeChoice(np.zeros(3), np.zeros(3), 0.0, False, "HOLD")
         score = worst.copy()
         occ = set(occupied)
         if occ:
@@ -146,7 +149,7 @@ class EscapePlanner:
         down_room, up_room = depth_room
         score = score - 0.5 * ((self.cands[:, 2] > 0.3) & (up_room < 1.0)) - 0.5 * ((self.cands[:, 2] < -0.3) & (down_room < 1.0))
         score = score - self._tie_penalty(heading_world)
-        i = int(np.argmax(score))
+        i = int(np.argmax(np.where(worst > 0.0, score, -np.inf)))
         j = self.last_ca
         if j is not None and worst[j] > 0 and score[j] >= score[i] - HYSTERESIS:
             i = j

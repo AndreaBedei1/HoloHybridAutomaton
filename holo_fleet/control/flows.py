@@ -8,6 +8,7 @@ the low-level controller.  Output: desired world velocity and heading.
 from __future__ import annotations
 
 import math
+from itertools import combinations
 from typing import Dict, List, Optional, Tuple
 
 import numpy as np
@@ -447,13 +448,21 @@ class Flows:
 
     def threats(self, obs: LocalObservation, band: float):
         env = self.cfg.env
-        out = []
+        out = {}
         for tg in obs.targets:
             if tg.cls not in OBSTACLE_CLASSES or tg.d_lower >= band:
                 continue
             req = env.v_open if tg.d_lower < self.cfg.sep.d_warning else 0.0
-            out.append((tg.pattern, req))
-        return out
+            # Range agreement does not identify which sectors saw the same hull.
+            ranges = getattr(tg, "ranges", {})
+            if len(ranges) > 1:
+                members = sorted(ranges)
+                patterns = (frozenset(group) for n in range(1, len(members) + 1) for group in combinations(members, n))
+            else:
+                patterns = (tg.pattern,)
+            for pattern in patterns:
+                out[pattern] = max(req, out.get(pattern, 0.0))
+        return list(out.items())
 
     @staticmethod
     def _p2(gc: Optional[gs.GateConstraint], R: np.ndarray):

@@ -190,24 +190,40 @@ def test_far_from_the_gate_or_admitted_there_is_no_constraint():
     assert gs.constraint_for(CFG, None, np.zeros(3), np.zeros(3), authorized=False) is None
 
 
-def test_without_a_constraint_the_planner_is_the_reference_planner_on_stored_inputs():
-    """P1 regression: the p2=None path (every drone away from the CR, and an admitted one) returns exactly what the
-    reference planner without the P2 constraint (commit 0e85d2d) returned on 300 random inputs, hysteresis included
-    (tests/fixtures/escape_p1_reference.json, generated once from the repository history: no git needed here)."""
+def test_without_a_constraint_the_planner_preserves_opening_commands_on_stored_inputs():
+    """Replay the reference inputs with reference hysteresis and require positive opening or a zero setpoint."""
     import json
 
     ref = json.loads((Path(__file__).resolve().parent / "fixtures" / "escape_p1_reference.json").read_text())
     new = EscapePlanner(CFG)
     assert len(ref["cases"]) == 300
+
+    def compare(choice, expected, threats, unhealthy):
+        if expected["feasible"] or np.allclose(choice.v_body, expected["v"]):
+            assert np.allclose(choice.v_body, expected["v"]) and choice.label == expected["label"]
+            assert choice.feasible == expected["feasible"]
+        elif choice.label == "HOLD":
+            assert not choice.feasible and np.allclose(choice.v_body, 0)
+            assert np.max(np.min([new.guarantee(p, unhealthy) for p, _ in threats], axis=0)) <= 0.0
+        else:
+            assert choice.guarantee > 0.0
+
+    def restore_reference_escape_history(expected):
+        # Evaluate each decision against the same prior as the historical planner.
+        velocity = np.asarray(expected["v"])
+        if np.linalg.norm(velocity) > 0.0:
+            new.last_ca = int(np.argmax(new.cands @ velocity))
+
     for c in ref["cases"]:
         th = [(frozenset(p.split("+")), r) for p, r in c["threats"]]
         a = new.warning_velocity(np.array(c["v_des"]), th, c["unhealthy"], c["yaw"], ENV.v_max_nominal)
-        assert np.allclose(a.v_body, c["warning"]["v"]) and a.label == c["warning"]["label"]
-        assert a.feasible == c["warning"]["feasible"]
+        compare(a, c["warning"], th, c["unhealthy"])
+        if not c["warning"]["feasible"]:
+            restore_reference_escape_history(c["warning"])
         b = new.escape_velocity(th, c["unhealthy"], c["yaw"], ENV.v_escape, np.array(c["current"]), np.array(c["mission"]),
                                 set(c["occupied"]), tuple(c["room"]))
-        assert np.allclose(b.v_body, c["escape"]["v"]) and b.label == c["escape"]["label"]
-        assert b.feasible == c["escape"]["feasible"]
+        compare(b, c["escape"], th, c["unhealthy"])
+        restore_reference_escape_history(c["escape"])
 
 
 def test_an_admissible_command_leaves_braking_p2_safe_at_the_next_step():
