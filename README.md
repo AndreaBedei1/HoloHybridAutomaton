@@ -202,6 +202,8 @@ The full-run baseline at `e3e31f0` (`legacy/results/pre_conditional_formal/SUMMA
 14 scope, 11 reported, 19 declared limits (11 suites, about 40 min). The current complete runner has 395 checks in 11 suites.
 D1 and D2 already imply the ten former O4 assertions, one per mode. O5 still checks the runtime monitor on inconsistent observations.
 The current formulae, classifications and expected counterexamples are in `formal/results/SUMMARY.json` and `SUMMARY.csv`.
+All 395 had the expected outcome in the complete run: 181 proved, 36 bounded, 50 numeric, 19 declared limits, 11 scope
+counterexamples, 61 mutations, 26 witnesses and 11 reported quantities. Development mode ran 179 checks.
 Only `proved` (UNSAT of a universal or inductive property) and `bounded` (UNSAT over a horizon) support a guarantee; `numeric`
 checks enumerate or sample the deployed code; mutation, witness, scope and limit counterexamples are never evidence of safety.
 Every guarantee is conditional on section 1.
@@ -339,7 +341,8 @@ One seed per configuration: observations, not a statistical bound. Raw run direc
 0 entries into the CR without admission and 0 double occupancy; the mutation with the earlier hold point and no P2 filter has 126
 episodes with an entry without admission. P1 is violated in 24 of 144 episodes, all against a non-reacting third vehicle.
 
-**Baseline unit tests** (commit `e3e31f0`, one pytest process per file): 687 passed, 1 skipped, 0 failed. The development and complete runners above execute each formal suite at most once.
+**Essential tests.** 691 passed across 55 files. The separate opt-in HoloOcean octree smoke test was deselected. The three
+integrated scenarios use the patched engine with isolated ports. The earlier baseline at `e3e31f0` had 687 passes and one skip.
 
 **P1 braking and hold pilot.** One isolated CLEAN OpenWater session measured positive and negative surge, sway and heave,
 in calm water and with an axial following current (effective drift 0.60 m/s horizontal and 0.25 m/s vertical). After switching
