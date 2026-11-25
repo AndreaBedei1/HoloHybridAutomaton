@@ -186,7 +186,7 @@ planner (`tests/test_b2_isolation.py`). Controllers never read ground truth (`te
 
 ## 5. Guarantees
 
-The full-run baseline at `e3e31f0` (`formal/results/SUMMARY.json`) records 402 checks, all with the expected verdict: 188 proved, 36 bounded, 50 numeric, 58 mutation, 26 witness,
+The full-run baseline at `e3e31f0` (`legacy/results/pre_conditional_formal/SUMMARY.json`) records 402 checks, all with the expected verdict: 188 proved, 36 bounded, 50 numeric, 58 mutation, 26 witness,
 14 scope, 11 reported, 19 declared limits (11 suites, about 40 min; formula, verdict and counterexample per check in `SUMMARY.csv`). The current complete runner has 392 checks: D1 and D2
 already imply the ten former O4 assertions, one per mode. O5 still checks the runtime monitor on inconsistent observations.
 Only `proved` (UNSAT of a universal or inductive property) and `bounded` (UNSAT over a horizon) support a guarantee; `numeric`

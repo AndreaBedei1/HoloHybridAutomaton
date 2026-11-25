@@ -395,6 +395,40 @@
    "sha256": "7587cb917a30387ba4a1a79bd2463847003387a9c3679e09ced969cb98274d22",
    "git_blob": "4c1ccede26ef0d0f8818ea4498be261be3b65808",
    "bytes": 27329
+  },
+  {
+   "original_path": "formal/results/SUMMARY.json",
+   "new_path": "legacy/results/pre_conditional_formal/SUMMARY.json",
+   "what": "formal verification before conditional-guarantee work",
+   "covers": [
+    "pre_conditional_formal"
+   ],
+   "description": "Original full-run result at the previous CR geometry; its successor remains at the original path.",
+   "related_tags": [],
+   "related_commits": [
+    "e3e31f0d25d3d4f28ab97bcf929cb8ffba6db868"
+   ],
+   "successor_at_original_path": true,
+   "sha256": "2d16115afd5268e6aeb063c3800a1b78f78679cc55f126775e22e43410ced17f",
+   "git_blob": "e217b6546fae1f1e9df9d9bb1b81021141703ddd",
+   "bytes": 625469
+  },
+  {
+   "original_path": "formal/results/SUMMARY.csv",
+   "new_path": "legacy/results/pre_conditional_formal/SUMMARY.csv",
+   "what": "formal verification before conditional-guarantee work",
+   "covers": [
+    "pre_conditional_formal"
+   ],
+   "description": "Original full-run result at the previous CR geometry; its successor remains at the original path.",
+   "related_tags": [],
+   "related_commits": [
+    "e3e31f0d25d3d4f28ab97bcf929cb8ffba6db868"
+   ],
+   "successor_at_original_path": true,
+   "sha256": "a42618535dabbdc89b12c7626317525f2c965897df2d6cdf3a2b347b18731ba9",
+   "git_blob": "d1359720faf236ca16cc6b68cfeb6c5cb4ff9adc",
+   "bytes": 445640
   }
  ]
 }
