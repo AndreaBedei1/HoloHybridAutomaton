@@ -68,7 +68,7 @@ def run_record(raw, case, protocol, seed):
     c, r = load(d / "run_config.json"), load(d / "referee_metrics.json")
     safety, mutex, recovery = (r[key] for key in ("P1_separation", "P2_mutual_exclusion", "P3_formation_recovery"))
     events = [json.loads(line) for line in (d / "events.jsonl").read_text(encoding="utf-8").splitlines()]
-    intervals, modes = Counter(), Counter()
+    intervals, sources, modes = Counter(), Counter(), Counter()
     observations = failures = recoveries = admissions = gate_filter_steps = uncertified_steps = 0
     for trace in sorted(d.glob("drone_*_state.jsonl.gz")):
         last_sense, last_entry = True, None
@@ -84,7 +84,10 @@ def run_record(raw, case, protocol, seed):
                 gate_filter_steps += int(bool(filt))
                 uncertified_steps += int(bool(filt) and filt.get("cert") is None)
                 last_sense, last_entry = sense, entry
-                intervals[(s.get("p1_interval") or {}).get("status", "MISSING")] += 1
+                interval = s.get("p1_interval") or {}
+                intervals[interval.get("status", "MISSING")] += 1
+                if interval.get("source"):
+                    sources[interval["source"]] += 1
                 modes[s["mode"]] += 1
                 observations += 1
     common = {key: value for key, value in c.items() if key not in ("setup", "communication", "fleet_config")}
@@ -92,11 +95,18 @@ def run_record(raw, case, protocol, seed):
     beacon = r["run"].get("beacon") or {}
     p2 = m.get("P2") or {}
     injected = [e for e in events if e["type"] == "TEST_COMMIT_INJECTION"]
+    with (d / "referee_timeseries.csv").open(encoding="utf-8") as series:
+        samples = max(0, sum(1 for _ in series) - 1)
+    n = c["n_drones"]
+    dt = c["fleet_config"]["env"]["dt"]
     row.update(observed_window_s=m["horizon_s"], drones=c["n_drones"], drone_samples=observations,
+               referee_samples=samples, pair_samples=samples * n * (n - 1) // 2,
                common_config_sha256=sha256(json.dumps(common, sort_keys=True).encode()).hexdigest(),
                ports=c["setup"]["engine"]["listen_ports"], terminal=m["terminal"]["outcome"],
                min_separation_m=safety["min_distance"], p1_violation_samples=safety["violations"],
                physical_contacts=safety["physical_contacts"], p1_interval_counts=dict(intervals),
+               p1_interval_sources=dict(sources), conditional_interval_fraction=(
+                   intervals["INTERVAL_CONDITIONAL"] / observations if observations else None),
                p2_max_occupancy=mutex["max_occupancy"] or None, p2_double_occupancy_samples=p2.get("events", {}).get("E5"),
                admissions=admissions, premature_admissions=p2.get("events", {}).get("E4"),
                p2_filter_steps=gate_filter_steps, p2_uncertified_steps=uncertified_steps,
@@ -108,7 +118,8 @@ def run_record(raw, case, protocol, seed):
                concessions=sum(e["type"] == "COMMITMENT_CONCEDED" for e in events),
                recovery_episodes=recovery["episodes"] if recovery["enabled"] else None,
                final_formation_error_m=recovery["final_form_err"] if recovery["enabled"] else None,
-               mode_samples=dict(modes), sense_failures=failures, sense_recoveries=recoveries,
+               mode_samples=dict(modes), mode_drone_seconds={k: round(v * dt, 3) for k, v in modes.items()},
+               sense_failures=failures, sense_recoveries=recoveries,
                sensor_drops=r["run"].get("noise_wrapper_stats"),
                beacon={k: beacon[k] for k in ("receptions", "expected_receptions", "latency_mean_ms", "latency_max_ms",
                                               "longest_absence_s") if k in beacon},
@@ -129,7 +140,8 @@ def summarize(raw, matrix):
             first, second = (r.get("common_config_sha256") for r in (b0, b2))
             delta = None
             if first is not None and first == second and b0["commit"] == b2["commit"]:
-                delta = {k: round(b2[k] - b0[k], 4) for k in ("min_separation_m", "p2_uncertified_events", "crossings",
+                delta = {k: round(b2[k] - b0[k], 4) for k in ("min_separation_m", "conditional_interval_fraction",
+                         "p2_uncertified_events", "crossings",
                          "gate_completion_s", "final_formation_error_m") if b0[k] is not None and b2[k] is not None}
             comparisons.append({"seed": seed, "same_configuration_and_revision": delta is not None, "B2_minus_B0": delta})
         fields = {k for pair in comparisons for k in (pair["B2_minus_B0"] or {})}
