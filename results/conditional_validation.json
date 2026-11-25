@@ -1,0 +1,106 @@
+{
+  "controller_commit": "37577690948fcb3751d8f2267b6bbcae7e827063",
+  "validation": "Two targeted HoloOcean runs; observed outcomes, not formal guarantees.",
+  "runs": [
+    {
+      "scenario": "line_parallel_mutex",
+      "sensor_profile": "CLEAN",
+      "seed": 0,
+      "channel": "CLEAN",
+      "engine_ports": [
+        36427
+      ],
+      "terminal": "SUCCESS",
+      "criteria_class": "PASS",
+      "P1_observed": true,
+      "min_separation_m": 2.877,
+      "P2_observed": true,
+      "P3_observed": true,
+      "recovery_s": [
+        86.2
+      ],
+      "P1_interval_records": {
+        "UNOBSERVED": 355,
+        "INTERVAL_CONDITIONAL": 4630,
+        "MOTION_OUTSIDE": 61
+      },
+      "artifact_sha256": {
+        "drone_0_state.jsonl": "ec867cf5530f37621115c56a8311ea04802c1ca202fb0cfce9426b7414c964b1",
+        "drone_1_state.jsonl": "68ed0f23db167ec0602b110edcababe8e21c27316b05eb2c15fe69f82eb4e6eb",
+        "drone_2_state.jsonl": "b03393e9e719e3d11351cc308ed150cdc52aac807436c16782db4684069e3b79",
+        "events.jsonl": "d9ad1276b688d9e67ec19d350d746a21f1c3c29cecc5fb2a72b173356608e1db",
+        "perf.json": "1c80ca71b71d402a3f1e520a7153fc0611f4fb465ada773074eb32302f0f5f41",
+        "referee_metrics.json": "61aa20759f40a909b18a98541c05799e36e39371e968d8eaf0dfde2bc72de2fa",
+        "referee_timeseries.csv": "ff70bace69994f7506643f294ebba3f966f29524cf3b21a6e7b04fe97973bb50",
+        "run_config.json": "071a85741c41fd5b1ce3e3596d984b2ceb84db20c5f2d57f226ee04f0a936e03",
+        "run_status.json": "019c75ab3f89fd47d6f9b690432f6c37dbd61c882e100136e77d889ab26961ef",
+        "summary.csv": "f4242d7d3ddf4042bc8f54870669a6f0c85424441e5c1da480a309b7fd96b535"
+      },
+      "beacon": {
+        "receptions": 963,
+        "expected_receptions": 1052,
+        "latency_max_ms": 109.18,
+        "longest_absence_s": 5.0
+      },
+      "P2_max_occupancy": 1,
+      "P2_premature_admissions": 0,
+      "P2_uncertified_events": 0,
+      "commit_times_s": [
+        1.599984,
+        25.299747,
+        58.599414
+      ]
+    },
+    {
+      "scenario": "integrated_short",
+      "sensor_profile": "MEDIUM-ALL",
+      "seed": 0,
+      "channel": "MEDIUM",
+      "engine_ports": [
+        34328
+      ],
+      "terminal": "SUCCESS",
+      "criteria_class": "PASS",
+      "P1_observed": true,
+      "min_separation_m": 3.197,
+      "P2_observed": true,
+      "P3_observed": true,
+      "recovery_s": [
+        159.0
+      ],
+      "P1_interval_records": {
+        "UNOBSERVED": 420,
+        "INTERVAL_CONDITIONAL": 4777,
+        "MOTION_OUTSIDE": 42,
+        "MOTION_UNOBSERVED": 18,
+        "NO_MARGIN": 26
+      },
+      "artifact_sha256": {
+        "drone_0_state.jsonl": "3818c8bc903b864f624cb8fabf6c6d3c870007ce4436e0fc70d95cfae112c0c3",
+        "drone_1_state.jsonl": "51a48c9943a6316e45da963b8a4795c0fb80f66bfa7e3b08e1a621bd593c79c1",
+        "drone_2_state.jsonl": "ded779bf2d39cae95545ae707b6cb14d4627d52ff5c29c664c178526606e020e",
+        "events.jsonl": "ef7888fbddc6a7a083611b6e0f1dd494397c4d99a1a5a50a31bc4d9241e88739",
+        "perf.json": "a1430d513bd9d505070a90dc6d526d2a3abc9ac81416c4220783fd4abe7a4505",
+        "referee_metrics.json": "47ade34a377dcb806fa70054da1ae318231e071067abf9f02f8b646ef0ae6151",
+        "referee_timeseries.csv": "675583d5a728fe73ac58259766978913ff7a569820d928bc5f888bd353a294b3",
+        "run_config.json": "0c018095898e5b7b101b3984097982071922903f45a33c238468a8048088e7c6",
+        "run_status.json": "019c75ab3f89fd47d6f9b690432f6c37dbd61c882e100136e77d889ab26961ef",
+        "summary.csv": "4a098a9d98a7ae28b454c545bbf005c2620b64f9fea14af8fb7773b6b5186b2f"
+      },
+      "beacon": {
+        "receptions": 770,
+        "expected_receptions": 1100,
+        "latency_max_ms": 261.18,
+        "longest_absence_s": 8.0
+      },
+      "P2_max_occupancy": 1,
+      "P2_premature_admissions": 0,
+      "P2_uncertified_events": 5,
+      "commit_times_s": [
+        15.599844,
+        55.399446,
+        82.099179
+      ]
+    }
+  ]
+}

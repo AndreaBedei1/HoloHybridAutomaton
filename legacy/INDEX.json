@@ -363,6 +363,38 @@
    "sha256": "25da3416e7f889063d0478fd05290658fd98680c3b58595186746f739b7cf115",
    "git_blob": "c5f419cbc2257e2f4ba5f3b1eed06510eba8f751",
    "bytes": 1498
+  },
+  {
+   "original_path": "results/targeted_validation/summary.csv",
+   "new_path": "legacy/results/pre_conditional_targeted/summary.csv",
+   "what": "pre-conditional targeted HoloOcean validation",
+   "covers": [
+    "pre_conditional_targeted"
+   ],
+   "description": "Twelve HoloOcean runs with the previous gate geometry and controller. See the indexed commit for the scenario and calibration setup.",
+   "related_tags": [],
+   "related_commits": [
+    "e3e31f0d25d3d4f28ab97bcf929cb8ffba6db868"
+   ],
+   "sha256": "0c89f823820c8706287f53f20fc05b17929da3b458e993cb0b93fa98e540e73d",
+   "git_blob": "099c0eb98897ffef4931cc08f3498b6847712d24",
+   "bytes": 2761
+  },
+  {
+   "original_path": "results/targeted_validation/summary.json",
+   "new_path": "legacy/results/pre_conditional_targeted/summary.json",
+   "what": "pre-conditional targeted HoloOcean validation",
+   "covers": [
+    "pre_conditional_targeted"
+   ],
+   "description": "Twelve HoloOcean runs with the previous gate geometry and controller. See the indexed commit for the scenario and calibration setup.",
+   "related_tags": [],
+   "related_commits": [
+    "e3e31f0d25d3d4f28ab97bcf929cb8ffba6db868"
+   ],
+   "sha256": "7587cb917a30387ba4a1a79bd2463847003387a9c3679e09ced969cb98274d22",
+   "git_blob": "4c1ccede26ef0d0f8818ea4498be261be3b65808",
+   "bytes": 27329
   }
  ]
 }

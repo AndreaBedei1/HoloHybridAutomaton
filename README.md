@@ -14,8 +14,9 @@ leader and no request, reply or command between vehicles.
 
 - **P1, separation:** the centre distance of every pair stays strictly above `d_safe` = 1.0 m.
 - **P2, mutual exclusion:** at most one vehicle in the critical region (CR) of a gate, and only after admission.
-- **P3, eventual formation recovery:** after a loss the formation is recovered; after an admissible permanent failure the
-  healthy vehicles recover the degraded formation, with the lost slots vacant and no false vacancy.
+- **P3, eventual formation recovery:** the healthy communicating fleet eventually re-enters the declared formation tolerance
+  after a temporary disturbance. This is the target contract. The proofs below cover specified tracking and clock regimes.
+  Permanent failures and indefinite acoustic silence have separate degraded behaviour with no fleet recovery guarantee.
 
 **Controller.** B2 (the automaton with passive one-way acoustic beacons) is the controller. B0 is the same controller with the
 communication disabled (`config.communication_disabled`; only `beacon.mode` differs, `tests/test_single_controller.py`), a baseline
@@ -41,6 +42,18 @@ the controller logs which property it can no longer certify.
   HIGH is a stress profile.
 - Permanent failures only outside the exclusion zone of the gate (`holo_fleet/scope.py`) and never inside the CR: one failure
   for 2 vehicles (none while committed), at most n - 2 for n >= 3.
+
+The deterministic checks distinguish a hard premise from a simulator noise parameter. Rates and receiver ages above are
+runtime limits. A valid timestamp alone does not establish the error bound or detect a faded return.
+
+| Stream | Error model used to evaluate the physical premises |
+|---|---|
+| Six sonars | 0.05 m bins; range residual in [-0.08, +0.12] m for valid obstacle returns; hull geometry and relative tilt at most 10 deg in the nearest-distance abstraction. A recent echo must cover the threatening pair. |
+| DVL | Ground-referenced velocity with valid bottom lock. The navigation model budgets 1% scale error, 0.0285 m/s body-frame noise scale and a separate outage term. The scale is statistical evidence. Persistent additive bias must be independently bounded or corrected for relative holding. |
+| IMU | CLEAN acceleration and angular-rate noise scales of 0.01 m/s² and 0.005 rad/s at 30 Hz. Used to screen valid samples and for heading-rate feedback. Acceleration observations alone cannot bound the position error of a steady drift. |
+| Compass | CLEAN per-axis noise scale 0.005; heading error enters the navigation and acoustic budgets, including bias. Tilt and field anomalies can exceed those budgets. |
+| Pressure depth | CLEAN noise scale 0.02 m, with 0.45 m depth allowance in the navigation budget. A lost pressure stream widens the vertical position bound. |
+| B2 passive acoustic | TDMA period 1 s, admission latency bound 0.40 s and admission-clock skew bound 0.05 s. The finite-loss result assumes at most two successive losses per link for the fresh branch. Range and bearing errors have separate envelopes. |
 
 ## 2. Layout
 
@@ -209,7 +222,11 @@ Its induction result does not by itself certify the deployed closed loop or an i
   selection (P2B4, P2B5); acoustic envelope and phantom-echo soundness (B2-A1, B2-A2, B2-PE); exclusion zone (S12); recursive
   availability, 4,948 commands and 118,752 next states, none without a certified action (P2R4n).
 
-**P3.**
+**P3.** C2w proves that a missing report does not increase the raw clock gap in the fixed-order pair abstraction and that each
+usable report strictly decreases it while the effective lag lies outside the band. With recurrent usable reports that establishes entry
+into the lag band for that pair and regime. This result does not establish permanent residence in the band after arbitrary switching,
+a common reference for the fleet, or recovery in the presence of sustained safety interventions.
+
 - Proved: ranking functions of slot tracking, along and lateral, with invariant balls of 0.44 m and 0.36 m (F1-F3); mode selection
   (F4a-F4d); the coupled 2-norm law, far and near band, at nominal and edge clock speed (C1f, C1n); clock consensus (C2a-C2d);
   rendezvous hold, clock growth, clock-speed domain, vertical channel (C3e, C3h, C4, C1z); vacancy of a neighbour that never
@@ -251,7 +268,14 @@ Its induction result does not by itself certify the deployed closed loop or an i
 
 ## 7. Evidence
 
-**Targeted HoloOcean validation** (`results/targeted_validation/summary.json|csv`, criteria v9): 12 runs, seed 0, one run per
+**Current targeted HoloOcean validation.** In `results/conditional_validation.json`, `line_parallel_mutex` (CLEAN)
+and `integrated_short` (MEDIUM-ALL, B2 MEDIUM), seed 0, both ended in SUCCESS and passed the sampled referee criteria.
+Minimum centre distances were 2.877 and 3.197 m; maximum CR occupancy was one, with zero observed premature admissions.
+Formation recovery was observed at 86.2 and 159.0 s. The MEDIUM trace contains uncertified P2 steps and unobserved or
+insufficient P1 margins. The accepted runs do not qualify those intervals. Neither run produced nearly simultaneous
+commitments. The B2 communication model exercises that case separately. Raw traces and per-file hashes are retained.
+
+**Previous targeted HoloOcean validation** (`legacy/results/pre_conditional_targeted/summary.json|csv`, criteria v9): 12 runs, seed 0, one run per
 configuration. Seven runs are at code commit `ecd18ee`. The five with a silent or lost vehicle (`lost_drone_mutex`, `lost_drone_timeout`,
 `lost_drone_rejoin`, `b2c_blackout`, `b2c_mute_transmitter`) were repeated at `a62c9b3` after the rule that a vehicle not heard is never
 left out of the map-aiding identity premise (`perception/perception.py`, `perception/structure_aiding.py`); that rule only acts when a
