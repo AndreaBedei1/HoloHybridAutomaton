@@ -18,11 +18,11 @@ def interval_record(obs, frame, velocity, thrust, dt, cfg):
     speed = max(env.v_escape, env.v_max_nominal, cfg.gate.v_pass) + env.w_drift_max
     if not obs.targets or obs.unhealthy or not obs.sense_ok or not math.isfinite(obs.d_min):
         return {"status": "UNOBSERVED"}
-    if not frame.fresh("DVLSensor", env.tau_max) or not frame.fresh("IMUSensor", env.tau_max):
+    dvl = frame.sample("DVLSensor", env.tau_max, 3)
+    imu = frame.sample("IMUSensor", env.tau_max, 6)
+    if dvl is None or imu is None or imu.ndim != 2 or imu.shape[0] < 2 or imu.shape[1] != 3:
         return {"status": "MOTION_UNOBSERVED"}
-    imu = np.asarray(frame.data["IMUSensor"])
-    if (imu.ndim != 2 or imu.shape[0] < 2 or imu.shape[1] != 3 or not np.isfinite(imu[:2]).all()
-            or not np.isfinite(obs.v_world).all() or not np.isfinite(velocity).all() or not np.isfinite(thrust).all()
+    if (not np.isfinite(obs.v_world).all() or not np.isfinite(velocity).all() or not np.isfinite(thrust).all()
             or np.linalg.norm(obs.v_world) > speed or np.linalg.norm(velocity) > speed - env.w_drift_max
             or np.max(abs(thrust)) > cfg.plant.thruster_limit or not 0.0 < dt <= env.dt + 1e-9):
         return {"status": "MOTION_OUTSIDE"}

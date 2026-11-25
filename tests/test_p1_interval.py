@@ -23,3 +23,18 @@ def test_timestamps_and_nonfinite_values_cannot_supply_fresh_sensor_evidence():
     assert frame.sample("future", 0.2, 1) is None
     assert frame.sample("invalid", 0.2, 1) is None
     assert frame.sample("valid", 0.2, 1).tolist() == [1.0]
+
+
+def test_invalid_dvl_cannot_support_a_conditional_interval():
+    from types import SimpleNamespace
+
+    import numpy as np
+
+    from holo_fleet.config import DEFAULT
+    from holo_fleet.control.separation import interval_record
+    from holo_fleet.perception.frame import SensorFrame
+
+    obs = SimpleNamespace(targets=[object()], unhealthy=(), sense_ok=True, d_min=3.0, v_world=np.zeros(3))
+    data = {"DVLSensor": [float("nan"), 0.0, 0.0], "IMUSensor": np.zeros((2, 3))}
+    frame = SensorFrame(1.0, data, {name: 1.0 for name in data})
+    assert interval_record(obs, frame, np.zeros(3), np.zeros(8), 0.1, DEFAULT)["status"] == "MOTION_UNOBSERVED"
