@@ -243,34 +243,15 @@ class EscapePlanner:
             return False
         return any(not np.array_equal(self.guarantee(P, unhealthy), self.guarantee(P, ())) for P, _ in threats)
 
-    def _index_of(self, v: np.ndarray) -> Tuple[int, float]:
-        sp = float(np.linalg.norm(v))
-        if sp < 1e-9:
-            return -1, 0.0
-        return int(np.argmax(self.cands @ (v / sp))), sp
-
-    def _wrap_unbound(self, ch: EscapeChoice, threats, unhealthy, margins_grid: np.ndarray, p2, full_of, degraded,
-                      n_cand: int) -> EscapeChoice:
-        """Every candidate of the P1 selection is P2-safe: the choice of the proofs (p2=None path), with its class.
-        ``full_of``: the opening of a full share."""
-        i, sp = self._index_of(ch.v_body)
-        if threats and i >= 0:
-            opening = min(sp * float(self.guarantee(P, unhealthy)[i]) for P, _ in threats)
-        else:
-            opening = 0.0 if threats else 1.0
+    def _wrap_unbound(self, ch: EscapeChoice, opening: float, p2, degraded, n_cand: int) -> EscapeChoice:
+        """Preserve the reference selection when it already provides a full share and satisfies P2."""
         m = float(np.asarray(p2(ch.v_body[None, :]), float)[0])
         dec = gs.JointDecision(n_candidates=n_cand, n_p2_rejected=0, share="FULL", p2_margin=m, opening=opening,
                                reason="the CR removes no candidate: the selection of the P1 proofs")
-        if opening >= full_of - 1e-9 and not degraded:
-            dec.status = gs.FEASIBLE
-        else:
-            dec.uncertified = ["P1"]
-            # P2 does not bind: station keeping is P2-safe and non-closing, so the decision is never jointly infeasible;
-            # without the full share P1 rests on the other drones (S2c / S3)
-            dec.status = gs.UNCERTAIN
-            dec.share = "FULL" if opening >= full_of - 1e-9 else ("NON_CLOSING" if opening >= -1e-9 else "NONE")
-            dec.reason = ("observations degraded (an unhealthy sector changes a threat's guarantee)" if degraded else
-                          "the CR removes no candidate; the P1 selection gives no full share (lemmas S2c / S3)")
+        dec.status = gs.FEASIBLE
+        if degraded:
+            dec.status, dec.uncertified = gs.UNCERTAIN, ["P1"]
+            dec.reason = "observations degraded (an unhealthy sector changes a threat's guarantee)"
         return EscapeChoice(ch.v_body, ch.direction, ch.guarantee, dec.status == gs.FEASIBLE, ch.label, dec)
 
     def _warning_p2(self, v_des_body, threats, unhealthy, heading_world, v_cap, p2, degraded, hold=None) -> EscapeChoice:
@@ -278,10 +259,15 @@ class EscapePlanner:
         V, lab, idx, _sp = self._grid(speeds)
         V, margins = self._rated(V, p2, hold)
         degraded = bool(degraded or self._degraded(threats, unhealthy))
-        need_max = max([req for _, req in threats], default=0.0)
         if bool((margins[:-1] > 0.0).all()):
+            last_sw, last_ca = self.last_sw, self.last_ca
             ch = self.warning_velocity(v_des_body, threats, unhealthy, heading_world, v_cap)
-            return self._wrap_unbound(ch, threats, unhealthy, margins, p2, need_max, degraded, len(V))
+            if ch.feasible:
+                opening = ch.guarantee * float(np.linalg.norm(ch.v_body)) if threats else 1.0
+                rated = self._wrap_unbound(ch, opening, p2, degraded, len(V))
+                if rated.joint.p2_margin > 0.0:
+                    return rated
+            self.last_sw, self.last_ca = last_sw, last_ca
         if threats:
             g = np.array([self.guarantee(P, unhealthy) for P, _ in threats])
             need = np.array([req for _, req in threats])
@@ -339,9 +325,15 @@ class EscapePlanner:
                                 dec.status == gs.FEASIBLE, lab[k], dec)
         degraded = bool(degraded or self._degraded(threats, unhealthy))
         if bool((margins[:nc] > 0.0).all()):
+            last_ca = self.last_ca
             ch = self.escape_velocity(threats, unhealthy, heading_world, speed, current_body, mission_body, occupied,
                                       depth_room)
-            return self._wrap_unbound(ch, threats, unhealthy, margins, p2, self.cfg.env.g_min * speed, degraded, len(V))
+            opening = ch.guarantee * speed
+            if opening >= self.cfg.env.g_min * speed - 1e-9:
+                rated = self._wrap_unbound(ch, opening, p2, degraded, len(V))
+                if rated.joint.p2_margin > 0.0:
+                    return rated
+            self.last_ca = last_ca
         worst, score = self._scores(threats, unhealthy, heading_world, current_body, mission_body, occupied, depth_room)
         sc = np.concatenate([score] * len(speeds) + [np.array([float(score.min()) - 1.0])])
         opening = np.concatenate([sp * worst for sp in speeds] + [np.array([self._hold_opening(V[-1], worst)])])

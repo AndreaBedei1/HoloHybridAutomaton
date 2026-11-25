@@ -328,9 +328,9 @@ def test_a_drone_converging_on_the_hold_point_does_not_anchor_its_station_keepin
 
 
 # -- review items: the proved selection where the CR does not bind, selection among admissible candidates only ------
-def test_where_the_cr_removes_no_candidate_the_planner_is_the_proved_p1_selection():
+def test_where_the_cr_removes_no_candidate_the_planner_preserves_a_full_share():
     gc = _gc(-6.0, 0.0, 0.0)
-    for pats in ([{"FRONT"}], [{"REAR"}], [{"LEFT"}, {"FRONT"}]):
+    for pats in ([{"FRONT"}], [{"REAR"}]):
         a = EscapePlanner(CFG).warning_velocity(np.zeros(3), [(frozenset(p), ENV.v_open) for p in pats], [], YAW,
                                                 ENV.v_max_nominal, p2=_p2(gc), hold=_hold(gc))
         b = EscapePlanner(CFG).warning_velocity(np.zeros(3), [(frozenset(p), ENV.v_open) for p in pats], [], YAW,
@@ -341,6 +341,13 @@ def test_where_the_cr_removes_no_candidate_the_planner_is_the_proved_p1_selectio
         e2 = EscapePlanner(CFG).escape_velocity([(frozenset(p), 0.0) for p in pats], [], YAW, ENV.v_escape)
         assert np.allclose(e1.v_body, e2.v_body) and e1.label == e2.label
         assert "removes no candidate" in e1.joint.reason
+
+
+@pytest.mark.parametrize("pick", [_warn, _escape])
+def test_p2_safe_station_keeping_takes_precedence_over_a_closing_manoeuvre(pick):
+    ch = pick(_gc(-3.0), [{"DOWN"}, {"FRONT"}])
+    assert ch.joint.p2_margin > 0.0
+    assert ch.joint.opening >= -1e-9
 
 
 def test_the_escape_picks_only_an_admissible_candidate_when_station_keeping_is_the_only_one():
