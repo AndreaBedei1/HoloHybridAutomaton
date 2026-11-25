@@ -102,5 +102,49 @@
         82.099179
       ]
     }
+  ],
+  "stress_runs": [
+    {
+      "scenario": "line_parallel_mutex",
+      "condition": "Force two concurrent commitment states once, then run the deployed controller.",
+      "injections": [
+        {
+          "drone": "drone_0",
+          "t": 0.899991
+        },
+        {
+          "drone": "drone_1",
+          "t": 0.899991
+        }
+      ],
+      "engine_ports": [
+        37277
+      ],
+      "observation_horizon_s": 110,
+      "P1_min_separation_m": 2.749,
+      "P2_max_occupancy": {
+        "G06": 1
+      },
+      "P2_premature_admissions": 0,
+      "P2_entry_order": {
+        "G06": [
+          "drone_0"
+        ]
+      },
+      "P3_recovered_within_window": false,
+      "artifact_sha256": {
+        "drone_0_state.jsonl": "87cece1ab2b1f750f3aa5176081ece222279a4c7589297c5773f0b732c1db181",
+        "drone_1_state.jsonl": "01152c9c6ee98270b4f2b5d13643052cbac65a18a091c44191de438f797eb49d",
+        "drone_2_state.jsonl": "e3742e40cf499ccbf50f36d5021a3ccf9fde3f294f92d780906c290c543252e4",
+        "events.jsonl": "31d28527ef67a2a42fa0de4771fee74fe73634c814c0c7fa88039e8032ef2f7e",
+        "perf.json": "aaaf03d117c71fa79d908b2791e6c56c0da16ac867d094a2655470421b2f8cc6",
+        "referee_metrics.json": "d2a686c266bfae85f91f404449ae6484a8cf57f2701267e30bf19dbe30475fc9",
+        "referee_timeseries.csv": "257735cf8507ba0828855d21b5102737194bbf0fcaaf094866db27bc83113cdb",
+        "run_config.json": "b96447188ec6ae466c5024d2d8c86ad71b35089340d5f62a82b9d149e7061f4d",
+        "run_status.json": "019c75ab3f89fd47d6f9b690432f6c37dbd61c882e100136e77d889ab26961ef",
+        "summary.csv": "a64dd6e7288193776213448f21101a348fd7b9326e79250e9717aeffc77b8ac9"
+      },
+      "probe_sha256": "6f3e1b90677c710d7348a1183ce87aaefef96521c5eaff9e0564469ac93f222c"
+    }
   ]
 }

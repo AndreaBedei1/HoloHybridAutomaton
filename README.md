@@ -281,8 +281,10 @@ a common reference for the fleet, or recovery in the presence of sustained safet
 and `integrated_short` (MEDIUM-ALL, B2 MEDIUM), seed 0, both ended in SUCCESS and passed the sampled referee criteria.
 Minimum centre distances were 2.877 and 3.197 m; maximum CR occupancy was one, with zero observed premature admissions.
 Formation recovery was observed at 86.2 and 159.0 s. The MEDIUM trace contains uncertified P2 steps and unobserved or
-insufficient P1 margins. The accepted runs do not qualify those intervals. Neither run produced nearly simultaneous
-commitments. The B2 communication model exercises that case separately. Raw traces and per-file hashes are retained.
+insufficient P1 margins, so those intervals remain outside the runtime certificate. A separate fault-injection probe
+forced two commitments at the same step (0.9 s), then ran the deployed controller. At 110 s, peak occupancy was one and
+there were no premature admissions. Only one vehicle entered and formation recovery remained open at the end of the window.
+Raw traces, the fault-injection harness and per-file hashes are retained.
 
 **Previous targeted HoloOcean validation** (`legacy/results/pre_conditional_targeted/summary.json|csv`, criteria v9): 12 runs, seed 0, one run per
 configuration. Seven runs are at code commit `ecd18ee`. The five with a silent or lost vehicle (`lost_drone_mutex`, `lost_drone_timeout`,
