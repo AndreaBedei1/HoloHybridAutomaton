@@ -211,7 +211,8 @@ priority (H1-H3), gate entry, give-up and hazard rules (G1-G3), exact readable g
 
 **P1.** S5 certifies a continuous control interval conditional on a sound nearest-centre range bound and independently valid
 ground-speed caps for both vehicles. The runner records the interval margin on the final setpoint and actuator command after
-all gate filters. Empty or unhealthy sonar observations give no coverage. The older radial-motion model below has its own premises.
+all gate filters. The margin is a monitor. The warning and avoidance filters still choose the commands. Empty or unhealthy sonar
+observations give no coverage. The older radial-motion model below has its own premises.
 A proof for the complete deployed closed loop and indefinite relative hold remains open.
 
 The nearest-pair geometry is independent of the formation. For closest centres A and B with separation d, a third centre C
@@ -250,7 +251,7 @@ range supplies no signed projection. The current six beams do not establish that
   availability, 4,948 commands and 118,752 next states, none without a certified action (P2R4n).
 
 **P3.** C2w proves that a missing report does not increase the raw clock gap in the fixed-order pair abstraction and that each
-usable report strictly decreases it while the effective lag lies outside the band. With recurrent usable reports that establishes entry
+usable report decreases it by at least a fixed positive amount while the effective lag lies outside the band. With recurrent usable reports that establishes entry
 into the lag band for that pair and regime. This result does not establish permanent residence in the band after arbitrary switching,
 a common reference for the fleet, or recovery in the presence of sustained safety interventions.
 
@@ -269,6 +270,8 @@ a common reference for the fleet, or recovery in the presence of sustained safet
   leave no certified action. The controller attempts to reserve the worst-case DVL outage drift when handing over a certificate. Position corrections still invalidate it. P2R4 takes the selection rule as an axiom, checked numerically (J1, P2R4n). The MEDIUM-ALL run of
   `gate_single` logged 9 `P2_UNCERTIFIED` events and 21 failsafe entries, with P1 and P2 holding. F1pe, F1pme, F0qe: with a navigation
   error, drift or estimate jump outside the envelope an entry by avoidance is possible and two vehicles can be in the CR.
+  Differencing two 10 Hz sonar ranges would give up to ±2 m/s error even with a stable gate feature and the optimistic
+  [-0.08, +0.12] m range-error interval. The resulting velocity interval cannot replace DVL in the stopping proof.
 - **Permanent failure.** Silence is not evidence, so a dead vehicle is never accounted for and survivors can stall safely: F2c (failure
   while committed keeps its claim), F2d (failure outside the commitment, n = 3, 4, any K), F2s2 (n = 2), F2s3 (last survivor of 3), F2s4
   (a hull floating above the queue). The bounds F2 do not model the degraded admission wait.
@@ -286,7 +289,8 @@ a common reference for the fleet, or recovery in the presence of sustained safet
 - **P1.** Proved pairwise; several neighbours rest on the triangle lemma and the two-threat escape (S2c), not on a fleet model.
   S1gm: two vehicles that can only stop (each gate-constrained, neither opens) close below `d_safe` within 15 s; queue geometry (Q1)
   and standoff are meant to keep this unreachable, shown in simulation, not proved. A stacked column on the axis
-  (`gate_rear_approach`) puts a queued vehicle 1.59 m from the hold, inside the warning band (Q1, reported).
+  (`gate_rear_approach`) puts a queued vehicle 1.59 m from the hold, inside the warning band (Q1, reported). The stress scenario's
+  `REAR_T_COMMIT_S` still uses the historical timing calibration.
 - **P3.** C1l1 (near band at the transient consensus bound), C1l2 (B2 far band at the clock-speed edge with adversarial lateral
   consensus), C2l (leak-only consensus of an abreast B2 pair) have no ranking. C1x: the per-axis ranking F1 is not a ranking of
   the deployed coupled law; C1f and C1n cover it.
