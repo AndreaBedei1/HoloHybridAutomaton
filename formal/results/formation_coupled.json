@@ -9,7 +9,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 0.01,
+      "seconds": 0.002,
       "counterexample": null,
       "note": "keeping_cap = min(v_recovery_max, max(v_slot_max, v_plan + v_catch_min)), the code of Flows.formation"
     },
@@ -20,7 +20,7 @@
       "expect": "sat",
       "verdict": "sat",
       "passed": true,
-      "seconds": 0.003,
+      "seconds": 0.001,
       "counterexample": {
         "v_plan": 0.4
       },
@@ -33,7 +33,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 0.029,
+      "seconds": 0.007,
       "counterexample": null,
       "note": "control/formation_time.py: rate ramps at a_wait / v_plan, d = 1 - rate, E the moving time of the episode (<= t_rejoin); same-lane following and the sync follow another drone's tau"
     },
@@ -44,7 +44,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 0.008,
+      "seconds": 0.0,
       "counterexample": null,
       "note": ""
     },
@@ -55,7 +55,7 @@
       "expect": "sat",
       "verdict": "sat",
       "passed": true,
-      "seconds": 0.011,
+      "seconds": 0.0,
       "counterexample": {
         "H": 2.0,
         "end": 0.0,
@@ -72,7 +72,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 0.013,
+      "seconds": 0.004,
       "counterexample": null,
       "note": "rate 0.0040 m/s (k_progress delta at most, after the rate ramp); the drone behind keeps its speed (C2j); eventual agreement |X| <= B + delta, by the symmetry i <-> j"
     },
@@ -83,7 +83,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 0.012,
+      "seconds": 0.005,
       "counterexample": null,
       "note": "one step moves X by less than delta; above B + delta it decreases (C2a)"
     },
@@ -105,7 +105,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 0.013,
+      "seconds": 0.005,
       "counterexample": null,
       "note": "rate 0.0040 m/s (k_progress delta at most, after the rate ramp); the drone behind keeps its speed (C2j); eventual agreement |X| <= B + delta, by the symmetry i <-> j"
     },
@@ -116,7 +116,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 0.011,
+      "seconds": 0.005,
       "counterexample": null,
       "note": "one step moves X by less than delta; above B + delta it decreases (C2a)"
     },
@@ -138,7 +138,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 0.008,
+      "seconds": 0.0,
       "counterexample": null,
       "note": ""
     },
@@ -149,18 +149,18 @@
       "expect": "sat",
       "verdict": "sat",
       "passed": true,
-      "seconds": 0.012,
+      "seconds": 0.003,
       "counterexample": {
-        "D": 1.6778947368421053,
+        "D": 1.5535,
         "band": 1.0,
         "n_i": 0.5,
         "n_sig_i": 0.0,
         "n_sig_j": 0.0,
-        "near_i": true,
-        "near_j": false,
-        "rho_i": 0.013249122807017543,
-        "sigma_i": -0.08547368421052631,
-        "sigma_j": 0.042105263157894736
+        "near_i": false,
+        "near_j": true,
+        "rho_i": 0.020206666666666668,
+        "sigma_i": 0.05,
+        "sigma_j": 0.0531
       },
       "note": "X + |sigma_i| + |sigma_j| is non-increasing in the leak / frozen regime (C2d); the closed loop with the switching converges offline (tests/test_p3_recovery_fixes.py), not proved"
     },
@@ -171,7 +171,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 0.008,
+      "seconds": 0.002,
       "counterexample": null,
       "note": ""
     },
@@ -182,7 +182,7 @@
       "expect": "sat",
       "verdict": "sat",
       "passed": true,
-      "seconds": 0.023,
+      "seconds": 0.003,
       "counterexample": {
         "D": -2.0,
         "band": 0.75,
@@ -196,24 +196,46 @@
       "note": "the set {rho_i = 0, sigma = 0, X >= 1.94 m} is closed under the step without the re-synchronisation; offline: delays of 8 s and more"
     },
     {
+      "prop": "C2w pair clock gap with a missing report outside the lag band",
+      "formula": "X > B + delta -> D' <= D - decrement, D = X - sigma_i + sigma_j",
+      "encoding": "formal/check_formation_coupled.py (Flows.formation 2-norm cap + FormationRule.keeping_cap, FormationTime, Perception._rep_offset)",
+      "expect": "unsat",
+      "verdict": "unsat",
+      "passed": true,
+      "seconds": 0.0,
+      "counterexample": null,
+      "note": "fixed ahead/behind role in the pair model; repeated usable reports force entrance into the lag band because D stays bounded below while X stays outside it. This does not prove the switched in-band dynamics."
+    },
+    {
+      "prop": "C2w pair clock gap with a usable report outside the lag band",
+      "formula": "X > B + delta -> D' <= D - decrement, D = X - sigma_i + sigma_j",
+      "encoding": "formal/check_formation_coupled.py (Flows.formation 2-norm cap + FormationRule.keeping_cap, FormationTime, Perception._rep_offset)",
+      "expect": "unsat",
+      "verdict": "unsat",
+      "passed": true,
+      "seconds": 0.0,
+      "counterexample": null,
+      "note": "fixed ahead/behind role in the pair model; repeated usable reports force entrance into the lag band because D stays bounded below while X stays outside it. This does not prove the switched in-band dynamics."
+    },
+    {
       "prop": "C2s scope: a step without a fresh payload fix (no lag) lets the slowdown ramp back, the ranking increases: the premise of a fresh fix in every step (A7) is where C2a ends",
       "formula": "exists a step without a fix: R' > R",
       "encoding": "formal/check_formation_coupled.py (Flows.formation 2-norm cap + FormationRule.keeping_cap, FormationTime, Perception._rep_offset)",
       "expect": "sat",
       "verdict": "sat",
       "passed": true,
-      "seconds": 0.012,
+      "seconds": 0.002,
       "counterexample": {
-        "D": 1.5511434280639431,
+        "D": 5.530130260521042,
         "band": 0.5,
         "n_i": 0.0,
-        "n_sig_i": 0.5,
-        "n_sig_j": -0.5,
+        "n_sig_i": -0.5,
+        "n_sig_j": 0.5,
         "near_i": true,
         "near_j": false,
-        "rho_i": 0.007776791000592066,
-        "sigma_i": -1.9988898756660747,
-        "sigma_j": -2.0
+        "rho_i": 0.008333333333333333,
+        "sigma_i": -1.9892317969271878,
+        "sigma_j": 1.9892317969271878
       },
       "note": ""
     },
@@ -224,7 +246,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 15.4,
+      "seconds": 15.6,
       "counterexample": null,
       "note": "certified decrease eps = 0.1270 m/s (exact rational cells, sigma frozen beyond e_lost)"
     },
@@ -235,7 +257,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 18.2,
+      "seconds": 17.8,
       "counterexample": null,
       "note": "certified decrease eps = 0.0293 m/s (exact rational cells, sigma frozen beyond e_lost)"
     },
@@ -246,7 +268,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 11.8,
+      "seconds": 11.7,
       "counterexample": null,
       "note": "certified decrease eps = 0.0313 m/s (exact rational cells, sigma frozen beyond e_lost)"
     },
@@ -301,7 +323,7 @@
       "expect": "sat",
       "verdict": "sat",
       "passed": true,
-      "seconds": 0.025,
+      "seconds": 0.005,
       "counterexample": {
         "c": 0.0,
         "ea": 2.0,
@@ -322,7 +344,7 @@
       "expect": "sat",
       "verdict": "sat",
       "passed": true,
-      "seconds": 0.008,
+      "seconds": 0.001,
       "counterexample": {
         "e_a": 0.5,
         "sigma_dot": 0.136,
@@ -338,7 +360,7 @@
       "expect": "sat",
       "verdict": "sat",
       "passed": true,
-      "seconds": 40.529,
+      "seconds": 14.523,
       "counterexample": {
         "/0": "[(0.2821340273?, 2) -> 0.1410670136?,\n (307/320, 2) -> 307/640,\n else -> 0]",
         "c": -0.1,
@@ -362,7 +384,7 @@
       "expect": "sat",
       "verdict": "sat",
       "passed": true,
-      "seconds": 0.011,
+      "seconds": 0.003,
       "counterexample": {
         "e_a": 0.5,
         "sigma_dot": 0.0,
@@ -378,7 +400,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 0.009,
+      "seconds": 0.002,
       "counterexample": null,
       "note": "the 3-D slot error of the keeping modes is within sqrt(ball_h^2 + ball_z^2) (C1n, C1z)"
     }

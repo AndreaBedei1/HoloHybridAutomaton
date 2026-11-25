@@ -77,7 +77,7 @@
       "passed": true,
       "seconds": 0.0,
       "counterexample": null,
-      "note": "30 pairs; confirmation through a shadowed ray for 6, accounting through a shadowed ray for 30 (probable, not certain); worst exit evidence 28.6 s after the exit face (observer l=+5.25, passer lane +8.75, passer at s=10.1); falls back to the sonar latch for: observer +8.75/passer +5.25 (no evidence), observer -8.75/passer -5.25 (no evidence)"
+      "note": "30 pairs; confirmation through a shadowed ray for 6, accounting through a shadowed ray for 30 (probable, not certain); worst exit evidence 28.4 s after the exit face (observer l=+5.25, passer lane +8.75, passer at s=10.0); falls back to the sonar latch for: observer +8.75/passer +5.25 (no evidence), observer -8.75/passer -5.25 (no evidence)"
     },
     {
       "prop": "B2-P payload soundness: a sender truly in the CR whose estimate errs within its sent bound (cylinder |e_h| <= h, |e_z| <= z, radius hypot(h, z), through the 56-bit packet) is never cleared by the payload rule nor placed beyond the exit face",
@@ -132,7 +132,7 @@
       "passed": true,
       "seconds": 0.0,
       "counterexample": null,
-      "note": "{'samples': 3000, 'occupant_excluded': 2392}"
+      "note": "{'samples': 3000, 'occupant_excluded': 2391}"
     },
     {
       "prop": "B2-S acoustic fixes never reach separation, collision avoidance, precedence or the sonar witness; acoustic exit evaluation requires the FRONT corridor empty (H6: the payload balls reach the map fit only as its identity premise, through Perception, never as a position input)",
