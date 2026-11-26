@@ -102,18 +102,27 @@ class AcousticChannel:
 
 
 CLEAN = AcousticChannel()
-LOW = AcousticChannel(name="LOW", sigma_range_m=0.10, sound_speed_err=0.005, clock_offset_m=0.03, sigma_az_deg=1.5,
-                      sigma_el_deg=1.5, dropout=0.08, dropout_far=0.25, nlos_rx=0.20, latency_s=0.15,
-                      shadow_loss=0.50, shadow_dir_deg=1.0, doa_bias_deg=1.5, los_outlier=0.01,
-                      payload_loss=0.05)
-MEDIUM = AcousticChannel(name="MEDIUM", sigma_range_m=0.15, sound_speed_err=0.010, clock_offset_m=0.05,
-                         sigma_az_deg=2.5, sigma_el_deg=2.5, dropout=0.20, dropout_far=0.50, outage_every_s=40.0,
-                         outage_len_s=4.0, nlos_rx=0.35, latency_s=0.25, shadow_loss=0.70, shadow_dir_deg=1.5,
-                         doa_bias_deg=3.0, los_outlier=0.03, payload_loss=0.15)
-MEDIUM_HT = replace(MEDIUM, name="MEDIUM_HT", link_on_mean_s=120.0)
+# LOW / MEDIUM: realistic nominal short-range (2-20 m) values from datasheets and field data (config/parameter_sources.json):
+# mid-water loss 3.5-7.8 % / 10.8-18 % (Renner et al. 2020; Sherlock et al. 2022), latency above the 0.10 s physical floor,
+# sound speed from a temperature sensor, disciplined clocks.  MEDIUM_HARSH keeps the former MEDIUM (near-boundary conditions,
+# Reis et al. 2016) as a sensitivity level.
+LOW = AcousticChannel(name="LOW", sigma_range_m=0.10, sound_speed_err=0.003, clock_offset_m=0.01, sigma_az_deg=1.5,
+                      sigma_el_deg=1.5, dropout=0.03, dropout_far=0.10, nlos_rx=0.20, latency_s=0.12,
+                      shadow_loss=0.30, shadow_dir_deg=1.0, doa_bias_deg=1.5, los_outlier=0.01,
+                      payload_loss=0.02)
+MEDIUM = AcousticChannel(name="MEDIUM", sigma_range_m=0.15, sound_speed_err=0.005, clock_offset_m=0.03,
+                         sigma_az_deg=2.5, sigma_el_deg=2.5, dropout=0.15, dropout_far=0.30, outage_every_s=120.0,
+                         outage_len_s=2.0, nlos_rx=0.35, latency_s=0.20, shadow_loss=0.50, shadow_dir_deg=1.5,
+                         doa_bias_deg=3.0, los_outlier=0.03, payload_loss=0.05)
+MEDIUM_HARSH = AcousticChannel(name="MEDIUM_HARSH", sigma_range_m=0.15, sound_speed_err=0.010, clock_offset_m=0.05,
+                               sigma_az_deg=2.5, sigma_el_deg=2.5, dropout=0.20, dropout_far=0.50, outage_every_s=40.0,
+                               outage_len_s=4.0, nlos_rx=0.35, latency_s=0.25, shadow_loss=0.70, shadow_dir_deg=1.5,
+                               doa_bias_deg=3.0, los_outlier=0.03, payload_loss=0.15)
+MEDIUM_HT = replace(MEDIUM_HARSH, name="MEDIUM_HT", link_on_mean_s=120.0)
 BLACKOUT = AcousticChannel(name="BLACKOUT", blackout=True)
 LOW_MUTE0 = replace(LOW, name="LOW_MUTE0", mute_sender=0)
-CHANNELS: Dict[str, AcousticChannel] = {c.name: c for c in (CLEAN, LOW, MEDIUM, MEDIUM_HT, BLACKOUT, LOW_MUTE0)}
+CHANNELS: Dict[str, AcousticChannel] = {c.name: c for c in (CLEAN, LOW, MEDIUM, MEDIUM_HARSH, MEDIUM_HT, BLACKOUT,
+                                                              LOW_MUTE0)}
 
 
 SWEEP_KEYS = {"per": "period_s", "lat": "latency_s", "jit": "jitter_s", "loss": "dropout", "burst": "outage_len_s",
