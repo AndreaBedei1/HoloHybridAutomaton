@@ -48,14 +48,14 @@ Two infrastructure faults were fixed. A slot-record replace failed with a Window
 
 ## Results of the paired campaign
 
-All 54 planned rows are present, with no `INVALID` or `MISSING` rows (`results/final_paired_validation.json`, SHA-256 of the archived copy `fd97d84283d679b38eddd8e2c411ae86f4e155d17f89fe6915cb35689c29c695`). Four isolated engines ran at once after a fresh isolation proof, on non-default ports, each with its own client and root.
+All 54 planned rows are present, with no `INVALID` or `MISSING` rows (`results/final_paired_validation.json`, SHA-256 of the archived copy `1bf37c3306cf7ad3a2bcd06f4a8d50bb1c5843213685eb4644d1eba36f50f30a`). Four isolated engines ran at once after a fresh isolation proof, on non-default ports, each with its own client and root.
 
 In pass 1, two lanes refused 14 runs because the working tree was briefly modified while the formal results were being committed. `--require-clean` refused them before any engine started. Those 14 runs were then executed from the clean commit `c903c0d`, after a second isolation proof. The refusal record is kept (`lane_failures_pass1_dirty_tree.json`). The runs were recorded at `d3c4df4`, `9ed01f6` and `c903c0d`. These revisions differ only in `formal/`, so the comparison pairs revisions with identical runtime code (`same_runtime` in `scripts/publication_validation.py`). All 27 pairs qualify.
 
 Safety, every run, both protocols (referee ground truth):
 
 - P1: zero violation samples and zero physical contacts. The smallest centre distance is 2.572 m (B0, `sonar-blackout` s1).
-- P2: peak occupancy one, zero double-occupancy samples and zero premature admissions.
+- P2, in the 36 runs of the six gate cases (the other three cases have no gate): peak occupancy one, zero double-occupancy samples and zero premature admissions.
 
 | Case (fixed window) | B0 class | B2 class | B2 − B0 min. distance, median (range) m | B2 − B0 crossings, median (range) |
 |---|---|---|---|---|
@@ -69,7 +69,7 @@ Safety, every run, both protocols (referee ground truth):
 | dvl-interruption | 3 CENSORED | 3 PASS | −0.161 (−0.185, +0.040) | +1 (+1, +2) |
 | integrated | 3 CENSORED | 3 PASS | −0.169 (−0.509, +0.082) | +1 (+1, +2) |
 
-`CENSORED` means the fixed observation window ended before the criteria v9 deadline with a crossing or a recovery still open. It is not a safety failure. The encounter, sonar-blackout and formation windows are shorter than any gate passage by design. In the formation case, both protocols recovered within 8.4 s of the disturbance in every seed. In the seven gate cases, B2 completed all three crossings and recovered formation in 15 of 21 runs. B0 did so in 1 of 21, usually crossing once or twice before the window ended, because its latch waits for a positive sonar exit witness (M4g). The three B2 runs that did not finish are:
+`CENSORED` means the fixed observation window ended before the criteria v9 deadline with a crossing or a recovery still open. It is not a safety failure, and it is not evidence that the run would have finished. The encounter, sonar-blackout and formation windows are shorter than any gate passage by design. In the formation case, both protocols recovered within 8.4 s of the disturbance in every seed. In the six gate cases, B2 completed all three crossings and recovered formation in 15 of 18 runs. B0 did so in 1 of 18, usually crossing once or twice before the window ended, because its latch waits for a positive sonar exit witness (M4g). The three B2 runs that did not finish are:
 
 - `gate-acoustic-medium` s0: three crossings by 142.8 s, recovery still open at 185 s.
 - `gate-acoustic-medium` s1: two crossings.

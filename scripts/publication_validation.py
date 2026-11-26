@@ -7,6 +7,7 @@ import gzip
 from hashlib import sha256
 import json
 from pathlib import Path
+import re
 import statistics
 import subprocess
 import sys
@@ -32,8 +33,11 @@ NON_RUNTIME = ("formal", "docs", "README.md")
 
 
 def same_runtime(first, second, root=ROOT):
-    """True when two recorded revisions are equal or differ only outside the runtime code; unknown revisions fail closed."""
-    if not first or not second:
+    """True when two recorded revisions are equal or differ only outside the runtime code.
+
+    Anything but two full hexadecimal SHAs, including an option-shaped value, and any git error fail closed.
+    """
+    if not all(isinstance(r, str) and re.fullmatch(r"[0-9a-f]{40}", r) for r in (first, second)):
         return False
     if first == second:
         return True
@@ -85,7 +89,10 @@ def run_record(raw, case, protocol, seed):
     if not metrics.exists():
         return dict(row, outcome="MISSING")
     m = load(metrics)
-    row.update(outcome=m["class"], commit=m.get("code_version", {}).get("sha"))
+    version = m.get("code_version") or {}
+    # A run from a modified tree has no revision that identifies its code, so it is never paired.
+    row.update(outcome=m["class"], commit=version.get("sha") if version.get("dirty_files") == [] else None,
+               dirty_files=version.get("dirty_files"))
     if not (d / "referee_metrics.json").exists() or "P1" not in m:
         return dict(row, invalid_reason=m.get("invalid_reason"), hashes={"run_metrics.json": digest(metrics)})
     c, r = load(d / "run_config.json"), load(d / "referee_metrics.json")

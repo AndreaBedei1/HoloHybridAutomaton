@@ -319,10 +319,11 @@ a common reference for the fleet, or recovery in the presence of sustained safet
 **Final paired B0/B2 campaign** (`results/final_paired_validation.json`, `docs/validation-report.md`). The 54 scheduled runs
 are 9 cases, seeds 0 to 2 and both protocols, on four engines proven isolated. Every row is present and valid.
 
-- Safety, in every run of both protocols: zero P1 violation samples, zero contacts, peak CR occupancy one, zero double occupancy
-  and zero premature admissions. The smallest centre distance is 2.572 m.
-- Gate cases, all three crossings and formation recovery within the fixed window: B2 in 15 of 21 runs, B0 in 1 of 21. B0's latch
-  waits for a positive exit witness (M4g). The remaining runs are censored by the window, not failed.
+- Safety, every run of both protocols: zero P1 violation samples and zero contacts. The smallest centre distance is 2.572 m.
+- Safety, the 36 gate runs: peak CR occupancy one, zero double occupancy and zero premature admissions.
+- Six gate cases, all three crossings and formation recovery within the fixed window: B2 in 15 of 18 runs, B0 in 1 of 18. B0's
+  latch waits for a positive exit witness (M4g). The other runs are censored. They are unresolved, with no evidence of whether
+  they would have finished: 17 B0 runs end about 22 m from formation.
 - Short encounter, sonar-blackout and formation windows: censored by design for both protocols. The formation disturbance was
   recovered within 8.4 s in every run.
 
