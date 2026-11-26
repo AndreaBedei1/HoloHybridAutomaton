@@ -11,7 +11,8 @@ COLUMN as a forbidden set for its TRUE centre: the CR of property P2 extended to
 admitted neither enters the CR nor passes under or over it (a REAR threat and a forward drift otherwise let a drone
 descend below the CR and pass forward under the frame, P2-safe by the centre definition but an unauthorized passage).
 The CR itself is the exact occupancy of property P2 (cr_s_min <= s <= cr_s_max, |l| <= cr_half_width,
-|dz| <= cr_half_height: GateRule.in_cr; the approach and the gate passage, s in [-1.05, 0.55]).  A velocity command v is
+|dz| <= cr_half_height: GateRule.in_cr; the approach up to the gate plane, s in [-0.8, 0.0]; the bar plane beyond it, up to
+passage_clear_s, is a P1 / physical-clearance matter).  A velocity command v is
 P2-SAFE when the backup that follows it cannot reach the CR under the declared bounds:
 
 * the command is applied for ``tau_c`` = one control period + the largest data age (dt + tau_max), the true velocity

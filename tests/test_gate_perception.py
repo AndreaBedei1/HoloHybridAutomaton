@@ -126,3 +126,16 @@ def test_stale_release_needs_quiet_corridor_and_nothing_heard_or_known_inside():
     assert not stale_release(30.0, 4.0, 1.0, False, True, False, T)
     assert not stale_release(30.0, 4.0, 1.0, False, False, True, T)
     assert not stale_release(30.0, 0.5, 1.0, False, False, False, T)
+
+
+def test_a_near_hull_in_any_sector_restarts_the_timed_bound():
+    """Premise N (formal/check_stale.py): after a timed release a hull within near_sight_m in any sector is a sighting."""
+    gp = perception()
+    _, t = run(gp, [[tg({"FRONT"}, 4.6)]] * 3)
+    o, t = run(gp, [[]] * int(G.t_occ_max / 0.1 + 5), t0=t)
+    assert o.occ_state == "STALE"
+    o, t = run(gp, [[tg({"REAR"}, G.near_sight_m - 0.2)]] * 3, t0=t)
+    assert abs(o.entry_after - (t - 0.1 + G.t_admit_stale)) < 1e-9
+    before = o.entry_after
+    o, t = run(gp, [[tg({"REAR"}, G.near_sight_m + 0.3)]] * 3, t0=t)
+    assert o.entry_after == before

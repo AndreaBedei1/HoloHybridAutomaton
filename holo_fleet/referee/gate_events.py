@@ -10,12 +10,16 @@ row i is the truth after that step.  A decision is therefore judged against the 
 was made).
 
   E1  incorrect occupancy belief of a queued healthy drone: FREE while another drone is truly in the CR (false-FREE)
-      or BUSY/EXITING while the CR is empty (false-BUSY), seconds and fraction of the queued time;
-  E2  premature exit evidence: BUSY -> EXITING/FREE while another drone is truly in the CR (by evidence kind);
-      E2_free: any change to FREE while another drone is truly in the CR (the release that permits a commit);
+      (STALE counts as FREE: it permits a commitment) or BUSY/EXITING while the CR is empty (false-BUSY), seconds and
+      fraction of the queued time;
+  E2  premature exit evidence: BUSY -> EXITING/FREE/STALE while another drone is truly in the CR (by evidence kind;
+      the timed STALE release is TIMEOUT); E2_free: any change to FREE or STALE while another drone is truly in the CR
+      (the release that permits a commit);
   E3  approach authorisation (commit) while another drone is truly in the CR;
   E4  entry authorisation while another drone is truly in the CR: the stage-2 admission when the drones log one
       (gate.entry == "ADMIT"), else the commit itself (without a second check the commit is the entry decision);
+      E4_clearance (P1 / physical clearance, not P2): a stage-2 admission while another drone is beyond the CR but still
+      in the bar plane (cr_s_max, passage_clear_s];
   E5  simultaneous occupancy (a P2 violation), samples;
   E6  contacts (from the P1 metrics, added by the caller);
   E7  detected and cancelled unsafe approach: a wait before the CR (a stage-2 HOLD, or a STANDOFF behind a drone ahead
@@ -80,13 +84,17 @@ def gate_events(t: np.ndarray, gf: np.ndarray, states: Sequence[Sequence[Dict]],
         return g if g.get("id") == gate_id else {}
 
     committed = np.array([[bool(states[k][i].get("committed")) and bool(gs(k, i)) for k in range(n)] for i in range(m)])
-    occupied = ((gf[:, :, 0] >= G.cr_s_min) & (gf[:, :, 0] <= G.passage_clear_s)
-                & (np.abs(gf[:, :, 1]) <= G.cr_half_width) & (np.abs(gf[:, :, 2]) <= G.cr_half_height))
-    in_dec = np.vstack([occupied[:1], occupied[:-1]]) if m else occupied
+    # P2 events judge against the CR only (GateRule.in_cr, s in [cr_s_min, cr_s_max]).  The bar plane beyond it, up to the
+    # physical clearance plane passage_clear_s, is a P1 / motion-safety matter: it is counted separately (E4_clearance).
+    clearance = ((gf[:, :, 0] > G.cr_s_max) & (gf[:, :, 0] <= G.passage_clear_s)
+                 & (np.abs(gf[:, :, 1]) <= G.cr_half_width) & (np.abs(gf[:, :, 2]) <= G.cr_half_height))
+    in_dec = np.vstack([inside[:1], inside[:-1]]) if m else inside
+    clear_dec = np.vstack([clearance[:1], clearance[:-1]]) if m else clearance
     other_in = np.array([[in_dec[i, :].sum() - int(in_dec[i, k]) > 0 for k in range(n)] for i in range(m)])
+    other_clear = np.array([[clear_dec[i, :].sum() - int(clear_dec[i, k]) > 0 for k in range(n)] for i in range(m)])
     e1 = {"queued_s": 0.0, "false_free_s": 0.0, "false_busy_s": 0.0}
     e2 = {"SONAR": 0, "ACOUSTIC": 0, "TIMEOUT": 0}
-    e2_free = e3 = e4 = e7 = 0
+    e2_free = e3 = e4 = e4_clear = e7 = 0
     e7_kind = {"HOLD": 0, "STANDOFF": 0}
     stage2_logged = False
     queued = np.zeros((m, n), bool)
@@ -98,12 +106,13 @@ def gate_events(t: np.ndarray, gf: np.ndarray, states: Sequence[Sequence[Dict]],
             if _q(g) and not committed[i, k]:
                 queued[i, k] = True
                 e1["queued_s"] += dt
-                e1["false_free_s"] += dt * (occ == "FREE" and other_in[i, k])
-                e1["false_busy_s"] += dt * (occ not in (None, "FREE") and not in_dec[i, :].any())
-            if prev == "BUSY" and occ in ("EXITING", "FREE") and other_in[i, k]:
+                # STALE permits a commitment like FREE (not an entry: the stage-2 admission still decides)
+                e1["false_free_s"] += dt * (occ in ("FREE", "STALE") and other_in[i, k])
+                e1["false_busy_s"] += dt * (occ in ("BUSY", "EXITING") and not in_dec[i, :].any())
+            if prev == "BUSY" and occ in ("EXITING", "FREE", "STALE") and other_in[i, k]:
                 w = g.get("exit_witness") or {}
-                e2["TIMEOUT" if occ == "FREE" else ("ACOUSTIC" if w.get("sector") == "ACOUSTIC" else "SONAR")] += 1
-            if prev not in (None, "FREE") and occ == "FREE" and other_in[i, k]:
+                e2["TIMEOUT" if occ in ("FREE", "STALE") else ("ACOUSTIC" if w.get("sector") == "ACOUSTIC" else "SONAR")] += 1
+            if prev in ("BUSY", "EXITING") and occ in ("FREE", "STALE") and other_in[i, k]:
                 e2_free += 1
             prev = occ if g else None
             if i and committed[i, k] and not committed[i - 1, k]:
@@ -114,6 +123,7 @@ def gate_events(t: np.ndarray, gf: np.ndarray, states: Sequence[Sequence[Dict]],
             if entry is not None:
                 if entry == "ADMIT" and prev_entry != "ADMIT":
                     e4 += int(other_in[i, k])
+                    e4_clear += int(other_clear[i, k] and not other_in[i, k])
                 if entry in e7_kind and prev_entry not in e7_kind:
                     e7 += int(other_in[i, k])
                     e7_kind[entry] += int(other_in[i, k])
@@ -176,6 +186,7 @@ def gate_events(t: np.ndarray, gf: np.ndarray, states: Sequence[Sequence[Dict]],
                    "false_busy_frac": round(e1["false_busy_s"] / e1["queued_s"], 4) if e1["queued_s"] else None},
             "E2": {**e2, "total": sum(e2.values()), "to_free": e2_free}, "E3": e3, "E4": e4,
             "E4_source": "stage2" if stage2_logged else "commit",
+            "E4_clearance": e4_clear if stage2_logged else None,
             "E5": int((occ_n > 1).sum()), "E7": e7 if stage2_logged else None,
             "E7_by_kind": dict(e7_kind) if stage2_logged else None,
             "E8": {"passed": sorted(passed), "all_passed": all(k in passed for k in healthy), "bypass": bypass,

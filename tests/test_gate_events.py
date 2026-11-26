@@ -28,7 +28,7 @@ def _trace(T=60.0, dt=0.1):
 def test_premature_release_and_false_free_are_counted():
     t, gf, st = _trace()
     a, b = np.searchsorted(t, 10.0), np.searchsorted(t, 14.0)
-    gf[a:b, 0, :] = [0.3, 0.0, 0.0]
+    gf[a:b, 0, :] = [-0.3, 0.0, 0.0]
     for i in range(np.searchsorted(t, 9.0), np.searchsorted(t, 12.0)):
         st[1][i]["gate"]["occ"] = "BUSY"
     st[1][np.searchsorted(t, 12.0)]["gate"].update(occ="EXITING", exit_witness={"sector": "FRONT", "range": 8.0})
@@ -145,3 +145,31 @@ def test_give_up_and_recommit_do_not_reset_the_crossing_obligation():
     budget = (abs(0.0) + G.exit_s + 5.0) / G.v_pass + G.t_occ_max + G.t_clear
     assert budget < 109.0 and out["stalled"]
     assert out["E8"]["committed_stalls"][0][1] == 10.0
+
+
+def test_a_drone_beyond_the_cr_in_the_bar_plane_is_no_p2_event_but_a_clearance_count():
+    """P2 is judged on the CR s in [cr_s_min, cr_s_max] only; the bar plane (cr_s_max, passage_clear_s] is P1 clearance."""
+    t, gf, st = _trace()
+    a, b = np.searchsorted(t, 10.0), np.searchsorted(t, 14.0)
+    gf[a:b, 0, :] = [0.3, 0.0, 0.0]
+    for i in range(np.searchsorted(t, 9.0), np.searchsorted(t, 12.0)):
+        st[1][i]["gate"]["occ"] = "BUSY"
+    st[1][np.searchsorted(t, 12.0)]["gate"].update(occ="EXITING", exit_witness={"sector": "FRONT", "range": 8.0})
+    for i in range(np.searchsorted(t, 11.0), len(t)):
+        st[1][i]["committed"] = True
+        st[1][i]["gate"]["entry"] = "HOLD" if t[i] < 12.5 else "ADMIT"
+    ev = gate_events(t, gf, st, [0, 1], "g", PLANS, DEFAULT)
+    assert ev["E2"]["total"] == 0 and ev["E3"] == 0 and ev["E4"] == 0 and ev["E5"] == 0
+    assert ev["E4_clearance"] == 1
+
+
+def test_a_timed_stale_release_while_the_cr_is_occupied_is_a_premature_release():
+    t, gf, st = _trace()
+    a, b = np.searchsorted(t, 10.0), np.searchsorted(t, 14.0)
+    gf[a:b, 0, :] = [-0.3, 0.0, 0.0]
+    for i in range(np.searchsorted(t, 9.0), np.searchsorted(t, 12.0)):
+        st[1][i]["gate"]["occ"] = "BUSY"
+    for i in range(np.searchsorted(t, 12.0), np.searchsorted(t, 13.0)):
+        st[1][i]["gate"]["occ"] = "STALE"
+    ev = gate_events(t, gf, st, [0, 1], "g", PLANS, DEFAULT)
+    assert ev["E2"]["TIMEOUT"] == 1 and ev["E2"]["to_free"] == 1 and ev["E1"]["false_free_s"] > 0.5

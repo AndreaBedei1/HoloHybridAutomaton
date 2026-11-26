@@ -297,6 +297,8 @@ class DroneController:
                      "at_queue": obs.gate.at_queue, "decision": obs.gate.decision, "has_prio": obs.gate.has_prio,
                      "occ": obs.gate.occ_state,
                      "entry_after": round(obs.gate.entry_after, 2) if obs.gate.entry_after > -1e8 else None,
+                     "admit_after": None if self.flows.timed_bound is None else round(self.flows.timed_bound, 2),
+                     "zone_since": None if self.flows.zone_since is None else round(self.flows.zone_since, 2),
                      "exit_witness": obs.gate.exit_witness, "relations": obs.gate.relations,
                      "rank_used": obs.gate.rank_used,
                      "loc_ok": obs.gate.loc_ok, "reloc_hold": self.flows.reloc_hold,

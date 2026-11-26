@@ -28,11 +28,14 @@ M3  Occupancy latch (Z3, bounded model checking of a timed abstraction, 30 s): d
     confirmation, is blind to A while the gate bars mask it, latches BUSY on a corridor echo,
     needs an echo beyond the CR (EXITING) and t_clear without corridor echoes to turn FREE, and
     commits only with PRIORITY held for t_clear and FREE.  Property: never A and B both in the CR.
+    M3 models the release by a positive exit witness (BUSY -> EXITING -> FREE).  The deployed timed release (BUSY -> STALE
+    after t_occ_max, which permits a commitment, never an entry, and bounds the admission) is proved separately in
+    formal/check_stale.py (ST1); a commitment made under STALE keeps that bound until a witness arrives.
     M3m: a belief without the latch (FREE as soon as nothing is seen) must give a counterexample (outer queue points of
-    n = 3 and n = 4; the n = 2 view no longer catches it with the CR s in [-1.05, 0.55], its counterexample needed the
-    occupant in the former post-gate part (0.55, 0.8]).
-    M3f: the scope of the t_occ_max fallback - an occupant that stops inside the CR (a fault, crossing speed 0) is
-    released by it (counterexample expected): M3 assumes a healthy crossing at >= V_LO.
+    n = 3 and n = 4).
+    M3f / M3hs: mutations with the FORMER timed release to FREE (e3e31f0, no admission bound): an occupant that stops
+    inside the CR (a fault) or before it behind the bars is released by it (counterexamples expected; formal ST1m4 shows
+    the same for the timeline).
 M4  Geometry of the queue (numeric, n = 2..6, exact config values): (a) the CR lies inside the
     FRONT cone of every queue point with the heading tolerance and fuzz; (b) the merge path of a
     committed drone keeps merge_clearance from the next queue point; (c) queued neighbours stay
@@ -49,7 +52,8 @@ M4f The queue neighbours a decision needs are never hidden by the gate frame (an
     queue at the cone-only line hides its diagonal neighbours.
 M5  Progress of the queue (argument + spec): for every occupancy in scope some queued drone has
     PRIORITY - the first in the order left first, then top first (M2, M2v); the belief returns FREE
-    after the previous drone is seen beyond the CR (or after t_occ_max, logged); the commit edge is
+    after the previous drone is seen beyond the CR, or becomes STALE after t_occ_max (logged, formal/check_stale.py); the
+    commit edge is
     then enabled (formal/check_determinism.py, G1/D2).  A WAIT caused by a drone that is not at its
     queue point (approaching, passing) ends when that drone reaches its queue point or moves beyond the
     CR.  Under the fairness assumptions "a committed drone completes its passage, or gives it up behind
@@ -69,7 +73,7 @@ shows that from the stage-2 hold, under the declared navigation error, no part o
 
 Scope: one critical region at a time, n <= 6 drones in the abreast queue (n = 6 needs the queue
 line 9.1 m back).  Not proved: the sonar sees a crossing drone in its corridor (sensing
-assumption, measured), a committed drone does not stop inside the CR for t_occ_max.
+assumption, measured), a committed drone does not stop inside the CR (Pi2, v_cross_min).
 """
 
 from __future__ import annotations
@@ -663,16 +667,15 @@ def run(cfg: FleetConfig = DEFAULT, verbose: bool = True) -> Report:
                 + (f"; no witness within {R_DETECT_M} m for the observers at {', '.join(blind)}" if blind else ""))
         if accepted and label in B0_EXIT_LIMIT:
             rep.add(CheckResult(f"M4g declared limit (B0), {label}: beyond the CR some queued drone gets no sonar exit witness "
-                                "of a passing drone for >= 3 captures (measured detection range); the latch then falls back to "
-                                "the t_occ_max timeout", "expect a queued observer with a window below 0.3 s",
+                                "of a passing drone for >= 3 captures (measured detection range); the latch then releases "
+                                "only by the timed STALE path", "expect a queued observer with a window below 0.3 s",
                                 "perception/exit_witness.py + mission.check_gate_domain", "violated",
                                 verdict="holds" if ok_g else "violated", passed=not ok_g,
-                                note=note + ".  A regression of the CR s in [-1.05, 0.55]: the queue line moved 0.25 m back "
-                                            "(-5.50 -> -5.75 m), so the outer observers see the passer on the axis only "
-                                            "near the 10 m detection range (with the former CR: 1.2 s, first at s=3.9, FRONT "
-                                            "9.49 m).  Consequence in B0: the occupancy latch of these observers releases by "
-                                            "the t_occ_max timeout, a progress loss, not a safety one (M3 covers the "
-                                            "timeout under the healthy-crossing premise).  B2, the official controller: the "
+                                note=note + ".  The queue line of 3 is at -5.75 m (bound (c) of GateRule.queue_s), so the "
+                                            "outer observers see the passer on the axis only near the 10 m detection range.  "
+                                            "Consequence in B0: the occupancy latch of these observers is released by the "
+                                            "timed STALE path (formal/check_stale.py), a progress cost, not a safety one.  "
+                                            "B2, the official controller: the "
                                             "acoustic exit evidence covers the same queue points (formal/check_acoustic.py "
                                             "B2-M4g n=3, abreast lanes)"), verbose)
             continue
@@ -731,7 +734,7 @@ def run(cfg: FleetConfig = DEFAULT, verbose: bool = True) -> Report:
     side3 = max(geos[3]["views"], key=lambda v: v["queue_l"])
     side4 = max(geos[4]["views"], key=lambda v: v["queue_l"])
     cons, info4 = latch_bmc(cfg, geos[4], view=side4, hold=True, steps=540, timeout=True)
-    rep.add(check("M3hs mutation: beyond the 42 s bound a drone stopped behind the bars before the CR is released by the t_occ_max fallback",
+    rep.add(check("M3hs mutation: beyond the 42 s bound a drone stopped behind the bars before the CR is released by the former t_occ_max FREE fallback",
                   "expect counterexample: the stop before the CR is bounded by the give-up of the code (26 s), not modelled; B2 claims cover it when heard", ENC, cons, expect="sat", timeout_ms=900000,
                   note=f"n=4, outer queue point l={side4['queue_l']:+.2f} (masked from s = {side4['mask_from_s']:.2f}, before the CR "
                        f"entry {G.cr_s_min}), 54 s BMC (48 s for the n=3 view: from the n=4 line B needs {info4['reach_steps']} "
@@ -739,7 +742,7 @@ def run(cfg: FleetConfig = DEFAULT, verbose: bool = True) -> Report:
                        f"masked region now starts at s = {side3['mask_from_s']:.2f}, inside the CR, so a drone stopped before the CR "
                        f"is always seen"), verbose)
     cons, info = latch_bmc(cfg, geos[2], view=worst, v_lo=0.0, steps=700, timeout=True)
-    rep.add(check("M3f mutation: an occupant that stops inside the CR (fault) is released by the t_occ_max fallback",
+    rep.add(check("M3f mutation: an occupant that stops inside the CR (fault) is released by the former t_occ_max FREE fallback",
                   "expect counterexample: crossing speed >= V_LO is an assumption of M3", ENC, cons, expect="sat",
                   note=f"n=2, observer at l={worst['queue_l']:+.2f}, 70 s BMC; outside the P2 guarantee (B0), "
                        "B2 keeps the CR busy while the occupant is heard inside (acoustic_gate.heard_inside)"), verbose)

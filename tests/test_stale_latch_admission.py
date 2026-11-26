@@ -24,17 +24,46 @@ def _plan():
 
 
 def test_no_admission_before_the_stale_bound_and_admission_right_after():
+    """Dwell in the admission zone from t = 0; last sighting at 10 s: admission strictly after 10 s + t_admit_stale."""
     plan = _plan()
     fl = Flows(plan, DEFAULT)
-    last_seen = 10.0
-    bound = last_seen + G.t_admit_stale
-    t = last_seen + G.t_occ_max + 1.0
+    bound = 10.0 + G.t_admit_stale
+    t = 0.0
     while t < bound - 0.1:
         fl.gate(_obs(plan, G.stage2_hold_s + 0.02, t, bound), "MUTEX_PASS")
         assert not fl.cr_cleared and fl.entry_state == "HOLD"
         t += 0.5
+    fl.gate(_obs(plan, G.stage2_hold_s + 0.02, bound, bound), "MUTEX_PASS")
+    assert not fl.cr_cleared
     fl.gate(_obs(plan, G.stage2_hold_s + 0.02, bound + 0.1, bound), "MUTEX_PASS")
     assert fl.cr_cleared and fl.entry_state == "ADMIT"
+
+
+def test_the_timed_bound_also_runs_from_the_dwell_in_the_admission_zone():
+    """An old sighting does not shorten the wait: the bound is at least t_admit_stale after the zone was entered
+    (formal/check_stale.py ST1, case 1: an occupant admitted before the dwell has left by then)."""
+    plan = _plan()
+    fl = Flows(plan, DEFAULT)
+    old = 1.0 + G.t_admit_stale
+    fl.gate(_obs(plan, -5.0, 30.0, old), "MUTEX_PASS")
+    t = 40.0
+    while t < 40.0 + G.t_admit_stale - 0.1:
+        fl.gate(_obs(plan, G.stage2_hold_s + 0.02, t, old), "MUTEX_PASS")
+        assert not fl.cr_cleared
+        t += 0.5
+    fl.gate(_obs(plan, G.stage2_hold_s + 0.02, 40.0 + G.t_admit_stale + 0.1, old), "MUTEX_PASS")
+    assert fl.cr_cleared
+
+
+def test_leaving_the_admission_zone_restarts_the_dwell():
+    plan = _plan()
+    fl = Flows(plan, DEFAULT)
+    old = 1.0 + G.t_admit_stale
+    fl.gate(_obs(plan, G.stage2_hold_s + 0.02, 40.0, old), "MUTEX_PASS")
+    fl.gate(_obs(plan, G.stage2_hold_s - 1.0, 60.0, old), "MUTEX_PASS")
+    fl.gate(_obs(plan, G.stage2_hold_s + 0.02, 70.0, old), "MUTEX_PASS")
+    fl.gate(_obs(plan, G.stage2_hold_s + 0.02, 40.0 + G.t_admit_stale + 1.0, old), "MUTEX_PASS")
+    assert not fl.cr_cleared and fl.zone_since == 70.0
 
 
 def test_the_hold_is_not_given_up_before_the_stale_bound_has_elapsed():

@@ -166,6 +166,17 @@ class AcousticExit:
             return True
         return st.phase == GP_NONE and fresh
 
+    def passed(self, j: int) -> bool:
+        """Drone j's latest report is a verified passage of the current gate, and no later fix places it possibly in the CR: it
+        is excluded for good (status_excluded; formal/check_b2_comm.py premise Pi4: a drone never commits again to a gate it
+        has passed, reports PASSED only after its verified passage and a claim whenever it is back in the keep-out box)."""
+        st = self.tracker.status.get(j)
+        if st is None or st.gate_idx != self.gate_idx or st.phase != GP_PASSED:
+            return False
+        last = self.tracker.last_accepted.get(j)
+        return not (self.g is not None and last is not None and last.t_tx > st.t_tx + 1e-6
+                    and not self.clear_of_cr(self.g, last, last.t))
+
     def status_claim(self, j: int, t: float) -> bool:
         """Drone j holds the gate by what it reports: committed or admitted to this gate.  The claim persists, whatever the
         silence since, until j itself reports otherwise (formal/check_b2_comm.py: a claim can only delay an admission)."""
@@ -178,8 +189,10 @@ class AcousticExit:
         return st is not None and t - st.t_tx <= self.cfg.acoustic.admit_fresh_s
 
     def all_fresh(self, t: float) -> bool:
-        """A fresh report of EVERY other drone of the plan is held (B2 admission without the degraded wait)."""
-        return all(self.fresh(j, t) for j in self.others)
+        """A fresh report of EVERY other drone of the plan is held, or its report of having passed this gate (``passed``): the B2
+        admission without the degraded wait.  The degraded wait covers a drone that may still be crossing; one that verified its
+        passage is not (formal/check_b2_comm.py, B2C-Ep)."""
+        return all(self.fresh(j, t) or self.passed(j) for j in self.others)
 
     def claims(self, t: float) -> set:
         return {j for j in self.others if self.status_claim(j, t)}

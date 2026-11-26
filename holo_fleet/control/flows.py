@@ -81,6 +81,8 @@ class Flows:
         self.commit_t: Optional[float] = None
         self.past_centre = False
         self.reloc_hold = False
+        self.zone_since: Optional[float] = None
+        self.timed_bound: Optional[float] = None
         self.hold_since: Optional[float] = None
         self.hold_timeout = False
         self.entry_state = ""
@@ -325,10 +327,17 @@ class Flows:
             s_hold = G.stage2_hold_s
             self.commit_t = obs.t if self.commit_t is None else self.commit_t
             wait = float(getattr(go, "admit_wait_s", 0.0))
+            in_zone = go.s >= s_hold - RELOC_ZONE_M
+            self.zone_since = (obs.t if self.zone_since is None else self.zone_since) if in_zone else None
             timed = float(getattr(go, "entry_after", -1e9))
+            if timed > -1e8:
+                # after a timed latch release the bound also runs from the start of the current dwell in the admission
+                # zone: an occupant admitted before it has left by then (formal/check_stale.py ST1, case 1)
+                timed = max(timed, (self.zone_since if self.zone_since is not None else obs.t) + G.t_admit_stale)
+            self.timed_bound = timed if timed > -1e8 else None
             eligible_t = max(self.commit_t + wait, timed)
             # the timed bound is strict: at t = entry_after the occupant can be exactly on the closed CR boundary
-            if (admissible and go.loc_ok and go.entry_ok and go.s >= s_hold - RELOC_ZONE_M
+            if (admissible and go.loc_ok and go.entry_ok and in_zone
                     and obs.t - self.commit_t >= wait and obs.t > timed):
                 self.cr_cleared = True
             s_abort = G.cr_s_min - (float(R_OUT) + G.nav_err_m)
@@ -382,6 +391,7 @@ class Flows:
         else:
             self.cr_cleared, self.hold_since, self.entry_state, self.hold_timeout, self.past_centre = False, None, "", False, False
             self.commit_t = None
+            self.zone_since = self.timed_bound = None
             self.abort_request = False
             self.hold_target = None
             self.standoff_anchor = self.standoff_since = None

@@ -216,8 +216,8 @@ def analyze_run(run_dir: Path, reference: Optional[Dict] = None, cfg=DEFAULT, pr
                 occ = gs.get("occ")
                 near = any(np.linalg.norm(P[i, j] - g.center) <= 4.0 for j in others)
                 in_cr = any(inside[i, j] for j in others)
-                false_busy += int(occ not in (None, "FREE") and not near)
-                false_free += int(occ == "FREE" and in_cr)
+                false_busy += int(occ in ("BUSY", "EXITING") and not near)
+                false_free += int(occ in ("FREE", "STALE") and in_cr)
         rel = {"releases": {"SONAR": 0, "ACOUSTIC": 0, "TIMEOUT": 0}, "false": {"SONAR": 0, "ACOUSTIC": 0, "TIMEOUT": 0}}
         for k in healthy:
             others = [j for j in range(n) if j != k]
@@ -225,9 +225,11 @@ def analyze_run(run_dir: Path, reference: Optional[Dict] = None, cfg=DEFAULT, pr
             for i in range(m):
                 gs = states[k][i].get("gate") or {}
                 occ = (gs.get("occ"), gs.get("id"))
-                if prev is not None and prev[0] == "BUSY" and prev[1] == occ[1] and occ[0] in ("EXITING", "FREE"):
+                if (prev is not None and prev[0] == "BUSY" and prev[1] == occ[1]
+                        and occ[0] in ("EXITING", "FREE", "STALE")):
                     w = gs.get("exit_witness") or {}
-                    kind = "TIMEOUT" if occ[0] == "FREE" else ("ACOUSTIC" if w.get("sector") == "ACOUSTIC" else "SONAR")
+                    kind = ("TIMEOUT" if occ[0] in ("FREE", "STALE")
+                            else ("ACOUSTIC" if w.get("sector") == "ACOUSTIC" else "SONAR"))
                     rel["releases"][kind] += 1
                     rel["false"][kind] += int(any(inside[i, j] for j in others))
                 prev = occ

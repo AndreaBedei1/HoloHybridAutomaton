@@ -2,7 +2,7 @@
 control/gate_safety.py).
 
 The earlier hold sat at s = -1.18 m, 0.38 m from the CR (the former symmetric CR |s| <= 0.8; the same rule gives -1.43 m with
-the present CR, s in [-1.05, 0.55]), with a declared gate-frame navigation error of 1 m: a drone held there on an
+the CR s in [-1.05, 0.55] of that time), with a declared gate-frame navigation error of 1 m: a drone held there on an
 estimate 1 m short of the truth had its centre inside the CR.  The hold is now the nearest point where
 holding is P2-safe under the declared error, minus the measured holding error, and the queue lines keep the merge
 clearance from it.  The closed loops use formal/check_f1p_kinematic.World: the deployed Flows.gate, keep-out and P2
@@ -198,8 +198,8 @@ def test_the_localization_is_acquired_at_the_hold(bias):
 
 @pytest.mark.parametrize("bias", [0.1, 0.4, 0.5, 0.6, 0.7, 1.0])
 def test_the_localization_is_not_acquired_at_the_hold(bias):
-    """The B0 acquisition gap of the stage-2 hold at -2.55 m (the hold of the CR s in [-1.05, 0.55], 0.25 m farther from
-    the frame than the -2.30 m hold of the former symmetric CR, which acquired at +0.5, +0.6 m too): not at +0.1 m, and
+    """The B0 acquisition gap of the stage-2 hold at -2.55 m (0.25 m farther from the frame than the -2.30 m P2-safe hold of
+    the present CR s in [-0.8, 0.0], which acquired at +0.5, +0.6 m too): not at +0.1 m, and
     not from +0.4 m (the truth about 3 m or more from the gate plane).  A progress limit, not a safety one."""
     assert _acquired(bias) is None
 

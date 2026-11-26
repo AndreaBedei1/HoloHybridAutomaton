@@ -151,6 +151,13 @@ class GateRule:
     its admission until it has left the CR, and never stops inside it (failures inside the CR are outside the scope,
     holo_fleet/scope.py).  A declared assumption of the P2 argument, not a measurement (M3f / B2C-Lv give the
     counterexamples without it)."""
+    near_sight_m: float = 3.0
+    """Near-field sighting radius of the timed admission (gate_perception: a hull with d_lower below it in any sector
+    restarts the bound).  Premise N of formal/check_stale.py: two drones whose estimates are both in the admission zone
+    (along the axis admit_zone_m + hold_err_m, laterally 2 hold_lateral_allow, vertically the acquisition offsets
+    +-0.8 m) are at most 2.93 m apart with the observer's declared error nav_err_m and the admitted drone's validated
+    localization (CONSIST_M + UNIQUE_M + FIT_RMS_M = 0.65 m); kept below the standoff distance d_warning_exit +
+    STANDOFF_MARGIN_M = 3.2 m (control/flows.py) so a follower holding in standoff is normally outside it."""
     admit_zone_m: float = 0.4
     """Admission zone of the stage-2 hold: a committed drone may be admitted once its estimated s >= stage2_hold_s -
     admit_zone_m (control/flows.py RELOC_ZONE_M, kept equal by tests/test_b2_comm_fixes.py)."""

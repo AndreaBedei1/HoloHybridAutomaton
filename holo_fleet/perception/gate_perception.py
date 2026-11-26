@@ -18,8 +18,10 @@
   The wait alone never gives FREE.  After ``t_occ_max`` with no corridor echo, nothing heard and nothing known inside, a BUSY
   set by a corridor echo becomes STALE: no longer an obstacle to committing (the commitment stops at the stage-2 hold,
   outside the CR, control/gate_safety.py), but admission then also needs ``entry_after``: the last corridor sighting plus
-  ``GateRule.t_admit_stale`` (formal/check_stale.py), unless a positive exit witness came later.  A corridor echo makes a
-  STALE latch BUSY again; the timed basis is kept until a witness or the next gate.
+  ``GateRule.t_admit_stale`` (formal/check_stale.py), unless a positive exit witness came later.  The sighting is a corridor
+  echo or any hull within GateRule.near_sight_m (near field), and control/flows.py also counts the bound from the start of the
+  current dwell in the admission zone, so an occupant admitted before that dwell needs no sighting at all (premise S is not
+  needed).  A corridor echo makes a STALE latch BUSY again; the timed basis is kept until a witness or the next gate.
   B2 adds positive acoustic occupancy to BUSY and vetoes release/admission while a drone is heard possibly inside
   (the complete declared region, perception/acoustic_gate.py). Acoustic exit evidence is evaluated only with the
   corridor empty. Without receptions the sonar outage-mode latch remains.
@@ -62,10 +64,11 @@ def stale_release(t: float, last_corridor_t: float, busy_since: float, corridor:
             and t - last_corridor_t > t_occ_max)
 
 
-def entry_after(release: Optional[str], last_corridor_t: float, t_admit_stale: float) -> float:
+def entry_after(release: Optional[str], last_sighting_t: float, t_admit_stale: float) -> float:
     """Earliest admission time imposed by the latch: after a timed release (STALE, or BUSY again after it), the last
-    corridor sighting plus ``t_admit_stale``; no bound after a positive exit witness or with no timed release."""
-    return last_corridor_t + t_admit_stale if release == "TIMER" else -1e9
+    sighting (a corridor echo, or any hull within GateRule.near_sight_m) plus ``t_admit_stale``; no bound after a positive exit
+    witness or with no timed release.  Control/flows.py adds the start of the dwell in the admission zone."""
+    return last_sighting_t + t_admit_stale if release == "TIMER" else -1e9
 
 
 @dataclass
@@ -124,6 +127,7 @@ class GatePerception:
         self.phantom_events: list = []
         self.busy_since = -1e9
         self.exit_seen_t = -1e9
+        self.last_near_t = -1e9
         self.occ_timeouts = 0
         self.release: Optional[str] = None
         self.exit = ExitWitness(cfg)
@@ -146,6 +150,7 @@ class GatePerception:
         self.idx += 1
         self.prio_since = None
         self.occ_state, self.last_corridor_t, self.exit_seen_t = "FREE", -1e9, -1e9
+        self.last_near_t = -1e9
         self.release = None
         self.exit.reset()
         if self.acoustic_exit is not None:
@@ -187,6 +192,10 @@ class GatePerception:
             (set(tg.pattern) & set(pp)) and abs(tg.r_min - pr) <= 0.5 for pp, pr in self.prev_targets)]
         self.prev_targets = [(tuple(tg.pattern), tg.r_min) for tg in targets]
         targets = persistent
+        # near-field sighting (any sector): a hull within GateRule.near_sight_m; with the corridor sighting and the dwell in
+        # the admission zone it bounds the timed admission (formal/check_stale.py premise N)
+        if any(tg.d_lower < G.near_sight_m for tg in targets):
+            self.last_near_t = t
         ae = self.acoustic_exit
         if ae is not None:
             ae.gate_idx, ae.g = self.idx % 4, g
@@ -277,7 +286,7 @@ class GatePerception:
                 self.acoustic_exit.reset()
         o.occ_state = self.occ_state
         o.occ_busy = self.occ_state in ("BUSY", "EXITING")
-        o.entry_after = entry_after(self.release, self.last_corridor_t, G.t_admit_stale)
+        o.entry_after = entry_after(self.release, max(self.last_corridor_t, self.last_near_t), G.t_admit_stale)
         o.occ_timeouts = self.occ_timeouts
         front = readings.get("FRONT")
         if front is None or not front.healthy:
