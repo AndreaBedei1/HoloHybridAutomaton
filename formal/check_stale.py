@@ -1,6 +1,9 @@
 """Timed occupancy-latch release (STALE) and the admission bound (perception/gate_perception.py, control/flows.py).
 
-Deployed logic (gate_perception.stale_release / entry_after, flows.Flows.gate):
+Deployed logic (gate_perception.stale_release / timed_admission / entry_after, flows.Flows.gate).  Every admission that rests on
+no positive exit witness after the last sighting (STALE, BUSY, or FREE without any witness: a B0 lead drone, the hidden partner
+of a concurrent commitment of formal M4f) is bounded; B2 with fresh reports of every other drone rests on B2C-E1 instead.  So the
+B0 P2 argument is the witness path (formal M3) or this timed path (ST1), independent of the queue precedence M2:
 * BUSY -> STALE when the last corridor echo is not before BUSY began, no corridor echo for more than t_occ_max, nothing heard
   possibly inside and nothing known inside.  STALE is not ``occ_busy``: the drone may commit and move to the stage-2 hold,
   which is outside the CR (control/gate_safety.py keeps a non-admitted drone out of it).
@@ -36,7 +39,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from common import CheckResult, Report, check  # noqa: E402
 from holo_fleet.config import DEFAULT, FleetConfig  # noqa: E402
-from holo_fleet.perception.gate_perception import entry_after, stale_release  # noqa: E402
+from holo_fleet.perception.gate_perception import entry_after, stale_release, timed_admission  # noqa: E402
 
 ENC = "linear real arithmetic over the deployed guards and the declared crossing premise (v_cross_min)"
 FREE, BUSY, STALE, EXITING = 0, 1, 2, 3
@@ -131,11 +134,12 @@ def consistency(cfg: FleetConfig) -> CheckResult:
                                                          G.t_occ_max)))
             if py != zz:
                 bad.append((t, last, since, corridor, heard, known))
-    for release, last in itertools.product((None, "TIMER", "WITNESS"), (-1e9, 0.0, 12.5)):
+    for release, last, comm in itertools.product((None, "TIMER", "WITNESS"), (-1e9, 0.0, 12.5), (False, True)):
         n += 1
-        want = last + G.t_admit_stale if release == "TIMER" else -1e9
-        if abs(entry_after(release, last, G.t_admit_stale) - want) > 1e-9:
-            bad.append((release, last))
+        want = -1e9 if (release == "WITNESS" or comm) else last + G.t_admit_stale
+        if (abs(entry_after(release, last, G.t_admit_stale, comm) - want) > 1e-9
+                or timed_admission(release, comm) != (release != "WITNESS" and not comm)):
+            bad.append((release, last, comm))
     r = CheckResult(prop=f"ST4 runtime stale_release / entry_after agree with the Z3 encoding ({n} input combinations)",
                     formula="python(x) == z3(x) for every sampled x", encoding="numeric grid", expect="holds")
     r.verdict = "holds" if not bad else "violated"

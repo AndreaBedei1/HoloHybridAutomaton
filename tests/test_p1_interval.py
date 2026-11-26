@@ -35,14 +35,38 @@ def _frame(t, *, echoes=(), missing=(), stamps=None):
 
 
 def test_reusing_a_sonar_frame_cannot_confirm_its_echo():
+    """A reused frame adds no capture: the window stays in warm-up (the echo is kept as a possible hull, not confirmed)
+    until a second distinct capture; a one-off echo in continuous sensing is UNCONFIRMED."""
     ctrl = _controller()
     returns = (("FRONT", 2.5, 2.7),)
     ctrl.step(_frame(0.0, echoes=returns), 0.1)
-    assert ctrl.last_obs.readings["FRONT"].echoes[0].cls == UNCONFIRMED
+    rd = ctrl.last_obs.readings["FRONT"]
+    assert rd.warming and rd.echoes[0].cls == DYNAMIC
     ctrl.step(_frame(0.1, echoes=returns, stamps={"FRONT": 0.0}), 0.1)
-    assert ctrl.last_obs.readings["FRONT"].echoes[0].cls == UNCONFIRMED
+    assert ctrl.last_obs.readings["FRONT"].warming
     ctrl.step(_frame(0.2, echoes=returns), 0.1)
-    assert ctrl.last_obs.readings["FRONT"].echoes[0].cls == DYNAMIC
+    rd = ctrl.last_obs.readings["FRONT"]
+    assert not rd.warming and rd.echoes[0].cls == DYNAMIC
+    ctrl.step(_frame(0.3), 0.1)
+    ctrl.step(_frame(0.4, echoes=(("FRONT", 5.0, 5.2),)), 0.1)
+    assert ctrl.last_obs.readings["FRONT"].echoes[0].cls == UNCONFIRMED
+
+
+def test_a_hull_seen_before_a_sonar_gap_is_in_the_distance_bound_at_the_first_capture_after_it():
+    """S0det after a gap (formal/check_separation.py): the first fresh capture after a FRONT outage longer than tau_max
+    keeps the hull's echo, so the nearest-distance bound contains it while the sector is healthy again."""
+    ctrl = _controller()
+    near = (("FRONT", 2.0, 2.2),)
+    for k in range(4):
+        ctrl.step(_frame(0.1 * k, echoes=near), 0.1)
+    assert ctrl.last_obs.d_min < 2.2
+    for k in range(4, 8):
+        ctrl.step(_frame(0.1 * k, missing=("FRONT",)), 0.1)
+    assert not ctrl.last_obs.readings["FRONT"].healthy
+    ctrl.step(_frame(0.8, echoes=near), 0.1)
+    obs = ctrl.last_obs
+    assert obs.readings["FRONT"].healthy and obs.readings["FRONT"].warming
+    assert obs.d_min < 2.2 and any("FRONT" in tg.pattern for tg in obs.targets)
 
 
 def test_nearest_bound_ages_through_sonar_loss_but_cannot_jump_over_a_gap():

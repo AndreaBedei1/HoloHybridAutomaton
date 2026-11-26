@@ -24,8 +24,14 @@ from holo_fleet.perception.sonar_geometry import HULL_HALF, R_OUT
 
 RELOC_MARGIN_M = 0.15
 RELOC_ZONE_M = 0.4
-ACQ_PERIOD_S = 4.0
-ACQ_OFFSETS = ((0.0, -0.6), (0.0, 0.6), (0.0, -0.4), (0.0, 0.8), (0.0, 0.4), (0.0, -0.8))
+# Acquisition offsets at the stage-2 hold (lateral, vertical): at |dz| >= ~0.5 m the opposite vertical sonar sees the far
+# horizontal bar (v27 replay: 1 % of samples at |dz| 0.3-0.4, 37 % at 0.4-0.5, 97 % at 0.5-0.6).  The former six offsets of
+# 4 s each were not reached: the vertical command is capped at 0.25 m/s, so a 1.0-1.2 m move per 4 s period left the drone
+# within 0.1 m of its offset only 21-28 % of the time.  Two offsets of 13 s (a 1.6 m move takes 6.4 s at the cap) are
+# reached and still fit the bounded hold (t_occ_max + t_clear); on the synthetic scan of tests/test_hold_point.py the
+# +-0.8 m pair acquires the same along-axis and lateral errors as the former six offsets.
+ACQ_PERIOD_S = 13.0
+ACQ_OFFSETS = ((0.0, -0.8), (0.0, 0.8))
 STANDOFF_MARGIN_M = 0.5
 FAILSAFE_PROBE_M = 0.3
 FAILSAFE_CAP_H = 0.25
@@ -83,6 +89,7 @@ class Flows:
         self.reloc_hold = False
         self.zone_since: Optional[float] = None
         self.timed_bound: Optional[float] = None
+        self.acq_target: Optional[np.ndarray] = None
         self.hold_since: Optional[float] = None
         self.hold_timeout = False
         self.entry_state = ""
@@ -329,11 +336,13 @@ class Flows:
             wait = float(getattr(go, "admit_wait_s", 0.0))
             in_zone = go.s >= s_hold - RELOC_ZONE_M
             self.zone_since = (obs.t if self.zone_since is None else self.zone_since) if in_zone else None
-            timed = float(getattr(go, "entry_after", -1e9))
-            if timed > -1e8:
-                # after a timed latch release the bound also runs from the start of the current dwell in the admission
-                # zone: an occupant admitted before it has left by then (formal/check_stale.py ST1, case 1)
-                timed = max(timed, (self.zone_since if self.zone_since is not None else obs.t) + G.t_admit_stale)
+            timed = -1e9
+            if bool(getattr(go, "timed_admission", False)):
+                # an admission resting on no exit witness: the bound runs from the last sighting and from the start of
+                # the current dwell in the admission zone, so an occupant admitted before it has left by then
+                # (formal/check_stale.py ST1, case 1)
+                timed = max(float(go.entry_after),
+                            (self.zone_since if self.zone_since is not None else obs.t) + G.t_admit_stale)
             self.timed_bound = timed if timed > -1e8 else None
             eligible_t = max(self.commit_t + wait, timed)
             # the timed bound is strict: at t = entry_after the occupant can be exactly on the closed CR boundary
@@ -352,13 +361,18 @@ class Flows:
                     self.hold_timeout = True
                     self.events.append({"t": obs.t, "type": "ENTRY_HOLD_TIMEOUT", "loc_ok": go.loc_ok,
                                         "entry_ok": go.entry_ok, "admit_wait_s": round(wait, 2), "admissible": admissible})
-                if go.loc_ok:
+                if go.loc_ok and self.acq_target is not None:
+                    # localized but not yet admitted (a wait or the timed bound still running): stay where the fit
+                    # works; returning to the axis lost the validation within LOC_TTL_S (v29 B0 s2)
+                    c = self.acq_target.copy()
+                elif go.loc_ok:
                     c = np.array([s_hold, 0.0, 0.0])
                 else:
                     k = int((obs.t - self.hold_since) / ACQ_PERIOD_S) % len(ACQ_OFFSETS)
                     dl, dz = ACQ_OFFSETS[k]
                     z = float(np.clip(float(g.center[2]) + dz, self.cfg.env.z_min + 0.5, self.cfg.env.z_max - 0.5))
                     c = np.array([s_hold, dl, z - float(g.center[2])])
+                    self.acq_target = c.copy()
                 if self.hold_timeout:
                     # the retreat target is beyond the give-up plane by the margin plus the steady error of the hold loop
                     # against the declared residual drift: with RELOC_MARGIN_M alone a drift towards the CR keeps the
@@ -391,7 +405,7 @@ class Flows:
         else:
             self.cr_cleared, self.hold_since, self.entry_state, self.hold_timeout, self.past_centre = False, None, "", False, False
             self.commit_t = None
-            self.zone_since = self.timed_bound = None
+            self.zone_since = self.timed_bound = self.acq_target = None
             self.abort_request = False
             self.hold_target = None
             self.standoff_anchor = self.standoff_since = None

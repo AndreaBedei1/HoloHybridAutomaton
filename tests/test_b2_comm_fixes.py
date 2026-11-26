@@ -319,3 +319,17 @@ def test_a_passed_report_of_another_gate_index_is_no_exemption():
     _rx(tr, P, 1.0, 1, [6.0, 0.0, -5.], gate_idx=1, phase=pl.GP_PASSED)
     o = gp.update(1.0 + A.admit_fresh_s + 0.6, P, 0., [], {})
     assert not o.comm_fresh
+
+
+
+def test_b2_with_every_other_drone_fresh_needs_no_timed_bound_and_b0_always_does():
+    """The timed admission bound (formal ST1) is the B0 argument; B2 with fresh reports of every other drone rests on B2C-E1."""
+    tr, gp = _observer(P, others=(1,))
+    _rx(tr, P, 1.0, 1, [-5.4, -3.5, -5.], phase=pl.GP_NONE)
+    assert not gp.update(1.1, P, 0., [], {}).timed_admission
+    assert gp.update(1.0 + A.admit_fresh_s + 0.5, P, 0., [], {}).timed_admission
+    from holo_fleet.perception.gate_perception import GatePerception
+
+    plan = _plan()
+    b0 = GatePerception(plan, DEFAULT).update(1.0, np.asarray(plan.gates[0].from_gate_frame([-2.5, 0., 0.]), float), 0., [], {})
+    assert b0.timed_admission

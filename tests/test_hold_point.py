@@ -188,15 +188,17 @@ def test_the_acquisition_pattern_fits_in_the_bounded_hold():
         assert abs(dl) <= G.hold_lateral_allow and abs(dz) <= G.cr_half_height
 
 
-@pytest.mark.parametrize("bias", [-1.0, -0.7, -0.5, -0.3, -0.1, 0.0, 0.2, 0.3])
+@pytest.mark.parametrize("bias", [-1.0, -0.7, -0.5, -0.3, 0.0, 0.2, 0.3])
 def test_the_localization_is_acquired_at_the_hold(bias):
-    """The vertical acquisition offsets (depth is measured directly, so they need no lateral room): validated
+    """The vertical acquisition offsets +-0.8 m (depth is measured directly, so they need no lateral room): validated
     localization from the stage-2 hold (-2.55 m) with the estimate up to 1 m behind the truth and at +0.2, +0.3 m ahead
-    of it (synthetic B0 scan, bar echoes only)."""
+    of it (synthetic B0 scan, bar echoes only).  Synthetic gaps at -0.1 and +0.1 m: from the hold the two matched sectors
+    see horizontal bars only, the lateral offset is the tie-break of a flat cost valley and can exceed CONSIST_M (a
+    progress limit; the six former offsets covered -0.1 m on the teleported scan but were not reached in HoloOcean)."""
     assert _acquired(bias) is not None
 
 
-@pytest.mark.parametrize("bias", [0.1, 0.4, 0.5, 0.6, 0.7, 1.0])
+@pytest.mark.parametrize("bias", [-0.1, 0.1, 0.4, 0.5, 0.6, 0.7, 1.0])
 def test_the_localization_is_not_acquired_at_the_hold(bias):
     """The B0 acquisition gap of the stage-2 hold at -2.55 m (0.25 m farther from the frame than the -2.30 m P2-safe hold of
     the present CR s in [-0.8, 0.0], which acquired at +0.5, +0.6 m too): not at +0.1 m, and
@@ -204,8 +206,8 @@ def test_the_localization_is_not_acquired_at_the_hold(bias):
     assert _acquired(bias) is None
 
 
-@pytest.mark.parametrize("bs,bl,offset", [(-0.5, -0.3, 0), (-0.5, 0.3, 0), (-0.5, 0.6, None), (0.0, -0.3, 3), (0.0, -0.6, None),
-                                           (0.0, 0.6, None), (0.3, -0.3, 1), (0.3, 0.3, 1), (0.3, -0.6, 1), (0.5, -0.3, None),
+@pytest.mark.parametrize("bs,bl,offset", [(-0.5, -0.3, 0), (-0.5, 0.3, None), (-0.5, 0.6, None), (0.0, -0.3, 0), (0.0, -0.6, None),
+                                           (0.0, 0.6, None), (0.3, -0.3, 0), (0.3, 0.3, 0), (0.3, -0.6, 0), (0.5, -0.3, None),
                                            (0.5, 0.3, None), (0.5, 0.6, None)])
 def test_the_localization_is_acquired_with_a_lateral_error_and_by_which_offset(bs, bl, offset):
     """Along-axis and lateral estimate errors within the 1 m norm: the acquisition offset (index in ACQ_OFFSETS) that

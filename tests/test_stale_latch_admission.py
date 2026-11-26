@@ -15,7 +15,8 @@ G = DEFAULT.gate
 def _obs(plan, s, t, entry_after, loc_ok=True):
     g = plan.gates[0]
     gate = SimpleNamespace(s=s, l=0.0, dz=0.0, queue_s=plan.queue_s, queue_l=plan.queue_lateral, queue_dz=plan.queue_dz,
-                           loc_ok=loc_ok, entry_ok=True, admit_wait_s=0.0, entry_after=entry_after)
+                           loc_ok=loc_ok, entry_ok=True, admit_wait_s=0.0, entry_after=entry_after,
+                           timed_admission=entry_after > -1e8)
     return SimpleNamespace(t=t, p=np.asarray(g.from_gate_frame([s, 0.0, 0.0]), float), gate=gate, gate_index=0, targets=[])
 
 
@@ -86,4 +87,25 @@ def test_without_a_timed_release_admission_is_unchanged():
     plan = _plan()
     fl = Flows(plan, DEFAULT)
     fl.gate(_obs(plan, G.stage2_hold_s + 0.02, 3.0, -1e9), "MUTEX_PASS")
+    assert fl.cr_cleared
+
+
+def test_a_drone_that_never_saw_anything_still_waits_the_dwell_bound():
+    """B0 lead drone or hidden partner of a concurrent commitment (formal M4f): no sighting, no witness: the dwell bound."""
+    from types import SimpleNamespace as NS
+
+    plan = _plan()
+    fl = Flows(plan, DEFAULT)
+    g = plan.gates[0]
+
+    def obs(t):
+        gate = NS(s=G.stage2_hold_s + 0.02, l=0.0, dz=0.0, queue_s=plan.queue_s, queue_l=plan.queue_lateral,
+                  queue_dz=plan.queue_dz, loc_ok=True, entry_ok=True, admit_wait_s=0.0, entry_after=-1e9 + G.t_admit_stale,
+                  timed_admission=True)
+        return NS(t=t, p=np.asarray(g.from_gate_frame([gate.s, 0.0, 0.0]), float), gate=gate, gate_index=0, targets=[])
+
+    fl.gate(obs(5.0), "MUTEX_PASS")
+    fl.gate(obs(5.0 + G.t_admit_stale - 0.5), "MUTEX_PASS")
+    assert not fl.cr_cleared
+    fl.gate(obs(5.0 + G.t_admit_stale + 0.1), "MUTEX_PASS")
     assert fl.cr_cleared

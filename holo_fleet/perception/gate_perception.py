@@ -17,8 +17,9 @@
   the FRONT echo beyond R_far is the FRONT case), and FREE after ``t_clear`` more without conflicting evidence.
   The wait alone never gives FREE.  After ``t_occ_max`` with no corridor echo, nothing heard and nothing known inside, a BUSY
   set by a corridor echo becomes STALE: no longer an obstacle to committing (the commitment stops at the stage-2 hold,
-  outside the CR, control/gate_safety.py), but admission then also needs ``entry_after``: the last corridor sighting plus
-  ``GateRule.t_admit_stale`` (formal/check_stale.py), unless a positive exit witness came later.  The sighting is a corridor
+  outside the CR, control/gate_safety.py).  Every admission that rests on no positive exit witness after the last sighting
+  (STALE, BUSY, or FREE without any witness) needs ``entry_after``: the last sighting plus ``GateRule.t_admit_stale``
+  (formal/check_stale.py), unless B2 holds fresh reports of every other drone (B2C-E1).  The sighting is a corridor
   echo or any hull within GateRule.near_sight_m (near field), and control/flows.py also counts the bound from the start of the
   current dwell in the admission zone, so an occupant admitted before that dwell needs no sighting at all (premise S is not
   needed).  A corridor echo makes a STALE latch BUSY again; the timed basis is kept until a witness or the next gate.
@@ -64,11 +65,20 @@ def stale_release(t: float, last_corridor_t: float, busy_since: float, corridor:
             and t - last_corridor_t > t_occ_max)
 
 
-def entry_after(release: Optional[str], last_sighting_t: float, t_admit_stale: float) -> float:
-    """Earliest admission time imposed by the latch: after a timed release (STALE, or BUSY again after it), the last
-    sighting (a corridor echo, or any hull within GateRule.near_sight_m) plus ``t_admit_stale``; no bound after a positive exit
-    witness or with no timed release.  Control/flows.py adds the start of the dwell in the admission zone."""
-    return last_sighting_t + t_admit_stale if release == "TIMER" else -1e9
+def timed_admission(release: Optional[str], comm_clear: bool = False) -> bool:
+    """Whether the admission is bounded in time (formal/check_stale.py ST1): it rests on no positive exit witness after the
+    last sighting (release WITNESS: formal M3) and B2 does not hold fresh reports of every other drone (B2C-E1)."""
+    return not (release == "WITNESS" or comm_clear)
+
+
+def entry_after(release: Optional[str], last_sighting_t: float, t_admit_stale: float, comm_clear: bool = False) -> float:
+    """Earliest admission time imposed by the occupancy evidence: the last sighting (a corridor echo, or any hull within
+    GateRule.near_sight_m) plus ``t_admit_stale`` for every admission that rests on no positive exit witness after it
+    (control/flows.py adds the start of the dwell in the admission zone, formal/check_stale.py ST1).  No bound after a witness
+    (release WITNESS: the latch argument of formal M3) or with B2 reports of every other drone fresh or of a verified
+    passage (``comm_clear``: formal/check_b2_comm.py B2C-E1).  A drone that never saw anything (a lead drone, or one
+    whose occupant is hidden, the M4f concurrent commitment of a B0 queue) is bounded too: absence is no evidence."""
+    return last_sighting_t + t_admit_stale if timed_admission(release, comm_clear) else -1e9
 
 
 @dataclass
@@ -94,6 +104,7 @@ class GateObs:
     rank_used: bool = False
     occ_timeouts: int = 0
     entry_after: float = -1e9
+    timed_admission: bool = False
     exit_witness: Optional[Dict] = None
     loc_ok: bool = False
     entry_ok: bool = True
@@ -286,7 +297,9 @@ class GatePerception:
                 self.acoustic_exit.reset()
         o.occ_state = self.occ_state
         o.occ_busy = self.occ_state in ("BUSY", "EXITING")
-        o.entry_after = entry_after(self.release, max(self.last_corridor_t, self.last_near_t), G.t_admit_stale)
+        comm_clear = self.acoustic_exit is not None and bool(self.acoustic_exit.others) and self.acoustic_exit.all_fresh(t)
+        o.entry_after = entry_after(self.release, max(self.last_corridor_t, self.last_near_t), G.t_admit_stale, comm_clear)
+        o.timed_admission = timed_admission(self.release, comm_clear)
         o.occ_timeouts = self.occ_timeouts
         front = readings.get("FRONT")
         if front is None or not front.healthy:

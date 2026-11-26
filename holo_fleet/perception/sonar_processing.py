@@ -58,6 +58,7 @@ class SectorReading:
     structure_window: Optional[Tuple[float, float]] = None
     seabed_onset: Optional[float] = None
     blind_from: Optional[float] = None
+    warming: bool = False
 
     def nearest(self, classes: Sequence[str]) -> Optional[Echo]:
         c = [e for e in self.echoes if e.cls in classes]
@@ -202,7 +203,15 @@ class EchoClassifier:
     def _confirm(self, readings: Dict[str, SectorReading], capture_times: Optional[Dict[str, float]],
                  max_age: float) -> None:
         """An unexplained echo (DYNAMIC or UNKNOWN) needs an unexplained echo within 0.5 m in >= confirm_captures
-        of the last 3 captures (this one included); otherwise it is UNCONFIRMED."""
+        of the last 3 captures (this one included); otherwise it is UNCONFIRMED.
+
+        Warm-up: a sector with fewer than confirm_captures captures within ``max_age`` (the first capture after a gap, or
+        of the run) cannot confirm any echo, so it keeps its obstacle echoes as they are (``warming``): a possible hull is
+        never dropped because the confirmation window is empty.  Without this the first capture after a gap made a real
+        hull UNCONFIRMED while the sector counted as healthy, so the hull was missing from the P1 distance bound for one
+        or two steps with sense_ok true (premise S0det of formal/check_separation.py).  A one-capture clutter echo can
+        then act for that capture only (conservative for P1; it can set the occupancy latch BUSY, never an exit witness,
+        which needs three captures)."""
         need = self.cfg.perc.confirm_captures
         for s, rd in readings.items():
             if not rd.healthy:
@@ -214,6 +223,9 @@ class EchoClassifier:
                 hist.append((stamp, cand))
             recent = [returns for time, returns in hist
                       if stamp is None or (time is not None and 0.0 <= stamp - time <= max_age + 1e-9)]
+            if len(recent) < need:
+                rd.warming = True
+                continue
             for e in rd.echoes:
                 if e.cls not in OBSTACLE_CLASSES:
                     continue

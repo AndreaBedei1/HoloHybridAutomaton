@@ -84,7 +84,7 @@ def test_elapsed_time_without_exit_evidence_never_frees_the_latch():
     gp = perception()
     _, t = run(gp, [[tg({"FRONT"}, 4.6)]] * 3)
     o, t = run(gp, [[]] * int(G.t_occ_max / 0.1 - 5), t0=t)
-    assert o.occ_state == "BUSY" and o.occ_busy and o.occ_timeouts == 0 and o.entry_after < -1e8
+    assert o.occ_state == "BUSY" and o.occ_busy and o.occ_timeouts == 0
     o, t = run(gp, [[]] * 600, t0=t)
     assert o.occ_state == "STALE" and o.occ_state != "FREE" and o.occ_timeouts == 1
 
@@ -139,3 +139,16 @@ def test_a_near_hull_in_any_sector_restarts_the_timed_bound():
     before = o.entry_after
     o, t = run(gp, [[tg({"REAR"}, G.near_sight_m + 0.3)]] * 3, t0=t)
     assert o.entry_after == before
+
+
+def test_every_admission_without_an_exit_witness_is_bounded_from_the_last_sighting():
+    """B0: a drone that never saw anything (a lead drone, or the hidden partner of a concurrent commitment, formal M4f) and a
+    drone whose latch is BUSY are both bounded; only a positive exit witness after the last sighting removes the bound."""
+    gp = perception()
+    o, t = run(gp, [[]] * 3)
+    assert o.occ_state == "FREE" and o.timed_admission
+    o, t = run(gp, [[tg({"FRONT"}, 4.6)]] * 3, t0=t)
+    assert o.occ_state == "BUSY" and abs(o.entry_after - (t - 0.1 + G.t_admit_stale)) < 1e-9
+    _, t = run(gp, [[]] * 20, t0=t)
+    o, t = run(gp, [[tg({"FRONT"}, 7.5)]] * 3, t0=t)
+    assert o.occ_state == "EXITING" and o.entry_after < -1e8 and not o.timed_admission
