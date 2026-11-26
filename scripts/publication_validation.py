@@ -27,6 +27,22 @@ def digest(path):
     return h.hexdigest()
 
 
+# Paths that never run in a campaign: a pair recorded at two revisions differing only here ran the same code.
+NON_RUNTIME = ("formal", "docs", "README.md")
+
+
+def same_runtime(first, second, root=ROOT):
+    """True when two recorded revisions are equal or differ only outside the runtime code; unknown revisions fail closed."""
+    if not first or not second:
+        return False
+    if first == second:
+        return True
+    excluded = [f":(exclude){path}" for path in NON_RUNTIME]
+    code = subprocess.run(["git", "diff", "--quiet", first, second, "--", ".", *excluded], cwd=root,
+                          capture_output=True).returncode
+    return code == 0
+
+
 def validate_isolation(path, workers=2):
     """The isolation record must show ``workers`` live engines, each with its own client, root and non-default ports."""
     proof = load(path)
@@ -146,11 +162,12 @@ def summarize(raw, matrix):
             runs.extend((b0, b2))
             first, second = (r.get("common_config_sha256") for r in (b0, b2))
             delta = None
-            if first is not None and first == second and b0["commit"] == b2["commit"]:
+            if first is not None and first == second and same_runtime(b0.get("commit"), b2.get("commit")):
                 delta = {k: round(b2[k] - b0[k], 4) for k in ("min_separation_m", "conditional_interval_fraction",
                          "p2_uncertified_events", "crossings",
                          "gate_completion_s", "final_formation_error_m") if b0[k] is not None and b2[k] is not None}
-            comparisons.append({"seed": seed, "same_configuration_and_revision": delta is not None, "B2_minus_B0": delta})
+            comparisons.append({"seed": seed, "revisions": [b0.get("commit"), b2.get("commit")],
+                                "same_configuration_and_runtime_code": delta is not None, "B2_minus_B0": delta})
         fields = {k for pair in comparisons for k in (pair["B2_minus_B0"] or {})}
         distributions = {}
         for field in sorted(fields):

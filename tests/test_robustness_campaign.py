@@ -136,7 +136,30 @@ def test_paired_manifest_keeps_missing_and_failed_cases(tmp_path):
     assert result["planned_runs"] == 6
     assert result["outcomes"] == {"INVALID": 1, "MISSING": 5}
     assert result["runs"][1]["invalid_reason"] == "start failed"
-    assert not any(pair["same_configuration_and_revision"] for pair in result["comparison"][0]["pairs"])
+    assert not any(pair["same_configuration_and_runtime_code"] for pair in result["comparison"][0]["pairs"])
+
+
+def test_pairs_only_revisions_with_the_same_runtime_code(tmp_path):
+    from scripts.publication_validation import same_runtime
+
+    def commit(path, text):
+        target = tmp_path / path
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_text(text, encoding="utf-8")
+        subprocess.run(["git", "add", "-A"], cwd=tmp_path, check=True)
+        subprocess.run(["git", "-c", "user.name=t", "-c", "user.email=t@t", "commit", "--quiet", "-m", path],
+                       cwd=tmp_path, check=True)
+        return subprocess.run(["git", "rev-parse", "HEAD"], cwd=tmp_path, check=True,
+                              capture_output=True, text=True).stdout.strip()
+
+    subprocess.run(["git", "init", "--quiet", str(tmp_path)], check=True)
+    base = commit("holo_fleet/control.py", "gain = 1\n")
+    proof = commit("formal/results/SUMMARY.json", "{}\n")
+    code = commit("holo_fleet/control.py", "gain = 2\n")
+    assert same_runtime(base, proof, tmp_path)
+    assert not same_runtime(proof, code, tmp_path)
+    assert not same_runtime(base, "0" * 40, tmp_path)
+    assert not same_runtime(None, base, tmp_path)
 
 
 def test_retry_preserves_run_and_worker_log(camp, tmp_path):
