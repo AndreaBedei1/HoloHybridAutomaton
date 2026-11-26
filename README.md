@@ -199,11 +199,12 @@ planner (`tests/test_b2_isolation.py`). Controllers never read ground truth (`te
 ## 5. Guarantees
 
 The full-run baseline at `e3e31f0` (`legacy/results/pre_conditional_formal/SUMMARY.json`) records 402 checks, all with the expected verdict: 188 proved, 36 bounded, 50 numeric, 58 mutation, 26 witness,
-14 scope, 11 reported, 19 declared limits (11 suites, about 40 min). The current complete runner has 395 checks in 11 suites.
+14 scope, 11 reported, 19 declared limits (11 suites, about 40 min). The complete runner on the final controller (`c903c0d`) has 409 checks in 11 suites.
 D1 and D2 already imply the ten former O4 assertions, one per mode. O5 still checks the runtime monitor on inconsistent observations.
 The current formulae, classifications and expected counterexamples are in `formal/results/SUMMARY.json` and `SUMMARY.csv`.
-All 395 had the expected outcome in the complete run: 181 proved, 36 bounded, 50 numeric, 19 declared limits, 11 scope
-counterexamples, 61 mutations, 26 witnesses and 11 reported quantities. Development mode ran 179 checks.
+All 409 had the expected outcome in the complete run: 186 proved, 37 bounded, 50 numeric, 24 declared limits, 12 scope
+counterexamples, 62 mutations, 27 witnesses and 11 reported quantities (about 24 min). The long bounded S1g queries run in a fresh
+Z3 context, so their verdict does not depend on catalogue order. The previous reference catalogue had 395 checks.
 Only `proved` (UNSAT of a universal or inductive property) and `bounded` (UNSAT over a horizon) support a guarantee; `numeric`
 checks enumerate or sample the deployed code; mutation, witness, scope and limit counterexamples are never evidence of safety.
 Every guarantee is conditional on section 1.
@@ -299,12 +300,36 @@ a common reference for the fleet, or recovery in the presence of sustained safet
 - **P3.** C1l1 (near band at the transient consensus bound), C1l2 (B2 far band at the clock-speed edge with adversarial lateral
   consensus), C2l (leak-only consensus of an abreast B2 pair) have no ranking. C1x: the per-axis ranking F1 is not a ranking of
   the deployed coupled law; C1f and C1n cover it.
+- **Association ambiguity.** When no motion opens every sector association of a multi-sector target, and the robust choice
+  is a HOLD without opening, the warning filter takes a motion that opens the measured association. That decision stays in the
+  P1-uncertified joint class and is logged as `association_fallback`. It removes a mutual HOLD livelock seen in the first paired
+  campaign, and no proof covers the alternative associations.
+- **Onboard premises not monitored.** These were found in review (`docs/validation-report.md`):
+  - The peer's speed during a carried sonar blackout of up to 6.4 s.
+  - The link from the final setpoint to the ground speed within the interval. The thrust check cannot fire after clipping.
+  - The vehicle tilt.
+  - A capture rate that allows two-capture echo confirmation within 0.25 s.
+  - A conceding vehicle reporting GP_NONE near the hold, which its peers may exclude for up to 2.5 s without the timing premise.
+  - The concession guards `past_centre`, `passage.in_progress` and `mutex_zone`, which have no dedicated test.
 - **Not covered by any proof.** Failures inside the exclusion zone, the continuous geometry inside the CR (M4h: 0.51 of the sampled grid is observable
   from the hold), the real hold loop (first-order abstraction), field conditions. Every result is on HoloOcean models.
 
 ## 7. Evidence
 
-**Current targeted HoloOcean validation.** The three mission runs below ended in SUCCESS. Each had a maximum CR occupancy
+**Final paired B0/B2 campaign** (`results/final_paired_validation.json`, `docs/validation-report.md`). The 54 scheduled runs
+are 9 cases, seeds 0 to 2 and both protocols, on four engines proven isolated. Every row is present and valid.
+
+- Safety, every run of both protocols: zero P1 violation samples and zero contacts. The smallest centre distance is 2.572 m.
+- Safety, the 36 gate runs: peak CR occupancy one, zero double occupancy and zero premature admissions.
+- Six gate cases, all three crossings and formation recovery within the fixed window: B2 in 15 of 18 runs, B0 in 1 of 18. B0's
+  latch waits for a positive exit witness (M4g). The other runs are censored. They are unresolved, with no evidence of whether
+  they would have finished: 17 B0 runs end about 22 m from formation.
+- Short encounter, sonar-blackout and formation windows: censored by design for both protocols. The formation disturbance was
+  recovered within 8.4 s in every run.
+
+Three seeds are descriptive evidence. The campaign revealed and fixed a mutual HOLD livelock (section 6) and a slot-file race.
+
+**Earlier targeted HoloOcean validation.** The three mission runs below ended in SUCCESS. Each had a maximum CR occupancy
 of one and zero observed premature admissions.
 
 | Scenario | Sensor and channel | Seed | Min. centre distance (m) | Formation recovered at (s) |
@@ -349,7 +374,7 @@ One seed per configuration: observations, not a statistical bound. Raw run direc
 0 entries into the CR without admission and 0 double occupancy; the mutation with the earlier hold point and no P2 filter has 126
 episodes with an entry without admission. P1 is violated in 24 of 144 episodes, all against a non-reacting third vehicle.
 
-**Essential tests.** 691 passed across 55 files. The separate opt-in HoloOcean octree smoke test was deselected. The three
+**Essential tests.** The simulator-free suite has 710 passing tests on the final branch (21 simulator tests deselected); it had 691 at the reference. The separate opt-in HoloOcean octree smoke test was deselected. The three
 integrated scenarios use the patched engine with isolated ports. The earlier baseline at `e3e31f0` had 687 passes and one skip.
 
 **P1 braking and hold pilot.** One isolated CLEAN OpenWater session measured positive and negative surge, sway and heave,

@@ -14,13 +14,8 @@
   so the belief is a latch: BUSY as soon as an unexplained corridor echo is seen, BUSY while it is
   seen or masked, EXITING on a positive exit witness with the corridor empty (an echo in any sonar
   sector that no hull in the CR can produce and a hull leaving it on the exit side can: exit_witness.py;
-  the FRONT echo beyond R_far is the FRONT case), FREE after ``t_clear`` more - or after ``t_occ_max``
-  without corridor echoes (logged as a timeout).  No echo is never evidence of an exit: the timeout is a fallback
-  whose safety rests on an explicit assumption, a healthy occupant crosses the CR in less than t_occ_max (formal M3,
-  crossing speed >= V_LO); a drone stopped inside the CR by a fault, masked by the bars, is outside that guarantee
-  (formal M3f gives the counterexample).  In the gate scenarios the sonar witness from a lateral queue point is rare
-  in HoloOcean (the passing drone is lost behind the frame and beyond the detection range), so most releases are this
-  fallback (counted as occupancy timeouts in the run metrics).
+  the FRONT echo beyond R_far is the FRONT case), and FREE after ``t_clear`` more without conflicting evidence.
+  The wait alone cannot release BUSY.
   B2 adds positive acoustic occupancy to BUSY and vetoes release/admission while a drone is heard possibly inside
   (the complete declared region, perception/acoustic_gate.py). Acoustic exit evidence is evaluated only with the
   corridor empty. Without receptions the sonar outage-mode latch remains.
@@ -31,6 +26,8 @@
   may be admitted - ``commit_admit_min_s`` when a FRESH report (age <= ``admit_fresh_s``) of every other drone of the plan is
   held, ``commit_admit_min_s + GateRule.t_cross_max`` otherwise (silence is unknown, never clearance); 0 without the beacon
   (B0) or without other drones.
+* a fresh same-gate commitment from a higher-priority queue slot may prompt a pre-admission concession. It still blocks
+  admission like any other claim, whatever its age.
 """
 
 from __future__ import annotations
@@ -45,6 +42,7 @@ from holo_fleet.config import DEFAULT, FleetConfig
 from holo_fleet.ha import mutex_rule
 from holo_fleet.mission import GateSpec, MissionPlan, queue_assignment, queue_order
 from holo_fleet.perception.exit_witness import ExitWitness
+from holo_fleet.perception.payload import GP_COMMITTED
 from holo_fleet.perception.sonar_geometry import MOUNTS, R_OUT
 from holo_fleet.perception.sonar_processing import DYNAMIC
 
@@ -80,6 +78,7 @@ class GateObs:
     silent: List[int] = field(default_factory=list)
     admit_wait_s: float = 0.0
     comm_fresh: bool = True
+    concede_to: Optional[int] = None
 
 
 class GatePerception:
@@ -112,9 +111,10 @@ class GatePerception:
         self._rank_prev = False
         self.prev_targets = []
         G = cfg.gate
-        qa, order = queue_assignment(plan.slots, G), queue_order(plan.slots, G)
+        qa = queue_assignment(plan.slots, G)
+        self.queue_ranks = queue_order(plan.slots, G)
         me = np.array([0.0, plan.queue_lateral, plan.queue_dz])
-        self.bracket_ranks = [order[k] for k, (lk, dk) in enumerate(qa) if k != plan.slot_index
+        self.bracket_ranks = [self.queue_ranks[k] for k, (lk, dk) in enumerate(qa) if k != plan.slot_index
                               and float(np.linalg.norm(np.array([0.0, lk, dk]) - me)) <= G.queue_bracket_m]
 
     @property
@@ -204,6 +204,10 @@ class GatePerception:
         heard = self.acoustic_exit is not None and (self.acoustic_exit.heard_inside(t, g) or bool(claims))
         if claims:
             self.acoustic_exit.heard_by |= claims
+            o.concede_to = min((j for j in claims if self.queue_ranks[j] < self.queue_ranks[self.plan.slot_index]
+                                and self.acoustic_exit.fresh(j, t)
+                                and self.acoustic_exit.tracker.status[j].phase == GP_COMMITTED),
+                               key=self.queue_ranks.__getitem__, default=None)
         known_inside = self.acoustic_exit is not None and self.acoustic_exit.last_known_inside(t, g)
         if corridor:
             self.last_corridor_t = t

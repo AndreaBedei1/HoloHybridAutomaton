@@ -8,7 +8,6 @@ from holo_fleet import runner
 from holo_fleet.control.controller import DroneController
 from holo_fleet.ha.spec import Mode
 from holo_fleet.sim import engine_lease
-from scripts.run_sensor_robustness_campaign import be_nice
 
 
 class ConcurrentCommitment(DroneController):
@@ -25,6 +24,8 @@ class ConcurrentCommitment(DroneController):
 
 
 def main():
+    from scripts.run_sensor_robustness_campaign import be_nice
+
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("out", type=Path)
     parser.add_argument("--slots", type=Path, required=True, help="shared engine slot registry")

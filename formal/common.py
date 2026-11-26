@@ -114,8 +114,17 @@ def model_to_dict(m: z3.ModelRef, limit: int = 400) -> Dict[str, Any]:
 
 
 def check(prop: str, formula: str, encoding: str, constraints: List[z3.BoolRef], expect: str = "unsat",
-          timeout_ms: int = 120000, note: str = "") -> CheckResult:
-    s = z3.Solver()
+          timeout_ms: int = 120000, note: str = "", fresh_context: bool = False) -> CheckResult:
+    """``fresh_context``: solve a translation of the query in a new Z3 context.  The search of a long bounded query
+    depends on the identifiers of the terms built before it in the shared context (S1gm: 1.6 s alone, UNKNOWN after
+    600 s at the end of the complete catalogue); a new context makes its run independent of the catalogue order.
+    The constraints and the expected verdict are unchanged."""
+    if fresh_context:
+        ctx = z3.Context()
+        constraints = [c.translate(ctx) for c in constraints]
+        s = z3.Solver(ctx=ctx)
+    else:
+        s = z3.Solver()
     s.set("timeout", timeout_ms)
     s.add(*constraints)
     t0 = time.time()

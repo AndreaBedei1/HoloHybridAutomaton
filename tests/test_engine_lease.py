@@ -142,3 +142,45 @@ def test_startup_lock_serializes_processes_and_survives_owner_exit(tmp_path):
         if second is not None:
             _, err = second.communicate("exit\n", timeout=15)
             assert second.returncode == 0, err
+
+
+@pytest.mark.skipif(os.name != "nt", reason="a reader's open handle blocks os.replace only on Windows")
+def test_update_waits_for_a_concurrent_reader_of_the_slot_file(tmp_path):
+    """A watcher reading slot<N>.json at the moment of an update made os.replace fail with WinError 5 (an INVALID run
+    of the v25 campaign): the update retries until the reader closes the file."""
+    import threading
+
+    lease = EngineLease(tmp_path, capacity=1).acquire()
+    lease.update(uuid="ours")
+    opened, release = threading.Event(), threading.Event()
+
+    def reader():
+        with open(tmp_path / "slot0.json", "rb"):
+            opened.set()
+            release.wait(5.0)
+
+    thread = threading.Thread(target=reader)
+    thread.start()
+    opened.wait(5.0)
+    threading.Timer(0.3, release.set).start()
+    lease.update(engine={"pid": 123})
+    thread.join()
+    assert json.loads((tmp_path / "slot0.json").read_text(encoding="utf-8"))["engine"] == {"pid": 123}
+    lease.release()
+
+
+def test_a_persistent_sharing_violation_still_fails_closed(tmp_path, monkeypatch):
+    lease = EngineLease(tmp_path, capacity=1).acquire()
+    lease.update(uuid="ours")
+    before = (tmp_path / "slot0.json").read_bytes()
+
+    def denied(*args):
+        raise PermissionError(13, "Access is denied")
+    with monkeypatch.context() as patch:
+        patch.setattr(os, "replace", denied)
+        patch.setattr(engine_lease, "REPLACE_RETRY_S", 0.2)
+        with pytest.raises(PermissionError):
+            lease.update(engine={"pid": 123})
+    assert (tmp_path / "slot0.json").read_bytes() == before
+    assert not list(tmp_path.glob("*.tmp"))
+    lease.release()

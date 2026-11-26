@@ -529,9 +529,37 @@ def c4_checks(cfg: FleetConfig) -> list:
     return out
 
 
+def c5_checks(cfg: FleetConfig) -> list:
+    """Composition rule for a common nonnegative recovery rank during a switched episode."""
+    rank, next_rank, initial, progress, loss, gain, rise = z3.Reals(
+        "rank next_rank initial progress loss gain rise")
+    invariant = rank + progress <= initial + loss
+    common = [rank >= 0, next_rank >= 0, initial >= 0, progress >= 0, loss >= 0]
+    return [
+        check("C5i recovery rank budget is inductive across tracking and interruption",
+              "R + progress <= R0 + loss  and  R' <= R - gain + rise  ->  R' + progress + gain <= R0 + loss + rise",
+              ENC, common + [invariant, gain >= 0, rise >= 0, next_rank <= rank - gain + rise,
+                             next_rank + progress + gain > initial + loss + rise],
+              note="Requires the same rank on both modes and certified rise bounds. Usable reports and physically feasible "
+                   "tracking can supply gain; time spent in a safety mode is not treated as gain."),
+        check("C5p eventual recovery when cumulative progress exceeds initial rank and interruption cost",
+              "R >= 0 and R + progress <= R0 + loss and progress > R0 + loss is impossible", ENC,
+              common + [invariant, progress > initial + loss],
+              note="Conditional liveness by contradiction if still outside tolerance. A bound on loss and recurring steps "
+                   "with a uniform positive gain suffice. Existing pair and slot ranks have different domains; no fleet "
+                   "bound is inferred across gate and avoidance transitions."),
+        check("C5s scope: regularly available recovery steps do not imply progress against repeated interruptions",
+              "A positive rank admits a progress step followed by a bounded interruption returning to the same rank",
+              ENC, [rank > 0, next_rank > 0, gain > 0, rise > 0, gain <= 1, rise <= 1,
+                    next_rank == rank - gain, rank == next_rank + rise], expect="sat",
+              note="The two transitions can repeat forever while remaining outside tolerance, despite infinitely many "
+                   "recovery steps. Positive communication fairness alone cannot exclude this execution."),
+    ]
+
+
 def run(cfg: FleetConfig = DEFAULT, verbose: bool = True) -> Report:
     rep = Report("formation_coupled")
-    for part in (c4_checks, c3_checks, c2_checks, c1_checks):
+    for part in (c4_checks, c3_checks, c2_checks, c1_checks, c5_checks):
         for r in part(cfg):
             rep.add(r, verbose)
     return rep

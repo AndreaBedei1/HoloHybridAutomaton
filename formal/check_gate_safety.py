@@ -443,7 +443,7 @@ def s1g(cfg: FleetConfig, verbose: bool):
            f"w_rel {env.w_rel_max} m/s, per-drone speed <= v_escape {env.v_escape}, sum <= v_escape + v_max_nominal, dt {env.dt} s")
     out.append(check(f"S1ga BMC: a gate-constrained drone that only stops and a reacting drone keep d >= d_safe for {K * env.dt:.0f} s "
                      "from any start with d_hat >= d_warning", "Init & T_g^K -> G_[0,K] d >= d_safe", ENC, s1g_bmc(p, K),
-                     "unsat", timeout_ms=600000, note=tag))
+                     "unsat", timeout_ms=600000, note=tag, fresh_context=True))
     proved = None
     for k in range(1, 41):
         r = check(f"S1gb k-induction step k={k}", "P^k & T_g^k -> P'", ENC, s1g_step(p, k), "unsat", timeout_ms=120000)
@@ -459,7 +459,8 @@ def s1g(cfg: FleetConfig, verbose: bool):
     Km = 150
     r = check(f"S1gm declared limit (jointly infeasible pair): two drones that can both only stop (each gate-constrained, "
               f"neither opens) close by the drift below d_safe within {Km * env.dt:.0f} s",
-              "expect a trace with d < d_safe", ENC, s1g_bmc(p, Km, c_opens=False), "sat", timeout_ms=600000, note=tag)
+              "expect a trace with d < d_safe", ENC, s1g_bmc(p, Km, c_opens=False), "sat", timeout_ms=600000, note=tag,
+              fresh_context=True)
     out.append(r)
     return out
 

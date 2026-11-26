@@ -85,7 +85,8 @@ def _queued(gs: Dict) -> bool:
     return gs.get("at_queue") in (True, "True", "true")
 
 
-def analyze_run(run_dir: Path, reference: Optional[Dict] = None, cfg=DEFAULT, profile: Optional[str] = None) -> Dict:
+def analyze_run(run_dir: Path, reference: Optional[Dict] = None, cfg=DEFAULT, profile: Optional[str] = None,
+                full_window: bool = False) -> Dict:
     """Metrics and class of one run.  ``reference`` is accepted for compatibility and unused (the requirements are a-priori)."""
     from holo_fleet.referee.referee import Referee
     from holo_fleet.sim.scenarios import SCENARIOS
@@ -135,8 +136,9 @@ def analyze_run(run_dir: Path, reference: Optional[Dict] = None, cfg=DEFAULT, pr
     profile = profile or ((rc.get("terminal") or {}).get("profile")) or _profile_from_path(run_dir)
     logged = (met.get("run") or {}).get("terminal")
     edges = (met.get("P1_separation") or {}).get("collision_sensor_edges") or []
-    term, mon, ref3 = replay_terminal(sc, cfg, names, t, P, states, modes, profile, logged=logged, edges=edges)
-    if term.get("t_end") is not None and m:
+    term, mon, ref3 = replay_terminal(sc, cfg, names, t, P, states, modes, profile, logged=logged, edges=edges,
+                                      full_window=full_window)
+    if term.get("t_end") is not None and m and not full_window:
         m = max(1, min(m, int(np.searchsorted(t, float(term["t_end"]) + 1e-6))))
         t, P, modes, rows = t[:m], P[:m], modes[:m], rows[:m]
         states = [st[:m] for st in states]
@@ -431,7 +433,8 @@ def _profile_from_path(run_dir: Path) -> Optional[str]:
     return None
 
 
-def replay_terminal(sc, cfg, names, t, P, states, modes, profile, logged: Optional[Dict] = None, edges=()):
+def replay_terminal(sc, cfg, names, t, P, states, modes, profile, logged: Optional[Dict] = None, edges=(),
+                    full_window: bool = False):
     """Replay the TerminalMonitor on the logged ground truth and records: the same requirement set as the online
     stop.  A log that ends before the deadline without an outcome (a run stopped by an older criterion) is
     CENSORED.  For a run that logs its terminal criteria the logged deadline is used and the replayed outcome is
@@ -460,7 +463,8 @@ def replay_terminal(sc, cfg, names, t, P, states, modes, profile, logged: Option
         truth = SimpleNamespace(t=float(t[i]), positions=P[i], collision=col, current_drift=z,
                                 velocities=z, intruders=None, rotations=None)
         ref.update(truth, list(modes[i]))
-        if mon.update(float(t[i]), P[i], ref, [states[k][i] for k in range(n)]) is not None:
+        if (mon.outcome is None and mon.update(float(t[i]), P[i], ref, [states[k][i] for k in range(n)]) is not None
+                and not full_window):
             break
     if mon.outcome is None:
         if m and t[-1] >= dl - 0.2:

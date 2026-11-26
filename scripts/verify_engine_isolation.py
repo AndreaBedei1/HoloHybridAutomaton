@@ -1,4 +1,4 @@
-"""Explicit two-engine isolation probe, after the single-engine scenario has passed.
+"""Explicit multi-engine isolation probe (2 to 4 engines), after the single-engine scenario has passed.
 
 Each native client must receive its own uniquely named sensor, while both engines are alive.
 This is infrastructure validation, not a P1/P2/P3 experiment. No engine tests invoke it implicitly.
@@ -27,14 +27,18 @@ from scripts.run_sensor_robustness_campaign import be_nice
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--out", type=Path, required=True)
+    ap.add_argument("--instances", type=int, choices=(2, 3, 4), default=2)
     args = ap.parse_args()
     be_nice()
     args.out.mkdir(parents=True, exist_ok=True)
-    barrier = threading.Barrier(2)
+    n = args.instances
+    barrier = threading.Barrier(n)
     before = os.environ.get("HOLO_FLEET_ENGINE_SLOTS")
-    os.environ["HOLO_FLEET_ENGINE_SLOTS"] = "2"
+    os.environ["HOLO_FLEET_ENGINE_SLOTS"] = str(n)
 
-    def probe(label, other, x):
+    labels = ["left", "right", "front", "back"][:n]
+
+    def probe(label, x):
         agent, sensor = "isolation_" + label, label + "_pose"
         scenario = {"name": "isolation_" + label, "world": "OpenWater", "package_name": "Ocean",
                     "main_agent": agent, "ticks_per_sec": TICKS_PER_SEC, "frames_per_sec": False,
@@ -59,7 +63,7 @@ def main():
                 for _ in range(round(DEFAULT.beacon.period_s * TICKS_PER_SEC)):
                     raw = env.tick()
                     frame = raw.get(agent, raw)
-                    assert sensor in frame and other + "_pose" not in frame, (label, list(raw))
+                    assert sensor in frame and not any(o + "_pose" in frame for o in labels if o != label), (label, list(raw))
                 record["sensor_keys"] = list(frame)
                 record["checks_passed"] = True
                 return record
@@ -68,12 +72,13 @@ def main():
             raise
 
     try:
-        with ThreadPoolExecutor(max_workers=2) as pool:
-            futures = [pool.submit(probe, "left", "right", -20), pool.submit(probe, "right", "left", 20)]
+        with ThreadPoolExecutor(max_workers=n) as pool:
+            futures = [pool.submit(probe, label, -30 + 20 * k) for k, label in enumerate(labels)]
             records = [future.result() for future in futures]
-        assert len({r["client_uuid"] for r in records}) == 2
-        assert len({r["root"] for r in records}) == 2
-        assert set(records[0]["listen_ports"]).isdisjoint(records[1]["listen_ports"])
+        assert len({r["client_uuid"] for r in records}) == n
+        assert len({r["root"] for r in records}) == n
+        ports = [p for r in records for p in r["listen_ports"]]
+        assert len(ports) == len(set(ports))
         assert all(1985 not in r["listen_ports"] for r in records)
         result = {"all_passed": True, "instances": records}
         (args.out / "isolation.json").write_text(json.dumps(result, indent=1), encoding="utf-8")

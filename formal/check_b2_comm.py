@@ -51,8 +51,10 @@ Step model (Z3, bounded model checking, dt = 0.5 s): two drones with explicit lo
   former rule; B2C-S1b limit: a total blackout.
 Geometry: B2C-G1 reported - the CR observability from the admission zone (deployed classifier, bars as occluders): certain for no CR
   slice under the declared navigation error, so no admission argument of this suite uses the stage-2 sonar.
-Liveness: B2C-Lv reported - the extra admission delays (T_c below the natural queue-to-hold time; the degraded wait D + T_c) and the
-  bounded give-up (the hold timer starts when the wait has elapsed).
+Liveness: B2C-S2 is a bounded two-vehicle negotiation model following concurrent commitment and receipt of the lower-priority
+vehicle's claim. The higher-priority vehicle requires a delivered withdrawal and a feasible admission, with conditional physical
+clearance from Pi2.
+B2C-Lv reports the extra admission delays and the timed give-up behavior beyond the early concession window.
 """
 
 from __future__ import annotations
@@ -145,9 +147,9 @@ class LocalView:
         self.rx = {a: RxView(b, a) for a in others}
 
 
-def admit_new(L: LocalView, p: Prm):
+def admit_new(L: LocalView, p: Prm, ignore_claim: Optional[str] = None):
     """Corrected rule: no claim held; commitment age >= T_c; all others fresh, or commitment age >= T_c + D; the B0 sonar checks."""
-    no_claim = z3.And(*[r.blocking() == False for r in L.rx.values()])  # noqa: E712
+    no_claim = z3.And(*[z3.Not(r.blocking()) for peer, r in L.rx.items() if peer != ignore_claim])
     fresh_all = z3.And(*[r.fresh(p.T_f) for r in L.rx.values()])
     return z3.And(L.sonar_ok, no_claim, z3.Or(z3.And(fresh_all, L.ca >= p.T_c), L.ca >= p.T_c + p.D))
 
@@ -242,8 +244,11 @@ def timeline(p: Prm, rule: str = "new", n: int = 2, loss: Dict[str, Optional[int
     if k is not None:
         cons += channel("kf", k, f, Lf.rx["k"], f.t, p, tau, loss.get("kf"), snd_claims=False)[0]
         cons += channel("ks", k, s, Ls.rx["k"], s.t, p, tau, loss.get("ks"), snd_claims=False)[0]
-    adm = admit_new if rule == "new" else (lambda L, q: admit_old(L, q, rule_d))
-    cons += [adm(Lf, p), adm(Ls, p)]
+    if rule == "rank_waiver":
+        cons += [admit_new(Lf, p, ignore_claim="s"), admit_new(Ls, p)]
+    else:
+        adm = admit_new if rule == "new" else (lambda L, q: admit_old(L, q, rule_d))
+        cons += [adm(Lf, p), adm(Ls, p)]
     if mutual is not None:
         mu = z3.And(z3.Not(Lf.rx["s"].fresh(p.T_f)), z3.Not(Ls.rx["f"].fresh(p.T_f)))
         cons.append(mu if mutual else z3.Not(mu))
@@ -261,6 +266,45 @@ def locality(p: Prm) -> dict:
             if extra:
                 bad[f"{rule}:{b}"] = sorted(extra)
     return bad
+
+
+def concession_progress(p: Prm, obstruction: Optional[str] = None):
+    """Two committed vehicles, ordered by the shared queue: left/top vehicle retains the other's already received claim.
+
+    The lower-priority vehicle must hear a fresh claim while calm and robustly upstream. After it withdraws, packets
+    reflect the sender's actual claim at their emission. The higher-priority vehicle stays committed and may admit only
+    with its retained claim cleared and all the remaining runtime guards true. One abstract tick includes delivery and
+    local processing. Delivery deadlines and readiness are hypotheses, parameterized using the channel timing budget.
+    """
+    dt = 0.5
+    delivery = math.ceil((3 * p.P + p.lat_max + p.dt_rep + 2 * p.skew) / dt)
+    age = math.ceil(p.T_c / dt)
+    max_report_age = math.floor(p.T_f / dt)
+    degraded_age = math.ceil((p.T_c + p.D) / dt)
+    K = max(2 * delivery, age) + 2
+    claims = z3.Bools([f"claims_{k}" for k in range(K + 1)])
+    held = z3.Bools([f"held_{k}" for k in range(K + 1)])
+    admitted = z3.Bools([f"admitted_{k}" for k in range(K + 1)])
+    fresh = z3.Bools([f"fresh_{k}" for k in range(K)])
+    receive = z3.Bools([f"receive_{k}" for k in range(K)])
+    ready = z3.Bools([f"ready_{k}" for k in range(K)])
+    can_concede = z3.BoolVal(obstruction != "infeasible_concession")
+    cons = [claims[0], held[0], z3.Not(admitted[0])]
+    cons += [z3.Not(z3.Or(*fresh))] if obstruction == "claim_lost" else [z3.Or(*fresh[:delivery])]
+    cons += [z3.Not(z3.Or(*ready))] if obstruction == "infeasible_admission" else [ready[-1]]
+    if obstruction == "withdrawal_lost":
+        cons.append(z3.Not(z3.Or(*receive)))
+    else:
+        for k in range(1, delivery + 1):
+            cons.append(z3.Implies(z3.And(claims[k - 1], z3.Not(claims[k])), z3.Or(*receive[k:k + delivery])))
+        cons.append(z3.Or(*receive[max(0, K - 1 - max_report_age):K - 1]))
+    for k in range(K):
+        fresh_report = z3.Or(*receive[max(0, k - max_report_age):k])
+        wait_elapsed = z3.Or(z3.And(k >= age, fresh_report), k >= degraded_age)
+        cons += [claims[k + 1] == z3.And(claims[k], z3.Not(z3.And(fresh[k], can_concede))),
+                 held[k + 1] == z3.If(receive[k], claims[k], held[k]),
+                 admitted[k + 1] == z3.Or(admitted[k], z3.And(wait_elapsed, ready[k], z3.Not(held[k])))]
+    return cons, admitted[-1], K * dt
 
 
 def monotone(p: Prm, rule: str = "new") -> list:
@@ -552,6 +596,11 @@ def run(cfg: FleetConfig = B2, verbose: bool = True, step: bool = True) -> Repor
                   "expect counterexample", ENC, timeline(replace(p, T_c=p.T_f), "new", mutual=False)[0], expect="sat"), verbose)
     rep.add(check("B2C-Mw mutation: degraded wait D = t_cross_max - 2 s: violates P2", "expect counterexample", ENC,
                   timeline(replace(p, D=p.T_cross - 2.0), "new", mutual=False)[0], expect="sat"), verbose)
+    cons, (Lf, _Ls), (f, s, tau) = timeline(p, "rank_waiver", loss={"sf": 0}, mutual=False,
+                                            extra={"f_silent_from": z3.Real("c_f") - 1.0})
+    rep.add(check("B2C-Mr mutation: a higher-priority vehicle ignoring a lower-priority claim can violate P2",
+                  "expect overlap after concurrent commitment with loss of the higher-priority transmitter", ENC,
+                  cons + [f.c == s.c, Lf.rx["s"].blocking(), tau < f.t + p.T_cross], expect="sat"), verbose)
     cons, (Lf, Ls), _ = timeline(p, "new", loss={"fs": 0, "sf": 0}, witness=True)
     rep.add(check("B2C-W1 witness: both drones admitted by the fresh branch, each within T_c + 0.5 s of its commitment, the second after the first passed",
                   "expect SAT (non-vacuity)", ENC, cons + [Ls.ca <= p.T_c + 0.5, Lf.ca <= p.T_c + 0.5], expect="sat"), verbose)
@@ -586,6 +635,26 @@ def run(cfg: FleetConfig = B2, verbose: bool = True, step: bool = True) -> Repor
         rep.add(check("B2C-S1b declared limit: step model, total blackout - P2 rests on B0", "expect counterexample", ENC, cons,
                       expect="sat", timeout_ms=1800000), verbose)
 
+    cons, admitted, horizon = concession_progress(p)
+    note = ("Two concurrent unadmitted claimants; the winner holds the loser's claim and remains committed without any other "
+            "claimant. The loser is calm, unadmitted and robustly upstream when it receives the winner's fresh claim. The "
+            "winner receives the truthful withdrawal. At the deadline all remaining local admission guards are true, including "
+            "healthy, quiet FRONT, validated localization, no possible occupant and a fresh report. The deadline is measured "
+            "from concurrent commitment with the winner already holding the loser's claim. Once admitted, clearance additionally "
+            "requires Pi2. This model does not establish the delivery or physical premises.")
+    rep.add(check(f"B2C-S2 conditional admission within {horizon:.1f} s in the abstract two-claimant model",
+                  "bounded delivery and feasible concession/admission -> higher-priority vehicle admitted by the horizon",
+                  ENC, cons + [z3.Not(admitted)], note=note), verbose)
+    rep.add(check("B2C-S2w witness: a timely concession and admission are possible in the bounded model",
+                  "the delivery and feasibility premises are satisfiable", ENC, cons + [admitted], expect="sat"), verbose)
+    for obstruction, premise in (("claim_lost", "a fresh higher-priority claim never arrives"),
+                                 ("withdrawal_lost", "the withdrawal is never received"),
+                                 ("infeasible_concession", "an upstream calm concession remains infeasible"),
+                                 ("infeasible_admission", "the remaining admission guards never become true")):
+        cons, admitted, _ = concession_progress(p, obstruction)
+        rep.add(check(f"B2C-S2 declared limit: the bounded admission can stall when {premise}",
+                      "expect a run without an admission in the horizon", ENC, cons + [z3.Not(admitted)], expect="sat"), verbose)
+
     geo = cr_observability(cfg)
     rep.add(CheckResult("B2C-G1 CR slices certain in the FRONT sonar from the admission zone under the declared navigation error (reported)",
                         "every observer pose and every hull centre of the slice: unexplained, unoccluded, within r_far",
@@ -600,8 +669,8 @@ def run(cfg: FleetConfig = B2, verbose: bool = True, step: bool = True) -> Repor
                         note=f"fresh branch: T_c = {p.T_c} s after the commitment, below the natural queue-to-zone time {nat:.1f} s at v_pass "
                              f"(n = 2): no slowdown; degraded branch (some drone not freshly heard): T_c + D = {p.T_c + p.D:.1f} s after "
                              f"the commitment, the hold give-up timer (t_occ_max + t_clear) starts then; a claim of a silent drone never "
-                             f"expires: a drone that failed holding a claim keeps the gate closed (a stall, no longer rule D); two drones "
-                             f"that hear each other's claims at the hold both give up and retry (precedence decides)"), verbose)
+                             f"expires: a drone that failed holding a claim keeps the gate closed; outside the early concession "
+                             f"window the timed give-up and retry still apply"), verbose)
     return rep
 
 

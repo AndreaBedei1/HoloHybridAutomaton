@@ -104,6 +104,70 @@ def test_untracked_code_prevents_clean_provenance(camp, tmp_path, monkeypatch):
     assert camp.code_version()["dirty_files"] == ["new.py"]
 
 
+def test_fixed_window_and_simultaneous_commitments_reach_the_worker(camp, tmp_path, monkeypatch):
+    from holo_fleet import runner
+    from holo_fleet.sim import holoocean_setup
+    from scripts.validate_simultaneous_commitment import ConcurrentCommitment
+
+    monkeypatch.setattr(holoocean_setup, "patched_root", lambda: tmp_path)
+    original = runner.DroneController
+    calls = []
+
+    def run(*args, **kwargs):
+        calls.append((runner.DroneController, kwargs.get("duration"), kwargs["terminal"]))
+
+    monkeypatch.setattr(runner, "run", run)
+    args = SimpleNamespace(allow_unpatched=False, protocol="B0", run_dir=tmp_path / "s0",
+                           profile="CLEAN", terminal=True, duration_s=220.0, inject_commitments=True,
+                           scenario="line_parallel_mutex", seed=0)
+    assert camp.worker(args) == 0
+    assert calls == [(ConcurrentCommitment, 220.0, None)]
+    assert runner.DroneController is original
+
+
+def test_paired_manifest_keeps_missing_and_failed_cases(tmp_path):
+    from scripts.publication_validation import summarize
+
+    case = {"id": "stress", "scenario": "line_parallel_mutex", "profile": "CLEAN", "b2": "B2_CLEAN", "duration_s": 220}
+    bad = tmp_path / "stress/B2_CLEAN/CLEAN/line_parallel_mutex/s0"
+    bad.mkdir(parents=True)
+    (bad / "run_metrics.json").write_text('{"class": "INVALID", "invalid_reason": "start failed"}', encoding="utf-8")
+    result = summarize(tmp_path, {"seeds": [0, 1, 2], "cases": [case]})
+    assert result["planned_runs"] == 6
+    assert result["outcomes"] == {"INVALID": 1, "MISSING": 5}
+    assert result["runs"][1]["invalid_reason"] == "start failed"
+    assert not any(pair["same_configuration_and_runtime_code"] for pair in result["comparison"][0]["pairs"])
+
+
+def test_pairs_only_revisions_with_the_same_runtime_code(tmp_path):
+    from scripts.publication_validation import same_runtime
+
+    def commit(path, text):
+        target = tmp_path / path
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_text(text, encoding="utf-8")
+        subprocess.run(["git", "add", "-A"], cwd=tmp_path, check=True)
+        subprocess.run(["git", "-c", "user.name=t", "-c", "user.email=t@t", "commit", "--quiet", "-m", path],
+                       cwd=tmp_path, check=True)
+        return subprocess.run(["git", "rev-parse", "HEAD"], cwd=tmp_path, check=True,
+                              capture_output=True, text=True).stdout.strip()
+
+    subprocess.run(["git", "init", "--quiet", str(tmp_path)], check=True)
+    base = commit("holo_fleet/control.py", "gain = 1\n")
+    proof = commit("formal/results/SUMMARY.json", "{}\n")
+    notes = commit("docs/notes.md", "notes\n")
+    readme = commit("README.md", "readme\n")
+    code = commit("holo_fleet/control.py", "gain = 2\n")
+    assert same_runtime(base, proof, tmp_path)
+    assert same_runtime(base, readme, tmp_path) and same_runtime(proof, notes, tmp_path)
+    assert not same_runtime(base, code, tmp_path)
+    for flag in ("--cached", "-R", "--staged"):
+        assert not same_runtime(flag, base, tmp_path)
+    assert not same_runtime(proof, code, tmp_path)
+    assert not same_runtime(base, "0" * 40, tmp_path)
+    assert not same_runtime(None, base, tmp_path)
+
+
 def test_retry_preserves_run_and_worker_log(camp, tmp_path):
     d = tmp_path / "B2_CLEAN/CLEAN/gate_single/s0"
     d.mkdir(parents=True)

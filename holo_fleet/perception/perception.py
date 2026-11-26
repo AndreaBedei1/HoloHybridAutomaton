@@ -490,7 +490,8 @@ class Perception:
             self.apply_position_correction(corr)
         self.t_nav = t
         self.acoustic.update(t, d.get("AcousticRx"), nav.p, nav.yaw, self.nav_bound.value)
-        readings = self.clf.classify(profiles, ages, nav.p, R_wb, seabed_z, tau_healthy=env.tau_max)
+        readings = self.clf.classify(profiles, ages, nav.p, R_wb, seabed_z, tau_healthy=env.tau_max,
+                                     capture_times={s: frame.stamp.get(sonar_sensor_name(s)) for s in SECTORS})
         tracks = self.tracker.update(t, readings)
         targets = build_targets(t, readings, tracks, self.cfg, held=self.echo_hold.update(t, readings))
         d_min = min([tg.d_lower for tg in targets], default=1e9)

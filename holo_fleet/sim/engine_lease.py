@@ -12,7 +12,10 @@ import errno
 
 import psutil
 
-SLOTS = Path(__file__).resolve().parents[2] / "results/.holo_slots"
+# A reader holding slot<N>.json open (a watcher, another worker scanning the pool) makes os.replace fail on Windows with
+# a sharing violation (WinError 5): the update retries for this long before failing closed.
+REPLACE_RETRY_S = 5.0
+SLOTS = Path(os.environ.get("HOLO_FLEET_SLOT_REGISTRY") or Path(__file__).resolve().parents[2] / "results/.holo_slots")
 
 
 @contextmanager
@@ -141,7 +144,15 @@ class EngineLease:
             file.flush()
             os.fsync(file.fileno())
         try:
-            os.replace(temporary, self.metadata)
+            deadline = time.monotonic() + REPLACE_RETRY_S
+            while True:
+                try:
+                    os.replace(temporary, self.metadata)
+                    break
+                except PermissionError:
+                    if time.monotonic() >= deadline:
+                        raise
+                    time.sleep(0.02)
         finally:
             temporary.unlink(missing_ok=True)
 

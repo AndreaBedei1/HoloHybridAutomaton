@@ -25,7 +25,7 @@ from holo_fleet.ha.spec import IN_FORMATION, Mode
 from holo_fleet.mission import MissionPlan
 from holo_fleet.perception.frame import SensorFrame
 from holo_fleet.perception.passage import PassageVerifier, gate_report
-from holo_fleet.perception.sonar_geometry import HULL_HALF
+from holo_fleet.perception.sonar_geometry import HULL_HALF, R_OUT
 from holo_fleet.perception.perception import LocalObservation, Perception
 
 AVOIDANCE = (Mode.SEPARATION_WARNING, Mode.COLLISION_AVOIDANCE)
@@ -158,7 +158,13 @@ class DroneController:
             self.events.append({**e, "mode": self.ha.mode.value})
         self.perception.events.clear()
         obs.ab.committed = self.ha.committed
-        obs.ab.entry_abort = bool(self.flows.abort_request and self.ha.committed and obs.ab.mutex_zone
+        concede = False
+        if (obs.gate.concede_to is not None and self.ha.committed and obs.ab.mutex_zone and not obs.ab.passed
+                and not self.flows.cr_cleared and not self.flows.past_centre and not self.passage.in_progress):
+            G = self.cfg.gate
+            nav_err = max(G.nav_err_m, self.perception.nav_bound.value)
+            concede = obs.gate.s < min(G.stage2_hold_s - G.admit_zone_m, G.cr_s_min - R_OUT - nav_err)
+        obs.ab.entry_abort = bool((self.flows.abort_request or concede) and self.ha.committed and obs.ab.mutex_zone
                                   and not obs.ab.passed)
         bad = observation_violations(obs.ab, self.cfg)
         self.obs_consistent = not bad
@@ -180,6 +186,9 @@ class DroneController:
                                 "from": rec.source, "to": rec.target,
                                 "gate": obs.gate.gate_id, "gate_decision": obs.gate.decision,
                                 "relations": obs.gate.relations})
+            if concede and rec.decision == "ABORT_PASS":
+                self.events.append({"t": t, "type": "COMMITMENT_CONCEDED", "gate": obs.gate.gate_id,
+                                    "peer_slot": obs.gate.concede_to})
         if rec.decision == "EXITED" or (obs.gate.passed and not self.ha.committed and obs.gate.gate_id is not None):
             self.perception.gp.advance()
         if prev == Mode.FAILSAFE_HOLD_OR_RETREAT and mode != prev:
@@ -244,7 +253,7 @@ class DroneController:
         dvl_fresh = t - self.perception.nav.state.t_dvl <= NavBound.DVL_STALE_S
         cmd = self.ll.command(self.perception.nav.state, v, yaw_d, authority, dt, dvl_fresh=dvl_fresh)
         thrust = thruster_command(cmd["surge"], cmd["sway"], cmd["heave"], cmd["yaw"], self.cfg.plant.thruster_limit)
-        p1 = interval_record(obs, frame, v, thrust, dt, self.cfg)
+        p1 = interval_record(obs, frame, v, thrust, dt, self.cfg, previous=self.last_record.get("p1_interval"))
         judged = mode not in AVOIDANCE
         check = check_onboard(self.ll.current_estimate(), v, self.cfg, AUTHORITY[authority]) if judged else None
         was_ok = self.envmon.ok
@@ -281,7 +290,8 @@ class DroneController:
             "targets": [{"pattern": "+".join(sorted(tg.pattern)), "r": round(tg.r_min, 2), "d_lower": round(tg.d_lower, 2),
                          "cls": tg.cls, "closing": round(tg.closing_rate, 2)} for tg in obs.targets],
             "escape": None if ch is None else {"dir": ch.label, "guarantee": round(ch.guarantee, 2),
-                                               "feasible": ch.feasible},
+                                               "feasible": ch.feasible,
+                                               "association_fallback": self.flows.association_fallback},
             "current_est": np.round(self.ll.current_estimate(), 3).tolist(),
             "gate": {"id": obs.gate.gate_id, "s": round(obs.gate.s, 2), "l": round(obs.gate.l, 2),
                      "at_queue": obs.gate.at_queue, "decision": obs.gate.decision, "has_prio": obs.gate.has_prio,
@@ -398,7 +408,10 @@ class DroneController:
         this does not happen while the declared bounds hold after a certified start."""
         cert = None
         if gc is not None and outage_rho is not None and outage_rho > gc.rho_eff:
+            previous = self.flows.p2_cert
             cert = self.flows.p2_certify(replace(gc, rho=outage_rho), v, loops)
+            if cert is None:
+                self.flows.p2_cert = previous
         if cert is None:
             cert = self.flows.p2_certify(gc, v, loops)
         if gc is None:
