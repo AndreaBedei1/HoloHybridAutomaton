@@ -208,6 +208,41 @@ def sk_band(q, a0p, a0m, anchor, b: P2Bounds, rho: float, amp: float = 0.0):
     return lo, hi, np.maximum(Tp, Tm)
 
 
+def outage_hull(v_meas: np.ndarray, cmds, k_rw: float, w: float, scale: float, v_dr: Optional[np.ndarray] = None,
+                cap_err: Optional[float] = None, cap_rho: Optional[float] = None, n_ax: int = 2):
+    """Velocity bounds of a DVL outage from the last fresh measurement (formal/check_p2_recursive.py P2R6, P2R2o).
+
+    ``v_meas``: the last fresh DVL velocity (gate frame), true within ``k_rw`` of it (premise V); ``cmds``: the commands applied
+    since that measurement's validity time minus tau_max (gate frame).  Under the response envelope of axis_reach (the
+    commanded response never leaves the range of its previous value and the commands: an increase reached at once, a
+    decrease at no less than a_brake) plus a residual drift |d| <= w that may vary (even reverse) at any time, the response
+    part starts within k_rw + w of the measurement, so the true velocity stays in the hull [lo - w, up + w] per axis with
+    up = max(v_meas + k_rw + w, cmds), lo = min(v_meas - k_rw - w, cmds) (P2R6).  Returns (v0, v_err, rho): the hull
+    midpoint, its half width + w (the larger over the column axes) and the drift bound of the dead-reckoning estimate
+    relative to the truth: with ``v_dr`` (the velocity the dead reckoning integrates, held sample or model) the largest
+    distance from {v_dr} and the commands to the hull, else (a reserve handed before an onset) the hull width, which
+    dominates every dead-reckoning velocity inside the hull (P2R2o); both plus w and the compass / DVL scale term
+    ``scale``.  ``cap_err`` / ``cap_rho``: the former worst-case outage bounds (v_bound, v_bound + max(v_bound, |v|) + scale)
+    are never exceeded."""
+    vm = np.asarray(v_meas, float)
+    U = np.atleast_2d(np.asarray(cmds, float)) if len(cmds) else np.zeros((0, 3))
+    up = np.maximum(vm + k_rw + w, U.max(axis=0)) if len(U) else vm + k_rw + w
+    lo = np.minimum(vm - k_rw - w, U.min(axis=0)) if len(U) else vm - k_rw - w
+    v0 = 0.5 * (up + lo)
+    v_err = float(np.max(0.5 * (up - lo)[:n_ax])) + w
+    if v_dr is None:
+        rho = float(np.max((up - lo)[:n_ax])) + w + scale
+    else:
+        vd = np.asarray(v_dr, float)
+        cand = np.vstack([vd[None, :], U]) if len(U) else vd[None, :]
+        rho = float(np.max(np.maximum(up - cand.min(axis=0), cand.max(axis=0) - lo)[:n_ax])) + w + scale
+    if cap_err is not None:
+        v_err = min(v_err, float(cap_err))
+    if cap_rho is not None:
+        rho = min(rho, float(cap_rho))
+    return v0, v_err, rho
+
+
 def hold_s(cfg: FleetConfig = DEFAULT) -> float:
     """Stage-2 hold of a drone that is not admitted: the nearest P2-safe point on the axis when holding, under the
     declared navigation error (module docstring)."""

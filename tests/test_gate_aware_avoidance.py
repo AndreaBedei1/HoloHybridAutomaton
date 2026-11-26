@@ -547,9 +547,31 @@ def test_the_real_step_in_failsafe_holds_on_the_failsafe_anchor_with_the_outage_
         rec = ctrl.last_record["gate_safety"]
         assert float(ctrl.v_requested @ np.asarray(GATE.axis, float)) <= 1e-9
     assert ctrl.ha.mode == Mode.FAILSAFE_HOLD_OR_RETREAT and True in calls
-    assert rec["v_err"] == pytest.approx(ctrl.perception.nav_bound.v_bound, abs=1e-3)
-    # with the velocity unknown up to the speed bound the hold is not certified: the filter retreats (P2_RECOVERY)
+    # the outage hull (gate_safety.outage_hull): the approach commands of the last tau_max are in it, so the velocity error is
+    # most of the speed bound and never above it; the hold just reached is not certified: the filter retreats (P2_RECOVERY)
+    assert ctrl.perception.nav_bound.k_rw < rec["v_err"] <= ctrl.perception.nav_bound.v_bound + 1e-9
     assert rec["mission"]["status"] == gs.RECOVERY
+
+
+def test_a_drone_at_rest_at_the_hold_keeps_its_certified_station_keeping_through_a_dvl_outage():
+    """The v27 P2_UNCERTIFIED replay: holding at the deployed stage-2 hold with only small hold commands, a DVL outage that
+    begins leaves the hull of the last measurement and the hold commands (P2R6): the bound stays small and the station
+    keeping stays certified, where the former worst case (v_bound + max(v_bound, |v|)) made every hold uncertified."""
+    ctrl = DroneController(PLAN, CFG)
+    _scripted_perception(ctrl, lambda obs, t: _place_at(obs, G.stage2_hold_s, [], False))
+    for k in range(60):
+        ctrl.step(_frame(0.1 * k), 0.1)
+    rec = ctrl.last_record["gate_safety"]
+    assert rec["v_err"] == pytest.approx(ctrl.perception.nav_bound.k_rw, abs=1e-3) and rec["cert"] is not None
+    for k in range(60, 72):
+        ctrl.step(_frame(0.1 * k, dvl=False), 0.1)
+        rec = ctrl.last_record["gate_safety"]
+        assert rec["cert"] is not None and (rec.get("mission") or {}).get("status") != gs.RECOVERY
+        # at rest the hull is the measurement +- (k_rw + w) and the hold commands inside it: v_err = k_rw + 2 w once the
+        # last sample is stale (k_rw while it is still fresh)
+        w = gs.P2Bounds.from_cfg(CFG).w
+        assert rec["v_err"] <= ctrl.perception.nav_bound.k_rw + 2 * w + 2e-3
+    assert rec["v_err"] == pytest.approx(ctrl.perception.nav_bound.k_rw + 2 * w, abs=2e-3)
 
 
 

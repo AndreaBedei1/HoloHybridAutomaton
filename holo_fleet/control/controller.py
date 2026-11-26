@@ -146,6 +146,10 @@ class DroneController:
         self._p2_key: Optional[tuple] = None
         self._p2_cert_key: Optional[tuple] = None
         self._p2_aid: Optional[float] = None
+        # the last fresh DVL velocity (world) with its validity time, and the commands applied since (world), for the
+        # outage hull of the P2 constraint (gate_safety.outage_hull, formal P2R6)
+        self._dvl_fresh: Optional[tuple] = None
+        self._cmd_hist: List[tuple] = []
 
     def step(self, frame: SensorFrame, dt: float) -> np.ndarray:
         t = frame.t
@@ -206,16 +210,27 @@ class DroneController:
         from holo_fleet.perception.nav import NavBound
 
         nb = self.perception.nav_bound
-        fresh = t - self.perception.nav.state.t_dvl <= NavBound.DVL_STALE_S
+        nav_state = self.perception.nav.state
+        fresh = t - nav_state.t_dvl <= NavBound.DVL_STALE_S
         speed_bound = float(nb.v_bound)
         estimated_speed = max(abs(float(component)) for component in obs.v_world)
         scale_error = float(nb.k_lin) * speed_bound
         outage_rho = speed_bound + max(speed_bound, estimated_speed) + scale_error
         v_err = float(nb.k_rw) if fresh else speed_bound
         rho = v_err + scale_error if fresh else outage_rho
+        if fresh:
+            self._dvl_fresh = (float(nav_state.t_dvl), np.asarray(obs.v_world, float).copy())
         gc = self.flows.gate_constraint(obs, authorized=self.ha.committed and self.flows.cr_cleared, v_err=v_err, rho=rho)
         if gc is not None and not fresh:
             gc = replace(gc, v0=np.zeros(3))
+            if self._dvl_fresh is not None:
+                # the outage hull (gate_safety.outage_hull): from the last fresh measurement and the commands since,
+                # never above the former worst-case bounds (formal P2R6)
+                t_f, v_f = self._dvl_fresh
+                U = [gc.to_gate(v) for tc, v in self._cmd_hist if tc >= t_f - self.cfg.env.tau_max]
+                v0, v_e, r = gs.outage_hull(gc.to_gate(v_f), U, float(nb.k_rw), gc.bounds.w, scale_error,
+                                            v_dr=gc.to_gate(nav_state.v_world), cap_err=speed_bound, cap_rho=outage_rho)
+                gc = replace(gc, v0=v0, v_err=v_e, rho=r)
         cert_reset = self._p2_correction()
         mission_filter = self.flows.p2_filter(gc, v_mis, self.flows.mission_anchor(gc) if gate_flow else {})
         if mission_filter is not None:
@@ -248,7 +263,15 @@ class DroneController:
         loops = [self.flows.mission_anchor(gc) if gate_flow else {}]
         if mode == Mode.FAILSAFE_HOLD_OR_RETREAT:
             loops.append(self.flows.mission_anchor(gc, failsafe=True, probe=not self.envmon.ok))
-        self._p2_certify_step(t, mode, gc, v, loops, cert_reset, outage_rho)
+        reserve_rho = outage_rho
+        if gc is not None and fresh:
+            # the drift bound a DVL outage beginning at the next step would bring (P2R2o): the hull of this measurement and
+            # the commands up to the one applied now, whatever the dead-reckoning velocity inside it
+            U = [gc.to_gate(u) for tc, u in self._cmd_hist if tc >= float(nav_state.t_dvl) - self.cfg.env.tau_max]
+            _v0, _ve, reserve_rho = gs.outage_hull(gc.v0, U + [gc.to_gate(v)], float(nb.k_rw), gc.bounds.w, scale_error,
+                                                  cap_err=speed_bound, cap_rho=outage_rho)
+        self._p2_certify_step(t, mode, gc, v, loops, cert_reset, reserve_rho)
+        self._cmd_hist = [(tc, u) for tc, u in self._cmd_hist if tc >= t - 5.0] + [(t, np.asarray(v, float).copy())]
         from holo_fleet.perception.nav import NavBound
         dvl_fresh = t - self.perception.nav.state.t_dvl <= NavBound.DVL_STALE_S
         cmd = self.ll.command(self.perception.nav.state, v, yaw_d, authority, dt, dvl_fresh=dvl_fresh)

@@ -44,6 +44,17 @@ P2R2m  (mutation) the braking lookahead (braking from the true worst-case state,
        counterexample of that lookahead, kept as a witness.
 P2R4l  (declared limit) the induction step needs its premises at the next step: a DVL outage that begins before a
        handed certificate is used, or a position correction, can leave no certified action (P2_UNCERTIFIED, retreat).
+P2R6   (proved, Z3 QF_LRA, induction over the steps of a DVL outage) the outage hull of gate_safety.outage_hull: with the true
+       velocity within k_rw of the last fresh measurement (premise V), a residual drift |d| <= w at every step (it may reverse),
+       the response part of the true velocity between its previous value and each command (the response envelope of
+       axis_reach) and the dead reckoning integrating the held sample or a model blend towards the command, the response part
+       and the dead-reckoning velocity stay in [lo, up] (lo / up: the measurement -/+ (k_rw + w) and the commands so far), so the
+       true velocity is in [lo - w, up + w] and the dead reckoning drifts from the truth by at most the deployed rho of the
+       outage.  P2R2o (proved): the reserve handed before an onset, the hull width + w, dominates that rho for every
+       dead-reckoning velocity inside the hull.  P2R6m / P2R6m2 (mutations): the measured side with w instead of 2 w (a drift
+       that reverses), the hull without the commands.  P2R6n (numeric): the deployed outage_hull equals the closed form.
+       Premise of the outage (declared, evidenced by the v27 replay, not proved): the response envelope holds without DVL
+       feedback (the low-level loop then runs feedforward with its integral frozen).
 P2R5   (proved, Z3 QF_NRA) base case: station keeping on the estimate is certified at every state whose column separation
        along s or l is at least D_base, for every measured speed per axis up to v_bound (fresh DVL); reported, the smallest
        column separation at activation (ACTIVE_RANGE_M, the depth envelope of the arena).
@@ -622,6 +633,79 @@ def outage_limit(cfg: FleetConfig) -> CheckResult:
                             f"the test preserves the counterexample at the certificate boundary")
 
 
+
+def _zmin(a, b):
+    return z3.If(a <= b, a, b)
+
+
+def _zmax2(a, b):
+    return z3.If(a >= b, a, b)
+
+
+def outage_hull_lemmas(cfg: FleetConfig) -> list:
+    """P2R6, P2R2o, P2R6m, P2R6m2, P2R6n: the DVL outage hull (gate_safety.outage_hull), one gate-frame axis."""
+    from holo_fleet.perception.nav import NavBound
+
+    nb = NavBound(cfg)
+    b = gs.P2Bounds.from_cfg(cfg)
+    kr, w, sc = exact(float(nb.k_rw)), exact(float(b.w)), exact(float(nb.k_lin) * float(nb.v_bound))
+    out = []
+    vm, vt0, d0, e, vdr, lo, up, c, alpha, ep, d = z3.Reals("vm vt0 d0 e vdr lo up c alpha ep d")
+    # base: the response part e0 = vt0 - d0 and the held sample vm lie in the initial hull
+    base = [z3.Abs(vt0 - vm) <= kr, z3.Abs(d0) <= w, e == vt0 - d0, vdr == vm, lo == vm - kr - w, up == vm + kr + w,
+            z3.Not(z3.And(lo <= e, e <= up, lo <= vdr, vdr <= up))]
+    out.append(check("P2R6 base: the response part of the true velocity and the held sample start inside the outage hull",
+                     "|vt - vm| <= k_rw, |d| <= w -> vm - k_rw - w <= vt - d <= vm + k_rw + w", ENC, base))
+    lo2, up2, vdr2 = z3.Reals("lo2 up2 vdr2")
+    inv = z3.And(lo <= e, e <= up, lo <= vdr, vdr <= up)
+    step = [inv, lo2 == _zmin(lo, c), up2 == _zmax2(up, c), ep >= _zmin(e, c), ep <= _zmax2(e, c),
+            alpha >= 0, alpha <= 1, vdr2 == vdr + alpha * (c - vdr),
+            z3.Not(z3.And(lo2 <= ep, ep <= up2, lo2 <= vdr2, vdr2 <= up2))]
+    out.append(check("P2R6 step: the hull with the new command is invariant (response envelope, dead-reckoning blend or held "
+                     "sample)", "inv(lo, up) and e' in [min(e, c), max(e, c)] and vdr' = vdr + a (c - vdr) -> inv(min(lo, c), "
+                     "max(up, c))", ENC, step))
+    rho_dep = _zmax2(up - vdr, vdr - lo) + w + sc
+    prop = [inv, z3.Abs(d) <= w,
+            z3.Not(z3.And(e + d >= lo - w, e + d <= up + w, z3.Abs(vdr - (e + d)) <= rho_dep))]
+    out.append(check("P2R6 property: the true velocity is in [lo - w, up + w] and the dead reckoning drifts from it by at "
+                     "most the deployed outage rho", "inv and |d| <= w -> lo - w <= e + d <= up + w and |vdr - (e + d)| <= "
+                     "max(up - vdr, vdr - lo) + w + scale", ENC, prop))
+    res = [lo <= vdr, vdr <= up, z3.Not(rho_dep <= (up - lo) + w + sc)]
+    out.append(check("P2R2o the reserve handed before an onset (hull width + w + scale) dominates the outage rho for every "
+                     "dead-reckoning velocity inside the hull", "lo <= vdr <= up -> max(up - vdr, vdr - lo) <= up - lo", ENC,
+                     res))
+    m1 = [z3.Abs(vt0 - vm) <= kr, z3.Abs(d0) <= w, e == vt0 - d0, lo == vm - kr, up == vm + kr,
+          z3.Not(z3.And(lo <= e, e <= up))]
+    out.append(check("P2R6m mutation: the measured side with w instead of 2 w (a residual drift that reverses after the last "
+                     "sample) leaves the hull", "expect counterexample", ENC, m1, expect="sat"))
+    m2 = [inv, ep >= _zmin(e, c), ep <= _zmax2(e, c), z3.Not(z3.And(lo <= ep, ep <= up))]
+    out.append(check("P2R6m2 mutation: a hull without the commands applied since the measurement leaves the true response",
+                     "expect counterexample", ENC, m2, expect="sat"))
+    rng = np.random.default_rng(13)
+    bad, n = [], 0
+    kr_f, w_f, sc_f = float(nb.k_rw), float(b.w), float(nb.k_lin) * float(nb.v_bound)
+    for _ in range(400):
+        vmv = rng.uniform(-0.7, 0.7, 3)
+        U = rng.uniform(-0.7, 0.7, (int(rng.integers(0, 6)), 3))
+        n += 1
+        upv = np.maximum(vmv + kr_f + w_f, U.max(axis=0)) if len(U) else vmv + kr_f + w_f
+        lov = np.minimum(vmv - kr_f - w_f, U.min(axis=0)) if len(U) else vmv - kr_f - w_f
+        vd = lov + rng.uniform(0.0, 1.0, 3) * (upv - lov)  # inside the hull (P2R6)
+        cand = np.vstack([vd[None, :], U]) if len(U) else vd[None, :]
+        rho_cf = float(np.max(np.maximum(upv - cand.min(axis=0), cand.max(axis=0) - lov)[:2])) + w_f + sc_f
+        err_cf = float(np.max(0.5 * (upv - lov)[:2])) + w_f
+        res_cf = float(np.max((upv - lov)[:2])) + w_f + sc_f
+        v0, ve, r = gs.outage_hull(vmv, list(U), kr_f, w_f, sc_f, v_dr=vd)
+        _v0, _ve, rr = gs.outage_hull(vmv, list(U), kr_f, w_f, sc_f)
+        if (not np.allclose(v0, 0.5 * (upv + lov)) or abs(ve - err_cf) > 1e-12 or abs(r - rho_cf) > 1e-12
+                or abs(rr - res_cf) > 1e-12 or r > rr + 1e-12):
+            bad.append((vmv.round(3).tolist(), len(U)))
+    out.append(CheckResult(f"P2R6n deployed gate_safety.outage_hull equals the closed form and its reserve dominates the "
+                           f"onset rho ({n} random states)", "outage_hull(x) == closed form(x); rho(v_dr) <= reserve",
+                           "numeric", "holds", verdict="holds" if not bad else "violated", passed=not bad,
+                           note="" if not bad else str(bad[:3])))
+    return out
+
 def run_checks(cfg: FleetConfig):
     out = []
     out += reach_lemmas(cfg)
@@ -629,6 +713,7 @@ def run_checks(cfg: FleetConfig):
     out += loop_lemmas(cfg)
     out.append(base_case(cfg))
     out.append(theorem(cfg))
+    out += outage_hull_lemmas(cfg)
     out.append(outage_limit(cfg))
     out.append(availability(cfg))
     out.append(braking_lookahead_mutation(cfg))
