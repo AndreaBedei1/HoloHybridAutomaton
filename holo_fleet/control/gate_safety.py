@@ -485,12 +485,16 @@ class GateConstraint:
 
     def is_hold_loop(self, v: np.ndarray, anchor: np.ndarray, gain: float, amp: float = 0.0) -> bool:
         """``v`` is the unsaturated position loop of gain ``gain`` (>= K_HOLD) on ``anchor``, up to a vertical probe of
-        amplitude ``amp`` around it: the deviation bound of hold_margin applies to it."""
+        amplitude ``amp`` around it: the deviation bound of hold_margin applies to it.  With the CR column (COLUMN) only the
+        column axes (s, l) are compared, like the margins, _applies and latchable: the column extends to every depth and the
+        vertical loop is clipped on its own, so a saturated vertical command (an acquisition offset at the stage-2 hold,
+        capped at 0.25 m/s) does not stop the station keeping from being recognised and latched (formal P2R3)."""
         if gain < K_HOLD - 1e-9:
             return False
         expect = gain * (np.asarray(anchor, float) - self.q)
         tol = np.array([1e-6, 1e-6, 1e-6 + gain * amp])
-        return bool(np.all(np.abs(self.to_gate(v) - expect) <= tol))
+        n = 2 if COLUMN else 3
+        return bool(np.all((np.abs(self.to_gate(v) - expect) <= tol)[:n]))
 
     def filter_mission(self, v: np.ndarray, v_max: float, anchor: Optional[np.ndarray] = None, gain: float = K_HOLD,
                        amp: float = 0.0, station: Optional[np.ndarray] = None, cap: Optional[float] = None,
