@@ -31,12 +31,14 @@ the controller logs which property it can no longer certify.
   current at most 0.25 m/s, unrejected drift at most 0.15 m/s per axis (P1, P2 filter), residual disturbance at most 0.05 m/s
   once the integrator has converged (P3; the proof margin vanishes at 0.064 m/s, `config/parameter_sources.json`).
 - Navigation error at most `nav_err_m` = 1.0 m per axis in the gate frame; depth -9.0 to -1.5 m; braking at least 0.5 m/s^2;
-  nominal speed at most 0.5 m/s. Acoustic envelope: the MEDIUM channel at 3 sigma (`AcousticConfig`), latency at most 0.40 s,
+  nominal speed at most 0.5 m/s. Acoustic envelope: the former MEDIUM channel (now `MEDIUM_HARSH`) at 3 sigma (`AcousticConfig`), latency at most 0.40 s,
   clock skew at most 0.05 s, TDMA period 1 s.
 - The receiver validates capture time and numeric integrity before use. Maximum onboard ages are 0.25 s for sonar and IMU,
   0.20 s for compass and depth, and 0.35 s for DVL health. The DVL velocity-loop freshness is stricter at 0.15 s. The sensor
   rates are 10 Hz (sonar, DVL) and 30 Hz (IMU, compass, depth). Missing or invalid data cannot refresh a measurement.
-- CLEAN, LOW, MEDIUM and HIGH are simulation profiles. MEDIUM's Gaussian jitter and independent fades do not impose hard
+- CLEAN, LOW, MEDIUM and HIGH are simulation profiles. LOW and MEDIUM are realistic nominal levels from sensor datasheets and the
+  literature (sonar shift truncated at one bin, per-run sonar sound-speed and DVL scale factors; acoustic LOW / MEDIUM likewise,
+  the former MEDIUM channel kept as `MEDIUM_HARSH`); sources per value in `config/parameter_sources.json`. MEDIUM's Gaussian jitter and independent fades do not impose hard
   bounds on range error or consecutive misses. The formal operating domain requires the independently declared range-error,
   tilt, capture and actuator premises at use. See the sensor-specific sources and bias budget in `config/parameter_sources.json`.
   HIGH is a stress profile.
@@ -156,24 +158,34 @@ priority order and all guards are evaluated at runtime as a determinism monitor.
 **Geometry.** Gate frame: s along the axis, l left, z up. The monitored CR is `-0.8 <= s <= 0.0 m`
 with `|l| <= 1.0 m` and `|z| <= 1.0 m` at G06. Admission sensing reserves the passage through
 `s = +0.55 m` separately: the 0.15 m bar half depth plus the 0.389 m hull radius, rounded up.
-The stage-2 hold stays at `s = -2.5525 m`, retaining the sonar acquisition geometry and a 0.25 m reserve. Queue lines follow `GateRule.queue_s` and the supported layouts in Q1.
+The stage-2 hold stays at `s = -2.5525 m`, retaining the sonar acquisition geometry and a 0.25 m reserve. Queue lines follow `GateRule.queue_s` and the supported layouts in Q1;
+a column near the axis queues farther back, `queue_hold_clear_m` = 4.0 m from the admission zone (`GateRule.queue_s_for`; the middle
+column of three at -6.95 m instead of -5.75 m), so the lead vehicle at the hold sees the vehicle queued behind it beyond the
+admission clearance at most captures (formal ST7, a progress margin). The admission zone is `GateRule.in_admission_zone`: s within
+-0.4 / +0.3 m of the hold, `|l|` <= 0.35 m, `|dz|` <= 0.9 m (the vertical acquisition offsets +-0.8 m plus 0.1 m).
 
 **Gate protocol.**
 1. *Precedence.* A vehicle waits at its queue point. Its relation to each neighbour comes from the sonar sector pattern only
    (`ha/mutex_rule.py`): the leftmost queued vehicle present has priority, after `t_clear` = 1.0 s.
 2. *Occupancy latch.* BUSY on an unexplained FRONT echo in the CR range or on a claim (B2); EXITING on an exit witness (sonar, or
-   acoustic with the corridor empty); FREE `t_clear` later with the corridor still clear. A timeout alone cannot release a BUSY latch.
+   acoustic with the corridor empty); FREE `t_clear` later with the corridor still clear. FREE comes only from EXITING (ST2). A BUSY
+   set by a corridor echo becomes STALE after `t_occ_max` = 25 s with no corridor echo, nothing heard and nothing known inside: no
+   longer an obstacle to committing, never FREE, and an admission on it is timed (item 4). Time alone never frees the CR.
 3. *Commit* (edge `commit`): calm (no fault, no separation hazard), at the queue point, sonar priority, latch free.
 4. *Admission.* The committed vehicle follows the pass path to the stage-2 hold and enters the CR only when the automaton is in
    `MUTEX_PASS` with healthy sensors, the gate localization is validated, the stage-2 check holds (no unexplained corridor echo for
-   3 captures with the FRONT sonar healthy, no claim, no vehicle heard or known inside), the estimated s is at least
-   `stage2_hold_s` - 0.4 m, and the commitment is at least `admit_wait_s` old. B2: `commit_admit_min_s` = 4.0 s if every other
+   3 captures with the FRONT sonar healthy, no claim, no vehicle heard or known inside), the estimate is in the admission zone,
+   the near-field clearance holds (no hull with an onboard bound `d_lower` below `admit_clear_m` = 3.3 m in any sector), and the
+   commitment is at least `admit_wait_s` old. An admission resting on no positive exit witness after the last corridor sighting
+   (a lead vehicle, a STALE latch, a hidden concurrent commitment; B2 only without fresh reports of every other vehicle) is also
+   timed: strictly after max(last corridor sighting, start of the current dwell in the zone) + `t_admit_stale` = 37.53 s (ST1). B2: `commit_admit_min_s` = 4.0 s if every other
    vehicle of the plan was heard fresh (report emitted at most `admit_fresh_s` = 3.5 s ago), else `commit_admit_min_s` +
    `t_cross_max` = 41.52 s, with `t_cross_max` = (0.55 + 2.5525 + 0.4 + 1.0) / 0.12 = 37.52 s. B0: 0. Silence is never evidence: a
    vehicle not heard is unknown, a claim (COMMITTED or ADMITTED report) stands until its sender reports otherwise, a silent vehicle
    is never excluded as a possible occupant.
-5. *Give-up.* Without admission, 26 s (`t_occ_max` + `t_clear`) after the wait ends, the vehicle retreats behind the abort plane and
-   queues again (`ENTRY_HOLD_TIMEOUT`). Without a validated localization it scans acquisition offsets at the hold; a committed
+5. *Give-up.* Without admission, 26 s (`t_occ_max` + `t_clear`) after the wait and the timed bound end, the vehicle retreats behind
+   the abort plane and queues again (`ENTRY_HOLD_TIMEOUT`); two vehicles committed concurrently that keep each other from the
+   clearance both give up and queue again. Without a validated localization it scans acquisition offsets at the hold; a committed
    vehicle stops behind a vehicle ahead in its FRONT sector (standoff).
 
 **P2 filter** (`control/gate_safety.py`). It edits the final velocity command of every vehicle not admitted to the CR and within 8 m
@@ -242,6 +254,14 @@ In the CLEAN line3 occlusion probe, the lateral sonar saw the nearer neighbour i
   warning filter for every sector pattern (S2a-S2d); gate-aware selection, 25,272 decisions (J1).
 
 **P2** (premises: P2 filter, an admitted vehicle progresses at least 0.12 m/s until it leaves the CR, truthful self-reports).
+- Proved, timed admission (`formal/check_stale.py`): an admission without a positive exit witness strictly after max(last corridor
+  sighting, start of the dwell in the admission zone) + 37.53 s puts every earlier occupant beyond the passage clearance, without
+  premise S, given the near-field clearance of every admission and the P1 detection premise (ST1; ST6 numeric: two vehicles in the
+  zone are at most 3.25 m apart, below the 3.3 m clearance; mutations ST1n, ST1z, ST1d); the latch never gives FREE from BUSY or
+  STALE (ST2); the hold is not given up before an admission that is possible (ST3).
+- Proved, DVL outage (`formal/check_p2_recursive.py`): during an outage the true velocity stays in the hull of the last fresh
+  measurement and the commands applied since, and the dead reckoning drifts by at most the deployed bound (P2R6, induction);
+  the reserve handed before an onset dominates it (P2R2o).
 - Proved: never two vehicles with priority (M1); precedence selects exactly one vehicle for 2 to 6 queue points with at most one vacant
   point between neighbours (M2; M2s marks the limit); at most one vehicle committed or in the CR, inductive for n = 2, 3, 4 under
   steps, failures, stops and entries bypassing the stage-2 check, with claims learnt within the step (F0i, F0s, F0p); P2 over every
@@ -273,7 +293,7 @@ a common reference for the fleet, or recovery in the presence of sustained safet
 - **Mutually unheard pair.** After 41 or more consecutive losses in both directions between two vehicles (B2C-Es) both admissions
   degrade and P2 rests on the B0 mechanisms only, precedence and latch (B2C-EL, B2C-S1b); the stage-2 sonar is not certified (B2C-G1).
 - **P2 filter envelope.** P2R4l: a DVL outage that begins, or a position correction, between steps after a certificate is handed can
-  leave no certified action. The controller attempts to reserve the worst-case DVL outage drift when handing over a certificate. Position corrections still invalidate it. P2R4 takes the selection rule as an axiom, checked numerically (J1, P2R4n). The MEDIUM-ALL run of
+  leave no certified action. The controller reserves the outage hull of the current measurement and commands (P2R2o) when handing over a certificate. Position corrections still invalidate it. P2R4 takes the selection rule as an axiom, checked numerically (J1, P2R4n). The MEDIUM-ALL run of
   `gate_single` logged 9 `P2_UNCERTIFIED` events and 21 failsafe entries, with P1 and P2 holding. F1pe, F1pme, F0qe: with a navigation
   error, drift or estimate jump outside the envelope an entry by avoidance is possible and two vehicles can be in the CR.
   Differencing two 10 Hz sonar ranges would give up to ±2 m/s error even with a stable gate feature and the optimistic
@@ -290,6 +310,10 @@ a common reference for the fleet, or recovery in the presence of sustained safet
   identification is withheld), and passed 205.7 s after its commitment against a budget of 86 s (`gate_bounded_response` false);
   the class is PASS and P1, P2 hold, the cost is time.
   A vehicle without a validated gate localization is never admitted.
+- **Admission clearance.** The near-field clearance rests on the P1 detection premise (a vehicle within 3.3 m produces an echo in
+  a healthy sector). A hull within 3.3 m (a vehicle in standoff, a concurrent commitment, an unexplained echo) holds an admission
+  back; two concurrent commitments resolve by the give-up, not by a ranking. ST7 (queue clearance) is a progress margin, not a proof
+  of progress.
 - **B0, 3 vehicles.** M4g: in abreast, triangle and line layouts of 3 vehicles a queued vehicle may get no sonar exit witness of a
   passing vehicle (detection range); the latch can stay BUSY without a positive exit witness.
 - **P1.** Proved pairwise; several neighbours rest on the triangle lemma and the two-threat escape (S2c), not on a fleet model.
