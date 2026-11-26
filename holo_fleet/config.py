@@ -160,6 +160,16 @@ class GateRule:
         """Progress-based time from the earliest admission to physical clearance."""
         return (self.passage_clear_s - self.stage2_hold_s + self.admit_zone_m + self.nav_err_m) / self.v_cross_min
 
+    @property
+    def t_admit_stale(self) -> float:
+        """Admission bound after a timed (STALE) latch release, from the last corridor sighting (formal/check_stale.py).
+        Premise S: the follower's last sighting of an occupant is not before that occupant's admission.  Then the occupant
+        is at s >= stage2_hold_s - admit_zone_m - nav_err_m when seen and progresses at >= v_cross_min, so after this time
+        it is beyond passage_clear_s.  The P2 part needs only cr_s_max; the rest up to passage_clear_s is the P1 clearance:
+        a hull stopped in the bar plane (0, passage_clear_s] is masked from the stage-2 hold and seen too late to brake.
+        Rounded up to 0.01 s, so the deployed float is never below the exact derivation (formal ST1)."""
+        return math.ceil(self.t_cross_max * 100.0) / 100.0
+
     def passage_hi(self) -> np.ndarray:
         """Upper corner of the physical occupancy envelope used by admission sensing."""
         return np.array([self.passage_clear_s, self.cr_half_width, self.cr_half_height])

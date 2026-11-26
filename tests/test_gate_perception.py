@@ -80,8 +80,49 @@ def test_drone_between_queue_and_cr_is_a_wait_not_an_occupancy():
     assert o.decision == "WAIT" and o.occ_state == "FREE"
 
 
-def test_elapsed_time_without_exit_evidence_keeps_the_latch_busy():
+def test_elapsed_time_without_exit_evidence_never_frees_the_latch():
     gp = perception()
     _, t = run(gp, [[tg({"FRONT"}, 4.6)]] * 3)
+    o, t = run(gp, [[]] * int(G.t_occ_max / 0.1 - 5), t0=t)
+    assert o.occ_state == "BUSY" and o.occ_busy and o.occ_timeouts == 0 and o.entry_after < -1e8
+    o, t = run(gp, [[]] * 600, t0=t)
+    assert o.occ_state == "STALE" and o.occ_state != "FREE" and o.occ_timeouts == 1
+
+
+def test_stale_latch_allows_commitment_but_bounds_admission_from_the_last_sighting():
+    gp = perception()
+    _, t = run(gp, [[tg({"FRONT"}, 4.6)]] * 3)
+    last = t - 0.1
     o, t = run(gp, [[]] * int(G.t_occ_max / 0.1 + 5), t0=t)
-    assert o.occ_state == "BUSY" and o.occ_timeouts == 0
+    assert o.occ_state == "STALE" and not o.occ_busy
+    assert abs(o.entry_after - (last + G.t_admit_stale)) < 1e-9
+    assert G.t_admit_stale >= (G.cr_s_max - G.stage2_hold_s + G.admit_zone_m + G.nav_err_m) / G.v_cross_min
+
+
+def test_corridor_echo_after_a_stale_release_latches_again_and_keeps_the_timed_basis():
+    gp = perception()
+    _, t = run(gp, [[tg({"FRONT"}, 4.6)]] * 3)
+    _, t = run(gp, [[]] * int(G.t_occ_max / 0.1 + 5), t0=t)
+    o, t = run(gp, [[tg({"FRONT"}, 4.6)]] * 3, t0=t)
+    assert o.occ_state == "BUSY" and o.occ_busy
+    assert abs(o.entry_after - (t - 0.1 + G.t_admit_stale)) < 1e-9
+
+
+def test_exit_witness_after_a_stale_release_removes_the_admission_bound():
+    gp = perception()
+    _, t = run(gp, [[tg({"FRONT"}, 4.6)]] * 3)
+    _, t = run(gp, [[]] * int(G.t_occ_max / 0.1 + 5), t0=t)
+    o, t = run(gp, [[tg({"FRONT"}, 7.5)]] * 3, t0=t)
+    assert o.occ_state == "EXITING" and o.entry_after < -1e8
+
+
+def test_stale_release_needs_quiet_corridor_and_nothing_heard_or_known_inside():
+    from holo_fleet.perception.gate_perception import stale_release
+
+    T = G.t_occ_max
+    assert stale_release(30.0, 4.0, 1.0, False, False, False, T)
+    assert not stale_release(29.0, 4.0, 1.0, False, False, False, T)
+    assert not stale_release(30.0, 4.0, 1.0, True, False, False, T)
+    assert not stale_release(30.0, 4.0, 1.0, False, True, False, T)
+    assert not stale_release(30.0, 4.0, 1.0, False, False, True, T)
+    assert not stale_release(30.0, 0.5, 1.0, False, False, False, T)

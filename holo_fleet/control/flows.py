@@ -325,9 +325,11 @@ class Flows:
             s_hold = G.stage2_hold_s
             self.commit_t = obs.t if self.commit_t is None else self.commit_t
             wait = float(getattr(go, "admit_wait_s", 0.0))
-            eligible_t = self.commit_t + wait
+            timed = float(getattr(go, "entry_after", -1e9))
+            eligible_t = max(self.commit_t + wait, timed)
+            # the timed bound is strict: at t = entry_after the occupant can be exactly on the closed CR boundary
             if (admissible and go.loc_ok and go.entry_ok and go.s >= s_hold - RELOC_ZONE_M
-                    and obs.t - self.commit_t >= wait):
+                    and obs.t - self.commit_t >= wait and obs.t > timed):
                 self.cr_cleared = True
             s_abort = G.cr_s_min - (float(R_OUT) + G.nav_err_m)
             self.abort_request = False

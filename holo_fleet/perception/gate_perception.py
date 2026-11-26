@@ -15,7 +15,11 @@
   seen or masked, EXITING on a positive exit witness with the corridor empty (an echo in any sonar
   sector that no hull in the CR can produce and a hull leaving it on the exit side can: exit_witness.py;
   the FRONT echo beyond R_far is the FRONT case), and FREE after ``t_clear`` more without conflicting evidence.
-  The wait alone cannot release BUSY.
+  The wait alone never gives FREE.  After ``t_occ_max`` with no corridor echo, nothing heard and nothing known inside, a BUSY
+  set by a corridor echo becomes STALE: no longer an obstacle to committing (the commitment stops at the stage-2 hold,
+  outside the CR, control/gate_safety.py), but admission then also needs ``entry_after``: the last corridor sighting plus
+  ``GateRule.t_admit_stale`` (formal/check_stale.py), unless a positive exit witness came later.  A corridor echo makes a
+  STALE latch BUSY again; the timed basis is kept until a witness or the next gate.
   B2 adds positive acoustic occupancy to BUSY and vetoes release/admission while a drone is heard possibly inside
   (the complete declared region, perception/acoustic_gate.py). Acoustic exit evidence is evaluated only with the
   corridor empty. Without receptions the sonar outage-mode latch remains.
@@ -49,6 +53,21 @@ from holo_fleet.perception.sonar_processing import DYNAMIC
 ENTRY_QUIET_CAPTURES = 3
 
 
+def stale_release(t: float, last_corridor_t: float, busy_since: float, corridor: bool, heard: bool, known_inside: bool,
+                  t_occ_max: float) -> bool:
+    """BUSY -> STALE: a corridor-set latch (last echo not before BUSY began) with no corridor echo for more than
+    ``t_occ_max``, nothing heard possibly inside and no last known position inside.  The same predicate is encoded in
+    formal/check_stale.py."""
+    return (not corridor and not heard and not known_inside and last_corridor_t >= busy_since
+            and t - last_corridor_t > t_occ_max)
+
+
+def entry_after(release: Optional[str], last_corridor_t: float, t_admit_stale: float) -> float:
+    """Earliest admission time imposed by the latch: after a timed release (STALE, or BUSY again after it), the last
+    corridor sighting plus ``t_admit_stale``; no bound after a positive exit witness or with no timed release."""
+    return last_corridor_t + t_admit_stale if release == "TIMER" else -1e9
+
+
 @dataclass
 class GateObs:
     gate_id: Optional[str] = None
@@ -71,6 +90,7 @@ class GateObs:
     occ_busy: bool = False
     rank_used: bool = False
     occ_timeouts: int = 0
+    entry_after: float = -1e9
     exit_witness: Optional[Dict] = None
     loc_ok: bool = False
     entry_ok: bool = True
@@ -105,6 +125,7 @@ class GatePerception:
         self.busy_since = -1e9
         self.exit_seen_t = -1e9
         self.occ_timeouts = 0
+        self.release: Optional[str] = None
         self.exit = ExitWitness(cfg)
         self.exit_witness: Optional[Dict] = None
         self.rank_uses = 0
@@ -125,6 +146,7 @@ class GatePerception:
         self.idx += 1
         self.prio_since = None
         self.occ_state, self.last_corridor_t, self.exit_seen_t = "FREE", -1e9, -1e9
+        self.release = None
         self.exit.reset()
         if self.acoustic_exit is not None:
             self.acoustic_exit.reset()
@@ -214,11 +236,11 @@ class GatePerception:
             if self.acoustic_exit is not None:
                 self.acoustic_exit.note_corridor(t, g, p, yaw, [tg.r_min for tg in corridor])
             if self.occ_state == "FREE":
-                self.busy_since = t
+                self.busy_since, self.release = t, None
             self.occ_state = "BUSY"
         if heard:
             if self.occ_state == "FREE":
-                self.busy_since = t
+                self.busy_since, self.release = t, None
                 self.suspects = set()
             self.suspects |= self.acoustic_exit.heard_by
             self.occ_state, self.exit_witness = "BUSY", None
@@ -227,7 +249,7 @@ class GatePerception:
             healthy = {sec: bool(rd.healthy) for sec, rd in readings.items()}
             if self.last_corridor_t >= self.busy_since:
                 witness = self.exit.update(t, g, p, yaw, targets, bool(corridor), self.last_corridor_t, healthy)
-            if witness is None and not corridor and self.occ_state == "BUSY" and self.acoustic_exit is not None:
+            if witness is None and not corridor and self.occ_state in ("BUSY", "STALE") and self.acoustic_exit is not None:
                 if self.last_corridor_t >= self.busy_since:
                     witness = self.acoustic_exit.evaluate(t, g)
                 else:
@@ -236,10 +258,15 @@ class GatePerception:
             witness = None
             self.exit.clear_confirmation()
         o.exit_witness = witness
-        if self.occ_state == "BUSY":
+        if self.occ_state in ("BUSY", "STALE"):
             if witness is not None and not corridor:
                 self.occ_state, self.exit_seen_t, self.exit_witness = "EXITING", t, witness
+                self.release = "WITNESS"
                 self.exit_kind["ACOUSTIC" if witness.get("sector") == "ACOUSTIC" else "SONAR"] += 1
+            elif self.occ_state == "BUSY" and stale_release(t, self.last_corridor_t, self.busy_since, bool(corridor),
+                                                          heard, known_inside, G.t_occ_max):
+                self.occ_state, self.exit_witness, self.release = "STALE", None, "TIMER"
+                self.occ_timeouts += 1
         if (self.occ_state == "EXITING" and not corridor and not heard and not known_inside
                 and t - max(self.exit_seen_t, self.last_corridor_t) >= G.t_clear):
             self.occ_state = "FREE"
@@ -249,7 +276,8 @@ class GatePerception:
             if self.acoustic_exit is not None:
                 self.acoustic_exit.reset()
         o.occ_state = self.occ_state
-        o.occ_busy = self.occ_state != "FREE"
+        o.occ_busy = self.occ_state in ("BUSY", "EXITING")
+        o.entry_after = entry_after(self.release, self.last_corridor_t, G.t_admit_stale)
         o.occ_timeouts = self.occ_timeouts
         front = readings.get("FRONT")
         if front is None or not front.healthy:
