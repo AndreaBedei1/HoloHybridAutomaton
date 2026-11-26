@@ -334,7 +334,8 @@ class Flows:
             s_hold = G.stage2_hold_s
             self.commit_t = obs.t if self.commit_t is None else self.commit_t
             wait = float(getattr(go, "admit_wait_s", 0.0))
-            in_zone = go.s >= s_hold - RELOC_ZONE_M
+            # the admission zone (GateRule.in_admission_zone: along, lateral and vertical bounds, formal ST6)
+            in_zone = G.in_admission_zone(go.s, go.l, go.dz)
             self.zone_since = (obs.t if self.zone_since is None else self.zone_since) if in_zone else None
             timed = -1e9
             if bool(getattr(go, "timed_admission", False)):
@@ -346,7 +347,9 @@ class Flows:
             self.timed_bound = timed if timed > -1e8 else None
             eligible_t = max(self.commit_t + wait, timed)
             # the timed bound is strict: at t = entry_after the occupant can be exactly on the closed CR boundary
-            if (admissible and go.loc_ok and go.entry_ok and in_zone
+            # every admission needs the near-field clearance (no hull within GateRule.admit_clear_m): no other drone is
+            # then in the admission zone, so none is admitted during the dwell of another (formal/check_stale.py ST1)
+            if (admissible and go.loc_ok and go.entry_ok and in_zone and bool(getattr(go, "admit_clear", False))
                     and obs.t - self.commit_t >= wait and obs.t > timed):
                 self.cr_cleared = True
             s_abort = G.cr_s_min - (float(R_OUT) + G.nav_err_m)
@@ -360,7 +363,8 @@ class Flows:
                 if obs.t - max(self.hold_since, eligible_t) > G.t_occ_max + G.t_clear and not self.hold_timeout:
                     self.hold_timeout = True
                     self.events.append({"t": obs.t, "type": "ENTRY_HOLD_TIMEOUT", "loc_ok": go.loc_ok,
-                                        "entry_ok": go.entry_ok, "admit_wait_s": round(wait, 2), "admissible": admissible})
+                                        "entry_ok": go.entry_ok, "admit_wait_s": round(wait, 2), "admissible": admissible,
+                                        "in_zone": in_zone, "admit_clear": bool(getattr(go, "admit_clear", False))})
                 if go.loc_ok and self.acq_target is not None:
                     # localized but not yet admitted (a wait or the timed bound still running): stay where the fit
                     # works; returning to the axis lost the validation within LOC_TTL_S (v29 B0 s2)

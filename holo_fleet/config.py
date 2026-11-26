@@ -151,16 +151,32 @@ class GateRule:
     its admission until it has left the CR, and never stops inside it (failures inside the CR are outside the scope,
     holo_fleet/scope.py).  A declared assumption of the P2 argument, not a measurement (M3f / B2C-Lv give the
     counterexamples without it)."""
-    near_sight_m: float = 3.0
-    """Near-field sighting radius of the timed admission (gate_perception: a hull with d_lower below it in any sector
-    restarts the bound).  Premise N of formal/check_stale.py: two drones whose estimates are both in the admission zone
-    (along the axis admit_zone_m + hold_err_m, laterally 2 hold_lateral_allow, vertically the acquisition offsets
-    +-0.8 m) are at most 2.93 m apart with the observer's declared error nav_err_m and the admitted drone's validated
-    localization (CONSIST_M + UNIQUE_M + FIT_RMS_M = 0.65 m); kept below the standoff distance d_warning_exit +
-    STANDOFF_MARGIN_M = 3.2 m (control/flows.py) so a follower holding in standoff is normally outside it."""
     admit_zone_m: float = 0.4
-    """Admission zone of the stage-2 hold: a committed drone may be admitted once its estimated s >= stage2_hold_s -
-    admit_zone_m (control/flows.py RELOC_ZONE_M, kept equal by tests/test_b2_comm_fixes.py)."""
+    """Admission zone of the stage-2 hold, behind the hold: estimated s >= stage2_hold_s - admit_zone_m (control/flows.py
+    RELOC_ZONE_M, kept equal by tests/test_b2_comm_fixes.py)."""
+    admit_zone_fwd_m: float = 0.3
+    """Admission zone ahead of the hold: estimated s <= stage2_hold_s + admit_zone_fwd_m (a held drone pushed forward by
+    the warning band: 0.21 m at the 99th percentile of the v31 LOW / MEDIUM holds)."""
+    admit_zone_lat_m: float = 0.35
+    """Admission zone laterally: |estimated l| <= admit_zone_lat_m (the hold loop keeps hold_lateral_allow = 0.27 m against
+    the declared drift; at most 0.36 m in the v31 MEDIUM holds)."""
+    acq_dz_m: float = 0.8
+    """Vertical acquisition offsets of the stage-2 hold, +-acq_dz_m (control/flows.py ACQ_OFFSETS, kept equal by a test)."""
+    admit_zone_dz_m: float = 0.1
+    """Admission zone vertically: estimated dz within acq_dz_m + admit_zone_dz_m of the gate centre."""
+    admit_clear_m: float = 3.3
+    """Near-field clearance of every admission (control/flows.py): a drone is admitted only at a step at which no hull has
+    a d_lower below it (any sector).  formal/check_stale.py ST1 / ST6: two drones whose estimates are both in the admission
+    zone above are at most 3.25 m apart (the observer's declared error nav_err_m, the admitted drone validated within
+    CONSIST_M + UNIQUE_M + FIT_RMS_M = 0.65 m), so with the P1 detection premise (d_lower is a lower bound of the centre
+    distance) no drone is admitted while another dwells in the zone, and the timed bound needs no near-field sighting.
+    Replaces the near-field restart of the bound (5f9f049), which the drone queued 3.2 m behind the hold renewed at
+    nearly every capture: no B0 lead drone was admitted in v31."""
+    queue_hold_clear_m: float = 4.0
+    """Clearance of a queue point from the admission zone (GateRule.queue_s_for): a column near the axis queues farther
+    back, so the lead drone at the hold sees the drone queued behind it beyond admit_clear_m at most captures (the
+    onboard bound is 0.40-0.54 m below the true distance at the median of the v31 holds).  A progress margin, not a
+    safety one."""
 
     @property
     def t_cross_max(self) -> float:
@@ -255,6 +271,28 @@ class GateRule:
                     need = max(need, -self.stage2_hold_s + math.sqrt(self.merge_clearance ** 2 - dl ** 2))
         need = max(need, -self.stage2_hold_s)
         return -need
+
+    def zone_dz_half(self) -> float:
+        """Vertical half extent of the admission zone about the gate centre."""
+        return self.acq_dz_m + self.admit_zone_dz_m
+
+    def in_admission_zone(self, s: float, l: float, dz: float) -> bool:
+        """The admission zone of the stage-2 hold (estimated gate-frame position): the dwell of the timed bound and every
+        admission (control/flows.py), the geometry of formal/check_stale.py ST6."""
+        return bool(self.stage2_hold_s - self.admit_zone_m <= s <= self.stage2_hold_s + self.admit_zone_fwd_m
+                    and abs(l) <= self.admit_zone_lat_m and abs(dz) <= self.zone_dz_half())
+
+    def queue_s_for(self, line: float, lateral: float, dz: float = 0.0, n: int = 2) -> float:
+        """Queue point of one column: the shared queue line, moved back for a column near the axis so that it keeps
+        queue_hold_clear_m from every point of the admission zone (n = 1: nobody queues behind the lead drone)."""
+        if n <= 1:
+            return line
+        dl = max(abs(lateral) - self.admit_zone_lat_m, 0.0)
+        dv = max(abs(dz) - self.zone_dz_half(), 0.0)
+        rem = self.queue_hold_clear_m ** 2 - dl * dl - dv * dv
+        if rem <= 0.0:
+            return line
+        return min(line, self.stage2_hold_s - self.admit_zone_m - math.sqrt(rem))
 
     def queue_laterals(self, n: int, spacing: float = 0.0) -> Tuple[float, ...]:
         """Abreast queue points, left (positive) first."""

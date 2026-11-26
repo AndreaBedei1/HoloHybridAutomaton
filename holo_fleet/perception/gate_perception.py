@@ -20,9 +20,10 @@
   outside the CR, control/gate_safety.py).  Every admission that rests on no positive exit witness after the last sighting
   (STALE, BUSY, or FREE without any witness) needs ``entry_after``: the last sighting plus ``GateRule.t_admit_stale``
   (formal/check_stale.py), unless B2 holds fresh reports of every other drone (B2C-E1).  The sighting is a corridor
-  echo or any hull within GateRule.near_sight_m (near field), and control/flows.py also counts the bound from the start of the
-  current dwell in the admission zone, so an occupant admitted before that dwell needs no sighting at all (premise S is not
-  needed).  A corridor echo makes a STALE latch BUSY again; the timed basis is kept until a witness or the next gate.
+  echo; control/flows.py also counts the bound from the start of the current dwell in the admission zone, so an occupant
+  admitted before that dwell needs no sighting at all, and an occupant admitted during it is impossible: every admission
+  needs the near-field clearance ``admit_clear`` (no hull with d_lower below GateRule.admit_clear_m, which exceeds the
+  largest distance of two drones in the zone; premise S is not needed).  A corridor echo makes a STALE latch BUSY again; the timed basis is kept until a witness or the next gate.
   B2 adds positive acoustic occupancy to BUSY and vetoes release/admission while a drone is heard possibly inside
   (the complete declared region, perception/acoustic_gate.py). Acoustic exit evidence is evaluated only with the
   corridor empty. Without receptions the sonar outage-mode latch remains.
@@ -72,8 +73,7 @@ def timed_admission(release: Optional[str], comm_clear: bool = False) -> bool:
 
 
 def entry_after(release: Optional[str], last_sighting_t: float, t_admit_stale: float, comm_clear: bool = False) -> float:
-    """Earliest admission time imposed by the occupancy evidence: the last sighting (a corridor echo, or any hull within
-    GateRule.near_sight_m) plus ``t_admit_stale`` for every admission that rests on no positive exit witness after it
+    """Earliest admission time imposed by the occupancy evidence: the last corridor sighting plus ``t_admit_stale`` for every admission that rests on no positive exit witness after it
     (control/flows.py adds the start of the dwell in the admission zone, formal/check_stale.py ST1).  No bound after a witness
     (release WITNESS: the latch argument of formal M3) or with B2 reports of every other drone fresh or of a verified
     passage (``comm_clear``: formal/check_b2_comm.py B2C-E1).  A drone that never saw anything (a lead drone, or one
@@ -105,6 +105,8 @@ class GateObs:
     occ_timeouts: int = 0
     entry_after: float = -1e9
     timed_admission: bool = False
+    near_m: float = 1e9
+    admit_clear: bool = False
     exit_witness: Optional[Dict] = None
     loc_ok: bool = False
     entry_ok: bool = True
@@ -138,7 +140,6 @@ class GatePerception:
         self.phantom_events: list = []
         self.busy_since = -1e9
         self.exit_seen_t = -1e9
-        self.last_near_t = -1e9
         self.occ_timeouts = 0
         self.release: Optional[str] = None
         self.exit = ExitWitness(cfg)
@@ -161,7 +162,6 @@ class GatePerception:
         self.idx += 1
         self.prio_since = None
         self.occ_state, self.last_corridor_t, self.exit_seen_t = "FREE", -1e9, -1e9
-        self.last_near_t = -1e9
         self.release = None
         self.exit.reset()
         if self.acoustic_exit is not None:
@@ -199,14 +199,14 @@ class GatePerception:
         r_near = r_near - R_OUT - self.cfg.env.eps_range_far
         r_far = r_far + self.cfg.env.eps_range_near
         o.r_far = r_far
+        # near-field clearance of the admission (every target, as the P1 guards): no hull with d_lower below
+        # GateRule.admit_clear_m, so no other drone is in the admission zone (formal/check_stale.py ST1, ST6)
+        o.near_m = float(min((tg.d_lower for tg in targets), default=1e9))
+        o.admit_clear = o.near_m >= G.admit_clear_m
         persistent = [tg for tg in targets if tg.cls == DYNAMIC or any(
             (set(tg.pattern) & set(pp)) and abs(tg.r_min - pr) <= 0.5 for pp, pr in self.prev_targets)]
         self.prev_targets = [(tuple(tg.pattern), tg.r_min) for tg in targets]
         targets = persistent
-        # near-field sighting (any sector): a hull within GateRule.near_sight_m; with the corridor sighting and the dwell in
-        # the admission zone it bounds the timed admission (formal/check_stale.py premise N)
-        if any(tg.d_lower < G.near_sight_m for tg in targets):
-            self.last_near_t = t
         ae = self.acoustic_exit
         if ae is not None:
             ae.gate_idx, ae.g = self.idx % 4, g
@@ -298,7 +298,7 @@ class GatePerception:
         o.occ_state = self.occ_state
         o.occ_busy = self.occ_state in ("BUSY", "EXITING")
         comm_clear = self.acoustic_exit is not None and bool(self.acoustic_exit.others) and self.acoustic_exit.all_fresh(t)
-        o.entry_after = entry_after(self.release, max(self.last_corridor_t, self.last_near_t), G.t_admit_stale, comm_clear)
+        o.entry_after = entry_after(self.release, self.last_corridor_t, G.t_admit_stale, comm_clear)
         o.timed_admission = timed_admission(self.release, comm_clear)
         o.occ_timeouts = self.occ_timeouts
         front = readings.get("FRONT")

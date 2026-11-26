@@ -232,7 +232,8 @@ def test_an_admitted_drone_passes_the_gate_and_the_p2_filter_releases_it():
     adm = [r["t"] for r in w.rows if r["agents"]["B"]["admitted"]]
     assert adm and a.done and not w.entries
     s_adm = float(gate.to_gate_frame(np.asarray(next(r for r in w.rows if r["agents"]["B"]["admitted"])["agents"]["B"]["est"]))[0])
-    assert G.stage2_hold_s - 0.4 - 0.05 <= s_adm <= G.stage2_hold_s + 0.1
+    # admitted inside the admission zone (GateRule.in_admission_zone, formal check_stale ST6)
+    assert G.stage2_hold_s - G.admit_zone_m - 0.05 <= s_adm <= G.stage2_hold_s + G.admit_zone_fwd_m
     assert any(r["cr"] == ["B"] and r["agents"]["B"]["admitted"] for r in w.rows)
 
 

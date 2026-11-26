@@ -12,12 +12,12 @@ from holo_fleet.sim.scenarios import SCENARIOS
 G = DEFAULT.gate
 
 
-def _obs(plan, s, t, entry_after, loc_ok=True):
+def _obs(plan, s, t, entry_after, loc_ok=True, admit_clear=True, l=0.0, dz=0.0):
     g = plan.gates[0]
-    gate = SimpleNamespace(s=s, l=0.0, dz=0.0, queue_s=plan.queue_s, queue_l=plan.queue_lateral, queue_dz=plan.queue_dz,
+    gate = SimpleNamespace(s=s, l=l, dz=dz, queue_s=plan.queue_s, queue_l=plan.queue_lateral, queue_dz=plan.queue_dz,
                            loc_ok=loc_ok, entry_ok=True, admit_wait_s=0.0, entry_after=entry_after,
-                           timed_admission=entry_after > -1e8)
-    return SimpleNamespace(t=t, p=np.asarray(g.from_gate_frame([s, 0.0, 0.0]), float), gate=gate, gate_index=0, targets=[])
+                           timed_admission=entry_after > -1e8, admit_clear=admit_clear)
+    return SimpleNamespace(t=t, p=np.asarray(g.from_gate_frame([s, l, dz]), float), gate=gate, gate_index=0, targets=[])
 
 
 def _plan():
@@ -100,7 +100,7 @@ def test_a_drone_that_never_saw_anything_still_waits_the_dwell_bound():
 
     def obs(t):
         gate = NS(s=G.stage2_hold_s + 0.02, l=0.0, dz=0.0, queue_s=plan.queue_s, queue_l=plan.queue_lateral,
-                  queue_dz=plan.queue_dz, loc_ok=True, entry_ok=True, admit_wait_s=0.0, entry_after=-1e9 + G.t_admit_stale,
+                  queue_dz=plan.queue_dz, loc_ok=True, entry_ok=True, admit_wait_s=0.0, admit_clear=True, entry_after=-1e9 + G.t_admit_stale,
                   timed_admission=True)
         return NS(t=t, p=np.asarray(g.from_gate_frame([gate.s, 0.0, 0.0]), float), gate=gate, gate_index=0, targets=[])
 
@@ -109,3 +109,35 @@ def test_a_drone_that_never_saw_anything_still_waits_the_dwell_bound():
     assert not fl.cr_cleared
     fl.gate(obs(5.0 + G.t_admit_stale + 0.1), "MUTEX_PASS")
     assert fl.cr_cleared
+
+
+def test_no_admission_without_the_near_field_clearance_and_admission_at_the_first_clear_step():
+    """formal/check_stale.py ST1: every admission needs the clearance (no hull within GateRule.admit_clear_m); a hull
+    nearer holds the admission back without moving the bound, and the drone is admitted at the first clear step."""
+    plan = _plan()
+    fl = Flows(plan, DEFAULT)
+    bound = 1.0 + G.t_admit_stale
+    t = 0.0
+    while t < bound + 20.0:
+        fl.gate(_obs(plan, G.stage2_hold_s, t, bound, admit_clear=False), "MUTEX_PASS")
+        assert not fl.cr_cleared
+        t += 0.5
+    assert fl.timed_bound is not None and abs(fl.timed_bound - bound) < 1e-9
+    fl.gate(_obs(plan, G.stage2_hold_s, t, bound, admit_clear=True), "MUTEX_PASS")
+    assert fl.cr_cleared
+
+
+def test_the_admission_zone_is_bounded_along_laterally_and_vertically():
+    """The dwell and the admission need the estimate in GateRule.in_admission_zone (formal ST6 assumes it): 5f9f049 checked
+    the along-axis coordinate only, so a drone displaced 2 m sideways by the warning band still dwelt (v31)."""
+    plan = _plan()
+    for l, dz, inside in ((0.0, 0.0, True), (0.3, 0.85, True), (G.admit_zone_lat_m + 0.05, 0.0, False),
+                          (0.0, G.acq_dz_m + G.admit_zone_dz_m + 0.05, False), (-2.0, 0.0, False)):
+        fl = Flows(plan, DEFAULT)
+        fl.gate(_obs(plan, G.stage2_hold_s, 10.0, 1.0 + G.t_admit_stale, l=l, dz=dz), "MUTEX_PASS")
+        assert (fl.zone_since is not None) == inside, (l, dz)
+    for s, inside in ((G.stage2_hold_s + G.admit_zone_fwd_m + 0.02, False), (G.stage2_hold_s - G.admit_zone_m - 0.02, False),
+                      (G.stage2_hold_s + G.admit_zone_fwd_m - 0.02, True), (G.stage2_hold_s - G.admit_zone_m + 0.02, True)):
+        fl = Flows(plan, DEFAULT)
+        fl.gate(_obs(plan, s, 10.0, 1.0 + G.t_admit_stale), "MUTEX_PASS")
+        assert (fl.zone_since is not None) == inside, s

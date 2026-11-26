@@ -322,6 +322,8 @@ class DroneController:
                      "entry_after": round(obs.gate.entry_after, 2) if obs.gate.entry_after > -1e8 else None,
                      "admit_after": None if self.flows.timed_bound is None else round(self.flows.timed_bound, 2),
                      "zone_since": None if self.flows.zone_since is None else round(self.flows.zone_since, 2),
+                     "near_m": round(float(obs.gate.near_m), 2) if obs.gate.near_m < 1e8 else None,
+                     "admit_clear": bool(obs.gate.admit_clear),
                      "exit_witness": obs.gate.exit_witness, "relations": obs.gate.relations,
                      "rank_used": obs.gate.rank_used,
                      "loc_ok": obs.gate.loc_ok, "reloc_hold": self.flows.reloc_hold,

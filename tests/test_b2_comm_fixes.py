@@ -26,7 +26,7 @@ A = B2.acoustic
 def _obs(plan, s, t, wait=0.0, entry_ok=True, loc_ok=True):
     g = plan.gates[0]
     gate = SimpleNamespace(s=s, l=0.0, dz=0.0, queue_s=plan.queue_s, queue_l=plan.queue_lateral, queue_dz=plan.queue_dz,
-                           loc_ok=loc_ok, entry_ok=entry_ok, admit_wait_s=wait)
+                           loc_ok=loc_ok, entry_ok=entry_ok, admit_wait_s=wait, admit_clear=True)
     return SimpleNamespace(t=t, p=np.asarray(g.from_gate_frame([s, 0.0, 0.0]), float), gate=gate, gate_index=0, targets=[])
 
 

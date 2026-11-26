@@ -128,17 +128,23 @@ def test_stale_release_needs_quiet_corridor_and_nothing_heard_or_known_inside():
     assert not stale_release(30.0, 0.5, 1.0, False, False, False, T)
 
 
-def test_a_near_hull_in_any_sector_restarts_the_timed_bound():
-    """Premise N (formal/check_stale.py): after a timed release a hull within near_sight_m in any sector is a sighting."""
+def test_a_near_hull_withholds_the_clearance_but_never_restarts_the_timed_bound():
+    """v31 regression (formal/check_stale.py ST1): a hull within admit_clear_m in any sector (the drone queued 3.2 m behind
+    the hold, d_lower 2.92 m) withholds the near-field clearance of the admission but does not move entry_after: the
+    5f9f049 restart of the bound at every hull within 3.0 m kept every B0 lead drone at the hold."""
     gp = perception()
     _, t = run(gp, [[tg({"FRONT"}, 4.6)]] * 3)
     o, t = run(gp, [[]] * int(G.t_occ_max / 0.1 + 5), t0=t)
     assert o.occ_state == "STALE"
-    o, t = run(gp, [[tg({"REAR"}, G.near_sight_m - 0.2)]] * 3, t0=t)
-    assert abs(o.entry_after - (t - 0.1 + G.t_admit_stale)) < 1e-9
     before = o.entry_after
-    o, t = run(gp, [[tg({"REAR"}, G.near_sight_m + 0.3)]] * 3, t0=t)
-    assert o.entry_after == before
+    o, t = run(gp, [[tg({"REAR"}, 2.92)]] * 600, t0=t)
+    assert o.entry_after == before and not o.admit_clear and abs(o.near_m - 2.92) < 1e-9
+    o, t = run(gp, [[tg({"REAR"}, G.admit_clear_m + 0.2)]] * 3, t0=t)
+    assert o.entry_after == before and o.admit_clear
+    o, t = run(gp, [[tg({"LEFT"}, G.admit_clear_m - 0.05)]], t0=t)
+    assert not o.admit_clear
+    o, t = run(gp, [[]], t0=t)
+    assert o.admit_clear and o.near_m >= 1e8
 
 
 def test_every_admission_without_an_exit_witness_is_bounded_from_the_last_sighting():

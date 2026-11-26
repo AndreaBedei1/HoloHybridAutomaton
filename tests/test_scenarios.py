@@ -34,13 +34,15 @@ def test_gate_scenarios_use_only_arena_gate_g06():
     for name in GATE_SCENARIOS:
         sc = SCENARIOS[name](DEFAULT)
         assert [g.gate_id for g in sc.judged_gates] == ["G06"] and sc.sim.gate_ids == ("G06",)
-        assert {round(p.queue_s, 2) for p in sc.plans} == {round(queue_line(sc.template.slots, G), 2)}
+        line = queue_line(sc.template.slots, G)
+        assert all(abs(p.queue_s - G.queue_s_for(line, p.queue_lateral, p.queue_dz, len(sc.plans))) < 1e-9 for p in sc.plans)
         qa = queue_assignment(sc.template.slots, G)
         assert [(p.queue_lateral, p.queue_dz) for p in sc.plans] == qa
         assert sorted(p.static_rank for p in sc.plans) == list(range(len(sc.plans)))
     sc = SCENARIOS["gate_single"](DEFAULT)
     assert sorted(p.queue_lateral for p in sc.plans) == sorted(G.queue_laterals(3))
-    assert {p.queue_s for p in sc.plans} == {G.queue_s(3)}
+    assert {round(p.queue_s, 6) for p in sc.plans} == {round(G.queue_s_for(G.queue_s(3), l, 0.0, 3), 6)
+                                                       for l in G.queue_laterals(3)}
     sc = SCENARIOS["mutex_deadlock_resolution"](DEFAULT)
     assert [(p.queue_lateral, p.queue_dz) for p in sc.plans] == [(2.5, 1.75), (2.5, -1.75), (-2.5, 0.0)]
     assert [p.static_rank for p in sc.plans] == [0, 1, 2]

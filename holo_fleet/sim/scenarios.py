@@ -100,7 +100,9 @@ def _fleet(name: str, template: FormationTemplate, path: Path, clock: FormationC
                                  launch_yaw_deg=yaw, static_rank=rank[k], s_end=clock.s_end,
                                  failsafe_layer_dz=FAILSAFE_LAYERS[k % len(FAILSAFE_LAYERS)],
                                  formation_enabled=formation, mission_name=name, template_name=template.name,
-                                 queue_lateral=qa[k][0], queue_dz=qa[k][1], queue_s=q_s, clock=clock))
+                                 queue_lateral=qa[k][0], queue_dz=qa[k][1],
+                                 queue_s=cfg.gate.queue_s_for(q_s, qa[k][0], qa[k][1], len(template.slots)),
+                                 clock=clock))
         spawns.append(pos)
         yaws.append(yaw)
     return plans, spawns, yaws
