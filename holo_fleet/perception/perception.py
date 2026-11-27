@@ -170,9 +170,12 @@ class Perception:
 
         self.beacon_fix = GateBeaconFix(cfg)
         self.beacon_corr_t, self.beacon_corrections = -1e9, 0
+        self.beacon_corr_ok = True
+        self.cls_bound: Optional[float] = None
         self.cls_source = ""
         self.cls_offset: Optional[np.ndarray] = None
         self.cls_offset_t = -1e9
+        self.cls_offset_u = CLS_POSE_ERR_M
         self.cls_used = np.zeros(3)
         self.tracker = SectorTracker(cfg)
         self.echo_hold = EchoHold(cfg.env.tau_max)
@@ -318,6 +321,9 @@ class Perception:
         self.nav.state.p += np.array([c[0], c[1], 0.0])
         self.nav_bound.corrected(c)
         self.acoustic.shift(np.array([c[0], c[1], 0.0]))
+        # the stored beacon fixes and the fit offset are relative to the estimate (review of 9b487b3, finding 1)
+        self.beacon_fix.shift(c)
+        self.cls_offset = None
 
     def undo_unconfirmed_corrections(self):
         """A hold at the gate ended with no valid localization: the corrections of this commitment with no validated fit are undone (structure_aiding, module docstring); the applied step, or None."""
@@ -502,11 +508,12 @@ class Perception:
             off = np.array([float(fo[0]), float(fo[1]), 0.0])
             if float(np.linalg.norm(off)) <= self.cfg.gate.nav_err_m * 1.5:
                 self.cls_offset, self.cls_offset_t = off, t
+                self.cls_offset_u = max(CLS_POSE_ERR_M, float(self.aiding.last.get("u", CLS_POSE_ERR_M)))
         # echoes are compared with the gate map at the pose the structure fit explains (the estimate plus the fit offset):
         # under a lateral estimate error of 0.72 m the bars ahead fell outside the structure window at the estimated pose
         # and were taken for an obstacle at the CR entry (v33 / v39); the window width, hence what it can mask, is unchanged
         use = (self.cls_offset if self.cls_offset is not None and t - self.cls_offset_t <= CLS_HOLD_S else np.zeros(3))
-        pose_err = CLS_POSE_ERR_M if float(np.linalg.norm(use)) > 0.0 else 0.0
+        pose_err = self.cls_offset_u if float(np.linalg.norm(use)) > 0.0 else 0.0
         self.cls_source = "fit" if pose_err > 0.0 else ""
         # gate beacon (perception/gate_beacon.py): the fix relative to the surveyed pinger is preferred to the structure fit
         gates = {g.gate_id: g for g in self.plan.gates}
@@ -515,16 +522,25 @@ class Perception:
                 self.beacon_fix.add(t, gates[gid], float(r_m), float(az), float(el), nav.p, R_wb)
         bf = self.beacon_fix.offset(t)
         gb = self.cfg.gate_beacon
+        self.cls_bound = None
         if bf is not None and bf[1] <= gb.max_bound_m:
-            use, pose_err, self.cls_source = bf[0], min(bf[1], 0.3), "beacon"
-            if float(np.linalg.norm(bf[0])) > gb.corr_min_m and t - self.beacon_corr_t >= gb.corr_period_s:
+            use, pose_err, self.cls_source, self.cls_bound = bf[0], bf[1], "beacon", bf[1]
+            # the estimate is corrected only before admission (the controller clears beacon_corr_ok once admitted): a jump
+            # inside the active P2 constraint would drop its certificate (review finding 2); in the passage the fix only
+            # sets the classification pose
+            corr = np.asarray(bf[0], float)
+            if not self.beacon_corr_ok and self.gp.gate is not None:
+                # admitted: the lateral component only (the P2 filter does not act on an admitted drone; the along-axis
+                # position gates past_centre and the passage, left untouched)
+                ax = np.asarray(self.gp.gate.axis, float)
+                left = np.array([-ax[1], ax[0], 0.0])
+                corr = float(corr @ left) * left
+            if (float(np.linalg.norm(corr)) > gb.corr_min_m and t - self.beacon_corr_t >= gb.corr_period_s):
                 # the fix relative to the surveyed pinger corrects the navigation estimate (v41: a 0.42 m lateral error in the
                 # CR with the bars correctly classified brought the hull onto a side bar)
-                self.apply_position_correction(bf[0])
-                self.beacon_fix.shift(bf[0])
+                self.apply_position_correction(corr)
                 self.beacon_corr_t, self.beacon_corrections = t, self.beacon_corrections + 1
-                self.cls_offset = None
-                use = np.zeros(3)
+                use = np.asarray(bf[0], float) - corr
         self.cls_used = use
         self.t_nav = t
         self.acoustic.update(t, d.get("AcousticRx"), nav.p, nav.yaw, self.nav_bound.value)

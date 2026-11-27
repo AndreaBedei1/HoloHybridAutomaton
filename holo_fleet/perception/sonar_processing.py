@@ -185,7 +185,9 @@ class EchoClassifier:
                 e = Echo(s, r0, r1, pk)
                 tol_s, tol_b = pc.structure_tol_m, pc.seabed_tol_m
                 sw, sb = rd.structure_window, rd.seabed_onset
-                in_struct = sw is not None and (sw[0] - tol_s) <= r0 and r1 <= (sw[1] + pc.structure_tol_far_m)
+                # a pose in error by pose_err_m changes every range by at most pose_err_m: the window extends by it
+                in_struct = (sw is not None and (sw[0] - tol_s - pose_err_m) <= r0
+                             and r1 <= (sw[1] + pc.structure_tol_far_m + pose_err_m))
                 if sb is not None and r0 >= sb - tol_b:
                     if r0 <= sb + 0.6 or seabed_seen:
                         e.cls, e.why = SEABED, f"seabed onset {sb:.2f} m"

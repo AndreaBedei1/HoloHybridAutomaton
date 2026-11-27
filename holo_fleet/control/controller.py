@@ -154,6 +154,8 @@ class DroneController:
     def step(self, frame: SensorFrame, dt: float) -> np.ndarray:
         t = frame.t
         ftime = self.flows.ftime
+        # full beacon corrections before admission, the lateral component only once admitted (perception/perception.py)
+        self.perception.beacon_corr_ok = not (self.ha.committed and self.flows.cr_cleared)
         obs = self.perception.update(frame, dt, sigma=self.flows.sigma, env_ok=self.envmon.ok,
                                      offset=self.flows.offset + self.flows.lat_offset, in_formation=self.ha.mode in IN_FORMATION,
                                      t_form=ftime.now(t),
@@ -355,6 +357,7 @@ class DroneController:
             "cls_offset": [round(float(x), 3) for x in self.perception.cls_used[:2]],
             "cls_source": self.perception.cls_source,
             "beacon_corrections": self.perception.beacon_corrections,
+            "cls_bound": None if self.perception.cls_bound is None else round(float(self.perception.cls_bound), 3),
             "transition": self.last_transition,
             "gate_safety": {k: v for k, v in self.gate_safety.items() if not k.startswith("_")} or None,
             "determinism_violations": self.ha.determinism_violations,

@@ -119,8 +119,11 @@ CLS_POSE_ERR_M = 0.15
 
 def classification_fit(last) -> bool:
     """Whether a fit (StructureAiding.last) is good enough to set the classification pose."""
-    return (last is not None and int(last.get("matched", 0)) >= CLS_MIN_MATCHED and float(last.get("rms", 9.0)) <= FIT_RMS_M
-            and float(last.get("u", 9.0)) <= UNIQUE_M + FIT_RMS_M)
+    if last is None:
+        return False
+    safe = last.get("clearance") is None or float(last["clearance"]) >= 0.0
+    return (int(last.get("matched", 0)) >= CLS_MIN_MATCHED and float(last.get("rms", 9.0)) <= FIT_RMS_M
+            and float(last.get("u", 9.0)) <= UNIQUE_M + FIT_RMS_M and (safe or bool(last.get("identified"))))
 
 
 def acquisition_distance(cfg, gate=None, pts=None) -> float:

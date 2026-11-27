@@ -420,7 +420,7 @@ class GateBeaconConfig:
     heading_bound_deg: float = 2.0
     hold_s: float = 3.0
     min_fixes: int = 3
-    max_bound_m: float = 0.6
+    max_bound_m: float = 0.45
     corr_min_m: float = 0.2
     corr_period_s: float = 2.0
 

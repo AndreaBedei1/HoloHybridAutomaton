@@ -28,11 +28,13 @@ def unit(az: float, el: float) -> np.ndarray:
     return np.array([math.cos(el) * math.cos(az), math.cos(el) * math.sin(az), math.sin(el)])
 
 
-def fix_bound(cfg, r: float) -> float:
-    """Horizontal error bound of one fix at range ``r`` (3 sigma range, 3 sigma angle plus the heading bound)."""
+def fix_bound(cfg, r: float, n: int = 1) -> float:
+    """Horizontal error bound of the median of ``n`` fixes at range ``r``: 3 sigma of the median (1.25 sigma / sqrt(n)) of
+    range and angle, plus the heading bound (a bias, not averaged).  formal/check_classification.py CL5."""
     b = cfg.gate_beacon
-    ang = math.radians(3.0 * b.sigma_ang_deg + b.heading_bound_deg)
-    return 3.0 * b.sigma_range_m + r * math.tan(ang)
+    k = 3.0 * 1.25 / math.sqrt(max(1, int(n)))
+    ang = math.radians(k * b.sigma_ang_deg + b.heading_bound_deg)
+    return k * b.sigma_range_m + r * math.tan(ang)
 
 
 class GateBeaconFix:
@@ -67,7 +69,7 @@ class GateBeaconFix:
         offs = np.array([o for o, _ in recent])
         med = np.median(offs, axis=0)
         r_med = float(np.median([r for _, r in recent]))
-        bound = fix_bound(self.cfg, r_med)
-        if float(np.max(np.linalg.norm(offs - med, axis=1))) > 2.0 * bound:
+        bound = fix_bound(self.cfg, r_med, len(recent))
+        if float(np.max(np.linalg.norm(offs - med, axis=1))) > 2.0 * fix_bound(self.cfg, r_med):
             return None
         return med, bound
