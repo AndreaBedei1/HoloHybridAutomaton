@@ -10,11 +10,11 @@
  },
  "evidence_classes": "(a) manufacturer specification; (b) peer-reviewed field or tank measurement; (c) derivation, with the formula given; (d) calibration in our own simulator; (e) assumption without empirical support.",
  "counts": {
-  "rows": 154,
+  "rows": 155,
   "SUPPORTED": 20,
   "PARTIALLY_SUPPORTED": 8,
   "DERIVED": 50,
-  "DESIGN_CHOICE": 62,
+  "DESIGN_CHOICE": 63,
   "STRESS_ASSUMPTION": 12,
   "CONTRADICTED": 2
  },
@@ -2955,11 +2955,32 @@
    "verdict": "PARTIALLY_SUPPORTED",
    "source": "USBL-class range and bearing accuracy (reis2016usbl); the Marine Race Arena gate beacons (one per gate, fixed, 0.2 deg / 0.2 m / 10 Hz) are less noisy",
    "doi_or_url": "formal/check_classification.py (CL4, CL5)",
-   "derivation": "fix bound 3 sigma_range + range tan(3 sigma_ang + heading_bound_deg); median of the fixes of the last hold_s s",
+   "derivation": "bound of the median of n fixes at range r: k sigma_range + r tan(k sigma_ang + heading_bound_deg), k = 3 x 1.25 / sqrt(n) (3 sigma of the median), the heading bias not averaged; median of the fixes of the last hold_s s",
    "validity": "infrastructure received by B0 and B2; no multipath or occlusion modelled (the pinger above the gate)",
    "citation_keys": [
     "reis2016usbl"
    ],
+   "code_action": "none"
+  },
+  {
+   "section": "5 Gate protocol (P2)",
+   "parameter": "gate_beacon use (heading_bound_deg, hold_s, min_fixes, max_bound_m, corr_min_m, corr_period_s)",
+   "module": "holo_fleet/config.py:GateBeaconConfig; holo_fleet/perception/perception.py",
+   "value": [
+    2.0,
+    3.0,
+    3,
+    0.45,
+    0.2,
+    2.0
+   ],
+   "unit": "deg, s, -, m, m, s",
+   "verdict": "DESIGN_CHOICE",
+   "source": "design choice; heading_bound_deg is the onboard compass bias budget (README section 1)",
+   "doi_or_url": "formal/check_classification.py (CL4, CL5, CL6)",
+   "derivation": "max_bound_m: the classification pose comes from the beacon only while the median bound is at most 0.45 m (about 3 m from the beacon); CL6: the bound in the gate plane, 0.40 m, is below the keepout tolerance 0.41 m. Corrections above corr_min_m at most every corr_period_s, the lateral component only once admitted",
+   "validity": "the fix bound holds with range and angle errors within 3 sigma and the heading bias within heading_bound_deg; monitored by the referee (beacon_fix)",
+   "citation_keys": [],
    "code_action": "none"
   }
  ]

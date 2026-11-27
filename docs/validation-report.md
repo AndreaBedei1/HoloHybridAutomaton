@@ -141,8 +141,68 @@ In `v35`, the nearest bound at the hold was at least 4.04 m at the 1st percentil
 see the bars of the frame in its FRONT sonar at 0.7 to 0.9 m outside the predicted structure window. The bar echo is then
 classified UNKNOWN or DYNAMIC, so the vehicle enters collision avoidance, retreats, and approaches again. Episodes: B2 integrated
 MEDIUM 135 s (`v31`, the run passed), B0 gate MEDIUM 13 s (`v32`), B0 integrated MEDIUM 467 s (`v32`, INCOMPLETE). This
-predates these fixes and is a progress cost; P1 and P2 hold. It is left unresolved: masking these echoes would rest P1 on the
-P2 argument near the frame.
+predates these fixes and is a progress cost; P1 and P2 hold. Masking these echoes without a better pose would rest P1 on the
+P2 argument near the frame, so the fix below corrects the pose instead.
+
+### Gate beacon and the classification pose
+
+The final campaign `v33` (`a57a9b2`) had 46 of 54 runs PASS and 8 INCOMPLETE, with zero P1 or P2 violations. The causes were a
+queue-standoff deadlock in `integrated` (side vehicles stood off from diagonal neighbours; fixed in `203e885`: only columns
+within 2.5 m of the axis stand off, by at most 1 m), bar echoes misclassified under navigation drift, and a wrong validated
+fit after a DVL dropout. The bar echoes have a geometric cause: a sonar gives no bearing, so the structure window depends on the
+pose, and a lateral estimate error of 0.72 m (`v39`, within `nav_err_m`) moves the bars outside it.
+
+A fixed acoustic pinger 1.6 m above each gate (the arena's gate beacons) gives a position fix independent of the dead
+reckoning. Received by B0 and B2, it is infrastructure, not communication. The classifier compares echoes with the map at the
+beacon pose (bound at most 0.45 m) or at an accepted structure fit, with the window widened by the pose bound, and the beacon
+corrects the estimate (fully before admission, laterally once admitted). `formal/check_classification.py`:
+
+- CL1: at a pose in error by E = 0.15, 0.3, 0.5 m with the window widened by E, every bar echo of a direct profile model at
+  the true pose is STRUCTURE, in every sector; CL1m: at the uncorrected `v39` error they are not.
+- CL2: an echo off the map (outside the widened window of the true pose) is never STRUCTURE; CL2r reports how much the
+  widening adds (up to 1.40 m), the masking cost.
+- CL4: the bar echoes are STRUCTURE at a beacon pose in error by its deployed bound in 8 directions.
+- CL5: Monte Carlo of the fix model with the onboard heading biased by up to 2 deg: the median fix is within its bound.
+- CL6: the beacon bound in the gate plane (0.40 m) is below the lateral tolerance of the structure keepout (0.41 m).
+
+Two defects were found in HoloOcean on the way. `13d5f85` fixed a shadowed variable in `Perception.update` (`v40`,
+SUT_ERROR). In `v41` a vehicle touched a side bar: the HoloOcean pose rotation mirrors the lateral axis, so the simulated
+beacon placed the fixes on the wrong side; `9b487b3` uses the yaw only (`sim/gate_beacon.py`) and adds the estimate
+correction. On `9b487b3` (`v42`) B0 gate MEDIUM, B0 integrated MEDIUM, B2 integrated MEDIUM and B2 gate MEDIUM all passed (minimum
+true separation 2.76-3.39 m).
+
+An independent review of `9b487b3` raised five findings, fixed in `a8572d2`:
+
+- **Stale fixes.** The stored fixes are offsets from the estimate; a correction from another source (the structure fit) left
+  them shifted. Every correction now shifts them and drops the fit offset.
+- **Corrections inside the admission.** An along-axis jump while admitted moves the position that gates the passage and drops
+  the P2 certificate. Once admitted only the lateral component is applied.
+- **Unsafe fits.** A fit the aiding rejects as unsafe could set the classification pose. Only fits it would accept (safe, or
+  identified) are used.
+- **Median bound.** The bound of one fix was used for the median of several, and the window was widened by a capped bound.
+  The bound is now that of the median of n fixes, and the window uses it uncapped, so CL4 checks the deployed pairing.
+- **Side bars.** A sensor net (side echo below 0.25-0.35 m taken as an obstacle) cannot work: the side sonar is blind below
+  `range_min` = 0.30 m. It was removed; CL6 checks the keepout tolerance instead. The referee monitors the beacon premise as
+  `beacon_fix`.
+
+**Targeted evidence at `a8572d2`** (archive `v44-beacon-a8572d2-2026-11-27`, 4 isolated engines): the 8 runs left INCOMPLETE
+by `v33`, same cases and seeds, each to the mission terminal.
+
+| Case | Seed | B0 | B2 |
+|---|---:|---|---|
+| integrated MEDIUM | 0 | SUCCESS at 178.1 s, min. separation 3.42 m | SUCCESS at 166.3 s, 3.36 m |
+| integrated MEDIUM | 2 | SUCCESS at 256.7 s, 3.45 m | SUCCESS at 144.4 s, 3.43 m |
+| simultaneous MEDIUM | 0 | SUCCESS at 253.4 s, 2.79 m | SUCCESS at 160.1 s, 2.88 m |
+| simultaneous MEDIUM | 1 | DEADLINE (P3_FAILURE) at 809.7 s, 2.73 m | - (PASS in `v33`) |
+| DVL interruption | 0 | SUCCESS at 166.4 s, 3.35 m | - (PASS in `v33`) |
+
+Every run had a CR occupancy of at most one and zero premature admissions. In the B0 run that failed, all three vehicles
+had crossed by 185 s and reached the plan target by 227 s. The formation then stayed 2.16 m out of tolerance. The vehicles
+had opposite compass biases (-2, +2 and +2 deg). Vehicle 1 arrived 5.9 m from vehicle 0 instead of 3.5 m, 2.4 m beyond the
+1.2 m range gate. Vehicle 0 saw no echo of vehicle 1 in its gate for 30 s and declared its slot vacant, a false vacancy.
+It then associated that echo with vehicle 2, expected at 7.0 m behind vehicle 1 and occluded by it. The negative residual
+drove the lateral correction outward to an equilibrium 1.27 m off the slot. Without identities a range-only B0 cannot tell
+a displaced near neighbour from an occluded far one. B2 resolves this with the acoustic fix (README section 6).
 
 ### Formal catalogue
 

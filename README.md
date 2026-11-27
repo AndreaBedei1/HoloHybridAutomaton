@@ -10,7 +10,8 @@ simulation by a referee that judges every run from ground truth.
 
 One local hybrid automaton per vehicle (10 modes, prioritised guards, `holo_fleet/ha/spec.py`) runs on six single-beam
 sonars, DVL, IMU, compass, depth sensor, the mission plan shared before the dive and the acoustic receptions. There is no
-leader and no request, reply or command between vehicles.
+leader and no request, reply or command between vehicles. Every gate carries a fixed acoustic pinger at a surveyed position
+(the gate beacon, infrastructure of the mission map like the gate beacons of the Marine Race Arena); B0 and B2 both receive it.
 
 - **P1, separation:** the centre distance of every pair stays strictly above `d_safe` = 1.0 m.
 - **P2, mutual exclusion:** at most one vehicle in the critical region (CR) of a gate, and only after admission.
@@ -56,6 +57,7 @@ runtime limits. A valid timestamp alone does not establish the error bound or de
 | Compass | CLEAN per-axis noise scale 0.005; heading error enters the navigation and acoustic budgets, including bias. Tilt and field anomalies can exceed those budgets. |
 | Pressure depth | CLEAN noise scale 0.02 m, with 0.45 m depth allowance in the navigation budget. A lost pressure stream widens the vertical position bound. |
 | B2 passive acoustic | TDMA period 1 s, admission latency bound 0.40 s and admission-clock skew bound 0.05 s. The finite-loss result assumes at most two successive losses per link for the fresh branch. Range and bearing errors have separate envelopes. |
+| Gate beacon | 2 Hz, range sigma 0.10 m, azimuth and elevation sigma 1 deg, 5% dropout, range at most 30 m, onboard heading bias at most 2 deg (USBL class, `GateBeaconConfig`). The fix bound (CL5) assumes errors within 3 sigma and the heading bias within its bound. |
 
 For scale, the Water Linked A50 datasheet gives 4–15 Hz adaptive sampling and ±1.01% long-term accuracy for the standard unit.
 Water tracking gives velocity relative to the water column, so the ground-speed premise requires valid bottom tracking or a
@@ -208,6 +210,19 @@ the measurement. A reception delivered more than `latency_max_s` = 0.40 s after 
 association, vacancy after `t_silent_s` = 45 s without a packet), never `d_min`, `sense_ok`, the sector precedence or the escape
 planner (`tests/test_b2_isolation.py`). Controllers never read ground truth (`tests/test_isolation.py`).
 
+**Gate beacon and echo classification** (`perception/gate_beacon.py`, `sim/gate_beacon.py`, `perception/perception.py`). A sonar
+gives a range per cone, no bearing, so an echo is STRUCTURE only if its range lies in the window of the gate map seen from a
+pose. At the dead-reckoning estimate a lateral error within `nav_err_m` puts the bars outside that window (v39: 0.72 m, the bars
+taken for an obstacle at the CR entry). The classifier therefore uses a corrected pose: the gate-beacon fix when its bound is
+at most `max_bound_m` = 0.45 m, else a structure fit the map aiding accepts (at least 3 matched bars, rms at most 0.10 m, unique,
+safe or identified; held 5 s). The window is widened at the cone edge and in range by the error bound of that pose. A fix is
+p = beacon - R_wb unit(az, el) r with the onboard attitude; the median of the fixes of the last 3 s (at least 3, mutually
+consistent) is used, with bound 3 sigma of the median of range and angle plus the heading bias (`fix_bound`, CL5). The beacon
+also corrects the navigation estimate (offset above 0.2 m, at most every 2 s): fully before admission, the lateral component
+only once admitted, so the along-axis position that gates the passage does not jump and the P2 filter, which does not act on an
+admitted vehicle, loses no certificate. Every position correction shifts the stored fixes and drops the fit offset.
+The beacon carries only the gate identity: it is not communication between vehicles.
+
 ## 5. Guarantees
 
 The full-run baseline at `e3e31f0` (`legacy/results/pre_conditional_formal/SUMMARY.json`) records 402 checks, all with the expected verdict: 188 proved, 36 bounded, 50 numeric, 58 mutation, 26 witness,
@@ -320,9 +335,22 @@ a common reference for the fleet, or recovery in the presence of sustained safet
   collision avoidance re-enters the CR without a new clearance check, a case outside premise Pi2. A hull within 3.3 m (a vehicle in standoff, a concurrent commitment, an unexplained echo) holds an admission
   back; two concurrent commitments resolve by the give-up, not by a ranking. ST7 (queue clearance) is a progress margin, not a proof
   of progress.
-- **Bar echo at the CR entry.** Under MEDIUM sensing an admitted vehicle about 1 m before the CR entry can see a bar of the
-  frame outside the predicted structure window (UNKNOWN or DYNAMIC) and cycle between collision avoidance and the approach
-  (`docs/validation-report.md`; up to 467 s in a B0 integrated MEDIUM run). A progress cost; P1 and P2 hold.
+- **Echo classification near the frame.** The bars stay STRUCTURE only at a corrected classification pose (beacon fix or
+  accepted fit, CL1, CL4); without either, as before the beacon, the window is computed at the estimate and a bar can be taken
+  for an obstacle at the CR entry (a progress cost, `docs/validation-report.md`). Widening the window by the pose bound lets it
+  explain more: CL2r reports up to 1.40 m beyond the unwidened window, a range in which a hull close to the frame is masked as
+  structure, so near the frame P1 rests on the P1 detection premise with the widened window. The side sonars are blind below
+  `range_min` = 0.30 m, so no sensor check can keep the hull off a side bar: the clearance is the structure keepout of the
+  estimate (0.70 m), which tolerates a lateral error of 0.41 m; the beacon bound in the gate plane is 0.40 m (CL6), a thin
+  margin. The beacon premise (errors within 3 sigma, heading bias at most 2 deg, the pinger at its surveyed position) is
+  declared and monitored by the referee as `beacon_fix` (the true position within `cls_bound` of the estimate in use). Each
+  beacon correction adds its size to the dead-reckoning bound (`NavBound`, also the error bound of the B2 packet), so after
+  many corrections that bound is pessimistic: conservative for P1 and P2, a cost in precision of the reports.
+- **B0 formation association.** P3 is a contract of the communicating fleet; B0 associates echoes with slots by range alone.
+  With opposite compass biases the relative dead-reckoning drift can exceed the 1.2 m range gate (up to 2 `nav_err_m`). A
+  live neighbour is then declared vacant after `t_rejoin`, and its echo is associated with the neighbour it occludes. In one
+  B0 run (simultaneous MEDIUM, seed 1, `v44`) this drove the lateral correction to a wrong equilibrium, 2.16 m out of
+  formation. P1 and P2 held (`docs/validation-report.md`).
 - **B0, 3 vehicles.** M4g: in abreast, triangle and line layouts of 3 vehicles a queued vehicle may get no sonar exit witness of a
   passing vehicle (detection range); the latch can stay BUSY without a positive exit witness.
 - **P1.** Proved pairwise; several neighbours rest on the triangle lemma and the two-threat escape (S2c), not on a fleet model.
