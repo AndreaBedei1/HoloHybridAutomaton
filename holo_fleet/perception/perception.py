@@ -497,8 +497,8 @@ class Perception:
             self.apply_position_correction(corr)
             self.cls_offset = None
         elif classification_fit(self.aiding.last):
-            d = self.aiding.last["offset"]
-            off = np.array([float(d[0]), float(d[1]), 0.0])
+            fo = self.aiding.last["offset"]
+            off = np.array([float(fo[0]), float(fo[1]), 0.0])
             if float(np.linalg.norm(off)) <= self.cfg.gate.nav_err_m * 1.5:
                 self.cls_offset, self.cls_offset_t = off, t
         # echoes are compared with the gate map at the pose the structure fit explains (the estimate plus the fit offset):
