@@ -169,6 +169,7 @@ class Perception:
         from holo_fleet.perception.gate_beacon import GateBeaconFix
 
         self.beacon_fix = GateBeaconFix(cfg)
+        self.beacon_corr_t, self.beacon_corrections = -1e9, 0
         self.cls_source = ""
         self.cls_offset: Optional[np.ndarray] = None
         self.cls_offset_t = -1e9
@@ -513,8 +514,17 @@ class Perception:
             if gid in gates:
                 self.beacon_fix.add(t, gates[gid], float(r_m), float(az), float(el), nav.p, R_wb)
         bf = self.beacon_fix.offset(t)
-        if bf is not None and bf[1] <= self.cfg.gate_beacon.max_bound_m:
+        gb = self.cfg.gate_beacon
+        if bf is not None and bf[1] <= gb.max_bound_m:
             use, pose_err, self.cls_source = bf[0], min(bf[1], 0.3), "beacon"
+            if float(np.linalg.norm(bf[0])) > gb.corr_min_m and t - self.beacon_corr_t >= gb.corr_period_s:
+                # the fix relative to the surveyed pinger corrects the navigation estimate (v41: a 0.42 m lateral error in the
+                # CR with the bars correctly classified brought the hull onto a side bar)
+                self.apply_position_correction(bf[0])
+                self.beacon_fix.shift(bf[0])
+                self.beacon_corr_t, self.beacon_corrections = t, self.beacon_corrections + 1
+                self.cls_offset = None
+                use = np.zeros(3)
         self.cls_used = use
         self.t_nav = t
         self.acoustic.update(t, d.get("AcousticRx"), nav.p, nav.yaw, self.nav_bound.value)

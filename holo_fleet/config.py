@@ -421,6 +421,8 @@ class GateBeaconConfig:
     hold_s: float = 3.0
     min_fixes: int = 3
     max_bound_m: float = 0.6
+    corr_min_m: float = 0.2
+    corr_period_s: float = 2.0
 
 
 @dataclass(frozen=True)

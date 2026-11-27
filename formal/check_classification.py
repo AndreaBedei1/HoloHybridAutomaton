@@ -158,7 +158,7 @@ def run(cfg: FleetConfig = DEFAULT, verbose: bool = True) -> Report:
             est = truth + R @ np.array([0.0, 0.7, 0.0])
             t = 0.0
             while t < cfg.gate_beacon.hold_s:
-                for _gid, _tm, rr, az, el in sim.measure(t, {"d": (truth, R)})["d"]:
+                for _gid, _tm, rr, az, el in sim.measure(t, {"d": (truth, yaw)})["d"]:
                     fix.add(t, g, rr, az, el, est, R)
                 t += 0.1
             res = fix.offset(t - 0.1)

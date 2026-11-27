@@ -26,7 +26,11 @@ class GateBeaconSim:
         self.stats = {"pings": 0, "receptions": 0, "dropped": 0}
 
     def measure(self, t: float, poses: Dict[str, np.ndarray]) -> Dict[str, List[Tuple[str, float, float, float, float]]]:
-        """``poses[name]`` = (position, R_world_body) of the agent origin; returns the receptions of this step."""
+        """``poses[name]`` = (position, yaw) of the agent origin; the body frame is the onboard one (x forward, y left, z up,
+        perception.rot_world_body of the yaw: the HoloOcean pose rotation has its lateral axis mirrored, v41); returns
+        the receptions of this step."""
+        from holo_fleet.perception.perception import rot_world_body
+
         b = self.cfg.gate_beacon
         out: Dict[str, List[Tuple[str, float, float, float, float]]] = {n: [] for n in self.names}
         if t + 1e-9 < self.next_t:
@@ -35,7 +39,8 @@ class GateBeaconSim:
         for g in self.gates:
             bp = beacon_position(g, self.cfg)
             self.stats["pings"] += 1
-            for n, (p, R) in poses.items():
+            for n, (p, yaw) in poses.items():
+                R = rot_world_body(0.0, 0.0, float(yaw))
                 d = R.T @ (bp - np.asarray(p, float))
                 r = float(np.linalg.norm(d))
                 if r > b.max_range_m or r < 1e-6:

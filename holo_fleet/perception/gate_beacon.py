@@ -53,6 +53,11 @@ class GateBeaconFix:
         self.fixes.append((t, off, r))
         self.receptions += 1
 
+    def shift(self, corr: np.ndarray) -> None:
+        """The estimate moved by ``corr``: the stored offsets are relative to it."""
+        c = np.array([float(corr[0]), float(corr[1]), 0.0])
+        self.fixes = deque(((tt, o - c, r) for tt, o, r in self.fixes), maxlen=self.fixes.maxlen)
+
     def offset(self, t: float) -> Optional[Tuple[np.ndarray, float]]:
         """(offset, bound) from the fixes of the last ``hold_s``, None when too few or when they disagree."""
         b = self.cfg.gate_beacon

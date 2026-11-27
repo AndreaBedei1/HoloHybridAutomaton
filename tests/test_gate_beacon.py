@@ -28,7 +28,7 @@ def test_the_fix_recovers_a_lateral_drift_within_its_bound():
     fix = GateBeaconFix(DEFAULT)
     t = 0.0
     while t < 3.0:
-        for gid, _tm, r, az, el in sim.measure(t, {"d": (truth, R)})["d"]:
+        for gid, _tm, r, az, el in sim.measure(t, {"d": (truth, yaw)})["d"]:
             fix.add(t, G, r, az, el, est, R)
         t += 0.1
     off, bound = fix.offset(t - 0.1)

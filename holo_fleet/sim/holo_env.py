@@ -419,7 +419,7 @@ class HoloFleetSim:
             if pose is None or self.spec.dead(name, self.t):
                 continue
             pose = np.asarray(pose, float)
-            poses[name] = (agent_origin_from_pose(pose), pose[:3, :3])
+            poses[name] = (agent_origin_from_pose(pose), math.atan2(pose[1, 0], pose[0, 0]))
         return self.gate_beacon.measure(self.t, poses)
 
     def frames(self) -> Dict[str, SensorFrame]:
