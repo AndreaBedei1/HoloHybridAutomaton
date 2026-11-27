@@ -22,8 +22,8 @@ sighting is needed (5f9f049 restarted the bound at every hull within 3.0 m: the 
 nearly every capture, no B0 lead admitted in v31).  ST1s: the earlier argument from the last sighting only, which needs premise
 S; ST1d: without the dwell term it fails.  ST1p the P2 part (> cr_s_max) with the shorter bound.  Mutations: clearance dropped,
 a zone wider than the clearance (the s-only zone of 5f9f049), bound - 2 s, no progress, and the e3e31f0 release (FREE after
-t_occ_max, no admission bound) with an immediate admission.  ST7 (numeric, progress): every queue point of the abreast
-queues keeps queue_hold_clear_m from the admission zone (GateRule.queue_s_for).
+t_occ_max, no admission bound) with an immediate admission.  ST7 (reported, progress): the queue standoff of a drone that
+is not committed exceeds the admission clearance.
 ST2 (proved): one step of the deployed latch never gives FREE from BUSY or STALE; FREE comes only from EXITING (a witness).
 ST3 (proved): with the corridor quiet (no new sighting moves entry_after) and the admission conditions holding, the hold is never
 given up: admission happens at the first step with t >= max(commit + admit_wait, entry_after), a time bound fixed in advance
@@ -120,33 +120,19 @@ def zone_distance(cfg: FleetConfig, e_obs: float, e_adm: float, dz_err: float = 
     return float(np.hypot(horiz, 2 * G.zone_dz_half() + 2 * dz_err))
 
 
-def queue_clearance(cfg: FleetConfig, ns=(2, 3, 4, 5)) -> CheckResult:
-    """ST7: the deployed queue points (GateRule.queue_s_for of the shared line, mission.queue_line) keep
-    queue_hold_clear_m from the admission zone."""
-    from holo_fleet.mission import abreast_slots, queue_assignment, queue_line
-
+def queue_clearance(cfg: FleetConfig) -> CheckResult:
+    """ST7 (reported, progress): the queue standoff of a drone that is not committed (control/flows.py,
+    GateRule.queue_standoff_m) exceeds the admission clearance by the margin that leaves the lead drone at the hold its
+    clearance at most captures (the onboard bound is 0.40-0.54 m below the true distance at the median, v31)."""
     G = cfg.gate
-    worst, rows = 1e9, []
-    for n in ns:
-        sl = abreast_slots(n)
-        line = queue_line(sl, G, cfg.perc)
-        for lq, dzq in queue_assignment(sl, G):
-            sq = G.queue_s_for(line, lq, dzq, n)
-            ds = max(G.stage2_hold_s - G.admit_zone_m - sq, 0.0)
-            dl = max(abs(lq) - G.admit_zone_lat_m, 0.0)
-            dv = max(abs(dzq) - G.zone_dz_half(), 0.0)
-            d = float(np.sqrt(ds * ds + dl * dl + dv * dv))
-            worst = min(worst, d)
-            rows.append((n, round(lq, 2), round(sq, 2), round(d, 2)))
-    ok = worst >= G.queue_hold_clear_m - 1e-9
-    r = CheckResult(prop=f"ST7 progress: every abreast queue point (n = {ns[0]}..{ns[-1]}) is >= queue_hold_clear_m = "
-                         f"{G.queue_hold_clear_m} m from the admission zone (nearest {worst:.2f} m; margin over admit_clear_m "
-                         f"{G.queue_hold_clear_m - G.admit_clear_m:.2f} m)",
-                    formula="min over queue points of dist(queue point, zone) >= queue_hold_clear_m",
-                    encoding="numeric over GateRule.queue_s_for", expect="holds")
-    r.verdict, r.passed = ("holds" if ok else "violated"), ok
-    r.note = ("a progress margin: the lead drone sees the drone queued behind it beyond admit_clear_m at most captures "
-              "(v31: the onboard bound is 0.40-0.54 m below the true distance at the median); columns " + str(rows))
+    margin = G.queue_standoff_m - G.admit_clear_m
+    r = CheckResult(prop=f"ST7 reported: queue standoff {G.queue_standoff_m} m = admit_clear_m + {margin:.2f} m (a progress "
+                         "margin; the queue points stay abreast, formal M2)", formula="reported", encoding="config",
+                    expect="holds")
+    r.verdict, r.passed = "holds", margin > 0.0
+    r.note = ("a drone that is not committed backs off while a DYNAMIC FRONT hull is nearer than queue_standoff_m; the bound of "
+              "the lead drone on it is then about queue_standoff_m plus the follower pessimism minus the lead pessimism (v32 "
+              "with a follower 4.4 m behind the hold: >= 3.69 m at the 1st percentile)")
     return r
 
 
@@ -206,12 +192,9 @@ def run(cfg: FleetConfig = DEFAULT, verbose: bool = True) -> Report:
     rep = Report("stale")
     G = cfg.gate
     T, T_p2 = G.t_admit_stale, (G.cr_s_max - G.stage2_hold_s + G.admit_zone_m + G.nav_err_m) / G.v_cross_min
-    from holo_fleet.perception.structure_aiding import CONSIST_M, FIT_RMS_M, UNIQUE_M
-
-    e_adm = CONSIST_M + UNIQUE_M + FIT_RMS_M
-    d_zone = zone_distance(cfg, G.nav_err_m, e_adm)
+    d_zone = zone_distance(cfg, G.zone_err_h_m, G.zone_err_h_m, G.zone_err_v_m)
     rep.add(check(f"ST1 deployed rule (dwell + corridor sighting, t_admit_stale = {T:.2f} s; near-field clearance "
-                  f"admit_clear_m = {G.admit_clear_m} m at every admission), premises Pi1, Pi2, P1 detection, zone geometry "
+                  f"admit_clear_m = {G.admit_clear_m} m at every admission), premises Pi1, Pi2, P1 detection, Z, zone geometry "
                   "(ST6), no premise S, no near-field sighting: the first occupant is beyond passage_clear_s at the follower's "
                   "admission", "t_b > max(t_s, t_o) + T, d_low(t_a) >= admit_clear_m, d_low <= d, t_a > t_o -> d <= d_zone, "
                   "s(t) >= s_a + v_cross_min (t - t_a) -> s(t_b) > passage_clear_s",
@@ -251,33 +234,69 @@ def run(cfg: FleetConfig = DEFAULT, verbose: bool = True) -> Report:
     # ST3: the deployed hold (flows.Flows.gate).  eligible = max(commit + admit_wait, entry_after); admitted at the first
     # step with t >= eligible while the admission conditions (admissible, loc_ok, entry_ok, in the admission zone) hold;
     # give-up when not admitted and t - max(hold start, eligible) > t_occ_max + t_clear.
-    t, E, W, h = z3.Reals("t E W h")
-    elig = z3.If(W > E, W, E)
-    admitted = z3.And(t >= W, t > E)
-    give_up = z3.And(z3.Not(admitted), t - z3.If(h > elig, h, elig) > G.t_occ_max + G.t_clear)
-    rep.add(check("ST3 with the admission conditions holding the hold is never given up: admission comes first",
-                  "conditions -> not (not admitted and t - max(h, eligible) > t_occ_max + t_clear)", ENC, [give_up]), verbose)
+    # deployed (flows.Flows.gate), timed: W = commitment + wait, E = entry_after (corridor bound), h = hold start, Z = start of
+    # the dwell in the admission zone (premise: reached within t_occ_max of the hold start), D = Z + T; admission at t when
+    # t >= W, t > E, t > D and the conditions hold; give-up when not admitted and t - max(h + T, W, E) > t_occ_max + t_clear
+    # (the anchor is fixed in advance: one full dwell from the hold start, not the dwell term itself)
+    t, E, W, h, Z = z3.Reals("t E W h Z")
+    arrive = G.t_occ_max
+    D = Z + Q(T)
+    admitted = z3.And(t >= W, t > E, t > D)
+    mx = z3.If(h + Q(T) > W, h + Q(T), W)
+    mx = z3.If(mx > E, mx, E)
+    give_up = z3.And(z3.Not(admitted), t - mx > Q(G.t_occ_max + G.t_clear))
+    rep.add(check("ST3 with the admission conditions holding in the zone (dwell begun within t_occ_max of the hold start) the "
+                  "hold is never given up before admission: admission comes first",
+                  "Z >= h, Z <= h + t_occ_max -> not (not admitted and t - max(h + T, W, E) > t_occ_max + t_clear)", ENC,
+                  [give_up, Z >= h, Z <= h + Q(arrive)]), verbose)
     rep.add(check("ST3w witness: before the eligible time the drone waits at the hold", "expect SAT", ENC,
-                  [z3.Not(admitted), t >= h], expect="sat"), verbose)
+                  [z3.Not(admitted), t >= h, Z >= h], expect="sat"), verbose)
+    rep.add(check("ST3g witness: a drone held outside the zone (no dwell) gives up: the give-up is reachable", "expect SAT",
+                  ENC, [t - mx > Q(G.t_occ_max + G.t_clear), z3.Not(admitted)], expect="sat"), verbose)
     old_give_up = z3.And(z3.Not(admitted), t - z3.If(h > W, h, W) > G.t_occ_max + G.t_clear)
-    rep.add(check("ST3m mutation: a give-up timer started from the hold and commitment only (not entry_after) gives up "
-                  "before the timed admission (commit/give-up loop)", "expect counterexample", ENC,
+    rep.add(check("ST3m mutation: a give-up timer started from the hold and commitment only (not entry_after nor the dwell) "
+                  "gives up before the timed admission (commit/give-up loop)", "expect counterexample", ENC,
                   [old_give_up, E > W], expect="sat"), verbose)
+    t0 = z3.Real("t0")
+    # f583bde: the anchor included the dwell term, which is t + T while the drone is out of the zone: never given up
+    mo = z3.If(h > W, h, W)
+    mo = z3.If(mo > E, mo, E)
+    stuck = [t >= h + 1000.0, z3.Not(t - z3.If(mo > t + Q(T), mo, t + Q(T)) > G.t_occ_max + G.t_clear), t0 == t]
+    rep.add(check("ST3o mutation: the f583bde give-up (anchored on the dwell term, obs.t + T out of the zone) never fires for a "
+                  "drone held outside the zone (an endless hold, review finding)", "expect counterexample", ENC, stuck,
+                  expect="sat"), verbose)
     rep.add(consistency(cfg), verbose)
     from holo_fleet.control.flows import ACQ_OFFSETS
 
     ok = d_zone < G.admit_clear_m and all(abs(dz) <= G.acq_dz_m + 1e-12 and abs(dl) <= G.admit_zone_lat_m
                                           for dl, dz in ACQ_OFFSETS)
-    r = CheckResult(prop=f"ST6 zone geometry: two drones whose estimates are in the admission zone are at most {d_zone:.3f} m "
-                         f"apart < admit_clear_m = {G.admit_clear_m} m (observer error nav_err_m = {G.nav_err_m} m, admitted "
-                         f"drone validated within {e_adm:.2f} m); the acquisition offsets lie in the zone",
+    r = CheckResult(prop=f"ST6 zone geometry: under premise Z (estimate within {G.zone_err_h_m} m horizontally and "
+                         f"{G.zone_err_v_m} m vertically of the truth while in the zone) two drones whose estimates are in the "
+                         f"admission zone are at most {d_zone:.3f} m apart < admit_clear_m = {G.admit_clear_m} m; the "
+                         "acquisition offsets lie in the zone",
                     formula="max true centre distance (triangle inequality) < admit_clear_m <= d_lower bound",
                     encoding="numeric bound over the zone extents (GateRule.in_admission_zone, flows.ACQ_OFFSETS, "
                              "structure_aiding constants)", expect="holds")
     r.verdict, r.passed = ("holds" if ok else "violated"), ok
     r.note = ("the clearance needs the hull's echo in some healthy sector (the P1 detection premise); a hull within "
-              "admit_clear_m has d_lower < admit_clear_m since d_lower is a lower bound of the centre distance (S0)")
+              "admit_clear_m has d_lower < admit_clear_m since d_lower is a lower bound of the centre distance (S0); "
+              "premise Z is declared (tighter than nav_err_m) and monitored by the referee (zone_nav)")
     rep.add(r, verbose)
+    # ST6l: with the declared committed navigation error alone (nav_err_m per horizontal axis, nav_depth_err_m vertically)
+    # two drones in the zone can be farther apart than the clearance
+    xa, xb, ea, eb = [z3.RealVector(n, 3) for n in ("xa", "xb", "ea", "eb")]
+    lim = []
+    for x in (xa, xb):
+        lim += [x[0] >= Q(G.stage2_hold_s - G.admit_zone_m), x[0] <= Q(G.stage2_hold_s + G.admit_zone_fwd_m),
+                z3.Abs(x[1]) <= Q(G.admit_zone_lat_m), z3.Abs(x[2]) <= Q(G.zone_dz_half())]
+    for e in (ea, eb):
+        lim += [z3.Abs(e[0]) <= Q(G.nav_err_m), z3.Abs(e[1]) <= Q(G.nav_err_m),
+                z3.Abs(e[2]) <= Q(cfg.acoustic.nav_depth_err_m)]
+    dsq = z3.Sum([((xa[i] + ea[i]) - (xb[i] + eb[i])) ** 2 for i in range(3)])
+    rep.add(check("ST6l declared limit: with only the committed navigation premise (nav_err_m per horizontal axis, the depth "
+                  "allowance vertically) two drones in the admission zone can be farther apart than admit_clear_m: the "
+                  "timed admission rests on premise Z", "expect counterexample", "nonlinear real arithmetic (Z3)",
+                  lim + [dsq >= Q(G.admit_clear_m) ** 2], expect="sat"), verbose)
     rep.add(queue_clearance(cfg), verbose)
     r = CheckResult(prop=f"ST5 reported: t_admit_stale = {T:.2f} s (P2 part {T_p2:.2f} s, P1 clearance part {T - T_p2:.2f} s), "
                          f"t_occ_max = {G.t_occ_max:.0f} s", formula="reported", encoding="config", expect="holds")

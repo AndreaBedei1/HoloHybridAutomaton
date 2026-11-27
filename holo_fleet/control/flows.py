@@ -33,6 +33,10 @@ RELOC_ZONE_M = 0.4
 ACQ_PERIOD_S = 13.0
 ACQ_OFFSETS = ((0.0, -0.8), (0.0, 0.8))
 STANDOFF_MARGIN_M = 0.5
+# queue standoff of a drone that is not committed (GateRule.queue_standoff_m): hysteresis of its release and the largest
+# back-off behind the queue point
+QUEUE_STANDOFF_HYST_M = 0.3
+QUEUE_BACKOFF_MAX_M = 2.5
 FAILSAFE_PROBE_M = 0.3
 FAILSAFE_CAP_H = 0.25
 STANDOFF_ZONE_M = 1.5
@@ -90,6 +94,7 @@ class Flows:
         self.zone_since: Optional[float] = None
         self.timed_bound: Optional[float] = None
         self.acq_target: Optional[np.ndarray] = None
+        self.queue_backoff_s: Optional[float] = None
         self.hold_since: Optional[float] = None
         self.hold_timeout = False
         self.entry_state = ""
@@ -360,7 +365,15 @@ class Flows:
                 self.events.append({"t": obs.t, "type": "PAST_CENTRE", "s": round(float(go.s), 2)})
             if not self.cr_cleared and not self.past_centre and (c[0] > s_hold or self.hold_timeout):
                 self.hold_since = obs.t if self.hold_since is None else self.hold_since
-                if obs.t - max(self.hold_since, eligible_t) > G.t_occ_max + G.t_clear and not self.hold_timeout:
+                # the give-up runs from the part of the eligible time fixed in advance - commitment + wait, the corridor
+                # bound and, when timed, one full dwell from the hold start: a drone held outside the admission zone, or
+                # kept from the clearance, gives up too (formal/check_stale.py ST3; f583bde anchored it on the dwell
+                # term, obs.t + T out of the zone, which never fired)
+                timed_flag = bool(getattr(go, "timed_admission", False))
+                fixed_t = max(self.hold_since, self.commit_t + wait)
+                if timed_flag:
+                    fixed_t = max(fixed_t, float(go.entry_after), self.hold_since + G.t_admit_stale)
+                if obs.t - fixed_t > G.t_occ_max + G.t_clear and not self.hold_timeout:
                     self.hold_timeout = True
                     self.events.append({"t": obs.t, "type": "ENTRY_HOLD_TIMEOUT", "loc_ok": go.loc_ok,
                                         "entry_ok": go.entry_ok, "admit_wait_s": round(wait, 2), "admissible": admissible,
@@ -413,7 +426,22 @@ class Flows:
             self.abort_request = False
             self.hold_target = None
             self.standoff_anchor = self.standoff_since = None
-            tgt = g.from_gate_frame([go.queue_s, go.queue_l, go.queue_dz])
+            q = np.array([go.queue_s, go.queue_l, go.queue_dz], float)
+            # queue standoff (not committed, near the queue point): back off along the axis while a DYNAMIC hull in the
+            # FRONT sector is nearer than queue_standoff_m, hold in the hysteresis band, release beyond it; the lead
+            # drone at the stage-2 hold then keeps the near-field clearance of its admission (formal ST7)
+            front = min((tg.d_lower for tg in obs.targets if tg.cls == "DYNAMIC" and "FRONT" in tg.pattern), default=1e9)
+            near_queue = go.s >= go.queue_s - QUEUE_BACKOFF_MAX_M - 0.5
+            lim = G.queue_standoff_m
+            if near_queue and front < lim:
+                back = go.s - (lim - front) - 0.05
+                self.queue_backoff_s = max(min(back, go.queue_s if self.queue_backoff_s is None else self.queue_backoff_s),
+                                           go.queue_s - QUEUE_BACKOFF_MAX_M)
+            elif not (near_queue and self.queue_backoff_s is not None and front < lim + QUEUE_STANDOFF_HYST_M):
+                self.queue_backoff_s = None
+            if self.queue_backoff_s is not None:
+                q[0] = min(self.queue_backoff_s, go.queue_s)
+            tgt = g.from_gate_frame(q)
             vmax = G.v_approach
         self.reloc_hold = hold
         v = G.k_track * (tgt - obs.p)
@@ -426,7 +454,8 @@ class Flows:
     def _ahead(self, obs: LocalObservation) -> bool:
         """A DYNAMIC echo in the FRONT sector nearer than the warning-exit band plus STANDOFF_MARGIN_M (conservative
         distance): a drone ahead in the corridor."""
-        lim = self.cfg.sep.d_warning_exit + STANDOFF_MARGIN_M
+        # beyond the admission clearance too: a follower in standoff never keeps the drone ahead from its admission
+        lim = max(self.cfg.sep.d_warning_exit, self.cfg.gate.admit_clear_m) + STANDOFF_MARGIN_M
         return any(tg.cls == "DYNAMIC" and "FRONT" in tg.pattern and tg.d_lower < lim for tg in obs.targets)
 
     def mission_anchor(self, gc: Optional[gs.GateConstraint], failsafe: bool = False, probe: bool = False) -> dict:

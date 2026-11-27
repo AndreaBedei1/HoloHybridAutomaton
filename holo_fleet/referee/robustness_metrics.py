@@ -635,6 +635,7 @@ def premise_monitors(sc, cfg, names, faults, t, P, states, m) -> Dict:
     gates = {g.gate_id: g for g in sc.judged_gates}
     n = len(names)
     pv, nav_n, nav_max, nav_self = [], 0, 0.0, {}
+    zh_max, zv_max, z_n, z_samples = 0.0, 0.0, 0, 0
     for k in range(n):
         for i in range(m):
             r = states[k][i]
@@ -646,6 +647,12 @@ def premise_monitors(sc, cfg, names, faults, t, P, states, m) -> Dict:
                 if nm not in onset or t[i] < onset[nm]:
                     pv.append({"t": round(float(t[i]), 2), "receiver": names[k], "drone": nm})
             g = gates.get(gr.get("id"))
+            if r.get("committed") and r.get("nav_p") is not None and g is not None and gr.get("zone_since") is not None:
+                # premise Z of the timed admission (GateRule.zone_err_h_m / zone_err_v_m) while dwelling in the zone
+                ez = g.vec_to_gate_frame(np.asarray(r["nav_p"], float) - P[i, k])
+                zh, zv = float(math.hypot(ez[0], ez[1])), abs(float(ez[2]))
+                zh_max, zv_max, z_samples = max(zh_max, zh), max(zv_max, zv), z_samples + 1
+                z_n += int(zh > cfg.gate.zone_err_h_m or zv > cfg.gate.zone_err_v_m)
             if r.get("committed") and r.get("nav_p") is not None and g is not None:
                 e = g.vec_to_gate_frame(np.asarray(r["nav_p"], float) - P[i, k])
                 d = float(math.hypot(e[0], e[1]))
@@ -669,6 +676,8 @@ def premise_monitors(sc, cfg, names, faults, t, P, states, m) -> Dict:
     return {"premise_v": {"live_declared_dead": len(pv), "first": pv[:3]},
             "gate_nav": {"committed_beyond": nav_n, "max_committed_error_m": round(nav_max, 3),
                          "self_induced": bool(nav_self) and all(nav_self.values())},
+            "zone_nav": {"samples": z_samples, "beyond": z_n, "max_h_m": round(zh_max, 3), "max_v_m": round(zv_max, 3),
+                         "holds": z_n == 0},
             "fairness": fairness_gap(names, onset, t, states, m, cfg),
             "scope": {"declared_current": [w_h, w_dn], "failures_inside_zone": inside, "pending_onset": pending}}
 
@@ -683,6 +692,8 @@ def cause_tags(out: Dict, fm: Dict, fs_sensor, term, states, healthy, m: int, dt
         tags.append("PREMISE_V_VIOLATED")
     if (out.get("gate_nav") or {}).get("committed_beyond"):
         tags.append("GATE_NAV_PREMISE_VIOLATED")
+    if (out.get("zone_nav") or {}).get("beyond"):
+        tags.append("ZONE_NAV_PREMISE_VIOLATED")
     pcc = (out.get("premise_c") or {}).get("counts") or {}
     if pcc.get("VIOLATED"):
         tags.append("PREMISE_C_VIOLATED")

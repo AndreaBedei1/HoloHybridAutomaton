@@ -164,19 +164,29 @@ class GateRule:
     """Vertical acquisition offsets of the stage-2 hold, +-acq_dz_m (control/flows.py ACQ_OFFSETS, kept equal by a test)."""
     admit_zone_dz_m: float = 0.1
     """Admission zone vertically: estimated dz within acq_dz_m + admit_zone_dz_m of the gate centre."""
+    zone_err_h_m: float = 0.65
+    """Premise Z of the timed admission (formal/check_stale.py ST6): the gate-frame estimate of a drone dwelling in, or
+    admitted from, the admission zone is within zone_err_h_m of the truth horizontally (and zone_err_v_m vertically).
+    Declared, not derived: tighter than nav_err_m, which bounds every committed drone; monitored on every run by the
+    referee (robustness_metrics.premise_monitors "zone_nav"; v32: at most 0.46 m and 0.13 m).  With nav_err_m alone the
+    zone distance exceeds admit_clear_m (ST6l, a declared limit)."""
+    zone_err_v_m: float = 0.2
+    """Premise Z, vertical part (see zone_err_h_m)."""
     admit_clear_m: float = 3.3
     """Near-field clearance of every admission (control/flows.py): a drone is admitted only at a step at which no hull has
-    a d_lower below it (any sector).  formal/check_stale.py ST1 / ST6: two drones whose estimates are both in the admission
-    zone above are at most 3.25 m apart (the observer's declared error nav_err_m, the admitted drone validated within
-    CONSIST_M + UNIQUE_M + FIT_RMS_M = 0.65 m), so with the P1 detection premise (d_lower is a lower bound of the centre
-    distance) no drone is admitted while another dwells in the zone, and the timed bound needs no near-field sighting.
-    Replaces the near-field restart of the bound (5f9f049), which the drone queued 3.2 m behind the hold renewed at
-    nearly every capture: no B0 lead drone was admitted in v31."""
-    queue_hold_clear_m: float = 4.0
-    """Clearance of a queue point from the admission zone (GateRule.queue_s_for): a column near the axis queues farther
-    back, so the lead drone at the hold sees the drone queued behind it beyond admit_clear_m at most captures (the
-    onboard bound is 0.40-0.54 m below the true distance at the median of the v31 holds).  A progress margin, not a
-    safety one."""
+    a d_lower below it (any sector).  formal/check_stale.py ST1 / ST6: under premise Z two drones whose estimates are both
+    in the admission zone are at most 3.18 m apart, so with the P1 detection premise (d_lower is a lower bound of the centre
+    distance of every hull, a hull masked by a structure window or unseen being outside it) no drone is admitted while
+    another dwells in the zone, and the timed bound needs no near-field sighting.  Replaces the near-field restart of the
+    bound (5f9f049), which the drone queued 3.2 m behind the hold renewed at nearly every capture: no B0 lead drone was
+    admitted in v31."""
+    queue_standoff_m: float = 3.8
+    """Queue standoff of a drone that is not committed (control/flows.py, MUTEX_APPROACH / MUTEX_YIELD near its queue
+    point): it backs off along the axis while a DYNAMIC hull in its FRONT sector has a d_lower below it, so the lead drone
+    holding before the CR keeps the near-field clearance of its admission at most captures (admit_clear_m 3.3 m + 0.5 m;
+    the onboard bound is 0.40-0.54 m below the true distance at the median, v31; v32 with a follower 4.4 m behind the hold:
+    the nearest bound >= 3.69 m at the 1st percentile).  The queue points stay abreast (M2, the exit-witness geometry);
+    the standoff ends when the hull ahead moves on.  A progress margin (formal ST7), not a safety one."""
 
     @property
     def t_cross_max(self) -> float:
@@ -248,7 +258,9 @@ class GateRule:
             criterion of (b); for n = 2 the line moves from -4.43 m to -5.39 m, for n = 3 from -5.66 m to -5.75 m; n = 1
             has no other queue point and n = 4 is unchanged);
         (d) the queue line is never ahead of the stage-2 hold: a queued drone holds where holding is P2-safe under the
-            declared navigation error (control/gate_safety.py; n = 1 moves from -2.16 m to -2.55 m).
+            declared navigation error (control/gate_safety.py; n = 1 moves from -2.16 m to -2.55 m);
+        (a queued drone directly behind the hold keeps the near-field clearance of the lead's admission by the queue standoff
+        of control/flows.py, ``queue_standoff_m``, not by the line).
         Bound (a) is measured from the CR entry plane (-cr_s_min); every bound follows the CR entry plane.
         ``lats``: the column laterals (default: the abreast queue of n columns)."""
         lats = tuple(lats) or self.queue_laterals(n)
@@ -281,18 +293,6 @@ class GateRule:
         admission (control/flows.py), the geometry of formal/check_stale.py ST6."""
         return bool(self.stage2_hold_s - self.admit_zone_m <= s <= self.stage2_hold_s + self.admit_zone_fwd_m
                     and abs(l) <= self.admit_zone_lat_m and abs(dz) <= self.zone_dz_half())
-
-    def queue_s_for(self, line: float, lateral: float, dz: float = 0.0, n: int = 2) -> float:
-        """Queue point of one column: the shared queue line, moved back for a column near the axis so that it keeps
-        queue_hold_clear_m from every point of the admission zone (n = 1: nobody queues behind the lead drone)."""
-        if n <= 1:
-            return line
-        dl = max(abs(lateral) - self.admit_zone_lat_m, 0.0)
-        dv = max(abs(dz) - self.zone_dz_half(), 0.0)
-        rem = self.queue_hold_clear_m ** 2 - dl * dl - dv * dv
-        if rem <= 0.0:
-            return line
-        return min(line, self.stage2_hold_s - self.admit_zone_m - math.sqrt(rem))
 
     def queue_laterals(self, n: int, spacing: float = 0.0) -> Tuple[float, ...]:
         """Abreast queue points, left (positive) first."""

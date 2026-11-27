@@ -159,9 +159,9 @@ priority order and all guards are evaluated at runtime as a determinism monitor.
 with `|l| <= 1.0 m` and `|z| <= 1.0 m` at G06. Admission sensing reserves the passage through
 `s = +0.55 m` separately: the 0.15 m bar half depth plus the 0.389 m hull radius, rounded up.
 The stage-2 hold stays at `s = -2.5525 m`, retaining the sonar acquisition geometry and a 0.25 m reserve. Queue lines follow `GateRule.queue_s` and the supported layouts in Q1;
-a column near the axis queues farther back, `queue_hold_clear_m` = 4.0 m from the admission zone (`GateRule.queue_s_for`; the middle
-column of three at -6.95 m instead of -5.75 m), so the lead vehicle at the hold sees the vehicle queued behind it beyond the
-admission clearance at most captures (formal ST7, a progress margin). The admission zone is `GateRule.in_admission_zone`: s within
+a vehicle not committed backs off along the axis while a vehicle ahead in its FRONT sector is nearer than `queue_standoff_m`
+= 3.8 m (queue standoff), so the lead vehicle at the hold sees the vehicle queued behind it beyond the admission clearance at
+most captures (formal ST7, a progress margin); the queue points stay abreast (M2, exit-witness geometry). The admission zone is `GateRule.in_admission_zone`: s within
 -0.4 / +0.3 m of the hold, `|l|` <= 0.35 m, `|dz|` <= 0.9 m (the vertical acquisition offsets +-0.8 m plus 0.1 m).
 
 **Gate protocol.**
@@ -311,7 +311,10 @@ a common reference for the fleet, or recovery in the presence of sustained safet
   the class is PASS and P1, P2 hold, the cost is time.
   A vehicle without a validated gate localization is never admitted.
 - **Admission clearance.** The near-field clearance rests on the P1 detection premise (a vehicle within 3.3 m produces an echo in
-  a healthy sector). A hull within 3.3 m (a vehicle in standoff, a concurrent commitment, an unexplained echo) holds an admission
+  a healthy sector, not masked by a structure window) and on premise Z: a vehicle dwelling in or admitted from the admission
+  zone has its gate-frame estimate within 0.65 m horizontally and 0.2 m vertically of the truth (declared, monitored by the
+  referee as `zone_nav`; v32 at most 0.46 m and 0.13 m). With the committed navigation premise alone (1.0 m per axis) two
+  vehicles in the zone can be 4.68 m apart (ST6l, declared limit). A hull within 3.3 m (a vehicle in standoff, a concurrent commitment, an unexplained echo) holds an admission
   back; two concurrent commitments resolve by the give-up, not by a ranking. ST7 (queue clearance) is a progress margin, not a proof
   of progress.
 - **B0, 3 vehicles.** M4g: in abreast, triangle and line layouts of 3 vehicles a queued vehicle may get no sonar exit witness of a
