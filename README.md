@@ -314,7 +314,10 @@ a common reference for the fleet, or recovery in the presence of sustained safet
   a healthy sector, not masked by a structure window) and on premise Z: a vehicle dwelling in or admitted from the admission
   zone has its gate-frame estimate within 0.65 m horizontally and 0.2 m vertically of the truth (declared, monitored by the
   referee as `zone_nav`; v32 at most 0.46 m and 0.13 m). With the committed navigation premise alone (1.0 m per axis) two
-  vehicles in the zone can be 4.68 m apart (ST6l, declared limit). A hull within 3.3 m (a vehicle in standoff, a concurrent commitment, an unexplained echo) holds an admission
+  vehicles in the zone can be 4.68 m apart (ST6l, declared limit).
+  A sector blind within 3.3 m (an UNKNOWN pseudo-target at its blind range, e.g. a shallow seabed under the DOWN sonar)
+  also withholds the clearance; none was observed at G06 (v32). The admission is latched: an admitted vehicle pushed back by
+  collision avoidance re-enters the CR without a new clearance check, a case outside premise Pi2. A hull within 3.3 m (a vehicle in standoff, a concurrent commitment, an unexplained echo) holds an admission
   back; two concurrent commitments resolve by the give-up, not by a ranking. ST7 (queue clearance) is a progress margin, not a proof
   of progress.
 - **B0, 3 vehicles.** M4g: in abreast, triangle and line layouts of 3 vehicles a queued vehicle may get no sonar exit witness of a
