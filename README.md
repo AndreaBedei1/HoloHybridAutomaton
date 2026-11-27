@@ -320,6 +320,9 @@ a common reference for the fleet, or recovery in the presence of sustained safet
   collision avoidance re-enters the CR without a new clearance check, a case outside premise Pi2. A hull within 3.3 m (a vehicle in standoff, a concurrent commitment, an unexplained echo) holds an admission
   back; two concurrent commitments resolve by the give-up, not by a ranking. ST7 (queue clearance) is a progress margin, not a proof
   of progress.
+- **Bar echo at the CR entry.** Under MEDIUM sensing an admitted vehicle about 1 m before the CR entry can see a bar of the
+  frame outside the predicted structure window (UNKNOWN or DYNAMIC) and cycle between collision avoidance and the approach
+  (`docs/validation-report.md`; up to 467 s in a B0 integrated MEDIUM run). A progress cost; P1 and P2 hold.
 - **B0, 3 vehicles.** M4g: in abreast, triangle and line layouts of 3 vehicles a queued vehicle may get no sonar exit witness of a
   passing vehicle (detection range); the latch can stay BUSY without a positive exit witness.
 - **P1.** Proved pairwise; several neighbours rest on the triangle lemma and the two-threat escape (S2c), not on a fleet model.

@@ -90,3 +90,64 @@ Independent reviews of the P1 and P2 changes found no critical defect. They reco
 - **P2, concession coverage.** No test exercises the `past_centre`, `passage.in_progress` or `mutex_zone` concession guards. The B2C-S2 model treats concession feasibility as a constant.
 
 These are listed in README section 6.
+
+## Controller consolidation (2026-11-26/27, branch `controller-consolidation`)
+
+### Regression and timed recovery
+
+At `e3e31f0`, a BUSY latch was released after `t_occ_max` = 25 s without a corridor echo. Commit `6bcda80` removed that release. B0 at the outer queue point often gets no sonar exit witness (M4g), so from `6121f70` its latch stayed BUSY for the whole run. Stage A (archive `v28-regression-audit`) measured this: B0 crossed in 3/3 runs at `e3e31f0` and in 0/3 at both `6121f70` and `ebf7a29`. Commit `9998b68` adds the STALE state. A STALE latch allows committing but is never FREE, and the admission after it is timed. Stage B (`v29-stage-b-stale`) measured 3/3 crossings for both protocols.
+
+### The near-field restart and its replacement
+
+To remove premise S, commit `5f9f049` restarted the timed bound at every hull within 3.0 m in any sector. In the targeted HoloOcean runs of `a6e4987` (archive `v31-targeted-a6e4987`), B2 passed every case. No B0 lead drone was admitted in any of the 8 gate runs. The drone queued 3.2 m behind the stage-2 hold has an onboard bound of 2.4-3.3 m, so it renewed the restart at nearly every capture. The onboard bound is 0.40-0.54 m below the true distance at the median and up to 1.1 m below at the 95th percentile. Two injected concurrent commitments kept each other at the hold in the same way.
+
+Commit `f583bde` replaced the restart and the review fixes `0c76653` and `a57a9b2` followed. The resulting rules:
+
+- The timed bound runs from max(last corridor sighting, start of the dwell in the admission zone) + `t_admit_stale`.
+- Every admission needs the near-field clearance: no hull with a bound below `admit_clear_m` = 3.3 m in any sector.
+- The admission zone `GateRule.in_admission_zone` is explicit: along -0.4 / +0.3 m of the hold, lateral 0.35 m, vertical 0.9 m.
+- Under premise Z two drones whose estimates are in the zone are at most 3.25 m apart (ST6). So with the P1 detection premise, no drone is admitted while another dwells in the zone (ST1, proved).
+- Premise Z is declared and monitored by the referee as `zone_nav`: an estimate in the zone is within 0.65 m horizontally and 0.25 m vertically of the truth.
+- With the committed navigation premise alone, 1.0 m per axis, two drones in the zone can be 4.68 m apart. This is ST6l, a declared limit.
+- A drone that is not committed backs off along the axis while a hull ahead in its FRONT sector is nearer than `queue_standoff_m` = 3.8 m (ST7, a progress margin). The queue points stay abreast for M2 and the exit-witness geometry.
+- The hold give-up runs from max(hold start + `t_admit_stale`, commitment + wait, corridor bound) (ST3).
+- The standoff of a committed drone ends beyond the clearance.
+
+### Independent review of `f583bde`
+
+The adversarial review raised four major findings, all addressed:
+
+- **Zone-distance errors.** The bound used the fit tolerances and a 0.05 m depth error, which are not declared error bounds. Premise Z now states the bounds and the referee monitors them; ST6l records the limit.
+- **Give-up outside the zone.** A timed drone held just outside the zone never gave up. The `v32` injected run reproduced this: one drone was out of the zone at l = 2.16 m and the other was in it without clearance. Fixed by ST3 and its test.
+- **Standoff below the clearance.** The committed standoff limit was below the clearance. Fixed.
+- **Seabed blind ranges.** A seabed blind range under the DOWN sonar withholds the clearance. None was observed at G06; the case is recorded as a limit.
+
+The staggered middle column of `f583bde` cut the M2 bearing margin from 30 to about 11 deg. Moving the whole queue line back broke the exit-witness geometry. Both were dropped for the queue standoff. Filtered structure-window echoes are part of the P1 detection premise, and a latched admission pushed back by avoidance is outside Pi2. Both are listed in README section 6.
+
+### Targeted evidence
+
+| Archive, commit | Case | B0 | B2 |
+|---|---|---|---|
+| `v31`, `a6e4987` | gate CLEAN, LOW, MEDIUM (2 seeds each), integrated MEDIUM, injected CLEAN | 0/8 crossed (INCOMPLETE) | 8/8 PASS |
+| `v32`, `f583bde` | gate CLEAN, LOW, MEDIUM (2 seeds each) | 6/6 PASS, min true separation 3.34-3.50 m | MEDIUM 1/1 PASS |
+| `v35`, `0c76653` | gate MEDIUM s0 | PASS: three crossings in 172 s, P3 met at 217 s | CLEAN s0 PASS |
+| `v35`, `0c76653` | injected concurrent commitments, CLEAN s0 | PASS (minimum true separation 2.61 m) | - |
+| `v32`, `f583bde` | injected concurrent commitments, CLEAN s0 | INCOMPLETE (review finding 2: endless hold out of the zone) | - |
+| `v32`, `f583bde` | integrated MEDIUM s0 | INCOMPLETE (localization about 200 s, then the bar echo below) | - |
+
+In `v35`, the nearest bound at the hold was at least 4.04 m at the 1st percentile, so the clearance held at every capture. `zone_nav` reached 0.21 m horizontally and 0.19 m vertically, the measurement that raised the vertical part of premise Z to 0.25 m in `a57a9b2`. The P2 latch released once by a sonar witness and once by STALE, with occupancy at most 1.
+
+**Bar echo at the CR entry (open, both protocols).** An admitted vehicle about 1 m before the CR entry under MEDIUM sensing can
+see the bars of the frame in its FRONT sonar at 0.7 to 0.9 m outside the predicted structure window. The bar echo is then
+classified UNKNOWN or DYNAMIC, so the vehicle enters collision avoidance, retreats, and approaches again. Episodes: B2 integrated
+MEDIUM 135 s (`v31`, the run passed), B0 gate MEDIUM 13 s (`v32`), B0 integrated MEDIUM 467 s (`v32`, INCOMPLETE). This
+predates these fixes and is a progress cost; P1 and P2 hold. It is left unresolved: masking these echoes would rest P1 on the
+P2 argument near the frame.
+
+### Formal catalogue
+
+On `f583bde` the complete runner had 438 checks, all with the expected outcome. The final commit adds ST3g, ST3o, ST6l and the reported ST7 to `formal/check_stale.py`. That suite passes in full on `a57a9b2`.
+
+### Final paired campaign
+
+The final paired campaign runs from the frozen worktree at `a57a9b2`, archive `v33-final-paired-campaign-2026-11-27`. It runs the 9 cases x 3 seeds x 2 protocols of `config/publication_validation.json`, each to the mission terminal with no fixed window. At most 3 isolated engines run at once.
