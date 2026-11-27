@@ -182,7 +182,8 @@ class GateRule:
     admitted in v31."""
     queue_standoff_m: float = 3.8
     """Queue standoff of a drone that is not committed (control/flows.py, MUTEX_APPROACH / MUTEX_YIELD near its queue
-    point): it backs off along the axis while a DYNAMIC hull in its FRONT sector has a d_lower below it, so the lead drone
+    point, in a column within 2.5 m of the axis): it backs off along the axis, at most 1 m, while a DYNAMIC hull in its
+    FRONT sector has a d_lower below it, so the lead drone
     holding before the CR keeps the near-field clearance of its admission at most captures (admit_clear_m 3.3 m + 0.5 m;
     the onboard bound is 0.40-0.54 m below the true distance at the median, v31; v32 with a follower 4.4 m behind the hold:
     the nearest bound >= 3.69 m at the 1st percentile).  The queue points stay abreast (M2, the exit-witness geometry);

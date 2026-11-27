@@ -36,7 +36,9 @@ STANDOFF_MARGIN_M = 0.5
 # queue standoff of a drone that is not committed (GateRule.queue_standoff_m): hysteresis of its release and the largest
 # back-off behind the queue point
 QUEUE_STANDOFF_HYST_M = 0.3
-QUEUE_BACKOFF_MAX_M = 2.5
+QUEUE_BACKOFF_MAX_M = 1.0
+# columns at least this far from the axis never stand off (the hold zone is beyond the standoff from them)
+QUEUE_STANDOFF_LAT_M = 2.5
 FAILSAFE_PROBE_M = 0.3
 FAILSAFE_CAP_H = 0.25
 STANDOFF_ZONE_M = 1.5
@@ -430,11 +432,12 @@ class Flows:
             # queue standoff (not committed, near the queue point): back off along the axis while a DYNAMIC hull in the
             # FRONT sector is nearer than queue_standoff_m, hold in the hysteresis band, release beyond it; the lead
             # drone at the stage-2 hold then keeps the near-field clearance of its admission (formal ST7)
-            # a hull directly ahead only (FRONT alone): a queue neighbour seen diagonally (FRONT+LEFT / FRONT+RIGHT) is not
-            # a drone holding before the CR, and backing off from it kept the side columns from their queue points (v33
-            # integrated: the middle drone queued first, the side drones held 2.5 m back, the middle one waited for ever)
-            front = min((tg.d_lower for tg in obs.targets if tg.cls == "DYNAMIC" and set(tg.pattern) == {"FRONT"}),
-                        default=1e9)
+            # only a column near the axis, behind the stage-2 hold, stands off: a side column (v33 integrated) backed off
+            # from the middle queued drone seen diagonally and never reached its queue point, while the middle one waited
+            # for it for ever; the back-off is capped so that the side neighbours stay out of the FRONT cone
+            front = min((tg.d_lower for tg in obs.targets if tg.cls == "DYNAMIC" and "FRONT" in tg.pattern), default=1e9)
+            if abs(go.queue_l) >= QUEUE_STANDOFF_LAT_M:
+                front = 1e9
             near_queue = go.s >= go.queue_s - QUEUE_BACKOFF_MAX_M - 0.5
             lim = G.queue_standoff_m
             if near_queue and front < lim:

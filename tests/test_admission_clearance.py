@@ -136,7 +136,7 @@ def test_a_committed_follower_in_standoff_stays_beyond_the_admission_clearance()
     assert fl._ahead(SimpleNamespace(targets=[near])) and not fl._ahead(SimpleNamespace(targets=[far]))
 
 
-def test_a_queue_neighbour_seen_diagonally_does_not_trigger_the_queue_standoff():
+def test_a_side_column_never_stands_off_and_the_middle_one_does_from_a_diagonal_hull():
     """v33 integrated regression: the side columns saw the middle queued drone in FRONT+LEFT / FRONT+RIGHT within
     queue_standoff_m and held 2.5 m behind their queue points for the whole run; only a hull directly ahead counts."""
     plan = SCENARIOS["line_parallel_mutex"](DEFAULT).plans[0]
@@ -151,3 +151,11 @@ def test_a_queue_neighbour_seen_diagonally_does_not_trigger_the_queue_standoff()
                             gate=gate, gate_index=0, targets=tg)
         fl.gate(o, "MUTEX_APPROACH")
         assert fl.queue_backoff_s is None, pat
+    mid = SCENARIOS["line_parallel_mutex"](DEFAULT).plans[1]
+    assert abs(mid.queue_lateral) < 1e-9
+    fm = Flows(mid, DEFAULT)
+    gate = SimpleNamespace(s=mid.queue_s, l=0.0, dz=0.0, queue_s=mid.queue_s, queue_l=0.0, queue_dz=mid.queue_dz)
+    tg = [SimpleNamespace(cls="DYNAMIC", pattern=frozenset({"FRONT", "RIGHT"}), d_lower=2.9)]
+    fm.gate(SimpleNamespace(t=0.0, p=np.asarray(g.from_gate_frame([mid.queue_s, 0.0, 0.0]), float), gate=gate,
+                            gate_index=0, targets=tg), "MUTEX_YIELD")
+    assert fm.queue_backoff_s is not None and fm.queue_backoff_s >= mid.queue_s - QUEUE_BACKOFF_MAX_M - 1e-9

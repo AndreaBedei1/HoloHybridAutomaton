@@ -159,7 +159,7 @@ priority order and all guards are evaluated at runtime as a determinism monitor.
 with `|l| <= 1.0 m` and `|z| <= 1.0 m` at G06. Admission sensing reserves the passage through
 `s = +0.55 m` separately: the 0.15 m bar half depth plus the 0.389 m hull radius, rounded up.
 The stage-2 hold stays at `s = -2.5525 m`, retaining the sonar acquisition geometry and a 0.25 m reserve. Queue lines follow `GateRule.queue_s` and the supported layouts in Q1;
-a vehicle not committed backs off along the axis while a vehicle ahead in its FRONT sector is nearer than `queue_standoff_m`
+a vehicle not committed in a column within 2.5 m of the axis backs off along the axis (at most 1 m) while a vehicle ahead in its FRONT sector is nearer than `queue_standoff_m`
 = 3.8 m (queue standoff), so the lead vehicle at the hold sees the vehicle queued behind it beyond the admission clearance at
 most captures (formal ST7, a progress margin); the queue points stay abreast (M2, exit-witness geometry). The admission zone is `GateRule.in_admission_zone`: s within
 -0.4 / +0.3 m of the hold, `|l|` <= 0.35 m, `|dz|` <= 0.9 m (the vertical acquisition offsets +-0.8 m plus 0.1 m).
