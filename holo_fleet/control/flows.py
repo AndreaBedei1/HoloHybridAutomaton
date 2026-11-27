@@ -430,7 +430,11 @@ class Flows:
             # queue standoff (not committed, near the queue point): back off along the axis while a DYNAMIC hull in the
             # FRONT sector is nearer than queue_standoff_m, hold in the hysteresis band, release beyond it; the lead
             # drone at the stage-2 hold then keeps the near-field clearance of its admission (formal ST7)
-            front = min((tg.d_lower for tg in obs.targets if tg.cls == "DYNAMIC" and "FRONT" in tg.pattern), default=1e9)
+            # a hull directly ahead only (FRONT alone): a queue neighbour seen diagonally (FRONT+LEFT / FRONT+RIGHT) is not
+            # a drone holding before the CR, and backing off from it kept the side columns from their queue points (v33
+            # integrated: the middle drone queued first, the side drones held 2.5 m back, the middle one waited for ever)
+            front = min((tg.d_lower for tg in obs.targets if tg.cls == "DYNAMIC" and set(tg.pattern) == {"FRONT"}),
+                        default=1e9)
             near_queue = go.s >= go.queue_s - QUEUE_BACKOFF_MAX_M - 0.5
             lim = G.queue_standoff_m
             if near_queue and front < lim:

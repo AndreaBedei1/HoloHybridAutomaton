@@ -134,3 +134,20 @@ def test_a_committed_follower_in_standoff_stays_beyond_the_admission_clearance()
     near = SimpleNamespace(cls="DYNAMIC", pattern=frozenset({"FRONT"}), d_lower=G.admit_clear_m + 0.1)
     far = SimpleNamespace(cls="DYNAMIC", pattern=frozenset({"FRONT"}), d_lower=G.admit_clear_m + 0.6)
     assert fl._ahead(SimpleNamespace(targets=[near])) and not fl._ahead(SimpleNamespace(targets=[far]))
+
+
+def test_a_queue_neighbour_seen_diagonally_does_not_trigger_the_queue_standoff():
+    """v33 integrated regression: the side columns saw the middle queued drone in FRONT+LEFT / FRONT+RIGHT within
+    queue_standoff_m and held 2.5 m behind their queue points for the whole run; only a hull directly ahead counts."""
+    plan = SCENARIOS["line_parallel_mutex"](DEFAULT).plans[0]
+    fl = Flows(plan, DEFAULT)
+    g = plan.gates[0]
+    qs = plan.queue_s
+    for pat in ({"FRONT", "RIGHT"}, {"FRONT", "LEFT"}):
+        gate = SimpleNamespace(s=qs - 2.0, l=plan.queue_lateral, dz=plan.queue_dz, queue_s=qs, queue_l=plan.queue_lateral,
+                               queue_dz=plan.queue_dz)
+        tg = [SimpleNamespace(cls="DYNAMIC", pattern=frozenset(pat), d_lower=3.5)]
+        o = SimpleNamespace(t=0.0, p=np.asarray(g.from_gate_frame([qs - 2.0, plan.queue_lateral, plan.queue_dz]), float),
+                            gate=gate, gate_index=0, targets=tg)
+        fl.gate(o, "MUTEX_APPROACH")
+        assert fl.queue_backoff_s is None, pat
