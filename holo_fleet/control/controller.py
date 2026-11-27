@@ -352,6 +352,8 @@ class DroneController:
                         if self.perception.acoustic.enabled else {})},
             "nav_aid": None if self.perception.aiding.last is None else {**self.perception.aiding.last,
                                                                          "applied_m": round(self.perception.aiding.applied_m, 3)},
+            "cls_offset": [round(float(x), 3) for x in self.perception.cls_used[:2]],
+            "cls_source": self.perception.cls_source,
             "transition": self.last_transition,
             "gate_safety": {k: v for k, v in self.gate_safety.items() if not k.startswith("_")} or None,
             "determinism_violations": self.ha.determinism_violations,

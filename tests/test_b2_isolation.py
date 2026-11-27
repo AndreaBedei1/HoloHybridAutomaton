@@ -65,6 +65,7 @@ ALLOWED = {"config.py", "runner.py", "sim/beacon.py", "sim/holo_env.py", "sim/ac
            "perception/formation_perception.py", "perception/gate_perception.py", "perception/sensor_suite.py",
            "perception/payload.py", "perception/nav.py",
            "perception/structure_aiding.py",
+           "perception/gate_beacon.py", "sim/gate_beacon.py",  # the gate pinger: infrastructure, perception and simulator only
            "control/controller.py", "referee/robustness_metrics.py", "referee/premise_audit.py", "referee/referee.py",
            "referee/p3.py", "referee/gate_events.py", "sim/scenarios.py"}  # scenarios.py: the channel of the b2c_* scenarios (simulator side); gate_events.py: the referee budget of the B2 admission wait
 

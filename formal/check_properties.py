@@ -23,6 +23,7 @@ sys.path.insert(0, str(HERE.parent))
 
 import check_acoustic  # noqa: E402
 import check_b2_comm  # noqa: E402
+import check_classification  # noqa: E402
 import check_determinism  # noqa: E402
 import check_fleet  # noqa: E402
 import check_formation  # noqa: E402
@@ -41,6 +42,8 @@ SUITES = [
      "holo_fleet/ha/observation_invariants.py + holo_fleet/ha/spec.py"),
     ("P1 inter-vehicle separation", check_separation, "formal/check_separation.py"),
     ("P2 critical-region mutual exclusion", check_mutex, "holo_fleet/ha/mutex_rule.py + formal/check_mutex.py"),
+    ("Echo classification at the structure-fit pose (bars vs obstacles)", check_classification,
+     "holo_fleet/perception/sonar_processing.py + holo_fleet/perception/perception.py + formal/check_classification.py"),
     ("P2 timed latch release (STALE) and the admission bound", check_stale,
      "holo_fleet/perception/gate_perception.py + holo_fleet/control/flows.py + formal/check_stale.py"),
     ("P3 formation recovery (liveness, ranking functions)", check_formation, "formal/check_formation.py"),
@@ -59,7 +62,7 @@ SUITES = [
 ]
 
 
-QUICK_SUITES = {check_determinism, check_observations, check_formation, check_b2_comm, check_stale}
+QUICK_SUITES = {check_determinism, check_observations, check_formation, check_b2_comm, check_stale, check_classification}
 
 
 KINDS = {

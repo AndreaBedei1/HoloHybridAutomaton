@@ -94,7 +94,7 @@ from holo_fleet.perception.gate_perception import GateObs, GatePerception
 from holo_fleet.perception.nav import DeadReckoning, NavBound
 from holo_fleet.perception.sonar_geometry import SECTORS, sonar_sensor_name
 from holo_fleet.perception.sonar_processing import EchoClassifier, SectorReading, dvl_altitude
-from holo_fleet.perception.structure_aiding import StructureAiding
+from holo_fleet.perception.structure_aiding import CLS_HOLD_S, CLS_POSE_ERR_M, StructureAiding, classification_fit
 from holo_fleet.perception.targets import EchoHold, SectorTracker, Target, build_targets
 
 
@@ -166,6 +166,13 @@ class Perception:
         bars = [b for g in plan.structures for b in g.bars]
         self.clf = EchoClassifier(gate_bars=bars, cfg=cfg)
         self.aiding = StructureAiding(self.clf, cfg, gates=plan.structures, acq_min=abs(plan.queue_s) + 0.5)
+        from holo_fleet.perception.gate_beacon import GateBeaconFix
+
+        self.beacon_fix = GateBeaconFix(cfg)
+        self.cls_source = ""
+        self.cls_offset: Optional[np.ndarray] = None
+        self.cls_offset_t = -1e9
+        self.cls_used = np.zeros(3)
         self.tracker = SectorTracker(cfg)
         self.echo_hold = EchoHold(cfg.env.tau_max)
         self.acoustic = AcousticTracker(cfg)
@@ -488,9 +495,31 @@ class Perception:
         corr = self.aiding.update(nav.p, R_wb, profiles, ages, env.tau_max, t=t, others=self._other_regions(t))
         if corr is not None:
             self.apply_position_correction(corr)
+            self.cls_offset = None
+        elif classification_fit(self.aiding.last):
+            d = self.aiding.last["offset"]
+            off = np.array([float(d[0]), float(d[1]), 0.0])
+            if float(np.linalg.norm(off)) <= self.cfg.gate.nav_err_m * 1.5:
+                self.cls_offset, self.cls_offset_t = off, t
+        # echoes are compared with the gate map at the pose the structure fit explains (the estimate plus the fit offset):
+        # under a lateral estimate error of 0.72 m the bars ahead fell outside the structure window at the estimated pose
+        # and were taken for an obstacle at the CR entry (v33 / v39); the window width, hence what it can mask, is unchanged
+        use = (self.cls_offset if self.cls_offset is not None and t - self.cls_offset_t <= CLS_HOLD_S else np.zeros(3))
+        pose_err = CLS_POSE_ERR_M if float(np.linalg.norm(use)) > 0.0 else 0.0
+        self.cls_source = "fit" if pose_err > 0.0 else ""
+        # gate beacon (perception/gate_beacon.py): the fix relative to the surveyed pinger is preferred to the structure fit
+        gates = {g.gate_id: g for g in self.plan.gates}
+        for gid, _t_m, r_m, az, el in frame.data.get("GateBeaconRx", ()) or ():
+            if gid in gates:
+                self.beacon_fix.add(t, gates[gid], float(r_m), float(az), float(el), nav.p, R_wb)
+        bf = self.beacon_fix.offset(t)
+        if bf is not None and bf[1] <= self.cfg.gate_beacon.max_bound_m:
+            use, pose_err, self.cls_source = bf[0], min(bf[1], 0.3), "beacon"
+        self.cls_used = use
         self.t_nav = t
         self.acoustic.update(t, d.get("AcousticRx"), nav.p, nav.yaw, self.nav_bound.value)
-        readings = self.clf.classify(profiles, ages, nav.p, R_wb, seabed_z, tau_healthy=env.tau_max,
+        readings = self.clf.classify(profiles, ages, nav.p + use, R_wb, seabed_z, tau_healthy=env.tau_max,
+                                     pose_err_m=pose_err,
                                      capture_times={s: frame.stamp.get(sonar_sensor_name(s)) for s in SECTORS})
         tracks = self.tracker.update(t, readings)
         targets = build_targets(t, readings, tracks, self.cfg, held=self.echo_hold.update(t, readings))

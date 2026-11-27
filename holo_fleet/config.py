@@ -404,6 +404,26 @@ COMMUNICATION_DISABLED = "NONE"
 
 
 @dataclass(frozen=True)
+class GateBeaconConfig:
+    """Fixed acoustic pinger above every gate (perception/gate_beacon.py, sim/gate_beacon.py): infrastructure received by
+    B0 and B2 alike, as the gate beacons of the Marine Race Arena (one per gate, fixed position, range / bearing /
+    elevation packets).  Levels: USBL-class accuracy (reis2016usbl), more conservative than the arena defaults (0.2 deg,
+    0.2 m, 10 Hz, no dropout)."""
+
+    enabled: bool = True
+    up_m: float = 1.6
+    rate_hz: float = 2.0
+    sigma_range_m: float = 0.10
+    sigma_ang_deg: float = 1.0
+    dropout: float = 0.05
+    max_range_m: float = 30.0
+    heading_bound_deg: float = 2.0
+    hold_s: float = 3.0
+    min_fixes: int = 3
+    max_bound_m: float = 0.6
+
+
+@dataclass(frozen=True)
 class BeaconConfig:
     """The passive one-way acoustic beacons of the controller (B2); ``mode = COMMUNICATION_DISABLED`` switches them off.
 
@@ -534,6 +554,7 @@ class FleetConfig:
     plant: PlantCalibration = field(default_factory=PlantCalibration)
     ref: RefereeConfig = field(default_factory=RefereeConfig)
     beacon: BeaconConfig = field(default_factory=BeaconConfig)
+    gate_beacon: GateBeaconConfig = field(default_factory=GateBeaconConfig)
     acoustic: AcousticConfig = field(default_factory=AcousticConfig)
     failure: FailureModel = field(default_factory=FailureModel)
     scope: ScopeConfig = field(default_factory=ScopeConfig)

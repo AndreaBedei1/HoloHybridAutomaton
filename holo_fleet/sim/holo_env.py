@@ -96,6 +96,7 @@ class HoloFleetSim:
         self.noise_stats = {"sonar_dropped": 0, "sonar_blackout": 0, "sonar_faded": 0, "sonar_shifted": 0,
                             "dvl_dropped": 0, "dvl_outage": 0}
         self.beacon = None
+        self.gate_beacon = None
         self.beacon_inbox: Dict[str, List[tuple]] = {n: [] for n in self.names}
         if cfg.beacon.enabled:
             from holo_fleet.sim.beacon import BeaconTransport
@@ -402,8 +403,28 @@ class HoloFleetSim:
                              for nm, d in zip(self.intruder_names, self.intruders)])
         return Truth(self.t, P, R, Y, V, C, released, drift, cmd, intr)
 
+    def _gate_beacon_rx(self):
+        """Gate beacon receptions of this step (sim/gate_beacon.py), from the simulator poses (never onboard)."""
+        if not self.cfg.gate_beacon.enabled or not self.spec.gate_ids:
+            return None
+        if self.gate_beacon is None:
+            from holo_fleet.arena_bridge import HORSESHOE_TRACK, load_arena_gates
+            from holo_fleet.sim.gate_beacon import GateBeaconSim
+
+            self.gate_beacon = GateBeaconSim(self.names, load_arena_gates(HORSESHOE_TRACK, list(self.spec.gate_ids)),
+                                             self.cfg, self.spec.seed)
+        poses = {}
+        for name in self.names:
+            pose = self.latest[name].get("PoseSensor")
+            if pose is None or self.spec.dead(name, self.t):
+                continue
+            pose = np.asarray(pose, float)
+            poses[name] = (agent_origin_from_pose(pose), pose[:3, :3])
+        return self.gate_beacon.measure(self.t, poses)
+
     def frames(self) -> Dict[str, SensorFrame]:
         out = {}
+        gb_rx = self._gate_beacon_rx()
         for name in self.names:
             if self.spec.dead(name, self.t):
                 self.beacon_inbox[name] = []
@@ -411,6 +432,9 @@ class HoloFleetSim:
                 continue
             data = {k: v for k, v in self.latest[name].items() if is_onboard(k)}
             stamp = {k: v for k, v in self.stamp[name].items() if is_onboard(k)}
+            if gb_rx is not None:
+                data["GateBeaconRx"] = tuple(gb_rx.get(name, ()))
+                stamp["GateBeaconRx"] = self.t
             if self.beacon is not None:
                 rx = self.beacon_inbox[name]
                 data["AcousticRx"] = tuple(rx)

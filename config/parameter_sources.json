@@ -10,9 +10,9 @@
  },
  "evidence_classes": "(a) manufacturer specification; (b) peer-reviewed field or tank measurement; (c) derivation, with the formula given; (d) calibration in our own simulator; (e) assumption without empirical support.",
  "counts": {
-  "rows": 153,
+  "rows": 154,
   "SUPPORTED": 20,
-  "PARTIALLY_SUPPORTED": 7,
+  "PARTIALLY_SUPPORTED": 8,
   "DERIVED": 50,
   "DESIGN_CHOICE": 62,
   "STRESS_ASSUMPTION": 12,
@@ -2938,6 +2938,28 @@
    "derivation": "-",
    "validity": "enters T_c > T_f + 2 skew + dt only; simulator clocks are shared",
    "citation_keys": [],
+   "code_action": "none"
+  },
+  {
+   "section": "5 Gate protocol (P2)",
+   "parameter": "gate_beacon (fixed pinger above each gate: up_m, rate_hz, sigma_range_m, sigma_ang_deg, dropout)",
+   "module": "holo_fleet/config.py:GateBeaconConfig; holo_fleet/perception/gate_beacon.py; holo_fleet/sim/gate_beacon.py",
+   "value": [
+    1.6,
+    2.0,
+    0.1,
+    1.0,
+    0.05
+   ],
+   "unit": "m, Hz, m, deg, -",
+   "verdict": "PARTIALLY_SUPPORTED",
+   "source": "USBL-class range and bearing accuracy (reis2016usbl); the Marine Race Arena gate beacons (one per gate, fixed, 0.2 deg / 0.2 m / 10 Hz) are less noisy",
+   "doi_or_url": "formal/check_classification.py (CL4, CL5)",
+   "derivation": "fix bound 3 sigma_range + range tan(3 sigma_ang + heading_bound_deg); median of the fixes of the last hold_s s",
+   "validity": "infrastructure received by B0 and B2; no multipath or occlusion modelled (the pinger above the gate)",
+   "citation_keys": [
+    "reis2016usbl"
+   ],
    "code_action": "none"
   }
  ]

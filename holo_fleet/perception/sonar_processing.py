@@ -130,13 +130,16 @@ class EchoClassifier:
             M = np.eye(3) + vx + vx @ vx * (1.0 / (1.0 + c))
         return a, M
 
-    def structure_window(self, sonar_pos: np.ndarray, boresight: np.ndarray) -> Optional[Tuple[float, float]]:
+    def structure_window(self, sonar_pos: np.ndarray, boresight: np.ndarray,
+                         pose_err_m: float = 0.0) -> Optional[Tuple[float, float]]:
+        """Range span of the gate map inside the cone; ``pose_err_m`` widens the cone edge by the residual of the pose (a bar
+        at the edge of the cone seen from the true pose is kept)."""
         if len(self.struct_pts) == 0:
             return None
         d = self.struct_pts - sonar_pos
         r = np.linalg.norm(d, axis=1)
         ang = np.arccos(np.clip((d @ boresight) / np.maximum(r, 1e-9), -1.0, 1.0))
-        widen = np.arctan2(NEAR_FIELD_WIDEN_M, np.maximum(r, 1e-6))
+        widen = np.arctan2(NEAR_FIELD_WIDEN_M + pose_err_m, np.maximum(r, 1e-6))
         sel = (ang <= np.radians(self.model.half_angle_deg) + widen) & (r >= self.model.range_min) & \
               (r <= self.model.range_max)
         if not sel.any():
@@ -160,7 +163,7 @@ class EchoClassifier:
 
     def classify(self, profiles: Dict[str, Optional[np.ndarray]], ages: Dict[str, float], own_pos: np.ndarray,
                  R_world_body: np.ndarray, seabed_z: Optional[float], tau_healthy: float = 0.25,
-                 capture_times: Optional[Dict[str, float]] = None) -> Dict[str, SectorReading]:
+                 capture_times: Optional[Dict[str, float]] = None, pose_err_m: float = 0.0) -> Dict[str, SectorReading]:
         pc = self.cfg.perc
         out = {}
         for s in SECTORS:
@@ -172,7 +175,7 @@ class EchoClassifier:
                 continue
             a, M = self._sector_frame(s, R_world_body)
             spos = own_pos + R_world_body @ MOUNTS[s]
-            rd.structure_window = self.structure_window(spos, a)
+            rd.structure_window = self.structure_window(spos, a, pose_err_m)
             rd.seabed_onset = self.seabed_onset(spos, M, seabed_z)
             if rd.seabed_onset is not None:
                 rd.blind_from = max(self.model.range_min, rd.seabed_onset - pc.seabed_tol_m)
