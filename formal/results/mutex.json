@@ -20,7 +20,7 @@
       "expect": "sat",
       "verdict": "sat",
       "passed": true,
-      "seconds": 0.009,
+      "seconds": 0.011,
       "counterexample": {
         "ad_iB": 38.0,
         "ad_iF": 142.0,
@@ -66,7 +66,7 @@
       "expect": "sat",
       "verdict": "sat",
       "passed": true,
-      "seconds": 0.01,
+      "seconds": 0.012,
       "counterexample": {
         "ad_iB": 90.0,
         "ad_iF": 90.0,
@@ -123,7 +123,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 0.064,
+      "seconds": 0.072,
       "counterexample": null,
       "note": "queue line s = -5.75 m, adjacent bearing deviation <= 20.0 deg; no deadlock (a leader exists) and no double priority"
     },
@@ -134,7 +134,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 0.201,
+      "seconds": 0.446,
       "counterexample": null,
       "note": "queue line s = -6.63 m, adjacent bearing deviation <= 20.0 deg; no deadlock (a leader exists) and no double priority"
     },
@@ -145,7 +145,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 0.43,
+      "seconds": 0.457,
       "counterexample": null,
       "note": "queue line s = -7.99 m, adjacent bearing deviation <= 20.0 deg; no deadlock (a leader exists) and no double priority"
     },
@@ -156,7 +156,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 1.011,
+      "seconds": 1.014,
       "counterexample": null,
       "note": "queue line s = -9.52 m, adjacent bearing deviation <= 20.0 deg; no deadlock (a leader exists) and no double priority"
     },
@@ -167,7 +167,7 @@
       "expect": "sat",
       "verdict": "sat",
       "passed": true,
-      "seconds": 0.171,
+      "seconds": 0.168,
       "counterexample": {
         "ad_q4_0_1_B": 110.03624346792648,
         "ad_q4_0_1_F": 69.96375653207352,
@@ -498,7 +498,7 @@
       "note": "min 6.0 s (observer l=+1.75, dz=+0.00, passer lane -1.75, first at s=1.77, FRONT 6.97 m)"
     },
     {
-      "prop": "M4g declared limit (B0), abreast n=3: beyond the CR some queued drone gets no sonar exit witness of a passing drone for >= 3 captures (measured detection range); the latch then falls back to the t_occ_max timeout",
+      "prop": "M4g declared limit (B0), abreast n=3: beyond the CR some queued drone gets no sonar exit witness of a passing drone for >= 3 captures (measured detection range); the latch then releases only by the timed STALE path",
       "formula": "expect a queued observer with a window below 0.3 s",
       "encoding": "perception/exit_witness.py + mission.check_gate_domain",
       "expect": "violated",
@@ -506,7 +506,7 @@
       "passed": true,
       "seconds": 0.0,
       "counterexample": null,
-      "note": "min 0.2 s (observer l=+3.50, dz=+0.00, passer lane +0.00, first at s=4.1, FRONT 9.92 m); no witness within 10.0 m for the observers at l=+3.50 dz=+0.00, l=-3.50 dz=+0.00.  A regression of the CR s in [-1.05, 0.55]: the queue line moved 0.25 m back (-5.50 -> -5.75 m), so the outer observers see the passer on the axis only near the 10 m detection range (with the former CR: 1.2 s, first at s=3.9, FRONT 9.49 m).  Consequence in B0: the occupancy latch of these observers releases by the t_occ_max timeout, a progress loss, not a safety one (M3 covers the timeout under the healthy-crossing premise).  B2, the official controller: the acoustic exit evidence covers the same queue points (formal/check_acoustic.py B2-M4g n=3, abreast lanes)"
+      "note": "min 0.2 s (observer l=+3.50, dz=+0.00, passer lane +0.00, first at s=4.1, FRONT 9.92 m); no witness within 10.0 m for the observers at l=+3.50 dz=+0.00, l=-3.50 dz=+0.00.  The queue line of 3 is at -5.75 m (bound (c) of GateRule.queue_s), so the outer observers see the passer on the axis only near the 10 m detection range.  Consequence in B0: the occupancy latch of these observers is released by the timed STALE path (formal/check_stale.py), a progress cost, not a safety one.  B2, the official controller: the acoustic exit evidence covers the same queue points (formal/check_acoustic.py B2-M4g n=3, abreast lanes)"
     },
     {
       "prop": "M4g domain boundary, abreast n=4: refused by the planner (queue points beyond queue_lateral_max)",
@@ -564,7 +564,7 @@
       "note": "min 4.2 s (observer l=+2.50, dz=+1.75, passer lane +2.50, first at s=3.29, FRONT 8.16 m)"
     },
     {
-      "prop": "M4g declared limit (B0), template triangle (n=3, gate scenarios): beyond the CR some queued drone gets no sonar exit witness of a passing drone for >= 3 captures (measured detection range); the latch then falls back to the t_occ_max timeout",
+      "prop": "M4g declared limit (B0), template triangle (n=3, gate scenarios): beyond the CR some queued drone gets no sonar exit witness of a passing drone for >= 3 captures (measured detection range); the latch then releases only by the timed STALE path",
       "formula": "expect a queued observer with a window below 0.3 s",
       "encoding": "perception/exit_witness.py + mission.check_gate_domain",
       "expect": "violated",
@@ -572,10 +572,10 @@
       "passed": true,
       "seconds": 0.0,
       "counterexample": null,
-      "note": "min 0.2 s (observer l=+3.50, dz=+0.00, passer lane +0.00, first at s=4.1, FRONT 9.92 m); no witness within 10.0 m for the observers at l=+3.50 dz=+0.00, l=-3.50 dz=+0.00.  A regression of the CR s in [-1.05, 0.55]: the queue line moved 0.25 m back (-5.50 -> -5.75 m), so the outer observers see the passer on the axis only near the 10 m detection range (with the former CR: 1.2 s, first at s=3.9, FRONT 9.49 m).  Consequence in B0: the occupancy latch of these observers releases by the t_occ_max timeout, a progress loss, not a safety one (M3 covers the timeout under the healthy-crossing premise).  B2, the official controller: the acoustic exit evidence covers the same queue points (formal/check_acoustic.py B2-M4g n=3, abreast lanes)"
+      "note": "min 0.2 s (observer l=+3.50, dz=+0.00, passer lane +0.00, first at s=4.1, FRONT 9.92 m); no witness within 10.0 m for the observers at l=+3.50 dz=+0.00, l=-3.50 dz=+0.00.  The queue line of 3 is at -5.75 m (bound (c) of GateRule.queue_s), so the outer observers see the passer on the axis only near the 10 m detection range.  Consequence in B0: the occupancy latch of these observers is released by the timed STALE path (formal/check_stale.py), a progress cost, not a safety one.  B2, the official controller: the acoustic exit evidence covers the same queue points (formal/check_acoustic.py B2-M4g n=3, abreast lanes)"
     },
     {
-      "prop": "M4g declared limit (B0), template line3 (n=3, gate scenarios): beyond the CR some queued drone gets no sonar exit witness of a passing drone for >= 3 captures (measured detection range); the latch then falls back to the t_occ_max timeout",
+      "prop": "M4g declared limit (B0), template line3 (n=3, gate scenarios): beyond the CR some queued drone gets no sonar exit witness of a passing drone for >= 3 captures (measured detection range); the latch then releases only by the timed STALE path",
       "formula": "expect a queued observer with a window below 0.3 s",
       "encoding": "perception/exit_witness.py + mission.check_gate_domain",
       "expect": "violated",
@@ -583,7 +583,7 @@
       "passed": true,
       "seconds": 0.0,
       "counterexample": null,
-      "note": "min 0.2 s (observer l=+3.50, dz=+0.00, passer lane +0.00, first at s=4.1, FRONT 9.92 m); no witness within 10.0 m for the observers at l=+3.50 dz=+0.00, l=-3.50 dz=+0.00.  A regression of the CR s in [-1.05, 0.55]: the queue line moved 0.25 m back (-5.50 -> -5.75 m), so the outer observers see the passer on the axis only near the 10 m detection range (with the former CR: 1.2 s, first at s=3.9, FRONT 9.49 m).  Consequence in B0: the occupancy latch of these observers releases by the t_occ_max timeout, a progress loss, not a safety one (M3 covers the timeout under the healthy-crossing premise).  B2, the official controller: the acoustic exit evidence covers the same queue points (formal/check_acoustic.py B2-M4g n=3, abreast lanes)"
+      "note": "min 0.2 s (observer l=+3.50, dz=+0.00, passer lane +0.00, first at s=4.1, FRONT 9.92 m); no witness within 10.0 m for the observers at l=+3.50 dz=+0.00, l=-3.50 dz=+0.00.  The queue line of 3 is at -5.75 m (bound (c) of GateRule.queue_s), so the outer observers see the passer on the axis only near the 10 m detection range.  Consequence in B0: the occupancy latch of these observers is released by the timed STALE path (formal/check_stale.py), a progress cost, not a safety one.  B2, the official controller: the acoustic exit evidence covers the same queue points (formal/check_acoustic.py B2-M4g n=3, abreast lanes)"
     },
     {
       "prop": "M4g domain boundary, stack 3 + 2 (n=5): refused by the planner (queue points beyond queue_lateral_max)",
@@ -625,7 +625,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 3.525,
+      "seconds": 4.131,
       "counterexample": null,
       "note": "masked s in (-0.4500000000000002, 1.8449999999999998), beyond s > 1.4000000000000004, B needs >= 91 steps to the CR, A crosses at >= 0.12 m/s"
     },
@@ -636,7 +636,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 6.266,
+      "seconds": 6.879,
       "counterexample": null,
       "note": "band from s -2.475, FRONT-only s (-1.2000000000000002, 6.0)"
     },
@@ -647,7 +647,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 2.426,
+      "seconds": 2.592,
       "counterexample": null,
       "note": "masked s in (-0.8799999999999999, 2.2200000000000006), beyond s > 1.67, B needs >= 99 steps to the CR, A crosses at >= 0.12 m/s"
     },
@@ -658,7 +658,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 5.478,
+      "seconds": 5.802,
       "counterexample": null,
       "note": "band from s -3.3449999999999998, FRONT-only s (2.3499999999999996, 6.0)"
     },
@@ -669,7 +669,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 2.373,
+      "seconds": 2.427,
       "counterexample": null,
       "note": "masked s in (-0.0649999999999995, 1.4100000000000001), beyond s > 1.085, B needs >= 99 steps to the CR, A crosses at >= 0.12 m/s"
     },
@@ -680,7 +680,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 5.626,
+      "seconds": 6.135,
       "counterexample": null,
       "note": "band from s -2.015, FRONT-only s (-5.0, 6.0)"
     },
@@ -691,7 +691,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 1.661,
+      "seconds": 1.598,
       "counterexample": null,
       "note": "masked s in (-1.17, 2.4700000000000006), beyond s > 1.8449999999999998, B needs >= 116 steps to the CR, A crosses at >= 0.12 m/s"
     },
@@ -702,7 +702,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 2.963,
+      "seconds": 3.578,
       "counterexample": null,
       "note": "band from s -3.915, FRONT-only s (5.4, 6.0)"
     },
@@ -713,7 +713,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 2.914,
+      "seconds": 3.246,
       "counterexample": null,
       "note": "masked s in (-0.3849999999999998, 1.7199999999999998), beyond s > 1.3200000000000003, B needs >= 116 steps to the CR, A crosses at >= 0.12 m/s"
     },
@@ -724,7 +724,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 2.732,
+      "seconds": 4.254,
       "counterexample": null,
       "note": "band from s -2.33, FRONT-only s (-2.4499999999999997, 6.0)"
     },
@@ -735,7 +735,7 @@
       "expect": "sat",
       "verdict": "sat",
       "passed": true,
-      "seconds": 0.925,
+      "seconds": 1.102,
       "counterexample": {
         "beyond_0": false,
         "beyond_1": false,
@@ -1147,7 +1147,7 @@
       "expect": "sat",
       "verdict": "sat",
       "passed": true,
-      "seconds": 1.045,
+      "seconds": 1.158,
       "counterexample": {
         "beyond_0": false,
         "beyond_1": false,
@@ -1559,7 +1559,7 @@
       "expect": "sat",
       "verdict": "sat",
       "passed": true,
-      "seconds": 1.209,
+      "seconds": 1.272,
       "counterexample": {
         "beyond_0": false,
         "beyond_1": false,
@@ -1965,13 +1965,13 @@
       "note": "n=3, centre queue point"
     },
     {
-      "prop": "M3hs mutation: beyond the 42 s bound a drone stopped behind the bars before the CR is released by the t_occ_max fallback",
+      "prop": "M3hs mutation: beyond the 42 s bound a drone stopped behind the bars before the CR is released by the former t_occ_max FREE fallback",
       "formula": "expect counterexample: the stop before the CR is bounded by the give-up of the code (26 s), not modelled; B2 claims cover it when heard",
       "encoding": "holo_fleet/ha/mutex_rule.py (shared relation) + formal/check_mutex.py",
       "expect": "sat",
       "verdict": "sat",
       "passed": true,
-      "seconds": 4.192,
+      "seconds": 4.613,
       "counterexample": {
         "beyond_0": false,
         "beyond_1": false,
@@ -2377,13 +2377,13 @@
       "note": "n=4, outer queue point l=+5.25 (masked from s = -1.17, before the CR entry -0.8), 54 s BMC (48 s for the n=3 view: from the n=4 line B needs 116 steps to the CR, and 48 s leaves no counterexample there).  Retargeted from the n=3 side view: there the masked region now starts at s = -0.88, inside the CR, so a drone stopped before the CR is always seen"
     },
     {
-      "prop": "M3f mutation: an occupant that stops inside the CR (fault) is released by the t_occ_max fallback",
+      "prop": "M3f mutation: an occupant that stops inside the CR (fault) is released by the former t_occ_max FREE fallback",
       "formula": "expect counterexample: crossing speed >= V_LO is an assumption of M3",
       "encoding": "holo_fleet/ha/mutex_rule.py (shared relation) + formal/check_mutex.py",
       "expect": "sat",
       "verdict": "sat",
       "passed": true,
-      "seconds": 7.832,
+      "seconds": 9.016,
       "counterexample": {
         "beyond_0": false,
         "beyond_1": false,
