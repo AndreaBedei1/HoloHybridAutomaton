@@ -312,8 +312,8 @@ a common reference for the fleet, or recovery in the presence of sustained safet
   A vehicle without a validated gate localization is never admitted.
 - **Admission clearance.** The near-field clearance rests on the P1 detection premise (a vehicle within 3.3 m produces an echo in
   a healthy sector, not masked by a structure window) and on premise Z: a vehicle dwelling in or admitted from the admission
-  zone has its gate-frame estimate within 0.65 m horizontally and 0.2 m vertically of the truth (declared, monitored by the
-  referee as `zone_nav`; v32 at most 0.46 m and 0.13 m). With the committed navigation premise alone (1.0 m per axis) two
+  zone has its gate-frame estimate within 0.65 m horizontally and 0.25 m vertically of the truth (declared, monitored by the
+  referee as `zone_nav`; v32 / v35 at most 0.46 m and 0.19 m). With the committed navigation premise alone (1.0 m per axis) two
   vehicles in the zone can be 4.68 m apart (ST6l, declared limit).
   A sector blind within 3.3 m (an UNKNOWN pseudo-target at its blind range, e.g. a shallow seabed under the DOWN sonar)
   also withholds the clearance; none was observed at G06 (v32). The admission is latched: an admitted vehicle pushed back by

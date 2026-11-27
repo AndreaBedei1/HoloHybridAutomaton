@@ -168,14 +168,14 @@ class GateRule:
     """Premise Z of the timed admission (formal/check_stale.py ST6): the gate-frame estimate of a drone dwelling in, or
     admitted from, the admission zone is within zone_err_h_m of the truth horizontally (and zone_err_v_m vertically).
     Declared, not derived: tighter than nav_err_m, which bounds every committed drone; monitored on every run by the
-    referee (robustness_metrics.premise_monitors "zone_nav"; v32: at most 0.46 m and 0.13 m).  With nav_err_m alone the
+    referee (robustness_metrics.premise_monitors "zone_nav"; v32 / v35: at most 0.46 m and 0.19 m).  With nav_err_m alone the
     zone distance exceeds admit_clear_m (ST6l, a declared limit)."""
-    zone_err_v_m: float = 0.2
+    zone_err_v_m: float = 0.25
     """Premise Z, vertical part (see zone_err_h_m)."""
     admit_clear_m: float = 3.3
     """Near-field clearance of every admission (control/flows.py): a drone is admitted only at a step at which no hull has
     a d_lower below it (any sector).  formal/check_stale.py ST1 / ST6: under premise Z two drones whose estimates are both
-    in the admission zone are at most 3.18 m apart, so with the P1 detection premise (d_lower is a lower bound of the centre
+    in the admission zone are at most 3.25 m apart, so with the P1 detection premise (d_lower is a lower bound of the centre
     distance of every hull, a hull masked by a structure window or unseen being outside it) no drone is admitted while
     another dwells in the zone, and the timed bound needs no near-field sighting.  Replaces the near-field restart of the
     bound (5f9f049), which the drone queued 3.2 m behind the hold renewed at nearly every capture: no B0 lead drone was

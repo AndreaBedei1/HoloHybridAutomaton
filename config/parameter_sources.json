@@ -1757,9 +1757,9 @@
    "value": 3.3,
    "unit": "m",
    "verdict": "DERIVED",
-   "source": "(from the admission-zone geometry and premise Z) two drones whose estimates are both in the admission zone are at most 3.18 m apart",
+   "source": "(from the admission-zone geometry and premise Z) two drones whose estimates are both in the admission zone are at most 3.25 m apart",
    "doi_or_url": "formal/check_stale.py (ST1, ST6)",
-   "derivation": "hypot(hypot(admit_zone_m + admit_zone_fwd_m, 2 admit_zone_lat_m) + 2 zone_err_h_m, 2 (acq_dz_m + admit_zone_dz_m) + 2 zone_err_v_m) = hypot(0.99 + 1.30, 1.8 + 0.4) = 3.18 m < 3.3 m",
+   "derivation": "hypot(hypot(admit_zone_m + admit_zone_fwd_m, 2 admit_zone_lat_m) + 2 zone_err_h_m, 2 (acq_dz_m + admit_zone_dz_m) + 2 zone_err_v_m) = hypot(0.99 + 1.30, 1.8 + 0.5) = 3.25 m < 3.3 m",
    "validity": "premise Z (zone_err_h_m / zone_err_v_m, monitored) and the P1 detection premise (a hull within 3.3 m is a target: not masked by a structure window, seen by a healthy sector); with nav_err_m alone the zone distance is 4.68 m (ST6l, declared limit); replaces near_sight_m = 3.0 m (a near-field restart of the timed bound renewed by the queued follower, v31)",
    "citation_keys": [],
    "code_action": "none"
@@ -1770,11 +1770,11 @@
    "module": "holo_fleet/config.py:GateRule.zone_err_h_m / zone_err_v_m; holo_fleet/referee/robustness_metrics.py (zone_nav)",
    "value": [
     0.65,
-    0.2
+    0.25
    ],
    "unit": "m",
    "verdict": "DESIGN_CHOICE",
-   "source": "(declared, monitored on every run) v32 targeted runs: gate-frame estimate error of drones dwelling in the admission zone at most 0.46 m horizontally and 0.13 m vertically (p99 0.18 / 0.11 m)",
+   "source": "(declared, monitored on every run) v32 targeted runs: gate-frame estimate error of drones dwelling in the admission zone at most 0.46 m horizontally and 0.19 m vertically (v32, v35) (p99 0.18 / 0.11 m)",
    "doi_or_url": "formal/check_stale.py (ST6, ST6l)",
    "derivation": "tighter than nav_err_m (1.0 m per axis), the premise of every committed drone; the referee counts the samples beyond it (cause tag ZONE_NAV_PREMISE_VIOLATED)",
    "validity": "a declared premise of the timed admission (ST1), not derived",
