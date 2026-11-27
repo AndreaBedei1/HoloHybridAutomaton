@@ -146,7 +146,7 @@ P2 argument near the frame.
 
 ### Formal catalogue
 
-On `f583bde` the complete runner had 438 checks, all with the expected outcome. The final commit adds ST3g, ST3o, ST6l and the reported ST7 to `formal/check_stale.py`. That suite passes in full on `a57a9b2`.
+On `f583bde` the complete runner had 438 checks, all with the expected outcome. The final commit adds ST3g, ST3o, ST6l and the reported ST7 to `formal/check_stale.py`. The complete runner on the final controller (`6260ef0`, runtime code of `a57a9b2`) has 441 checks, all with the expected outcome (`formal/results/SUMMARY.json`).
 
 ### Final paired campaign
 
