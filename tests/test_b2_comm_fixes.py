@@ -26,7 +26,7 @@ A = B2.acoustic
 def _obs(plan, s, t, wait=0.0, entry_ok=True, loc_ok=True):
     g = plan.gates[0]
     gate = SimpleNamespace(s=s, l=0.0, dz=0.0, queue_s=plan.queue_s, queue_l=plan.queue_lateral, queue_dz=plan.queue_dz,
-                           loc_ok=loc_ok, entry_ok=entry_ok, admit_wait_s=wait)
+                           loc_ok=loc_ok, entry_ok=entry_ok, admit_wait_s=wait, admit_clear=True)
     return SimpleNamespace(t=t, p=np.asarray(g.from_gate_frame([s, 0.0, 0.0]), float), gate=gate, gate_index=0, targets=[])
 
 
@@ -248,7 +248,8 @@ def test_silence_never_excludes_nor_releases_a_claim_nor_discards_an_echo():
 
 def test_claims_and_silence_only_delay_an_admission():
     """Monotonicity on the deployed class (randomized): whatever drone 1 reported last, its silence afterwards (while drone 2 is heard)
-    never releases its claim and never shortens the admission wait; a received claim always holds the entry."""
+    never releases its claim and never shortens the admission wait (it lengthens it, except after a verified passage of this gate,
+    which excludes the drone whatever its age); a received claim always holds the entry."""
     rng = np.random.default_rng(7)
     for _ in range(40):
         tr, gp = _observer(P, others=(1, 2))
@@ -262,7 +263,10 @@ def test_claims_and_silence_only_delay_an_admission():
         o = gp.update(t_end, P, 0., [], _healthy(True))
         if ph in (pl.GP_COMMITTED, pl.GP_ADMITTED):
             assert ae.claims(t_end) == {1} and not o.entry_ok and o.occ_busy
-        if t_end - 1.0 > A.admit_fresh_s + 0.1:
+        if ph == pl.GP_PASSED:
+            # a verified passage of this gate excludes drone 1 for good (B2C-Ep): its age changes nothing
+            assert o.comm_fresh and o.admit_wait_s == pytest.approx(A.commit_admit_min_s)
+        elif t_end - 1.0 > A.admit_fresh_s + 0.1:
             assert not o.comm_fresh and o.admit_wait_s == pytest.approx(A.commit_admit_min_s + G.t_cross_max)
         _rx(tr, P, t_end + 0.2, 1, [-8.0, 0.0, -5.], phase=pl.GP_COMMITTED)
         o2 = gp.update(t_end + 0.3, P, 0., [], _healthy(True))
@@ -287,3 +291,45 @@ def test_other_regions_never_leave_out_a_drone_for_its_silence():
     _rx_meas(per, p, t - 0.5, 3, rel[3], p + rel[3])
     assert per.acoustic.silent(1, t, B2.acoustic.t_silent_gate_s) and per.acoustic.silent(2, t, B2.acoustic.t_silent_gate_s)
     assert per._other_regions(t) is None
+
+
+def test_a_drone_that_reported_passing_this_gate_does_not_force_the_degraded_wait():
+    """all_fresh: a drone whose latest report is GP_PASSED for this gate is excluded for good (as in status_excluded, formal
+    Pi4): its stale report does not switch the admission to the degraded wait."""
+    tr, gp = _observer(P, others=(1, 2))
+    _rx(tr, P, 1.0, 1, [6.0, 0.0, -5.], phase=pl.GP_PASSED)
+    _rx(tr, P, 1.5, 2, [-5.4, 3.5, -5.], phase=pl.GP_NONE)
+    o = gp.update(1.6, P, 0., [], {})
+    assert o.comm_fresh and o.admit_wait_s == pytest.approx(A.commit_admit_min_s)
+    _rx(tr, P, 1.0 + A.admit_fresh_s + 0.5, 2, [-5.4, 3.5, -5.], phase=pl.GP_NONE)
+    o = gp.update(1.0 + A.admit_fresh_s + 0.6, P, 0., [], {})
+    assert o.comm_fresh and o.admit_wait_s == pytest.approx(A.commit_admit_min_s)
+
+
+def test_a_stale_report_of_another_kind_still_forces_the_degraded_wait():
+    tr, gp = _observer(P, others=(1, 2))
+    _rx(tr, P, 1.0, 1, [-3.0, 0.0, -5.], phase=pl.GP_COMMITTED)
+    _rx(tr, P, 1.0 + A.admit_fresh_s + 0.5, 2, [-5.4, 3.5, -5.], phase=pl.GP_NONE)
+    o = gp.update(1.0 + A.admit_fresh_s + 0.6, P, 0., [], {})
+    assert not o.comm_fresh and o.admit_wait_s == pytest.approx(A.commit_admit_min_s + G.t_cross_max)
+
+
+def test_a_passed_report_of_another_gate_index_is_no_exemption():
+    tr, gp = _observer(P, others=(1,))
+    _rx(tr, P, 1.0, 1, [6.0, 0.0, -5.], gate_idx=1, phase=pl.GP_PASSED)
+    o = gp.update(1.0 + A.admit_fresh_s + 0.6, P, 0., [], {})
+    assert not o.comm_fresh
+
+
+
+def test_b2_with_every_other_drone_fresh_needs_no_timed_bound_and_b0_always_does():
+    """The timed admission bound (formal ST1) is the B0 argument; B2 with fresh reports of every other drone rests on B2C-E1."""
+    tr, gp = _observer(P, others=(1,))
+    _rx(tr, P, 1.0, 1, [-5.4, -3.5, -5.], phase=pl.GP_NONE)
+    assert not gp.update(1.1, P, 0., [], {}).timed_admission
+    assert gp.update(1.0 + A.admit_fresh_s + 0.5, P, 0., [], {}).timed_admission
+    from holo_fleet.perception.gate_perception import GatePerception
+
+    plan = _plan()
+    b0 = GatePerception(plan, DEFAULT).update(1.0, np.asarray(plan.gates[0].from_gate_frame([-2.5, 0., 0.]), float), 0., [], {})
+    assert b0.timed_admission

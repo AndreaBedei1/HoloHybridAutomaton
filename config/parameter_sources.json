@@ -10,13 +10,13 @@
  },
  "evidence_classes": "(a) manufacturer specification; (b) peer-reviewed field or tank measurement; (c) derivation, with the formula given; (d) calibration in our own simulator; (e) assumption without empirical support.",
  "counts": {
-  "rows": 144,
-  "SUPPORTED": 18,
-  "PARTIALLY_SUPPORTED": 6,
-  "DERIVED": 43,
-  "DESIGN_CHOICE": 53,
-  "STRESS_ASSUMPTION": 21,
-  "CONTRADICTED": 3
+  "rows": 155,
+  "SUPPORTED": 20,
+  "PARTIALLY_SUPPORTED": 8,
+  "DERIVED": 50,
+  "DESIGN_CHOICE": 63,
+  "STRESS_ASSUMPTION": 12,
+  "CONTRADICTED": 2
  },
  "model_idealisations": [
   "**Sonar ranges are geometric.** HoloOcean computes the Euclidean distance to the octree leaf; there is no sound-speed range error, no transmission loss, no beam pattern and no refraction. The bin value is the mean of R^2 cos over the leaves, so detection is range-independent up to `RangeMax` and uniform up to the cone edge; the water surface is not in the octree and is invisible (SONAR_PROBE.md (archive)). A sound-speed mismatch of 20 to 50 m/s would add a scale error of 1.3 to 3.4 % (+0.03 to +0.08 m at 2.4 m, +0.16 to +0.40 m at 12 m, DOSITS sensitivities); a hardware deployment needs c to about +-0.5 %.",
@@ -30,12 +30,12 @@
   {
    "id": "O-1",
    "title": "MEDIUM sonar range jitter against the declared `eps_range`.",
-   "text": "`sensor_noise.MEDIUM.sonar_range_jitter_m` = 0.03 m shifts the whole profile by k = round(N(0, 0.03) / 0.05 m) bins (`holo_env._degrade`, no truncation). P(abs(k) >= 2) = 6.2e-3 per side. On the measured hull baselines (+0.044 to +0.054 m far side, -0.006 m near side) a shift of two bins gives +0.144 to +0.154 m and -0.106 m, while `Envelope.eps_range_far` = 0.12 m and `eps_range_near` = 0.08 m; the envelope would need about 0.154 m and 0.106 m. About 1.2 % of MEDIUM captures violate it for hull echoes (0.62 % per side); LOW is consistent (3e-7 per side). The anchor behind the jitter (Ping resolution 0.5 % of range) is a misread and does not support the value. *Code state*: values unchanged; the exceedance is now declared in the `sensor_noise.py` docstring and in the comment of `Envelope.eps_range_far` (MEDIUM is a stress level outside the proved P1 envelope). *Open*: nobody has yet counted how often a guard used such a capture. *Action* (R2 3b): report that count, or truncate the jitter at one bin for the validation levels."
+   "text": "*Closed by the recalibration of 2026-11-26* (see the rows of the parameter). `sensor_noise.MEDIUM.sonar_range_jitter_m` = 0.03 m shifts the whole profile by k = round(N(0, 0.03) / 0.05 m) bins (`holo_env._degrade`, no truncation). P(abs(k) >= 2) = 6.2e-3 per side. On the measured hull baselines (+0.044 to +0.054 m far side, -0.006 m near side) a shift of two bins gives +0.144 to +0.154 m and -0.106 m, while `Envelope.eps_range_far` = 0.12 m and `eps_range_near` = 0.08 m; the envelope would need about 0.154 m and 0.106 m. About 1.2 % of MEDIUM captures violate it for hull echoes (0.62 % per side); LOW is consistent (3e-7 per side). The anchor behind the jitter (Ping resolution 0.5 % of range) is a misread and does not support the value. *Code state*: values unchanged; the exceedance is now declared in the `sensor_noise.py` docstring and in the comment of `Envelope.eps_range_far` (MEDIUM is a stress level outside the proved P1 envelope). *Open*: nobody has yet counted how often a guard used such a capture. *Action* (R2 3b): report that count, or truncate the jitter at one bin for the validation levels."
   },
   {
    "id": "O-2",
    "title": "`structure_tol_far_m` against the MEDIUM `range_sigma`.",
-   "text": "`PerceptionConfig.structure_tol_far_m` = 0.70 m was derived for range_sigma 0.05 m (0.05 ln N, about 0.4 m for N = 10^3 leaves, DI-14). MEDIUM uses 0.10 m: the expected maximum offset over 100 / 300 / 1000 leaves is 0.52 / 0.63 / 0.75 m, and the probability that at least one leaf is pushed beyond 0.70 m is 0.09 / 0.24 / 0.60 per capture (8e-5 to 8e-4 at 0.05 m). A structure segment that passes `sw[1] + 0.70` fails `in_struct` (`sonar_processing.py:185`) and becomes UNKNOWN or DYNAMIC at the structure's own range. Not verified on logs. *Action* (R2 2d): replay logged MEDIUM profiles near gates with the tolerance scaled to range_sigma before attributing unexplained bar echoes to navigation drift."
+   "text": "*Closed by the recalibration of 2026-11-26* (see the rows of the parameter). `PerceptionConfig.structure_tol_far_m` = 0.70 m was derived for range_sigma 0.05 m (0.05 ln N, about 0.4 m for N = 10^3 leaves, DI-14). MEDIUM uses 0.10 m: the expected maximum offset over 100 / 300 / 1000 leaves is 0.52 / 0.63 / 0.75 m, and the probability that at least one leaf is pushed beyond 0.70 m is 0.09 / 0.24 / 0.60 per capture (8e-5 to 8e-4 at 0.05 m). A structure segment that passes `sw[1] + 0.70` fails `in_struct` (`sonar_processing.py:185`) and becomes UNKNOWN or DYNAMIC at the structure's own range. Not verified on logs. *Action* (R2 2d): replay logged MEDIUM profiles near gates with the tolerance scaled to range_sigma before attributing unexplained bar echoes to navigation drift."
   },
   {
    "id": "O-3",
@@ -45,12 +45,12 @@
   {
    "id": "O-4",
    "title": "No DVL scale factor.",
-   "text": "`NoiseProfile` and `holo_env._degrade` contain white noise, dropouts and outages for the DVL but no long-term scale error. The A50 Standard is specified at +-1.01 %, the license-free Nortek at above 1 %, and the Wayfinder measured within +-1.15 %: up to 1 % of the distance travelled along track (0.3 m over a 30 m approach). *Action* (R1 4.3): a per-run, per-drone scale factor uniform in +-1 % for LOW and MEDIUM, or an explicit statement of the omission."
+   "text": "*Closed by the recalibration of 2026-11-26* (see the rows of the parameter). `NoiseProfile` and `holo_env._degrade` contain white noise, dropouts and outages for the DVL but no long-term scale error. The A50 Standard is specified at +-1.01 %, the license-free Nortek at above 1 %, and the Wayfinder measured within +-1.15 %: up to 1 % of the distance travelled along track (0.3 m over a 30 m approach). *Action* (R1 4.3): a per-run, per-drone scale factor uniform in +-1 % for LOW and MEDIUM, or an explicit statement of the omission."
   },
   {
    "id": "O-5",
    "title": "LOW heading bias 0.5 deg is a best case.",
-   "text": "`NoiseProfile.heading_bias_deg` = 0.5 deg (LOW). Calibrated compasses reach 1 to 3 deg (Kinsey); MMC5983MA 1.0 deg typical; MAVBE about 1 deg; 0.55 deg after MAGYC in one experiment. *Action* (R1 6.1): raise LOW to 1.0 deg or label it \"best-case in-situ calibration\"."
+   "text": "*Closed by the recalibration of 2026-11-26* (see the rows of the parameter). `NoiseProfile.heading_bias_deg` = 0.5 deg (LOW). Calibrated compasses reach 1 to 3 deg (Kinsey); MMC5983MA 1.0 deg typical; MAVBE about 1 deg; 0.55 deg after MAGYC in one experiment. *Action* (R1 6.1): raise LOW to 1.0 deg or label it \"best-case in-situ calibration\"."
   },
   {
    "id": "O-6",
@@ -60,12 +60,12 @@
   {
    "id": "O-7",
    "title": "`tau_max` has no margin at MEDIUM.",
-   "text": "`Envelope.tau_max` = 0.25 s; MEDIUM latency 0.05 s, capture period 0.1 s, dropout 1 %. R1: the newest sonar data are up to 0.15 s old just before the next capture and exactly 0.25 s after one dropped capture; R2 reaches the same boundary after two consecutive drops (1e-4 at 1 %) with a different age convention. The test is `age <= tau_max` (`sonar_processing.py:169`), a floating-point boundary. A MEDIUM blackout of 0.15 s exceeds `tau_max` by design (the sector becomes unhealthy, FAILSAFE is exercised); the `sensor_noise.py` docstring now states that MEDIUM exceeds `tau_max` with its outages. *Action* (R1 9.2): state that MEDIUM has no margin, or raise `tau_max` together with the staleness argument. EchoHold (commit 31efb0d) holds the nearest echo of every healthy sector for `tau_max`."
+   "text": "*Still open*: LOW and MEDIUM data age is quantised to 0.1 s by the 10 Hz captures, so tau_max 0.25 s covers one dropped capture and not two (two consecutive drops make the sector unhealthy: FAILSAFE). `Envelope.tau_max` = 0.25 s; MEDIUM latency 0.05 s, capture period 0.1 s, dropout 1 %. R1: the newest sonar data are up to 0.15 s old just before the next capture and exactly 0.25 s after one dropped capture; R2 reaches the same boundary after two consecutive drops (1e-4 at 1 %) with a different age convention. The test is `age <= tau_max` (`sonar_processing.py:169`), a floating-point boundary. A MEDIUM blackout of 0.15 s exceeds `tau_max` by design (the sector becomes unhealthy, FAILSAFE is exercised); the `sensor_noise.py` docstring now states that MEDIUM exceeds `tau_max` with its outages. *Action* (R1 9.2): state that MEDIUM has no margin, or raise `tau_max` together with the staleness argument. EchoHold (commit 31efb0d) holds the nearest echo of every healthy sector for `tau_max`."
   },
   {
    "id": "O-8",
    "title": "`heading_err_deg` = 3.0 deg covers the MEDIUM compass bias but less than one standard deviation of its noise.",
-   "text": "`AcousticConfig.heading_err_deg` is \"compass bias plus noise\" for a MEDIUM bias of 2.0 deg, leaving 1.0 deg for noise. The heading used for a fix is the raw per-sample compass value (`nav.py`), whose MEDIUM noise is 57.3 x 0.02 = 1.15 deg (1 sigma, R1 6.2). With the envelope's own convention (k_sigma = 3) the bound would be 2.0 + 3 x 1.15 = 5.4 deg. Derived here from R1 and the code; not checked on logs. The envelope sums worst cases of independent terms, so the combined exceedance may still be small."
+   "text": "*Closed by the recalibration of 2026-11-26* (see the rows of the parameter). `AcousticConfig.heading_err_deg` is \"compass bias plus noise\" for a MEDIUM bias of 2.0 deg, leaving 1.0 deg for noise. The heading used for a fix is the raw per-sample compass value (`nav.py`), whose MEDIUM noise is 57.3 x 0.02 = 1.15 deg (1 sigma, R1 6.2). With the envelope's own convention (k_sigma = 3) the bound would be 2.0 + 3 x 1.15 = 5.4 deg. Derived here from R1 and the code; not checked on logs. The envelope sums worst cases of independent terms, so the combined exceedance may still be small."
   },
   {
    "id": "O-11",
@@ -399,14 +399,14 @@
    "value": {
     "CLEAN": 0.01,
     "LOW": 0.01,
-    "MEDIUM": 0.015
+    "MEDIUM": 0.0125
    },
    "unit": "m/s per beam",
    "verdict": "SUPPORTED",
    "source": "(a) Nortek DVL1000: single-ping std 0.8 cm/s at 1.5 m/s; Wayfinder on a BlueROV2 Heavy: 10 mm/s at 1.5 m/s (vendor reprint); 600 kHz Explorer 0.01 m/s (Spielvogel Table VI); A50 publishes no single-ping noise (R1 4.2). Conservative",
    "doi_or_url": "results/calibration/sensor_noise_probe.json; https://www.nortekgroup.com/products/dvl-1000-300m/pdf; https://teledynemarine.com/en-us/products/SiteAssets/RD%20Instruments/ST_Wayfinder_Testing_Feb_%202021.pdf; 10.55417/fr.2022033; https://www.waterlinked.com/datasheets/dvl-a50; https://byu-holoocean.github.io/holoocean-docs/v2.3.0/holoocean/sensors.html",
    "derivation": "HoloOcean applies VelSigma per beam; body-frame horizontal std = sigma_b / (sqrt(2) sin 22.5 deg) = 1.85 sigma_b, vertical 0.54 sigma_b: LOW 1.85 cm/s, MEDIUM 2.8 cm/s (probe: 0.0184, 0.0188, 0.0054 m/s at 0.01). White noise adds 0.055 m (LOW) and 0.083 m (MEDIUM) to a 90 s dead-reckoning run",
-   "validity": "Vendor values are at 1.5 m/s; the vehicles fly at 0.55 m/s or less near the seabed, so the comparison is conservative. Nortek and Wayfinder do not state per-beam or per-component",
+   "validity": "Recalibrated on 2026-11-26 to realistic nominal values (sensor datasheets and literature; the former LOW/MEDIUM values were stress settings without a source). Body-frame horizontal std 1.85 x per beam = 0.0185 / 0.023 m/s, still about 2x the vendor single-ping figures quoted at 1.5 m/s (the vehicles fly at <= 0.55 m/s). Against NavBound k_rw 0.0285: tail 7.7e-7 / 1.2e-4 per sample.",
    "citation_keys": [
     "nortek_nd_dvl1000",
     "meachum2021wayfinder",
@@ -420,19 +420,24 @@
    "section": "2 Navigation sensors",
    "parameter": "DVL long-term (scale-factor) error",
    "module": "holo_fleet/sim/holo_env.py:_degrade (no DVL scale factor)",
-   "value": "not modelled",
+   "value": {
+    "CLEAN": 0.0,
+    "LOW": "uniform +-0.5 %",
+    "MEDIUM": "uniform +-1.0 %",
+    "HIGH": "uniform +-2 %"
+   },
    "unit": "-",
-   "verdict": "DESIGN_CHOICE",
-   "source": "omission (R1 4.3): A50 Standard long-term accuracy +-1.01 %; Nortek license-free above 1 %; Wayfinder scale factor within +-1.15 %. The model has white noise only",
+   "verdict": "SUPPORTED",
+   "source": "A50 long-term accuracy +-1.01 % (Standard); now simulated: sensor_noise.NoiseProfile.dvl_scale_max, one factor per run and drone (holo_env._degrade scales the DVL velocity)",
    "doi_or_url": "https://www.waterlinked.com/datasheets/dvl-a50; https://www.nortekgroup.com/products/dvl-1000-300m/pdf; https://teledynemarine.com/en-us/products/SiteAssets/RD%20Instruments/ST_Wayfinder_Testing_Feb_%202021.pdf",
    "derivation": "an along-track error of up to 1 % of the distance travelled (0.3 m over a 30 m approach)",
-   "validity": "Open issue O-4. R1 recommends a per-run, per-drone scale factor uniform in +-1 % for LOW and MEDIUM, or an explicit statement of the omission",
+   "validity": "Recalibrated on 2026-11-26 to realistic nominal values (sensor datasheets and literature; the former LOW/MEDIUM values were stress settings without a source). NavBound k_lin carries 1 % (the datasheet's 1.01 % is a hair above it: within the HIGH stress only).",
    "citation_keys": [
     "waterlinked_nd_dvla50_datasheet",
     "nortek_nd_dvl1000",
     "meachum2021wayfinder"
    ],
-   "code_action": "none; open issue O-4"
+   "code_action": "simulated since the recalibration (open issue O-4 closed)"
   },
   {
    "section": "2 Navigation sensors",
@@ -441,14 +446,14 @@
    "value": {
     "CLEAN": 0.02,
     "LOW": 0.02,
-    "MEDIUM": 0.05
+    "MEDIUM": 0.03
    },
    "unit": "m per beam",
-   "verdict": "STRESS_ASSUMPTION",
+   "verdict": "DESIGN_CHOICE",
    "source": "neither the A50 datasheet nor the docs overview gives an altitude or range accuracy (R1 4.4)",
    "doi_or_url": "https://www.waterlinked.com/datasheets/dvl-a50; https://docs.waterlinked.com/dvl/overview/",
    "derivation": "small next to seabed_tol_m = 0.70 m",
-   "validity": "Label as an assumption",
+   "validity": "Recalibrated on 2026-11-26 to realistic nominal values (sensor datasheets and literature; the former LOW/MEDIUM values were stress settings without a source). The A50 states no altitude accuracy; seabed_tol 0.70 m is >= 23 sigma away.",
    "citation_keys": [
     "waterlinked_nd_dvla50_datasheet",
     "waterlinked_nd_docs_overview"
@@ -462,17 +467,17 @@
    "value": {
     "dvl_dropout": {
      "CLEAN": 0.0,
-     "LOW": 0.01,
-     "MEDIUM": 0.03
+     "LOW": 0.005,
+     "MEDIUM": 0.01
     },
     "outage": "MEDIUM only: 1.0 s, mean period 60 s"
    },
    "unit": "per sample; s",
-   "verdict": "STRESS_ASSUMPTION",
+   "verdict": "DESIGN_CHOICE",
    "source": "causes documented qualitatively (altitude, bubbles from thrusters, blocked beams, lock cycling every 10 s in tanks); no frequency or duration statistic for small vehicles was found (R1 4.5)",
    "doi_or_url": "https://docs.waterlinked.com/dvl/faq/; https://docs.waterlinked.com/dvl/dvl-json-protocol/; 10.3390/s17020415; arXiv:2404.13742; 10.1016/j.oceaneng.2023.114034",
    "derivation": "partial-beam windows used in the literature are 5-30 s (Cohen and Klein, their test design), much longer than the 1 s outage",
-   "validity": "Keep as stress setting; a single-factor screen with 5-30 s outages would be informative",
+   "validity": "Recalibrated on 2026-11-26 to realistic nominal values (sensor datasheets and literature; the former LOW/MEDIUM values were stress settings without a source). Causes of bottom-lock loss are documented (altitude, bottom type, thruster wash, structures), no rate or duration statistic for small vehicles near structures exists: a design choice. Every drop pushes the DVL age above DVL_STALE_S (the NavBound outage branch, bounded).",
    "citation_keys": [
     "waterlinked_nd_docs_faq",
     "waterlinked_nd_docs_json",
@@ -489,14 +494,14 @@
    "value": {
     "CLEAN": 0.01,
     "LOW": 0.01,
-    "MEDIUM": 0.02
+    "MEDIUM": 0.015
    },
    "unit": "m/s^2",
    "verdict": "SUPPORTED",
    "source": "(a) ICM-20602 accelerometer noise 100 ug/sqrt(Hz) (TDK 2019, InvenSense 2015); 3DM-GX5-25 0.0075 m/s^2 at 20 Hz (Spielvogel Table VI). At or above the datasheet (R1 5.2)",
    "doi_or_url": "https://www.cdiweb.com/datasheets/invensense/ICM-20602-ProductDetailed.pdf; https://atta.szlcsc.com/upload/public/pdf/source/20180420/C97633_C2464F3F280F046E174148B8C5EC66F7.pdf; 10.55417/fr.2022033; https://bluerobotics.com/store/comm-control-power/control/navigator/",
    "derivation": "sigma = 9.81e-4 sqrt(B) m/s^2: 3.8e-3 at 15 Hz bandwidth and 9.8e-3 at 100 Hz; ours is 1.0-2.6x (LOW) and 2.0-5.3x (MEDIUM)",
-   "validity": "Used for roll and pitch only. The output filter bandwidth of the real Navigator/ArduSub pipeline is not verified",
+   "validity": "Recalibrated on 2026-11-26 to realistic nominal values (sensor datasheets and literature; the former LOW/MEDIUM values were stress settings without a source). Chip noise at 15-100 Hz bandwidth 3.8e-3 to 9.8e-3 m/s^2 (ICM-20602, VN-100); the margin covers vibration. No envelope uses it.",
    "citation_keys": [
     "tdk2019icm20602",
     "invensense2015icm20602pb",
@@ -512,14 +517,14 @@
    "value": {
     "CLEAN": 0.005,
     "LOW": 0.005,
-    "MEDIUM": 0.01
+    "MEDIUM": 0.0075
    },
    "unit": "rad/s",
    "verdict": "SUPPORTED",
    "source": "(a) ICM-20602 gyro noise 0.004 dps/sqrt(Hz); 3DM-GX5-25 0.00025 rad/s. Very conservative (R1 5.3)",
    "doi_or_url": "https://www.cdiweb.com/datasheets/invensense/ICM-20602-ProductDetailed.pdf; https://atta.szlcsc.com/upload/public/pdf/source/20180420/C97633_C2464F3F280F046E174148B8C5EC66F7.pdf; 10.55417/fr.2022033",
    "derivation": "0.004 dps/sqrt(Hz) = 6.98e-5 rad/s/sqrt(Hz): 2.7e-4 rad/s at 15 Hz, 7.0e-4 at 100 Hz; ours is 7-18x (LOW) and 14-37x (MEDIUM)",
-   "validity": "Used for yaw-rate damping only. The excess may represent unquantified thruster vibration: label as an upper bound",
+   "validity": "Recalibrated on 2026-11-26 to realistic nominal values (sensor datasheets and literature; the former LOW/MEDIUM values were stress settings without a source). Chip noise 2.7e-4 to 7e-4 rad/s at 15-100 Hz; yaw-rate damping and attitude only.",
    "citation_keys": [
     "tdk2019icm20602",
     "invensense2015icm20602pb",
@@ -534,21 +539,21 @@
    "value": {
     "accel": {
      "CLEAN": 0.0,
-     "LOW": 0.0002,
-     "MEDIUM": 0.0005
+     "LOW": 3e-06,
+     "MEDIUM": 3e-05
     },
     "gyro": {
      "CLEAN": 0.0,
-     "LOW": 0.0001,
-     "MEDIUM": 0.0003
+     "LOW": 2e-07,
+     "MEDIUM": 7e-07
     }
    },
    "unit": "m/s^2; rad/s",
-   "verdict": "STRESS_ASSUMPTION",
+   "verdict": "DERIVED",
    "source": "no in-run stability specification was opened; the ICM-20602 datasheet DS-000176 (ZRO tolerance) could not be retrieved (R1 5.4). Order of magnitude of an uncalibrated MEMS offset (Kinsey: 1-5 deg/s); far above a calibrated AHRS (A50 yaw drift 0.1-0.3 deg per minute)",
    "doi_or_url": "https://robots.engin.umich.edu/publications/jkinsey-2006a.pdf; https://docs.waterlinked.com/dvl/dead-reckoning/; 10.1109/TIM.2007.908635; https://byu-holoocean.github.io/holoocean-docs/v2.3.0/holoocean/sensors.html",
-   "derivation": "bias(T) = sigma_step sqrt(30 T). After 90 s: gyro bias 0.30 deg/s (LOW), 0.89 deg/s (MEDIUM); accel bias 0.010 / 0.026 m/s^2; equivalent tilt error 0.06 / 0.15 deg",
-   "validity": "Sample-rate dependent (sigma_step x sqrt(f)). Limited effect: gyro and accelerometer do not enter the horizontal position estimate",
+   "derivation": "random-walk step per 30 Hz sample matched to an in-run stability of 0.04-0.4 mg and 5-20 deg/h after 600 s (VN-100 class); the former values reached 2.7-6.8 mg and 0.77-2.3 deg/s after 10 min (100-800x MEMS)",
+   "validity": "Recalibrated on 2026-11-26 to realistic nominal values (sensor datasheets and literature; the former LOW/MEDIUM values were stress settings without a source).",
    "citation_keys": [
     "kinsey2006survey",
     "waterlinked_nd_docs_deadreckoning",
@@ -561,13 +566,13 @@
    "section": "2 Navigation sensors",
    "parameter": "heading_bias_deg, LOW (constant compass bias, sign from the seed)",
    "module": "holo_fleet/sim/sensor_noise.py:NoiseProfile.heading_bias_deg",
-   "value": 0.5,
+   "value": 1.0,
    "unit": "deg",
-   "verdict": "PARTIALLY_SUPPORTED",
+   "verdict": "SUPPORTED",
    "source": "(b) best case only: calibrated compasses reach 1-3 deg (Kinsey); MMC5983MA 1.0 deg typical; MAVBE about 1 deg; 0.55 deg after MAGYC in one experiment (R1 6.1)",
    "doi_or_url": "https://robots.engin.umich.edu/publications/jkinsey-2006a.pdf; https://mpython-docs-en.readthedocs.io/en/latest/_downloads/904b626be755c6b67b1cbb23966aeee9/MMC5983MA.pdf; 10.55417/fr.2022033; 10.1109/JOE.2024.3523701",
    "derivation": "a constant bias b gives a cross-track dead-reckoning error D sin b = 0.87 % of the distance travelled",
-   "validity": "Keep only as best-case in-situ calibration. Open issue O-5 (R1: raise to 1.0 deg or label as best case)",
+   "validity": "Recalibrated on 2026-11-26 to realistic nominal values (sensor datasheets and literature; the former LOW/MEDIUM values were stress settings without a source). A calibrated compass: 1-3 deg (Kinsey 2006), MMC5983MA +-1 deg typical, VN-100 2 deg RMS; 0.5 deg was a best case (open issue O-5 closed).",
    "citation_keys": [
     "kinsey2006survey",
     "memsic2019mmc5983ma",
@@ -601,15 +606,15 @@
    "module": "holo_fleet/sim/sensor_noise.py:NoiseProfile.mag_sigma",
    "value": {
     "CLEAN": 0.005,
-    "LOW": 0.01,
-    "MEDIUM": 0.02
+    "LOW": 0.005,
+    "MEDIUM": 0.005
    },
    "unit": "unit field",
    "verdict": "SUPPORTED",
    "source": "(a) MMC5983MA total RMS noise 0.4-1.2 mG; 3DM-GX5-25 0.002 gauss; VN100 1 mG. Conservative for the chip (R1 6.2)",
    "doi_or_url": "results/calibration/sensor_noise_probe.json; https://mpython-docs-en.readthedocs.io/en/latest/_downloads/904b626be755c6b67b1cbb23966aeee9/MMC5983MA.pdf; 10.55417/fr.2022033; 10.1109/JOE.2024.3523701",
    "derivation": "heading std is about 57.3 sigma deg: 0.29 / 0.57 / 1.15 deg per sample (probe: 0.29, 0.56, 1.16)",
-   "validity": "Real heading error is dominated by calibration residuals, not chip noise. Heading is atan2(m_y, m_x) of the raw sample (nav.py, no filter)",
+   "validity": "Recalibrated on 2026-11-26 to realistic nominal values (sensor datasheets and literature; the former LOW/MEDIUM values were stress settings without a source). Equals the MMC5983MA chip noise at its widest bandwidth (1.2 mG over about 0.23 G, about 0.3 deg per sample); white noise is a chip property, conditions change the bias. With the bias, P(heading error > 3 deg) 1.5e-12 (LOW) / 2.4e-4 (MEDIUM) per sample (open issue O-8: was 0.19).",
    "citation_keys": [
     "memsic2019mmc5983ma",
     "spielvogel2022mavbe",
@@ -668,7 +673,7 @@
    "source": "weak evidence, two sources (R1 9.1): von Benzon Table 1 gives a DVL delay of 0.1 s; the Water Linked docs example gives time_of_transmission minus time_of_validity = 0.189 s (one example, not a statistic)",
    "doi_or_url": "10.3390/jmse10121898; https://docs.waterlinked.com/dvl/dvl-json-protocol/",
    "derivation": "v tau at 0.30 m/s: 0.03 m (0.1 s), 0.057 m (0.19 s); adds phase lag to the DVL velocity loop",
-   "validity": "Open issue O-3: the code applies one latency to every stream (no separate DVL age). R1 recommends 0.1-0.2 s for the DVL in MEDIUM",
+   "validity": "Recalibrated on 2026-11-26 to realistic nominal values (sensor datasheets and literature; the former LOW/MEDIUM values were stress settings without a source). Unchanged: a realistic DVL age (0.10-0.19 s) is incompatible with DVL_STALE_S 0.15 s and is not simulated until DVL_STALE_S and NavBound's latency term are re-derived (declared limit).",
    "citation_keys": [
     "vonbenzon2022benchmark",
     "waterlinked_nd_docs_json"
@@ -742,7 +747,7 @@
    "source": "pure stress level beyond the declared operating domain (out-of-envelope checks); not a validation level (sensor_noise.py)",
    "doi_or_url": "-",
    "derivation": "none",
-   "validity": "No provenance is claimed for HIGH values; they are excluded from VALIDATION_LEVELS",
+   "validity": "Stress only. latency_s 0.12 -> 0.10 s (3 ticks of 30 Hz): 0.12 s was quantised to 4 ticks and left the DVL stale at every step in 2 of 3 tick phases.",
    "citation_keys": [],
    "code_action": "none"
   },
@@ -909,15 +914,15 @@
    "parameter": "sonar_add_sigma, LOW and MEDIUM",
    "module": "holo_fleet/sim/sensor_noise.py:NoiseProfile.sonar_add_sigma",
    "value": {
-    "LOW": 0.06,
-    "MEDIUM": 0.075
+    "LOW": 0.05,
+    "MEDIUM": 0.06
    },
    "unit": "intensity",
-   "verdict": "STRESS_ASSUMPTION",
+   "verdict": "DESIGN_CHOICE",
    "source": "no measured false-alarm rate for small-vehicle sonars was found (R2 2b). The exact Rayleigh formula is optimistic against shallow-water field data, which show heavier tails (Lyons and Abraham; Gallaudet and de Moustier)",
    "doi_or_url": "10.1121/1.428034; 10.1121/1.1588656; 10.1002/j.1538-7305.1944.tb00874.x",
    "derivation": "per capture and sonar (234 bins): 8.7e-4 (LOW), 7.6e-2 (MEDIUM, 4.5 false alarms per drone per second); confirmed 2-of-3 ghosts per drone per second 8.2e-6 (LOW), 0.064 (MEDIUM, one every 16 s)",
-   "validity": "Report as T/sigma (5 and 4). The archived anchor (transponder-ranging outlier rates) is a different device and does not support the value. A K or Rayleigh-mixture wrapper would be the literature-backed heavy-tailed option (not implemented)",
+   "validity": "Recalibrated on 2026-11-26 to realistic nominal values (sensor datasheets and literature; the former LOW/MEDIUM values were stress settings without a source). No measured false-alarm rate exists for the sounder; Rayleigh tail: 3.6e-6 / 8.7e-4 false alarms per capture (the former MEDIUM gave 7.6e-2). False echoes only lower the distance bound (conservative for P1).",
    "citation_keys": [
     "Lyons1999seafloor",
     "Gallaudet2003fluctuations",
@@ -931,15 +936,15 @@
    "module": "holo_fleet/sim/sensor_noise.py:NoiseProfile.sonar_mult_sigma",
    "value": {
     "CLEAN": 0.1,
-    "LOW": 0.15,
-    "MEDIUM": 0.25
+    "LOW": 0.1,
+    "MEDIUM": 0.15
    },
    "unit": "-",
-   "verdict": "STRESS_ASSUMPTION",
+   "verdict": "DESIGN_CHOICE",
    "source": "convention of HoloOcean (ICRA 2022 Eq. 2; IROS 2022 Eq. 12); no value is given for a single-beam echosounder. Effect measured in the probe: peak p05-p95 widens from 0.90-1.20 (0.10) to 0.93-1.52 (0.30); MEDIUM 0.25 was not probed (R2 2c)",
    "doi_or_url": "results/calibration/sensor_noise_probe.json; 10.1109/ICRA46639.2022.9812353; 10.1109/IROS47612.2022.9981119",
    "derivation": "fade gain 0.2 assumes peaks of at most 1.5 (0.2 x 1.5 = 0.30 = threshold); at MEDIUM the upper tail can approach that",
-   "validity": "Minor: a few faded captures may still contain the echo",
+   "validity": "Recalibrated on 2026-11-26 to realistic nominal values (sensor datasheets and literature; the former LOW/MEDIUM values were stress settings without a source). Physical bracket 0 (specular) to 0.52 (Rayleigh fading); MEDIUM kept where eps_range was measured (the former 0.25 was never probed).",
    "citation_keys": [
     "Potokar2022icra",
     "Potokar2022iros"
@@ -953,14 +958,14 @@
    "value": {
     "CLEAN": 0.05,
     "LOW": 0.05,
-    "MEDIUM": 0.1
+    "MEDIUM": 0.05
    },
    "unit": "m",
-   "verdict": "STRESS_ASSUMPTION",
+   "verdict": "PARTIALLY_SUPPORTED",
    "source": "HoloOcean model (IROS 2022 Sec. III-D: exponential range diffusion as an approximation of a K-distribution model); no value is given for any device (R2 2d)",
    "doi_or_url": "results/calibration/sensor_noise_probe.json; 10.1109/IROS47612.2022.9981119",
    "derivation": "in code the value is the mean (= std) of a one-sided exponential, one draw per leaf; the leading edge is the minimum over many leaves and barely moves (p95 +0.044 m, max +0.094 m up to 0.40) while the far tail grows like sigma ln N",
-   "validity": "Not a standard deviation of the echo edge. MEDIUM 0.10 m versus structure_tol_far_m 0.70: open issue O-2",
+   "validity": "Recalibrated on 2026-11-26 to realistic nominal values (sensor datasheets and literature; the former LOW/MEDIUM values were stress settings without a source). About one echo-sounder sample (6 cm at a 12 m scan); resolves open issue O-2: P(a leaf beyond the 0.70 m structure tolerance) 8e-5 to 8e-4 per capture.",
    "citation_keys": [
     "Potokar2022iros"
    ],
@@ -970,13 +975,13 @@
    "section": "3 Sonar and HoloOcean",
    "parameter": "sonar_range_jitter_m, LOW (whole-profile shift, quantised to 5 cm bins)",
    "module": "holo_fleet/sim/sensor_noise.py:NoiseProfile.sonar_range_jitter_m",
-   "value": 0.015,
+   "value": 0.01,
    "unit": "m",
-   "verdict": "STRESS_ASSUMPTION",
+   "verdict": "DERIVED",
    "source": "R2 3b: the archived anchor (Ping resolution 0.5 % of range) is a misread, because the Ping page labels the resolution relative to the waterfall (scan) range and a quantisation step is not a standard deviation; the physical motivation in sensor_noise.py (timing or sound-speed fluctuation) does not fit a range-independent shift",
    "doi_or_url": "https://bluerobotics.com/store/sonars/echosounders/ping-sonar-r2-rp/; https://bluerobotics.com/?p=123892",
-   "derivation": "shift k = round(N(0, sigma) / 0.05 m) bins (holo_env._degrade); P(k >= 1) = 4.8 %, P(k >= 2) = 2.9e-7 per side",
-   "validity": "Consistent with eps_range for hull echoes at LOW (3e-7 per side)",
+   "derivation": "whole-profile shift k = round(N(0, sigma) / 0.05 m) truncated at |k| <= 1 (sonar_jitter_max_bins): the 200-sample grid of the sounder bounds the leading-edge phase to +-3 cm",
+   "validity": "Recalibrated on 2026-11-26 to realistic nominal values (sensor datasheets and literature; the former LOW/MEDIUM values were stress settings without a source). With |k| <= 1: +0.104 <= eps_range_far 0.12 and -0.056 >= -eps_range_near 0.08 on the measured hull baselines.",
    "citation_keys": [
     "BlueRoboticsPing",
     "BlueRoboticsPingGuide"
@@ -987,17 +992,38 @@
    "section": "3 Sonar and HoloOcean",
    "parameter": "sonar_range_jitter_m, MEDIUM",
    "module": "holo_fleet/sim/sensor_noise.py:NoiseProfile.sonar_range_jitter_m",
-   "value": 0.03,
+   "value": 0.015,
    "unit": "m",
-   "verdict": "CONTRADICTED",
+   "verdict": "DERIVED",
    "source": "R2 3b: contradicts the declared Envelope. P(k >= 1) = 20.2 %, P(k >= 2) = 6.2e-3 per side; with the measured hull baselines (+0.044 / +0.054 m far side, -0.006 m near side) k = +2 gives +0.144 to +0.154 m against eps_range_far = 0.12 m and k = -2 gives -0.106 m against -0.08 m",
    "doi_or_url": "https://bluerobotics.com/store/sonars/echosounders/ping-sonar-r2-rp/",
-   "derivation": "about 1.2 % of MEDIUM captures (0.62 % per side) violate eps_range for hull echoes",
-   "validity": "Open issue O-1. Values unchanged (checked): holo_env._degrade shifts by any k, no truncation at +-1 bin; Envelope.eps_range unchanged. The exceedance is now declared in the sensor_noise.py docstring and in the eps_range_far comment (stress level, outside the proved P1 envelope)",
+   "derivation": "as LOW, sigma 0.015 m, truncated at |k| <= 1",
+   "validity": "Recalibrated on 2026-11-26 to realistic nominal values (sensor datasheets and literature; the former LOW/MEDIUM values were stress settings without a source). The former 0.03 m untruncated gave 2-bin shifts on 1.24 % of echoes (open issue O-1 closed).",
    "citation_keys": [
     "BlueRoboticsPing"
    ],
-   "code_action": "changed: exceedance declared in code comments; values unchanged; open issue O-1"
+   "code_action": "truncation implemented (NoiseProfile.sonar_jitter_max_bins = 1 for LOW and MEDIUM)"
+  },
+  {
+   "section": "2 Navigation sensors",
+   "parameter": "sonar_scale_max (residual sound-speed range scale of each drone's sonars, per run)",
+   "module": "holo_fleet/sim/sensor_noise.py:NoiseProfile.sonar_scale_max; holo_fleet/sim/holo_env.py:_degrade",
+   "value": {
+    "CLEAN": 0.0,
+    "LOW": 0.001,
+    "MEDIUM": 0.001,
+    "HIGH": 0.005
+   },
+   "unit": "-",
+   "verdict": "DERIVED",
+   "source": "sound speed set from a temperature sensor (+-0.08 C, 0.02 %) and the known salinity (0.08-0.16 %): about 0.1-0.2 %; an uncompensated 1500 m/s default would give up to 3.45 % (Mackenzie 1981)",
+   "doi_or_url": "10.1121/1.386920",
+   "derivation": "uniform in +-0.1 %; with |k| <= 1 the range envelope eps_range holds for |scale| <= 0.67 % at 2.4 m, 0.32 % at 5 m and 0.13 % at 12 m",
+   "validity": "Premise of the proofs: the sounder's sound speed is compensated (residual <= 0.13 %). A larger residual (the 0.5 % of a Bar30-only temperature) exceeds eps_range beyond about 3.5 m and would need a range-dependent tolerance: a declared limit, not simulated at the validation levels.",
+   "citation_keys": [
+    "mackenzie1981nine"
+   ],
+   "code_action": "simulated since the recalibration"
   },
   {
    "section": "3 Sonar and HoloOcean",
@@ -1005,15 +1031,15 @@
    "module": "holo_fleet/sim/sensor_noise.py:NoiseProfile.sonar_dropout",
    "value": {
     "CLEAN": 0.0,
-    "LOW": 0.005,
-    "MEDIUM": 0.01
+    "LOW": 0.001,
+    "MEDIUM": 0.005
    },
    "unit": "probability",
-   "verdict": "STRESS_ASSUMPTION",
+   "verdict": "DESIGN_CHOICE",
    "source": "no source found for small-vehicle sonar capture loss (R2 3c)",
    "doi_or_url": "-",
    "derivation": "one lost capture gives age 0.1 s + latency; two consecutive losses (1e-4 at 1 %) reach 0.25 s with the MEDIUM latency 0.05 s, the boundary of age <= tau_max (R2 convention, see O-7)",
-   "validity": "Stress setting",
+   "validity": "Recalibrated on 2026-11-26 to realistic nominal values (sensor datasheets and literature; the former LOW/MEDIUM values were stress settings without a source). Serial capture loss, no source. Two consecutive drops exceed tau_max (sector unhealthy, FAILSAFE): 1e-6 / 2.5e-5 per capture.",
    "citation_keys": [],
    "code_action": "none"
   },
@@ -1024,17 +1050,17 @@
    "value": {
     "sonar_fade_prob": {
      "CLEAN": 0.0,
-     "LOW": 0.01,
-     "MEDIUM": 0.03
+     "LOW": 0.005,
+     "MEDIUM": 0.01
     },
     "sonar_fade_gain": 0.2
    },
    "unit": "probability; -",
-   "verdict": "STRESS_ASSUMPTION",
+   "verdict": "DESIGN_CHOICE",
    "source": "the archived anchor (Kaeli et al. 2019, 10 % no-return in a simulation) concerns transponder ranging, not echo detection, and its numbers were not re-verified (R2 3d). Real misses depend on range, target strength and SNR, which HoloOcean does not model",
    "doi_or_url": "10.23919/OCEANS40490.2019.8962765; 10.48550/arXiv.2309.05785",
    "derivation": "the 2-of-3 confirmation loses a target when two of the last three captures fade: 3.0e-4 (1 %), 2.7e-3 (3 %)",
-   "validity": "The sector stays healthy and its silence would be trusted: the hazardous case. Code action: EchoHold (commit 31efb0d, perception/targets.py) holds the nearest obstacle echo of every healthy sector for tau_max, so a single missed capture becomes a stale reading; consecutive misses longer than tau_max stay outside the declared envelope",
+   "validity": "Recalibrated on 2026-11-26 to realistic nominal values (sensor datasheets and literature; the former LOW/MEDIUM values were stress settings without a source). No probability-of-detection data at <= 12 m; two consecutive misses (beyond EchoHold) 2.5e-5 / 1e-4 per capture, the residual silent-miss risk stated in README section 6.",
    "citation_keys": [
     "kaeli2019range",
     "Morency2023lowcost"
@@ -1046,15 +1072,18 @@
    "parameter": "Whole-drone sonar blackout (MEDIUM)",
    "module": "holo_fleet/sim/sensor_noise.py:NoiseProfile.sonar_blackout_every_s, sonar_blackout_len_s",
    "value": {
-    "mean_period_s": 60.0,
-    "length_s": 0.15
+    "MEDIUM": "none",
+    "HIGH": {
+     "mean_period_s": 20.0,
+     "length_s": 0.5
+    }
    },
    "unit": "s",
    "verdict": "STRESS_ASSUMPTION",
    "source": "no source (R2 3e); duty 0.25 %, one or two captures of all six sonars lost",
    "doi_or_url": "-",
    "derivation": "the data age reaches 0.30 s (0.15 s before the next capture plus the 0.15 s blackout, R1 9.2), above tau_max by design",
-   "validity": "Exercises FAILSAFE (a sector older than tau_max is unhealthy, sense_ok is false). MEDIUM only",
+   "validity": "Recalibrated on 2026-11-26 to realistic nominal values (sensor datasheets and literature; the former LOW/MEDIUM values were stress settings without a source). A simultaneous blackout of all six sounders has no source: removed from MEDIUM, kept in HIGH (stress) and in the isolated stress factor ISO_sonar_blackout.",
    "citation_keys": [],
    "code_action": "none"
   },
@@ -1366,17 +1395,31 @@
    "parameter": "Critical region (CR) along-axis planes (entry cr_s_min, exit cr_s_max)",
    "module": "holo_fleet/config.py:GateRule.cr_s_min, cr_s_max (cr_half_len, cr_center_s, cr_lo, cr_hi, in_cr derived)",
    "value": {
-    "cr_s_min": -1.05,
-    "cr_s_max": 0.55,
-    "cr_half_len": 0.8,
-    "cr_center_s": -0.25
+    "cr_s_min": -0.8,
+    "cr_s_max": 0.0,
+    "cr_half_len": 0.4,
+    "cr_center_s": -0.4
    },
    "unit": "m",
-   "verdict": "DERIVED",
-   "source": "(from the gate and hull geometry, agreed with the project supervisor) the CR covers the approach immediately before the gate and the gate passage itself, not a region after the gate. The G06 bars are 0.30 m deep along the axis (holo_fleet/arena_bridge.py GATE_BAR_SECTION_M), so a hull touches the frame only while its centre is within 0.15 + R_OUT (|HULL_HALF| = 0.389 m, holo_fleet/perception/sonar_geometry.py) = 0.54 m of the gate plane, any heading",
+   "verdict": "DESIGN_CHOICE",
+   "source": "the P2 critical region as specified by the project: the approach immediately before the gate, from s = -0.8 m up to and including the gate plane s = 0 (it ends at the gate plane; the bar plane beyond it is not part of P2). Physical clearance of the hull through the frame is a separate P1 / motion-safety concern (passage_clear_s row)",
    "doi_or_url": "-",
-   "derivation": "cr_s_max = 0.55 >= 0.15 + 0.389 (the whole passage [-0.54, 0.54] inside); cr_s_min = cr_s_max - 1.6 = -1.05: the previous CR length (1.6 m, the symmetric |s| <= 0.8) and volume are kept, so the monitored region is not shrunk; the previous pre-gate part [-0.8, 0] is inside, only the post-passage part (0.55, 0.8] is dropped (tests/test_cr_geometry.py)",
-   "validity": "Gate frame: s along the axis towards the exit, l left, z up; the referee's P2 occupancy (GateRule.in_cr) and every onboard and formal use of the CR share this box",
+   "derivation": "none for P2 (a specification). Earlier geometries: the symmetric |s| <= 0.8 and [-1.05, 0.55] (commit 6bcda80 moved to [-0.8, 0.0]); tests/test_cr_geometry.py",
+   "validity": "Gate frame: s along the axis towards the exit, l left, z up; the referee's P2 occupancy (GateRule.in_cr), the gate events E1-E5 and E7 (holo_fleet/referee/gate_events.py) and every formal P2 statement use this box only",
+   "citation_keys": [],
+   "code_action": "none"
+  },
+  {
+   "section": "5 Gate protocol (P2)",
+   "parameter": "passage_clear_s (physical clearance plane of the gate frame: P1 / motion safety, not part of P2)",
+   "module": "holo_fleet/config.py:GateRule.passage_clear_s, passage_hi",
+   "value": 0.55,
+   "unit": "m",
+   "verdict": "DERIVED",
+   "source": "(from the gate and hull geometry) the G06 bars are 0.30 m deep along the axis (holo_fleet/arena_bridge.py GATE_BAR_SECTION_M), so a hull touches the frame only while its centre is within 0.15 + R_OUT (|HULL_HALF| = 0.389 m, holo_fleet/perception/sonar_geometry.py) = 0.54 m of the gate plane, any heading",
+   "doi_or_url": "-",
+   "derivation": "0.15 + 0.389 = 0.539, rounded up to 0.55 m",
+   "validity": "used for the stage-2 corridor, the exit witness (W2), the acoustic exit (A3), the keep-out claim and t_cross_max: a hull in the bar plane (0, 0.55] is masked from the stage-2 hold and too close to brake when first seen, so a follower is not admitted into the CR until the previous drone is beyond it (a P1 requirement); the referee counts such admissions separately (gate_events E4_clearance)",
    "citation_keys": [],
    "code_action": "none"
   },
@@ -1484,10 +1527,10 @@
    },
    "unit": "s",
    "verdict": "DESIGN_CHOICE",
-   "source": "protocol timers chosen by the project. t_occ_max is a fallback: the CR belief returns FREE after it without corridor echoes (logged as a timeout)",
-   "doi_or_url": "results/reference/ASSUMPTIONS.md",
-   "derivation": "safe only if a healthy occupant crosses the CR within t_occ_max (formal M3, crossing speed >= V_LO = 0.12 m/s; measured minimum 0.478-0.487 m/s, ASSUMPTIONS.md A5)",
-   "validity": "A drone stopped inside the CR by a fault and masked by the bars is outside the guarantee (formal M3f counterexample). Variant B2 does not release the CR by this fallback while a fresh accepted acoustic fix places a drone possibly inside it (acoustic_gate.heard_inside)",
+   "source": "protocol timers chosen by the project. t_occ_max: after it without a corridor echo, nothing heard and nothing known inside, a corridor-set BUSY latch becomes STALE (holo_fleet/perception/gate_perception.py stale_release); STALE permits a commitment, never an entry: the admission then needs t > last corridor sighting + t_admit_stale. The wait alone never gives FREE (formal/check_stale.py ST2)",
+   "doi_or_url": "formal/check_stale.py",
+   "derivation": "25 s is the e3e31f0 value of the former FREE fallback (removed in 6bcda80; restored as STALE in 9998b68). Its safety no longer rests on t_occ_max: P2 rests on the admission bound (formal/check_stale.py ST1, ST1m4 shows the former FREE release at 25 s without that bound violates P2)",
+   "validity": "STALE is logged as an occupancy timeout (run metrics occupancy_timeouts). Variant B2: no STALE while a drone is heard possibly inside or known inside (acoustic_gate.heard_inside, last_known_inside) or a claim is held",
    "citation_keys": [],
    "code_action": "none"
   },
@@ -1644,9 +1687,9 @@
    "value": -2.5525,
    "unit": "m",
    "verdict": "DERIVED",
-   "source": "(from the declared bounds) the nearest point where holding is P2-safe under the declared gate-frame navigation error, minus the measured holding error; replaces the earlier hold (NEAR_HOLD, the mutation of formal P2Bm) at -(0.8 + HULL_HALF[0] + 0.15) = -1.179 m (with the former symmetric CR |s| <= 0.8), where an estimate 1 m short puts the centre at s = -0.179 m, inside the CR (formal P2Bm)",
+   "source": "(from the declared bounds) the nearest point where holding is P2-safe under the declared gate-frame navigation error, minus the measured holding error, minus a 0.25 m reserve kept in 91a0c3e to preserve the calibrated acquisition position when the CR entry plane moved from -1.05 to -0.8 m",
    "doi_or_url": "-",
-   "derivation": "hold_s = cr_s_min - (nav_err_m + w_drift_max * tau_c + e_track + SLACK_M) = -(1.05 + 1.0 + 0.0525 + 0.30 + 0.05) = -2.4525 m; target = hold_s - hold_err_m = -2.5525 m (tests/test_hold_point.py keeps it equal to the derivation); -2.3025 m with the former CR The recursive P2 argument (station-keeping certificates, formal/check_p2_recursive.py) leaves it unchanged: the band of station keeping at rest is the same e_track + w_drift_max * tau_c (gate_safety.sk_hold), so holding at the target is certified with margin hold_err_m also with the DVL velocity error (tests/test_hold_point.py).",
+   "derivation": "hold_s = cr_s_min - (nav_err_m + w_drift_max * tau_c + e_track + SLACK_M) = -(0.8 + 1.0 + 0.0525 + 0.30 + 0.05) = -2.2025 m; minus hold_err_m = -2.3025 m (the derived P2-safe target); minus the 0.25 m reserve = -2.5525 m (deployed). The reserve only moves the hold farther from the CR, so the P2 argument is unchanged. The recursive P2 argument (station-keeping certificates, formal/check_p2_recursive.py) is unaffected: the band of station keeping at rest is e_track + w_drift_max * tau_c (gate_safety.sk_hold)",
    "validity": "Holds while the navigation premise |e_h| <= nav_err_m and the drift bound w_drift_max hold; the CR occupancy is the centre definition of P2. Localization acquisition from it (synthetic B0 scan, bar echoes only): bias (estimate - truth) along the axis -1.0 to 0.0 m and +0.2, +0.3 m acquired, +0.1 m and >= +0.4 m not (bounded hold, then give-up); with the former -2.30 m hold -1.0 to +0.3 and +0.5, +0.6 m: tests/test_hold_point.py",
    "citation_keys": [],
    "code_action": "none"
@@ -1681,15 +1724,93 @@
   },
   {
    "section": "5 Gate protocol (P2)",
-   "parameter": "t_cross_max (derived: longest time an admitted drone can still be in the CR; the degraded B2 admission wait)",
+   "parameter": "t_cross_max (derived: longest time from an admission until the admitted centre is beyond the physical clearance plane; the degraded B2 admission wait)",
    "module": "holo_fleet/config.py:GateRule.t_cross_max; holo_fleet/perception/gate_perception.py (admit_wait_s = commit_admit_min_s + t_cross_max when a drone is not freshly heard)",
    "value": 37.52,
    "unit": "s",
    "verdict": "DERIVED",
-   "source": "(from the CR, the hold, the navigation error and the premise v_cross_min) an admitted centre is at s >= stage2_hold_s - admit_zone_m - nav_err_m and leaves the CR at s > cr_s_max",
+   "source": "(from the hold, the navigation error and the premise v_cross_min) an admitted centre is at s >= stage2_hold_s - admit_zone_m - nav_err_m and beyond passage_clear_s after this time. The P2 part (beyond cr_s_max) needs 32.94 s; the remaining 4.58 s is the P1 clearance of the bar plane (a hull stopped there is masked from the stage-2 hold and seen too late to brake)",
    "doi_or_url": "formal/check_b2_comm.py (B2C-E1, B2C-Mw: D = t_cross_max - 2 s violates P2)",
-   "derivation": "(0.55 + 2.5525 + 0.4 + 1.0) / 0.12 = 37.52 s",
+   "derivation": "(0.55 + 2.5525 + 0.4 + 1.0) / 0.12 = 37.52 s; P2 part (0.0 + 2.5525 + 0.4 + 1.0) / 0.12 = 32.94 s",
    "validity": "only in the degraded regime (some drone without a fresh report); the hold give-up timer starts when the wait has elapsed",
+   "citation_keys": [],
+   "code_action": "none"
+  },
+  {
+   "section": "5 Gate protocol (P2)",
+   "parameter": "t_admit_stale (admission bound after a timed STALE release, from the last corridor sighting)",
+   "module": "holo_fleet/config.py:GateRule.t_admit_stale; holo_fleet/perception/gate_perception.py entry_after; holo_fleet/control/flows.py:Flows.gate",
+   "value": 37.53,
+   "unit": "s",
+   "verdict": "DERIVED",
+   "source": "t_cross_max rounded up to 0.01 s, so the deployed float is never below the exact derivation",
+   "doi_or_url": "formal/check_stale.py (ST1, ST1p, ST6; ST1m: 2 s less violates P2; ST1n: without the clearance)",
+   "derivation": "ceil(100 * t_cross_max) / 100 = 37.53 s; admission strictly after max(last corridor sighting, start of the dwell in the admission zone) + t_admit_stale (at equality the occupant can be on the closed CR boundary)",
+   "validity": "premises Pi1 (no centre in the CR before admission), Pi2 (v_cross_min), the P1 detection premise and the near-field clearance of every admission (admit_clear_m > the zone distance, formal ST6); premise S is not needed (formal ST1; ST1d without the dwell term)",
+   "citation_keys": [],
+   "code_action": "none"
+  },
+  {
+   "section": "5 Gate protocol (P2)",
+   "parameter": "admit_clear_m (near-field clearance of every admission)",
+   "module": "holo_fleet/config.py:GateRule.admit_clear_m; holo_fleet/perception/gate_perception.py (admit_clear); holo_fleet/control/flows.py",
+   "value": 3.3,
+   "unit": "m",
+   "verdict": "DERIVED",
+   "source": "(from the admission-zone geometry and premise Z) two drones whose estimates are both in the admission zone are at most 3.25 m apart",
+   "doi_or_url": "formal/check_stale.py (ST1, ST6)",
+   "derivation": "hypot(hypot(admit_zone_m + admit_zone_fwd_m, 2 admit_zone_lat_m) + 2 zone_err_h_m, 2 (acq_dz_m + admit_zone_dz_m) + 2 zone_err_v_m) = hypot(0.99 + 1.30, 1.8 + 0.5) = 3.25 m < 3.3 m",
+   "validity": "premise Z (zone_err_h_m / zone_err_v_m, monitored) and the P1 detection premise (a hull within 3.3 m is a target: not masked by a structure window, seen by a healthy sector); with nav_err_m alone the zone distance is 4.68 m (ST6l, declared limit); replaces near_sight_m = 3.0 m (a near-field restart of the timed bound renewed by the queued follower, v31)",
+   "citation_keys": [],
+   "code_action": "none"
+  },
+  {
+   "section": "5 Gate protocol (P2)",
+   "parameter": "zone_err_h_m, zone_err_v_m (premise Z of the timed admission)",
+   "module": "holo_fleet/config.py:GateRule.zone_err_h_m / zone_err_v_m; holo_fleet/referee/robustness_metrics.py (zone_nav)",
+   "value": [
+    0.65,
+    0.25
+   ],
+   "unit": "m",
+   "verdict": "DESIGN_CHOICE",
+   "source": "(declared, monitored on every run) v32 targeted runs: gate-frame estimate error of drones dwelling in the admission zone at most 0.46 m horizontally and 0.19 m vertically (v32, v35) (p99 0.18 / 0.11 m)",
+   "doi_or_url": "formal/check_stale.py (ST6, ST6l)",
+   "derivation": "tighter than nav_err_m (1.0 m per axis), the premise of every committed drone; the referee counts the samples beyond it (cause tag ZONE_NAV_PREMISE_VIOLATED)",
+   "validity": "a declared premise of the timed admission (ST1), not derived",
+   "citation_keys": [],
+   "code_action": "none"
+  },
+  {
+   "section": "5 Gate protocol (P2)",
+   "parameter": "admit_zone_fwd_m, admit_zone_lat_m, admit_zone_dz_m, acq_dz_m (admission zone of the stage-2 hold)",
+   "module": "holo_fleet/config.py:GateRule.in_admission_zone; holo_fleet/control/flows.py (ACQ_OFFSETS)",
+   "value": [
+    0.3,
+    0.35,
+    0.1,
+    0.8
+   ],
+   "unit": "m",
+   "verdict": "DERIVED",
+   "source": "(v31 targeted runs, a6e4987) settled holds: s at most 0.21 m ahead of the hold at the 99th percentile, |l| at most 0.36 m, dz within the +-0.8 m acquisition offsets + 0.08 m",
+   "doi_or_url": "formal/check_stale.py (ST6)",
+   "derivation": "the zone contains the measured settled holds; its extent enters admit_clear_m",
+   "validity": "a drone outside the zone restarts its dwell (progress only)",
+   "citation_keys": [],
+   "code_action": "none"
+  },
+  {
+   "section": "5 Gate protocol (P2)",
+   "parameter": "queue_standoff_m (queue standoff of a drone that is not committed)",
+   "module": "holo_fleet/config.py:GateRule.queue_standoff_m; holo_fleet/control/flows.py (QUEUE_STANDOFF_HYST_M, QUEUE_BACKOFF_MAX_M)",
+   "value": 3.8,
+   "unit": "m",
+   "verdict": "DESIGN_CHOICE",
+   "source": "(v31 targeted runs) true distance minus the onboard bound of the nearest hull at a settled hold: median 0.40 (CLEAN) to 0.54 m (LOW / MEDIUM), 95th percentile 0.66 to 1.13 m",
+   "doi_or_url": "formal/check_stale.py (ST7)",
+   "derivation": "admit_clear_m 3.3 m + 0.5 m: a queued drone backs off along the axis while a DYNAMIC FRONT hull is nearer; the queue points stay abreast (formal M2, exit-witness geometry)",
+   "validity": "a progress margin of the lead admission (formal ST7, reported), not a safety bound; v32 (a follower 4.4 m behind the hold): nearest bound at the hold >= 3.69 m at the 1st percentile",
    "citation_keys": [],
    "code_action": "none"
   },
@@ -2043,15 +2164,16 @@
    "module": "holo_fleet/sim/acoustic_channel.py:AcousticChannel.sound_speed_err",
    "value": {
     "CLEAN": 0.003,
-    "LOW": 0.005,
-    "MEDIUM": 0.01
+    "LOW": 0.003,
+    "MEDIUM": 0.005,
+    "MEDIUM_HARSH": 0.01
    },
    "unit": "relative",
    "verdict": "DERIVED",
    "source": "(from physics, R3 P2) OWTT range = c_assumed x travel time, so the relative range error equals the relative error of c_assumed; Mackenzie partial derivatives dc/dT = 4.08 / 3.60 / 3.16 / 2.75 m/s per deg C at 5 / 10 / 15 / 20 deg C, dc/dS 1.14-1.29 m/s per psu; refraction is negligible at 2-50 m in one layer",
    "doi_or_url": "10.1121/1.386920; 10.1177/0278364912446166; 10.1145/3376921; 10.55417/fr.2022026; https://www.mbari.org/wp-content/uploads/2016/03/Sndspd.txt",
    "derivation": "0.3 % = 4.5 m/s, about 1.4 deg C at 15 deg C or 3.8 psu; 1 % = 15 m/s, about 4.7 deg C or 12.5 psu",
-   "validity": "Valid only if c_assumed is computed onboard from temperature, depth and a known salinity. CONTRADICTED (R3 P2) for an uncompensated 1500 m/s: field sound speeds of 1426-1481 m/s would be off by 1.3 % to 5.2 %. Code action: H2 in the acoustic_channel.py docstring now states the onboard estimate",
+   "validity": "Recalibrated on 2026-11-26 to realistic nominal values (sensor datasheets and literature; the former LOW/MEDIUM values were stress settings without a source). Sound speed from a temperature sensor (Celsius +-0.08 C) and the known salinity: 0.1-0.3 %; the former MEDIUM 1 % treated the Bar30 worst case (+-4 C) as one sigma (kept in MEDIUM_HARSH).",
    "citation_keys": [
     "mackenzie1981nine",
     "webster2012advances",
@@ -2067,15 +2189,16 @@
    "module": "holo_fleet/sim/acoustic_channel.py:AcousticChannel.clock_offset_m",
    "value": {
     "CLEAN": 0.01,
-    "LOW": 0.03,
-    "MEDIUM": 0.05
+    "LOW": 0.01,
+    "MEDIUM": 0.03,
+    "MEDIUM_HARSH": 0.05
    },
    "unit": "m (6.7 / 20 / 33 us)",
    "verdict": "SUPPORTED",
    "source": "(a) SA.45s CSAC; (b) Rypkema 2022: CSACs drift less than 100 us per 24 h in holdover; Jakuba 2021: CSAC about 1 ppb against about 20 ppb for a TCXO; Eustice 2011: TCXO 20 ns/s typical, below 300 us per 24 h on the bench, below 4 us in a 1.5 h dive (R3 P3)",
    "doi_or_url": "https://mm.digikey.com/Volume0/opasdata/d220001/medias/docus/909/090-00218-001_~_090-00218-006.pdf; 10.55417/fr.2022026; 10.23919/OCEANS44145.2021.9705795; 10.1002/rob.20365",
    "derivation": "a constant fractional frequency offset y gives a range error c y t; per ppb over 1 h: 5.4 mm (c = 1500 m/s). Table in ACOUSTIC_CHANNEL_MODEL.md section 4",
-   "validity": "CLEAN bounds a CSAC over 1 h; LOW and MEDIUM correspond to an OCXO or a measured TCXO over 1 h, or to uncalibrated constant hardware delays. A TCXO at 20 ns/s reaches 0.11 m per drone (0.22 m between two drones) after 1 h, i.e. the 0.21 m envelope bound. For longer missions model offset0 + drift t",
+   "validity": "Recalibrated on 2026-11-26 to realistic nominal values (sensor datasheets and literature; the former LOW/MEDIUM values were stress settings without a source). CSAC / TCXO drift is mm-scale over 1-1.5 h; the remainder is uncalibrated hardware delay.",
    "citation_keys": [
     "microsemi_sa45s",
     "rypkema2022synchronous",
@@ -2138,13 +2261,15 @@
    "value": {
     "dropout": {
      "CLEAN": 0.02,
-     "LOW": 0.08,
-     "MEDIUM": 0.2
+     "LOW": 0.03,
+     "MEDIUM": 0.15,
+     "MEDIUM_HARSH": 0.2
     },
     "dropout_far": {
      "CLEAN": 0.1,
-     "LOW": 0.25,
-     "MEDIUM": 0.5
+     "LOW": 0.1,
+     "MEDIUM": 0.3,
+     "MEDIUM_HARSH": 0.5
     }
    },
    "unit": "probability",
@@ -2152,9 +2277,11 @@
    "source": "(b) ahoi marina test: 97.1 % received at 12 m (91.5-99.5 % at the three good positions at 12, 46 and 99 m), 57.5 % at 24 m, 8.0 % at 152 m; moving uAUV request reception 79-94 %, 70-80 % near a pillar; static two-way ranging 1.8 % lost (R3 P5)",
    "doi_or_url": "10.1145/3376921",
    "derivation": "p = dropout + (dropout_far - dropout) min(1, d / 50 m); at 2-20 m: 0.023-0.052 (CLEAN), 0.087-0.148 (LOW), 0.212-0.320 (MEDIUM)",
-   "validity": "Magnitudes lie inside the measured envelope of a low-cost modem in a harbour at 10-100 m. The model draws independent losses with a linear range ramp, whereas measured loss is position-dependent, not monotonic in range and correlated in time; ahoi figures are 292-476 ms packets, not short identity pings",
+   "validity": "Recalibrated on 2026-11-26 to realistic nominal values (sensor datasheets and literature; the former LOW/MEDIUM values were stress settings without a source). Mid-water typical 3.5-7.8 % / 10.8-18 % at 2-20 m (Renner 2020, Sherlock 2022); near a boundary far worse (Reis 2016: 77-92 % invalid near the lake bottom), kept as MEDIUM_HARSH.",
    "citation_keys": [
-    "renner2020ahoi"
+    "renner2020ahoi",
+    "sherlock2022ultralow",
+    "reis2016usbl"
    ],
    "code_action": "none"
   },
@@ -2163,15 +2290,21 @@
    "parameter": "Burst outages (MEDIUM): outage_every_s and outage_len_s",
    "module": "holo_fleet/sim/acoustic_channel.py:AcousticChannel.outage_every_s, outage_len_s",
    "value": {
-    "outage_every_s": 40.0,
-    "outage_len_s": 4.0
+    "MEDIUM": {
+     "outage_every_s": 120.0,
+     "outage_len_s": 2.0
+    },
+    "MEDIUM_HARSH": {
+     "outage_every_s": 40.0,
+     "outage_len_s": 4.0
+    }
    },
    "unit": "s",
    "verdict": "STRESS_ASSUMPTION",
    "source": "phenomenon supported qualitatively (R3 P6): an acoustic payload can mask or falsely trigger an LBL response (Olson); bursty channel behaviour (ahoi); machinery noise (Li 2025) and impulsive noise (Chitre 2008). No source quantifies outage rates or durations for 20-30 kHz pings near thrusters",
    "doi_or_url": "10.1109/JOE.2006.880386; 10.1145/3376921; 10.1038/s44287-024-00122-w; 10.4031/002533208786861263",
    "derivation": "first start uniform in [4, 40] s, then exponential gaps (mean 40 s) + 4 s: about 9 % of the time",
-   "validity": "A sweep over outage length (1-10 s) would show the sensitivity",
+   "validity": "Recalibrated on 2026-11-26 to realistic nominal values (sensor datasheets and literature; the former LOW/MEDIUM values were stress settings without a source). Bursts are documented only qualitatively; duty cycle 1.6 % (was 9.1 %, kept in MEDIUM_HARSH).",
    "citation_keys": [
     "olson2006robust",
     "renner2020ahoi",
@@ -2237,15 +2370,16 @@
    "module": "holo_fleet/sim/acoustic_channel.py:AcousticChannel.shadow_loss",
    "value": {
     "CLEAN": 0.3,
-    "LOW": 0.5,
-    "MEDIUM": 0.7
+    "LOW": 0.3,
+    "MEDIUM": 0.5,
+    "MEDIUM_HARSH": 0.7
    },
    "unit": "probability",
    "verdict": "STRESS_ASSUMPTION",
    "source": "Fresnel premise DERIVED (below), loss in dB not calibrated by any source (R3 P8). ahoi mobile data show about 18 dB of receive-gain headroom at 50 m, so a few dB of diffraction loss would rarely cause a loss at 2-20 m: 0.3-0.7 is likely pessimistic",
    "doi_or_url": "10.1145/3376921",
    "derivation": "first Fresnel radius at mid-path r1 = 0.5 sqrt(lambda d), 20-30 kHz at 1500 m/s: 0.19-0.24 m at 3 m, 0.35-0.43 m at 10 m (the earlier 0.3-0.5 m overstated 3 m)",
-   "validity": "The BlueROV2 box (0.458 x 0.576 x 0.254 m) is comparable to r1 at 3-5 m and smaller beyond: partial obstruction, so diffraction filling the shadow is plausible. An air-filled electronics tube reflects strongly, so the shadow need not be weak (physical reasoning only)",
+   "validity": "Recalibrated on 2026-11-26 to realistic nominal values (sensor datasheets and literature; the former LOW/MEDIUM values were stress settings without a source). Partial obstruction of the Fresnel zone by a hull, about 18 dB of link headroom (Renner 2020).",
    "citation_keys": [
     "renner2020ahoi"
    ],
@@ -2278,19 +2412,21 @@
    "module": "holo_fleet/sim/acoustic_channel.py:AcousticChannel.latency_s",
    "value": {
     "CLEAN": 0.1,
-    "LOW": 0.15,
-    "MEDIUM": 0.25
+    "LOW": 0.12,
+    "MEDIUM": 0.2,
+    "MEDIUM_HARSH": 0.25
    },
    "unit": "s",
    "verdict": "STRESS_ASSUMPTION",
    "source": "(a) Water Linked M64 about 500 ms typical latency (a communication modem, includes packet duration); (b) Huang 2026: acoustic positioning delays of several hundred ms to a few s (citing others), measured piUSBL system delay about 8 ms; Rypkema 2022: one particle-filter iteration about 500 ms on a Raspberry Pi 3 (R3 P9)",
    "doi_or_url": "https://bluerobotics.com/wp-content/uploads/2019/02/W-MK-19009-1_Modem-M64_Datasheet.pdf; 10.1109/TIM.2026.3676179; 10.55417/fr.2022026",
    "derivation": "physical lower bound: detection cannot end before the whole coded ping (20-40 ms) has arrived; no SeaTrac, MicronNav, Micro-Ranger 2 or UGPS latency figure was found",
-   "validity": "Inside the 8 ms - 0.5 s bracket; the onboard staleness bound latency_max_s = 0.40 s is consistent",
+   "validity": "Recalibrated on 2026-11-26 to realistic nominal values (sensor datasheets and literature; the former LOW/MEDIUM values were stress settings without a source). Physical floor about 0.10 s (40 ms ping + a 64-bit packet at 1 kbit/s) plus 4-8 ms processing; age at use <= latency + 0.1 s + one tick = 0.25 / 0.33 s <= latency_max 0.40 s.",
    "citation_keys": [
     "waterlinked_m64",
     "huang2026precise",
-    "rypkema2022synchronous"
+    "rypkema2022synchronous",
+    "reis2016usbl"
    ],
    "code_action": "none"
   },
@@ -2335,6 +2471,43 @@
     "rypkema2022synchronous"
    ],
    "code_action": "new fields added after R3"
+  },
+  {
+   "section": "7 Acoustic B2 channel (simulator side)",
+   "parameter": "payload_loss (64-bit status payload lost after a detected ping)",
+   "module": "holo_fleet/sim/acoustic_channel.py:AcousticChannel.payload_loss",
+   "value": {
+    "CLEAN": 0.02,
+    "LOW": 0.02,
+    "MEDIUM": 0.05,
+    "MEDIUM_HARSH": 0.15
+   },
+   "unit": "-",
+   "verdict": "DESIGN_CHOICE",
+   "source": "a short packet after a detected ping; > 90 % packet delivery at much longer range for spread-spectrum modems",
+   "doi_or_url": "10.3390/electronics11091446",
+   "derivation": "-",
+   "validity": "Recalibrated on 2026-11-26 to realistic nominal values (sensor datasheets and literature; the former LOW/MEDIUM values were stress settings without a source). Counts as a loss for the B2C model (formal/check_b2_comm.py).",
+   "citation_keys": [
+    "sherlock2022ultralow"
+   ],
+   "code_action": "none"
+  },
+  {
+   "section": "7 Acoustic B2 channel (simulator side)",
+   "parameter": "MEDIUM_HARSH channel (the former MEDIUM, sensitivity level)",
+   "module": "holo_fleet/sim/acoustic_channel.py:MEDIUM_HARSH (and MEDIUM_HT, its heavy-tailed variant)",
+   "value": "former MEDIUM values",
+   "unit": "-",
+   "verdict": "PARTIALLY_SUPPORTED",
+   "source": "near-boundary conditions: 77-92 % invalid fixes with both units near the bottom at 11-20 m (Reis et al. 2016)",
+   "doi_or_url": "10.3390/s16091491",
+   "derivation": "-",
+   "validity": "A sensitivity level outside the nominal validation levels.",
+   "citation_keys": [
+    "reis2016usbl"
+   ],
+   "code_action": "none"
   },
   {
    "section": "7 Acoustic B2 channel (simulator side)",
@@ -2764,6 +2937,49 @@
    "doi_or_url": "formal/check_b2_comm.py",
    "derivation": "-",
    "validity": "enters T_c > T_f + 2 skew + dt only; simulator clocks are shared",
+   "citation_keys": [],
+   "code_action": "none"
+  },
+  {
+   "section": "5 Gate protocol (P2)",
+   "parameter": "gate_beacon (fixed pinger above each gate: up_m, rate_hz, sigma_range_m, sigma_ang_deg, dropout)",
+   "module": "holo_fleet/config.py:GateBeaconConfig; holo_fleet/perception/gate_beacon.py; holo_fleet/sim/gate_beacon.py",
+   "value": [
+    1.6,
+    2.0,
+    0.1,
+    1.0,
+    0.05
+   ],
+   "unit": "m, Hz, m, deg, -",
+   "verdict": "PARTIALLY_SUPPORTED",
+   "source": "USBL-class range and bearing accuracy (reis2016usbl); the Marine Race Arena gate beacons (one per gate, fixed, 0.2 deg / 0.2 m / 10 Hz) are less noisy",
+   "doi_or_url": "formal/check_classification.py (CL4, CL5)",
+   "derivation": "bound of the median of n fixes at range r: k sigma_range + r tan(k sigma_ang + heading_bound_deg), k = 3 x 1.25 / sqrt(n) (3 sigma of the median), the heading bias not averaged; median of the fixes of the last hold_s s",
+   "validity": "infrastructure received by B0 and B2; no multipath or occlusion modelled (the pinger above the gate)",
+   "citation_keys": [
+    "reis2016usbl"
+   ],
+   "code_action": "none"
+  },
+  {
+   "section": "5 Gate protocol (P2)",
+   "parameter": "gate_beacon use (heading_bound_deg, hold_s, min_fixes, max_bound_m, corr_min_m, corr_period_s)",
+   "module": "holo_fleet/config.py:GateBeaconConfig; holo_fleet/perception/perception.py",
+   "value": [
+    2.0,
+    3.0,
+    3,
+    0.45,
+    0.2,
+    2.0
+   ],
+   "unit": "deg, s, -, m, m, s",
+   "verdict": "DESIGN_CHOICE",
+   "source": "design choice; heading_bound_deg is the onboard compass bias budget (README section 1)",
+   "doi_or_url": "formal/check_classification.py (CL4, CL5, CL6)",
+   "derivation": "max_bound_m: the classification pose comes from the beacon only while the median bound is at most 0.45 m (about 3 m from the beacon); CL6: the bound in the gate plane, 0.40 m, is below the keepout tolerance 0.41 m. Corrections above corr_min_m at most every corr_period_s, the lateral component only once admitted",
+   "validity": "the fix bound holds with range and angle errors within 3 sigma and the heading bias within heading_bound_deg; monitored by the referee (beacon_fix)",
    "citation_keys": [],
    "code_action": "none"
   }

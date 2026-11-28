@@ -22,7 +22,7 @@
       "passed": true,
       "seconds": 0.0,
       "counterexample": null,
-      "note": "{'cases': 60, 'violations': 38}"
+      "note": "{'cases': 60, 'violations': 54}"
     },
     {
       "prop": "S2h M3-status n=2, observer l=+1.75, the crossing drone may stop before the CR, 32 s bound: no admission before physical clearance",
@@ -31,7 +31,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 8.448,
+      "seconds": 8.402,
       "counterexample": null,
       "note": ""
     },
@@ -42,7 +42,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 5.836,
+      "seconds": 8.704,
       "counterexample": null,
       "note": ""
     },
@@ -53,7 +53,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 6.811,
+      "seconds": 5.999,
       "counterexample": null,
       "note": ""
     },
@@ -64,7 +64,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 4.426,
+      "seconds": 6.447,
       "counterexample": null,
       "note": ""
     },
@@ -75,7 +75,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 8.276,
+      "seconds": 7.182,
       "counterexample": null,
       "note": ""
     },
@@ -86,7 +86,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 7.305,
+      "seconds": 8.39,
       "counterexample": null,
       "note": ""
     },
@@ -97,7 +97,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 4.844,
+      "seconds": 5.351,
       "counterexample": null,
       "note": ""
     },
@@ -108,7 +108,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 3.508,
+      "seconds": 6.04,
       "counterexample": null,
       "note": ""
     },
@@ -119,7 +119,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 6.553,
+      "seconds": 6.655,
       "counterexample": null,
       "note": ""
     },
@@ -130,7 +130,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 6.234,
+      "seconds": 8.624,
       "counterexample": null,
       "note": ""
     },
@@ -141,7 +141,7 @@
       "expect": "sat",
       "verdict": "sat",
       "passed": true,
-      "seconds": 2.401,
+      "seconds": 5.159,
       "counterexample": {
         "beyond_0": false,
         "beyond_1": false,
@@ -336,7 +336,7 @@
         "beyond_190": false,
         "beyond_191": false,
         "beyond_192": false,
-        "beyond_193": false,
+        "beyond_193": true,
         "beyond_194": true,
         "beyond_195": true,
         "beyond_196": true,
@@ -553,7 +553,7 @@
       "expect": "sat",
       "verdict": "sat",
       "passed": true,
-      "seconds": 3.734,
+      "seconds": 17.115,
       "counterexample": {
         "beyond_0": false,
         "beyond_1": false,
@@ -965,7 +965,7 @@
       "expect": "sat",
       "verdict": "sat",
       "passed": true,
-      "seconds": 0.484,
+      "seconds": 0.447,
       "counterexample": {
         "beyond_0": false,
         "beyond_1": false,
@@ -1357,16 +1357,16 @@
         "busy_66": false,
         "busy_67": false,
         "busy_68": false,
-        "busy_69": true,
-        "busy_70": true,
-        "busy_71": true,
-        "busy_72": true,
-        "busy_73": true,
-        "busy_74": true,
-        "busy_75": true,
-        "busy_76": true,
-        "busy_77": true,
-        "busy_78": true
+        "busy_69": false,
+        "busy_70": false,
+        "busy_71": false,
+        "busy_72": false,
+        "busy_73": false,
+        "busy_74": false,
+        "busy_75": false,
+        "busy_76": false,
+        "busy_77": false,
+        "busy_78": false
       },
       "note": ""
     },
@@ -1544,7 +1544,7 @@
       "passed": true,
       "seconds": 0.0,
       "counterexample": null,
-      "note": "{'result': 'sat', 'model': '[t = 0,\\n w = 0,\\n Wd = 0,\\n cv = 1/4,\\n v = 2,\\n d0 = 1,\\n W = 0,\\n c = 1,\\n wd = 0,\\n h0 = 0,\\n /0 = [(39/100, 9/200) -> 26/3, else -> 0]]'}"
+      "note": "{'result': 'sat', 'model': '[t = 0,\\n v = 2,\\n w = 0,\\n Wd = 0,\\n cv = 1/4,\\n h0 = 0,\\n d0 = 1,\\n W = 0,\\n c = 1,\\n wd = 0,\\n /0 = [(39/100, 9/200) -> 26/3, else -> 0]]'}"
     },
     {
       "prop": "S12l mutation: the zone without the rise lag misses hulls",
@@ -1555,7 +1555,7 @@
       "passed": true,
       "seconds": 0.0,
       "counterexample": null,
-      "note": "{'result': 'sat', 'model': '[v = 2,\\n t = 1,\\n w = 35/32,\\n Wd = 0,\\n cv = 19/64,\\n h0 = -9/32,\\n d0 = 2,\\n W = 1,\\n c = 15/16,\\n wd = 0,\\n /0 = [(3/160, 9/200) -> 5/12, else -> 0]]'}"
+      "note": "{'result': 'sat', 'model': '[t = 1,\\n w = 35/32,\\n Wd = 0,\\n cv = 19/64,\\n h0 = -9/32,\\n d0 = 2,\\n W = 1,\\n c = 15/16,\\n wd = 0,\\n v = 2,\\n /0 = [(3/160, 9/200) -> 5/12, else -> 0]]'}"
     }
   ]
 }

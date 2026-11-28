@@ -184,7 +184,9 @@ def test_the_heavy_tailed_channel_is_per_link_and_the_others_are_unchanged():
 
     ht = ChannelModel(channel("MEDIUM_HT"), 3, 7, 30.0, duration_s=2000.0)
     assert ht.link_off[(0, 1)] != ht.link_off[(1, 0)]
-    a, b = ChannelModel(channel("MEDIUM"), 3, 7, 30.0, duration_s=2000.0), ChannelModel(channel("MEDIUM_HT"), 3, 7, 30.0, duration_s=2000.0)
+    # MEDIUM_HT is the heavy-tailed variant of MEDIUM_HARSH (the former MEDIUM, kept as a sensitivity level)
+    a, b = (ChannelModel(channel("MEDIUM_HARSH"), 3, 7, 30.0, duration_s=2000.0),
+            ChannelModel(channel("MEDIUM_HT"), 3, 7, 30.0, duration_s=2000.0))
     assert a.outages == b.outages and not a.link_off
 
 

@@ -47,10 +47,14 @@ def test_mapped_gate_bar_is_structure():
     assert [e.cls for e in out["FRONT"].echoes] == [STRUCTURE]
 
 
-def test_unexplained_compact_echo_needs_two_captures_then_is_dynamic():
+def test_the_first_capture_keeps_a_possible_hull_and_two_captures_confirm_it():
+    """Warm-up: with an empty confirmation window the echo is kept as it is (a possible hull is never dropped for want of
+    history); from the second capture on an unexplained echo needs two of the last three captures."""
     clf = EchoClassifier()
-    assert [e.cls for e in classify(clf, front=[(2.5, 2.7)])["FRONT"].echoes] == [UNCONFIRMED]
-    assert [e.cls for e in classify(clf, front=[(2.45, 2.65)])["FRONT"].echoes] == [DYNAMIC]
+    first = classify(clf, front=[(2.5, 2.7)])["FRONT"]
+    assert first.warming and [e.cls for e in first.echoes] == [DYNAMIC]
+    second = classify(clf, front=[(2.45, 2.65)])["FRONT"]
+    assert not second.warming and [e.cls for e in second.echoes] == [DYNAMIC]
 
 
 def test_single_capture_noise_never_becomes_an_obstacle():

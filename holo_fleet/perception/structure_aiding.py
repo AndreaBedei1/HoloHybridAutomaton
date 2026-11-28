@@ -108,6 +108,22 @@ COARSE_M, FINE_M = 0.3, 0.05
 POINT_STRIDE = 3
 HULL_LAT_M = float(HULL_HALF[1] + HULL_HALF[0] * np.sin(np.radians(5.0)))
 LOC_TTL_S = 1.0
+# classification pose (perception.Perception.classification_offset): a fit good enough to explain the echoes - matched in
+# CLS_MIN_MATCHED sectors within FIT_RMS_M, unique within UNIQUE_M - shifts the pose at which echoes are compared with the
+# gate map, held CLS_HOLD_S (also through the CR, where no fit is computed); never applied to the navigation estimate
+CLS_MIN_MATCHED = 3
+CLS_HOLD_S = 5.0
+# residual of the classification pose (CONSIST_M): the cone edge of the structure window is widened by it
+CLS_POSE_ERR_M = 0.15
+
+
+def classification_fit(last) -> bool:
+    """Whether a fit (StructureAiding.last) is good enough to set the classification pose."""
+    if last is None:
+        return False
+    safe = last.get("clearance") is None or float(last["clearance"]) >= 0.0
+    return (int(last.get("matched", 0)) >= CLS_MIN_MATCHED and float(last.get("rms", 9.0)) <= FIT_RMS_M
+            and float(last.get("u", 9.0)) <= UNIQUE_M + FIT_RMS_M and (safe or bool(last.get("identified"))))
 
 
 def acquisition_distance(cfg, gate=None, pts=None) -> float:

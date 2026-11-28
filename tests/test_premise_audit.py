@@ -246,7 +246,9 @@ def test_beacon_of_run_blackout_and_payload():
     assert beacon_of_run(rc(channel="BLACKOUT"))["blackout"] is True
     no_payload = {"payload": False}
     assert pa.link_of(beacon_of_run(rc(channel="MEDIUM", **no_payload)), 3, DEFAULT) is None
-    assert pa.link_of(beacon_of_run(rc(channel="MEDIUM")), 3, DEFAULT).latency_s == 0.25
+    from holo_fleet.sim.acoustic_channel import channel
+
+    assert pa.link_of(beacon_of_run(rc(channel="MEDIUM")), 3, DEFAULT).latency_s == channel("MEDIUM").latency_s
     st = _states(2)
     _commit(st, 0, 99, 400)
     _commit(st, 1, 200, 400)

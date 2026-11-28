@@ -58,6 +58,7 @@ class SectorReading:
     structure_window: Optional[Tuple[float, float]] = None
     seabed_onset: Optional[float] = None
     blind_from: Optional[float] = None
+    warming: bool = False
 
     def nearest(self, classes: Sequence[str]) -> Optional[Echo]:
         c = [e for e in self.echoes if e.cls in classes]
@@ -129,13 +130,16 @@ class EchoClassifier:
             M = np.eye(3) + vx + vx @ vx * (1.0 / (1.0 + c))
         return a, M
 
-    def structure_window(self, sonar_pos: np.ndarray, boresight: np.ndarray) -> Optional[Tuple[float, float]]:
+    def structure_window(self, sonar_pos: np.ndarray, boresight: np.ndarray,
+                         pose_err_m: float = 0.0) -> Optional[Tuple[float, float]]:
+        """Range span of the gate map inside the cone; ``pose_err_m`` widens the cone edge by the residual of the pose (a bar
+        at the edge of the cone seen from the true pose is kept)."""
         if len(self.struct_pts) == 0:
             return None
         d = self.struct_pts - sonar_pos
         r = np.linalg.norm(d, axis=1)
         ang = np.arccos(np.clip((d @ boresight) / np.maximum(r, 1e-9), -1.0, 1.0))
-        widen = np.arctan2(NEAR_FIELD_WIDEN_M, np.maximum(r, 1e-6))
+        widen = np.arctan2(NEAR_FIELD_WIDEN_M + pose_err_m, np.maximum(r, 1e-6))
         sel = (ang <= np.radians(self.model.half_angle_deg) + widen) & (r >= self.model.range_min) & \
               (r <= self.model.range_max)
         if not sel.any():
@@ -159,7 +163,7 @@ class EchoClassifier:
 
     def classify(self, profiles: Dict[str, Optional[np.ndarray]], ages: Dict[str, float], own_pos: np.ndarray,
                  R_world_body: np.ndarray, seabed_z: Optional[float], tau_healthy: float = 0.25,
-                 capture_times: Optional[Dict[str, float]] = None) -> Dict[str, SectorReading]:
+                 capture_times: Optional[Dict[str, float]] = None, pose_err_m: float = 0.0) -> Dict[str, SectorReading]:
         pc = self.cfg.perc
         out = {}
         for s in SECTORS:
@@ -171,7 +175,7 @@ class EchoClassifier:
                 continue
             a, M = self._sector_frame(s, R_world_body)
             spos = own_pos + R_world_body @ MOUNTS[s]
-            rd.structure_window = self.structure_window(spos, a)
+            rd.structure_window = self.structure_window(spos, a, pose_err_m)
             rd.seabed_onset = self.seabed_onset(spos, M, seabed_z)
             if rd.seabed_onset is not None:
                 rd.blind_from = max(self.model.range_min, rd.seabed_onset - pc.seabed_tol_m)
@@ -181,7 +185,9 @@ class EchoClassifier:
                 e = Echo(s, r0, r1, pk)
                 tol_s, tol_b = pc.structure_tol_m, pc.seabed_tol_m
                 sw, sb = rd.structure_window, rd.seabed_onset
-                in_struct = sw is not None and (sw[0] - tol_s) <= r0 and r1 <= (sw[1] + pc.structure_tol_far_m)
+                # a pose in error by pose_err_m changes every range by at most pose_err_m: the window extends by it
+                in_struct = (sw is not None and (sw[0] - tol_s - pose_err_m) <= r0
+                             and r1 <= (sw[1] + pc.structure_tol_far_m + pose_err_m))
                 if sb is not None and r0 >= sb - tol_b:
                     if r0 <= sb + 0.6 or seabed_seen:
                         e.cls, e.why = SEABED, f"seabed onset {sb:.2f} m"
@@ -202,7 +208,15 @@ class EchoClassifier:
     def _confirm(self, readings: Dict[str, SectorReading], capture_times: Optional[Dict[str, float]],
                  max_age: float) -> None:
         """An unexplained echo (DYNAMIC or UNKNOWN) needs an unexplained echo within 0.5 m in >= confirm_captures
-        of the last 3 captures (this one included); otherwise it is UNCONFIRMED."""
+        of the last 3 captures (this one included); otherwise it is UNCONFIRMED.
+
+        Warm-up: a sector with fewer than confirm_captures captures within ``max_age`` (the first capture after a gap, or
+        of the run) cannot confirm any echo, so it keeps its obstacle echoes as they are (``warming``): a possible hull is
+        never dropped because the confirmation window is empty.  Without this the first capture after a gap made a real
+        hull UNCONFIRMED while the sector counted as healthy, so the hull was missing from the P1 distance bound for one
+        or two steps with sense_ok true (premise S0det of formal/check_separation.py).  A one-capture clutter echo can
+        then act for that capture only (conservative for P1; it can set the occupancy latch BUSY, never an exit witness,
+        which needs three captures)."""
         need = self.cfg.perc.confirm_captures
         for s, rd in readings.items():
             if not rd.healthy:
@@ -214,6 +228,9 @@ class EchoClassifier:
                 hist.append((stamp, cand))
             recent = [returns for time, returns in hist
                       if stamp is None or (time is not None and 0.0 <= stamp - time <= max_age + 1e-9)]
+            if len(recent) < need:
+                rd.warming = True
+                continue
             for e in rd.echoes:
                 if e.cls not in OBSTACLE_CLASSES:
                     continue

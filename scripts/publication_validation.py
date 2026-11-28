@@ -64,7 +64,8 @@ def execute(raw, matrix, workers):
         for case in matrix["cases"]:
             cmd = [sys.executable, str(ROOT / "scripts/run_sensor_robustness_campaign.py"),
                    "--only", case["scenario"], "--profiles", case["profile"], "--protocols", "B0", case["b2"],
-                   "--duration-s", str(case["duration_s"]), "--seeds", *map(str, matrix["seeds"]),
+                   *(() if matrix.get("terminal") else ("--duration-s", str(case["duration_s"]))),
+                   "--seeds", *map(str, matrix["seeds"]),
                    "--raw", str(raw / case["id"]), "--nshards", str(workers), "--shard", str(shard),
                    "--retries", "0", "--require-clean"]
             if case.get("inject"):
@@ -80,11 +81,13 @@ def execute(raw, matrix, workers):
     (raw / "lane_failures.json").write_text(json.dumps(failures, indent=1) + "\n", encoding="utf-8")
 
 
-def run_record(raw, case, protocol, seed):
+def run_record(raw, case, protocol, seed, terminal=False):
     path = Path(case["id"], protocol, case["profile"], case["scenario"], f"s{seed}")
     d = raw / path
+    # with "terminal" in the matrix every run ends on SUCCESS / FAILURE / DEADLINE (referee/terminal.py, the a-priori
+    # deadline of the mission plan) instead of the fixed window, so no run is censored by the window
     row = {"case": case["id"], "protocol": protocol, "seed": seed, "path": path.as_posix(),
-           "planned_window_s": case["duration_s"]}
+           "planned_window_s": None if terminal else case["duration_s"], "terminal_mode": bool(terminal)}
     metrics = d / "run_metrics.json"
     if not metrics.exists():
         return dict(row, outcome="MISSING")
@@ -165,7 +168,7 @@ def summarize(raw, matrix):
     for case in matrix["cases"]:
         comparisons = []
         for seed in matrix["seeds"]:
-            b0, b2 = (run_record(raw, case, protocol, seed) for protocol in ("B0", case["b2"]))
+            b0, b2 = (run_record(raw, case, protocol, seed, matrix.get("terminal")) for protocol in ("B0", case["b2"]))
             runs.extend((b0, b2))
             first, second = (r.get("common_config_sha256") for r in (b0, b2))
             delta = None

@@ -222,3 +222,17 @@ def test_isolated_profiles_have_a_failsafe_allowance():
     assert failsafe_allowance_s("ISO_dvl_dropout", 185.0) > 0.0
     assert failsafe_allowance_s("ISO_sonar_range", 185.0) == 0.0
     assert profile_family("MEDIUM-ALL") == "MEDIUM"
+
+
+def test_logged_positions_reproduce_the_online_formation_error_for_the_offline_replay():
+    """The offline replay recomputes the P3 episode from the logged positions: they must reproduce the online formation
+    error well below the e_ok boundary resolution (an online 0.9999 m must not replay above e_ok = 1.0 m)."""
+    sc = SCENARIOS["formation_recovery_head_current"](DEFAULT)
+    ref = Referee(sc.sim.names, sc.template.offsets(), sc.path, [], DEFAULT, True, clock=sc.plans[0].clock)
+    P = np.array(criteria.plan_targets(sc, 5.0), float)
+    P[0] += np.array([0.43217891, -0.21987654, 0.0012345])
+    z = np.zeros((len(P), 3))
+    row = ref.update(SimpleNamespace(t=5.0, positions=P, collision=np.zeros(len(P), bool), current_drift=z, velocities=z,
+                                     intruders=None, rotations=None), ["FORMATION_FOLLOW"] * len(P))
+    logged = np.array([[row[f"{c}{k}"] for c in "xyz"] for k in range(len(P))])
+    assert abs(ref.formation_error(logged) - ref.formation_error(P)) < 1e-5

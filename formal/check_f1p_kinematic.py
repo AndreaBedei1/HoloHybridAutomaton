@@ -224,9 +224,11 @@ class World:
         claims = self._claim_known(others)
         occupied = any(in_cr(self.cfg, self.gate, o.p) for o in others)
         entry_ok = (not claims and not occupied) if self.entry_ok_fixed is None else self.entry_ok_fixed
-        go = NS(gate_id=self.gate.gate_id, s=s, l=l, dz=dz, queue_s=a.queue[0], queue_l=a.queue[1], queue_dz=a.queue[2],
-                loc_ok=self.loc_ok, entry_ok=entry_ok, passed=s > G.exit_s)
         tg = [x for x in (target(a.p, o.p) for o in others) if x is not None]
+        # the near-field clearance of the admission (gate_perception: no hull with d_lower below GateRule.admit_clear_m)
+        go = NS(gate_id=self.gate.gate_id, s=s, l=l, dz=dz, queue_s=a.queue[0], queue_l=a.queue[1], queue_dz=a.queue[2],
+                loc_ok=self.loc_ok, entry_ok=entry_ok, passed=s > G.exit_s,
+                admit_clear=all(x.d_lower >= G.admit_clear_m for x in tg))
         return NS(t=self.t, p=p_est, v_world=a.v + self.drift, R_wb=np.eye(3), yaw=0.0, targets=tg, unhealthy=[],
                   gate=go, gate_index=0, sense_ok=True), entry_ok
 

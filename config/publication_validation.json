@@ -1,4 +1,5 @@
 {
+  "terminal": true,
   "seeds": [0, 1, 2],
   "cases": [
     {"id": "encounter", "scenario": "p1_two_lines", "profile": "CLEAN", "b2": "B2_CLEAN", "duration_s": 70},

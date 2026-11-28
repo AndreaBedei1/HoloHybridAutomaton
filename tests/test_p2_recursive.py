@@ -201,3 +201,23 @@ def test_a_larger_older_margin_with_a_later_end_of_braking_does_not_displace_a_f
     assert old.margin >= fresh.margin and old.t_end > fresh.t_end
     kept = gc.sk_certificate(anchor, old)
     assert kept is not old and kept.t_end == fresh.t_end
+
+
+def test_a_hold_with_a_saturated_vertical_command_is_still_recognised_and_latched():
+    """At an acquisition offset the vertical command saturates (0.25 m/s cap of the stage-2 hold) while the horizontal loop is
+    exact: the CR column extends to every depth, so the station keeping is recognised on the column axes and latched as an SK
+    certificate, which then survives a DVL outage once its braking has ended (formal P2R3, the v27 P2_UNCERTIFIED replay)."""
+    q = np.array([G.stage2_hold_s, 0.0, 0.0])
+    anchor = np.array([G.stage2_hold_s, 0.0, -0.8])
+    gc = _gc(q)
+    loop = gs.K_HOLD * (anchor - q)
+    v = loop.copy()
+    v[2] = float(np.clip(loop[2], -0.25, 0.25))
+    a = np.asarray(GATE.axis, float)
+    left = np.array([-a[1], a[0], 0.0])
+    v_world = v[0] * a + v[1] * left + np.array([0.0, 0.0, v[2]])
+    assert gc.is_hold_loop(v_world, anchor, gs.K_HOLD)
+    cert = gc.certify(v_world, loops=[{"anchor": anchor, "gain": gs.K_HOLD, "cap": G.v_pass}])
+    assert cert is not None and cert.kind == gs.SK
+    v_bad = v_world + 0.05 * a
+    assert not gc.is_hold_loop(v_bad, anchor, gs.K_HOLD)

@@ -19,8 +19,10 @@ the CR (failures inside the CR are outside the scope, holo_fleet/scope.py), so i
 admission; (Pi3) truthful self-reports (payload.py, passage.report_phase: S9 of formal/check_status.py).
 
 The admission rule of the corrected controller (perception/gate_perception.py ``admit_wait_s``, control/flows.py): no claim held,
-commitment age >= T_c = ``commit_admit_min_s``, and either a FRESH report (age <= T_f = ``admit_fresh_s``) of every other drone, or a
-commitment age >= T_c + D, D = ``t_cross_max``.  The former controller: no claim held (a claim released by rule D after
+commitment age >= T_c = ``commit_admit_min_s``, and either a FRESH report (age <= T_f = ``admit_fresh_s``) or a report of a verified
+passage of this gate (PASSED, AcousticExit.passed) of every other drone, or a commitment age >= T_c + D, D = ``t_cross_max``.
+(Pi4) a drone reports PASSED of a gate only after its verified passage beyond the CR (perception/passage.py) and never commits again
+to a gate it has passed (GatePerception.advance: the gate index only increases); back in the keep-out box it reports a claim.  The former controller: no claim held (a claim released by rule D after
 ``t_silent_gate_s`` of silence), nothing else from the channel.
 
 Timeline model (Z3, exact real time, every message pattern): the two admissions of a violating pair f (admitted first) and s.
@@ -33,6 +35,8 @@ Timeline model (Z3, exact real time, every message pattern): the two admissions 
   B2C-Ea/Eb/Ee proved: concurrent commitment before hearing each other; one drone stationary (committed and holding) whose messages
            never reach the other; a live drone with a failed transmitter (3 drones, the receiver hears a third one).
   B2C-E3   proved: 3 drones - a third drone's reports (any content, any freshness) cannot create a violation.
+  B2C-Epm  mutation: without Pi4 (a PASSED report at any time) the freshness exemption of a passed drone violates P2.
+  B2C-Wp   witness: an admission by the fresh branch with the other drone's PASSED report stale (the exemption is used).
   B2C-EL   declared limit: a mutually unheard pair (total blackout of that pair) - P2 then rests on the B0 mechanisms only (queue
            precedence and occupancy latch, formal/check_mutex.py M2/M3 on idealised positions; the stage-2 sonar is not certified, G1).
   B2C-Es   scope: k_max + 1 = 41 consecutive losses on both links allow the mutual degradation of B2C-EL (the bound is tight).
@@ -129,12 +133,17 @@ class RxView:
         self.age = z3.Real(pre + "age")
         self.silence = z3.Real(pre + "silence")
         self.outside = z3.Bool(pre + "outside")
+        self.passed = z3.Bool(pre + "passed")
 
     def blocking(self):
         return z3.And(z3.Not(self.none), self.claim)
 
     def fresh(self, T_f):
         return z3.And(z3.Not(self.none), self.age <= T_f)
+
+    def fresh_or_passed(self, T_f):
+        """acoustic_gate.all_fresh: a fresh report, or a report of a verified passage of this gate (AcousticExit.passed)."""
+        return z3.Or(self.fresh(T_f), self.passed)
 
 
 class LocalView:
@@ -150,7 +159,7 @@ class LocalView:
 def admit_new(L: LocalView, p: Prm, ignore_claim: Optional[str] = None):
     """Corrected rule: no claim held; commitment age >= T_c; all others fresh, or commitment age >= T_c + D; the B0 sonar checks."""
     no_claim = z3.And(*[z3.Not(r.blocking()) for peer, r in L.rx.items() if peer != ignore_claim])
-    fresh_all = z3.And(*[r.fresh(p.T_f) for r in L.rx.values()])
+    fresh_all = z3.And(*[r.fresh_or_passed(p.T_f) for r in L.rx.values()])
     return z3.And(L.sonar_ok, no_claim, z3.Or(z3.And(fresh_all, L.ca >= p.T_c), L.ca >= p.T_c + p.D))
 
 
@@ -190,7 +199,7 @@ class Drone:
 
 
 def channel(tag: str, snd: Drone, rcv: Drone, r: RxView, t_dec, p: Prm, end, loss_k: Optional[int] = None,
-            snd_claims=True, silent_from=None):
+            snd_claims=True, silent_from=None, passed_after=None):
     """The latest report of ``snd`` held by ``rcv`` at its decision instant t_dec, by the channel law; returns constraints and the
     true emission instant.  ``end``: the sender is committed (truthful claims) on [c, end]; ``loss_k``: at most k consecutive losses
     on this link; ``silent_from``: no packet of the sender emitted at or after this instant is delivered (failed transmitter)."""
@@ -202,6 +211,11 @@ def channel(tag: str, snd: Drone, rcv: Drone, r: RxView, t_dec, p: Prm, end, los
             heard <= t_dec, r.silence == t_dec - heard, z3.Implies(z3.Not(r.none), heard >= t_tx + lam)]
     if snd_claims:
         cons.append(z3.Implies(z3.And(z3.Not(r.none), t_tx - rho > snd.c, t_tx <= end), r.claim))
+    # a PASSED report is a report, not a claim; Pi4: the sender reports PASSED of this gate only after its verified passage
+    # (``passed_after``, beyond the CR) and never commits again to a gate it has passed (None: content unconstrained)
+    cons.append(z3.Implies(r.passed, z3.And(z3.Not(r.none), z3.Not(r.claim))))
+    if passed_after is not None:
+        cons.append(z3.Implies(r.passed, t_tx - rho > passed_after))
     if silent_from is not None:
         cons += [z3.Implies(z3.Not(r.none), t_tx < silent_from), heard < silent_from + p.lat_max]
     if loss_k is not None:
@@ -213,7 +227,7 @@ def channel(tag: str, snd: Drone, rcv: Drone, r: RxView, t_dec, p: Prm, end, los
 
 
 def timeline(p: Prm, rule: str = "new", n: int = 2, loss: Dict[str, Optional[int]] = None, mutual: Optional[bool] = None,
-             extra=None, kin: float = 0.0, rule_d: bool = True, witness: bool = False):
+             extra=None, kin: float = 0.0, rule_d: bool = True, witness: bool = False, pi4: bool = True):
     """Constraints of a P2 violation by the pair (f, s): c_f < t_f <= t_s <= tau, c_s < t_s, tau <= t_f + T_cross (Pi2), both
     admissions taken by ``rule`` on the local views, the channel law on every link.  ``n`` = 3 adds a bystander k whose reports
     (arbitrary content: its own state is unconstrained) reach f and s.  ``loss``: link -> k bound ("fs" = f's reports at s).
@@ -236,8 +250,11 @@ def timeline(p: Prm, rule: str = "new", n: int = 2, loss: Dict[str, Optional[int
     if k is not None:
         cons += [k.o != f.o, k.o != s.o]
     cons.append(f.o != s.o)
-    c1, _ = channel("sf", s, f, Lf.rx["s"], f.t, p, tau, loss.get("sf"), silent_from=(extra or {}).get("s_silent_from"))
-    c2, t2 = channel("fs", f, s, Ls.rx["f"], s.t, p, end_f, loss.get("fs"), silent_from=(extra or {}).get("f_silent_from"))
+    # Pi4: f's passage is verified only after it has left the CR (after end_f), s's only after its admission t_s
+    c1, _ = channel("sf", s, f, Lf.rx["s"], f.t, p, tau, loss.get("sf"), silent_from=(extra or {}).get("s_silent_from"),
+                    passed_after=s.t if pi4 else None)
+    c2, t2 = channel("fs", f, s, Ls.rx["f"], s.t, p, end_f, loss.get("fs"), silent_from=(extra or {}).get("f_silent_from"),
+                     passed_after=end_f if pi4 else None)
     cons += c1 + c2
     if witness:
         cons.append(z3.Implies(t2 - z3.Real("rho_fs") > end_f, z3.Not(Ls.rx["f"].claim)))
@@ -315,6 +332,7 @@ def monotone(p: Prm, rule: str = "new") -> list:
     for a in ("a", "b"):
         r, r2 = L.rx[a], L2.rx[a]
         cons += [z3.Implies(r.blocking(), r2.blocking()), z3.Implies(r2.fresh(p.T_f), r.fresh(p.T_f)),
+                 z3.Implies(r2.passed, r.passed),
                  z3.Implies(z3.Not(r2.none), z3.And(z3.Not(r.none), r2.age >= r.age)), r2.silence >= r.silence,
                  r2.outside == r.outside, r.silence >= 0]
     adm = admit_new if rule == "new" else admit_old
@@ -426,7 +444,7 @@ def step_model(cfg: FleetConfig, p: Prm, rule: str = "new", H_s: float = 100.0, 
     def local_admit(i, k):
         """Admission decision of drone i at step k from its local state only."""
         x = X[i]
-        fresh = z3.And(x["Ltx"][k] >= 0, k - x["Ltx"][k] <= n_f)
+        fresh = z3.Or(z3.And(x["Ltx"][k] >= 0, k - x["Ltx"][k] <= n_f), x["Lph"][k] == 3)
         quiet = x["Lq"][k] >= 1
         if rule == "new":
             return z3.And(quiet, z3.Not(claim_held(i, k)), z3.Or(z3.And(fresh, x["Lca"][k] >= n_c), x["Lca"][k] >= n_d))
@@ -565,6 +583,13 @@ def run(cfg: FleetConfig = B2, verbose: bool = True, step: bool = True) -> Repor
                   timeline(p, "new", n=3, loss={"sf": 2}, extra={"f_silent_from": z3.Real("c_f") - p.T_silent})[0]), verbose)
     rep.add(check("B2C-E3 3 drones: a bystander's reports (any content, any freshness) cannot create a violation unless the pair is mutually unheard",
                   "as B2C-E1 with a third drone k", ENC, timeline(p, "new", n=3, mutual=False)[0]), verbose)
+    rep.add(check("B2C-Epm mutation: without Pi4 (PASSED reportable at any time) the exemption of a passed drone violates P2",
+                  "expect counterexample: a stale PASSED report emitted before f's commitment exempts f", ENC,
+                  timeline(p, "new", mutual=False, pi4=False)[0], expect="sat"), verbose)
+    cons, (Lf, Ls), _ = timeline(p, "new", loss={"sf": 0}, witness=True)
+    rep.add(check("B2C-Wp witness: a fresh-branch admission while the other drone's latest report is a stale PASSED (the exemption)",
+                  "expect SAT (non-vacuity)", ENC,
+                  cons + [Ls.rx["f"].passed, z3.Not(Ls.rx["f"].fresh(p.T_f)), Ls.ca <= p.T_c + 0.5], expect="sat"), verbose)
     rep.add(check("B2C-Ed partial loss and delay: one link lossless, the other arbitrary (2 drones): P2",
                   "case (d)", ENC, timeline(p, "new", loss={"sf": 0})[0]), verbose)
     rep.add(check("B2C-EL declared limit: a mutually unheard pair (total blackout of the pair, case (c)) - P2 rests on the B0 mechanisms only",

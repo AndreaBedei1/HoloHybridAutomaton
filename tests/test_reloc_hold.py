@@ -15,7 +15,7 @@ def _obs(plan, s, loc_ok, t, entry_ok=True, l=0.0):
     g = plan.gates[0]
     p = g.from_gate_frame([s, l, 0.0])
     gate = SimpleNamespace(s=s, l=l, dz=0.0, queue_s=plan.queue_s, queue_l=plan.queue_lateral, queue_dz=plan.queue_dz,
-                           loc_ok=loc_ok, entry_ok=entry_ok)
+                           loc_ok=loc_ok, entry_ok=entry_ok, admit_clear=True)
     return SimpleNamespace(t=t, p=np.asarray(p, float), gate=gate, gate_index=0, targets=[])
 
 

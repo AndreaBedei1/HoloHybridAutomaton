@@ -73,3 +73,54 @@ def test_campaign_plan_sizes():
     assert runs == [("B2_LOW", "LOW-ALL", "gate_single", 0), ("B2_LOW", "LOW-ALL", "gate_single", 1)]
     both = camp.plan(None, only=["gate_single", "lost_drone_mutex"], protocols=["B0", "B2_MEDIUM"], profiles=["CLEAN"])
     assert len(both) == len(set(both)) == 2 * 2 * len(camp.SEEDS)
+
+
+def test_validation_levels_truncate_the_sonar_shift_and_draw_per_run_scales():
+    """LOW / MEDIUM: whole-profile shift at most one 0.05 m bin, residual sound-speed scale within 0.13 % (eps_range valid to
+    12 m), DVL scale within NavBound's 1 %; scales constant per run and reproducible from the seed."""
+    from holo_fleet.sim.sensor_noise import scale_factors
+
+    for p in (LOW, MEDIUM):
+        assert p.sonar_jitter_max_bins == 1 and 0 < p.sonar_scale_max <= 0.0013 and 0 < p.dvl_scale_max <= 0.01
+        s1, d1 = scale_factors(p, 4, 3)
+        s2, d2 = scale_factors(p, 4, 3)
+        assert np.array_equal(s1, s2) and np.array_equal(d1, d2)
+        assert np.all(np.abs(s1) <= p.sonar_scale_max) and np.all(np.abs(d1) <= p.dvl_scale_max)
+    assert CLEAN.sonar_scale_max == CLEAN.dvl_scale_max == 0.0 and HIGH.sonar_jitter_max_bins > 1
+
+
+def _bare_sim(noise, sonar_scale=0.0, dvl_scale=0.0, seed=0):
+    from holo_fleet.sim.holo_env import HoloFleetSim
+
+    sim = object.__new__(HoloFleetSim)
+    sim.noise, sim.cfg = noise, DEFAULT
+    sim.nrng = np.random.default_rng([seed, 7919])
+    sim.sonar_scale, sim.dvl_scale = {"d": sonar_scale}, {"d": dvl_scale}
+    sim.noise_stats = {k: 0 for k in ("sonar_blackout", "sonar_dropped", "sonar_faded", "sonar_shifted", "dvl_outage",
+                                      "dvl_dropped")}
+    sim._in_window = lambda name, kind, t: False
+    return sim
+
+
+def test_the_wrapper_truncates_the_shift_and_applies_the_scales():
+    from dataclasses import replace as rp
+
+    from holo_fleet.sim.holo_env import SONAR_NAMES
+
+    key = sorted(SONAR_NAMES)[0]
+    nb = DEFAULT.perc.sonar.bins
+    prof = np.zeros(nb)
+    prof[100:103] = 0.9
+    noisy = rp(MEDIUM, sonar_range_jitter_m=1.0, sonar_dropout=0.0, sonar_fade_prob=0.0)
+    sim = _bare_sim(noisy)
+    shifts = set()
+    for _ in range(200):
+        out = sim._degrade("d", key, prof, 1.0)
+        shifts.add(int(np.flatnonzero(np.asarray(out) > 0.5)[0]) - 100)
+    assert shifts <= {-1, 0, 1} and len(shifts) > 1
+    sim = _bare_sim(rp(MEDIUM, sonar_range_jitter_m=0.0, sonar_dropout=0.0, sonar_fade_prob=0.0), sonar_scale=0.01)
+    out = sim._degrade("d", key, prof, 1.0)
+    assert int(np.flatnonzero(np.asarray(out) > 0.5)[0]) == 101
+    sim = _bare_sim(rp(MEDIUM, dvl_dropout=0.0), dvl_scale=0.01)
+    v = sim._degrade("d", "DVLSensor", np.array([0.5, -0.2, 0.1, 3.0, 3.0, 3.0, 3.0]), 1.0)
+    assert np.allclose(v[:3], [0.505, -0.202, 0.101]) and np.allclose(v[3:], 3.0)

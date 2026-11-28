@@ -1,0 +1,366 @@
+{
+  "check": "stale",
+  "all_passed": true,
+  "results": [
+    {
+      "prop": "ST1 deployed rule (dwell + corridor sighting, t_admit_stale = 37.53 s; near-field clearance admit_clear_m = 3.3 m at every admission), premises Pi1, Pi2, P1 detection, Z, zone geometry (ST6), no premise S, no near-field sighting: the first occupant is beyond passage_clear_s at the follower's admission",
+      "formula": "t_b > max(t_s, t_o) + T, d_low(t_a) >= admit_clear_m, d_low <= d, t_a > t_o -> d <= d_zone, s(t) >= s_a + v_cross_min (t - t_a) -> s(t_b) > passage_clear_s",
+      "encoding": "linear real arithmetic over the deployed guards and the declared crossing premise (v_cross_min)",
+      "expect": "unsat",
+      "verdict": "unsat",
+      "passed": true,
+      "seconds": 0.004,
+      "counterexample": null,
+      "note": "case t_a <= t_o: the dwell alone; case t_a > t_o: excluded by the clearance (d_zone = 3.246 m)"
+    },
+    {
+      "prop": "ST1n mutation: an admission without the near-field clearance (an occupant admitted during the dwell of another drone in the zone)",
+      "formula": "expect counterexample",
+      "encoding": "linear real arithmetic over the deployed guards and the declared crossing premise (v_cross_min)",
+      "expect": "sat",
+      "verdict": "sat",
+      "passed": true,
+      "seconds": 0.004,
+      "counterexample": {
+        "d": 0.0,
+        "d_low": 0.0,
+        "s_a": 0.0,
+        "s_b": 0.0,
+        "t_a": 0.0,
+        "t_b": 0.0,
+        "t_o": -38.53,
+        "t_s": -38.53
+      },
+      "note": ""
+    },
+    {
+      "prop": "ST1z mutation: a zone wider than the clearance (the s-only zone of 5f9f049: two drones in it can be farther apart than admit_clear_m)",
+      "formula": "expect counterexample",
+      "encoding": "linear real arithmetic over the deployed guards and the declared crossing premise (v_cross_min)",
+      "expect": "sat",
+      "verdict": "sat",
+      "passed": true,
+      "seconds": 0.002,
+      "counterexample": {
+        "d": 4.3,
+        "d_low": 4.3,
+        "s_a": -3.9525,
+        "s_b": 0.55,
+        "t_a": -37.520833333333336,
+        "t_b": 0.0,
+        "t_o": -38.53,
+        "t_s": -38.53
+      },
+      "note": ""
+    },
+    {
+      "prop": "ST1d mutation: the bound from the last corridor sighting only (no dwell term) without premise S",
+      "formula": "expect counterexample: an occupant admitted before the follower arrived, never seen by it",
+      "encoding": "linear real arithmetic over the deployed guards and the declared crossing premise (v_cross_min)",
+      "expect": "sat",
+      "verdict": "sat",
+      "passed": true,
+      "seconds": 0.005,
+      "counterexample": {
+        "d": 3.3,
+        "d_low": 3.3,
+        "s_a": 0.0,
+        "s_b": 0.0,
+        "t_a": 0.0,
+        "t_b": 0.0,
+        "t_o": 0.0,
+        "t_s": -38.53
+      },
+      "note": ""
+    },
+    {
+      "prop": "ST1s alternative: from the last sighting only under premise S, after 37.53 s the occupant is beyond passage_clear_s",
+      "formula": "S, Pi2, t_b > t_seen + T -> s(t_b) > passage_clear_s",
+      "encoding": "linear real arithmetic over the deployed guards and the declared crossing premise (v_cross_min)",
+      "expect": "unsat",
+      "verdict": "unsat",
+      "passed": true,
+      "seconds": 0.003,
+      "counterexample": null,
+      "note": ""
+    },
+    {
+      "prop": "ST1p P2 part: after 32.94 s the occupant is beyond the CR exit plane cr_s_max",
+      "formula": "same premises -> s(t_b) > cr_s_max",
+      "encoding": "linear real arithmetic over the deployed guards and the declared crossing premise (v_cross_min)",
+      "expect": "unsat",
+      "verdict": "unsat",
+      "passed": true,
+      "seconds": 0.003,
+      "counterexample": null,
+      "note": ""
+    },
+    {
+      "prop": "ST1m mutation: a bound 2 s shorter admits while the occupant can still be in the passage",
+      "formula": "expect counterexample",
+      "encoding": "linear real arithmetic over the deployed guards and the declared crossing premise (v_cross_min)",
+      "expect": "sat",
+      "verdict": "sat",
+      "passed": true,
+      "seconds": 0.001,
+      "counterexample": {
+        "s_a": -3.9525,
+        "s_b": 0.4311,
+        "t_a": -36.53,
+        "t_b": 0.0,
+        "t_seen": -36.53
+      },
+      "note": ""
+    },
+    {
+      "prop": "ST1m2 mutation: without premise S (sighting before the occupant's admission) the bound is not enough",
+      "formula": "expect counterexample",
+      "encoding": "linear real arithmetic over the deployed guards and the declared crossing premise (v_cross_min)",
+      "expect": "sat",
+      "verdict": "sat",
+      "passed": true,
+      "seconds": 0.005,
+      "counterexample": {
+        "s_a": 0.0,
+        "s_b": 0.0,
+        "t_a": 0.0,
+        "t_b": 0.0,
+        "t_seen": -38.53
+      },
+      "note": ""
+    },
+    {
+      "prop": "ST1m3 mutation: an occupant that does not progress (v = 0, outside the premise) defeats any bound",
+      "formula": "expect counterexample",
+      "encoding": "linear real arithmetic over the deployed guards and the declared crossing premise (v_cross_min)",
+      "expect": "sat",
+      "verdict": "sat",
+      "passed": true,
+      "seconds": 0.002,
+      "counterexample": {
+        "s_a": 0.0,
+        "s_b": 0.0,
+        "t_a": 0.0,
+        "t_b": 38.53,
+        "t_seen": 0.0
+      },
+      "note": ""
+    },
+    {
+      "prop": "ST1m4 mutation: the e3e31f0 release (FREE after t_occ_max = 25 s, no admission bound)",
+      "formula": "admission at t_seen + t_occ_max: expect counterexample",
+      "encoding": "linear real arithmetic over the deployed guards and the declared crossing premise (v_cross_min)",
+      "expect": "sat",
+      "verdict": "sat",
+      "passed": true,
+      "seconds": 0.003,
+      "counterexample": {
+        "s_a": -3.12,
+        "s_b": 0.0,
+        "t_a": -26.0,
+        "t_b": 0.0,
+        "t_seen": -26.0
+      },
+      "note": ""
+    },
+    {
+      "prop": "ST1w witness: the timeline premises are satisfiable",
+      "formula": "expect SAT (non-vacuity)",
+      "encoding": "linear real arithmetic over the deployed guards and the declared crossing premise (v_cross_min)",
+      "expect": "sat",
+      "verdict": "sat",
+      "passed": true,
+      "seconds": 0.002,
+      "counterexample": {
+        "s_a": -3.9525,
+        "s_b": 0.6711,
+        "t_a": -38.53,
+        "t_b": 0.0,
+        "t_seen": -38.53
+      },
+      "note": ""
+    },
+    {
+      "prop": "ST2 one step of the deployed latch never gives FREE from BUSY or STALE (time alone never frees)",
+      "formula": "prev in {BUSY, STALE} -> new != FREE",
+      "encoding": "linear real arithmetic over the deployed guards and the declared crossing premise (v_cross_min)",
+      "expect": "unsat",
+      "verdict": "unsat",
+      "passed": true,
+      "seconds": 0.01,
+      "counterexample": null,
+      "note": ""
+    },
+    {
+      "prop": "ST2w witness: BUSY -> STALE is reachable in one step",
+      "formula": "expect SAT",
+      "encoding": "linear real arithmetic over the deployed guards and the declared crossing premise (v_cross_min)",
+      "expect": "sat",
+      "verdict": "sat",
+      "passed": true,
+      "seconds": 0.002,
+      "counterexample": {
+        "corridor": false,
+        "heard": false,
+        "known": false,
+        "last": 0.0,
+        "new": "2",
+        "prev": "1",
+        "s1": "1",
+        "s2": "2",
+        "s3": "2",
+        "since": 0.0,
+        "t": 26.0,
+        "witness": false
+      },
+      "note": ""
+    },
+    {
+      "prop": "ST3 with the admission conditions holding in the zone (dwell begun within t_occ_max of the hold start) the hold is never given up before admission: admission comes first",
+      "formula": "Z >= h, Z <= h + t_occ_max -> not (not admitted and t - max(h + T, W, E) > t_occ_max + t_clear)",
+      "encoding": "linear real arithmetic over the deployed guards and the declared crossing premise (v_cross_min)",
+      "expect": "unsat",
+      "verdict": "unsat",
+      "passed": true,
+      "seconds": 0.005,
+      "counterexample": null,
+      "note": ""
+    },
+    {
+      "prop": "ST3w witness: before the eligible time the drone waits at the hold",
+      "formula": "expect SAT",
+      "encoding": "linear real arithmetic over the deployed guards and the declared crossing premise (v_cross_min)",
+      "expect": "sat",
+      "verdict": "sat",
+      "passed": true,
+      "seconds": 0.003,
+      "counterexample": {
+        "E": -1.0,
+        "W": 1.0,
+        "Z": -38.53,
+        "h": -38.53,
+        "t": 0.0
+      },
+      "note": ""
+    },
+    {
+      "prop": "ST3g witness: a drone held outside the zone (no dwell) gives up: the give-up is reachable",
+      "formula": "expect SAT",
+      "encoding": "linear real arithmetic over the deployed guards and the declared crossing premise (v_cross_min)",
+      "expect": "sat",
+      "verdict": "sat",
+      "passed": true,
+      "seconds": 0.003,
+      "counterexample": {
+        "E": 0.5,
+        "W": 0.0,
+        "Z": -10.53,
+        "h": -38.03,
+        "t": 27.0
+      },
+      "note": ""
+    },
+    {
+      "prop": "ST3m mutation: a give-up timer started from the hold and commitment only (not entry_after nor the dwell) gives up before the timed admission (commit/give-up loop)",
+      "formula": "expect counterexample",
+      "encoding": "linear real arithmetic over the deployed guards and the declared crossing premise (v_cross_min)",
+      "expect": "sat",
+      "verdict": "sat",
+      "passed": true,
+      "seconds": 0.004,
+      "counterexample": {
+        "E": 27.0,
+        "W": 0.0,
+        "Z": -11.03,
+        "h": 0.5,
+        "t": 27.0
+      },
+      "note": ""
+    },
+    {
+      "prop": "ST3o mutation: the f583bde give-up (anchored on the dwell term, obs.t + T out of the zone) never fires for a drone held outside the zone (an endless hold, review finding)",
+      "formula": "expect counterexample",
+      "encoding": "linear real arithmetic over the deployed guards and the declared crossing premise (v_cross_min)",
+      "expect": "sat",
+      "verdict": "sat",
+      "passed": true,
+      "seconds": 0.003,
+      "counterexample": {
+        "E": 38.53,
+        "W": -1001.0,
+        "h": -1000.0,
+        "t": 0.0,
+        "t0": 0.0
+      },
+      "note": ""
+    },
+    {
+      "prop": "ST4 runtime stale_release / entry_after agree with the Z3 encoding (786 input combinations)",
+      "formula": "python(x) == z3(x) for every sampled x",
+      "encoding": "numeric grid",
+      "expect": "holds",
+      "verdict": "holds",
+      "passed": true,
+      "seconds": 0.0,
+      "counterexample": null,
+      "note": ""
+    },
+    {
+      "prop": "ST6 zone geometry: under premise Z (estimate within 0.65 m horizontally and 0.25 m vertically of the truth while in the zone) two drones whose estimates are in the admission zone are at most 3.246 m apart < admit_clear_m = 3.3 m; the acquisition offsets lie in the zone",
+      "formula": "max true centre distance (triangle inequality) < admit_clear_m <= d_lower bound",
+      "encoding": "numeric bound over the zone extents (GateRule.in_admission_zone, flows.ACQ_OFFSETS, structure_aiding constants)",
+      "expect": "holds",
+      "verdict": "holds",
+      "passed": true,
+      "seconds": 0.0,
+      "counterexample": null,
+      "note": "the clearance needs the hull's echo in some healthy sector (the P1 detection premise); a hull within admit_clear_m has d_lower < admit_clear_m since d_lower is a lower bound of the centre distance (S0); premise Z is declared (tighter than nav_err_m) and monitored by the referee (zone_nav)"
+    },
+    {
+      "prop": "ST6l declared limit: with only the committed navigation premise (nav_err_m per horizontal axis, the depth allowance vertically) two drones in the admission zone can be farther apart than admit_clear_m: the timed admission rests on premise Z",
+      "formula": "expect counterexample",
+      "encoding": "nonlinear real arithmetic (Z3)",
+      "expect": "sat",
+      "verdict": "sat",
+      "passed": true,
+      "seconds": 25.261,
+      "counterexample": {
+        "ea__0": 0.0,
+        "ea__1": 0.75,
+        "ea__2": 0.45,
+        "eb__0": 0.0,
+        "eb__1": -0.875,
+        "eb__2": -0.44921875,
+        "xa__0": -2.5,
+        "xa__1": 0.0,
+        "xa__2": 0.9,
+        "xb__0": -2.5,
+        "xb__1": -0.3125,
+        "xb__2": -0.875
+      },
+      "note": ""
+    },
+    {
+      "prop": "ST7 reported: queue standoff 3.8 m = admit_clear_m + 0.50 m (a progress margin; the queue points stay abreast, formal M2)",
+      "formula": "reported",
+      "encoding": "config",
+      "expect": "holds",
+      "verdict": "holds",
+      "passed": true,
+      "seconds": 0.0,
+      "counterexample": null,
+      "note": "a drone that is not committed backs off while a DYNAMIC FRONT hull is nearer than queue_standoff_m; the bound of the lead drone on it is then about queue_standoff_m plus the follower pessimism minus the lead pessimism (v32 with a follower 4.4 m behind the hold: >= 3.69 m at the 1st percentile)"
+    },
+    {
+      "prop": "ST5 reported: t_admit_stale = 37.53 s (P2 part 32.94 s, P1 clearance part 4.59 s), t_occ_max = 25 s",
+      "formula": "reported",
+      "encoding": "config",
+      "expect": "holds",
+      "verdict": "holds",
+      "passed": true,
+      "seconds": 0.0,
+      "counterexample": null,
+      "note": ""
+    }
+  ]
+}

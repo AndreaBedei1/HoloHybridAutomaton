@@ -253,8 +253,10 @@ class Referee:
             c = np.clip(Rz @ Rz.T, -1.0, 1.0)
             self.max_rel_tilt = max(self.max_rel_tilt, float(np.degrees(np.arccos(c.min()))))
         row["max_drift"] = round(float(np.max(np.linalg.norm(drift, axis=1))), 3)
+        # 1e-6 m: the offline replay (robustness_metrics.replay_terminal) recomputes the formation error and the P3 episode
+        # from these positions; at 1e-3 m an error of 0.9999 m logged online could replay above e_ok and shift the episode
         for k in range(self.n):
-            row[f"x{k}"], row[f"y{k}"], row[f"z{k}"] = (round(float(v), 3) for v in P[k])
+            row[f"x{k}"], row[f"y{k}"], row[f"z{k}"] = (round(float(v), 6) for v in P[k])
         self.rows.append(row)
         return row
 

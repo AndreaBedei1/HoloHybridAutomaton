@@ -26,7 +26,7 @@ from holo_fleet.perception.frame import SensorFrame
 from holo_fleet.perception.sensor_suite import SONAR_NAMES, is_onboard, onboard_sensor_configs
 from holo_fleet.sim import holoocean_setup as hs
 from holo_fleet.sim.engine_session import make
-from holo_fleet.sim.sensor_noise import heading_biases, plan_windows
+from holo_fleet.sim.sensor_noise import heading_biases, plan_windows, scale_factors
 
 LOG = logging.getLogger(__name__)
 
@@ -87,11 +87,16 @@ class HoloFleetSim:
         self.heading_bias = (heading_biases(self.noise, len(self.names), spec.seed) if self.noise is not None
                              else np.zeros(len(self.names)))
         self.heading_bias = np.array([b if k in self.noisy_idx else 0.0 for k, b in enumerate(self.heading_bias)])
+        n_d = len(self.names)
+        s_sc, d_sc = scale_factors(self.noise, n_d, spec.seed) if self.noise is not None else (np.zeros(n_d), np.zeros(n_d))
+        self.sonar_scale = {self.names[k]: (float(s_sc[k]) if k in self.noisy_idx else 0.0) for k in range(n_d)}
+        self.dvl_scale = {self.names[k]: (float(d_sc[k]) if k in self.noisy_idx else 0.0) for k in range(n_d)}
         self.noise_windows: Dict[str, Dict[str, List[tuple]]] = {}
         self.delayed: Dict[str, List[tuple]] = {n: [] for n in self.names}
         self.noise_stats = {"sonar_dropped": 0, "sonar_blackout": 0, "sonar_faded": 0, "sonar_shifted": 0,
                             "dvl_dropped": 0, "dvl_outage": 0}
         self.beacon = None
+        self.gate_beacon = None
         self.beacon_inbox: Dict[str, List[tuple]] = {n: [] for n in self.names}
         if cfg.beacon.enabled:
             from holo_fleet.sim.beacon import BeaconTransport
@@ -285,8 +290,16 @@ class HoloFleetSim:
             if nz.sonar_fade_prob > 0 and self.nrng.random() < nz.sonar_fade_prob:
                 prof = np.asarray(val, dtype=float) * nz.sonar_fade_gain
                 self.noise_stats["sonar_faded"] += 1
+            sc = self.sonar_scale.get(name, 0.0)
+            if sc:
+                # residual sound-speed scale: an echo at the true range r appears at r (1 + sc)
+                src = np.asarray(val if prof is None else prof, dtype=float).ravel()
+                idx = np.rint(np.arange(src.size) / (1.0 + sc)).astype(int)
+                prof = np.where(idx < src.size, src[np.clip(idx, 0, src.size - 1)], 0.0)
             if nz.sonar_range_jitter_m > 0:
                 k = int(round(float(self.nrng.normal(0.0, nz.sonar_range_jitter_m)) / self.cfg.perc.sonar.bin_width))
+                if nz.sonar_jitter_max_bins > 0:
+                    k = int(np.clip(k, -nz.sonar_jitter_max_bins, nz.sonar_jitter_max_bins))
                 if k:
                     src = np.asarray(val if prof is None else prof, dtype=float).ravel()
                     prof = np.zeros_like(src)
@@ -303,6 +316,11 @@ class HoloFleetSim:
             if nz.dvl_dropout > 0 and self.nrng.random() < nz.dvl_dropout:
                 self.noise_stats["dvl_dropped"] += 1
                 return None
+            sc = self.dvl_scale.get(name, 0.0)
+            if sc and val is not None:
+                v = np.array(val, dtype=float).ravel()
+                v[:3] *= 1.0 + sc
+                return v
         return val
 
     def _tick(self, record: bool = True) -> None:
@@ -385,8 +403,28 @@ class HoloFleetSim:
                              for nm, d in zip(self.intruder_names, self.intruders)])
         return Truth(self.t, P, R, Y, V, C, released, drift, cmd, intr)
 
+    def _gate_beacon_rx(self):
+        """Gate beacon receptions of this step (sim/gate_beacon.py), from the simulator poses (never onboard)."""
+        if not self.cfg.gate_beacon.enabled or not self.spec.gate_ids:
+            return None
+        if self.gate_beacon is None:
+            from holo_fleet.arena_bridge import HORSESHOE_TRACK, load_arena_gates
+            from holo_fleet.sim.gate_beacon import GateBeaconSim
+
+            self.gate_beacon = GateBeaconSim(self.names, load_arena_gates(HORSESHOE_TRACK, list(self.spec.gate_ids)),
+                                             self.cfg, self.spec.seed)
+        poses = {}
+        for name in self.names:
+            pose = self.latest[name].get("PoseSensor")
+            if pose is None or self.spec.dead(name, self.t):
+                continue
+            pose = np.asarray(pose, float)
+            poses[name] = (agent_origin_from_pose(pose), math.atan2(pose[1, 0], pose[0, 0]))
+        return self.gate_beacon.measure(self.t, poses)
+
     def frames(self) -> Dict[str, SensorFrame]:
         out = {}
+        gb_rx = self._gate_beacon_rx()
         for name in self.names:
             if self.spec.dead(name, self.t):
                 self.beacon_inbox[name] = []
@@ -394,6 +432,9 @@ class HoloFleetSim:
                 continue
             data = {k: v for k, v in self.latest[name].items() if is_onboard(k)}
             stamp = {k: v for k, v in self.stamp[name].items() if is_onboard(k)}
+            if gb_rx is not None:
+                data["GateBeaconRx"] = tuple(gb_rx.get(name, ()))
+                stamp["GateBeaconRx"] = self.t
             if self.beacon is not None:
                 rx = self.beacon_inbox[name]
                 data["AcousticRx"] = tuple(rx)

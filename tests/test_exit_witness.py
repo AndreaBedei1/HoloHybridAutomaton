@@ -99,13 +99,13 @@ def test_no_hull_inside_the_cr_passes_w1(n):
                             assert r + ENV.eps_range_far <= bound + 1e-9, (lat, dyaw, sec, cg, r, bound)
 
 
-def test_absence_of_echoes_never_releases_the_latch():
+def test_absence_of_echoes_never_frees_the_latch_and_only_makes_it_stale():
     gp = perception()
     _, t = run(gp, [[tg({"FRONT"}, 4.6)]] * 3)
     o, t = run(gp, [[]] * int((G.t_occ_max - 0.5) / 0.1), t0=t)
     assert o.occ_state == "BUSY" and o.occ_timeouts == 0
     o, t = run(gp, [[]] * 10, t0=t)
-    assert o.occ_state == "BUSY" and o.occ_timeouts == 0
+    assert o.occ_state == "STALE" and o.occ_timeouts == 1 and o.entry_after > t
 
 
 def test_an_echo_that_a_hull_in_the_cr_can_produce_is_no_witness():

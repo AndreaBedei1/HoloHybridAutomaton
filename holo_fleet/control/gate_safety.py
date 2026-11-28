@@ -11,7 +11,8 @@ COLUMN as a forbidden set for its TRUE centre: the CR of property P2 extended to
 admitted neither enters the CR nor passes under or over it (a REAR threat and a forward drift otherwise let a drone
 descend below the CR and pass forward under the frame, P2-safe by the centre definition but an unauthorized passage).
 The CR itself is the exact occupancy of property P2 (cr_s_min <= s <= cr_s_max, |l| <= cr_half_width,
-|dz| <= cr_half_height: GateRule.in_cr; the approach and the gate passage, s in [-1.05, 0.55]).  A velocity command v is
+|dz| <= cr_half_height: GateRule.in_cr; the approach up to the gate plane, s in [-0.8, 0.0]; the bar plane beyond it, up to
+passage_clear_s, is a P1 / physical-clearance matter).  A velocity command v is
 P2-SAFE when the backup that follows it cannot reach the CR under the declared bounds:
 
 * the command is applied for ``tau_c`` = one control period + the largest data age (dt + tau_max), the true velocity
@@ -205,6 +206,41 @@ def sk_band(q, a0p, a0m, anchor, b: P2Bounds, rho: float, amp: float = 0.0):
     hi = np.maximum(q + Xp + rho * Tp, anchor + probe + hold)
     lo = np.minimum(q - Xm - rho * Tm, anchor - probe - hold)
     return lo, hi, np.maximum(Tp, Tm)
+
+
+def outage_hull(v_meas: np.ndarray, cmds, k_rw: float, w: float, scale: float, v_dr: Optional[np.ndarray] = None,
+                cap_err: Optional[float] = None, cap_rho: Optional[float] = None, n_ax: int = 2):
+    """Velocity bounds of a DVL outage from the last fresh measurement (formal/check_p2_recursive.py P2R6, P2R2o).
+
+    ``v_meas``: the last fresh DVL velocity (gate frame), true within ``k_rw`` of it (premise V); ``cmds``: the commands applied
+    since that measurement's validity time minus tau_max (gate frame).  Under the response envelope of axis_reach (the
+    commanded response never leaves the range of its previous value and the commands: an increase reached at once, a
+    decrease at no less than a_brake) plus a residual drift |d| <= w that may vary (even reverse) at any time, the response
+    part starts within k_rw + w of the measurement, so the true velocity stays in the hull [lo - w, up + w] per axis with
+    up = max(v_meas + k_rw + w, cmds), lo = min(v_meas - k_rw - w, cmds) (P2R6).  Returns (v0, v_err, rho): the hull
+    midpoint, its half width + w (the larger over the column axes) and the drift bound of the dead-reckoning estimate
+    relative to the truth: with ``v_dr`` (the velocity the dead reckoning integrates, held sample or model) the largest
+    distance from {v_dr} and the commands to the hull, else (a reserve handed before an onset) the hull width, which
+    dominates every dead-reckoning velocity inside the hull (P2R2o); both plus w and the compass / DVL scale term
+    ``scale``.  ``cap_err`` / ``cap_rho``: the former worst-case outage bounds (v_bound, v_bound + max(v_bound, |v|) + scale)
+    are never exceeded."""
+    vm = np.asarray(v_meas, float)
+    U = np.atleast_2d(np.asarray(cmds, float)) if len(cmds) else np.zeros((0, 3))
+    up = np.maximum(vm + k_rw + w, U.max(axis=0)) if len(U) else vm + k_rw + w
+    lo = np.minimum(vm - k_rw - w, U.min(axis=0)) if len(U) else vm - k_rw - w
+    v0 = 0.5 * (up + lo)
+    v_err = float(np.max(0.5 * (up - lo)[:n_ax])) + w
+    if v_dr is None:
+        rho = float(np.max((up - lo)[:n_ax])) + w + scale
+    else:
+        vd = np.asarray(v_dr, float)
+        cand = np.vstack([vd[None, :], U]) if len(U) else vd[None, :]
+        rho = float(np.max(np.maximum(up - cand.min(axis=0), cand.max(axis=0) - lo)[:n_ax])) + w + scale
+    if cap_err is not None:
+        v_err = min(v_err, float(cap_err))
+    if cap_rho is not None:
+        rho = min(rho, float(cap_rho))
+    return v0, v_err, rho
 
 
 def hold_s(cfg: FleetConfig = DEFAULT) -> float:
@@ -484,12 +520,16 @@ class GateConstraint:
 
     def is_hold_loop(self, v: np.ndarray, anchor: np.ndarray, gain: float, amp: float = 0.0) -> bool:
         """``v`` is the unsaturated position loop of gain ``gain`` (>= K_HOLD) on ``anchor``, up to a vertical probe of
-        amplitude ``amp`` around it: the deviation bound of hold_margin applies to it."""
+        amplitude ``amp`` around it: the deviation bound of hold_margin applies to it.  With the CR column (COLUMN) only the
+        column axes (s, l) are compared, like the margins, _applies and latchable: the column extends to every depth and the
+        vertical loop is clipped on its own, so a saturated vertical command (an acquisition offset at the stage-2 hold,
+        capped at 0.25 m/s) does not stop the station keeping from being recognised and latched (formal P2R3)."""
         if gain < K_HOLD - 1e-9:
             return False
         expect = gain * (np.asarray(anchor, float) - self.q)
         tol = np.array([1e-6, 1e-6, 1e-6 + gain * amp])
-        return bool(np.all(np.abs(self.to_gate(v) - expect) <= tol))
+        n = 2 if COLUMN else 3
+        return bool(np.all((np.abs(self.to_gate(v) - expect) <= tol)[:n]))
 
     def filter_mission(self, v: np.ndarray, v_max: float, anchor: Optional[np.ndarray] = None, gain: float = K_HOLD,
                        amp: float = 0.0, station: Optional[np.ndarray] = None, cap: Optional[float] = None,

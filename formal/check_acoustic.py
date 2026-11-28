@@ -32,6 +32,7 @@ from __future__ import annotations
 import ast
 import dataclasses
 import math
+import re
 import sys
 from pathlib import Path
 from types import SimpleNamespace
@@ -344,7 +345,9 @@ def structural() -> list:
             if name in ("acoustic", "AcousticTracker", "AcousticExit", "acoustic_exit", "AcousticRx"):
                 bad.append(f"{rel}:{getattr(node, 'lineno', '?')}")
     gp = (pkg / "perception/gate_perception.py").read_text(encoding="utf-8")
-    guarded = "if witness is None and not corridor and self.occ_state == \"BUSY\" and self.acoustic_exit is not None:" in gp
+    # the guard of the acoustic exit evaluation: no sonar witness, the FRONT corridor empty (whatever latch states it lists)
+    guarded = bool(re.search(r"if witness is None and not corridor and self\.occ_state (==|in) [^\n]*"
+                             r"and self\.acoustic_exit is not None:", gp))
     if not guarded:
         bad.append("gate_perception.py: acoustic_exit.evaluate not guarded by an empty corridor")
     return bad

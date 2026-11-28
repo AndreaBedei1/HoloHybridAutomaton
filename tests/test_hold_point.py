@@ -2,7 +2,7 @@
 control/gate_safety.py).
 
 The earlier hold sat at s = -1.18 m, 0.38 m from the CR (the former symmetric CR |s| <= 0.8; the same rule gives -1.43 m with
-the present CR, s in [-1.05, 0.55]), with a declared gate-frame navigation error of 1 m: a drone held there on an
+the CR s in [-1.05, 0.55] of that time), with a declared gate-frame navigation error of 1 m: a drone held there on an
 estimate 1 m short of the truth had its centre inside the CR.  The hold is now the nearest point where
 holding is P2-safe under the declared error, minus the measured holding error, and the queue lines keep the merge
 clearance from it.  The closed loops use formal/check_f1p_kinematic.World: the deployed Flows.gate, keep-out and P2
@@ -188,24 +188,26 @@ def test_the_acquisition_pattern_fits_in_the_bounded_hold():
         assert abs(dl) <= G.hold_lateral_allow and abs(dz) <= G.cr_half_height
 
 
-@pytest.mark.parametrize("bias", [-1.0, -0.7, -0.5, -0.3, -0.1, 0.0, 0.2, 0.3])
+@pytest.mark.parametrize("bias", [-1.0, -0.7, -0.5, -0.3, 0.0, 0.2, 0.3])
 def test_the_localization_is_acquired_at_the_hold(bias):
-    """The vertical acquisition offsets (depth is measured directly, so they need no lateral room): validated
+    """The vertical acquisition offsets +-0.8 m (depth is measured directly, so they need no lateral room): validated
     localization from the stage-2 hold (-2.55 m) with the estimate up to 1 m behind the truth and at +0.2, +0.3 m ahead
-    of it (synthetic B0 scan, bar echoes only)."""
+    of it (synthetic B0 scan, bar echoes only).  Synthetic gaps at -0.1 and +0.1 m: from the hold the two matched sectors
+    see horizontal bars only, the lateral offset is the tie-break of a flat cost valley and can exceed CONSIST_M (a
+    progress limit; the six former offsets covered -0.1 m on the teleported scan but were not reached in HoloOcean)."""
     assert _acquired(bias) is not None
 
 
-@pytest.mark.parametrize("bias", [0.1, 0.4, 0.5, 0.6, 0.7, 1.0])
+@pytest.mark.parametrize("bias", [-0.1, 0.1, 0.4, 0.5, 0.6, 0.7, 1.0])
 def test_the_localization_is_not_acquired_at_the_hold(bias):
-    """The B0 acquisition gap of the stage-2 hold at -2.55 m (the hold of the CR s in [-1.05, 0.55], 0.25 m farther from
-    the frame than the -2.30 m hold of the former symmetric CR, which acquired at +0.5, +0.6 m too): not at +0.1 m, and
+    """The B0 acquisition gap of the stage-2 hold at -2.55 m (0.25 m farther from the frame than the -2.30 m P2-safe hold of
+    the present CR s in [-0.8, 0.0], which acquired at +0.5, +0.6 m too): not at +0.1 m, and
     not from +0.4 m (the truth about 3 m or more from the gate plane).  A progress limit, not a safety one."""
     assert _acquired(bias) is None
 
 
-@pytest.mark.parametrize("bs,bl,offset", [(-0.5, -0.3, 0), (-0.5, 0.3, 0), (-0.5, 0.6, None), (0.0, -0.3, 3), (0.0, -0.6, None),
-                                           (0.0, 0.6, None), (0.3, -0.3, 1), (0.3, 0.3, 1), (0.3, -0.6, 1), (0.5, -0.3, None),
+@pytest.mark.parametrize("bs,bl,offset", [(-0.5, -0.3, 0), (-0.5, 0.3, None), (-0.5, 0.6, None), (0.0, -0.3, 0), (0.0, -0.6, None),
+                                           (0.0, 0.6, None), (0.3, -0.3, 0), (0.3, 0.3, 0), (0.3, -0.6, 0), (0.5, -0.3, None),
                                            (0.5, 0.3, None), (0.5, 0.6, None)])
 def test_the_localization_is_acquired_with_a_lateral_error_and_by_which_offset(bs, bl, offset):
     """Along-axis and lateral estimate errors within the 1 m norm: the acquisition offset (index in ACQ_OFFSETS) that
@@ -230,7 +232,8 @@ def test_an_admitted_drone_passes_the_gate_and_the_p2_filter_releases_it():
     adm = [r["t"] for r in w.rows if r["agents"]["B"]["admitted"]]
     assert adm and a.done and not w.entries
     s_adm = float(gate.to_gate_frame(np.asarray(next(r for r in w.rows if r["agents"]["B"]["admitted"])["agents"]["B"]["est"]))[0])
-    assert G.stage2_hold_s - 0.4 - 0.05 <= s_adm <= G.stage2_hold_s + 0.1
+    # admitted inside the admission zone (GateRule.in_admission_zone, formal check_stale ST6)
+    assert G.stage2_hold_s - G.admit_zone_m - 0.05 <= s_adm <= G.stage2_hold_s + G.admit_zone_fwd_m
     assert any(r["cr"] == ["B"] and r["agents"]["B"]["admitted"] for r in w.rows)
 
 

@@ -23,6 +23,7 @@ sys.path.insert(0, str(HERE.parent))
 
 import check_acoustic  # noqa: E402
 import check_b2_comm  # noqa: E402
+import check_classification  # noqa: E402
 import check_determinism  # noqa: E402
 import check_fleet  # noqa: E402
 import check_formation  # noqa: E402
@@ -31,6 +32,7 @@ import check_gate_safety  # noqa: E402
 import check_mutex  # noqa: E402
 import check_observations  # noqa: E402
 import check_separation  # noqa: E402
+import check_stale  # noqa: E402
 import check_status  # noqa: E402
 from common import RESULTS_DIR  # noqa: E402
 
@@ -40,6 +42,10 @@ SUITES = [
      "holo_fleet/ha/observation_invariants.py + holo_fleet/ha/spec.py"),
     ("P1 inter-vehicle separation", check_separation, "formal/check_separation.py"),
     ("P2 critical-region mutual exclusion", check_mutex, "holo_fleet/ha/mutex_rule.py + formal/check_mutex.py"),
+    ("Echo classification at the structure-fit pose (bars vs obstacles)", check_classification,
+     "holo_fleet/perception/sonar_processing.py + holo_fleet/perception/perception.py + formal/check_classification.py"),
+    ("P2 timed latch release (STALE) and the admission bound", check_stale,
+     "holo_fleet/perception/gate_perception.py + holo_fleet/control/flows.py + formal/check_stale.py"),
     ("P3 formation recovery (liveness, ranking functions)", check_formation, "formal/check_formation.py"),
     ("P3 coupled recovery: 2-norm saturated law, private formation clocks, rendezvous, operating domain",
      check_formation_coupled, "holo_fleet/control/flows.py + holo_fleet/control/formation_time.py + "
@@ -56,7 +62,7 @@ SUITES = [
 ]
 
 
-QUICK_SUITES = {check_determinism, check_observations, check_formation, check_b2_comm}
+QUICK_SUITES = {check_determinism, check_observations, check_formation, check_b2_comm, check_stale, check_classification}
 
 
 KINDS = {
@@ -69,7 +75,7 @@ KINDS = {
     "witness": "expected satisfiable query: non-vacuity, tightness of a bound, independence of the invariants",
     "reported": "quantity reported, not guaranteed",
 }
-_BOUNDED = {"P1": r"^(S1[ad]|S4) ", "P2": r"^M3h? ", "B2 status payload": r"^S2h? ", "P3": r"^F6 ", "Interacting": r"^(F2p?|F1d\d+n?|F1p) ",
+_BOUNDED = {"P1": r"^(S1[ad]|S4) ", "P2": r"^M3h?q? ", "B2 status payload": r"^S2h? ", "P3": r"^F6 ", "Interacting": r"^(F2p?|F1d\d+n?|F1p) ",
             "Gate-aware": r"^S1ga ", "B2 explicit": r"^B2C-S[12] "}
 
 
