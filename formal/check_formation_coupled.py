@@ -1,4 +1,4 @@
-"""P3 review - eventual formation recovery for the DEPLOYED law: coupled 2-norm cap, private formation clocks, rendezvous,
+"""P3 - eventual formation recovery for the DEPLOYED law: coupled 2-norm cap, private formation clocks, rendezvous,
 operating domain.  It complements formal/check_formation.py (F1-F6), whose per-axis model is kept unchanged.
 
 No deadline is imposed: every liveness claim is a ranking function with a positive decrease (reported as a rate, m/s or

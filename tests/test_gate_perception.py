@@ -129,9 +129,9 @@ def test_stale_release_needs_quiet_corridor_and_nothing_heard_or_known_inside():
 
 
 def test_a_near_hull_withholds_the_clearance_but_never_restarts_the_timed_bound():
-    """v31 regression (formal/check_stale.py ST1): a hull within admit_clear_m in any sector (the drone queued 3.2 m behind
-    the hold, d_lower 2.92 m) withholds the near-field clearance of the admission but does not move entry_after: the
-    5f9f049 restart of the bound at every hull within 3.0 m kept every B0 lead drone at the hold."""
+    """formal/check_stale.py ST1: a hull within admit_clear_m in any sector (the drone queued 3.2 m behind
+    the hold, d_lower 2.92 m) withholds the near-field clearance of the admission but does not move entry_after: a
+    restart of the bound at every hull within 3.0 m would keep every B0 lead drone at the hold."""
     gp = perception()
     _, t = run(gp, [[tg({"FRONT"}, 4.6)]] * 3)
     o, t = run(gp, [[]] * int(G.t_occ_max / 0.1 + 5), t0=t)

@@ -25,7 +25,7 @@ from holo_fleet.ha.spec import IN_FORMATION, Mode
 from holo_fleet.mission import MissionPlan
 from holo_fleet.perception.frame import SensorFrame
 from holo_fleet.perception.passage import PassageVerifier, gate_report
-from holo_fleet.perception.sonar_geometry import HULL_HALF, R_OUT
+from holo_fleet.perception.sonar_geometry import R_OUT
 from holo_fleet.perception.perception import LocalObservation, Perception
 
 AVOIDANCE = (Mode.SEPARATION_WARNING, Mode.COLLISION_AVOIDANCE)
@@ -227,7 +227,7 @@ class DroneController:
             gc = replace(gc, v0=np.zeros(3))
             if self._dvl_fresh is not None:
                 # the outage hull (gate_safety.outage_hull): from the last fresh measurement and the commands since,
-                # never above the former worst-case bounds (formal P2R6)
+                # never above the worst-case outage bounds (formal P2R6)
                 t_f, v_f = self._dvl_fresh
                 U = [gc.to_gate(v) for tc, v in self._cmd_hist if tc >= t_f - self.cfg.env.tau_max]
                 v0, v_e, r = gs.outage_hull(gc.to_gate(v_f), U, float(nb.k_rw), gc.bounds.w, scale_error,

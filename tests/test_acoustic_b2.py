@@ -18,7 +18,6 @@ from holo_fleet.sim import acoustic_channel as ac
 
 B2 = dataclasses.replace(DEFAULT, beacon=BeaconConfig(mode="ACOUSTIC_RB"))
 B0 = communication_disabled()  # the same controller with the communication disabled
-DEFAULT_ACOUSTIC_FRESH = DEFAULT.acoustic.fresh_s
 B2_LOGIC = dataclasses.replace(B2, acoustic=dataclasses.replace(B2.acoustic, los_excess_max_m=0.0))
 G = B2.gate
 G06 = load_arena_gates(HORSESHOE_TRACK, ["G06"])[0]

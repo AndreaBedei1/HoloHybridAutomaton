@@ -101,7 +101,7 @@ from holo_fleet.control.flows import pass_path_points
 from holo_fleet.ha import mutex_rule
 from holo_fleet.mission import (Slot, abreast_slots, gate_frame_points, queue_assignment, queue_line, queue_order,
                                 structure_masked_pairs)
-from holo_fleet.perception.sonar_geometry import AXES, MOUNTS, R_IN, R_OUT, centre_distance_lower
+from holo_fleet.perception.sonar_geometry import AXES, MOUNTS, R_OUT, centre_distance_lower
 from holo_fleet.referee.robustness_metrics import FRONT_LEVER_M, QUEUE_CLS_ERR_M, QUEUE_OUTWARD_M  # premise Q (queue_cls)
 
 ENC = "holo_fleet/ha/mutex_rule.py (shared relation) + formal/check_mutex.py"
@@ -405,7 +405,7 @@ def geometry(cfg: FleetConfig, n: int, queue_line=None, err=(0.0, 0.0), widen: f
 R_DETECT_M = 10.0
 VISIBLE_AGAIN_MAX_S = 2.8  # M4e: absolute gate-frame bound of the end of the masking interval (bars' geometry), not the CR
 # exit plane: no deployed threshold uses it (the latch abstraction of M3 takes the computed interval itself, the exit
-# witness its own W1/W2 geometry and t_occ_max); it was written cr_half_len + 2 m with the former symmetric CR
+# witness its own W1/W2 geometry and t_occ_max)
 B0_EXIT_LIMIT = ("abreast n=3", "template triangle (n=3, gate scenarios)", "template line3 (n=3, gate scenarios)")
 
 
@@ -500,7 +500,7 @@ def exit_observability(cfg: FleetConfig, n: int = 0, step: float = 0.1, slots=No
 
 def latch_bmc(cfg: FleetConfig, geo: dict, steps: int = 420, latch: bool = True, v_lo: float = V_LO, view=None,
               band_latch: bool = True, hold: bool = False, timeout: bool = False, reach_slack_m: float = 0.0):
-    """A crosses on the axis; B (queue view ``view``) decides with the deployed belief logic (timeout=True retains the former release for mutations)."""
+    """A crosses on the axis; B (queue view ``view``) decides with the deployed belief logic (timeout=True adds the FREE release after t_occ_max, for mutations)."""
     G = cfg.gate
     dt = 0.1
     tc = int(round(G.t_clear / dt))
@@ -806,8 +806,7 @@ def run(cfg: FleetConfig = DEFAULT, verbose: bool = True) -> Report:
                         f"corridor_from < mask_from and visible_again <= {VISIBLE_AGAIN_MAX_S} m (absolute gate-frame s)",
                         "perception", "holds", verdict="holds" if ok_e else "violated", passed=ok_e,
                         note=f"masked span <= {span:.2f} m along the axis; visible again by s <= {vis_max:.2f} m.  The bound "
-                             f"{VISIBLE_AGAIN_MAX_S} m is an absolute premise of the bars' geometry (formerly written "
-                             f"cr_half_len + 2 m = 2.8 m with the symmetric CR); no deployed threshold is relative to it or to "
+                             f"{VISIBLE_AGAIN_MAX_S} m is an absolute premise of the bars' geometry; no deployed threshold is relative to it or to "
                              f"the CR exit plane (relative to the exit plane, cr_s_max + 2 = {G.cr_s_max + 2.0:.2f} m, the n=6 "
                              f"outer view, outside the planner's domain, would exceed it)"), verbose)
     rows, ok_f, scope = [], True, []
@@ -916,10 +915,10 @@ def run(cfg: FleetConfig = DEFAULT, verbose: bool = True) -> Report:
         cons, info = latch_bmc(cfg, geos[n_m], latch=False, view=outer)
         rep.add(check(f"M3m mutation: belief without latch (FREE when nothing is seen) must violate P2 (n={n_m}, outer queue point)",
                       "expect counterexample", ENC, cons, expect="sat",
-                      note=f"n={n_m}, observer at l={outer['queue_l']:+.2f}, masked s in {info['mask_s']}.  Retargeted from the n=2 "
+                      note=f"n={n_m}, observer at l={outer['queue_l']:+.2f}, masked s in {info['mask_s']}.  Not the n=2 "
                            f"view (l={worst['queue_l']:+.2f}, masked from s = {worst['mask_from_s']:.2f}): with the CR s in "
-                           f"[{G.cr_s_min}, {G.cr_s_max}] that view no longer catches the mutation, its counterexample needed "
-                           f"the occupant in the former post-gate part (0.55, 0.8] when the follower reached the CR"), verbose)
+                           f"[{G.cr_s_min}, {G.cr_s_max}] that view does not catch the mutation, its counterexample would need "
+                           f"the occupant in (0.55, 0.8], beyond the CR, when the follower reached the CR"), verbose)
     centre = min(geos[3]["views"], key=lambda v: abs(v["queue_l"]))
     cons, _ = latch_bmc(cfg, geos[3], view=centre, band_latch=False, hold=True)
     rep.add(check("M3b mutation: a FRONT-only echo nearer than the corridor makes neither a relation nor a latch input (round 2, F1): must violate P2",

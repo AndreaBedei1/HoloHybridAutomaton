@@ -7,7 +7,6 @@ import numpy as np
 sys.path.insert(0, str(__import__("pathlib").Path(__file__).resolve().parents[1]))
 from holo_fleet.arena_bridge import HORSESHOE_TRACK, load_arena_gates
 from holo_fleet.config import DEFAULT
-from holo_fleet.sim.scenarios import SCENARIOS
 from holo_fleet.perception import sonar_geometry as sg
 LATERAL = "--lateral" in sys.argv
 GATE_SC = ("gate_single", "integrated_short", "line_parallel_mutex", "lost_drone_mutex", "mutex_deadlock_resolution")

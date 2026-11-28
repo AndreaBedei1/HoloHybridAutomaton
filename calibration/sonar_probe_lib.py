@@ -54,11 +54,6 @@ def hull_near_distance(obs_pose: np.ndarray, tgt_pose: np.ndarray) -> float:
     return box_surface_distance(sonar_origin(obs_pose), agent_origin(tgt_pose), tgt_pose[:3, :3], HULL_HALF)
 
 
-def centre_distance(obs_pose: np.ndarray, tgt_pose: np.ndarray) -> float:
-    """Distance between the agent origins (what the referee calls d_ij)."""
-    return float(np.linalg.norm(agent_origin(tgt_pose) - agent_origin(obs_pose)))
-
-
 def group(rows, exp: str):
     out = defaultdict(list)
     for r in rows:

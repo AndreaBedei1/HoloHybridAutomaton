@@ -115,8 +115,6 @@ MEDIUM_HB3 = replace(MEDIUM, name="MEDIUM_HB3", heading_bias_deg=3.0)
 MEDIUM_HB4 = replace(MEDIUM, name="MEDIUM_HB4", heading_bias_deg=4.0)
 
 PROFILES: Dict[str, NoiseProfile] = {p.name: p for p in (CLEAN, LOW, MEDIUM, HIGH, MEDIUM_HB3, MEDIUM_HB4)}
-VALIDATION_LEVELS = ("CLEAN", "LOW", "MEDIUM")
-SCOPES = ("ONE", "SUBSET", "ALL")
 
 FACTORS: Dict[str, Tuple[str, ...]] = {
     "sonar_intensity": ("sonar_add_sigma", "sonar_mult_sigma", "sonar_range_sigma"),

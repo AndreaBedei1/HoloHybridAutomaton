@@ -35,7 +35,6 @@ Premises, monitored per window [start, deadline] on ground truth (a verdict NOT_
 
 from __future__ import annotations
 
-import math
 from typing import Dict, List, Optional
 
 import numpy as np
@@ -121,7 +120,7 @@ def evaluate(sc, cfg, names, faults, t, P, states, modes, m, validation: bool = 
                         for i in range(m)])
     applied = np.array([[float(((states[k][i].get("nav_aid") or {}).get("applied_m")) or 0.0) for k in range(n)] for i in range(m)])
     w_bad = np.zeros((m, n), bool)
-    for i in range(0, m):
+    for i in range(m):
         for k in healthy:
             v = states[k][i].get("v_mis") or states[k][i].get("v_cmd")
             if v is None:

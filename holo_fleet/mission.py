@@ -327,11 +327,3 @@ def abreast_slots(n: int) -> List[Slot]:
     return [Slot(0.0, ((n - 1) / 2.0 - r) * 3.5, 0.0) for r in range(n)]
 
 
-def gates_from_arena_track(track_path: str, gate_ids: Optional[Sequence[str]] = None) -> List[GateSpec]:
-    """Load gate geometry (and bar boxes) from an existing marine_race_arena track file.
-
-    The arena package is imported from its own repository (re-use, no copy).
-    """
-    from holo_fleet.arena_bridge import load_arena_gates
-
-    return load_arena_gates(track_path, gate_ids)

@@ -8,7 +8,6 @@ import pytest
 from holo_fleet.config import DEFAULT, BeaconConfig
 from holo_fleet.mission import GateSpec, MissionPlan, Path, abreast_slots, queue_line
 from holo_fleet.perception.acoustic import AcousticTracker
-from holo_fleet.perception.acoustic_gate import AcousticExit
 from holo_fleet.perception.gate_perception import GatePerception
 from holo_fleet.perception.targets import Target
 

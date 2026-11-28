@@ -756,7 +756,7 @@ class FleetView:
         if prev in centre and cur in centre and prev != cur and self.t - float(tr.get("t", -1e9)) < 20.0:
             (ax, ay), (bx, by) = centre[prev], centre[cur]
             cell = {st: (c, r) for st, c, r in AUT_LAYOUT}
-            (c0, r0), (c1, r1) = cell[prev], cell[cur]
+            (_, r0), (_, r1) = cell[prev], cell[cur]
             if r0 == r1:
                 yb = ay + ch / 2 + 5
                 dr.line([(ax, ay + ch / 2), (ax, yb), (bx, yb), (bx, by + ch / 2 + 6)], fill=INK, width=2)

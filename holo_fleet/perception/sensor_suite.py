@@ -15,7 +15,6 @@ Conventions measured on HoloOcean 2.3.0 / BlueROV2 (probes in calibration/):
 from __future__ import annotations
 
 import math
-from dataclasses import dataclass
 from typing import Dict, List
 
 from holo_fleet.config import DEFAULT, FleetConfig
@@ -23,23 +22,10 @@ from holo_fleet.perception.sonar_geometry import MOUNTS, ROTATIONS, SECTORS, son
 
 SONAR_NAMES = tuple(sonar_sensor_name(s) for s in SECTORS)
 ONBOARD_NAMES = ("DepthSensor", "IMUSensor", "DVLSensor", "Compass") + SONAR_NAMES + ("AcousticRx",)
-PRIVILEGED_NAMES = ("PoseSensor", "VelocitySensor", "CollisionSensor", "ChaseCamera", "SideCamera", "TopCamera")
 
 
 def is_onboard(name: str) -> bool:
     return name in ONBOARD_NAMES
-
-
-@dataclass(frozen=True)
-class SensorDoc:
-    name: str
-    holoocean_type: str
-    mounting: str
-    fov: str
-    range_m: str
-    rate_hz: float
-    noise: str
-    role: str
 
 
 DEPLOYED_NOISE = {"imu_accel_sigma": 0.01, "imu_gyro_sigma": 0.005, "imu_accel_bias_sigma": 0.0,
@@ -92,19 +78,3 @@ def onboard_sensor_configs(cfg: FleetConfig = DEFAULT, view_region: bool = False
     ] + sonar_sensor_configs(cfg, view_region, noise)
 
 
-def sensor_documentation(cfg: FleetConfig = DEFAULT) -> List[SensorDoc]:
-    m = cfg.perc.sonar
-    docs = [SensorDoc(sonar_sensor_name(s), "SinglebeamSonar",
-                      f"{s.lower()} hull face, {tuple(round(float(v), 2) for v in MOUNTS[s])} m, rpy {ROTATIONS[s]}",
-                      f"cone {m.opening_deg:.0f} deg", f"{m.range_min}-{m.range_max}", m.hz,
-                      f"intensity: Rayleigh {m.add_sigma}, mult {m.mult_sigma}; range: exp {m.range_sigma} m",
-                      "wide-beam directional single-beam sonar: nearest echoes in its sector")
-            for s in SECTORS]
-    return docs + [
-        SensorDoc("DVLSensor", "DVLSensor", "hull bottom, 4 beams at 22.5 deg", "-", "50", 10,
-                  "0.01 m/s per beam, range 0.02 m", "velocity over ground (dead reckoning), altitude"),
-        SensorDoc("Compass", "MagnetometerSensor", "IMUSocket", "-", "-", 30, "0.005 per axis", "heading"),
-        SensorDoc("IMUSensor", "IMUSensor", "IMUSocket", "-", "-", 30, "accel 0.01, gyro 0.005",
-                  "yaw-rate damping, roll/pitch from gravity"),
-        SensorDoc("DepthSensor", "DepthSensor", "DepthSocket", "-", "-", 30, "0.02 m", "depth"),
-    ]

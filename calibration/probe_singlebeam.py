@@ -59,14 +59,6 @@ def sonar_config(opening: float, noise: bool, view: bool = False) -> dict:
     return cfg
 
 
-def rot_matrix(rpy_deg) -> np.ndarray:
-    r, p, y = [math.radians(v) for v in rpy_deg]
-    cr, sr, cp, sp, cy, sy = math.cos(r), math.sin(r), math.cos(p), math.sin(p), math.cos(y), math.sin(y)
-    return np.array([[cy * cp, cy * sp * sr - sy * cr, cy * sp * cr + sy * sr],
-                     [sy * cp, sy * sp * sr + cy * cr, sy * sp * cr - cy * sr],
-                     [-sp, cp * sr, cp * cr]])
-
-
 class Bench:
     def __init__(self, session: str, opening: float, sonar_in_scenario: bool, camera: bool = True, clear_cache=False):
         from holo_fleet.sim.engine_session import make

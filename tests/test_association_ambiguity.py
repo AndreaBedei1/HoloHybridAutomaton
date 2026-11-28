@@ -81,7 +81,7 @@ def test_no_feasible_association_keeps_the_infeasible_widened_choice():
 
 
 def _stalled_drone_0():
-    """Drone 0 of the v25 gate run B2_CLEAN s0 at t = 30 s: a diagonal peer seen by REAR and RIGHT and a second RIGHT
+    """Drone 0 of a gate run (B2_CLEAN s0) at t = 30 s: a diagonal peer seen by REAR and RIGHT and a second RIGHT
     echo, all inside d_warning (d_lower 2.24 m)."""
     return _obs([_target({"REAR": 2.82, "RIGHT": 2.87}, 2.24), _target({"RIGHT": 2.87}, 2.24)])
 

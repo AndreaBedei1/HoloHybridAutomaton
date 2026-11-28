@@ -104,7 +104,7 @@ class AcousticChannel:
 CLEAN = AcousticChannel()
 # LOW / MEDIUM: realistic nominal short-range (2-20 m) values from datasheets and field data (config/parameter_sources.json):
 # mid-water loss 3.5-7.8 % / 10.8-18 % (Renner et al. 2020; Sherlock et al. 2022), latency above the 0.10 s physical floor,
-# sound speed from a temperature sensor, disciplined clocks.  MEDIUM_HARSH keeps the former MEDIUM (near-boundary conditions,
+# sound speed from a temperature sensor, disciplined clocks.  MEDIUM_HARSH keeps harsher values (near-boundary conditions,
 # Reis et al. 2016) as a sensitivity level.
 LOW = AcousticChannel(name="LOW", sigma_range_m=0.10, sound_speed_err=0.003, clock_offset_m=0.01, sigma_az_deg=1.5,
                       sigma_el_deg=1.5, dropout=0.03, dropout_far=0.10, nlos_rx=0.20, latency_s=0.12,

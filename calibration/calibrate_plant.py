@@ -15,7 +15,6 @@ Writes results/calibration/plant_calibration.json and figures/calibration/plant.
 from __future__ import annotations
 
 import json
-import math
 import sys
 from pathlib import Path
 

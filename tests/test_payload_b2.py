@@ -80,6 +80,7 @@ def test_nav_bound_grows_with_distance_noise_and_outage_and_never_shrinks():
     before = nb.horizontal
     for i in range(201, 211):
         nb.update(i * 0.1, 0.1, s, model=True)
+    assert nb.horizontal >= before
     q = float(np.interp(nb.out_len, nb.q_len, nb.q_max))
     assert nb.outage == pytest.approx(q) and 0.3 < q < 0.5
     nb2 = NavBound(B2)

@@ -10,7 +10,7 @@ from __future__ import annotations
 import json
 import sys
 import time
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
@@ -53,14 +53,6 @@ def exact(x: float) -> z3.ArithRef:
     rounding (2*0.35 + 2.4 = 3.0999999999999996) can open a spurious 1e-16 gap between two classes.
     """
     return z3.RealVal(repr(float(x)))
-
-
-class ExactNamespace:
-    """Copy of a config dataclass whose float fields are exact Z3 rationals."""
-
-    def __init__(self, dc):
-        for k, v in dc.__dict__.items():
-            setattr(self, k, exact(v) if isinstance(v, float) else v)
 
 
 class Obs:

@@ -3,7 +3,7 @@
 IDEALISED (S2): the sonar view of the observer is a function of the crossing drone's true position on the axis (no navigation
 error) and a report's freshness is a scalar bound; the composition of two drones over a lossy channel with local decisions is
 formal/check_b2_comm.py.  The B2-specific checks of formal/check_acoustic.py keep covering the geometry of the fixes; these cover the gate status,
-the failure model and the vacancy by silence.  The premises are the declared ones (README.md): the gate-frame navigation error at most ``nav_err_m``, the
+the failure model and the vacancy by silence.  The premises are the declared ones (docs/validation-report.md): the gate-frame navigation error at most ``nav_err_m``, the
 speed bound of a drone, the queue tolerance, a received packet is genuine (CRC-16) and of its frame.  The freshness bound is
 a function of the queue layout.
 
@@ -38,7 +38,6 @@ from __future__ import annotations
 import dataclasses
 import math
 import sys
-from pathlib import Path
 
 import numpy as np
 import z3
@@ -46,13 +45,12 @@ import z3
 from common import ROOT, CheckResult, Report, check  # noqa: E402
 
 from holo_fleet.config import DEFAULT, BeaconConfig, FleetConfig
-from holo_fleet.scope import declared_excluded  # noqa: E402
-from holo_fleet.mission import GateSpec, MissionPlan, Path as MPath, abreast_slots, queue_line
+from holo_fleet.mission import MissionPlan, Path as MPath, abreast_slots, queue_line
 from holo_fleet.perception import payload as pl
 from holo_fleet.perception.acoustic import AcousticTracker
 from holo_fleet.perception.gate_perception import GatePerception
 from holo_fleet.perception.passage import PassageVerifier
-from holo_fleet.perception.sonar_geometry import MOUNTS, R_OUT, SECTORS, far_field_pattern
+from holo_fleet.perception.sonar_geometry import R_OUT, far_field_pattern
 
 import check_mutex as cm  # noqa: E402
 
@@ -223,7 +221,6 @@ def front_band_queue_pairs(cfg: FleetConfig) -> list:
     bad = []
     for n in range(2, 4):
         lats = G.queue_laterals(n)
-        qs = queue_line(abreast_slots(n), G)
         for i in range(n):
             for j in range(n):
                 if i == j:

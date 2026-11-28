@@ -1,5 +1,5 @@
 """Near-field clearance of the admission, the admission zone, the give-up of the hold and the queue standoff that leaves
-the clearance to the lead drone (v31 regression: no B0 lead drone admitted; review findings on f583bde)."""
+the clearance to the lead drone (without them no B0 lead drone is admitted, or the hold is never given up)."""
 
 import sys
 from pathlib import Path
@@ -51,7 +51,7 @@ def _qobs(plan, t, s, d_front):
 
 
 def test_a_queued_drone_backs_off_from_a_hull_ahead_and_returns_when_it_moves_on():
-    """The queue standoff (v31: the follower 3.2 m behind the hold kept the lead from its clearance): a FRONT hull nearer than
+    """The queue standoff (a follower 3.2 m behind the hold would keep the lead from its clearance): a FRONT hull nearer than
     queue_standoff_m moves the target back along the axis, the hysteresis band holds it, beyond the band the queue point."""
     plan = SCENARIOS["line_parallel_mutex"](DEFAULT).plans[1]
     assert abs(plan.queue_lateral) < 1e-9
@@ -86,7 +86,7 @@ def _plan():
 
 @pytest.mark.parametrize("l,dz", [(G.admit_zone_lat_m + 0.01, 0.0), (0.0, G.acq_dz_m + G.admit_zone_dz_m + 0.02)])
 def test_a_timed_drone_held_just_outside_the_zone_gives_up(l, dz):
-    """Review finding 2 on f583bde: out of the zone the dwell term is t + T, so a give-up anchored on it never fired."""
+    """Out of the zone the dwell term is t + T, so a give-up anchored on it would never fire (formal ST3o)."""
     plan = _plan()
     fl = Flows(plan, DEFAULT)
     t = 0.0
@@ -127,7 +127,7 @@ def test_no_admission_without_the_clearance_on_every_path_and_the_hold_is_given_
 
 
 def test_a_committed_follower_in_standoff_stays_beyond_the_admission_clearance():
-    """Review finding 3: the standoff limit is above admit_clear_m, so a follower holding in standoff does not keep the
+    """The standoff limit is above admit_clear_m, so a follower holding in standoff does not keep the
     drone ahead from its clearance."""
     plan = _plan()
     fl = Flows(plan, DEFAULT)
@@ -137,8 +137,8 @@ def test_a_committed_follower_in_standoff_stays_beyond_the_admission_clearance()
 
 
 def test_a_side_column_never_stands_off_and_the_middle_one_does_from_a_diagonal_hull():
-    """v33 integrated regression: the side columns saw the middle queued drone in FRONT+LEFT / FRONT+RIGHT within
-    queue_standoff_m and held 2.5 m behind their queue points for the whole run; only a hull directly ahead counts."""
+    """The side columns see the middle queued drone in FRONT+LEFT / FRONT+RIGHT within queue_standoff_m and, standing
+    off, would hold 2.5 m behind their queue points for the whole run; only a hull directly ahead counts."""
     plan = SCENARIOS["line_parallel_mutex"](DEFAULT).plans[0]
     fl = Flows(plan, DEFAULT)
     g = plan.gates[0]

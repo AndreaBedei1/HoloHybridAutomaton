@@ -97,7 +97,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 0.152,
+      "seconds": 0.143,
       "counterexample": null,
       "note": "the median of n fixes has the statistical bound fix_bound(r, n): premise B (CL5, referee beacon_fix)"
     },
@@ -108,7 +108,7 @@
       "expect": "sat",
       "verdict": "sat",
       "passed": true,
-      "seconds": 0.009,
+      "seconds": 0.007,
       "counterexample": {
         "c": 1.0,
         "c2": 0.9990234375,
@@ -125,7 +125,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 0.006,
+      "seconds": 0.004,
       "counterexample": null,
       "note": ""
     },
@@ -136,7 +136,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 0.006,
+      "seconds": 0.007,
       "counterexample": null,
       "note": ""
     },
@@ -172,7 +172,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 0.007,
+      "seconds": 0.006,
       "counterexample": null,
       "note": "outside [0.39, 7.11] m a bar at the cone edge can be unexplained (a progress cost)"
     },
@@ -183,7 +183,7 @@
       "expect": "sat",
       "verdict": "sat",
       "passed": true,
-      "seconds": 0.001,
+      "seconds": 0.004,
       "counterexample": {
         "R": 7.61,
         "t": 0.039452481467378675
@@ -197,7 +197,7 @@
       "expect": "sat",
       "verdict": "sat",
       "passed": true,
-      "seconds": 0.003,
+      "seconds": 0.004,
       "counterexample": {
         "R": 0.321,
         "t": 2.627034687533069
@@ -211,7 +211,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 0.008,
+      "seconds": 0.007,
       "counterexample": null,
       "note": "outside [0.64, 7.07] m a bar at the cone edge can be unexplained (a progress cost)"
     },
@@ -250,7 +250,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 0.005,
+      "seconds": 0.007,
       "counterexample": null,
       "note": "outside [0.73, 7.05] m a bar at the cone edge can be unexplained (a progress cost)"
     },
@@ -275,7 +275,7 @@
       "expect": "sat",
       "verdict": "sat",
       "passed": true,
-      "seconds": 0.003,
+      "seconds": 0.002,
       "counterexample": {
         "R": 0.666,
         "t": 1.1364927906156481

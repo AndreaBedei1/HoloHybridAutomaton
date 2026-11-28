@@ -53,7 +53,7 @@ P2R6   (proved, Z3 QF_LRA, induction over the steps of a DVL outage) the outage 
        outage.  P2R2o (proved): the reserve handed before an onset, the hull width + w, dominates that rho for every
        dead-reckoning velocity inside the hull.  P2R6m / P2R6m2 (mutations): the measured side with w instead of 2 w (a drift
        that reverses), the hull without the commands.  P2R6n (numeric): the deployed outage_hull equals the closed form.
-       Premise of the outage (declared, evidenced by the v27 replay, not proved): the response envelope holds without DVL
+       Premise of the outage (declared, evidenced by the replay of archive v27-final-paired-campaign-fixed-2026-11-25, not proved): the response envelope holds without DVL
        feedback (the low-level loop then runs feedforward with its integral frozen).
 P2R5   (proved, Z3 QF_NRA) base case: station keeping on the estimate is certified at every state whose column separation
        along s or l is at least D_base, for every measured speed per axis up to v_bound (fresh DVL); reported, the smallest
@@ -418,7 +418,6 @@ def availability(cfg: FleetConfig):
     """P2R4n and P2R2m on the grid of P2B5 (check_gate_safety.robust_selection)."""
     import check_gate_safety as C
 
-    env, G = cfg.env, cfg.gate
     b = gs.P2Bounds.from_cfg(cfg)
     ve, rho = _ve(cfg), _rho(cfg)
     t0 = time.time()
@@ -501,7 +500,7 @@ def braking_lookahead_mutation(cfg: FleetConfig) -> CheckResult:
                        passed=caught, seconds=round(time.time() - t0, 1),
                        note=f"{n} commands returned by the planners with the robust margin and the hold_margin of the braking lookahead; "
                             f"{bad_on} with a next-state corner whose onboard braking (velocity measured within v_err and "
-                            f"filtered with it) is not certified (744 of 4772 at a9ffa34 with the former CR), {bad_phys} "
+                            f"filtered with it) is not certified, {bad_phys} "
                             f"physically unsafe; onboard deficit min {d.min():.3f} m, median {np.median(d):.3f} m.  Root cause "
                             f"(R-a): the braking lookahead took the next velocity as the true worst case vp, the onboard "
                             f"re-certification uses up to vp + 2 v_err and the next estimate moves by up to rho dt more")

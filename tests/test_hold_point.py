@@ -1,9 +1,8 @@
 """Stage-2 hold before the critical region (CR) under navigation error (control/flows.py Flows.gate,
 control/gate_safety.py).
 
-The earlier hold sat at s = -1.18 m, 0.38 m from the CR (the former symmetric CR |s| <= 0.8; the same rule gives -1.43 m with
-the CR s in [-1.05, 0.55] of that time), with a declared gate-frame navigation error of 1 m: a drone held there on an
-estimate 1 m short of the truth had its centre inside the CR.  The hold is now the nearest point where
+A hold 0.38 m from the CR (hull half-length + 0.15 m before it), with a declared gate-frame navigation error of 1 m,
+puts a drone held there on an estimate 1 m short of the truth with its centre inside the CR.  The hold is the nearest point where
 holding is P2-safe under the declared error, minus the measured holding error, and the queue lines keep the merge
 clearance from it.  The closed loops use formal/check_f1p_kinematic.World: the deployed Flows.gate, keep-out and P2
 filters in the order of DroneController.step, a velocity loop limited by a_brake and the declared residual drift towards
@@ -194,7 +193,7 @@ def test_the_localization_is_acquired_at_the_hold(bias):
     localization from the stage-2 hold (-2.55 m) with the estimate up to 1 m behind the truth and at +0.2, +0.3 m ahead
     of it (synthetic B0 scan, bar echoes only).  Synthetic gaps at -0.1 and +0.1 m: from the hold the two matched sectors
     see horizontal bars only, the lateral offset is the tie-break of a flat cost valley and can exceed CONSIST_M (a
-    progress limit; the six former offsets covered -0.1 m on the teleported scan but were not reached in HoloOcean)."""
+    progress limit)."""
     assert _acquired(bias) is not None
 
 

@@ -38,8 +38,8 @@ P2R*  (formal/check_p2_recursive.py) the recursive argument: closed-form braking
 P2B6  (numeric) the CR column: no command called P2-safe lets a true trajectory inside the declared envelope pass under or
       over the CR (cr_s_min <= s <= cr_s_max and |l| <= cr_half_width at any depth); P2B6m mutation: with the box (column=False)
       commands called safe pass under or over it.
-P2Bm  (mutation) the near hold rule NEAR_HOLD (0.379 m before the CR entry plane: -1.179 m with the former symmetric CR, -1.429 m with
-      the present one) with the declared navigation error leaves the true centre in the CR, and the
+P2Bm  (mutation) the near hold rule NEAR_HOLD (0.379 m before the CR entry plane: -1.179 m with
+      the deployed CR) with the declared navigation error leaves the true centre in the CR, and the
       filter that ignores the navigation error (e_h = 0) calls safe a state whose truth is inside the CR.
 S1g   pairwise radial model (as S1 of formal/check_separation.py) with a gate-constrained drone B that only removes its
       closing component (c_B' <= max(c_B - a_brake dt, 0)) and a drone C that reacts as in S1 (c_C' <= max(c_C - a_brake dt,
@@ -678,7 +678,7 @@ def queue_checks(cfg: FleetConfig):
                     note=f"hold s = {G.stage2_hold_s} m, {len(holds)} hold points (lateral within {G.hold_lateral_allow} m, "
                          f"flows.ACQ_OFFSETS); merge_clearance {G.merge_clearance} m, d_warning {cfg.sep.d_warning} m; "
                          + "; ".join(rows) + extra)
-    q_near = -4.181 + (G.cr_s_min + 0.8)  # the queue rule of the NEAR_HOLD hold for n = 2 from the present CR entry plane (-4.181 m with the former CR)
+    q_near = -4.181 + (G.cr_s_min + 0.8)  # the queue rule of the NEAR_HOLD hold for n = 2 from the CR entry plane (-4.181 m from a plane at s = -0.8)
     okm, rowsm = queue_geometry(cfg, queue_s={"abreast n=2": q_near})
     rm = CheckResult(f"Q1m mutation: the NEAR_HOLD queue line for n = 2 ({q_near:.3f} m with the present CR entry plane) puts the queue "
                      "points inside the clearance of the hold",
@@ -744,7 +744,7 @@ def station_keeping(cfg: FleetConfig) -> CheckResult:
                             f"latched when the maneuver is engaged (gate_safety.P2Certificate; P2R3, P2R4): continuing it needs "
                             f"no re-certification; stage-2 target margin min {worst_target:.3f} m.  {n_sat // 27} "
                             f"deviation/gain cases saturate the per-axis cap HOLD_V_MAX (> w: still restoring on every axis, "
-                            f"P2R3a; the former 2-norm cap needed the drift vector below HOLD_V_MAX).  Deviation and velocity "
+                            f"P2R3a; a 2-norm cap would need the drift vector below HOLD_V_MAX).  Deviation and velocity "
                             f"taken independently (states the loop does not produce): min {box_min:.3f} m")
 
 
@@ -870,7 +870,7 @@ def robust_selection(cfg: FleetConfig) -> CheckResult:
                             f"velocities; HOLD answers are station keeping, P2B4 / P2R3); v_err {ve:.3f} m/s, rho {rho:.3f} "
                             f"m/s; worst next-step SK margin {worst:.3f} m, computed independently of next_band (upper_at, "
                             f"side_end); {bad} failures.  The certificate is handed to the next step, not recomputed there "
-                            f"(P2R2, P2R4n); the old target of this check - braking re-certified onboard at the next step - "
+                            f"(P2R2, P2R4n); braking re-certified onboard at the next step "
                             f"is the counterexample P2R2m")
 
 

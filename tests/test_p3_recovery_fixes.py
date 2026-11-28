@@ -1,4 +1,4 @@
-"""P3 review (formal check_formation_coupled.py): the keeping-mode catch-up authority, the operating-domain precondition
+"""P3 recovery (formal check_formation_coupled.py): the keeping-mode catch-up authority, the operating-domain precondition
 of the clock speed, the re-synchronisation of the private formation times off the slot and at the rendezvous hold,
 and the time base of the reported-position comparison.  Closed loops on the real Flows / FormationTime classes."""
 

@@ -1060,12 +1060,12 @@
    "source": "the archived anchor (Kaeli et al. 2019, 10 % no-return in a simulation) concerns transponder ranging, not echo detection, and its numbers were not re-verified (R2 3d). Real misses depend on range, target strength and SNR, which HoloOcean does not model",
    "doi_or_url": "10.23919/OCEANS40490.2019.8962765; 10.48550/arXiv.2309.05785",
    "derivation": "the 2-of-3 confirmation loses a target when two of the last three captures fade: 3.0e-4 (1 %), 2.7e-3 (3 %)",
-   "validity": "Recalibrated on 2026-11-26 to realistic nominal values (sensor datasheets and literature; the former LOW/MEDIUM values were stress settings without a source). No probability-of-detection data at <= 12 m; two consecutive misses (beyond EchoHold) 2.5e-5 / 1e-4 per capture, the residual silent-miss risk stated in README section 6.",
+   "validity": "Recalibrated on 2026-11-26 to realistic nominal values (sensor datasheets and literature; the former LOW/MEDIUM values were stress settings without a source). No probability-of-detection data at <= 12 m; two consecutive misses (beyond EchoHold) 2.5e-5 / 1e-4 per capture, the residual silent-miss risk stated in docs/validation-report.md section 6.",
    "citation_keys": [
     "kaeli2019range",
     "Morency2023lowcost"
    ],
-   "code_action": "changed: EchoHold added (31efb0d)"
+   "code_action": "EchoHold (a miss bridged by the last echo)"
   },
   {
    "section": "3 Sonar and HoloOcean",
@@ -1303,7 +1303,7 @@
    "verdict": "DERIVED",
    "source": "(from simulator measurement, class d, R2 3a) Phase 1 noise off: error +0.004 to +0.054 m (BlueROV2 head-on), +0.013 broadside, +0.025 box, -0.015 pillar, +0.035 top bar, -0.037 to -0.001 gate opening; CLEAN noise a stable +0.054 m; noise probe max +0.094 m at MultSigma 0.30 or RangeSigma 0.40, +0.144 m at MultSigma 0.60. No external anchor",
    "doi_or_url": "-",
-   "derivation": "the value matches the measured maxima (0.054 plus margin). An earlier comment in config.py decomposed 0.12 as one 5 cm bin + 6 cm leaf + 5 cm threshold bias, which sums to 0.16 m (R2 3a); the comment now states the measured maximum plus margin",
+   "derivation": "the value matches the measured maxima (0.054 plus margin; review R2 3a): a decomposition as one 5 cm bin + 6 cm leaf + 5 cm threshold bias would sum to 0.16 m, so the value is stated as the measured maximum plus margin",
    "validity": "HoloOcean 2.3.0 only (leaf 0.06 m, 5 cm bins, threshold 0.30, CLEAN or LOW engine noise). Real deployments add a sound-speed scale term abs(dc/c) x r. MEDIUM jitter exceeds both values (O-1); the comment of eps_range_far now records this (about 0.6 % of captures per side)",
    "citation_keys": [],
    "code_action": "changed: comment corrected and MEDIUM exceedance recorded; values unchanged; open issue O-1"
@@ -1404,7 +1404,7 @@
    "verdict": "DESIGN_CHOICE",
    "source": "the P2 critical region as specified by the project: the approach immediately before the gate, from s = -0.8 m up to and including the gate plane s = 0 (it ends at the gate plane; the bar plane beyond it is not part of P2). Physical clearance of the hull through the frame is a separate P1 / motion-safety concern (passage_clear_s row)",
    "doi_or_url": "-",
-   "derivation": "none for P2 (a specification). Earlier geometries: the symmetric |s| <= 0.8 and [-1.05, 0.55] (commit 6bcda80 moved to [-0.8, 0.0]); tests/test_cr_geometry.py",
+   "derivation": "none for P2 (a specification); tests/test_cr_geometry.py",
    "validity": "Gate frame: s along the axis towards the exit, l left, z up; the referee's P2 occupancy (GateRule.in_cr), the gate events E1-E5 and E7 (holo_fleet/referee/gate_events.py) and every formal P2 statement use this box only",
    "citation_keys": [],
    "code_action": "none"
@@ -1529,7 +1529,7 @@
    "verdict": "DESIGN_CHOICE",
    "source": "protocol timers chosen by the project. t_occ_max: after it without a corridor echo, nothing heard and nothing known inside, a corridor-set BUSY latch becomes STALE (holo_fleet/perception/gate_perception.py stale_release); STALE permits a commitment, never an entry: the admission then needs t > last corridor sighting + t_admit_stale. The wait alone never gives FREE (formal/check_stale.py ST2)",
    "doi_or_url": "formal/check_stale.py",
-   "derivation": "25 s is the e3e31f0 value of the former FREE fallback (removed in 6bcda80; restored as STALE in 9998b68). Its safety no longer rests on t_occ_max: P2 rests on the admission bound (formal/check_stale.py ST1, ST1m4 shows the former FREE release at 25 s without that bound violates P2)",
+   "derivation": "25 s, the STALE release time. Safety does not rest on t_occ_max: P2 rests on the admission bound (formal/check_stale.py ST1; ST1m4 shows that a FREE release at 25 s without that bound violates P2)",
    "validity": "STALE is logged as an occupancy timeout (run metrics occupancy_timeouts). Variant B2: no STALE while a drone is heard possibly inside or known inside (acoustic_gate.heard_inside, last_known_inside) or a claim is held",
    "citation_keys": [],
    "code_action": "none"
@@ -1615,7 +1615,7 @@
    "derivation": "tan(60 deg) x (outer half-extent 1.25 m + MAX_CORR_M 1.2 m) = 4.24 m, with outer = 1.0 m half-opening + 0.25 m bar; capped by SonarModel.range_max",
    "validity": "Gate with a 2.0 m opening and 0.25 m bars; the code evaluates it from the gate map. Recent change (C5: derived from sonar visibility); the audit reports do not cover it",
    "citation_keys": [],
-   "code_action": "recent change: acquisition region derived from sonar visibility (ee63bb8)"
+   "code_action": "acquisition region derived from sonar visibility"
   },
   {
    "section": "5 Gate protocol (P2)",
@@ -1666,10 +1666,10 @@
    "value": 35.0,
    "unit": "s (7 steps of DT = 5 s)",
    "verdict": "DESIGN_CHOICE",
-   "source": "premise of formal/check_fleet.py: within every FAIR seconds there is one instant at which every live drone has a fresh fix of every other live drone at every receiver. When it was introduced (commit 33e59aa, 2026-11-13) the value was set as the longest such gap measured in one scenario of an earlier run set (26 s), rounded up; those runs are not re-examined here and are not evidence for the final controller",
+   "source": "premise of formal/check_fleet.py: within every FAIR seconds there is one instant at which every live drone has a fresh fix of every other live drone at every receiver. The value is the longest such gap measured in one scenario of a run set (26 s), rounded up; those runs are not evidence for the final controller",
    "doi_or_url": "formal/check_fleet.py; holo_fleet/referee/robustness_metrics.py; archive v13-final-v11-2026-11-18 (final validation, seeds 8000-8001), run_metrics.json -> fairness",
    "derivation": "FAIR = ceil(35 / 5) = 7 steps. The recovery bounds of F2 (K = 26 / 40 / 52 steps for n = 2 / 3 / 4) and F2p are proved under this window; F2f shows that without it recovery is not guaranteed. With the monitor's freshness limit status_fresh_s = 2.5 s, the premise bounds every live link's silence by FAIR + status_fresh_s = 37.5 s, below t_silent_s = 45 s and t_silent_gate_s = 70 s",
-   "validity": "Monitored per run on the logged gate.silence (fairness_gap). In the 34-run final validation (archive v13-final-v11-2026-11-18 (final validation, seeds 8000-8001)): holds in every gate scenario with a logged beacon (B2 MEDIUM gate_four 10.9 / 26.3 s, gate_single 7.9 / 9.6 s, integrated_short 5.3 / 11.3 s, lost_drone_mutex 4.6 / 7.2 s, lost_drone_rejoin 7.1 / 6.1 s, mutex_deadlock_resolution 7.3 / 6.0 s; B2 latency sweep 1.8-3.8 s); not logged in B0 and in p1_head_on (no beacon or no gate); VIOLATED in B2 MEDIUM formation_six (92.7 s, both seeds: six drones, 30 links, no gate), which is outside the fleet model (n = 2-4 at a gate). Simulator channel only; no field evidence. The two literals 35.0 (formal model and monitor) are equal but not tied to one constant",
+   "validity": "Monitored per run on the logged gate.silence (fairness_gap). Evidence from an earlier controller version (v11, archive v13-final-v11-2026-11-18, seeds 8000-8001): holds in every gate scenario with a logged beacon (B2 MEDIUM gate_four 10.9 / 26.3 s, gate_single 7.9 / 9.6 s, integrated_short 5.3 / 11.3 s, lost_drone_mutex 4.6 / 7.2 s, lost_drone_rejoin 7.1 / 6.1 s, mutex_deadlock_resolution 7.3 / 6.0 s; B2 latency sweep 1.8-3.8 s); not logged in B0 and in p1_head_on (no beacon or no gate); VIOLATED in B2 MEDIUM formation_six (92.7 s, both seeds: six drones, 30 links, no gate), which is outside the fleet model (n = 2-4 at a gate). Simulator channel only; no field evidence. The two literals 35.0 (formal model and monitor) are equal but not tied to one constant",
    "citation_keys": [],
    "code_action": "none",
    "evidence": {
@@ -1687,10 +1687,10 @@
    "value": -2.5525,
    "unit": "m",
    "verdict": "DERIVED",
-   "source": "(from the declared bounds) the nearest point where holding is P2-safe under the declared gate-frame navigation error, minus the measured holding error, minus a 0.25 m reserve kept in 91a0c3e to preserve the calibrated acquisition position when the CR entry plane moved from -1.05 to -0.8 m",
+   "source": "(from the declared bounds) the nearest point where holding is P2-safe under the declared gate-frame navigation error, minus the measured holding error, minus a 0.25 m reserve that keeps the calibrated acquisition position",
    "doi_or_url": "-",
    "derivation": "hold_s = cr_s_min - (nav_err_m + w_drift_max * tau_c + e_track + SLACK_M) = -(0.8 + 1.0 + 0.0525 + 0.30 + 0.05) = -2.2025 m; minus hold_err_m = -2.3025 m (the derived P2-safe target); minus the 0.25 m reserve = -2.5525 m (deployed). The reserve only moves the hold farther from the CR, so the P2 argument is unchanged. The recursive P2 argument (station-keeping certificates, formal/check_p2_recursive.py) is unaffected: the band of station keeping at rest is e_track + w_drift_max * tau_c (gate_safety.sk_hold)",
-   "validity": "Holds while the navigation premise |e_h| <= nav_err_m and the drift bound w_drift_max hold; the CR occupancy is the centre definition of P2. Localization acquisition from it (synthetic B0 scan, bar echoes only): bias (estimate - truth) along the axis -1.0 to 0.0 m and +0.2, +0.3 m acquired, +0.1 m and >= +0.4 m not (bounded hold, then give-up); with the former -2.30 m hold -1.0 to +0.3 and +0.5, +0.6 m: tests/test_hold_point.py",
+   "validity": "Holds while the navigation premise |e_h| <= nav_err_m and the drift bound w_drift_max hold; the CR occupancy is the centre definition of P2. Localization acquisition from it (synthetic B0 scan, bar echoes only): bias (estimate - truth) along the axis -1.0 to 0.0 m and +0.2, +0.3 m acquired, +0.1 m and >= +0.4 m not (bounded hold, then give-up): tests/test_hold_point.py",
    "citation_keys": [],
    "code_action": "none"
   },
@@ -1760,7 +1760,7 @@
    "source": "(from the admission-zone geometry and premise Z) two drones whose estimates are both in the admission zone are at most 3.25 m apart",
    "doi_or_url": "formal/check_stale.py (ST1, ST6)",
    "derivation": "hypot(hypot(admit_zone_m + admit_zone_fwd_m, 2 admit_zone_lat_m) + 2 zone_err_h_m, 2 (acq_dz_m + admit_zone_dz_m) + 2 zone_err_v_m) = hypot(0.99 + 1.30, 1.8 + 0.5) = 3.25 m < 3.3 m",
-   "validity": "premise Z (zone_err_h_m / zone_err_v_m, monitored) and the P1 detection premise (a hull within 3.3 m is a target: not masked by a structure window, seen by a healthy sector); with nav_err_m alone the zone distance is 4.68 m (ST6l, declared limit); replaces near_sight_m = 3.0 m (a near-field restart of the timed bound renewed by the queued follower, v31)",
+   "validity": "premise Z (zone_err_h_m / zone_err_v_m, monitored) and the P1 detection premise (a hull within 3.3 m is a target: not masked by a structure window, seen by a healthy sector); with nav_err_m alone the zone distance is 4.68 m (ST6l, declared limit); a near-field restart of the timed bound (3.0 m) would be renewed by the queued follower (evidence: archive v31)",
    "citation_keys": [],
    "code_action": "none"
   },
@@ -1842,7 +1842,7 @@
    "verdict": "DERIVED",
    "source": "(from the geometry) (c) a drone held at the stage-2 hold keeps merge_clearance (3.2 m, the criterion of bound (b)) from every other queue point, so a queued drone and a held drone are not in each other's warning band; (d) a queued drone holds where holding is P2-safe",
    "doi_or_url": "-",
-   "derivation": "(c) queue_s <= stage2_hold_s - sqrt(merge_clearance^2 - max(|l_q| - hold_lateral_allow, 0)^2) for each column lateral l_q when there are >= 2 columns; (d) queue_s <= stage2_hold_s. Every bound follows the CR entry plane cr_s_min (bound (a) is measured from it). the lines of the earlier hold (NEAR_HOLD) with the present CR: n1 -2.159, n2 -4.431, n3 -5.656, n4 -6.882 (with the former CR: n1 -1.909, n2 -4.181, n3 -5.406, n4 -6.632)",
+   "derivation": "(c) queue_s <= stage2_hold_s - sqrt(merge_clearance^2 - max(|l_q| - hold_lateral_allow, 0)^2) for each column lateral l_q when there are >= 2 columns; (d) queue_s <= stage2_hold_s. Every bound follows the CR entry plane cr_s_min (bound (a) is measured from it). The lines of the NEAR_HOLD mutation (formal P2Bm) with this CR: n1 -1.909, n2 -4.181, n3 -5.406, n4 -6.632",
    "validity": "Formal Q1 (deployed conservative distance >= d_warning from the hold to every queue point; the n = 3 centre point has the thinnest margin, 2.43 against 2.4) and the mutation Q1m (the NEAR_HOLD n = 2 line fails)",
    "citation_keys": [],
    "code_action": "none"
@@ -1904,7 +1904,7 @@
    "source": "chosen by the project from the synthetic acquisition scan (real StructureAiding, bar echoes only): vertical offsets let the up / down sonars see the frame from farther than on the axis; vertical only, so the queue clearance (c) is unchanged",
    "doi_or_url": "-",
    "derivation": "six offsets x 4 s = 24 s, within t_occ_max + t_clear = 26 s",
-   "validity": "Idealised bar echoes (no seabed, no other hulls); HoloOcean behaviour in legacy/results/gate_safety_v1",
+   "validity": "Idealised bar echoes (no seabed, no other hulls)",
    "citation_keys": [],
    "code_action": "none"
   },
@@ -1980,7 +1980,7 @@
    "derivation": "catch-up margin v_recovery_max - v_nominal = 0.2 m/s; keeping cap = min(v_recovery_max, max(v_slot_max, v_plan + v_catch_min)) so the keeping modes keep v_catch_min above the planned speed (a constant cap v_slot_max: 0 at the 0.40 m/s clock of integrated_short, formal C1m); a clock with v_plan + v_catch_min > v_recovery_max is refused at plan time (formal C4); v_catch_min > w_res + s_res = 0.06 m/s",
    "validity": "Deliverable against head currents only up to about 0.21 m/s at 0.5 m/s (DI-27); coupled 2-norm certificates C1f / C1n (check_formation_coupled.py)",
    "citation_keys": [],
-   "code_action": "keeping cap raised with the plan speed; clock speed checked at plan time (P3 review 2026-11-23)"
+   "code_action": "keeping cap raised with the plan speed; clock speed checked at plan time"
   },
   {
    "section": "6 Formation (P3)",
@@ -2044,7 +2044,7 @@
    "value": 45.0,
    "unit": "s",
    "verdict": "DESIGN_CHOICE",
-   "source": "with the beacon active a slot is vacant exactly when its drone has not been heard for t_silent_s (perception.py, total-failure model: a broken drone stops transmitting). The comment that introduced the value (commit f50260a, 2026-11-09) cited the longest silence between two drones observed in an earlier MEDIUM run set (31 s); those runs are not re-examined here",
+   "source": "with the beacon active a slot is vacant exactly when its drone has not been heard for t_silent_s (perception.py, total-failure model: a broken drone stops transmitting). The value was chosen above the longest silence between two drones observed in a MEDIUM run set (31 s); those runs are not evidence here",
    "doi_or_url": "holo_fleet/perception/acoustic.py; holo_fleet/referee/p3.py; formal/check_fleet.py; archive v13-final-v11-2026-11-18 (final validation, seeds 8000-8001), drone_*_state.jsonl.gz -> gate.silence",
    "derivation": "lower bound: under the fairness premise a live link is silent for at most FAIR + status_fresh_s = 35 + 2.5 = 37.5 s, so 45 s leaves 7.5 s. Ordering kept by the fleet model: T_VAC = ceil(45 / 5) = 9 steps < T_DEAD = 14 steps (vacancy before death). The P3 deadline of a vacancy is t_f + t_silent_s + 2 s (referee/p3.py). Under the stress channel MEDIUM_HT (link outages Pareto, minimum 6 s, alpha 1.2) P(outage >= 45 s) = (6 / 45)^1.2 = 0.089 per outage, and the 60 s bursts of the communication sweep exceed 45 s, so false vacancies are expected there by construction",
    "validity": "B2 only (B0 uses t_rejoin). Longest silence of a live sender at any receiver in the B2 runs of the final validation, computed read-only from the logged gate.silence (same tracker as the vacancy rule): 32.2 s (formation_six s8000), 22.5 s (formation_six s8001), at most 17.2 s in the gate scenarios (gate_four s8001); every B2 run of that validation is PASS. A false vacancy degrades P3 (the live drone is no longer waited for) but releases no gate claim. Simulator channel model only (independent losses per reception, with bursts at MEDIUM); not validated on hardware",
@@ -2378,7 +2378,7 @@
    "verdict": "STRESS_ASSUMPTION",
    "source": "Fresnel premise DERIVED (below), loss in dB not calibrated by any source (R3 P8). ahoi mobile data show about 18 dB of receive-gain headroom at 50 m, so a few dB of diffraction loss would rarely cause a loss at 2-20 m: 0.3-0.7 is likely pessimistic",
    "doi_or_url": "10.1145/3376921",
-   "derivation": "first Fresnel radius at mid-path r1 = 0.5 sqrt(lambda d), 20-30 kHz at 1500 m/s: 0.19-0.24 m at 3 m, 0.35-0.43 m at 10 m (the earlier 0.3-0.5 m overstated 3 m)",
+   "derivation": "first Fresnel radius at mid-path r1 = 0.5 sqrt(lambda d), 20-30 kHz at 1500 m/s: 0.19-0.24 m at 3 m, 0.35-0.43 m at 10 m",
    "validity": "Recalibrated on 2026-11-26 to realistic nominal values (sensor datasheets and literature; the former LOW/MEDIUM values were stress settings without a source). Partial obstruction of the Fresnel zone by a hull, about 18 dB of link headroom (Renner 2020).",
    "citation_keys": [
     "renner2020ahoi"
@@ -2887,9 +2887,9 @@
    "source": "rule D: a drone not heard for t_silent_gate_s by a receiver that hears another drone is dead for the gate decisions (its claim included) only if last known outside the exclusion zone of the gate (holo_fleet/scope.py); otherwise it holds the gate for ever. The comment that introduced the value argued that a live drone cannot stay unheard this long on a queue link (a channel-model estimate P(silence >= 70 s) < 1e-3 per mission in an archived design note) while a dead drone has risen above the gate by then; that estimate is not recomputed here",
    "doi_or_url": "holo_fleet/perception/acoustic_gate.py; holo_fleet/scope.py; formal/check_status.py; formal/check_fleet.py; holo_fleet/referee/robustness_metrics.py; archive v13-final-v11-2026-11-18 (final validation, seeds 8000-8001), run_metrics.json -> premise_v",
    "derivation": "T_DEAD = ceil(70 / 5) = 14 steps > T_VAC = 9 (vacancy before death) and > T_RISE = 10 steps (the hull has left the queue corridor) in formal/check_fleet.py; 70 > FAIR + status_fresh_s = 37.5 s, so under the fairness premise no live drone is held dead (premise V follows); 70 > t_occ_max + t_clear = 26 s. With 1 Hz pings a 70 s silence needs about 70 consecutive lost receptions; the MEDIUM model draws losses independently per reception (bursts of 4 s), so the risk lies in correlated losses, which that model does not represent: under MEDIUM_HT P(outage >= 70 s) = (6 / 70)^1.2 = 0.052 per outage, and the sweep bursts of 60 s stay below 70 s",
-   "validity": "Since the explicit-communication review (formal/check_b2_comm.py B2C-D, B2C-Oe) silence is never evidence: rule D no longer excludes a drone nor releases its claim (a live drone with a failed transmitter could otherwise be ignored while in the CR). The value only labels the diagnostic (GateObs.silent, premise V of the robustness metrics). Cost: a drone that fails holding a claim keeps the gate closed (formal/check_fleet.py F2c). Former validity: premise V held in all 34 runs of the final validation (longest live-sender silence 32.2 s)",
+   "validity": "Silence is never evidence (formal/check_b2_comm.py B2C-D, B2C-Oe): rule D neither excludes a drone nor releases its claim (a live drone with a failed transmitter could otherwise be ignored while in the CR). The value only labels the diagnostic (GateObs.silent, premise V of the robustness metrics). Cost: a drone that fails holding a claim keeps the gate closed (formal/check_fleet.py F2c). Evidence from an earlier controller version (v11): premise V held in every run of archive v13-final-v11-2026-11-18 (longest live-sender silence 32.2 s)",
    "citation_keys": [],
-   "code_action": "rule D made a diagnostic (acoustic_gate.status_excluded / status_claim no longer read dead())",
+   "code_action": "rule D is a diagnostic only (acoustic_gate.status_excluded / status_claim do not read dead())",
    "evidence": {
     "manufacturer_or_literature": "none",
     "simulator_calibration": "final validation: premise_v.live_declared_dead = 0 in 34 / 34 runs; longest live-sender silence 32.2 s; the archived channel-model estimate (< 1e-3 per mission) is not recomputed",
@@ -2976,7 +2976,7 @@
    ],
    "unit": "deg, s, -, m, m, s",
    "verdict": "DESIGN_CHOICE",
-   "source": "design choice; heading_bound_deg is the onboard compass bias budget (README section 1)",
+   "source": "design choice; heading_bound_deg is the onboard compass bias budget (docs/validation-report.md section 1)",
    "doi_or_url": "formal/check_classification.py (CL4, CL5, CL6)",
    "derivation": "max_bound_m: the classification pose comes from the beacon only while the median bound is at most 0.45 m (about 3 m from the beacon); CL6: the bound in the gate plane, 0.40 m, is below the keepout tolerance 0.41 m. Corrections above corr_min_m at most every corr_period_s, the lateral component only once admitted",
    "validity": "the fix bound holds with range and angle errors within 3 sigma and the heading bias within heading_bound_deg; monitored by the referee (beacon_fix)",

@@ -3,8 +3,8 @@
 IDEALISED KNOWLEDGE.  This composition reads the other drones' modes directly: a claim and an occupant of the CR are known to the
 latch and to the stage-2 check within the step (premise C; F1d relaxes it to d steps), and a live drone's fix is "fresh" by a
 nondeterministic flag.  The explicit-communication result - packets, slots, latencies, losses, freshness, clocks, decisions on the
-local state only - is formal/check_b2_comm.py; there premise C is derived from the commitment-age rule of the corrected controller
-(B2C-E1, B2C-E2).  Since that review rule D is a diagnostic only: a silent drone is never accounted for (``rule_d`` False is the
+local state only - is formal/check_b2_comm.py; there premise C is derived from the commitment-age rule of the deployed controller
+(B2C-E1, B2C-E2).  Rule D is a diagnostic only: a silent drone is never accounted for (``rule_d`` False is the
 deployed controller), so a drone that fails while committed keeps its claim for ever (F2c, a declared limit) and the recovery F2
 (K tight, F2t) is stated for a run with no failure.  A drone that fails anywhere outside the commitment is not accounted for either:
 the latch stays BUSY behind the echo of a survivor waiting beyond the gate, which waits for the queued one (F2d, a declared limit, safe
@@ -24,8 +24,8 @@ Assumed from the local checks, not re-proved here: the latch of a queued drone i
 (speed floor inside the CR, M3); the leftmost queued drone present has the priority (M2), a dead hull at its queue point
 counting as present until it has risen (T_RISE).  Modelled here:
   * the latch keeps BUSY while an echo stays in the corridor (a drone waiting at B, or a hull that died there and has not
-    risen yet) unless every other drone is accounted for at that receiver: a live drone by a fresh fix, a dead drone never (the former
-    rule D accounted for it after t_silent_gate_s: ``rule_d`` True, kept as the former controller);
+    risen yet) unless every other drone is accounted for at that receiver: a live drone by a fresh fix, a dead drone never (rule D,
+    the mutation ``rule_d`` True, accounts for it after t_silent_gate_s);
   * a live drone's fix is fresh at a receiver nondeterministically, with the fairness premise that within every FAIR steps
     there is one step at which every live drone is fresh at every receiver (premise V and the channel model);
   * the stage-2 hold gives up after T_HOLD steps (t_occ_max + t_clear) and the drone queues again;
@@ -158,7 +158,7 @@ class Fleet:
             known = lambda t, i, k: z3.And(z3.Not(dead(t, k)), acc[t][i][k])
         allfresh = lambda t: z3.And([z3.Or(dead(t, k), acc[t][i][k]) for i in range(n) for k in range(n) if k != i])
         if fair:
-            for t in range(0, depth + 2 - T["FAIR"]):
+            for t in range(depth + 2 - T["FAIR"]):
                 S.add(z3.Or([allfresh(s) for s in range(t, min(t + T["FAIR"], depth + 1))]))
         for t in range(depth + 1):
             for i in range(n):
@@ -359,15 +359,15 @@ def run(cfg: FleetConfig = DEFAULT, verbose: bool = True) -> Report:
     rep.add(check("F2c declared limit: a drone that fails while committed keeps its claim for ever (silence is no evidence since the "
                   "explicit-communication review, formal/check_b2_comm.py B2C-D) and the composition stalls (n=3)",
                   "expect a run with a live drone short of D at K", ENC, _run(fm, fm.not_recovered()), "sat",
-                  timeout_ms=900000, note=tag + "; the former rule D resolved it by treating 70 s of silence as death (B2C-Oe)"), verbose)
+                  timeout_ms=900000, note=tag + "; rule D (mutation B2C-Oe) resolves it by treating 70 s of silence as death"), verbose)
     for n in (3, 4):
         fd = Fleet(n, 80, 0, T, free=True, **PREMISES[n])
         rep.add(check(f"F2d declared limit: a drone that has failed outside the commitment is never accounted for (silence is no evidence): "
                       f"the latch stays BUSY behind the echo of a survivor waiting beyond the gate, the queued survivor waits for it and the "
                       f"composition stalls, a safe stall (n={n}, any K: no run re-forms the formation)",
                       "expect a run with a live drone short of D at 80 steps (the recovery K holds only without failure)", ENC,
-                      _run(fd, fd.not_recovered()), "sat", timeout_ms=900000, note=tag + "; with the former rule D the survivors left "
-                      "after 70 s of silence (B2C-Oe); the payload GP_PASSED of a drone that failed after passing is not modelled"), verbose)
+                      _run(fd, fd.not_recovered()), "sat", timeout_ms=900000, note=tag + "; with rule D (mutation B2C-Oe) the survivors leave "
+                      "after 70 s of silence; the payload GP_PASSED of a drone that failed after passing is not modelled"), verbose)
     ff = Fleet(3, K, 0, T, free=True, fair=False, **PREMISES[3])
     rep.add(check("F2f scope: without the fairness of the fixes the recovery is not guaranteed (n=3)",
                   "expect a run with a live drone short of D at K", ENC, _run(ff, ff.not_recovered()), "sat",

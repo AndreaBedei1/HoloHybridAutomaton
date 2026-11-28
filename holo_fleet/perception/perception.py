@@ -72,7 +72,7 @@ import numpy as np
 from holo_fleet.config import DEFAULT, FleetConfig
 from holo_fleet.ha.automaton import AbstractObservation
 from holo_fleet.mission import MissionPlan
-from holo_fleet.perception.formation_perception import (NEIGHBOUR_MEMORY_S, FormationObs, check_formation,
+from holo_fleet.perception.formation_perception import (FormationObs, check_formation,
                                                        expected_relative)
 
 CONFIRM_N = 3
@@ -321,7 +321,7 @@ class Perception:
         self.nav.state.p += np.array([c[0], c[1], 0.0])
         self.nav_bound.corrected(c)
         self.acoustic.shift(np.array([c[0], c[1], 0.0]))
-        # the stored beacon fixes and the fit offset are relative to the estimate (review of 9b487b3, finding 1)
+        # the stored beacon fixes and the fit offset are relative to the estimate: they move with it
         self.beacon_fix.shift(c)
         self.cls_offset = None
 
@@ -510,8 +510,8 @@ class Perception:
                 self.cls_offset, self.cls_offset_t = off, t
                 self.cls_offset_u = max(CLS_POSE_ERR_M, float(self.aiding.last.get("u", CLS_POSE_ERR_M)))
         # echoes are compared with the gate map at the pose the structure fit explains (the estimate plus the fit offset):
-        # under a lateral estimate error of 0.72 m the bars ahead fell outside the structure window at the estimated pose
-        # and were taken for an obstacle at the CR entry (v33 / v39); the window width, hence what it can mask, is unchanged
+        # under a lateral estimate error of 0.72 m the bars ahead fall outside the structure window at the estimated pose
+        # and would be taken for an obstacle at the CR entry; the window width, hence what it can mask, is unchanged
         use = (self.cls_offset if self.cls_offset is not None and t - self.cls_offset_t <= CLS_HOLD_S else np.zeros(3))
         pose_err = self.cls_offset_u if float(np.linalg.norm(use)) > 0.0 else 0.0
         self.cls_source = "fit" if pose_err > 0.0 else ""
@@ -526,7 +526,7 @@ class Perception:
         if bf is not None and bf[1] <= gb.max_bound_m:
             use, pose_err, self.cls_source, self.cls_bound = bf[0], bf[1], "beacon", bf[1]
             # the estimate is corrected only before admission (the controller clears beacon_corr_ok once admitted): a jump
-            # inside the active P2 constraint would drop its certificate (review finding 2); in the passage the fix only
+            # inside the active P2 constraint would drop its certificate; in the passage the fix only
             # sets the classification pose
             corr = np.asarray(bf[0], float)
             if not self.beacon_corr_ok and self.gp.gate is not None:
@@ -536,8 +536,8 @@ class Perception:
                 left = np.array([-ax[1], ax[0], 0.0])
                 corr = float(corr @ left) * left
             if (float(np.linalg.norm(corr)) > gb.corr_min_m and t - self.beacon_corr_t >= gb.corr_period_s):
-                # the fix relative to the surveyed pinger corrects the navigation estimate (v41: a 0.42 m lateral error in the
-                # CR with the bars correctly classified brought the hull onto a side bar)
+                # the fix relative to the surveyed pinger corrects the navigation estimate (a 0.42 m lateral error in the
+                # CR with the bars correctly classified brings the hull onto a side bar)
                 self.apply_position_correction(corr)
                 self.beacon_corr_t, self.beacon_corrections = t, self.beacon_corrections + 1
                 use = np.asarray(bf[0], float) - corr

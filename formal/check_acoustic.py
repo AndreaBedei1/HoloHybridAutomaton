@@ -1,6 +1,6 @@
 """Variant B2 (range-bearing beacon): the geometric guarantees of the acoustic exit evidence, and its scope.
 
-These checks are B2's own: they hold under the B2 assumptions (README.md: H1-H5 and
+These checks are B2's own: they hold under the B2 assumptions (docs/validation-report.md: the acoustic-channel premises and
 the declared measurement envelope config.AcousticConfig) and add nothing to, and take nothing from, the B0 checks
 (the B0 M4g of check_mutex.py stays what it is).  Numeric, exhaustive over sampled geometry:
 
@@ -34,7 +34,6 @@ import dataclasses
 import math
 import re
 import sys
-from pathlib import Path
 from types import SimpleNamespace
 
 import numpy as np
@@ -159,11 +158,6 @@ def _hull(c, yaw):
     return SimpleNamespace(center=np.asarray(c, float), axes=_rot(yaw), half=np.asarray(HULL_HALF, float))
 
 
-def _worst_s_lower(ae, g, p, yaw, c_true, cfg, t, t_now):
-    r, az, el = _meas(p, yaw, c_true)
-    return min(ae.s_lower(g, _fix(p, yaw, *m, cfg, t=t), t_now) for m in _corners(r, az, el, cfg))
-
-
 def exit_observability(cfg: FleetConfig, g, n: int, ds: float = 0.05) -> list:
     """B2-M4g rows, one per (observer, passer) of the abreast queue of n."""
     G, a = cfg.gate, cfg.acoustic
@@ -241,7 +235,7 @@ def payload_soundness(cfg: FleetConfig, g, n: int = 20000, seed: int = 3, radius
     payload rule (``rep_cr_possible`` stays True) and never placed beyond the exit face by A3.  Randomized, with the
     worst cases (errors on the boundary of the cylinder) over-sampled."""
     from holo_fleet.perception import payload as pl
-    from holo_fleet.perception.acoustic_gate import AcousticExit, gate_points
+    from holo_fleet.perception.acoustic_gate import AcousticExit
     from holo_fleet.perception.acoustic import AcousticTracker
 
     radius = radius or (lambda h, z: math.hypot(h, z))
@@ -286,8 +280,7 @@ def phantom_soundness(cfg: FleetConfig, g, n: int = 3000, seed: int = 5, sender_
 
     rng = np.random.default_rng(seed)
     a = cfg.acoustic
-    br_k = a.k_sigma
-    left = np.array([-g.axis[1], g.axis[0], 0.0])
+
     bad = 0
     for i in range(n):
         tr = AcousticTracker(cfg)

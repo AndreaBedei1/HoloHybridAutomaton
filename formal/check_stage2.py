@@ -2,7 +2,7 @@
 
 M4h (reported, numeric grid): from the hold point before the critical region (on the gate axis, at the deployed stage-2
 hold ``GateRule.stage2_hold_s``, -2.55 m (the P2-safe derivation for the CR s in [-0.8, 0.0] gives -2.30 m; a 0.25 m reserve
-keeps the calibrated acquisition position, control/gate_safety.py; the earlier near hold was -1.18 m),
+keeps the calibrated acquisition position, control/gate_safety.py),
 with an own lateral position error up to ``nav_err_gate_m``), which hull centres inside the CR produce, in
 the FRONT sonar, an echo that the classifier cannot explain by the mapped bars (outside the structure window grown by
 its tolerances) on a line of sight not blocked by a bar.  Such an occupant makes the stage-2 check hold the entry

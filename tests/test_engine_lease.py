@@ -146,8 +146,8 @@ def test_startup_lock_serializes_processes_and_survives_owner_exit(tmp_path):
 
 @pytest.mark.skipif(os.name != "nt", reason="a reader's open handle blocks os.replace only on Windows")
 def test_update_waits_for_a_concurrent_reader_of_the_slot_file(tmp_path):
-    """A watcher reading slot<N>.json at the moment of an update made os.replace fail with WinError 5 (an INVALID run
-    of the v25 campaign): the update retries until the reader closes the file."""
+    """A watcher reading slot<N>.json at the moment of an update makes os.replace fail with WinError 5 (an INVALID
+    run): the update retries until the reader closes the file."""
     import threading
 
     lease = EngineLease(tmp_path, capacity=1).acquire()

@@ -9,7 +9,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 0.003,
+      "seconds": 0.005,
       "counterexample": null,
       "note": "e_h 1.0 m, e_z 1.0 m, slack 0.05 m; the command of a step is applied for dt = 0.1 s <= tau_c = 0.35 s, inside the first phase of its own backup"
     },
@@ -20,7 +20,7 @@
       "expect": "holds",
       "verdict": "holds",
       "passed": true,
-      "seconds": 0.11,
+      "seconds": 0.12,
       "counterexample": null,
       "note": "14641 pairs per side, |u| <= 0.6 m/s; largest under-estimate 5.74e-05 m at (-0.6, 0.56, '+'); analytic bound of the trapezoidal/sampling error (4 kinks, a h^2 / 8, h = 0.0323 s) 2.61e-04 m; SLACK_M 0.05 m"
     },
@@ -31,7 +31,7 @@
       "expect": "holds",
       "verdict": "holds",
       "passed": true,
-      "seconds": 0.16,
+      "seconds": 0.14,
       "counterexample": null,
       "note": "7442 cases, |u| <= 0.6 m/s, dt 0.1 s; worst Delta 0.179 m at (u0, u, side) (-0.6, -0.6, '+') (a fast motion away from that side: the envelope lets it stop at once at the next step); worst Delta when neither the velocity nor the command points away 0.029 m, with |u0|, |u| <= 0.3 m/s 0.104 m; Delta of a hold 0.029 m (drift w dt + change of the navigation error 0.0136 m per step from the NavBound coefficients).  This describes the ONE-STEP margin (cr_margin without lookahead); the deployed selection uses the robust margin (P2B5) and the anchored station keeping (P2B4)"
     },
@@ -53,7 +53,7 @@
       "expect": "holds",
       "verdict": "holds",
       "passed": true,
-      "seconds": 10.0,
+      "seconds": 10.6,
       "counterexample": null,
       "note": "30300 trajectories (1500 states near the CR, up to 5 P2-safe candidate commands each, 8 extreme per-axis combinations at the error corners + 2 random), sampled every 10 ms; 0 entered the CR"
     },
@@ -64,9 +64,9 @@
       "expect": "holds",
       "verdict": "holds",
       "passed": true,
-      "seconds": 6.8,
+      "seconds": 7.3,
       "counterexample": null,
-      "note": "101250 loop states, 5 anchors (stage-2 target, beside, above, below, beyond the gate), gains 0.5 / 0.6, cap 0.27 m/s, drift +-0.15 per axis; exact invariance with the true velocity: largest drop 0.00e+00 m.  With the measured velocity within v_err 0.098 m/s (DVL 3 sigma) the braking term of hold_margin can exceed the anchor term at the edge of the deviation band: largest drop 0.083 m at ([-2.5525, 0.0, 0.0], [0.3, -0.3, -0.3], [0.098, 0.098, 0.098]): the margin RECOMPUTED onboard at a later step is time-invariant only up to that amount (R-c: a fresh measurement inflation), which is why the certificate of station keeping is the one latched when the maneuver is engaged (gate_safety.P2Certificate; P2R3, P2R4): continuing it needs no re-certification; stage-2 target margin min 0.267 m.  0 deviation/gain cases saturate the per-axis cap HOLD_V_MAX (> w: still restoring on every axis, P2R3a; the former 2-norm cap needed the drift vector below HOLD_V_MAX).  Deviation and velocity taken independently (states the loop does not produce): min 0.085 m"
+      "note": "101250 loop states, 5 anchors (stage-2 target, beside, above, below, beyond the gate), gains 0.5 / 0.6, cap 0.27 m/s, drift +-0.15 per axis; exact invariance with the true velocity: largest drop 0.00e+00 m.  With the measured velocity within v_err 0.098 m/s (DVL 3 sigma) the braking term of hold_margin can exceed the anchor term at the edge of the deviation band: largest drop 0.083 m at ([-2.5525, 0.0, 0.0], [0.3, -0.3, -0.3], [0.098, 0.098, 0.098]): the margin RECOMPUTED onboard at a later step is time-invariant only up to that amount (R-c: a fresh measurement inflation), which is why the certificate of station keeping is the one latched when the maneuver is engaged (gate_safety.P2Certificate; P2R3, P2R4): continuing it needs no re-certification; stage-2 target margin min 0.267 m.  0 deviation/gain cases saturate the per-axis cap HOLD_V_MAX (> w: still restoring on every axis, P2R3a; a 2-norm cap would need the drift vector below HOLD_V_MAX).  Deviation and velocity taken independently (states the loop does not produce): min 0.085 m"
     },
     {
       "prop": "P2B5 robust selection: every command returned by the deployed warning filter, escape (station-keeping HOLD) or filter_mission with a positive robust margin leaves station keeping on the next estimate P2-safe from every worst-case state after dt (numeric, grid)",
@@ -75,9 +75,9 @@
       "expect": "holds",
       "verdict": "holds",
       "passed": true,
-      "seconds": 35.0,
+      "seconds": 36.3,
       "counterexample": null,
-      "note": "6244 returned commands (63 threat sets x 2 planners, 9 mission commands; 16 positions x 4 velocities; HOLD answers are station keeping, P2B4 / P2R3); v_err 0.098 m/s, rho 0.142 m/s; worst next-step SK margin 0.146 m, computed independently of next_band (upper_at, side_end); 0 failures.  The certificate is handed to the next step, not recomputed there (P2R2, P2R4n); the old target of this check - braking re-certified onboard at the next step - is the counterexample P2R2m"
+      "note": "6244 returned commands (63 threat sets x 2 planners, 9 mission commands; 16 positions x 4 velocities; HOLD answers are station keeping, P2B4 / P2R3); v_err 0.098 m/s, rho 0.142 m/s; worst next-step SK margin 0.146 m, computed independently of next_band (upper_at, side_end); 0 failures.  The certificate is handed to the next step, not recomputed there (P2R2, P2R4n); braking re-certified onboard at the next step is the counterexample P2R2m"
     },
     {
       "prop": "P2R1 the closed-form braking reach X(a0) = a0+^2 / (2 a_brake) + w T, T = max(tau_c, a0+ / a_brake), is non-decreasing in the upper velocity a0 (for all reals)",
@@ -86,7 +86,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 0.015,
+      "seconds": 0.017,
       "counterexample": null,
       "note": "a_brake 0.5, w 0.15, tau_c 0.35: the onboard upper bounds of the next step (a larger velocity) never give a smaller reach (used by P2R2, P2R5)"
     },
@@ -97,7 +97,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 0.016,
+      "seconds": 0.022,
       "counterexample": null,
       "note": "x(t) the integral of the envelope in closed form (piecewise quadratic): the running maximum is the end value (integrand >= w > 0)"
     },
@@ -119,7 +119,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 0.023,
+      "seconds": 0.026,
       "counterexample": null,
       "note": "for all reals q, x, xp, v1, vp and every rho >= 0; H = e_track + w tau_c = 0.3525 m; the - side is the + side of the mirrored axis.  With the CR separation of P2R3d it gives: robust margin > 0 at step k -> station keeping on the next estimate certified at k + 1 (kind NEXT), with no use of the next measurement (the 2 v_err inflation of a re-certification is not needed)"
     },
@@ -130,7 +130,7 @@
       "expect": "sat",
       "verdict": "sat",
       "passed": true,
-      "seconds": 0.02,
+      "seconds": 0.026,
       "counterexample": {
         "dq": 0.1,
         "q": 0.0,
@@ -160,7 +160,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 0.018,
+      "seconds": 0.022,
       "counterexample": null,
       "note": "K_HOLD 0.5, HOLD_V_MAX 0.27 > w 0.15, dt 0.1; covers hold_velocity (gain K_HOLD, per-axis cap) and the unsaturated loops of the flows (gain k_track 0.6); the band of sk_band has half widths >= e_track + w tau_c (the latency allowance: premise H, P2R3n); base case: the loop starts inside the band by construction (q + X + rho T, P2R1)"
     },
@@ -171,7 +171,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 0.017,
+      "seconds": 0.018,
       "counterexample": null,
       "note": "the stage-2 hold / standoff (k_track, v_pass) and the failsafe hold (0.5, 0.25 m/s) of Flows; a loop that is not latchable is replaced by hold_velocity on its anchor (filter_mission)"
     },
@@ -204,7 +204,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 0.004,
+      "seconds": 0.003,
       "counterexample": null,
       "note": "Same gate and hold law on the same horizontal anchor, positive margins, and no position correction. The formula uses the tolerances of GateConstraint.cert_valid."
     },
@@ -226,7 +226,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 0.015,
+      "seconds": 0.02,
       "counterexample": null,
       "note": "v_err 0.098 m/s, rho 0.142 m/s.  Activation (reported): the constraint becomes active within ACTIVE_RANGE_M = 8.0 m of the CR box (3-D) and was inactive one step earlier, so at activation the distance is >= 7.92 m; the depth envelope of the arena (-9.0 to -1.5 m) bounds the vertical offset from the CR box by 5.5 m, so the larger of the s / l separations is >= 4.03 m (>= D_base): the base case holds on entering the range.  During a DVL outage (v_err = v_bound) D_base = 3.77 m (covered at activation).  A gate that becomes the current one while the drone is already inside the range (consecutive gates nearer than the range) is outside this base case"
     },
@@ -237,7 +237,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 0.006,
+      "seconds": 0.004,
       "counterexample": null,
       "note": "axioms: the selection rule (a certified command is applied whenever one exists: checked numerically by J1 and P2R4n, not proved), P2R2 (NEXT -> SK on the next estimate certified), P2R3a-d (a latched SK stays certified, the true centre out of the column), P2B1 (a robust command keeps the control interval out of the column), P2R5 (base).  Premises per step: N, V, D (no position correction: the controller drops the certificates), the envelope, H, the same gate, rho not raised during a braking phase (a DVL outage onset can break the step: declared limit); base case: unsat"
     },
@@ -248,7 +248,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 0.006,
+      "seconds": 0.005,
       "counterexample": null,
       "note": ""
     },
@@ -259,7 +259,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 0.024,
+      "seconds": 0.026,
       "counterexample": null,
       "note": ""
     },
@@ -270,7 +270,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 0.005,
+      "seconds": 0.006,
       "counterexample": null,
       "note": ""
     },
@@ -281,7 +281,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 0.004,
+      "seconds": 0.002,
       "counterexample": null,
       "note": ""
     },
@@ -292,7 +292,7 @@
       "expect": "sat",
       "verdict": "sat",
       "passed": true,
-      "seconds": 0.004,
+      "seconds": 0.003,
       "counterexample": {
         "d0": -0.09802097196748895,
         "e": 0.09802097196748895,
@@ -376,7 +376,7 @@
       "expect": "holds",
       "verdict": "holds",
       "passed": true,
-      "seconds": 95.2,
+      "seconds": 99.5,
       "counterexample": null,
       "note": "6244 returned commands, 149856 next states (8 side corners x 3 drift / measurement corners); 0 without a certified action; 0 of the next states rely on the handed certificate (the SK margin recomputed with the fresh measurement is not positive: the R-c drop), 6576 have no onboard-certified braking (one-step margin of a zero command, the braking lookahead); smallest handed margin 0.000 m"
     },
@@ -387,9 +387,9 @@
       "expect": "counterexample",
       "verdict": "counterexample",
       "passed": true,
-      "seconds": 81.0,
+      "seconds": 85.6,
       "counterexample": null,
-      "note": "6244 commands returned by the planners with the robust margin and the hold_margin of the braking lookahead; 1016 with a next-state corner whose onboard braking (velocity measured within v_err and filtered with it) is not certified (744 of 4772 at a9ffa34 with the former CR), 0 physically unsafe; onboard deficit min -0.109 m, median -0.030 m.  Root cause (R-a): the braking lookahead took the next velocity as the true worst case vp, the onboard re-certification uses up to vp + 2 v_err and the next estimate moves by up to rho dt more"
+      "note": "6244 commands returned by the planners with the robust margin and the hold_margin of the braking lookahead; 1016 with a next-state corner whose onboard braking (velocity measured within v_err and filtered with it) is not certified, 0 physically unsafe; onboard deficit min -0.109 m, median -0.030 m.  Root cause (R-a): the braking lookahead took the next velocity as the true worst case vp, the onboard re-certification uses up to vp + 2 v_err and the next estimate moves by up to rho dt more"
     },
     {
       "prop": "P2B6 the CR column: no command called P2-safe lets a true trajectory inside the declared envelope pass under or over the CR (cr_s_min <= s <= cr_s_max, |l| <= cr_half_width at any depth; numeric)",
@@ -398,7 +398,7 @@
       "expect": "holds",
       "verdict": "holds",
       "passed": true,
-      "seconds": 8.0,
+      "seconds": 8.5,
       "counterexample": null,
       "note": "12780 trajectories from 900 states 1-4 m above or below the CR centre (extreme s, l profiles at the error corners and random ones, any vertical profile); 0 reached the column"
     },
@@ -431,7 +431,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 28.942,
+      "seconds": 30.959,
       "counterexample": null,
       "note": "d_warning 2.4 m, d_safe 1.0 m, a_brake 0.5 m/s^2 each, v_open 0.2, w_rel 0.15 m/s, per-drone speed <= v_escape 0.55, sum <= v_escape + v_max_nominal, dt 0.1 s"
     },
@@ -442,7 +442,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 0.151,
+      "seconds": 0.157,
       "counterexample": null,
       "note": "d_warning 2.4 m, d_safe 1.0 m, a_brake 0.5 m/s^2 each, v_open 0.2, w_rel 0.15 m/s, per-drone speed <= v_escape 0.55, sum <= v_escape + v_max_nominal, dt 0.1 s"
     },
@@ -453,7 +453,7 @@
       "expect": "sat",
       "verdict": "sat",
       "passed": true,
-      "seconds": 3.086,
+      "seconds": 3.302,
       "counterexample": {
         "cb_0": 0.098125,
         "cb_1": 0.048125,
@@ -865,7 +865,7 @@
       "expect": "holds",
       "verdict": "holds",
       "passed": true,
-      "seconds": 39.2,
+      "seconds": 40.6,
       "counterexample": null,
       "note": "25272 decisions (702 threat sets: 26 patterns alone and every pair, with opening v_open or 0; 12 gate-frame positions around the stage-2 hold; 2 current velocities; the escape with opening v_open only); 0 with an error; gate_safety.classify disagreed with the reference 0 times (uniform requirements); classes {'JOINTLY_FEASIBLE': 4916, 'UNCERTAIN': 16144, 'JOINTLY_INFEASIBLE': 4212}"
     },

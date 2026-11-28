@@ -92,8 +92,8 @@ def test_a_latched_station_keeping_is_not_cut_by_a_recomputed_drop():
 
 
 def test_station_keeping_is_restoring_on_every_axis():
-    """A large lateral deviation does not scale down the along-axis command (per-axis cap, formal P2R3a / P2R3c): with the
-    former 2-norm cap the along-axis component fell below the declared drift."""
+    """A large lateral deviation does not scale down the along-axis command (per-axis cap, formal P2R3a / P2R3c): with a
+    2-norm cap the along-axis component would fall below the declared drift."""
     q = np.array([-4.0, 0.0, 0.0])
     a = q + np.array([0.2, 2.0, 0.0])
     v = _gc(q).hold_velocity(a)
@@ -190,7 +190,7 @@ def test_a_hold_loop_can_use_a_narrower_fresh_band():
 
 
 def test_a_larger_older_margin_with_a_later_end_of_braking_does_not_displace_a_fresh_proof():
-    """Reviewer case: an older SK proof with a slightly larger margin but a later end of braking must not be kept over a
+    """An older SK proof with a slightly larger margin but a later end of braking must not be kept over a
     valid fresh proof; a DVL outage before the old braking ends would invalidate it while the fresh one stays valid."""
     anchor = np.array([-3.2, 0.0, 0.0])
     old = _gc(anchor, v0=(0.30, 0.0, 0.0), t=1.0).sk_certificate(anchor)
@@ -206,7 +206,7 @@ def test_a_larger_older_margin_with_a_later_end_of_braking_does_not_displace_a_f
 def test_a_hold_with_a_saturated_vertical_command_is_still_recognised_and_latched():
     """At an acquisition offset the vertical command saturates (0.25 m/s cap of the stage-2 hold) while the horizontal loop is
     exact: the CR column extends to every depth, so the station keeping is recognised on the column axes and latched as an SK
-    certificate, which then survives a DVL outage once its braking has ended (formal P2R3, the v27 P2_UNCERTIFIED replay)."""
+    certificate, which then survives a DVL outage once its braking has ended (formal P2R3)."""
     q = np.array([G.stage2_hold_s, 0.0, 0.0])
     anchor = np.array([G.stage2_hold_s, 0.0, -0.8])
     gc = _gc(q)

@@ -14,7 +14,7 @@ from holo_fleet.perception.acoustic import AcousticTracker
 from holo_fleet.perception.acoustic_gate import AcousticExit
 from holo_fleet.perception.exit_witness import ExitWitness
 from holo_fleet.perception.passage import inside_keepout
-from holo_fleet.perception.sonar_geometry import HULL_HALF, R_OUT
+from holo_fleet.perception.sonar_geometry import R_OUT
 from holo_fleet.referee.referee import Referee
 from holo_fleet.scope import obstruction_box
 

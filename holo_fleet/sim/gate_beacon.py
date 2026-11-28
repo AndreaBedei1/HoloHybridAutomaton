@@ -27,7 +27,7 @@ class GateBeaconSim:
 
     def measure(self, t: float, poses: Dict[str, np.ndarray]) -> Dict[str, List[Tuple[str, float, float, float, float]]]:
         """``poses[name]`` = (position, yaw) of the agent origin; the body frame is the onboard one (x forward, y left, z up,
-        perception.rot_world_body of the yaw: the HoloOcean pose rotation has its lateral axis mirrored, v41); returns
+        perception.rot_world_body of the yaw: the HoloOcean pose rotation has its lateral axis mirrored); returns
         the receptions of this step."""
         from holo_fleet.perception.perception import rot_world_body
 

@@ -31,7 +31,6 @@ jobs:
             pyproject.toml
             .github/workflows/verification.yml
       - run: python -m pip install -e . pytest==8.4.2 z3-solver==5.1.0.0
-      - run: python scripts/verify_legacy_index.py
       - run: python formal/check_properties.py --quick
       - run: python -m pytest -q -m "not slow and not holoocean"
 

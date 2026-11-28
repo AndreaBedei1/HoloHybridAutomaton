@@ -22,7 +22,7 @@ The admission rule of the corrected controller (perception/gate_perception.py ``
 commitment age >= T_c = ``commit_admit_min_s``, and either a FRESH report (age <= T_f = ``admit_fresh_s``) or a report of a verified
 passage of this gate (PASSED, AcousticExit.passed) of every other drone, or a commitment age >= T_c + D, D = ``t_cross_max``.
 (Pi4) a drone reports PASSED of a gate only after its verified passage beyond the CR (perception/passage.py) and never commits again
-to a gate it has passed (GatePerception.advance: the gate index only increases); back in the keep-out box it reports a claim.  The former controller: no claim held (a claim released by rule D after
+to a gate it has passed (GatePerception.advance: the gate index only increases); back in the keep-out box it reports a claim.  The rule-D controller ("former controller" in the check names, a mutation): no claim held (a claim released by rule D after
 ``t_silent_gate_s`` of silence), nothing else from the channel.
 
 Timeline model (Z3, exact real time, every message pattern): the two admissions of a violating pair f (admitted first) and s.
@@ -40,8 +40,8 @@ Timeline model (Z3, exact real time, every message pattern): the two admissions 
   B2C-EL   declared limit: a mutually unheard pair (total blackout of that pair) - P2 then rests on the B0 mechanisms only (queue
            precedence and occupancy latch, formal/check_mutex.py M2/M3 on idealised positions; the stage-2 sonar is not certified, G1).
   B2C-Es   scope: k_max + 1 = 41 consecutive losses on both links allow the mutual degradation of B2C-EL (the bound is tight).
-  B2C-O*   mutations: the former controller (no commitment age, no freshness, rule D) violates P2 in cases (a), (b), (d), (e) and (c);
-           B2C-O0: on a lossless channel the former controller is safe (proved), the race needs losses.
+  B2C-O*   mutations: the rule-D controller (no commitment age, no freshness, rule D) violates P2 in cases (a), (b), (d), (e) and (c);
+           B2C-O0: on a lossless channel the rule-D controller is safe (proved), the race needs losses.
   B2C-Mt/Mw mutations: T_c without the margin over T_f, or D below t_cross_max.
   B2C-W    witnesses: both branches admit (non-vacuity).
 Local decisions:
@@ -52,7 +52,7 @@ Local decisions:
 Step model (Z3, bounded model checking, dt = 0.5 s): two drones with explicit local state (latch, quiet timer, commitment age,
   received status, sonar observations free), true positions on the gate axis with the speed bound, Pi1, Pi2, TDMA slots of 2 drones,
   per-emission loss, give-up at any time.  B2C-S1 bounded: P2 over 100 s with at most 2 consecutive losses; B2C-S1o mutation: the
-  former rule; B2C-S1b limit: a total blackout.
+  rule-D rule; B2C-S1b limit: a total blackout.
 Geometry: B2C-G1 reported - the CR observability from the admission zone (deployed classifier, bars as occluders): certain for no CR
   slice under the declared navigation error, so no admission argument of this suite uses the stage-2 sonar.
 Liveness: B2C-S2 is a bounded two-vehicle negotiation model following concurrent commitment and receipt of the lower-priority
@@ -113,7 +113,7 @@ def params(cfg: FleetConfig = B2, **over) -> Prm:
 
 def t_kin(cfg: FleetConfig = B2, n: int = 2) -> float:
     """Smallest time from a commitment at the queue point (estimate within queue_tol) to the admission zone (estimate >= stage-2 hold -
-    RELOC_ZONE_M) at the speed bound, for the abreast queue of n drones (a physical bound, used only by the former controller's
+    RELOC_ZONE_M) at the speed bound, for the abreast queue of n drones (a physical bound, used only by the rule-D controller's
     counterexamples, never by a proof)."""
     G = cfg.gate
     q_s = queue_line(abreast_slots(n), G, cfg.perc)
@@ -164,7 +164,7 @@ def admit_new(L: LocalView, p: Prm, ignore_claim: Optional[str] = None):
 
 
 def admit_old(L: LocalView, p: Prm, rule_d: bool = True):
-    """Former rule: no claim held, a claim of a drone dead by rule D released; the B0 sonar checks; nothing else from the channel."""
+    """Rule-D rule (mutations B2C-O*): no claim held, a claim of a drone dead by rule D released; the B0 sonar checks; nothing else from the channel."""
     def released(a, r):
         if not rule_d:
             return z3.BoolVal(False)
@@ -354,7 +354,6 @@ def exclusion(p: Prm, rule: str = "new") -> list:
 def deployed_exclusion(n_cases: int = 300, seed: int = 41) -> dict:
     """Randomized on the deployed class: a silent drone (last report of any phase, then silence up to 400 s while another drone is
     heard, last fix anywhere) is never excluded, never loses its claim, and never makes a corridor echo a phantom."""
-    import dataclasses
 
     from holo_fleet.mission import GateSpec, MissionPlan, Path as MPath
     from holo_fleet.perception import payload as pl
@@ -566,8 +565,8 @@ def run(cfg: FleetConfig = B2, verbose: bool = True, step: bool = True) -> Repor
     rep.add(check(f"B2C-E2k P2 with at most {k_max} consecutive losses per link (2 drones): a degraded pair still hears each other's claims",
                   f"loss <= {k_max} consecutive on both links -> not both in the CR", ENC,
                   timeline(p, "new", loss={"fs": k_max, "sf": k_max})[0],
-                  note=f"k_max = ceil((T_c + D - latency_max - dt) / P) - 2 (the largest k with (k + 1) P + latency_max + dt < T_c + D): a "
-                       f"mutually degraded pair has both commitments older than T_c + D, so the latest report is a claim"), verbose)
+                  note="k_max = ceil((T_c + D - latency_max - dt) / P) - 2 (the largest k with (k + 1) P + latency_max + dt < T_c + D): a "
+                       "mutually degraded pair has both commitments older than T_c + D, so the latest report is a claim"), verbose)
     rep.add(check("B2C-Ea concurrent commitment before hearing each other (|c_f - c_s| <= P), at most 2 consecutive losses: P2",
                   "case (a)", ENC, timeline(p, "new", loss={"fs": 2, "sf": 2})[0] + [z3.Abs(z3.Real("c_f") - z3.Real("c_s")) <= p.P]), verbose)
     stat = [z3.Real("t_f") - z3.Real("c_f") >= 30.0]

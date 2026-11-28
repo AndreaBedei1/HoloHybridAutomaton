@@ -20,9 +20,9 @@ from typing import Dict, List, Optional
 
 import numpy as np
 
-from holo_fleet.config import DEFAULT, FleetConfig
+from holo_fleet.config import FleetConfig
 from holo_fleet.mission import MissionPlan
-from holo_fleet.perception.sonar_geometry import AXES, MOUNTS, SECTORS, far_field_pattern
+from holo_fleet.perception.sonar_geometry import AXES, MOUNTS, far_field_pattern
 
 HULL_MID = 0.24
 PATTERN_TOL_DEG = 35.0

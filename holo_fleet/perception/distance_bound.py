@@ -44,7 +44,7 @@ import os
 from functools import lru_cache
 from pathlib import Path
 from itertools import combinations
-from typing import Dict, FrozenSet, Iterable, Mapping, Optional, Tuple
+from typing import Dict, FrozenSet, Iterable, Mapping, Optional
 
 import numpy as np
 

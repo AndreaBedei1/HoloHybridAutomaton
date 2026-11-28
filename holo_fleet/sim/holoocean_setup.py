@@ -11,20 +11,14 @@ caches on disk per level and octree size.  The project runs on a
 * every scenario rebuilds the sonar octree right after the static scene (arena gates, props)
   has been spawned, so the octree always describes the current scene: runtime props are visible
   and a cache written by another scene can never produce ghost echoes.
-
-Without the patch the project falls back to: static scene first, sonars
-attached afterwards, cache folder deleted when the scene signature changes.  The fallback is
-kept only so that the code still runs on an unpatched machine; it is reported in every run.
 """
 
 from __future__ import annotations
 
-import hashlib
 import json
 import os
-import shutil
 from pathlib import Path
-from typing import Iterable, Optional, Sequence
+from typing import Optional
 
 DEFAULT_PATCHED_ROOT = Path.home() / "holoocean_patched_root"
 OCTREE_MIN = 0.06
@@ -105,34 +99,3 @@ def octree_cache_dir(world: str = "OpenWater", package: str = "Ocean") -> Path:
     return base / f"min{cm_min}_max{cm_max}"
 
 
-def scene_signature(bars: Iterable, props: Sequence = (), env_box: Sequence = (ENV_MIN, ENV_MAX)) -> str:
-    """Hash of everything static the octree depends on (used only by the unpatched fallback)."""
-    h = hashlib.sha256()
-    for b in bars:
-        h.update(repr((tuple(getattr(b, "position", ())), tuple(getattr(b, "rotation_rpy_deg", ())),
-                       tuple(getattr(b, "dimensions_m", ())))).encode())
-    for p in props:
-        h.update(repr(p).encode())
-    h.update(repr((tuple(env_box[0]), tuple(env_box[1]), OCTREE_MIN, OCTREE_MAX)).encode())
-    return h.hexdigest()[:16]
-
-
-def fallback_prepare_cache(signature: str) -> bool:
-    """Unpatched engines only: wipe the private cache folder when the static scene changed."""
-    d = octree_cache_dir()
-    marker = d / "holo_fleet_scene.json"
-    if d.exists():
-        try:
-            same = json.loads(marker.read_text(encoding="utf-8")).get("signature") == signature
-        except (OSError, ValueError):
-            same = False
-        if same:
-            return False
-        shutil.rmtree(d)
-    return True
-
-
-def fallback_mark_cache(signature: str) -> None:
-    d = octree_cache_dir()
-    if d.exists():
-        (d / "holo_fleet_scene.json").write_text(json.dumps({"signature": signature}), encoding="utf-8")

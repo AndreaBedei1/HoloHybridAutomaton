@@ -30,7 +30,7 @@
       "expect": "sat",
       "verdict": "sat",
       "passed": true,
-      "seconds": 0.001,
+      "seconds": 0.0,
       "counterexample": {
         "at_queue": false,
         "committed": false,
@@ -72,7 +72,7 @@
       "expect": "sat",
       "verdict": "sat",
       "passed": true,
-      "seconds": 0.002,
+      "seconds": 0.0,
       "counterexample": {
         "at_queue": true,
         "d_min": 0.125,
@@ -131,7 +131,7 @@
       "expect": "sat",
       "verdict": "sat",
       "passed": true,
-      "seconds": 0.002,
+      "seconds": 0.0,
       "counterexample": {
         "at_queue": false,
         "committed": false,
@@ -152,7 +152,7 @@
       "expect": "sat",
       "verdict": "sat",
       "passed": true,
-      "seconds": 0.036,
+      "seconds": 0.023,
       "counterexample": null,
       "note": "13 edges"
     },
@@ -163,7 +163,7 @@
       "expect": "sat",
       "verdict": "sat",
       "passed": true,
-      "seconds": 0.029,
+      "seconds": 0.022,
       "counterexample": null,
       "note": "13 edges"
     },
@@ -174,7 +174,7 @@
       "expect": "sat",
       "verdict": "sat",
       "passed": true,
-      "seconds": 0.023,
+      "seconds": 0.018,
       "counterexample": null,
       "note": "13 edges"
     },
@@ -196,7 +196,7 @@
       "expect": "sat",
       "verdict": "sat",
       "passed": true,
-      "seconds": 0.03,
+      "seconds": 0.021,
       "counterexample": null,
       "note": "13 edges"
     },
@@ -207,7 +207,7 @@
       "expect": "sat",
       "verdict": "sat",
       "passed": true,
-      "seconds": 0.027,
+      "seconds": 0.041,
       "counterexample": null,
       "note": "13 edges"
     },
@@ -218,7 +218,7 @@
       "expect": "sat",
       "verdict": "sat",
       "passed": true,
-      "seconds": 0.041,
+      "seconds": 0.03,
       "counterexample": null,
       "note": "13 edges"
     },
@@ -229,7 +229,7 @@
       "expect": "sat",
       "verdict": "sat",
       "passed": true,
-      "seconds": 0.029,
+      "seconds": 0.023,
       "counterexample": null,
       "note": "13 edges"
     },
@@ -240,7 +240,7 @@
       "expect": "sat",
       "verdict": "sat",
       "passed": true,
-      "seconds": 0.022,
+      "seconds": 0.03,
       "counterexample": null,
       "note": "13 edges"
     },
@@ -262,7 +262,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 0.003,
+      "seconds": 0.004,
       "counterexample": null,
       "note": ""
     },
@@ -273,7 +273,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 0.002,
+      "seconds": 0.003,
       "counterexample": null,
       "note": ""
     },
@@ -309,9 +309,9 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 0.003,
+      "seconds": 0.0,
       "counterexample": null,
-      "note": "an earlier formal/common.Obs.legal had passed -> at_queue; with I2 and I3 no 'passed' observation remains, so a proof over that domain says nothing about the exit edge"
+      "note": "with the constraint passed -> at_queue in formal/common.Obs.legal and with I2 and I3 no 'passed' observation remains, so a proof over that domain says nothing about the exit edge"
     },
     {
       "prop": "Om3 mutation: no monitor -> an inconsistent observation drives a mission edge",
@@ -320,7 +320,7 @@
       "expect": "sat",
       "verdict": "sat",
       "passed": true,
-      "seconds": 0.0,
+      "seconds": 0.002,
       "counterexample": {
         "at_queue": true,
         "committed": false,

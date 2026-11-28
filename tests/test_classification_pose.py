@@ -1,5 +1,5 @@
-"""Echo classification at the structure-fit pose (v39 B0 gate MEDIUM: a lateral estimate error of 0.72 m put the bars
-ahead outside the structure window; the drone took them for an obstacle at the CR entry and never crossed)."""
+"""Echo classification at the structure-fit pose (a lateral estimate error of 0.72 m puts the bars ahead outside the
+structure window at the estimated pose; the drone would take them for an obstacle at the CR entry and never cross)."""
 
 import numpy as np
 

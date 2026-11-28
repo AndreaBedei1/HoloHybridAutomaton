@@ -70,7 +70,7 @@ from typing import Dict, List, Optional, Sequence
 
 import numpy as np
 
-from holo_fleet.config import DEFAULT, FleetConfig
+from holo_fleet.config import FleetConfig
 from holo_fleet.perception.acoustic import AcousticTracker, Fix, box_bounds
 from holo_fleet.perception.exit_witness import speed_bound
 from holo_fleet.perception.payload import GP_ADMITTED, GP_COMMITTED, GP_NONE, GP_PASSED

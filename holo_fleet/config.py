@@ -26,7 +26,7 @@ class SeparationThresholds:
 
     d_nominal > d_warning_exit > d_warning > d_ca_exit > d_ca > d_safe > d_collision.
     The values of d_warning and d_ca are the smallest ones for which formal/check_separation.py
-    proves G(d >= d_safe) on the pairwise model, plus a margin (see README.md).
+    proves G(d >= d_safe) on the pairwise model, plus a margin (see docs/validation-report.md).
     """
 
     d_nominal: float = 3.5
@@ -156,10 +156,10 @@ class GateRule:
     RELOC_ZONE_M, kept equal by tests/test_b2_comm_fixes.py)."""
     admit_zone_fwd_m: float = 0.3
     """Admission zone ahead of the hold: estimated s <= stage2_hold_s + admit_zone_fwd_m (a held drone pushed forward by
-    the warning band: 0.21 m at the 99th percentile of the v31 LOW / MEDIUM holds)."""
+    the warning band: 0.21 m at the 99th percentile of the LOW / MEDIUM holds of archive v31-targeted-a6e4987-2026-11-27)."""
     admit_zone_lat_m: float = 0.35
     """Admission zone laterally: |estimated l| <= admit_zone_lat_m (the hold loop keeps hold_lateral_allow = 0.27 m against
-    the declared drift; at most 0.36 m in the v31 MEDIUM holds)."""
+    the declared drift; at most 0.36 m in the MEDIUM holds of archive v31-targeted-a6e4987-2026-11-27)."""
     acq_dz_m: float = 0.8
     """Vertical acquisition offsets of the stage-2 hold, +-acq_dz_m (control/flows.py ACQ_OFFSETS, kept equal by a test)."""
     admit_zone_dz_m: float = 0.1
@@ -168,7 +168,7 @@ class GateRule:
     """Premise Z of the timed admission (formal/check_stale.py ST6): the gate-frame estimate of a drone dwelling in, or
     admitted from, the admission zone is within zone_err_h_m of the truth horizontally (and zone_err_v_m vertically).
     Declared, not derived: tighter than nav_err_m, which bounds every committed drone; monitored on every run by the
-    referee (robustness_metrics.premise_monitors "zone_nav"; v32 / v35: at most 0.46 m and 0.19 m).  With nav_err_m alone the
+    referee (robustness_metrics.premise_monitors "zone_nav"; at most 0.46 m and 0.19 m in archive v32-targeted-admit-clear-2026-11-27 and archive v35-targeted-final-0c76653-2026-11-27).  With nav_err_m alone the
     zone distance exceeds admit_clear_m (ST6l, a declared limit)."""
     zone_err_v_m: float = 0.25
     """Premise Z, vertical part (see zone_err_h_m)."""
@@ -177,15 +177,14 @@ class GateRule:
     a d_lower below it (any sector).  formal/check_stale.py ST1 / ST6: under premise Z two drones whose estimates are both
     in the admission zone are at most 3.25 m apart, so with the P1 detection premise (d_lower is a lower bound of the centre
     distance of every hull, a hull masked by a structure window or unseen being outside it) no drone is admitted while
-    another dwells in the zone, and the timed bound needs no near-field sighting.  Replaces the near-field restart of the
-    bound (5f9f049), which the drone queued 3.2 m behind the hold renewed at nearly every capture: no B0 lead drone was
-    admitted in v31."""
+    another dwells in the zone, and the timed bound needs no near-field sighting.  A near-field restart of the bound would be
+    renewed at nearly every capture by the drone queued 3.2 m behind the hold, so no B0 lead drone would be admitted (as observed in archive v31-targeted-a6e4987-2026-11-27)."""
     queue_standoff_m: float = 3.8
     """Queue standoff of a drone that is not committed (control/flows.py, MUTEX_APPROACH / MUTEX_YIELD near its queue
     point, in a column within 2.5 m of the axis): it backs off along the axis, at most 1 m, while a DYNAMIC hull in its
     FRONT sector has a d_lower below it, so the lead drone
     holding before the CR keeps the near-field clearance of its admission at most captures (admit_clear_m 3.3 m + 0.5 m;
-    the onboard bound is 0.40-0.54 m below the true distance at the median, v31; v32 with a follower 4.4 m behind the hold:
+    the onboard bound is 0.40-0.54 m below the true distance at the median (archive v31-targeted-a6e4987-2026-11-27); with a follower 4.4 m behind the hold (archive v32-targeted-admit-clear-2026-11-27):
     the nearest bound >= 3.69 m at the 1st percentile).  The queue points stay abreast (M2, the exit-witness geometry);
     the standoff ends when the hull ahead moves on.  A progress margin (formal ST7), not a safety one."""
 

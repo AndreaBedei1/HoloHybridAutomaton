@@ -1,5 +1,5 @@
 """Gate beacon (perception/gate_beacon.py, sim/gate_beacon.py): a fixed pinger above the gate gives a position fix
-relative to the gate that corrects the classification pose (v39: a 0.72 m lateral drift made the bars an obstacle)."""
+relative to the gate that corrects the classification pose (a 0.72 m lateral drift would make the bars an obstacle)."""
 
 import math
 
@@ -54,7 +54,7 @@ def test_the_beacon_is_above_the_gate_and_the_bound_grows_with_range():
 
 
 def test_the_controller_uses_the_beacon_and_the_fit_without_breaking_the_step():
-    """End to end through DroneController.step (v40 SUT_ERROR: the fit branch shadowed the frame data): a structure fit
+    """End to end through DroneController.step (the fit branch must not shadow the frame data): a structure fit
     and gate-beacon receptions set the classification pose, the beacon first."""
     from holo_fleet.control.controller import DroneController
     from holo_fleet.perception.frame import SensorFrame
@@ -69,7 +69,7 @@ def test_the_controller_uses_the_beacon_and_the_fit_without_breaking_the_step():
 
     def fake_update(*a, **k):
         c.perception.aiding.last = dict(fit)
-        return None
+        return
 
     c.perception.aiding.update = fake_update
     bp = beacon_position(G, cfg)

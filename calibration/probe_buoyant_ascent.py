@@ -67,11 +67,6 @@ def terminal_speed(rows, t0, t1):
     return float(np.mean(a[m, 4])) if m.any() else None
 
 
-def yaw_and_tilt(rows):
-    a = np.array(rows, float)
-    return float(a[:, 5].max())
-
-
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--out", default=str(ROOT / "results" / "calibration" / "buoyant_ascent.json"))

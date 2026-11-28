@@ -88,7 +88,7 @@ def test_native_cleanup_and_port_audit_keep_the_lease_until_engine_exit(tmp_path
 
     def process(pid=None):
         if pid is None:
-            return SimpleNamespace(create_time=lambda: original_process().create_time(), children=lambda: [])
+            return SimpleNamespace(create_time=lambda: original_process().create_time(), children=list)
         if pid != 500:
             return original_process(pid)
         if not alive[0]:

@@ -181,7 +181,7 @@ def test_a_front_only_corridor_echo_makes_no_relation_a_merged_one_does():
     assert gp.update(1.0, P, 0., [front], {}).relations == [] or True
     o = gp.update(1.1, P, 0., [front], {})
     assert not [x for x in o.relations if x["relation"] == "WAIT"]
-    o2 = gp.update(1.2, P, 0., [merged], {})
+    gp.update(1.2, P, 0., [merged], {})
     o3 = gp.update(1.3, P, 0., [merged], {})
     assert [x for x in o3.relations if x["relation"] == "WAIT"]
 

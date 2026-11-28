@@ -156,7 +156,7 @@ def head_envelope_checks(cfg: FleetConfig, p) -> list:
               note="a head current the drone can hold at v_clock but not overcome during a recovery"),
         check("Em1 mutation: the earlier scalar bound |w| <= 0.6 m/s admits head currents with which the survey speed "
               "is not deliverable", "expect counterexample", ENC, base + [g(vc + h) > A], expect="sat",
-              note="the old isotropic current bound"),
+              note="an isotropic current bound"),
     ]
 
 
@@ -250,7 +250,7 @@ def waiting_checks(cfg: FleetConfig) -> list:
     cons, waiting, n = waiting_bmc(cfg, timeout=False)
     out.append(check("Fm4 mutation: no timeout (the earlier automaton) -> the drone may wait for ever (still waiting after N steps)",
                      "expect counterexample", ENC, cons + [waiting[-1]], expect="sat",
-                     note="the earlier automaton kept a drone with a missing neighbour in FORMATION_RECOVERY indefinitely"))
+                     note="without the timeout the automaton keeps a drone with a missing neighbour in FORMATION_RECOVERY indefinitely"))
     return out
 
 

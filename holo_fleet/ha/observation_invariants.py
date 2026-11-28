@@ -147,9 +147,6 @@ INVARIANTS: List[Invariant] = [
         lambda o, L, cfg: _implies(L, o.entry_abort, L.And(o.committed, o.mutex_zone, L.Not(o.passed)))),
 ]
 
-BY_NAME: Dict[str, Invariant] = {inv.name.split()[0]: inv for inv in INVARIANTS}
-
-
 def legal(o, L, cfg: FleetConfig = DEFAULT, drop: Iterable[str] = (), extra: Iterable[Any] = ()) -> Any:
     """Conjunction of the invariants (minus the short names in ``drop``) and of ``extra``."""
     drop = set(drop)

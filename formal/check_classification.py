@@ -2,17 +2,17 @@
 perception/structure_aiding.py, perception/sonar_processing.py).
 
 The six sonars give a range per cone, no bearing: an echo is STRUCTURE when it lies in the range window of the gate map seen
-from a pose.  At the estimated pose a lateral error of 0.72 m (v39 B0 gate MEDIUM, within nav_err_m) put the bars ahead outside
-the window: the drone took them for an obstacle at the CR entry and never crossed.  The classifier compares the echoes with the
+from a pose.  At the estimated pose a lateral error of 0.72 m (within nav_err_m) can put the bars ahead outside
+the window: the drone then takes them for an obstacle at the CR entry and does not cross.  The classifier compares the echoes with the
 map at a corrected pose - the gate-beacon fix (preferred) or a structure fit the aiding would accept (safe or identified) -
 and widens the cone edge and the range of the window by the error bound of that pose.  A sensor net for a side bar is
 not possible - the side sonar is blind below range_min (0.30 m); the hull clears the bars by the structure keepout of
-the estimate, the estimate corrected by the beacon (laterally only once admitted; v41: a 0.42 m lateral error, a contact).
+the estimate, the estimate corrected by the beacon (laterally only once admitted: an uncorrected 0.42 m lateral error in the passage gave a contact in a targeted run).
 
 CL1 (numeric, deployed EchoClassifier, G06 bars, every sector): bar echoes of the true pose (the nearest bar point in the true
 cone, a direct profile model independent of the window function) are STRUCTURE at a classification pose in error by E with
 the window widened by E, for E = 0.15, 0.3, 0.5 m (fit) - the beacon bounds are covered by CL4.
-CL1m (mutation): at the uncorrected estimate with the v39 lateral error (0.72 m) bar echoes are not all explained.
+CL1m (mutation): at the uncorrected estimate with a lateral error of 0.72 m bar echoes are not all explained.
 CL2 (numeric): an echo off the gate map (outside the window of the true pose widened by the largest E, plus the tolerances) is
 never STRUCTURE.  CL2r (reported): how far the widening extends the window beyond the unwidened one (what more it can mask).
 CL4 (numeric): the bar echoes are STRUCTURE at a beacon pose in error by its deployed bound (median of min_fixes fixes) in 8

@@ -6,7 +6,6 @@ GateConstraint on the real gate of a scenario plan; the threats are sector patte
 """
 
 import math
-import sys
 from pathlib import Path
 from types import SimpleNamespace as NS
 
@@ -343,7 +342,7 @@ def test_a_drone_converging_on_the_hold_point_does_not_anchor_its_station_keepin
     assert float(np.linalg.norm(near.hold_velocity(fl.p2_anchor))) <= ENV.w_drift_max + 1e-9
 
 
-# -- review items: the proved selection where the CR does not bind, selection among admissible candidates only ------
+# -- the proved selection where the CR does not bind, selection among admissible candidates only ------
 def test_where_the_cr_removes_no_candidate_the_planner_preserves_a_full_share():
     gc = _gc(-6.0, 0.0, 0.0)
     for pats in ([{"FRONT"}], [{"REAR"}]):
@@ -433,7 +432,7 @@ def test_a_structure_edit_that_makes_the_applied_command_unsafe_is_guarded_and_l
 def test_a_cut_mission_command_becomes_station_keeping_and_the_drift_does_not_carry_the_drone_in():
     """An uncommitted drone whose mission leads along the axis into the CR, residual drift towards the CR: the P2
     filter replaces the cut command by station keeping on the point where the cut began (Flows.p2_filter latches it);
-    repeated scaled-down velocity commands would let the drift accumulate (the recovery chatter of the review)."""
+    repeated scaled-down velocity commands would let the drift accumulate (recovery chatter)."""
     fl = Flows(PLAN, CFG)
     s, v = -4.0, 0.0
     a = np.asarray(GATE.axis, float)
@@ -554,9 +553,9 @@ def test_the_real_step_in_failsafe_holds_on_the_failsafe_anchor_with_the_outage_
 
 
 def test_a_drone_at_rest_at_the_hold_keeps_its_certified_station_keeping_through_a_dvl_outage():
-    """The v27 P2_UNCERTIFIED replay: holding at the deployed stage-2 hold with only small hold commands, a DVL outage that
+    """A P2_UNCERTIFIED case: holding at the deployed stage-2 hold with only small hold commands, a DVL outage that
     begins leaves the hull of the last measurement and the hold commands (P2R6): the bound stays small and the station
-    keeping stays certified, where the former worst case (v_bound + max(v_bound, |v|)) made every hold uncertified."""
+    keeping stays certified, where the worst case alone (v_bound + max(v_bound, |v|)) would make every hold uncertified."""
     ctrl = DroneController(PLAN, CFG)
     _scripted_perception(ctrl, lambda obs, t: _place_at(obs, G.stage2_hold_s, [], False))
     for k in range(60):

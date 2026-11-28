@@ -4,12 +4,11 @@ F1p / F1pm (formal/check_fleet.py) found two drones in the CR when two drones co
 one of them is moved into the CR by its own avoidance.  The fleet model has no positions.  This reconstruction gives it
 positions and moving drones, and runs every episode with two controllers:
 
-* NEAR_HOLD: the MUTATION that is the controller before the hold-point correction - the stage-2 hold hull half-length + 0.15
-  before the CR entry plane, s = cr_s_min - (0.229 + 0.15) = -1.43 m with the present CR (-1.18 m with the former symmetric
-  CR |s| <= 0.8), with the RELOC back-off (that Flows.gate, reproduced verbatim in FlowsNearHold), the queue lines of that
+* NEAR_HOLD: the MUTATION without the hold-point derivation - the stage-2 hold hull half-length + 0.15
+  before the CR entry plane, s = cr_s_min - (0.229 + 0.15) = -1.18 m with the deployed CR, with the RELOC back-off (that Flows.gate, reproduced verbatim in FlowsNearHold), the queue lines of that
   hold, no follower standoff, and the avoidance output of a drone that is not admitted never edited (the escape planner
   without ``p2``, no P2 mission filter);
-* CORRECTED: the current code - Flows.gate (stage-2 hold GateRule.stage2_hold_s, acquisition offsets, standoff), the P2
+* CORRECTED: the deployed code - Flows.gate (stage-2 hold GateRule.stage2_hold_s, acquisition offsets, standoff), the P2
   mission filter and the gate-aware warning filter / escape (control/gate_safety.py, EscapePlanner with ``p2``), in the
   order of DroneController.step.
 
@@ -75,8 +74,8 @@ FLEET = ("GATE", "TRANSIT")
 
 
 class FlowsNearHold(Flows):
-    """The gate flow of the NEAR_HOLD mutation (the controller before the hold-point correction): stage-2 hold NEAR_HOLD_S
-    (0.379 m before the CR entry plane; -1.18 m with the former CR) with the RELOC back-off, no standoff."""
+    """The gate flow of the NEAR_HOLD mutation (no hold-point derivation): stage-2 hold NEAR_HOLD_S
+    (0.379 m before the CR entry plane) with the RELOC back-off, no standoff."""
 
     def _ahead(self, obs) -> bool:
         return False

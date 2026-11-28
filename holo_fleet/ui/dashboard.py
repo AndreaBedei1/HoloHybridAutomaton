@@ -14,7 +14,6 @@ paired with the drone number), status colours only for safety states, always wit
 
 from __future__ import annotations
 
-import math
 from typing import Dict, List, Optional, Sequence
 
 import cv2
@@ -278,22 +277,3 @@ def render(meta: Dict, recs: Sequence[Dict], ref: Dict, cam: Optional[np.ndarray
     return img
 
 
-def scenario_meta(sc, cfg, names) -> Dict:
-    """Static part of the dashboard state (map geometry, thresholds) from a Scenario."""
-    gate_pts, bar_polys, cr_polys = [], [], []
-    G = cfg.gate
-    for g in sc.judged_gates:
-        for b in g.bars:
-            corners = np.array([b.center + b.axes @ (b.half * np.array([sx, sy, sz]))
-                                for sx in (-1, 1) for sy in (-1, 1) for sz in (-1, 1)])
-            hull = cv2.convexHull((corners[:, :2] * 1000).astype(np.float32)).reshape(-1, 2) / 1000.0
-            bar_polys.append([q for q in hull])
-            gate_pts += list(corners)
-        cr = [g.from_gate_frame([a, b * G.cr_half_width, 0.0])[:2]
-              for a, b in ((G.cr_s_min, -1), (G.cr_s_max, -1), (G.cr_s_max, 1), (G.cr_s_min, 1))]
-        cr_polys.append(cr)
-    return {"scenario": sc.name, "title": sc.title, "focus": sc.focus, "duration": sc.duration_s, "names": list(names),
-            "path": sc.path.waypoints, "gate_pts": np.array(gate_pts) if gate_pts else None, "bar_polys": bar_polys,
-            "cr_polys": cr_polys, "d_safe": cfg.sep.d_safe, "d_warning": cfg.sep.d_warning, "d_ca": cfg.sep.d_ca,
-            "e_lost": cfg.ref.e_lost, "e_ok": cfg.ref.e_ok, "t_ok_hold": cfg.ref.t_ok_hold,
-            "messages": 0, "gt_used": False, "n_sonars": 6 * len(names), "formation": bool(sc.formation_enabled)}

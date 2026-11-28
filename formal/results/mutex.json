@@ -9,7 +9,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 0.011,
+      "seconds": 0.013,
       "counterexample": null,
       "note": ""
     },
@@ -20,7 +20,7 @@
       "expect": "sat",
       "verdict": "sat",
       "passed": true,
-      "seconds": 0.011,
+      "seconds": 0.012,
       "counterexample": {
         "ad_iB": 38.0,
         "ad_iF": 142.0,
@@ -66,7 +66,7 @@
       "expect": "sat",
       "verdict": "sat",
       "passed": true,
-      "seconds": 0.018,
+      "seconds": 0.012,
       "counterexample": {
         "ad_iB": 90.0,
         "ad_iF": 90.0,
@@ -112,7 +112,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 0.022,
+      "seconds": 0.014,
       "counterexample": null,
       "note": "queue line s = -5.39 m, adjacent bearing deviation <= 20.0 deg; no deadlock (a leader exists) and no double priority"
     },
@@ -123,7 +123,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 0.078,
+      "seconds": 0.065,
       "counterexample": null,
       "note": "queue line s = -5.75 m, adjacent bearing deviation <= 20.0 deg; no deadlock (a leader exists) and no double priority"
     },
@@ -134,7 +134,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 0.276,
+      "seconds": 0.23,
       "counterexample": null,
       "note": "queue line s = -6.63 m, adjacent bearing deviation <= 20.0 deg; no deadlock (a leader exists) and no double priority"
     },
@@ -145,7 +145,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 0.537,
+      "seconds": 0.549,
       "counterexample": null,
       "note": "queue line s = -7.99 m, adjacent bearing deviation <= 20.0 deg; no deadlock (a leader exists) and no double priority"
     },
@@ -156,7 +156,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 1.1,
+      "seconds": 1.562,
       "counterexample": null,
       "note": "queue line s = -9.52 m, adjacent bearing deviation <= 20.0 deg; no deadlock (a leader exists) and no double priority"
     },
@@ -167,7 +167,7 @@
       "expect": "sat",
       "verdict": "sat",
       "passed": true,
-      "seconds": 0.187,
+      "seconds": 0.189,
       "counterexample": {
         "ad_q4_0_1_B": 110.03624346792648,
         "ad_q4_0_1_F": 69.96375653207352,
@@ -473,7 +473,7 @@
       "passed": true,
       "seconds": 0.0,
       "counterexample": null,
-      "note": "masked span <= 4.00 m along the axis; visible again by s <= 2.65 m.  The bound 2.8 m is an absolute premise of the bars' geometry (formerly written cr_half_len + 2 m = 2.8 m with the symmetric CR); no deployed threshold is relative to it or to the CR exit plane (relative to the exit plane, cr_s_max + 2 = 2.00 m, the n=6 outer view, outside the planner's domain, would exceed it)"
+      "note": "masked span <= 4.00 m along the axis; visible again by s <= 2.65 m.  The bound 2.8 m is an absolute premise of the bars' geometry; no deployed threshold is relative to it or to the CR exit plane (relative to the exit plane, cr_s_max + 2 = 2.00 m, the n=6 outer view, outside the planner's domain, would exceed it)"
     },
     {
       "prop": "M4f queue neighbours a decision needs are never hidden in the gate's structure window (abreast: adjacent pairs, n = 2..6; stacked: every pair; +-hold_err)",
@@ -625,7 +625,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 5.623,
+      "seconds": 6.105,
       "counterexample": null,
       "note": "masked s in (-0.44968170020895926, 1.8453182997909918), beyond s > 1.4003182997910013, B needs >= 91 steps to the CR, A crosses at >= 0.12 m/s"
     },
@@ -636,7 +636,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 8.287,
+      "seconds": 9.685,
       "counterexample": null,
       "note": "band from s -2.474681700208916, FRONT-only s (-1.1896817002089435, 5.960318299790904)"
     },
@@ -647,7 +647,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 3.035,
+      "seconds": 3.367,
       "counterexample": null,
       "note": "masked s in (-0.8775000000001043, 2.2224999999998296), beyond s > 1.6674999999998414, B needs >= 99 steps to the CR, A crosses at >= 0.12 m/s"
     },
@@ -658,7 +658,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 8.683,
+      "seconds": 10.672,
       "counterexample": null,
       "note": "band from s -3.3475000000000517, FRONT-only s (2.397499999999826, 5.997499999999749)"
     },
@@ -669,7 +669,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 6.003,
+      "seconds": 6.523,
       "counterexample": null,
       "note": "masked s in (-0.06750000000012157, 1.4124999999998469), beyond s > 1.0874999999998538, B needs >= 99 steps to the CR, A crosses at >= 0.12 m/s"
     },
@@ -680,7 +680,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 4.541,
+      "seconds": 5.269,
       "counterexample": null,
       "note": "band from s -2.01750000000008, FRONT-only s (-5.002500000000016, 5.997499999999749)"
     },
@@ -691,7 +691,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 2.502,
+      "seconds": 2.824,
       "counterexample": null,
       "note": "masked s in (-1.166841875903768, 2.4681581240961545), beyond s > 1.8431581240961687, B needs >= 116 steps to the CR, A crosses at >= 0.12 m/s"
     },
@@ -702,7 +702,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 4.469,
+      "seconds": 4.999,
       "counterexample": null,
       "note": "band from s -3.9118418759037095, FRONT-only s (5.418158124096092, 5.96815812409608)"
     },
@@ -713,7 +713,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 5.499,
+      "seconds": 5.818,
       "counterexample": null,
       "note": "masked s in (-0.3868418759037846, 1.7181581240961705), beyond s > 1.318158124096179, B needs >= 116 steps to the CR, A crosses at >= 0.12 m/s"
     },
@@ -724,7 +724,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 3.162,
+      "seconds": 3.597,
       "counterexample": null,
       "note": "band from s -2.3268418759037433, FRONT-only s (-2.431841875903741, 5.96815812409608)"
     },
@@ -735,9 +735,9 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 878.987,
+      "seconds": 964.133,
       "counterexample": null,
-      "note": "117 queries, the longest 17.1 s; one masked interval in every sample: True; corridor from s >= -0.02, mask from s >= -1.85"
+      "note": "117 queries, the longest 18.1 s; one masked interval in every sample: True; corridor from s >= -0.02, mask from s >= -1.85"
     },
     {
       "prop": "M3hq premise Q, n=2, observer at l=+1.75: no admission before physical clearance at 117 sampled (estimate offset, error) pairs (42 s BMC each, the crossing drone may stop before the CR)",
@@ -746,9 +746,9 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 1210.587,
+      "seconds": 1303.025,
       "counterexample": null,
-      "note": "117 queries, the longest 15.6 s; one masked interval in every sample: True; corridor from s >= -0.02, mask from s >= -1.85"
+      "note": "117 queries, the longest 17.6 s; one masked interval in every sample: True; corridor from s >= -0.02, mask from s >= -1.85"
     },
     {
       "prop": "M3q premise Q, n=3, observer at l=+3.50: no admission before physical clearance at 117 sampled (estimate offset, error) pairs (42 s BMC each)",
@@ -757,9 +757,9 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 562.289,
+      "seconds": 586.468,
       "counterexample": null,
-      "note": "117 queries, the longest 11.1 s; one masked interval in every sample: True; corridor from s >= -0.04, mask from s >= -2.82"
+      "note": "117 queries, the longest 11.4 s; one masked interval in every sample: True; corridor from s >= -0.04, mask from s >= -2.82"
     },
     {
       "prop": "M3hq premise Q, n=3, observer at l=+3.50: no admission before physical clearance at 117 sampled (estimate offset, error) pairs (42 s BMC each, the crossing drone may stop before the CR)",
@@ -768,9 +768,9 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 966.837,
+      "seconds": 1032.581,
       "counterexample": null,
-      "note": "117 queries, the longest 14.3 s; one masked interval in every sample: True; corridor from s >= -0.04, mask from s >= -2.82"
+      "note": "117 queries, the longest 15.8 s; one masked interval in every sample: True; corridor from s >= -0.04, mask from s >= -2.82"
     },
     {
       "prop": "M3q premise Q, n=3, observer at l=+0.00: no admission before physical clearance at 90 sampled (estimate offset, error) pairs (42 s BMC each)",
@@ -779,9 +779,9 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 720.717,
+      "seconds": 720.724,
       "counterexample": null,
-      "note": "90 queries, the longest 13.9 s; one masked interval in every sample: True; corridor from s >= -0.02, mask from s >= -1.31"
+      "note": "90 queries, the longest 14.0 s; one masked interval in every sample: True; corridor from s >= -0.02, mask from s >= -1.31"
     },
     {
       "prop": "M3hq premise Q, n=3, observer at l=+0.00: no admission before physical clearance at 90 sampled (estimate offset, error) pairs (42 s BMC each, the crossing drone may stop before the CR)",
@@ -790,9 +790,9 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 897.416,
+      "seconds": 916.545,
       "counterexample": null,
-      "note": "90 queries, the longest 16.7 s; one masked interval in every sample: True; corridor from s >= -0.02, mask from s >= -1.31"
+      "note": "90 queries, the longest 17.3 s; one masked interval in every sample: True; corridor from s >= -0.02, mask from s >= -1.31"
     },
     {
       "prop": "M3ql declared limit: n=3, outer queue point, estimate 0.35 m forward (at_queue) and the true position 1.00 m further forward and outward (Q1), 1.00 m outward of the queue point (beyond Q2, 0.7 m): the latch can admit before clearance",
@@ -801,7 +801,7 @@
       "expect": "sat",
       "verdict": "sat",
       "passed": true,
-      "seconds": 8.277,
+      "seconds": 7.833,
       "counterexample": {
         "beyond_0": false,
         "beyond_1": false,
@@ -1213,7 +1213,7 @@
       "expect": "sat",
       "verdict": "sat",
       "passed": true,
-      "seconds": 1.285,
+      "seconds": 1.234,
       "counterexample": {
         "beyond_0": false,
         "beyond_1": false,
@@ -1625,7 +1625,7 @@
       "expect": "sat",
       "verdict": "sat",
       "passed": true,
-      "seconds": 1.886,
+      "seconds": 1.837,
       "counterexample": {
         "beyond_0": false,
         "beyond_1": false,
@@ -2059,7 +2059,7 @@
       "expect": "sat",
       "verdict": "sat",
       "passed": true,
-      "seconds": 1.822,
+      "seconds": 1.805,
       "counterexample": {
         "beyond_0": false,
         "beyond_1": false,
@@ -2462,7 +2462,7 @@
         "beyond_398": false,
         "beyond_399": false
       },
-      "note": "n=3, observer at l=+3.50, masked s in (-0.8775000000001043, 2.2224999999998296).  Retargeted from the n=2 view (l=+1.75, masked from s = -0.45): with the CR s in [-0.8, 0.0] that view no longer catches the mutation, its counterexample needed the occupant in the former post-gate part (0.55, 0.8] when the follower reached the CR"
+      "note": "n=3, observer at l=+3.50, masked s in (-0.8775000000001043, 2.2224999999998296).  Not the n=2 view (l=+1.75, masked from s = -0.45): with the CR s in [-0.8, 0.0] that view does not catch the mutation, its counterexample would need the occupant in (0.55, 0.8], beyond the CR, when the follower reached the CR"
     },
     {
       "prop": "M3m mutation: belief without latch (FREE when nothing is seen) must violate P2 (n=4, outer queue point)",
@@ -2471,7 +2471,7 @@
       "expect": "sat",
       "verdict": "sat",
       "passed": true,
-      "seconds": 1.165,
+      "seconds": 1.164,
       "counterexample": {
         "beyond_0": false,
         "beyond_1": false,
@@ -2874,7 +2874,7 @@
         "beyond_398": false,
         "beyond_399": false
       },
-      "note": "n=4, observer at l=+5.25, masked s in (-1.166841875903768, 2.4681581240961545).  Retargeted from the n=2 view (l=+1.75, masked from s = -0.45): with the CR s in [-0.8, 0.0] that view no longer catches the mutation, its counterexample needed the occupant in the former post-gate part (0.55, 0.8] when the follower reached the CR"
+      "note": "n=4, observer at l=+5.25, masked s in (-1.166841875903768, 2.4681581240961545).  Not the n=2 view (l=+1.75, masked from s = -0.45): with the CR s in [-0.8, 0.0] that view does not catch the mutation, its counterexample would need the occupant in (0.55, 0.8], beyond the CR, when the follower reached the CR"
     },
     {
       "prop": "M3b mutation: a FRONT-only echo nearer than the corridor makes neither a relation nor a latch input (round 2, F1): must violate P2",
@@ -2883,7 +2883,7 @@
       "expect": "sat",
       "verdict": "sat",
       "passed": true,
-      "seconds": 1.089,
+      "seconds": 1.103,
       "counterexample": {
         "beyond_0": false,
         "beyond_1": false,
@@ -3295,7 +3295,7 @@
       "expect": "sat",
       "verdict": "sat",
       "passed": true,
-      "seconds": 6.377,
+      "seconds": 6.291,
       "counterexample": {
         "beyond_0": false,
         "beyond_1": false,
@@ -3707,7 +3707,7 @@
       "expect": "sat",
       "verdict": "sat",
       "passed": true,
-      "seconds": 4.064,
+      "seconds": 4.09,
       "counterexample": {
         "beyond_0": false,
         "beyond_1": false,

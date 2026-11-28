@@ -24,7 +24,6 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Dict, FrozenSet, List, Optional, Tuple
 
-import numpy as np
 
 from holo_fleet.config import DEFAULT, FleetConfig
 from holo_fleet.perception.distance_bound import conservative_bound, sectors_bound, touch_set_bounds

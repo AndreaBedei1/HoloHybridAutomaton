@@ -128,8 +128,8 @@ def test_no_admission_without_the_near_field_clearance_and_admission_at_the_firs
 
 
 def test_the_admission_zone_is_bounded_along_laterally_and_vertically():
-    """The dwell and the admission need the estimate in GateRule.in_admission_zone (formal ST6 assumes it): 5f9f049 checked
-    the along-axis coordinate only, so a drone displaced 2 m sideways by the warning band still dwelt (v31)."""
+    """The dwell and the admission need the estimate in GateRule.in_admission_zone (formal ST6 assumes it): with
+    the along-axis coordinate only, a drone displaced 2 m sideways by the warning band would still dwell."""
     plan = _plan()
     for l, dz, inside in ((0.0, 0.0, True), (0.3, 0.85, True), (G.admit_zone_lat_m + 0.05, 0.0, False),
                           (0.0, G.acq_dz_m + G.admit_zone_dz_m + 0.05, False), (-2.0, 0.0, False)):

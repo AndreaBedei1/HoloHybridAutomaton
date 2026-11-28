@@ -18,11 +18,11 @@ the P1 detection premise (d_lower is a lower bound of the centre distance) and t
 estimates are both in the admission zone are less than admit_clear_m apart) puts the first occupant beyond passage_clear_s at
 the follower's admission, by cases: admitted before the dwell (the dwell alone covers it, no sighting needed) or during it
 (impossible: the follower then dwells within admit_clear_m of it, so it had no clearance).  Neither premise S nor a near-field
-sighting is needed (5f9f049 restarted the bound at every hull within 3.0 m: the drone queued behind the hold renewed it at
-nearly every capture, no B0 lead admitted in v31).  ST1s: the earlier argument from the last sighting only, which needs premise
+sighting is needed (a bound restarted at every hull within 3.0 m would be renewed by the drone queued behind the hold at
+nearly every capture, so no B0 lead drone would be admitted, as observed in archive v31-targeted-a6e4987-2026-11-27).  ST1s: the argument from the last sighting only, which needs premise
 S; ST1d: without the dwell term it fails.  ST1p the P2 part (> cr_s_max) with the shorter bound.  Mutations: clearance dropped,
-a zone wider than the clearance (the s-only zone of 5f9f049), bound - 2 s, no progress, and the e3e31f0 release (FREE after
-t_occ_max, no admission bound) with an immediate admission.  ST7 (reported, progress): the queue standoff of a drone that
+a zone wider than the clearance (a zone bounded along s only), bound - 2 s, no progress, and a release FREE after
+t_occ_max with no admission bound with an immediate admission.  ST7 (reported, progress): the queue standoff of a drone that
 is not committed exceeds the admission clearance.
 ST2 (proved): one step of the deployed latch never gives FREE from BUSY or STALE; FREE comes only from EXITING (a witness).
 ST3 (proved): with the corridor quiet (no new sighting moves entry_after) and the admission conditions holding, the hold is never
@@ -92,24 +92,6 @@ def timeline_adm(cfg: FleetConfig, bound: float, s_end: float, clearance: bool =
     return cons
 
 
-def timeline_dwell(cfg: FleetConfig, bound: float, s_end: float, premise_n: bool = True, dwell: bool = True,
-                   v: float = None):
-    """The deployed rule: occupant A admitted at t_a, the follower B dwells in the admission zone from t_o to its
-    admission t_b, its last sighting (corridor echo or a hull within near_sight_m) at t_s; B is admitted at
-    t_b > max(t_s, t_o) + bound.  Premise N: an occupant admitted while B dwells in the zone (t_a > t_o) is sighted by B
-    at or after its admission (t_s >= t_a).  No premise S."""
-    G = cfg.gate
-    v = G.v_cross_min if v is None else v
-    t_a, t_o, t_s, t_b, s_a, s_b = z3.Reals("t_a t_o t_s t_b s_a s_b")
-    cons = [s_a >= Q(G.stage2_hold_s) - Q(G.admit_zone_m) - Q(G.nav_err_m), t_b >= t_a, t_o <= t_b,
-            t_b > t_s + Q(bound), s_b >= s_a + Q(v) * (t_b - t_a), s_b <= Q(s_end)]
-    if dwell:
-        cons.append(t_b > t_o + Q(bound))
-    if premise_n:
-        cons.append(z3.Implies(t_a > t_o, t_s >= t_a))
-    return cons
-
-
 def zone_distance(cfg: FleetConfig, e_obs: float, e_adm: float, dz_err: float = 0.05):
     """Largest true centre distance between two drones whose estimates are both in the admission zone
     (GateRule.in_admission_zone): along the axis admit_zone_m + admit_zone_fwd_m, laterally 2 admit_zone_lat_m, vertically
@@ -123,7 +105,8 @@ def zone_distance(cfg: FleetConfig, e_obs: float, e_adm: float, dz_err: float = 
 def queue_clearance(cfg: FleetConfig) -> CheckResult:
     """ST7 (reported, progress): the queue standoff of a drone that is not committed (control/flows.py,
     GateRule.queue_standoff_m) exceeds the admission clearance by the margin that leaves the lead drone at the hold its
-    clearance at most captures (the onboard bound is 0.40-0.54 m below the true distance at the median, v31)."""
+    clearance at most captures (the onboard bound is 0.40-0.54 m below the true distance at the median at
+    settled holds, archive v31-targeted-a6e4987-2026-11-27)."""
     G = cfg.gate
     margin = G.queue_standoff_m - G.admit_clear_m
     r = CheckResult(prop=f"ST7 reported: queue standoff {G.queue_standoff_m} m = admit_clear_m + {margin:.2f} m (a progress "
@@ -131,8 +114,8 @@ def queue_clearance(cfg: FleetConfig) -> CheckResult:
                     expect="holds")
     r.verdict, r.passed = "holds", margin > 0.0
     r.note = ("a drone that is not committed backs off while a DYNAMIC FRONT hull is nearer than queue_standoff_m; the bound of "
-              "the lead drone on it is then about queue_standoff_m plus the follower pessimism minus the lead pessimism (v32 "
-              "with a follower 4.4 m behind the hold: >= 3.69 m at the 1st percentile)")
+              "the lead drone on it is then about queue_standoff_m plus the follower pessimism minus the lead pessimism (archive v32-targeted-admit-clear-2026-11-27, with "
+              "a follower 4.4 m behind the hold: >= 3.69 m at the 1st percentile)")
     return r
 
 
@@ -258,7 +241,7 @@ def run(cfg: FleetConfig = DEFAULT, verbose: bool = True) -> Report:
                   "gives up before the timed admission (commit/give-up loop)", "expect counterexample", ENC,
                   [old_give_up, E > W], expect="sat"), verbose)
     t0 = z3.Real("t0")
-    # f583bde: the anchor included the dwell term, which is t + T while the drone is out of the zone: never given up
+    # mutation: an anchor including the dwell term, which is t + T while the drone is out of the zone: never given up
     mo = z3.If(h > W, h, W)
     mo = z3.If(mo > E, mo, E)
     stuck = [t >= h + 1000.0, z3.Not(t - z3.If(mo > t + Q(T), mo, t + Q(T)) > G.t_occ_max + G.t_clear), t0 == t]

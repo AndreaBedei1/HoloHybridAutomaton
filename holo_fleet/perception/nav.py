@@ -71,11 +71,6 @@ class DeadReckoning:
             s.p[2] += s.v_world[2] * dt
         return s
 
-    def body_to_world_rot(self) -> np.ndarray:
-        c, sn = math.cos(self.state.yaw), math.sin(self.state.yaw)
-        return np.array([[c, -sn, 0.0], [sn, c, 0.0], [0.0, 0.0, 1.0]])
-
-
 def _model_table():
     """Outage length [s] -> MAX integrated position error [m] of the commanded-velocity model, measured on logged runs
     (results/calibration/dr_model_calibration.json)."""
@@ -95,8 +90,6 @@ RAYLEIGH_3SIGMA = math.sqrt(-2.0 * math.log(1.0 - 0.9973))
 DVL_LEVER_M = 0.25
 SENSOR_LATENCY_S = 0.05
 A_MAX_MPS2 = 1.5
-A_MAX_NOTE = ("the reversal average; for an outage shorter than 0.5 s a higher peak rate could exceed it, which the "
-              "cap |v_held| + v_bound does not cover: a stated limit")
 
 
 class NavBound:

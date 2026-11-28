@@ -63,7 +63,7 @@ import z3
 from common import CheckResult, Report, check, exact  # noqa: E402
 
 from holo_fleet.config import DEFAULT, FleetConfig
-from holo_fleet.control.escape import EscapePlanner, direction_label
+from holo_fleet.control.escape import EscapePlanner
 from holo_fleet.perception import sonar_geometry as sg
 
 ENC = "formal/check_separation.py"

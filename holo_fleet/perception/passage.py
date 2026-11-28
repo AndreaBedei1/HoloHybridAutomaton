@@ -38,7 +38,6 @@ REAR_RANGE_OFFSET_M = 0.50
 REAR_TOL_M = 0.50
 REAR_N = 3
 T_ODO_MAX_S = 10.0
-CROSSING_RESTART_M = 0.6
 
 
 def inside_keepout(s: float, l: float, dz: float, G) -> bool:

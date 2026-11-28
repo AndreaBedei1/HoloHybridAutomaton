@@ -1,4 +1,4 @@
-"""Fixes of the explicit-communication review (formal/check_b2_comm.py): the B2 admission wait, no admission in FAILSAFE or with
+"""The explicit-communication rules (formal/check_b2_comm.py): the B2 admission wait, no admission in FAILSAFE or with
 an unhealthy FRONT sonar, silence never excludes, claims only delay admissions."""
 
 import dataclasses
@@ -275,7 +275,7 @@ def test_claims_and_silence_only_delay_an_admission():
 
 def test_other_regions_never_leave_out_a_drone_for_its_silence():
     """The map-aiding premise (Perception._other_regions): a drone not heard for far longer than t_silent_gate_s while another
-    drone is heard is unknown (None), not left out; the former rule D left it out and an echo of it could be taken for a bar."""
+    drone is heard is unknown (None), not left out; rule D would leave it out and an echo of it could be taken for a bar."""
     from holo_fleet.perception.perception import Perception
     from test_status_payload import _plan, _rx_meas
 

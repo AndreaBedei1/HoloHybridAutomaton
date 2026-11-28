@@ -41,8 +41,7 @@ import numpy as np
 
 from holo_fleet.config import COMMUNICATION_DISABLED, DEFAULT, communication_disabled
 from holo_fleet.referee.criteria import (CRITERIA_VERSION, E_TOL_M, deadline_terms, deadline_v3, horizon_v5,
-                                         profile_family,
-                                         t_hold_s)
+                                         profile_family)
 from holo_fleet.perception.sonar_geometry import MOUNTS
 from holo_fleet.referee.gate_events import gate_events
 

@@ -34,7 +34,7 @@ import numpy as np
 
 from holo_fleet.config import DEFAULT, FleetConfig
 from holo_fleet.control import gate_safety as gs
-from holo_fleet.perception.sonar_geometry import SAMPLING_ERR, SECTORS, escape_candidates, far_field_pattern, regions
+from holo_fleet.perception.sonar_geometry import SAMPLING_ERR, escape_candidates, far_field_pattern, regions
 
 LATERAL_TIE = 0.06
 VERTICAL_TIE = 0.05

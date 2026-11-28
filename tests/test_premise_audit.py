@@ -241,7 +241,7 @@ def test_the_logs_ending_while_the_claim_holds_is_inconclusive():
 
 
 def test_beacon_of_run_blackout_and_payload():
-    # ``payload: false`` is read from the run_config of an archived run of the payload-free ablation (no such option exists any more)
+    # ``payload: false`` is read from the run_config of an archived run of a payload-free ablation (not a controller option)
     rc = lambda **b: {"fleet_config": {"beacon": {"mode": "ACOUSTIC_RB", **b}, "acoustic": {"latency_max_s": 0.4}}}
     assert beacon_of_run(rc(channel="BLACKOUT"))["blackout"] is True
     no_payload = {"payload": False}

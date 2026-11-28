@@ -20,7 +20,7 @@
       "expect": "sat",
       "verdict": "sat",
       "passed": true,
-      "seconds": 0.004,
+      "seconds": 0.001,
       "counterexample": {
         "v_plan": 0.4
       },
@@ -44,7 +44,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 0.004,
+      "seconds": 0.003,
       "counterexample": null,
       "note": ""
     },
@@ -72,7 +72,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 0.01,
+      "seconds": 0.009,
       "counterexample": null,
       "note": "rate 0.0040 m/s (k_progress delta at most, after the rate ramp); the drone behind keeps its speed (C2j); eventual agreement |X| <= B + delta, by the symmetry i <-> j"
     },
@@ -83,7 +83,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 0.007,
+      "seconds": 0.006,
       "counterexample": null,
       "note": "one step moves X by less than delta; above B + delta it decreases (C2a)"
     },
@@ -94,7 +94,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 0.002,
+      "seconds": 0.0,
       "counterexample": null,
       "note": "the guard self_recovered is then reachable (with C1n)"
     },
@@ -116,7 +116,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 0.007,
+      "seconds": 0.006,
       "counterexample": null,
       "note": "one step moves X by less than delta; above B + delta it decreases (C2a)"
     },
@@ -127,7 +127,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 0.002,
+      "seconds": 0.001,
       "counterexample": null,
       "note": "the guard self_recovered is then reachable (with C1n)"
     },
@@ -149,7 +149,7 @@
       "expect": "sat",
       "verdict": "sat",
       "passed": true,
-      "seconds": 0.006,
+      "seconds": 0.005,
       "counterexample": {
         "D": 5.551533333333333,
         "band": 1.0,
@@ -171,7 +171,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 0.002,
+      "seconds": 0.003,
       "counterexample": null,
       "note": ""
     },
@@ -182,7 +182,7 @@
       "expect": "sat",
       "verdict": "sat",
       "passed": true,
-      "seconds": 0.007,
+      "seconds": 0.008,
       "counterexample": {
         "D": -2.0,
         "band": 0.75,
@@ -202,7 +202,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 0.004,
+      "seconds": 0.002,
       "counterexample": null,
       "note": "fixed ahead/behind role in the pair model; repeated usable reports force entrance into the lag band because D stays bounded below while X stays outside it. This does not prove the switched in-band dynamics."
     },
@@ -213,7 +213,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 0.004,
+      "seconds": 0.005,
       "counterexample": null,
       "note": "fixed ahead/behind role in the pair model; repeated usable reports force entrance into the lag band because D stays bounded below while X stays outside it. This does not prove the switched in-band dynamics."
     },
@@ -224,7 +224,7 @@
       "expect": "sat",
       "verdict": "sat",
       "passed": true,
-      "seconds": 0.003,
+      "seconds": 0.005,
       "counterexample": {
         "D": 5.539906027586969,
         "band": 0.5,
@@ -246,7 +246,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 15.7,
+      "seconds": 16.4,
       "counterexample": null,
       "note": "certified decrease eps = 0.1270 m/s (exact rational cells, sigma frozen beyond e_lost)"
     },
@@ -257,7 +257,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 19.0,
+      "seconds": 19.7,
       "counterexample": null,
       "note": "certified decrease eps = 0.0293 m/s (exact rational cells, sigma frozen beyond e_lost)"
     },
@@ -268,7 +268,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 12.0,
+      "seconds": 12.4,
       "counterexample": null,
       "note": "certified decrease eps = 0.0313 m/s (exact rational cells, sigma frozen beyond e_lost)"
     },
@@ -279,7 +279,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 2.0,
+      "seconds": 2.1,
       "counterexample": null,
       "note": "r_in = 0.375 m, ball 0.413 m (e_ok = 0.5), eps >= 0.002 m/s on the band"
     },
@@ -290,7 +290,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 2.4,
+      "seconds": 2.5,
       "counterexample": null,
       "note": "r_in = 0.375 m, ball 0.421 m (e_ok = 0.5), eps >= 0.002 m/s on the band"
     },
@@ -312,7 +312,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 2.4,
+      "seconds": 2.6,
       "counterexample": null,
       "note": "r_in = 0.375 m, ball 0.421 m (e_ok = 0.5), eps >= 0.002 m/s on the band"
     },
@@ -323,7 +323,7 @@
       "expect": "sat",
       "verdict": "sat",
       "passed": true,
-      "seconds": 0.006,
+      "seconds": 0.01,
       "counterexample": {
         "c": 0.0,
         "ea": 2.0,
@@ -344,7 +344,7 @@
       "expect": "sat",
       "verdict": "sat",
       "passed": true,
-      "seconds": 0.007,
+      "seconds": 0.003,
       "counterexample": {
         "e_a": 0.5,
         "sigma_dot": 0.136,
@@ -360,7 +360,7 @@
       "expect": "sat",
       "verdict": "sat",
       "passed": true,
-      "seconds": 25.537,
+      "seconds": 25.547,
       "counterexample": {
         "/0": "[(0.2821340273?, 2) -> 0.1410670136?,\n (307/320, 2) -> 307/640,\n else -> 0]",
         "c": -0.1,
@@ -411,7 +411,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 0.002,
+      "seconds": 0.004,
       "counterexample": null,
       "note": "Requires the same rank on both modes and certified rise bounds. Usable reports and physically feasible tracking can supply gain; time spent in a safety mode is not treated as gain."
     },
@@ -422,7 +422,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 0.001,
+      "seconds": 0.002,
       "counterexample": null,
       "note": "Conditional liveness by contradiction if still outside tolerance. A bound on loss and recurring steps with a uniform positive gain suffice. Existing pair and slot ranks have different domains; no fleet bound is inferred across gate and avoidance transitions."
     },
@@ -433,7 +433,7 @@
       "expect": "sat",
       "verdict": "sat",
       "passed": true,
-      "seconds": 0.004,
+      "seconds": 0.002,
       "counterexample": {
         "gain": 0.25,
         "next_rank": 0.25,

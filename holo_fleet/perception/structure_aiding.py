@@ -43,7 +43,7 @@ x <= tan(half_angle) * |c - e|, e the drone's true offset from the axis.  Over t
 and 0.25 m bars): the aiding runs from there to the critical region.  With a small drift the side cones see the bars
 only within ~2.2 m, where the bars are also where the map predicts them (explained, no warning); with a drift large
 enough to leave a bar unexplained, the far bar enters the far side cone farther away, before the warning band of that
-bar (d_warning_exit, tests/test_structure_aiding.py): the fit is no longer acquired only after the drone has been
+bar (d_warning_exit, tests/test_structure_aiding.py): the fit is acquired before the drone is
 stopped by the echo it cannot explain.  Nothing is assumed about the identity of an echo: every accepted offset rests
 on several sectors matching the bars within FIT_RMS_M, uniquely and consistently over CONSIST_N captures, and the queue
 points, beside the opening, never pass the robust clearance below.

@@ -14,11 +14,10 @@ HoloOcean instance at a time (``--shard i --nshards n``: n orchestrators on disj
 Holodeck.exe processes started by that run (and only those) are terminated if still alive.
 
 Protocols: B0 (the controller with the communication disabled) and B2_<channel level> (the controller with the one-way
-acoustic beacons, sim/acoustic_channel.py; the SW-* levels are the sweep channels), see README.md.
+acoustic beacons, sim/acoustic_channel.py; the SW-* levels are the one-factor sweep channels, sim/acoustic_channel.sweep_spec).
 Profiles: CLEAN or <LEVEL>-<SCOPE> (sim/sensor_noise.py; scope ONE / SUBSET / ALL, scope_drones).  Every run ends
 on SUCCESS / FAILURE / DEADLINE (referee/terminal.py); the deadline is a priori, from the mission plan
-and the protocol bounds (referee/criteria.deadline_v3), the same for every protocol and cell.  The campaigns that produced the
-archived results (448 runs, 34 runs) are in legacy/, with their runner.
+and the protocol bounds (referee/criteria.deadline_v3), the same for every protocol and cell.
 """
 
 from __future__ import annotations
@@ -130,7 +129,7 @@ def worker(args) -> int:
 
     if hs.patched_root() is None and not args.allow_unpatched:
         print(f"patched HoloOcean root not found ({hs.DEFAULT_PATCHED_ROOT}): refusing to run "
-              "(the baseline needs the octree patch, README.md)", file=sys.stderr)
+              "(the baseline needs the octree patch, patches/)", file=sys.stderr)
         return 4
     cfg = protocol_config(args.protocol)
     d = Path(args.run_dir)

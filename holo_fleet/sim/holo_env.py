@@ -372,9 +372,6 @@ class HoloFleetSim:
         """Bench mode: hold an agent at a pose (perception and coverage experiments only)."""
         self.pins[name] = (tuple(float(v) for v in location), tuple(float(v) for v in rotation))
 
-    def unpin(self, name: str) -> None:
-        self.pins.pop(name, None)
-
     def truth(self) -> Truth:
         n = len(self.names)
         P, R = np.zeros((n, 3)), np.zeros((n, 3, 3))

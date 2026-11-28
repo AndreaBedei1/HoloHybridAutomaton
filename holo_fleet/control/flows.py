@@ -20,16 +20,16 @@ from holo_fleet.control.formation_time import FormationTime
 from holo_fleet.mission import MissionPlan
 from holo_fleet.perception.perception import LocalObservation
 from holo_fleet.perception.sonar_processing import OBSTACLE_CLASSES
-from holo_fleet.perception.sonar_geometry import HULL_HALF, R_OUT
+from holo_fleet.perception.sonar_geometry import R_OUT
 
 RELOC_MARGIN_M = 0.15
 RELOC_ZONE_M = 0.4
 # Acquisition offsets at the stage-2 hold (lateral, vertical): at |dz| >= ~0.5 m the opposite vertical sonar sees the far
-# horizontal bar (v27 replay: 1 % of samples at |dz| 0.3-0.4, 37 % at 0.4-0.5, 97 % at 0.5-0.6).  The former six offsets of
-# 4 s each were not reached: the vertical command is capped at 0.25 m/s, so a 1.0-1.2 m move per 4 s period left the drone
+# horizontal bar (replay of archive v27-final-paired-campaign-fixed-2026-11-25: 1 % of samples at |dz| 0.3-0.4, 37 % at 0.4-0.5, 97 % at 0.5-0.6).  Offsets of 4 s each are not
+# reached: the vertical command is capped at 0.25 m/s, so a 1.0-1.2 m move per 4 s period leaves the drone
 # within 0.1 m of its offset only 21-28 % of the time.  Two offsets of 13 s (a 1.6 m move takes 6.4 s at the cap) are
 # reached and still fit the bounded hold (t_occ_max + t_clear); on the synthetic scan of tests/test_hold_point.py the
-# +-0.8 m pair acquires the same along-axis and lateral errors as the former six offsets.
+# +-0.8 m pair acquires the same along-axis and lateral errors as six 4 s offsets.
 ACQ_PERIOD_S = 13.0
 ACQ_OFFSETS = ((0.0, -0.8), (0.0, 0.8))
 STANDOFF_MARGIN_M = 0.5
@@ -352,7 +352,6 @@ class Flows:
                 timed = max(float(go.entry_after),
                             (self.zone_since if self.zone_since is not None else obs.t) + G.t_admit_stale)
             self.timed_bound = timed if timed > -1e8 else None
-            eligible_t = max(self.commit_t + wait, timed)
             # the timed bound is strict: at t = entry_after the occupant can be exactly on the closed CR boundary
             # every admission needs the near-field clearance (no hull within GateRule.admit_clear_m): no other drone is
             # then in the admission zone, so none is admitted during the dwell of another (formal/check_stale.py ST1)
@@ -369,8 +368,8 @@ class Flows:
                 self.hold_since = obs.t if self.hold_since is None else self.hold_since
                 # the give-up runs from the part of the eligible time fixed in advance - commitment + wait, the corridor
                 # bound and, when timed, one full dwell from the hold start: a drone held outside the admission zone, or
-                # kept from the clearance, gives up too (formal/check_stale.py ST3; f583bde anchored it on the dwell
-                # term, obs.t + T out of the zone, which never fired)
+                # kept from the clearance, gives up too (formal/check_stale.py ST3; anchored on the dwell term,
+                # obs.t + T out of the zone, it would never fire: ST3o)
                 timed_flag = bool(getattr(go, "timed_admission", False))
                 fixed_t = max(self.hold_since, self.commit_t + wait)
                 if timed_flag:
@@ -382,7 +381,7 @@ class Flows:
                                         "in_zone": in_zone, "admit_clear": bool(getattr(go, "admit_clear", False))})
                 if go.loc_ok and self.acq_target is not None:
                     # localized but not yet admitted (a wait or the timed bound still running): stay where the fit
-                    # works; returning to the axis lost the validation within LOC_TTL_S (v29 B0 s2)
+                    # works; returning to the axis loses the validation within LOC_TTL_S
                     c = self.acq_target.copy()
                 elif go.loc_ok:
                     c = np.array([s_hold, 0.0, 0.0])
@@ -432,8 +431,8 @@ class Flows:
             # queue standoff (not committed, near the queue point): back off along the axis while a DYNAMIC hull in the
             # FRONT sector is nearer than queue_standoff_m, hold in the hysteresis band, release beyond it; the lead
             # drone at the stage-2 hold then keeps the near-field clearance of its admission (formal ST7)
-            # only a column near the axis, behind the stage-2 hold, stands off: a side column (v33 integrated) backed off
-            # from the middle queued drone seen diagonally and never reached its queue point, while the middle one waited
+            # only a column near the axis, behind the stage-2 hold, stands off: a side column backing off
+            # from the middle queued drone seen diagonally would never reach its queue point, while the middle one waited
             # for it for ever; the back-off is capped so that the side neighbours stay out of the FRONT cone
             front = min((tg.d_lower for tg in obs.targets if tg.cls == "DYNAMIC" and "FRONT" in tg.pattern), default=1e9)
             if abs(go.queue_l) >= QUEUE_STANDOFF_LAT_M:
@@ -567,7 +566,7 @@ class Flows:
         against a closing peer under any association.  Also when the widened choice is a HOLD (no motion is non-closing
         for every hypothesis: two peers in adjacent sectors) and the measured choice is a motion that opens every
         measured association, below the full share: holding never raises the distance bound above the exit threshold, so
-        two drones holding each other in the warning band never leave it (v25 gate runs).  That decision keeps its
+        two drones holding each other in the warning band would never leave it.  That decision keeps its
         P1-uncertified joint class.  Recorded in ``association_fallback``; the P1 interval certificate does not depend
         on the direction and is unchanged.  Otherwise the widened (infeasible) choice."""
         wide = self.threats(obs, band)

@@ -26,7 +26,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from functools import lru_cache
-from typing import Dict, FrozenSet, Iterable, List, Tuple
+from typing import Dict, FrozenSet, List, Tuple
 
 import numpy as np
 
@@ -91,10 +91,6 @@ DEFAULT_SONAR = SonarModel()
 
 def sonar_sensor_name(sector: str) -> str:
     return f"Sonar{sector.capitalize()}"
-
-
-def sector_of_sensor(name: str) -> str:
-    return name[len("Sonar"):].upper()
 
 
 def _cos(deg: float) -> float:
@@ -172,20 +168,6 @@ def escape_candidates(n_extra: int = 74) -> np.ndarray:
     cube = [v / np.linalg.norm(v) for v in cube]
     extra = list(fibonacci_sphere(n_extra)) if n_extra else []
     return np.array(cube + extra)
-
-
-def guaranteed_opening(e: np.ndarray, pattern: Iterable[str], model: SonarModel = DEFAULT_SONAR) -> float:
-    """Worst-case opening rate per unit speed when moving along ``e`` away from a target seen with ``pattern``."""
-    R = regions(model).get(frozenset(pattern))
-    if R is None or len(R) == 0:
-        return -1.0
-    return float(np.min(-(R @ np.asarray(e, float))))
-
-
-def region_axis(pattern: Iterable[str], model: SonarModel = DEFAULT_SONAR) -> np.ndarray:
-    R = regions(model)[frozenset(pattern)]
-    m = R.mean(axis=0)
-    return m / np.linalg.norm(m)
 
 
 def coverage(rho: float, radius: float, model: SonarModel = DEFAULT_SONAR, n: int = 20000) -> float:

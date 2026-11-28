@@ -116,7 +116,7 @@ def run(cfg=DEFAULT, verbose=True) -> Report:
     g_done = [e.guard(o, Z3L) for e in edges[Mode.MUTEX_PASS] if e.name == "pass_done"][0]
     rep.add(check("Om2 mutation: the earlier constraint passed -> at_queue makes pass_done unreachable",
                   "expect UNSAT (reachability lost)", ENC, [v1, g_done], expect="unsat",
-                  note="an earlier formal/common.Obs.legal had passed -> at_queue; with I2 and I3 no 'passed' observation "
+                  note="with the constraint passed -> at_queue in formal/common.Obs.legal and with I2 and I3 no 'passed' observation "
                        "remains, so a proof over that domain says nothing about the exit edge"), verbose)
     gs = [(e, e.guard(o, Z3L)) for e in edges[Mode.FORMATION_FOLLOW]]
     rep.add(check("Om3 mutation: no monitor -> an inconsistent observation drives a mission edge",

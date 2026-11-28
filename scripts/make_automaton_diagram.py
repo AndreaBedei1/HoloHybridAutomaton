@@ -363,7 +363,7 @@ def render_presentation(model: Dict, cfg: FleetConfig, path: Path) -> None:
             Mode.MUTEX_YIELD: "wait in the queue", Mode.MUTEX_PASS: "cross the gate alone",
             Mode.FORMATION_RECOVERY: "back to own slot, from behind",
             Mode.FORMATION_WAIT_REJOIN: f"slot kept, slower ({model['v_wait']:.2f} m/s)",
-            Mode.FORMATION_FOLLOW: f"slot kept, survey speed", Mode.DEGRADED_FORMATION: "slot kept, hole stays"}
+            Mode.FORMATION_FOLLOW: "slot kept, survey speed", Mode.DEGRADED_FORMATION: "slot kept, hole stays"}
     for m, p in pos.items():
         _box(ax, p, W, H, m, NICK[m], subs[m], fs=15, sub_fs=11, loop=False)
     L, R = (lambda m: pos[m][0] - W / 2), (lambda m: pos[m][0] + W / 2)

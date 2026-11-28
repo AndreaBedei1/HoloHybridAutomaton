@@ -214,7 +214,7 @@ def test_the_horizon_is_three_times_the_a_priori_deadline():
 
 
 def test_isolated_profiles_have_a_failsafe_allowance():
-    """Regression: ISO_<factor> profiles crashed the referee (KeyError) because the family was upper-cased."""
+    """ISO_<factor> profiles keep their family case: the referee must not raise KeyError on them."""
     from holo_fleet.referee.criteria import failsafe_allowance_s, profile_family
 
     assert profile_family("ISO_sonar_blackout") == "ISO_sonar_blackout"

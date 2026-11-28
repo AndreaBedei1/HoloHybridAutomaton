@@ -1,6 +1,5 @@
 """Gate events E1-E8 and the stall detector (referee/gate_events.py) on synthetic traces."""
 
-import importlib.util
 from pathlib import Path
 
 import numpy as np
@@ -128,7 +127,6 @@ def test_a_slow_committed_passage_violates_the_crossing_budget():
 
 
 def test_give_up_and_recommit_do_not_reset_the_crossing_obligation():
-    from types import SimpleNamespace
 
     from holo_fleet.config import DEFAULT
     from holo_fleet.referee.gate_events import gate_events

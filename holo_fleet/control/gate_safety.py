@@ -1,9 +1,9 @@
 """Mutual exclusion (P2) as a constraint on the final velocity command, and its joint feasibility with separation (P1).
 
-Why.  The stage-2 hold before the critical region (CR) used to sit at s = -(0.8 + hull half-length + 0.15) = -1.18 m
-(with the former symmetric CR |s| <= 0.8), 0.38 m from the CR, while the declared gate-frame navigation error is
-``nav_err_m`` = 1.0 m: a drone holding there on an estimate 1 m short of the truth has its centre inside the CR.  And no gate rule edited the avoidance output of a drone
-that is not admitted: the separation warning filter of a drone held before the CR answers a drone behind it (a REAR
+Why.  A stage-2 hold at hull half-length + 0.15 m before the critical region (CR), 0.38 m from it, is closer than the
+declared gate-frame navigation error
+``nav_err_m`` = 1.0 m: a drone holding there on an estimate 1 m short of the truth has its centre inside the CR.  And without a gate rule on the avoidance output of a drone
+that is not admitted, the separation warning filter of a drone held before the CR answers a drone behind it (a REAR
 threat) by moving FORWARD, the only directions with a guaranteed opening from a REAR sector pattern (formal F1p, F1pa).
 
 What.  A drone that is not authorized to be in the CR (not committed and admitted, ``Flows.cr_cleared``) treats the CR
@@ -222,7 +222,7 @@ def outage_hull(v_meas: np.ndarray, cmds, k_rw: float, w: float, scale: float, v
     relative to the truth: with ``v_dr`` (the velocity the dead reckoning integrates, held sample or model) the largest
     distance from {v_dr} and the commands to the hull, else (a reserve handed before an onset) the hull width, which
     dominates every dead-reckoning velocity inside the hull (P2R2o); both plus w and the compass / DVL scale term
-    ``scale``.  ``cap_err`` / ``cap_rho``: the former worst-case outage bounds (v_bound, v_bound + max(v_bound, |v|) + scale)
+    ``scale``.  ``cap_err`` / ``cap_rho``: the worst-case outage bounds (v_bound, v_bound + max(v_bound, |v|) + scale)
     are never exceeded."""
     vm = np.asarray(v_meas, float)
     U = np.atleast_2d(np.asarray(cmds, float)) if len(cmds) else np.zeros((0, 3))

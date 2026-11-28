@@ -5,7 +5,7 @@ the gate identity.  The receiver measures range, azimuth and elevation in its bo
 noise of config.GateBeaconConfig).  From a reception and the own attitude the drone gets its position relative to the
 gate: p = beacon - R_wb unit(az, el) range, independent of the dead-reckoning drift.  ``GateBeaconFix`` keeps the recent
 fixes as offsets from the navigation estimate and gives their median when they agree; perception/perception.py compares
-the sonar echoes with the gate map at that pose (the bars then stay STRUCTURE under a drift of the estimate: v33 / v39).
+the sonar echoes with the gate map at that pose (the bars then stay STRUCTURE under a drift of the estimate).
 
 Error bound of one fix (formal/check_classification.py CL4): 3 sigma_range + range * tan(3 sigma_ang + heading bound).
 """

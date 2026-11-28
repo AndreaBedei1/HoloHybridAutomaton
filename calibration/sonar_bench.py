@@ -23,8 +23,7 @@ sys.path.insert(0, str(ROOT))
 
 from holo_fleet.config import DEFAULT, communication_disabled  # noqa: E402
 from holo_fleet.perception import sonar_geometry as sg  # noqa: E402
-from holo_fleet.perception.sensor_suite import SONAR_NAMES  # noqa: E402
-from holo_fleet.sim.holo_env import HoloFleetSim, TICKS_PER_SEC, agent_origin_from_pose  # noqa: E402
+from holo_fleet.sim.holo_env import HoloFleetSim, agent_origin_from_pose  # noqa: E402
 from holo_fleet.sim.spec import bench_spec  # noqa: E402
 
 BENCH_CFG = communication_disabled()  # the sonar benches ran without a beacon
