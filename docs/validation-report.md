@@ -208,6 +208,211 @@ a displaced near neighbour from an occluded far one. B2 resolves this with the a
 
 On `f583bde` the complete runner had 438 checks, all with the expected outcome. The final commit adds ST3g, ST3o, ST6l and the reported ST7 to `formal/check_stale.py`. The complete runner on the final controller (`6260ef0`, runtime code of `a57a9b2`) has 441 checks, all with the expected outcome (`formal/results/SUMMARY.json`).
 
+On `a8572d2` (the gate beacon) the complete runner had 449 checks, all with the expected outcome (archive
+`v45-formal-a8572d2`: 195 proved, 37 bounded, 58 numeric, 25 declared limits, 12 scope, 75 mutations, 32 witnesses,
+15 reported; about 29 min).
+
+On the final tree (runtime code of `a8572d2`, with premise Q and the beacon proofs) the complete runner has 475 checks,
+all with the expected outcome (archive `v50-formal-final-catalogue-q2-07`, `formal/results/SUMMARY.json`):
+
+| Kind | Count |
+|---|---:|
+| Proved | 202 |
+| Bounded | 43 |
+| Numeric | 59 |
+| Declared limits | 26 |
+| Scope | 13 |
+| Mutations | 84 |
+| Witnesses | 32 |
+| Reported | 16 |
+
+The run took about 129 min. Each M3q and M3hq entry is one queue view and stands for all its sampled queries, 648
+in total, every one UNSAT. Two earlier runs are kept as records:
+- `v48-formal-final-catalogue`, the faithful model before premise Q2: 529 checks, each query listed and first counted as
+  proved;
+- `v49-formal-final-catalogue-q2`, with Q2 at 0.8 m before its independent review: 475 checks, 528 queries.
+
+### Masking under a pose error (premise Q)
+
+The latch checks M3, M3h and M4d compute what a queued vehicle sees at its true pose. On board, the vehicle predicts the
+structure window, the corridor and the exit threshold from its classification pose. Every queued sample of `v33`, `v44`
+and `v46` classified at the navigation estimate, never at a beacon or fit pose.
+
+A first model shifted every predicted range by the same error along the line of sight. A first independent review fixed
+four points of it:
+- the exit threshold, which is now taken after the CR entry;
+- the heading tolerance in the bar cone;
+- the observer's shorter reach;
+- M4bq, which became a reported quantity.
+
+A second independent review, before the merge, found that model unsound. Its findings:
+
+- The corridor was range-only. On board, a corridor echo also needs `FRONT` in its pattern (`gate_perception.py`). With
+  that condition, the outer queue point of 4 vehicles lost the corridor sighting before the mask at the largest sampled
+  error, and M3q became satisfiable.
+- The uniform shift is not what the vehicle does. `at_queue` holds the estimate at the queue point, so the predicted
+  window, corridor and exit threshold are the nominal ones. The true position, not the prediction, is off by the error.
+- The audit script failed open in five ways. An empty campaign or a missing run passed; an INVALID run crashed it;
+  missing monitors passed; the gate checks keyed on the metrics instead of the scenario.
+
+`formal/check_mutex.py` now models this faithfully. `geometry(err=...)` keeps the predicted ranges at the queue point and
+takes the crossing vehicle's true range and FRONT bearing from the displaced true position. The corridor needs the FRONT
+cone at every heading within `heading_tol_deg`; the compass error is not modelled.
+
+A verification review of that model found one more gap. `at_queue` accepts the estimate anywhere within `queue_tol` =
+0.35 m of the queue point, and with the estimate there and the full error, the outer point of 3 vehicles lost the FRONT
+sighting. `at_queue` and the navigation premise together allow a true position 1.35 m outward. An exposure scan over
+estimate offset and error (3 x 3 x 5 x 5) located the boundary:
+- at most 0.8 m outward of the queue point, the exposure on that grid was at least 0.56 s (a grid minimum: see the review
+  of Q2 below);
+- at 1.0 m outward with the estimate 0.35 m forward, it is 0.
+
+Premise Q therefore gained a second part, Q2, first at 0.8 m outward of the queue point (true position), monitored in
+`queue_cls` from the truth and the planned queue point. A queued sample without a plan is unjudged and fails the premise.
+
+An independent review of Q2 (read-only, before the merge) found nothing blocking and one major point. The samples took
+the estimate offset only at {-0.35, 0, +0.35} m, so they missed the vertex where Q1 and Q2 meet: the estimate
+0.2 m inward with the true position 0.8 m outward. A fine scan put the worst exposure of the region there, at 0.31 s
+against the 0.30 s of three captures, and the BMC there was still UNSAT. The review also noted:
+- the model bounds the FRONT sonar, while the referee measured the body, about 0.025 m apart at the heading tolerance;
+- the M3qs counterexample is at 1.0 m outward, beyond Q2 as well;
+- `one_masked_interval` was computed but not asserted;
+- each query holds the pose fixed for its 42 s, and the latch BMC does not model the stacked queues;
+- the Q2 tests covered one side of the axis only.
+
+The fixes:
+- Q2 is now 0.7 m, on the FRONT sonar. At that bound the worst exposure is 0.58 s.
+- The referee adds the sonar lever at the heading tolerance, 0.24 m x sin 6 deg = 0.025 m, to the body's outward
+  offset, since it logs the body and not the yaw. The lateral estimate offsets of the model reach `queue_tol` + 0.025 m.
+- The samples include the vertex.
+- Every M3q entry requires one masked interval in every sample.
+- The tests cover both sides of the axis and l = 1.75 m.
+- The fixed pose and the stacked queues are declared in README section 6.
+
+A second independent review (read-only) checked these fixes and found nothing blocking. It confirmed:
+- the signs on both sides of the axis, and that the mirror views equal the kept ones;
+- the vertex as the minimum of a finer scan of the Q2 edge, 0.58 s;
+- one corridor stretch in every sample;
+- the counts and the campaign maxima.
+
+Its major point is the fixed pose. Two samples that each satisfy Q can combine badly, the corridor of one starting after
+the mask of the other. The closest pair needs a 0.3 m move and a 1.0 m drop of the along-axis error while the crossing
+vehicle is in a 0.38 s window, and the monitor would not flag it. The README now says this where it lists the premises of
+the campaign table: "Q holds" means every queued sample is within Q. Its minor points:
+- The referee takes the queue points from the scenario code, not from the run's recorded plans. The audit now requires
+  them to be equal; they are in all 58 runs of `v46` and `v47`.
+- The vertical offset allowed by `at_queue` (0.35 m) and the steps before the queue point are outside the model. Both
+  are now declared.
+- No fast test covered the model's samples or its sign. `tests/test_queue_latch_model.py` checks Q1, Q2 and the vertex
+  in the samples, and the exposure at the vertex, on the other side of the axis, inward and beyond Q2. Removing the
+  vertex, the Q2 raise or the lever, or flipping or dropping the side sign, each fails one of these tests (checked in
+  memory, without the catalogue).
+
+In `v46` the largest outward offset at the sonar was 0.43 m (B2) and 0.40 m (B0). Results:
+
+- **M3q and M3hq are bounded checks.** They cover the abreast queues the planner accepts, 2 and 3 vehicles. The samples
+  are the estimate offsets (three along the axis times three lateral, plus the vertex off the axis) times ten errors,
+  with the lateral error raised where Q2 binds: 324 samples, 648 BMC queries. In their notes, "corridor from s >= x,
+  mask from s >= y" gives the extremes over the samples: the latest corridor start and the earliest mask start, which come
+  from different samples. Each sample has its corridor before its mask.
+- **M4dq** holds at the same offsets on a 5 x 5 grid of the error. The smallest exposure is 0.58 s, at the vertex for the
+  outer point of 3 vehicles: true position 0.7 m outward and 1.35 m forward, estimate 0.3 m inward. It is 1.80 s
+  without error.
+- **What binds is a true position far outward with the estimate inward**: the first narrows the FRONT bearing of the
+  crossing vehicle, the second brings the predicted mask forward.
+- **M3ql (declared limit).** The outer point of 3, with the estimate 0.35 m forward and the true position 1.0 m outward,
+  inside `at_queue` and Q1, has a counterexample.
+- **M3qs (scope).** Abreast 4, which the planner refuses, has a counterexample at the full navigation error, 1.0 m
+  outward. It marks the domain edge, not a failure inside Q2.
+- **M3qm (mutation).** The M3hq model without the band latch input fails, so the premise-Q encoding can fail.
+- **The default views of M3, M3h, M4d and M4e** with the FRONT condition differ from the former range-only ones by grid
+  alignment only, 0.05 m at most. Their verdicts are unchanged.
+
+Premise Q has two parts. Q1: a queued vehicle classifies at its navigation estimate, with its true position within
+`nav_err_m` on each gate-frame axis (the own-pose bound of the B2 acoustic exit, `nav_err_gate_m`). Q2: the outward bound
+above. The referee monitors both as `queue_cls`. It flags a queued sample in four cases:
+- an axis error beyond 1.0 m;
+- an outward offset of the FRONT sonar beyond 0.7 m;
+- a beacon or fit pose;
+- no plan to judge it against.
+
+It also counts the sources of
+the other pre-commit steps within sonar range, which are outside the M3 abstraction. In `v44` two retreats after a
+give-up classified at the beacon pose for about 4 s. `scripts/audit_final_campaign.py` re-derives every run with that
+monitor and requires the recorded queue plans to equal the rebuilt ones. What the checks still leave out is listed in
+README section 6:
+- the crossing vehicle off the axis;
+- the M3 abstraction of masking and WAIT relations;
+- the M2 relations under the navigation error;
+- the compass error;
+- the queued pose varying within one query;
+- the vertical offset at the queue;
+- the stacked queues under the navigation error.
+
+### Beacon proofs
+
+`formal/check_classification.py` adds Z3 proofs of the geometry that CL1 and CL4 sample:
+
+- CL7: the chord lemma of one fix. With the triangle inequality, the error of one fix is within 3 sigma_range +
+  r tan(3 sigma_ang + heading bound). CL7m, the bound without the heading bias, fails; roll and pitch are not modelled.
+- CL8a and CL8c: a sonar displaced by E sees a point within asin(E / R) of the predicted direction and within E of the
+  predicted range.
+- CL8b: the deployed cone widening covers that shift plus the heading bound for R in [0.73, 7.05] m at E = 0.5 m, and on
+  similar intervals for E = 0.15, 0.3 and 0.45 m. CL8bm fails beyond each interval. Tilt and the mount displacement by
+  the heading error are not modelled.
+
+The bound of the median of several fixes stays statistical: premise B, checked by CL5 and monitored as `beacon_fix`.
+
 ### Final paired campaign
 
-The final paired campaign runs from the frozen worktree at `a57a9b2`, archive `v33-final-paired-campaign-2026-11-27`. It runs the 9 cases x 3 seeds x 2 protocols of `config/publication_validation.json`, each to the mission terminal with no fixed window. At most 3 isolated engines run at once.
+The first final campaign ran from the frozen worktree at `a57a9b2`, archive `v33-final-paired-campaign-2026-11-27`: 46 of 54
+PASS, the 8 INCOMPLETE runs analysed above. The campaign on the gate beacon runs from the worktree frozen at `7d8662f`,
+whose runtime code is that of `a8572d2`, in archive `v46-final-paired-campaign-beacon`. It covers the 9 cases x 3 seeds x 2
+protocols of `config/publication_validation.json`, each run to the mission terminal, on 4 engines shown isolated
+(`isolation4`).
+
+All 54 rows are present, recorded at `7d8662f` with a clean tree, and all 27 pairs have identical configuration and runtime
+code (`results/final_paired_validation.json`, SHA-256 `25a1ebbeda2324645552237b2e8c1bf61119cac8ef3620134166c8033171d09c`).
+`scripts/audit_final_campaign.py --expect 54` re-derives every run with the final referee, which differs from `7d8662f`
+only by the `queue_cls` monitor, and judges each run on all of its checks (`results/final_run_audit.json`).
+
+- **B2: 27 of 27 runs PASS and accepted.** Mission SUCCESS; in the 18 gate runs every vehicle crossed. Formation recovered
+  in every run with a P3 window. Every premise monitor holds:
+  - the navigation bound, the committed navigation error, premises V and C, and the scope;
+  - `zone_nav` up to 0.40 m horizontally;
+  - `beacon_fix` up to 0.29 m;
+  - `queue_cls` up to 0.39 m per axis and 0.43 m outward of the queue point at the sonar, with every queued sample at the
+    navigation estimate.
+- **B0: 26 of 27.** `simultaneous-medium` s1 is P3_FAILURE, the formation-association limit of README section 6 and the
+  same run as in `v44`. All three vehicles crossed, and P1 and P2 held.
+- **Safety, both protocols:** zero P1 violation samples and zero contacts. The smallest centre distance is 2.031 m (B0)
+  and 2.633 m (B2). In the 36 gate runs: peak occupancy one, zero premature admissions and zero false releases.
+- **`P2_UNCERTIFIED`:** at most 3 events per run in either protocol, under MEDIUM sensing and DVL interruption. None
+  coincided with a violation.
+- **Beacon poses outside the queue** (retreats after a give-up) were counted, not judged, in four B2 runs. There were zero
+  wrong validated fits.
+
+| Case | Gate completion B0, median (range) s | Gate completion B2, median (range) s | B2 P3 recovery, max over seeds s |
+|---|---|---|---|
+| gate | 228.6 (223.9, 234.4) | 87.9 (85.0, 96.9) | 101.0 |
+| gate-acoustic-medium | 187.3 (168.5, 212.4) | 91.1 (81.5, 168.8) | 207.1 |
+| simultaneous-clean | 323.2 (185.0, 427.6) | 91.8 (91.8, 123.8) | 146.6 |
+| simultaneous-medium | 293.7 (188.6, 311.9) | 123.6 (93.7, 166.0) | 204.9 |
+| dvl-interruption | 203.0 (193.3, 280.8) | 80.1 (79.6, 84.9) | 84.8 |
+| integrated | 211.4 (126.6, 265.3) | 97.3 (89.2, 103.8) | 107.5 |
+
+In `formation` both protocols recovered within 8.2 s. `encounter` and `sonar-blackout` have neither a gate nor a
+recovery window.
+
+**LOW and HIGH** (archive `v47-low-high-7d8662f`, `line_parallel_mutex` seed 0, same frozen tree, audit
+`results/low_high_run_audit.json`):
+
+- **LOW:** B0 and B2 (channel LOW) PASS and are accepted.
+- **HIGH:** the stress profile, outside the declared premises. There is no HIGH acoustic channel, so B2 ran on
+  MEDIUM_HARSH, the harshest defined level. A first launch named the undefined channel `B2_HIGH` and was refused before
+  any engine started; it is kept in `invalid/`.
+  - B0 is PREMISE_VIOLATED with no crossing.
+  - B2 is INCOMPLETE with one crossing.
+  - The monitors flag the violated premises: `queue_cls` up to 3.3 m and 4.1 m per axis, `zone_nav`, `beacon_fix`
+    (B2) and the committed navigation error (B0).
+  - P1 held (2.60 m and 2.69 m), occupancy stayed at most one, and there were zero premature admissions.
