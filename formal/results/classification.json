@@ -1,0 +1,286 @@
+{
+  "check": "classification",
+  "all_passed": true,
+  "results": [
+    {
+      "prop": "CL1 bar echoes of the true pose are STRUCTURE at a classification pose in error by E with the window widened by E (E = 0.15, 0.3, 0.5 m; 864 cases near G06, every sector, direct bar model)",
+      "formula": "for every sampled pose, E and direction: every bar echo classified STRUCTURE",
+      "encoding": "numeric over the deployed classifier and the arena gate map",
+      "expect": "holds",
+      "verdict": "holds",
+      "passed": true,
+      "seconds": 0.0,
+      "counterexample": null,
+      "note": ""
+    },
+    {
+      "prop": "CL1m mutation: at the uncorrected estimate with the v39 lateral error (0.72 m) bar echoes are unexplained (an obstacle at the CR entry) in 13 of 72 poses",
+      "formula": "expect some pose with a non-STRUCTURE bar echo",
+      "encoding": "numeric",
+      "expect": "caught",
+      "verdict": "caught",
+      "passed": true,
+      "seconds": 0.0,
+      "counterexample": null,
+      "note": ""
+    },
+    {
+      "prop": "CL2 an echo off the gate map (outside the window of the true pose widened by 0.5 m, plus the tolerances) is never STRUCTURE (1423 cases, every sector)",
+      "formula": "echo range outside [w0 - tol, w1 + tol_far] -> not STRUCTURE",
+      "encoding": "numeric over the deployed classifier",
+      "expect": "holds",
+      "verdict": "holds",
+      "passed": true,
+      "seconds": 0.0,
+      "counterexample": null,
+      "note": ""
+    },
+    {
+      "prop": "CL2r reported: the cone-edge widening by 0.5 m extends the structure window by at most 1.40 m beyond the unwidened one at the sampled poses (the range where a hull can be masked grows by it)",
+      "formula": "reported",
+      "encoding": "numeric",
+      "expect": "holds",
+      "verdict": "holds",
+      "passed": true,
+      "seconds": 0.0,
+      "counterexample": null,
+      "note": ""
+    },
+    {
+      "prop": "CL4 at a beacon pose in error by its deployed bound (median of 3 fixes, 8 directions) the bar echoes are STRUCTURE (360 cases at the 45 poses where the bound is <= 0.45 m)",
+      "formula": "classification pose error = deployed bound -> bar echoes STRUCTURE",
+      "encoding": "numeric over the deployed classifier and fix_bound",
+      "expect": "holds",
+      "verdict": "holds",
+      "passed": true,
+      "seconds": 0.0,
+      "counterexample": null,
+      "note": ""
+    },
+    {
+      "prop": "CL5 the median beacon fix is within its bound in 319 of 319 simulated windows (onboard heading biased up to 2.0 deg, drift up to 0.7 m, sigma levels of GateBeaconConfig)",
+      "formula": "|fix - truth| <= bound for every sampled window",
+      "encoding": "numeric (Monte Carlo of the model)",
+      "expect": "holds",
+      "verdict": "holds",
+      "passed": true,
+      "seconds": 0.0,
+      "counterexample": null,
+      "note": ""
+    },
+    {
+      "prop": "CL6 in the gate plane the beacon bound (0.40 m, median of 3 fixes) is below the lateral tolerance of the structure keepout (0.41 m = struct_keepout - hull half width); the side sonar is blind below 0.3 m",
+      "formula": "max bound over the gate plane < struct_keepout - hull half width",
+      "encoding": "numeric over fix_bound and the config",
+      "expect": "holds",
+      "verdict": "holds",
+      "passed": true,
+      "seconds": 0.0,
+      "counterexample": null,
+      "note": ""
+    },
+    {
+      "prop": "CL3 reported: the classification pose is the beacon fix (bound <= 0.45 m, >= 3 fixes in 3.0 s; it corrects the estimate before admission, laterally only once admitted) or a structure fit the aiding accepts (>= 3 sectors, RMS <= 0.1 m, uncertainty <= 0.50 m, safe or identified, held 5.0 s); the cone edge is widened by its bound",
+      "formula": "reported",
+      "encoding": "config",
+      "expect": "holds",
+      "verdict": "holds",
+      "passed": true,
+      "seconds": 0.0,
+      "counterexample": null,
+      "note": ""
+    },
+    {
+      "prop": "CL7 one beacon fix: the horizontal chord between the true and the measured direction is at most tan(5.0 deg) (azimuth error with the heading bias <= 5.0 deg, elevation error <= 3.0 deg), so the error of one fix is <= 3 sigma_range + r tan(3 sigma_ang + heading_bound) <= fix_bound(r, 1)",
+      "formula": "c^2+s^2 = c'^2+s'^2 = 1, c, c' >= 0, cc' + ss' >= cos(eps), cos(phi) <= k <= 1 -> c^2 + c'^2 - 2 c c' k <= tan^2(phi)",
+      "encoding": "formal/check_classification.py (perception/sonar_processing.py structure_window, perception/gate_beacon.py)",
+      "expect": "unsat",
+      "verdict": "unsat",
+      "passed": true,
+      "seconds": 0.152,
+      "counterexample": null,
+      "note": "the median of n fixes has the statistical bound fix_bound(r, n): premise B (CL5, referee beacon_fix)"
+    },
+    {
+      "prop": "CL7m mutation: a bound without the heading bias (tan(3 sigma_ang)) for an azimuth error that includes it must have a counterexample",
+      "formula": "as CL7 with tan^2(3 sigma_ang) on the right",
+      "encoding": "formal/check_classification.py (perception/sonar_processing.py structure_window, perception/gate_beacon.py)",
+      "expect": "sat",
+      "verdict": "sat",
+      "passed": true,
+      "seconds": 0.009,
+      "counterexample": {
+        "c": 1.0,
+        "c2": 0.9990234375,
+        "k": 0.998046875,
+        "s": 0.0,
+        "s2": -0.04418338291316104
+      },
+      "note": ""
+    },
+    {
+      "prop": "CL8a direction shift: a sonar displaced by at most E sees a point at predicted range R > E within asin(E / R) of the predicted direction",
+      "formula": "dx^2 + dy^2 <= E^2 < R^2 -> u.v >= 0 and (u.v)^2 >= (R^2 - E^2) |u|^2 (v = (R, 0), u = v - d; the plane of v and d, by symmetry)",
+      "encoding": "formal/check_classification.py (perception/sonar_processing.py structure_window, perception/gate_beacon.py)",
+      "expect": "unsat",
+      "verdict": "unsat",
+      "passed": true,
+      "seconds": 0.006,
+      "counterexample": null,
+      "note": ""
+    },
+    {
+      "prop": "CL8c range shift: the true range of that point lies in [R - E, R + E]",
+      "formula": "dx^2 + dy^2 <= E^2 <= R^2 -> (R - E)^2 <= |u|^2 <= (R + E)^2",
+      "encoding": "formal/check_classification.py (perception/sonar_processing.py structure_window, perception/gate_beacon.py)",
+      "expect": "unsat",
+      "verdict": "unsat",
+      "passed": true,
+      "seconds": 0.006,
+      "counterexample": null,
+      "note": ""
+    },
+    {
+      "prop": "CL8b cone widening, E = 0.15 m: on R in [0.32, 7.13] m the deployed widening atan((0.25 + E) / R) covers asin(E / R) plus the heading bound 2.0 deg",
+      "formula": "t = tan(asin(E / R)): t >= 0, t^2 (R^2 - E^2) = E^2 -> (w + E)(1 - T t) >= R (T + t), 1 - T t > 0",
+      "encoding": "formal/check_classification.py (perception/sonar_processing.py structure_window, perception/gate_beacon.py)",
+      "expect": "unsat",
+      "verdict": "unsat",
+      "passed": true,
+      "seconds": 0.008,
+      "counterexample": null,
+      "note": "outside [0.32, 7.13] m a bar at the cone edge can be unexplained (a progress cost)"
+    },
+    {
+      "prop": "CL8bm mutation: E = 0.15 m beyond the interval (R = 7.63 m) the widening does not cover the shift and the heading bound",
+      "formula": "as CL8b at R = r_hi + 0.5",
+      "encoding": "formal/check_classification.py (perception/sonar_processing.py structure_window, perception/gate_beacon.py)",
+      "expect": "sat",
+      "verdict": "sat",
+      "passed": true,
+      "seconds": 0.002,
+      "counterexample": {
+        "R": 7.63,
+        "t": 0.019663039952320105
+      },
+      "note": ""
+    },
+    {
+      "prop": "CL8b cone widening, E = 0.30 m: on R in [0.39, 7.11] m the deployed widening atan((0.25 + E) / R) covers asin(E / R) plus the heading bound 2.0 deg",
+      "formula": "t = tan(asin(E / R)): t >= 0, t^2 (R^2 - E^2) = E^2 -> (w + E)(1 - T t) >= R (T + t), 1 - T t > 0",
+      "encoding": "formal/check_classification.py (perception/sonar_processing.py structure_window, perception/gate_beacon.py)",
+      "expect": "unsat",
+      "verdict": "unsat",
+      "passed": true,
+      "seconds": 0.007,
+      "counterexample": null,
+      "note": "outside [0.39, 7.11] m a bar at the cone edge can be unexplained (a progress cost)"
+    },
+    {
+      "prop": "CL8bm mutation: E = 0.30 m beyond the interval (R = 7.61 m) the widening does not cover the shift and the heading bound",
+      "formula": "as CL8b at R = r_hi + 0.5",
+      "encoding": "formal/check_classification.py (perception/sonar_processing.py structure_window, perception/gate_beacon.py)",
+      "expect": "sat",
+      "verdict": "sat",
+      "passed": true,
+      "seconds": 0.001,
+      "counterexample": {
+        "R": 7.61,
+        "t": 0.039452481467378675
+      },
+      "note": ""
+    },
+    {
+      "prop": "CL8bm mutation: E = 0.30 m below the interval (R = 0.32 m) the widening does not cover the shift and the heading bound",
+      "formula": "as CL8b at R = r_lo - 0.05",
+      "encoding": "formal/check_classification.py (perception/sonar_processing.py structure_window, perception/gate_beacon.py)",
+      "expect": "sat",
+      "verdict": "sat",
+      "passed": true,
+      "seconds": 0.003,
+      "counterexample": {
+        "R": 0.321,
+        "t": 2.627034687533069
+      },
+      "note": ""
+    },
+    {
+      "prop": "CL8b cone widening, E = 0.45 m: on R in [0.64, 7.07] m the deployed widening atan((0.25 + E) / R) covers asin(E / R) plus the heading bound 2.0 deg",
+      "formula": "t = tan(asin(E / R)): t >= 0, t^2 (R^2 - E^2) = E^2 -> (w + E)(1 - T t) >= R (T + t), 1 - T t > 0",
+      "encoding": "formal/check_classification.py (perception/sonar_processing.py structure_window, perception/gate_beacon.py)",
+      "expect": "unsat",
+      "verdict": "unsat",
+      "passed": true,
+      "seconds": 0.008,
+      "counterexample": null,
+      "note": "outside [0.64, 7.07] m a bar at the cone edge can be unexplained (a progress cost)"
+    },
+    {
+      "prop": "CL8bm mutation: E = 0.45 m beyond the interval (R = 7.57 m) the widening does not cover the shift and the heading bound",
+      "formula": "as CL8b at R = r_hi + 0.5",
+      "encoding": "formal/check_classification.py (perception/sonar_processing.py structure_window, perception/gate_beacon.py)",
+      "expect": "sat",
+      "verdict": "sat",
+      "passed": true,
+      "seconds": 0.002,
+      "counterexample": {
+        "R": 7.57,
+        "t": 0.05955048910527694
+      },
+      "note": ""
+    },
+    {
+      "prop": "CL8bm mutation: E = 0.45 m below the interval (R = 0.57 m) the widening does not cover the shift and the heading bound",
+      "formula": "as CL8b at R = r_lo - 0.05",
+      "encoding": "formal/check_classification.py (perception/sonar_processing.py structure_window, perception/gate_beacon.py)",
+      "expect": "sat",
+      "verdict": "sat",
+      "passed": true,
+      "seconds": 0.003,
+      "counterexample": {
+        "R": 0.572,
+        "t": 1.2744040722345744
+      },
+      "note": ""
+    },
+    {
+      "prop": "CL8b cone widening, E = 0.50 m: on R in [0.73, 7.05] m the deployed widening atan((0.25 + E) / R) covers asin(E / R) plus the heading bound 2.0 deg",
+      "formula": "t = tan(asin(E / R)): t >= 0, t^2 (R^2 - E^2) = E^2 -> (w + E)(1 - T t) >= R (T + t), 1 - T t > 0",
+      "encoding": "formal/check_classification.py (perception/sonar_processing.py structure_window, perception/gate_beacon.py)",
+      "expect": "unsat",
+      "verdict": "unsat",
+      "passed": true,
+      "seconds": 0.005,
+      "counterexample": null,
+      "note": "outside [0.73, 7.05] m a bar at the cone edge can be unexplained (a progress cost)"
+    },
+    {
+      "prop": "CL8bm mutation: E = 0.50 m beyond the interval (R = 7.55 m) the widening does not cover the shift and the heading bound",
+      "formula": "as CL8b at R = r_hi + 0.5",
+      "encoding": "formal/check_classification.py (perception/sonar_processing.py structure_window, perception/gate_beacon.py)",
+      "expect": "sat",
+      "verdict": "sat",
+      "passed": true,
+      "seconds": 0.004,
+      "counterexample": {
+        "R": 7.55,
+        "t": 0.0663708692632099
+      },
+      "note": ""
+    },
+    {
+      "prop": "CL8bm mutation: E = 0.50 m below the interval (R = 0.67 m) the widening does not cover the shift and the heading bound",
+      "formula": "as CL8b at R = r_lo - 0.05",
+      "encoding": "formal/check_classification.py (perception/sonar_processing.py structure_window, perception/gate_beacon.py)",
+      "expect": "sat",
+      "verdict": "sat",
+      "passed": true,
+      "seconds": 0.003,
+      "counterexample": {
+        "R": 0.666,
+        "t": 1.1364927906156481
+      },
+      "note": ""
+    }
+  ]
+}

@@ -9,7 +9,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 0.004,
+      "seconds": 0.002,
       "counterexample": null,
       "note": "keeping_cap = min(v_recovery_max, max(v_slot_max, v_plan + v_catch_min)), the code of Flows.formation"
     },
@@ -20,7 +20,7 @@
       "expect": "sat",
       "verdict": "sat",
       "passed": true,
-      "seconds": 0.003,
+      "seconds": 0.004,
       "counterexample": {
         "v_plan": 0.4
       },
@@ -33,7 +33,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 0.011,
+      "seconds": 0.009,
       "counterexample": null,
       "note": "control/formation_time.py: rate ramps at a_wait / v_plan, d = 1 - rate, E the moving time of the episode (<= t_rejoin); same-lane following and the sync follow another drone's tau"
     },
@@ -44,7 +44,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 0.003,
+      "seconds": 0.004,
       "counterexample": null,
       "note": ""
     },
@@ -55,13 +55,13 @@
       "expect": "sat",
       "verdict": "sat",
       "passed": true,
-      "seconds": 0.004,
+      "seconds": 0.002,
       "counterexample": {
         "H": 2.0,
         "end": 0.0,
         "t": 0.0,
-        "tau_i": 0.0,
-        "tau_j": 2.0
+        "tau_i": 2.0,
+        "tau_j": 0.0
       },
       "note": ""
     },
@@ -72,7 +72,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 0.008,
+      "seconds": 0.01,
       "counterexample": null,
       "note": "rate 0.0040 m/s (k_progress delta at most, after the rate ramp); the drone behind keeps its speed (C2j); eventual agreement |X| <= B + delta, by the symmetry i <-> j"
     },
@@ -94,7 +94,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 0.0,
+      "seconds": 0.002,
       "counterexample": null,
       "note": "the guard self_recovered is then reachable (with C1n)"
     },
@@ -105,7 +105,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 0.006,
+      "seconds": 0.007,
       "counterexample": null,
       "note": "rate 0.0040 m/s (k_progress delta at most, after the rate ramp); the drone behind keeps its speed (C2j); eventual agreement |X| <= B + delta, by the symmetry i <-> j"
     },
@@ -116,7 +116,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 0.005,
+      "seconds": 0.007,
       "counterexample": null,
       "note": "one step moves X by less than delta; above B + delta it decreases (C2a)"
     },
@@ -127,7 +127,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 0.0,
+      "seconds": 0.002,
       "counterexample": null,
       "note": "the guard self_recovered is then reachable (with C1n)"
     },
@@ -138,7 +138,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 0.002,
+      "seconds": 0.004,
       "counterexample": null,
       "note": ""
     },
@@ -149,17 +149,17 @@
       "expect": "sat",
       "verdict": "sat",
       "passed": true,
-      "seconds": 0.005,
+      "seconds": 0.006,
       "counterexample": {
-        "D": 5.167433333333333,
-        "band": 0.5,
-        "n_i": -0.18965,
+        "D": 5.551533333333333,
+        "band": 1.0,
+        "n_i": 0.5,
         "n_sig_i": 0.0,
         "n_sig_j": 0.0,
         "near_i": true,
         "near_j": true,
         "rho_i": 0.0,
-        "sigma_i": -1.6166666666666667,
+        "sigma_i": -2.0,
         "sigma_j": 2.0
       },
       "note": "X + |sigma_i| + |sigma_j| is non-increasing in the leak / frozen regime (C2d); the closed loop with the switching converges offline (tests/test_p3_recovery_fixes.py), not proved"
@@ -171,7 +171,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 0.004,
+      "seconds": 0.002,
       "counterexample": null,
       "note": ""
     },
@@ -213,7 +213,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 0.001,
+      "seconds": 0.004,
       "counterexample": null,
       "note": "fixed ahead/behind role in the pair model; repeated usable reports force entrance into the lag band because D stays bounded below while X stays outside it. This does not prove the switched in-band dynamics."
     },
@@ -224,18 +224,18 @@
       "expect": "sat",
       "verdict": "sat",
       "passed": true,
-      "seconds": 0.006,
+      "seconds": 0.003,
       "counterexample": {
-        "D": 1.5500640814028002,
+        "D": 5.539906027586969,
         "band": 0.5,
         "n_i": 0.0,
-        "n_sig_i": 0.5,
-        "n_sig_j": 0.0,
-        "near_i": true,
+        "n_sig_i": -0.5,
+        "n_sig_j": -0.5,
+        "near_i": false,
         "near_j": false,
-        "rho_i": 0.008802713426672104,
-        "sigma_i": -1.9933974147361335,
-        "sigma_j": -2.0
+        "rho_i": 0.011121740761583192,
+        "sigma_i": -1.9897723753641217,
+        "sigma_j": 1.99778840742825
       },
       "note": ""
     },
@@ -246,7 +246,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 17.8,
+      "seconds": 15.7,
       "counterexample": null,
       "note": "certified decrease eps = 0.1270 m/s (exact rational cells, sigma frozen beyond e_lost)"
     },
@@ -257,7 +257,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 19.8,
+      "seconds": 19.0,
       "counterexample": null,
       "note": "certified decrease eps = 0.0293 m/s (exact rational cells, sigma frozen beyond e_lost)"
     },
@@ -268,7 +268,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 13.0,
+      "seconds": 12.0,
       "counterexample": null,
       "note": "certified decrease eps = 0.0313 m/s (exact rational cells, sigma frozen beyond e_lost)"
     },
@@ -279,7 +279,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 2.1,
+      "seconds": 2.0,
       "counterexample": null,
       "note": "r_in = 0.375 m, ball 0.413 m (e_ok = 0.5), eps >= 0.002 m/s on the band"
     },
@@ -290,7 +290,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 2.7,
+      "seconds": 2.4,
       "counterexample": null,
       "note": "r_in = 0.375 m, ball 0.421 m (e_ok = 0.5), eps >= 0.002 m/s on the band"
     },
@@ -312,7 +312,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 2.6,
+      "seconds": 2.4,
       "counterexample": null,
       "note": "r_in = 0.375 m, ball 0.421 m (e_ok = 0.5), eps >= 0.002 m/s on the band"
     },
@@ -323,7 +323,7 @@
       "expect": "sat",
       "verdict": "sat",
       "passed": true,
-      "seconds": 0.013,
+      "seconds": 0.006,
       "counterexample": {
         "c": 0.0,
         "ea": 2.0,
@@ -360,7 +360,7 @@
       "expect": "sat",
       "verdict": "sat",
       "passed": true,
-      "seconds": 25.53,
+      "seconds": 25.537,
       "counterexample": {
         "/0": "[(0.2821340273?, 2) -> 0.1410670136?,\n (307/320, 2) -> 307/640,\n else -> 0]",
         "c": -0.1,
@@ -400,7 +400,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 0.003,
+      "seconds": 0.004,
       "counterexample": null,
       "note": "the 3-D slot error of the keeping modes is within sqrt(ball_h^2 + ball_z^2) (C1n, C1z)"
     },
@@ -411,7 +411,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 0.001,
+      "seconds": 0.002,
       "counterexample": null,
       "note": "Requires the same rank on both modes and certified rise bounds. Usable reports and physically feasible tracking can supply gain; time spent in a safety mode is not treated as gain."
     },
@@ -422,7 +422,7 @@
       "expect": "unsat",
       "verdict": "unsat",
       "passed": true,
-      "seconds": 0.004,
+      "seconds": 0.001,
       "counterexample": null,
       "note": "Conditional liveness by contradiction if still outside tolerance. A bound on loss and recurring steps with a uniform positive gain suffice. Existing pair and slot ranks have different domains; no fleet bound is inferred across gate and avoidance transitions."
     },
@@ -433,7 +433,7 @@
       "expect": "sat",
       "verdict": "sat",
       "passed": true,
-      "seconds": 0.002,
+      "seconds": 0.004,
       "counterexample": {
         "gain": 0.25,
         "next_rank": 0.25,
