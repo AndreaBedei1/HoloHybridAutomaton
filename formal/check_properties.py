@@ -75,7 +75,7 @@ KINDS = {
     "witness": "expected satisfiable query: non-vacuity, tightness of a bound, independence of the invariants",
     "reported": "quantity reported, not guaranteed",
 }
-_BOUNDED = {"P1": r"^(S1[ad]|S4) ", "P2": r"^M3h? ", "B2 status payload": r"^S2h? ", "P3": r"^F6 ", "Interacting": r"^(F2p?|F1d\d+n?|F1p) ",
+_BOUNDED = {"P1": r"^(S1[ad]|S4) ", "P2": r"^M3h?q? ", "B2 status payload": r"^S2h? ", "P3": r"^F6 ", "Interacting": r"^(F2p?|F1d\d+n?|F1p) ",
             "Gate-aware": r"^S1ga ", "B2 explicit": r"^B2C-S[12] "}
 
 

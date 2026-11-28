@@ -33,9 +33,14 @@ M3  Occupancy latch (Z3, bounded model checking of a timed abstraction, 30 s): d
     formal/check_stale.py (ST1); a commitment made under STALE keeps that bound until a witness arrives.
     M3m: a belief without the latch (FREE as soon as nothing is seen) must give a counterexample (outer queue points of
     n = 3 and n = 4).
-    M3f / M3hs: mutations with the FORMER timed release to FREE (e3e31f0, no admission bound): an occupant that stops
-    inside the CR (a fault) or before it behind the bars is released by it (counterexamples expected; formal ST1m4 shows
-    the same for the timeline).
+    The corridor needs A in B's FRONT cone at every heading within heading_tol (the deployed "FRONT" in the pattern).
+    M3q / M3hq / M4dq (premise Q): M3, M3h and M4d for the abreast queues the planner accepts (n = 2, 3) with B's estimate
+    within queue_tol of its queue point (its predicted ranges come from there) and its true position off it by err,
+    |err| <= nav_err_m per gate-frame axis (Q1) and at most QUEUE_OUTWARD_M outward of the queue point (Q2), positions of
+    the FRONT sonar: sampled offsets (with the vertex of Q1 and Q2) x ten errors for the BMC (one entry per queue view,
+    every query UNSAT), the same offsets x a 5 x 5 error grid for M4dq; B's reach
+    shortened by nav_err_m + queue_tol.  M3ql (declared limit): beyond Q2, inside at_queue and Q1.  M3qs (scope): abreast
+    4 at the bound.  M3qm (mutation): the M3hq model without the band latch input.  The crossing drone stays on the axis.
 M4  Geometry of the queue (numeric, n = 2..6, exact config values): (a) the CR lies inside the
     FRONT cone of every queue point with the heading tolerance and fuzz; (b) the merge path of a
     committed drone keeps merge_clearance from the next queue point; (c) queued neighbours stay
@@ -67,7 +72,8 @@ M5  Progress of the queue (argument + spec): for every occupancy in scope some q
     inside the approach zone (a permanent fault there) blocks the drones on its right.
 
 IDEALISED (M3, M4): the observer sits exactly at its queue point and the crossing drone exactly on the axis (no navigation
-error); its sonar view is a function of the crossing drone's TRUE position - the observation channel, not knowledge - and no
+error; M3q / M3hq / M4dq displace the observer's true position from its estimate, premise Q; its heading is within
+heading_tol, the compass error is not modelled); its sonar view is a function of the crossing drone's TRUE position - the observation channel, not knowledge - and no
 acoustic report is modelled.  Explicit communication and the local decisions of both drones: formal/check_b2_comm.py (whose B2C-G1
 shows that from the stage-2 hold, under the declared navigation error, no part of the CR is certain in the FRONT sonar).
 
@@ -96,6 +102,7 @@ from holo_fleet.ha import mutex_rule
 from holo_fleet.mission import (Slot, abreast_slots, gate_frame_points, queue_assignment, queue_line, queue_order,
                                 structure_masked_pairs)
 from holo_fleet.perception.sonar_geometry import AXES, MOUNTS, R_IN, R_OUT, centre_distance_lower
+from holo_fleet.referee.robustness_metrics import FRONT_LEVER_M, QUEUE_CLS_ERR_M, QUEUE_OUTWARD_M  # premise Q (queue_cls)
 
 ENC = "holo_fleet/ha/mutex_rule.py (shared relation) + formal/check_mutex.py"
 AXIS = {"F": 0.0, "L": 90.0, "B": 180.0, "R": -90.0}
@@ -285,8 +292,29 @@ def queue_points(G, n, perc=DEFAULT.perc):
     return queue_line(abreast_slots(n), G, perc), G.queue_laterals(n)
 
 
-def geometry(cfg: FleetConfig, n: int, queue_line=None) -> dict:
-    """Numeric facts of the abreast queue for n drones (exact config values; ``queue_line`` overrides it)."""
+def _front_at_every_heading(d2: np.ndarray, tol: float) -> bool:
+    """The deployed corridor needs "FRONT" in the echo pattern (perception/gate_perception.py): the direction ``d2``
+    (body frame, gate-aligned) is in the FRONT cone of sonar_geometry.far_field_pattern at every heading within +-tol
+    (the extremes suffice: the angle to the axis is convex in the heading).  The centre direction, not the hull, is used:
+    the FRONT region is entered no earlier than modelled."""
+    u = d2 / np.linalg.norm(d2)
+    return all("FRONT" in far_field_pattern(np.array([math.cos(h) * u[0] + math.sin(h) * u[1],
+                                                       -math.sin(h) * u[0] + math.cos(h) * u[1], 0.0]))
+               for h in (-tol, tol))
+
+
+def geometry(cfg: FleetConfig, n: int, queue_line=None, err=(0.0, 0.0), widen: float = 0.0,
+             cone_extra_deg: float = 0.0, est_off=(0.0, 0.0)) -> dict:
+    """Numeric facts of the abreast queue for n drones (exact config values; ``queue_line`` overrides it).
+
+    Each view is the queued observer B and a drone A crossing on the axis from the queue line.  B's predicted ranges
+    (structure window, corridor, band, exit threshold) come from its estimate, which ``at_queue`` holds at the queue point
+    (perception/gate_perception.py) within queue_tol of the queue point (``est_off``, gate-frame s, l; positive l outward
+    for a view at l >= 0).  Premise Q (``err``): B's true position is the estimate
+    minus ``err`` (gate-frame s, l; |err| <= nav_err_m per axis), so A's true range and A's bearing (the FRONT condition of
+    the corridor, at every heading within heading_tol_deg) are taken from that true position.  ``cone_extra_deg`` widens
+    the cone of bar points of the predicted structure window (the heading tolerance of the estimate at the queue point);
+    ``widen`` widens the window at both ends (a mutation).  The exit threshold is taken once A has entered the CR."""
     G, env, perc = cfg.gate, cfg.env, cfg.perc
     q_s, lats = queue_points(G, n)
     if queue_line is not None:
@@ -316,8 +344,12 @@ def geometry(cfg: FleetConfig, n: int, queue_line=None) -> dict:
     out["queue_neighbour_d_lower"] = round(centre_distance_lower(r_echo, "LEFT", env.eps_range_far, perc.sonar,
                                                                  centre_in_cone=True), 3)
     rows = []
+    tol = math.radians(G.heading_tol_deg)
+    step = 0.005
     for l in lats:
-        son = np.array([q_s + float(MOUNTS["FRONT"][0]), l, 0.0])
+        side = 1.0 if l >= 0 else -1.0  # est_off[1] > 0 moves the estimate outward
+        son = np.array([q_s + float(MOUNTS["FRONT"][0]) + float(est_off[0]), l + side * float(est_off[1]), 0.0])  # estimate
+        true_son = son - np.array([float(err[0]), side * float(err[1]), 0.0])  # B's true sonar position (premise Q)
         lo_g, hi_g = G.cr_lo(), G.passage_hi()
         c0, half = (lo_g + hi_g) / 2, (hi_g - lo_g) / 2
         q = son
@@ -326,25 +358,30 @@ def geometry(cfg: FleetConfig, n: int, queue_line=None) -> dict:
         lo_corr, hi_corr = near - R_OUT - env.eps_range_far, far + env.eps_range_near
         bar_pts = gate_frame_points()
         rb = [float(np.linalg.norm(p - son)) for p in bar_pts if
-              math.degrees(math.acos(np.clip((p - son)[0] / np.linalg.norm(p - son), -1, 1))) <= HALF + 3.0]
-        m_lo, m_hi = min(rb) - perc.structure_tol_m, max(rb) + perc.structure_tol_far_m
-        ss = np.linspace(-6.0, 6.0, 2401)
-        rng_A = np.array([math.hypot(s - son[0], l) for s in ss]) - 0.29
-        corr = (rng_A >= lo_corr) & (rng_A <= hi_corr)
+              math.degrees(math.acos(np.clip((p - son)[0] / np.linalg.norm(p - son), -1, 1))) <= HALF + 3.0 + cone_extra_deg]
+        m_lo = min(rb) - perc.structure_tol_m - widen
+        m_hi = max(rb) + perc.structure_tol_far_m + widen
+        ss = np.arange(q_s, 6.0 + step / 2, step)  # A's path from its start on the queue line
+        rel = np.stack([ss - true_son[0], np.full_like(ss, -true_son[1])], axis=1)
+        rng_A = np.hypot(rel[:, 0], rel[:, 1]) - 0.29
+        ahead = rel[:, 0] > 0.3
+        front = np.array([bool(a) and _front_at_every_heading(d, tol) for a, d in zip(ahead, rel)])
+        corr = (rng_A >= lo_corr) & (rng_A <= hi_corr) & front
         masked = (rng_A >= m_lo) & (rng_A <= m_hi)
         seen_corr = corr & ~masked & (ss < G.passage_clear_s)
         first_mask = float(ss[np.argmax(masked)]) if masked.any() else None
-        exposure = float(seen_corr[ss < (first_mask if first_mask is not None else 9)].sum() * (ss[1] - ss[0]))
-        after = ss[(ss > (first_mask or -9)) & ~masked]
+        exposure = float(seen_corr[ss < (first_mask if first_mask is not None else 9)].sum() * step)
+        after = ss[(ss > first_mask) & ~masked] if first_mask is not None else ss[:0]
         unmask_s = float(after.min()) if after.size else None
-        beyond_s = float(ss[np.argmax((rng_A > hi_corr) & (ss > 0))]) if ((rng_A > hi_corr) & (ss > 0)).any() else None
+        # the latch abstraction takes one masked interval [mask_from_s, visible_again_s)
+        one_interval = first_mask is None or not (masked & (ss >= (unmask_s if unmask_s is not None else 99.0))).any()
+        out_ = (rng_A > hi_corr) & (ss > G.cr_s_min)
+        beyond_s = float(ss[np.argmax(out_)]) if out_.any() else None
         corr_from = float(ss[np.argmax(corr)]) if corr.any() else None
         band = rng_A >= lo_corr - G.nav_err_m
         band_from = float(ss[np.argmax(band)]) if band.any() else None
-        tol = math.radians(G.heading_tol_deg)
         fo_s = []
-        for s_a in ss[::10]:
-            d = np.array([s_a - son[0], -l])
+        for s_a, d in zip(ss[::10], rel[::10]):
             if d[0] < 0.5:
                 continue
             u = d / np.linalg.norm(d)
@@ -352,11 +389,13 @@ def geometry(cfg: FleetConfig, n: int, queue_line=None) -> dict:
                    for h in (-tol, 0.0, tol)):
                 fo_s.append(float(s_a))
         rows.append({"queue_l": l, "corridor": (round(lo_corr, 2), round(hi_corr, 2)), "mask": (round(m_lo, 2), round(m_hi, 2)),
-                     "exposure_m": round(exposure, 2), "corridor_from_s": corr_from, "band_from_s": band_from,
+                     "exposure_m": round(exposure, 2), "exposure_raw_m": exposure, "corridor_from_s": corr_from, "band_from_s": band_from,
                      "front_only_s": (min(fo_s), max(fo_s)) if fo_s else None, "mask_from_s": first_mask,
-                     "visible_again_s": unmask_s, "beyond_s": beyond_s})
+                     "visible_again_s": unmask_s, "beyond_s": beyond_s, "one_masked_interval": one_interval,
+                     "front_from_s": float(ss[np.argmax(front)]) if front.any() else None})
     out["views"] = rows
-    out["min_exposure_s"] = round(min(r["exposure_m"] for r in rows) / G.v_pass, 2)
+    out["min_exposure_s_raw"] = min(r["exposure_raw_m"] for r in rows) / G.v_pass
+    out["min_exposure_s"] = round(out["min_exposure_s_raw"], 2)
     out["unmask_before_beyond"] = all(r["visible_again_s"] is None or r["beyond_s"] is None or r["visible_again_s"] <= r["beyond_s"] + 1e-9
                                       for r in rows)
     out["mask_inside_cr_or_after"] = all(r["mask_from_s"] is None or r["mask_from_s"] >= G.cr_s_min - 0.3 for r in rows)
@@ -460,7 +499,7 @@ def exit_observability(cfg: FleetConfig, n: int = 0, step: float = 0.1, slots=No
 
 
 def latch_bmc(cfg: FleetConfig, geo: dict, steps: int = 420, latch: bool = True, v_lo: float = V_LO, view=None,
-              band_latch: bool = True, hold: bool = False, timeout: bool = False):
+              band_latch: bool = True, hold: bool = False, timeout: bool = False, reach_slack_m: float = 0.0):
     """A crosses on the axis; B (queue view ``view``) decides with the deployed belief logic (timeout=True retains the former release for mutations)."""
     G = cfg.gate
     dt = 0.1
@@ -476,7 +515,7 @@ def latch_bmc(cfg: FleetConfig, geo: dict, steps: int = 420, latch: bool = True,
     fo_lo, fo_hi = view["front_only_s"] if view.get("front_only_s") else (99.0, -99.0)
     no_rel = lambda x: z3.And(x >= band_lo, x <= b_s, x >= fo_lo, x <= fo_hi)
     in_band = lambda x: z3.And(x >= band_lo, x < s_corr_lo, x >= fo_lo, x <= fo_hi)
-    reach = int(math.floor((G.cr_s_min - geo["queue_s"]) / v_hi / dt))
+    reach = int(math.floor((G.cr_s_min - geo["queue_s"] - reach_slack_m) / v_hi / dt))
     sA = [z3.Real(f"sA_{k}") for k in range(steps + 1)]
     seen = [z3.Bool(f"seen_{k}") for k in range(steps + 1)]
     corr = [z3.Bool(f"corr_{k}") for k in range(steps + 1)]
@@ -517,6 +556,159 @@ def latch_bmc(cfg: FleetConfig, geo: dict, steps: int = 420, latch: bool = True,
         for k in range(reach, steps + 1)
     ]))
     return cons, {"view": view["queue_l"], "mask_s": (m_lo_s, m_hi_s), "beyond_s": b_s, "reach_steps": reach}
+
+
+Q_DOMAIN_N = (2, 3)  # abreast queues the planner accepts (queue_lateral_max; abreast 4 or more is refused)
+
+
+def _q_views(geo):
+    """Views of one side of a symmetric queue (the error samples are symmetric in the lateral component)."""
+    return [v for v in geo["views"]
+            if not (v["queue_l"] < -1e-6 and any(abs(w["queue_l"] + v["queue_l"]) < 1e-6 for w in geo["views"]))]
+
+
+def _q_samples(G, b, views_l, grid=False):
+    """(est_off, err) samples of premise Q with at_queue: the estimate within queue_tol of the queue point, the error
+    within b per axis, and (premise Q2, QUEUE_OUTWARD_M) the true position of a drone off the axis at most that far
+    outward of its queue point (the lateral error is raised to meet it: samples on the boundary of Q2).
+
+    The positions are those of the FRONT sonar: with the heading within heading_tol_deg its lateral offset from the body is
+    at most FRONT_LEVER_M, so the lateral estimate offset reaches queue_tol + FRONT_LEVER_M (the along-axis part,
+    0.24 (1 - cos 6 deg) = 1.3 mm, is below the 5 mm grid of s).  Off the axis the lateral offsets include the vertex of
+    Q1 and Q2 (estimate lim - b inward, true position lim outward), the worst point of the region (exposure scan)."""
+    q, lim = G.queue_tol, QUEUE_OUTWARD_M
+    q_l = q + FRONT_LEVER_M
+    lat = [-q_l, 0.0, q_l] + ([lim - b] if views_l > 0.1 and -q_l < lim - b < q_l else [])
+    offs = [(a * q, c) for a in (-1, 0, 1) for c in lat]
+    if grid:
+        errs = [(x, y) for x in np.linspace(-b, b, 5) for y in np.linspace(-b, b, 5)]
+    else:
+        errs = [(a * b, c * b) for a in (-1.0, 0.0, 1.0) for c in (-1.0, -0.5, 0.0, 0.5, 1.0)
+                if (a, c) != (0.0, 0.0) and not (a != 0.0 and abs(c) == 0.5)]
+    out = set()
+    for o in offs:
+        for e in errs:
+            ey = max(e[1], o[1] - lim) if views_l > 0.1 else e[1]
+            if abs(ey) <= b + 1e-9:
+                out.add((round(o[0], 4), round(o[1], 4), round(e[0], 4), round(ey, 4)))
+    return sorted(out)
+
+
+def premise_q_checks(rep: Report, cfg: FleetConfig, verbose: bool) -> None:
+    """Premise Q of the occupancy latch, for the abreast queues the planner accepts (n = 2, 3).  A queued drone classifies
+    at its navigation estimate (no beacon or fit pose); ``at_queue`` holds that estimate within queue_tol of the queue point
+    (``est_off``), so its predicted structure window, corridor, band and exit threshold come from there; its true position
+    is the estimate minus err, |err_s|, |err_l| <= b = QUEUE_CLS_ERR_M = nav_err_m (Q1), and a drone off the axis is at most
+    QUEUE_OUTWARD_M outward of its queue point (Q2).  The crossing drone's true range and bearing, so the FRONT condition of
+    the deployed corridor (every heading within heading_tol_deg; the compass error is not modelled), come from the true
+    position (``geometry(err=..., est_off=...)``).  The bar cone of the predicted window is widened by the heading
+    tolerance; the observer's reach to the CR is shortened by b + queue_tol.  Both parts are monitored by the referee
+    (``queue_cls``).
+
+    M3q / M3hq (bounded, one entry per queue view, all its queries UNSAT and every sample with one masked interval): the
+    BMC of M3 / M3h at the estimate offsets {-queue_tol, 0, queue_tol} along the axis x {-(queue_tol + FRONT_LEVER_M), 0,
+    queue_tol + FRONT_LEVER_M} and, off the axis, the vertex of Q1 and Q2 laterally, x ten errors (the eight boundary
+    points of the square and err_l = +-b/2), the lateral error raised where Q2 binds (a sample, not a continuum).  Each
+    query holds the pose fixed for its 42 s.  M4dq (numeric): the exposure on the same offsets x a 5 x 5 error grid.
+    M3ql (declared limit): the outer point of 3 with
+    the estimate queue_tol forward and the true position 1.0 m outward (inside at_queue and Q1, beyond Q2) has a
+    counterexample.  M3qs (scope): abreast 4, refused by the planner, at the bound.  M3qm (mutation): the M3hq model without
+    the latch input of the band must give a counterexample.  Idealised as M3: the crossing drone on the axis, the M2
+    relations verified for offsets within queue_tol only.  M4bq (reported): the beacon bound at the queue points."""
+    G = cfg.gate
+    b = QUEUE_CLS_ERR_M
+    slack = b + G.queue_tol
+    head = float(G.heading_tol_deg)
+    for n in Q_DOMAIN_N:
+        for view_l in [v["queue_l"] for v in _q_views(geometry(cfg, n))]:
+            samples = _q_samples(G, b, view_l)
+            geos = [geometry(cfg, n, err=(e0, e1), est_off=(o0, o1), cone_extra_deg=head) for o0, o1, e0, e1 in samples]
+            views = [next(v for v in g["views"] if abs(v["queue_l"] - view_l) < 1e-6) for g in geos]
+            for hold in (False, True):
+                # one entry per view: every sampled (estimate offset, error) is its own BMC query, all must be UNSAT
+                runs = [check("M3q sample", "", ENC, latch_bmc(cfg, g, view=v, hold=hold, reach_slack_m=slack)[0],
+                              timeout_ms=900000) for g, v in zip(geos, views)]
+                bad = [(smp, r) for smp, r in zip(samples, runs) if not r.passed]
+                # the latch abstraction has one masked interval: a sample with a second one would be read as visible
+                split = [smp for smp, v in zip(samples, views) if not v["one_masked_interval"]]
+                first_mask = min(v["mask_from_s"] for v in views if v["mask_from_s"] is not None)
+                res = CheckResult(prop=f"M3{'h' if hold else ''}q premise Q, n={n}, observer at l={view_l:+.2f}: no admission "
+                                       f"before physical clearance at {len(samples)} sampled (estimate offset, error) pairs "
+                                       f"(42 s BMC each{', the crossing drone may stop before the CR' if hold else ''})",
+                                  formula="as M3 / M3h with the observer's estimate within queue_tol and its true position "
+                                          "off it (Q1, Q2); every query UNSAT",
+                                  encoding=ENC, expect="unsat",
+                                  verdict="unsat" if not bad else bad[0][1].verdict, passed=not bad and not split,
+                                  seconds=round(sum(r.seconds for r in runs), 3),
+                                  counterexample=bad[0][1].counterexample if bad else None,
+                                  note=f"{len(runs)} queries, the longest {max(r.seconds for r in runs):.1f} s; one masked "
+                                       f"interval in every sample: {not split}; corridor from s >= "
+                                       f"{max(v['corridor_from_s'] for v in views):.2f}, mask from s >= {first_mask:.2f}"
+                                       + (f"; first failing sample (offset, err) {bad[0][0]}" if bad else "")
+                                       + (f"; samples with two masked intervals {split[:3]}" if split else ""))
+                rep.add(res, verbose)
+    geo_l = geometry(cfg, 3, err=(-b, -b), est_off=(G.queue_tol, 0.0), cone_extra_deg=head)
+    outer3 = max(geo_l["views"], key=lambda v: v["queue_l"])
+    cons, info = latch_bmc(cfg, geo_l, view=outer3, reach_slack_m=slack)
+    rep.add(check(f"M3ql declared limit: n=3, outer queue point, estimate {G.queue_tol:.2f} m forward (at_queue) and the true "
+                  f"position {b:.2f} m further forward and outward (Q1), {b:.2f} m outward of the queue point (beyond Q2, "
+                  f"{QUEUE_OUTWARD_M} m): the latch can admit before clearance",
+                  "expect counterexample: inside at_queue and the navigation premise, outside premise Q2", ENC, cons,
+                  expect="sat", timeout_ms=900000,
+                  note=f"corridor from s {outer3['corridor_from_s']} (FRONT from {outer3['front_from_s']}), masked s in "
+                       f"{info['mask_s']}: the FRONT sighting comes after the mask; the referee monitors Q2"), verbose)
+    worst_l = (0.0, -b)  # the true position further out (the bearing of the crossing drone wider)
+    geo4 = geometry(cfg, 4, err=worst_l, cone_extra_deg=head)
+    outer4 = max(geo4["views"], key=lambda v: v["queue_l"])
+    cons, info = latch_bmc(cfg, geo4, view=outer4, reach_slack_m=slack)
+    rep.add(check(f"M3qs scope: abreast 4 (refused by the planner, queue_lateral_max), outer queue point l="
+                  f"{outer4['queue_l']:+.2f}, true position {b:.2f} m further out: the FRONT corridor sighting is lost "
+                  "before the mask", "expect counterexample: outside the operating domain", ENC, cons, expect="sat",
+                  timeout_ms=900000,
+                  note=f"corridor from s {outer4['corridor_from_s']} (FRONT from {outer4['front_from_s']}), masked s in "
+                       f"{info['mask_s']}: abreast 4 is outside the domain; premise Q covers n <= 3"), verbose)
+    geo_m = geometry(cfg, 3, err=(b, -b), cone_extra_deg=head)
+    centre = min(geo_m["views"], key=lambda v: abs(v["queue_l"]))
+    cons, info = latch_bmc(cfg, geo_m, view=centre, band_latch=False, hold=True, reach_slack_m=slack)
+    rep.add(check("M3qm mutation: the M3hq model (n=3 centre, err (+b, -b)) without the latch input of a FRONT-only echo in "
+                  "the band: must give a counterexample", "expect counterexample", ENC, cons, expect="sat",
+                  timeout_ms=900000, note=f"masked s in {info['mask_s']}, band from s {centre['band_from_s']}: the premise-Q "
+                                          "encoding can fail"), verbose)
+    from holo_fleet.perception.gate_beacon import fix_bound
+    gb = cfg.gate_beacon
+    x = math.sqrt(2.0) * b
+    n_max = int(gb.hold_s * gb.rate_hz) + 1
+    pts = [(q_s, l) for q_s, lats in (queue_points(G, n, cfg.perc) for n in Q_DOMAIN_N) for l in lats]
+    nominal = min(fix_bound(cfg, math.sqrt(q ** 2 + l ** 2 + gb.up_m ** 2), n_max) for q, l in pts)
+    shortest = min(fix_bound(cfg, max(0.0, math.sqrt(q ** 2 + l ** 2 + gb.up_m ** 2) - x - G.queue_tol), n_max)
+                   for q, l in pts)
+    rep.add(CheckResult(f"M4bq reported: beacon bound at the queue points >= {nominal:.3f} m (nominal), >= {shortest:.3f} m "
+                        f"with the true range shorter by sqrt(2) b + queue_tol; max_bound_m = {gb.max_bound_m} m, {n_max} "
+                        "fixes", "min over queue points of fix_bound(r, n_max)", "perception/gate_beacon.py", "reported",
+                        verdict="reported", passed=True,
+                        note="below max_bound_m a beacon pose before the commitment is possible: outside premise Q, flagged "
+                             "by the referee (queue_cls), as a structure fit"), verbose)
+    expo = {}
+    for n in Q_DOMAIN_N:
+        for view_l in [v["queue_l"] for v in _q_views(geometry(cfg, n))]:
+            for o0, o1, e0, e1 in _q_samples(G, b, view_l, grid=True):
+                geo = geometry(cfg, n, err=(e0, e1), est_off=(o0, o1), cone_extra_deg=head)
+                v = next(w for w in geo["views"] if abs(w["queue_l"] - view_l) < 1e-6)
+                key = (n, view_l)
+                val = v["exposure_raw_m"] / G.v_pass
+                if key not in expo or val < expo[key][0]:
+                    expo[key] = (val, (o0, o1, e0, e1))
+    ok = all(v >= 0.3 for v, _e in expo.values())
+    rep.add(CheckResult(f"M4dq premise Q (b = {b:.2f} m, outward <= {QUEUE_OUTWARD_M} m): a crossing drone on the axis is "
+                        "seen unmasked in the FRONT corridor for >= 3 captures from a queued observer whose estimate is "
+                        "within queue_tol and whose true position is off it",
+                        "exposure / v_pass >= 0.3 s on a 3 x 3 x 5 x 5 grid of (estimate offset, error) under Q1, Q2, "
+                        "n = 2, 3 (unrounded)",
+                        "perception/gate_perception.py", "holds", verdict="holds" if ok else "violated", passed=ok,
+                        note="; ".join(f"n={n} l={l:+.2f}: min {v:.3f} s at offset ({e[0]:+.2f}, {e[1]:+.2f}), "
+                                       f"err ({e[2]:+.2f}, {e[3]:+.2f})" for (n, l), (v, e) in sorted(expo.items()))
+                             + ".  Off the axis (a lateral offset of the crossing drone) the exposure of the side views can "
+                               "be shorter; M3q then rests on the band and the WAIT relations"), verbose)
 
 
 def run(cfg: FleetConfig = DEFAULT, verbose: bool = True) -> Report:
@@ -600,7 +792,7 @@ def run(cfg: FleetConfig = DEFAULT, verbose: bool = True) -> Report:
                         "config + perception bound", "holds", verdict="holds" if ok_c else "violated", passed=ok_c,
                         note=f"d_lower {geos[3]['queue_neighbour_d_lower']} m vs d_warning_exit {cfg.sep.d_warning_exit} m"), verbose)
     need = 3 * 0.1
-    ok_d = all(g["min_exposure_s"] >= need for g in geos.values())
+    ok_d = all(g["min_exposure_s_raw"] >= need for g in geos.values())
     rep.add(CheckResult("M4d a crossing drone is seen unmasked in the corridor for >= 3 captures",
                         "exposure / v_pass >= 0.3 s", "perception/gate_perception.py", "holds",
                         verdict="holds" if ok_d else "violated", passed=ok_d,
@@ -717,6 +909,7 @@ def run(cfg: FleetConfig = DEFAULT, verbose: bool = True) -> Report:
             cons, info = latch_bmc(cfg, geos[n], view=view, hold=True)
             rep.add(check(f"M3h occupancy latch, n={n}, observer at l={view['queue_l']:+.2f}: the crossing drone may stop anywhere before the CR, 42 s bound: no admission before physical clearance",
                           "as M3, the speed floor applying only inside the CR", ENC, cons, timeout_ms=900000, note=f"band from s {view['band_from_s']}, FRONT-only s {view['front_only_s']}"), verbose)
+    premise_q_checks(rep, cfg, verbose)
     worst = max(geos[2]["views"], key=lambda v: v["queue_l"])
     for n_m in (3, 4):
         outer = max(geos[n_m]["views"], key=lambda v: v["queue_l"])

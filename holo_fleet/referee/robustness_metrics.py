@@ -43,7 +43,24 @@ from holo_fleet.config import COMMUNICATION_DISABLED, DEFAULT, communication_dis
 from holo_fleet.referee.criteria import (CRITERIA_VERSION, E_TOL_M, deadline_terms, deadline_v3, horizon_v5,
                                          profile_family,
                                          t_hold_s)
+from holo_fleet.perception.sonar_geometry import MOUNTS
 from holo_fleet.referee.gate_events import gate_events
+
+# Premise Q of the occupancy latch (formal/check_mutex.py M3q / M3hq / M4dq): a queued drone predicts the structure window,
+# the corridor and the exit threshold from its navigation estimate (no beacon or fit pose), in error by at most the
+# navigation premise of the operating domain on each horizontal axis of the gate frame (so sqrt(2) times it along any
+# direction, the bound of the formal checks); the B2 acoustic exit assumes the same per-axis bound
+# (AcousticConfig.nav_err_gate_m).  Monitored here as ``queue_cls``; like zone_nav and beacon_fix it is a cause tag, not a
+# class, and scripts/audit_final_campaign.py judges it per run.
+QUEUE_CLS_ERR_M = float(DEFAULT.gate.nav_err_m)
+# Premise Q, second part (formal/check_mutex.py M3q, M3ql): the true position of the FRONT sonar of a queued drone off the
+# gate axis is at most this far outward (away from the axis) of its queue point.  at_queue (queue_tol) with the navigation
+# error allows queue_tol + nav_err_m = 1.35 m; at the outer point of 3 abreast the latch model has a counterexample at
+# 1.0 m (M3ql), and at 0.8 m its exposure is 0.31 s against 0.30 s (no margin), so the bound is 0.7 m (0.58 s, M4dq).
+QUEUE_OUTWARD_M = 0.7
+# The referee logs the body position, not the yaw: with the heading within heading_tol_deg of the gate axis (the premise of
+# the latch model; the compass error is not modelled) the FRONT sonar is at most this far further out than the body.
+FRONT_LEVER_M = float(MOUNTS["FRONT"][0]) * math.sin(math.radians(float(DEFAULT.gate.heading_tol_deg)))
 
 DEADLOCK_S = 20.0
 CHATTER_S = 1.0
@@ -637,6 +654,9 @@ def premise_monitors(sc, cfg, names, faults, t, P, states, m) -> Dict:
     pv, nav_n, nav_max, nav_self = [], 0, 0.0, {}
     zh_max, zv_max, z_n, z_samples = 0.0, 0.0, 0, 0
     b_n, b_samples, b_max = 0, 0, 0.0
+    q_n, q_samples, q_max, q_src, q_out = 0, 0, 0.0, {}, {}
+    q_ow_n, q_ow_max, q_unjudged = 0, 0.0, 0
+    q_lat = [getattr(pl, "queue_lateral", None) for pl in (getattr(sc, "plans", None) or [])]
     for k in range(n):
         for i in range(m):
             r = states[k][i]
@@ -654,6 +674,29 @@ def premise_monitors(sc, cfg, names, faults, t, P, states, m) -> Dict:
                 eb = float(np.hypot(*(pc_ - P[i, k])[:2]))
                 b_samples, b_max = b_samples + 1, max(b_max, eb)
                 b_n += int(eb > float(r["cls_bound"]))
+            if (g is not None and not r.get("committed") and r.get("nav_p") is not None
+                    and -cfg.perc.sonar.range_max <= float(gr.get("s", 1e9)) < cfg.gate.cr_s_min):
+                # premise Q (QUEUE_CLS_ERR_M), judged where the latch model M3q applies: a queued drone classifies at
+                # its navigation estimate, within the bound on each gate-frame axis.  Other steps before the commitment
+                # (approach, retreat after a give-up, out of the queue tolerance) are outside that model: counted only.
+                src = r.get("cls_source") or "nav"
+                pq = np.asarray(r["nav_p"], float)
+                if src in ("beacon", "fit") and r.get("cls_offset") is not None:
+                    pq = pq + np.array([float(r["cls_offset"][0]), float(r["cls_offset"][1]), 0.0])
+                eg = g.vec_to_gate_frame(pq - P[i, k])
+                eq = max(abs(float(eg[0])), abs(float(eg[1])))
+                if _queued(gr):
+                    q_samples, q_max, q_src[src] = q_samples + 1, max(q_max, eq), q_src.get(src, 0) + 1
+                    q_n += int(eq > QUEUE_CLS_ERR_M or src != "nav")
+                    ql = q_lat[k] if k < len(q_lat) else None
+                    if ql is None:
+                        q_unjudged += 1  # no plan: the outward offset cannot be judged (fails the premise)
+                    elif abs(ql) > 0.1:  # off the axis: outward is away from it, judged at the FRONT sonar
+                        ow = math.copysign(1.0, ql) * (float(g.to_gate_frame(P[i, k])[1]) - ql) + FRONT_LEVER_M
+                        q_ow_max = max(q_ow_max, ow)
+                        q_ow_n += int(ow > QUEUE_OUTWARD_M)
+                else:
+                    q_out[src] = q_out.get(src, 0) + 1
             if r.get("committed") and r.get("nav_p") is not None and g is not None and gr.get("zone_since") is not None:
                 # premise Z of the timed admission (GateRule.zone_err_h_m / zone_err_v_m) while dwelling in the zone
                 ez = g.vec_to_gate_frame(np.asarray(r["nav_p"], float) - P[i, k])
@@ -684,6 +727,12 @@ def premise_monitors(sc, cfg, names, faults, t, P, states, m) -> Dict:
             "gate_nav": {"committed_beyond": nav_n, "max_committed_error_m": round(nav_max, 3),
                          "self_induced": bool(nav_self) and all(nav_self.values())},
             "beacon_fix": {"samples": b_samples, "beyond": b_n, "max_err_m": round(b_max, 3), "holds": b_n == 0},
+            "queue_cls": {"samples": q_samples, "beyond": q_n, "max_axis_m": round(q_max, 3), "sources": q_src,
+                          "bound_m": QUEUE_CLS_ERR_M, "outward_beyond": q_ow_n, "max_outward_m": round(q_ow_max, 3),
+                          "outward_bound_m": QUEUE_OUTWARD_M, "front_lever_m": round(FRONT_LEVER_M, 4),
+                          "unjudged": q_unjudged,
+                          "holds": q_n == 0 and q_ow_n == 0 and q_unjudged == 0,
+                          "outside_queue_sources": q_out},
             "zone_nav": {"samples": z_samples, "beyond": z_n, "max_h_m": round(zh_max, 3), "max_v_m": round(zv_max, 3),
                          "holds": z_n == 0},
             "fairness": fairness_gap(names, onset, t, states, m, cfg),
@@ -704,6 +753,9 @@ def cause_tags(out: Dict, fm: Dict, fs_sensor, term, states, healthy, m: int, dt
         tags.append("ZONE_NAV_PREMISE_VIOLATED")
     if (out.get("beacon_fix") or {}).get("beyond"):
         tags.append("BEACON_FIX_PREMISE_VIOLATED")
+    qc = out.get("queue_cls") or {}
+    if qc.get("beyond") or qc.get("outward_beyond") or qc.get("unjudged"):
+        tags.append("QUEUE_CLS_PREMISE_VIOLATED")
     pcc = (out.get("premise_c") or {}).get("counts") or {}
     if pcc.get("VIOLATED"):
         tags.append("PREMISE_C_VIOLATED")
