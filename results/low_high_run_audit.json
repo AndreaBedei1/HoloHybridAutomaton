@@ -1,0 +1,444 @@
+{
+ "raw": "raw",
+ "runs": 4,
+ "expected_runs": 4,
+ "count_ok": true,
+ "accepted": 2,
+ "failed": [
+  {
+   "case": "B0_HIGH",
+   "protocol": "B0",
+   "seed": 0,
+   "class": "PREMISE_VIOLATED",
+   "failed_checks": [
+    "class_pass",
+    "terminal_success",
+    "all_crossed",
+    "formation_recovered",
+    "premise_gate_nav",
+    "premise_zone_nav",
+    "premise_queue_cls"
+   ]
+  },
+  {
+   "case": "B2_HIGH_HARSH",
+   "protocol": "B2_MEDIUM_HARSH",
+   "seed": 0,
+   "class": "INCOMPLETE",
+   "failed_checks": [
+    "class_pass",
+    "terminal_success",
+    "all_crossed",
+    "formation_recovered",
+    "premise_zone_nav",
+    "premise_beacon_fix",
+    "premise_queue_cls"
+   ]
+  }
+ ],
+ "rows": [
+  {
+   "case": "B0_HIGH",
+   "run": "B0_HIGH\\B0\\HIGH-ALL\\line_parallel_mutex\\s0",
+   "protocol": "B0",
+   "profile": "HIGH-ALL",
+   "scenario": "line_parallel_mutex",
+   "seed": 0,
+   "class": "PREMISE_VIOLATED",
+   "recorded_class": "PREMISE_VIOLATED",
+   "t_end_s": 890.09,
+   "min_true_separation_m": 2.603,
+   "max_occupancy": 0,
+   "crossed": [],
+   "unsafe_admissions": 0,
+   "p3_recovery_max_s": 218.8,
+   "premises": {
+    "zone_nav": {
+     "samples": 3216,
+     "beyond": 3216,
+     "max_h_m": 4.226,
+     "max_v_m": 0.688,
+     "holds": false
+    },
+    "beacon_fix": {
+     "samples": 2,
+     "beyond": 0,
+     "max_err_m": 0.204,
+     "holds": true
+    },
+    "queue_cls": {
+     "samples": 10198,
+     "beyond": 5075,
+     "max_axis_m": 3.303,
+     "sources": {
+      "nav": 10198
+     },
+     "bound_m": 1.0,
+     "outward_beyond": 4875,
+     "max_outward_m": 2.092,
+     "outward_bound_m": 0.7,
+     "front_lever_m": 0.0251,
+     "unjudged": 0,
+     "holds": false,
+     "outside_queue_sources": {
+      "nav": 12326,
+      "beacon": 2
+     }
+    },
+    "gate_nav": {
+     "committed_beyond": 4174,
+     "max_committed_error_m": 4.226,
+     "self_induced": false
+    },
+    "nav_bound": {
+     "samples": 26700,
+     "exceeded": 0,
+     "min_margin_m": 0.815
+    }
+   },
+   "diagnostics": {
+    "wrong_validated_fits": 0,
+    "queue_cls_outside_queue_sources": {
+     "nav": 12326,
+     "beacon": 2
+    }
+   },
+   "cause_tags": [
+    "GATE_NAV_PREMISE_VIOLATED",
+    "ZONE_NAV_PREMISE_VIOLATED",
+    "QUEUE_CLS_PREMISE_VIOLATED",
+    "sensor_fault_failsafe",
+    "relocalization_hold",
+    "gate_not_completed"
+   ],
+   "checks": {
+    "analysed": true,
+    "monitors_present": true,
+    "class_pass": false,
+    "class_reproduced": true,
+    "terminal_success": false,
+    "one_judged_gate_at_most": true,
+    "gate_metrics": true,
+    "all_crossed": false,
+    "formation_recovered": false,
+    "p1": true,
+    "p2": true,
+    "no_unsafe_admission": true,
+    "no_false_release": true,
+    "premise_nav_bound": true,
+    "premise_gate_nav": false,
+    "premise_v": true,
+    "premise_c": true,
+    "scope": true,
+    "premise_zone_nav": false,
+    "premise_beacon_fix": true,
+    "premise_queue_cls": false,
+    "queue_cls_observed": true,
+    "plans_reproduced": true
+   },
+   "accepted": false
+  },
+  {
+   "case": "B0_LOW",
+   "run": "B0_LOW\\B0\\LOW-ALL\\line_parallel_mutex\\s0",
+   "protocol": "B0",
+   "profile": "LOW-ALL",
+   "scenario": "line_parallel_mutex",
+   "seed": 0,
+   "class": "PASS",
+   "recorded_class": "PASS",
+   "t_end_s": 322.0,
+   "min_true_separation_m": 3.391,
+   "max_occupancy": 1,
+   "crossed": [
+    "drone_0",
+    "drone_1",
+    "drone_2"
+   ],
+   "unsafe_admissions": 0,
+   "p3_recovery_max_s": 206.9,
+   "premises": {
+    "zone_nav": {
+     "samples": 917,
+     "beyond": 0,
+     "max_h_m": 0.281,
+     "max_v_m": 0.152,
+     "holds": true
+    },
+    "beacon_fix": {
+     "samples": 1368,
+     "beyond": 0,
+     "max_err_m": 0.184,
+     "holds": true
+    },
+    "queue_cls": {
+     "samples": 1141,
+     "beyond": 0,
+     "max_axis_m": 0.11,
+     "sources": {
+      "nav": 1141
+     },
+     "bound_m": 1.0,
+     "outward_beyond": 0,
+     "max_outward_m": 0.062,
+     "outward_bound_m": 0.7,
+     "front_lever_m": 0.0251,
+     "unjudged": 0,
+     "holds": true,
+     "outside_queue_sources": {
+      "nav": 483
+     }
+    },
+    "gate_nav": {
+     "committed_beyond": 0,
+     "max_committed_error_m": 0.286,
+     "self_induced": false
+    },
+    "nav_bound": {
+     "samples": 9660,
+     "exceeded": 0,
+     "min_margin_m": 1.035
+    }
+   },
+   "diagnostics": {
+    "wrong_validated_fits": 0,
+    "queue_cls_outside_queue_sources": {
+     "nav": 483
+    }
+   },
+   "cause_tags": [
+    "false_reoccupation",
+    "false_vacancy",
+    "relocalization_hold"
+   ],
+   "checks": {
+    "analysed": true,
+    "monitors_present": true,
+    "class_pass": true,
+    "class_reproduced": true,
+    "terminal_success": true,
+    "one_judged_gate_at_most": true,
+    "gate_metrics": true,
+    "all_crossed": true,
+    "formation_recovered": true,
+    "p1": true,
+    "p2": true,
+    "no_unsafe_admission": true,
+    "no_false_release": true,
+    "premise_nav_bound": true,
+    "premise_gate_nav": true,
+    "premise_v": true,
+    "premise_c": true,
+    "scope": true,
+    "premise_zone_nav": true,
+    "premise_beacon_fix": true,
+    "premise_queue_cls": true,
+    "queue_cls_observed": true,
+    "plans_reproduced": true
+   },
+   "accepted": true
+  },
+  {
+   "case": "B2_HIGH_HARSH",
+   "run": "B2_HIGH_HARSH\\B2_MEDIUM_HARSH\\HIGH-ALL\\line_parallel_mutex\\s0",
+   "protocol": "B2_MEDIUM_HARSH",
+   "profile": "HIGH-ALL",
+   "scenario": "line_parallel_mutex",
+   "seed": 0,
+   "class": "INCOMPLETE",
+   "recorded_class": "INCOMPLETE",
+   "t_end_s": 890.09,
+   "min_true_separation_m": 2.688,
+   "max_occupancy": 1,
+   "crossed": [
+    "drone_0"
+   ],
+   "unsafe_admissions": 0,
+   "p3_recovery_max_s": 19.6,
+   "premises": {
+    "zone_nav": {
+     "samples": 24,
+     "beyond": 2,
+     "max_h_m": 0.305,
+     "max_v_m": 0.35,
+     "holds": false
+    },
+    "beacon_fix": {
+     "samples": 208,
+     "beyond": 10,
+     "max_err_m": 0.679,
+     "holds": false
+    },
+    "queue_cls": {
+     "samples": 6226,
+     "beyond": 4112,
+     "max_axis_m": 4.113,
+     "sources": {
+      "nav": 6226
+     },
+     "bound_m": 1.0,
+     "outward_beyond": 4551,
+     "max_outward_m": 4.039,
+     "outward_bound_m": 0.7,
+     "front_lever_m": 0.0251,
+     "unjudged": 0,
+     "holds": false,
+     "outside_queue_sources": {
+      "nav": 16000
+     }
+    },
+    "gate_nav": {
+     "committed_beyond": 0,
+     "max_committed_error_m": 0.713,
+     "self_induced": false
+    },
+    "nav_bound": {
+     "samples": 26700,
+     "exceeded": 0,
+     "min_margin_m": 0.806
+    }
+   },
+   "diagnostics": {
+    "wrong_validated_fits": 0,
+    "queue_cls_outside_queue_sources": {
+     "nav": 16000
+    }
+   },
+   "cause_tags": [
+    "ZONE_NAV_PREMISE_VIOLATED",
+    "BEACON_FIX_PREMISE_VIOLATED",
+    "QUEUE_CLS_PREMISE_VIOLATED",
+    "sensor_fault_failsafe",
+    "waiting_for_missing_neighbour",
+    "gate_not_completed"
+   ],
+   "checks": {
+    "analysed": true,
+    "monitors_present": true,
+    "class_pass": false,
+    "class_reproduced": true,
+    "terminal_success": false,
+    "one_judged_gate_at_most": true,
+    "gate_metrics": true,
+    "all_crossed": false,
+    "formation_recovered": false,
+    "p1": true,
+    "p2": true,
+    "no_unsafe_admission": true,
+    "no_false_release": true,
+    "premise_nav_bound": true,
+    "premise_gate_nav": true,
+    "premise_v": true,
+    "premise_c": true,
+    "scope": true,
+    "premise_zone_nav": false,
+    "premise_beacon_fix": false,
+    "premise_queue_cls": false,
+    "queue_cls_observed": true,
+    "plans_reproduced": true
+   },
+   "accepted": false
+  },
+  {
+   "case": "B2_LOW",
+   "run": "B2_LOW\\B2_LOW\\LOW-ALL\\line_parallel_mutex\\s0",
+   "protocol": "B2_LOW",
+   "profile": "LOW-ALL",
+   "scenario": "line_parallel_mutex",
+   "seed": 0,
+   "class": "PASS",
+   "recorded_class": "PASS",
+   "t_end_s": 193.3,
+   "min_true_separation_m": 3.325,
+   "max_occupancy": 1,
+   "crossed": [
+    "drone_0",
+    "drone_1",
+    "drone_2"
+   ],
+   "unsafe_admissions": 0,
+   "p3_recovery_max_s": 179.5,
+   "premises": {
+    "zone_nav": {
+     "samples": 638,
+     "beyond": 0,
+     "max_h_m": 0.136,
+     "max_v_m": 0.146,
+     "holds": true
+    },
+    "beacon_fix": {
+     "samples": 1117,
+     "beyond": 0,
+     "max_err_m": 0.258,
+     "holds": true
+    },
+    "queue_cls": {
+     "samples": 1360,
+     "beyond": 0,
+     "max_axis_m": 0.164,
+     "sources": {
+      "nav": 1360
+     },
+     "bound_m": 1.0,
+     "outward_beyond": 0,
+     "max_outward_m": 0.093,
+     "outward_bound_m": 0.7,
+     "front_lever_m": 0.0251,
+     "unjudged": 0,
+     "holds": true,
+     "outside_queue_sources": {
+      "nav": 299,
+      "beacon": 47
+     }
+    },
+    "gate_nav": {
+     "committed_beyond": 0,
+     "max_committed_error_m": 0.266,
+     "self_induced": false
+    },
+    "nav_bound": {
+     "samples": 5799,
+     "exceeded": 0,
+     "min_margin_m": 1.02
+    }
+   },
+   "diagnostics": {
+    "wrong_validated_fits": 0,
+    "queue_cls_outside_queue_sources": {
+     "nav": 299,
+     "beacon": 47
+    }
+   },
+   "cause_tags": [
+    "false_reoccupation",
+    "relocalization_hold"
+   ],
+   "checks": {
+    "analysed": true,
+    "monitors_present": true,
+    "class_pass": true,
+    "class_reproduced": true,
+    "terminal_success": true,
+    "one_judged_gate_at_most": true,
+    "gate_metrics": true,
+    "all_crossed": true,
+    "formation_recovered": true,
+    "p1": true,
+    "p2": true,
+    "no_unsafe_admission": true,
+    "no_false_release": true,
+    "premise_nav_bound": true,
+    "premise_gate_nav": true,
+    "premise_v": true,
+    "premise_c": true,
+    "scope": true,
+    "premise_zone_nav": true,
+    "premise_beacon_fix": true,
+    "premise_queue_cls": true,
+    "queue_cls_observed": true,
+    "plans_reproduced": true
+   },
+   "accepted": true
+  }
+ ]
+}
